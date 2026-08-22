@@ -141,14 +141,18 @@ class CourtDisplay
         $side = $corner === 'red' ? 'a' : 'b';
         $entry = $entries[$bout->{$side.'_competitor_id'}] ?? null;
         $user = $entry?->user;
-        $club = $user?->memberClubs->first();
+        // The club they COMPETE FOR — see ClubEventRegistration::competingClub().
+        $club = $entry?->competingClub();
 
         return [
             $corner.'Name' => $bout->{$side.'_name'} ?: __('event-taekwondo_tournament::messages.court_tbd'),
             $corner.'Club' => $club?->club_name ?? '',
-            // The match records the competitor's country at draw time; fall back
-            // to the member's own nationality, then the club's.
-            $corner.'Flag' => strtolower((string) ($bout->{$side.'_country'} ?: $user?->nationality ?: $club?->country ?: '')) ?: null,
+            // The match records the competitor's country at draw time; failing
+            // that, the country of the club they compete for. Never their own
+            // nationality — a competitor here represents a club, and the club
+            // has the country. Their passport is a fact about them, not about
+            // this bout.
+            $corner.'Flag' => strtolower((string) ($bout->{$side.'_country'} ?: $club?->country ?: '')) ?: null,
             // The SAME question the introduction and the mat ask, answered in
             // the same place — so a picture added at the scoring desk shows on
             // the upcoming board too, and on every later bout this competitor
@@ -208,6 +212,8 @@ class CourtDisplay
             ->with([
                 'user:id,name,nationality,profile_picture,profile_picture_is_public,updated_at',
                 'user.memberClubs:id,club_name,logo,country',
+                // The club they compete FOR, which is what the wall prints.
+                'representingTenant:id,club_name,logo,country',
             ])
             ->get()
             ->keyBy('id')

@@ -953,6 +953,11 @@
 
         <!-- Affiliations Tab -->
         <div class="tab-pane fade" id="affiliations" role="tabpanel">
+            @include('family.partials.derived-history', [
+                'rows' => $derivedAffiliations ?? collect(),
+                'kind' => 'affiliations',
+            ])
+
             @include('family.partials.affiliations-enhanced')
         </div>
 
@@ -1025,6 +1030,11 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
                     <h6 class="font-bold mb-3"><i class="bi bi-list-ul me-2"></i>{{ __('member.family_show_tournament_history_title') }}</h6>
+
+                    @include('family.partials.derived-history', [
+                        'rows' => $derivedTournaments ?? collect(),
+                        'kind' => 'tournaments',
+                    ])
 
                     <div class="table-responsive" id="tournamentsTableWrapper" style="{{ $tournamentEvents->count() > 0 ? '' : 'display:none;' }}">
                             <table class="table table-hover align-middle" id="tournamentsTable">

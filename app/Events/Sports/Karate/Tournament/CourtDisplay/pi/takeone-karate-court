@@ -101,6 +101,20 @@ export WPE_BACKEND_FDO_LIBRARY_NAME=libWPEBackend-fdo-1.0.so.1
 # One process, no extra renderer: 1GB of RAM on a Pi 3B does not stretch.
 export WEBKIT_USE_SINGLE_WEB_PROCESS=1
 
+# Sound must play without anybody touching the screen.
+#
+# Every browser engine refuses to autoplay audio until a page has been
+# interacted with, and nothing ever interacts with a screen bolted to a wall —
+# so an event's introduction music and its point sounds would sit there, loaded
+# and silent, forever. WebKit's policy is per-embedder rather than a page
+# setting, which is why it is granted HERE rather than asked for in the board.
+#
+# This is not a general loosening: this appliance renders exactly one host, its
+# board is the only page it can reach, and there is no pointer, no keyboard and
+# no way to navigate off it.
+export WPE_SHELL_ENABLE_AUTOPLAY=1
+
 exec cog \
     --platform=drm \
+    --autoplay-policy=allow \
     "$SERVER/karate/court/$TOKEN"

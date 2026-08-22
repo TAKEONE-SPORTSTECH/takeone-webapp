@@ -40,7 +40,7 @@
      style="background: linear-gradient(135deg, {{ $bandColor }}, #1f2937);">
     <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
     <div class="relative flex items-center gap-3">
-        <i class="bi {{ $bandIcon }} text-2xl text-white/90 flex-shrink-0"></i>
+        <i class="{{ \App\Support\Icon::bi($bandIcon, 'text-2xl text-white/90 flex-shrink-0') }}"></i>
         <div class="min-w-0">
             @if($value !== null)
                 <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">{{ $title }}</p>

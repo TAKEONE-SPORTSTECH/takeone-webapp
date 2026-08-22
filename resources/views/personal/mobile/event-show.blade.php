@@ -577,7 +577,7 @@
                         {{-- inline-block: a bare <i> is an inline box and CSS
                          transforms do not apply to those, so rotate-90 would
                          silently do nothing without it. --}}
-                    <i class="bi bi-diagram-3-fill text-2xl inline-block rotate-90"></i>
+                    <i class="bi bi-diagram-3-fill bracket-icon text-2xl"></i>
                     </div>
                     <div class="relative min-w-0">
                         <h3 class="font-black text-base leading-tight">{{ __('personal.event_show_brackets_draws') }}</h3>
@@ -647,6 +647,14 @@
          "you're not eligible" notice that the participant row's own dialog now
          gives on tap. What stays is the proof-of-payment flow, which has nowhere
          else to live. --}}
+    {{-- Which club this athlete competes for, and — for a coach — the door to
+         entering a whole squad. Both sit above the join buttons: they are
+         decisions you make BEFORE taking a place, not after. --}}
+    <div class="px-4 mt-4 space-y-3">
+        @include('partials.event-representing')
+        @include('partials.event-squad-entry')
+    </div>
+
     <div class="px-4 mt-4">
         @include('partials.event-payment-proof')
         @include('partials.event-join-sheet')
@@ -655,7 +663,7 @@
     {{-- In-place division confirmation (taekwondo) --}}
     <div x-show="joinedDivision" x-cloak class="px-4 mt-2">
         <div class="m-card rounded-2xl p-3 flex items-center gap-2 text-[12px]">
-            <i class="bi bi-diagram-3 text-primary"></i>
+            <i class="bi bi-diagram-3 bracket-icon text-primary"></i>
             <span class="text-muted-foreground">{{ __('personal.event_show_placed_in') }} <span class="font-bold text-foreground" x-text="joinedDivision"></span></span>
         </div>
     </div>
@@ -705,7 +713,24 @@
              --m-attn-color: the row carries an Alpine :style binding and a
              second static style on the same element is asking for one to
              clobber the other, so the pulse uses the brand primary. --}}
+
+        {{-- Entries are closed and this viewer holds no place: the way in is
+             GONE, not greyed out. A disabled join button invites a tap that can
+             only ever say no. What replaces it is the one fact they need —
+             which door closed, and when. --}}
+        <div x-show="! entriesOpen && ! registered" x-cloak
+             class="mt-3 rounded-2xl border border-gray-200 bg-muted/40 p-4 flex items-start gap-3">
+            <span class="w-10 h-10 rounded-xl bg-white grid place-items-center flex-shrink-0 shadow-sm">
+                <i class="bi bi-lock text-muted-foreground text-lg"></i>
+            </span>
+            <div class="min-w-0">
+                <p class="text-sm font-bold text-foreground">{{ __('personal.event_show_entries_closed') }}</p>
+                <p class="text-[12px] text-muted-foreground leading-snug mt-0.5" x-text="entriesNote"></p>
+            </div>
+        </div>
+
         <button type="button" id="join-participate"
+                x-show="entriesOpen || registered" x-cloak
                 @click="{{ $canJoin ? "startJoin('participant')" : 'explainIneligible()' }}"
                 :disabled="registered && !feeDue"
                 class="m-press mt-3 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
@@ -781,7 +806,7 @@
                 <div class="flex-1 overflow-y-auto p-4 space-y-3">
                     @foreach($e['bracket_results'] as $r)
                         <div class="rounded-2xl border border-gray-100 p-3">
-                            <p class="text-sm font-bold text-foreground mb-2 flex items-center gap-2"><i class="bi bi-diagram-3 text-primary"></i> {{ $r['division'] }}</p>
+                            <p class="text-sm font-bold text-foreground mb-2 flex items-center gap-2"><i class="bi bi-diagram-3 bracket-icon text-primary"></i> {{ $r['division'] }}</p>
                             <div class="space-y-1.5">
                                 @foreach($r['medals'] as $m)
                                     @php $medal = [1 => ['🥇', '#f59e0b', __('personal.event_show_champion')], 2 => ['🥈', '#9ca3af', __('personal.event_show_runner_up')], 3 => ['🥉', '#b45309', __('personal.event_show_third_place')]][$m['place']]; @endphp

@@ -1158,4 +1158,9 @@ return [
     'search_in_list' => 'Search…',
     'no_matches' => 'Nothing matches that.',
     'new_challenge' => 'New challenge',
+    'derived_affiliations_title' => 'From your club records',
+    'derived_affiliations_note'  => 'Clubs you are enrolled in. Confirmed by the club, not self-reported.',
+    'derived_tournaments_title'  => 'From your club records',
+    'derived_tournaments_note'   => 'Events you were entered into. Confirmed by the club, not self-reported.',
+    'derived_since'              => 'Member since :date',
 ];

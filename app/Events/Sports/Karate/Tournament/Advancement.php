@@ -2,6 +2,7 @@
 
 namespace App\Events\Sports\Karate\Tournament;
 
+use App\Events\Sports\Karate\Tournament\Scoreboard\Scoring;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Sports\Combat\CombatSport;
@@ -45,6 +46,21 @@ class Advancement
         $match->a_score = $this->score($payload['a_score'] ?? null);
         $match->b_score = $this->score($payload['b_score'] ?? null);
         $match->winner = $winner;
+
+        // Why, when the score was not the answer — a disqualification, a
+        // withdrawal, a doctor's call. Only ever set alongside a winner, and
+        // whitelisted here as well as at the console: this reaches the record,
+        // and the record is read by the podium, the profile and the export.
+        if ($winner !== null && ($payload['win_reason'] ?? null) !== null) {
+            $reason = (string) $payload['win_reason'];
+            $match->win_reason = in_array($reason, Scoring::WIN_REASONS, true) ? $reason : 'other';
+            $note = trim((string) ($payload['win_note'] ?? ''));
+            $match->win_note = $note === '' ? null : mb_substr($note, 0, 200);
+        } else {
+            // Won on points, or the result is being cleared: nothing to explain.
+            $match->win_reason = null;
+            $match->win_note = null;
+        }
         $match->status = $winner ? 'done' : (in_array($payload['status'] ?? null, ['upcoming', 'live'], true) ? $payload['status'] : 'upcoming');
         $match->save();
 

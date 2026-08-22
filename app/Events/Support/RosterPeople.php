@@ -2,6 +2,9 @@
 
 namespace App\Events\Support;
 
+use App\Models\ClubEvent;
+use App\Models\ClubEventRegistration;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -27,12 +30,17 @@ class RosterPeople
      * @param  array<int, array<string, mixed>>  $rows  rosterRows() output
      * @return array{participants: array<int, array<string, mixed>>, clubs: array<int, array<string, mixed>>}
      */
-    public function build(array $rows): array
+    public function build(array $rows, ?ClubEvent $event = null): array
     {
         $users = $this->users($rows);
+        $representing = $event ? $this->representing($event) : collect();
 
         $participants = collect($rows)
-            ->map(fn (array $row) => $this->participant($row, $users->get($row['id'] ?? null)))
+            ->map(fn (array $row) => $this->participant(
+                $row,
+                $users->get($row['id'] ?? null),
+                $representing->has($row['id'] ?? null) ? $representing->get($row['id']) : false,
+            ))
             ->values()->all();
 
         return [
@@ -51,9 +59,16 @@ class RosterPeople
      * @param  array<string, mixed>  $row
      * @return array<string, mixed>
      */
-    private function participant(array $row, ?User $user): array
+    private function participant(array $row, ?User $user, mixed $representing = false): array
     {
-        $club = $user?->memberClubs->first();
+        // What the entry itself says the athlete competes for beats what their
+        // profile implies. `false` means the entry had nothing to say (a row
+        // predating the column), `null` means it said UNATTACHED — either
+        // because they claimed nobody or because the club disowned the claim —
+        // and that answer must not be quietly overwritten by their membership.
+        $club = $representing === false
+            ? $user?->memberClubs->first()
+            : $representing;
 
         return [
             // The PUBLIC key, never the numeric id: this is what the row links
@@ -63,8 +78,16 @@ class RosterPeople
             'gender' => $row['gender'] ?? null,
             'category' => $row['category'] ?? null,
             'weight_class' => $row['weight_class'] ?? null,
-            'country' => $row['country'] ?? $user?->nationality ?? null,
-            'photo' => $this->photo($user),
+            // The flag is the CLUB's country, not the person's passport. Someone
+            // competing for a Bahraini club is on the sheet as Bahrain whatever
+            // their nationality — their own is a fact about them, on their
+            // profile, and it is not what a competition prints.
+            'country' => $club?->country ?: ($row['country'] ?? null),
+            'photo' => $this->photo($user, $row['registration_photo'] ?? null),
+            // The entry, so a manager can put a face on it. Null for a roster
+            // built from anything other than real entries.
+            'registration' => $row['registration'] ?? null,
+            'has_entry_photo' => ! empty($row['registration_photo']),
             'club' => $club ? [
                 'name' => $club->club_name,
                 'logo' => $club->logo ? asset('storage/'.$club->logo) : null,
@@ -103,8 +126,16 @@ class RosterPeople
      * else entered in the event, so a false here means the silhouette — the same
      * answer the hall screen gives.
      */
-    private function photo(?User $user): ?string
+    private function photo(?User $user, ?string $entryPhoto = null): ?string
     {
+        // A photo the ORGANISER uploaded against this entry comes first: it was
+        // taken for this competition, and it is the only picture most
+        // paper-entered competitors have. It carries no privacy gate because
+        // uploading it here WAS the decision to show it on this event's surfaces.
+        if ($entryPhoto) {
+            return asset('storage/'.$entryPhoto);
+        }
+
         if (! $user?->profile_picture || ! $user->profile_picture_is_public) {
             return null;
         }
@@ -129,6 +160,27 @@ class RosterPeople
     }
 
     /**
+     * The club each entry says the athlete competes FOR, keyed by user id.
+     *
+     * Present-but-null is meaningful: the entry answered "unattached". Absent
+     * means the entry never recorded a club at all, and only then may the
+     * roster fall back to the athlete's own membership.
+     *
+     * @return \Illuminate\Support\Collection<int, Tenant|null>
+     */
+    private function representing(ClubEvent $event): Collection
+    {
+        return ClubEventRegistration::where('event_id', $event->id)
+            ->where('role', 'participant')
+            ->with('representingTenant:id,club_name,slug,logo,country')
+            ->get(['id', 'user_id', 'representing_tenant_id', 'club_disowned_at'])
+            ->filter(fn (ClubEventRegistration $r) => $r->representing_tenant_id !== null || $r->isDisowned())
+            ->mapWithKeys(fn (ClubEventRegistration $r) => [
+                (int) $r->user_id => $r->isDisowned() ? null : $r->representingTenant,
+            ]);
+    }
+
+    /**
      * One query for the whole roster rather than two per row.
      *
      * @param  array<int, array<string, mixed>>  $rows
@@ -144,7 +196,7 @@ class RosterPeople
 
         return User::whereIn('id', $ids)
             ->with(['memberClubs:id,club_name,slug,logo,country'])
-            ->get(['id', 'uuid', 'nationality', 'profile_picture', 'profile_picture_is_public'])
+            ->get(['id', 'uuid', 'profile_picture', 'profile_picture_is_public'])
             ->keyBy('id');
     }
 }

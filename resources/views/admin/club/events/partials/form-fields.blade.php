@@ -86,6 +86,10 @@
         </div>
         <input type="hidden" name="participant_fee"
                :value="formData.fee_type === 'paid' && formData.fee_amount !== '' && formData.fee_amount !== null ? '{{ $club->currency }} ' + formData.fee_amount : ''">
+        {{-- The amount itself: the server prices from this, and composes the
+             display line above from it. --}}
+        <input type="hidden" name="participant_fee_amount"
+               :value="formData.fee_type === 'paid' && formData.fee_amount !== '' && formData.fee_amount !== null ? formData.fee_amount : ''">
     </div>
     <div class="md:col-span-2">
         <label class="form-label">{{ __('admin.partials_form_fields_tags') }} <span class="text-xs text-muted-foreground">{{ __('admin.partials_form_fields_tags_hint') }}</span></label>

@@ -14,4 +14,12 @@ return [
     'division_label' => 'الفئة الوزنية',
     'weigh_in' => 'الوزن الرسمي',
     'mat' => 'بساط',
+
+    // ── طاقم التحكيم (الكوميتيه) ────────────────────────────────────────
+    'official_referee'          => 'حكم الوسط (شوشين)',
+    'official_judge'            => 'حكم زاوية :n (فوكوشين)',
+    'official_match_supervisor' => 'مراقب المباراة (كانسا)',
+    'official_tatami_manager'   => 'مدير البساط',
+    'official_scorekeeper'      => 'مسجّل النقاط',
+    'official_timekeeper'       => 'مسجّل الوقت',
 ];

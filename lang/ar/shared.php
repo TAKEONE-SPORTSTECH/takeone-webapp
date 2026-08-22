@@ -892,4 +892,7 @@ return [
     'welcome_read_the' => 'اقرأ',
     'welcome_register' => 'إنشاء حساب',
     'welcome_watch_tutorials' => 'شاهد دروس الفيديو التعليمية على',
+    'share'            => 'مشاركة',
+    'link_copied'      => 'تم نسخ الرابط',
+    'something_went_wrong' => 'حدث خطأ ما',
 ];

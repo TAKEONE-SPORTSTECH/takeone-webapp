@@ -44,8 +44,24 @@
 
             <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
-                {{-- The amount, stated once and plainly --}}
-                <div class="rounded-2xl bg-muted/40 p-4 flex items-center justify-between gap-3">
+                {{-- WHO you are entering as. A competitor at an open event
+                     represents a club, and that is decided here — at the moment
+                     of entering — rather than left to a card further down the
+                     page that someone may never scroll to. Pre-selected with the
+                     club where they last practised this sport, so the common
+                     case is a glance rather than a decision. --}}
+                @if(($representing['ask'] ?? false))
+                    <div x-show="joinRole === 'participant'" x-cloak>
+                        <p class="text-sm font-bold text-foreground mb-1">{{ __('personal.event_show_representing_title') }}</p>
+                        <p class="text-[11px] text-muted-foreground leading-snug mb-2">{{ __('personal.event_show_representing_hint') }}</p>
+                        @include('partials.event-representing-cards')
+                    </div>
+                @endif
+
+                {{-- The amount, stated once and plainly. A free place has no
+                     amount and no method: the sheet is then only the club
+                     question and a confirm. --}}
+                <div x-show="joinFee" x-cloak class="rounded-2xl bg-muted/40 p-4 flex items-center justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                             {{ __('personal.event_show_join_amount_due') }}
@@ -59,7 +75,7 @@
 
                 {{-- Choose a method. No gateway exists, so 'online' means a
                      transfer the club verifies — not a card charge. --}}
-                <div>
+                <div x-show="joinFee" x-cloak>
                     <p class="text-sm font-bold text-foreground mb-2">{{ __('personal.event_show_join_how_to_pay') }}</p>
 
                     <div class="grid grid-cols-2 gap-2 mb-3">
@@ -133,7 +149,7 @@
                     </div>
                 </div>
 
-                <p class="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                <p x-show="joinFee" x-cloak class="text-[11px] text-muted-foreground flex items-start gap-1.5">
                     <i class="bi bi-info-circle mt-0.5"></i>
                     <span>{{ __('personal.event_show_join_place_held') }}</span>
                 </p>
@@ -162,10 +178,20 @@
                     <span x-text="busy ? '{{ __('personal.event_show_join_working') }}' : '{{ __('personal.event_show_join_cash_confirm') }}'"></span>
                 </button>
 
+                {{-- Free entry: nothing to pay, so the sheet's only job was the
+                     club question and this. --}}
+                <button type="button" x-show="! joinFee" x-cloak
+                        @click="finishJoin(false)" :disabled="busy"
+                        class="m-press w-full py-3 rounded-xl bg-primary text-white font-bold text-sm
+                               flex items-center justify-center gap-2 active:scale-[.98] transition disabled:opacity-60">
+                    <i class="bi bi-check2"></i>
+                    <span x-text="busy ? '{{ __('personal.event_show_join_working') }}' : '{{ __('personal.event_show_im_in') }}'"></span>
+                </button>
+
                 {{-- Taking a place without deciding how to pay. Not offered when
                      settling: they already have the place, so this would be a
                      button that does nothing. --}}
-                <button type="button" x-show="joinMode !== 'settle'"
+                <button type="button" x-show="joinFee && joinMode !== 'settle'"
                         @click="finishJoin(false)" :disabled="busy"
                         class="m-press w-full py-3 rounded-xl border border-gray-200 text-foreground font-semibold text-sm
                                active:scale-[.98] transition disabled:opacity-60">

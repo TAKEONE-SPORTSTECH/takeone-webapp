@@ -72,6 +72,33 @@ class MatState
         public float $duration = 180.0,
         public bool $running = false,
         public bool $finished = false,
+        /**
+         * The official has tucked the celebration away.
+         *
+         * Lives in the SHARED state rather than in the console's own head, so
+         * closing it on the scoring table closes it on the wall too. A screen is
+         * not a second opinion about the bout; if the table has stopped
+         * celebrating, a board still throwing confetti at the hall is wrong.
+         *
+         * It says nothing about the RESULT: the bout is still finished and still
+         * unfiled. Only the confetti is gone.
+         */
+        public bool $celebrationClosed = false,
+        /**
+         * A winner the official DECLARED, overriding the score.
+         *
+         * 'aka', 'ao' or null. A karate bout does not always go to the higher
+         * score: hansoku and shikkaku hand it to the other side however the
+         * points stand, kiken and a medical retirement hand it over with no
+         * points at all. So who won is a decision the table can make, and the
+         * scoreboard has to be able to say so — including "won with fewer
+         * points", which is otherwise indistinguishable from a mistake.
+         */
+        public ?string $winner = null,
+        /** Why, from a known vocabulary — see Scoring::WIN_REASONS. */
+        public ?string $winReason = null,
+        /** The official's own words, when the code alone does not say enough. */
+        public ?string $winNote = null,
         /** The last point scored, so the screen can shout it: ['side'=>, 'n'=>, 'ts'=>]. */
         public ?array $lastEvent = null,
         public ?string $at = null,
@@ -115,12 +142,25 @@ class MatState
      */
     public function akaLeads(): bool
     {
+        // A declared winner outranks the score, and outranks senshu with it.
+        // Everything downstream — the colour on the board, the celebration, the
+        // result that goes into the bracket — reads these two methods, so the
+        // override belongs HERE and nowhere else. Putting it anywhere further
+        // down would leave the wall and the record disagreeing.
+        if ($this->winner !== null) {
+            return $this->winner === 'aka';
+        }
+
         return $this->akaScore > $this->aoScore
             || ($this->akaScore === $this->aoScore && $this->akaSenshu);
     }
 
     public function aoLeads(): bool
     {
+        if ($this->winner !== null) {
+            return $this->winner === 'ao';
+        }
+
         return $this->aoScore > $this->akaScore
             || ($this->akaScore === $this->aoScore && $this->aoSenshu);
     }
@@ -156,6 +196,10 @@ class MatState
             'duration' => $this->duration,
             'running' => $this->running,
             'finished' => $this->finished,
+            'celebrationClosed' => $this->celebrationClosed,
+            'winner' => $this->winner,
+            'winReason' => $this->winReason,
+            'winNote' => $this->winNote,
             'lastEvent' => $this->lastEvent,
             'at' => $this->at,
             // Sent rather than recomputed on the client: the rule that senshu
@@ -189,6 +233,10 @@ class MatState
             duration: (float) ($a['duration'] ?? 180),
             running: (bool) ($a['running'] ?? false),
             finished: (bool) ($a['finished'] ?? false),
+            celebrationClosed: (bool) ($a['celebrationClosed'] ?? false),
+            winner: in_array($a['winner'] ?? null, ['aka', 'ao'], true) ? $a['winner'] : null,
+            winReason: isset($a['winReason']) ? (string) $a['winReason'] : null,
+            winNote: isset($a['winNote']) ? (string) $a['winNote'] : null,
             lastEvent: $a['lastEvent'] ?? null,
             at: $a['at'] ?? null,
         );

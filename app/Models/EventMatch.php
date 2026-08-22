@@ -20,6 +20,12 @@ class EventMatch extends Model
         'day' => 'integer',
     ];
 
+    /** The championship this bout belongs to. */
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(ClubEvent::class, 'event_id');
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(EventCategory::class, 'category_id');

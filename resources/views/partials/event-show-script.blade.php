@@ -81,6 +81,154 @@ x-data="{
         },
         get registered() { return this.going || this.watching; },
 
+        /* ---------------- Competing for a club (individual entry) ----------------
+         * The athlete CLAIMS a club; nobody approves it. The server re-checks the
+         * claim against their own active memberships, so this list is a
+         * convenience, never the authorisation.
+         */
+        // Their claim if they already have one, otherwise the club the server
+        // suggests — where they last practised THIS event's sport.
+        representing: {{ ($representing['claim'] ?? 0) ?: (($representing['default'] ?? null) ?: 'null') }},
+        representingDisowned: {{ ($representing['disowned'] ?? false) ? 'true' : 'false' }},
+        async setRepresenting(id) {
+            const previous = this.representing;
+            this.representing = id;
+
+            // Before joining there is nothing to save — the choice rides along
+            // with the registration. After joining it is a change to a record,
+            // and a change that silently did not save would be the worst kind.
+            if (! this.going) return;
+
+            const d = await this.req('{{ route('me.events.register', $e['key']) }}', 'POST', { representing_tenant_id: id });
+            if (! d) { this.representing = previous; return; }
+            this.representingDisowned = false;
+            window.showToast('success', '{{ __('personal.event_show_representing_saved') }}');
+        },
+
+        /* ---------------- Entering a squad (club channel) ----------------
+         * Open to whoever holds their club's entry grant — the coach who knows
+         * who is fighting, not only the owner.
+         */
+        squadOpen: false,
+        squadTab: 'roster',
+        squadLoading: false,
+        squadSaving: false,
+        athletes: [],
+        claims: [],
+        picked: [],
+        // The roster is a PAGE of a club's members, not all of them, so finding
+        // someone is a search rather than a scroll. The server matches name,
+        // email and phone against that coach's own members — the athletes list
+        // itself never carries anyone's contact details.
+        squadQuery: '',
+        squadTotal: 0,
+        squadShown: 0,
+        _squadSearch: null,
+        async openSquad() {
+            this.squadOpen = true;
+            this.squadTab = 'roster';
+            if (this.athletes.length || this.claims.length) return;
+            await this.loadSquad();
+        },
+        // Typing a letter must not fire a request per keystroke.
+        searchSquad() {
+            clearTimeout(this._squadSearch);
+            this._squadSearch = setTimeout(() => this.loadSquad(true), 280);
+        },
+        clearSquadSearch() {
+            if (! this.squadQuery) return;
+            this.squadQuery = '';
+            clearTimeout(this._squadSearch);
+            this.loadSquad(true);
+        },
+        /**
+         * Load the roster (and, the first time, the claims beside it).
+         *
+         * A search only reloads the roster: the claims list does not narrow, and
+         * re-fetching it on every keystroke would be work nobody asked for.
+         * Selections survive a search — picking three people, searching for a
+         * fourth and losing the first three would be its own bug.
+         */
+        async loadSquad(searchOnly = false) {
+            this.squadLoading = true;
+            try {
+                const url = '{{ route('me.events.entry-roster', $e['key']) }}'
+                    + (this.squadQuery ? ('?q=' + encodeURIComponent(this.squadQuery)) : '');
+                const requests = [fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(r => r.json())];
+                if (! searchOnly) {
+                    requests.push(fetch('{{ route('me.events.claims', $e['key']) }}', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(r => r.json()));
+                }
+                const [roster, claims] = await Promise.all(requests);
+                this.athletes = roster.athletes || [];
+                this.squadTotal = roster.total || 0;
+                this.squadShown = roster.shown || 0;
+                if (claims) this.claims = claims.claims || [];
+            } catch (e) {
+                window.showToast('error', '{{ __('personal.event_show_action_failed') }}');
+            } finally { this.squadLoading = false; }
+        },
+        togglePick(id) {
+            const i = this.picked.indexOf(id);
+            if (i === -1) this.picked.push(id); else this.picked.splice(i, 1);
+        },
+        // Acts on what is ON SCREEN. With a search active that means the
+        // matches, and it must not silently drop people picked before the
+        // search — so it adds to the selection, or takes exactly these back out.
+        pickAllEnterable() {
+            const open = this.athletes.filter(a => a.can_enter && ! a.entered).map(a => a.id);
+            if (! open.length) return;
+            const allPicked = open.every(id => this.picked.includes(id));
+            this.picked = allPicked
+                ? this.picked.filter(id => ! open.includes(id))
+                : [...new Set(this.picked.concat(open))];
+        },
+        get enterableCount() { return this.athletes.filter(a => a.can_enter && ! a.entered).length; },
+        async submitEntries() {
+            if (! this.picked.length || this.squadSaving) return;
+            this.squadSaving = true;
+            let d = null;
+            try {
+                const res = await fetch('{{ route('me.events.entries', $e['key']) }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ user_ids: this.picked }),
+                });
+                d = await res.json().catch(() => ({}));
+                if (! res.ok || ! d.success) throw new Error(d.message || '{{ __('personal.event_show_action_failed') }}');
+            } catch (e) { this.squadSaving = false; window.showToast('error', e.message); return; }
+            this.squadSaving = false;
+
+            // Partial success is the NORMAL outcome, so say both halves and
+            // leave the refused ones on screen with the server's own reason.
+            this.goingCount = d.going ?? this.goingCount;
+            (d.entered || []).forEach(row => {
+                const a = this.athletes.find(x => x.id === row.user_id);
+                if (a) { a.entered = true; a.division = row.division || a.division; }
+            });
+            (d.rejected || []).forEach(row => {
+                const a = this.athletes.find(x => x.id === row.user_id);
+                if (a) { a.can_enter = false; a.reason = row.message; }
+            });
+            this.picked = [];
+            window.showToast((d.rejected || []).length ? 'info' : 'success', d.message);
+        },
+        /** Reject a claim on the club's name. The athlete keeps their place. */
+        async disownClaim(userId, name) {
+            const ok = await window.confirmAction({
+                title: @js(__('personal.event_show_disown_title')),
+                message: @js(__('personal.event_show_disown_msg')),
+                type: 'danger',
+                confirmText: @js(__('personal.event_show_disown_btn')),
+            });
+            if (! ok) return;
+            const d = await this.req('{{ url('me/events/'.$e['key'].'/claims') }}/' + userId + '/disown', 'POST');
+            if (! d) return;
+            const c = this.claims.find(x => x.user_id === userId);
+            if (c) c.disowned = true;
+            window.showToast('success', d.message);
+        },
+
         /* ---------------- Join sheet ---------------- */
         joinOpen: false,
         joinRole: 'participant',
@@ -101,8 +249,26 @@ x-data="{
          * join needs the amount and the account number, which a one-line dialog
          * cannot carry.
          */
+        // Whether a place can still be taken, and the reason when it cannot —
+        // not open yet, closed on a date, started, or over. Computed once on the
+        // server (PersonalEventController::entriesState) so the button, this
+        // guard and the coach's card can never disagree.
+        //
+        // Defaulted open for the screens that reuse this data without asking the
+        // question (the manage console, the officials' desk): they render no
+        // join button, so the flag has nothing to gate there.
+        entriesOpen: {{ ($entriesOpen ?? true) ? 'true' : 'false' }},
+        entriesNote: @js($entriesNote ?? null),
+
         startJoin(role) {
             if (this.busy) return;
+
+            // Anyone already holding a place still gets through here — this is
+            // also the way they settle an outstanding fee.
+            if (! this.entriesOpen && ! this.registered) {
+                window.showToast('info', this.entriesNote || @js(__('events.entry_closed_generic')));
+                return;
+            }
 
             // Already holding this place with the fee outstanding — reopen the
             // sheet to settle it. A place you have not paid for should never be
@@ -118,7 +284,14 @@ x-data="{
             }
 
             const paid = role === 'spectator' ? {{ $ticketPaid ? 'true' : 'false' }} : {{ $pPaid ? 'true' : 'false' }};
-            if (! paid) {
+
+            // A free place normally needs no sheet — except for a competitor who
+            // has a club to represent, because entering as your club is part of
+            // entering, not an afterthought. The sheet then carries only that
+            // question and a confirm.
+            const asksClub = role === 'participant' && {{ ($representing['ask'] ?? false) ? 'true' : 'false' }};
+
+            if (! paid && ! asksClub) {
                 return role === 'spectator' ? this.toggleWatch() : this.toggleGoing();
             }
 
@@ -129,9 +302,11 @@ x-data="{
             this.joinRole = role;
             this.joinMode = mode;
             this.payMethod = null;
+            // Empty when there is nothing to pay — the sheet keys its money
+            // sections off this, and the word 'Free' is not an amount.
             this.joinFee = role === 'spectator'
-                ? @js($hasTicket ? $e['spectator']['fee'] : '')
-                : @js($e['participant_fee']);
+                ? ({{ $ticketPaid ? 'true' : 'false' }} ? @js($hasTicket ? $e['spectator']['fee'] : '') : '')
+                : ({{ $pPaid ? 'true' : 'false' }} ? @js($e['participant_fee']) : '');
             this.joinOpen = true;
         },
 
@@ -217,8 +392,10 @@ x-data="{
             try {
                 res = await fetch('{{ route('me.events.register', $e['key']) }}', {
                     method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '', 'Accept': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '', 'Accept': 'application/json' },
                     credentials: 'same-origin',
+                    // The club they chose to compete for, if they were asked.
+                    body: JSON.stringify({ representing_tenant_id: this.representing }),
                 });
                 d = await res.json().catch(() => ({}));
             } catch (e) { this.busy = false; window.showToast('error', e.message); return; }

@@ -34,9 +34,11 @@
     }
     $initDivisions = $divisions ?? [];
     $initLeague = $ev?->league ?? ['teams' => [], 'fixtures' => []];
-    // numeric amount parsed out of the stored fee strings (e.g. "BHD 10" → "10")
-    $pAmt = ($ev && $ev->participant_fee && preg_match('/[\d.]+/', $ev->participant_fee, $mp)) ? $mp[0] : '';
-    $sAmt = ($ev && $ev->spectator_fee && preg_match('/[\d.]+/', $ev->spectator_fee, $ms)) ? $ms[0] : '';
+    // The stated amounts. Read from the columns — the old scrape out of the
+    // display string is what Phase 2 of the entry/billing work removed.
+    $trim = fn ($n) => $n === null ? '' : rtrim(rtrim(number_format((float) $n, 3, '.', ''), '0'), '.');
+    $pAmt = $ev ? $trim(\App\Events\Support\EventFee::amount($ev, 'participant')) : '';
+    $sAmt = $ev ? $trim(\App\Events\Support\EventFee::amount($ev, 'spectator')) : '';
 @endphp
 @section('personal-content')
 <div x-data="{
@@ -279,9 +281,15 @@
                     courts: (this.isChampionship && this.courts) ? parseInt(this.courts, 10) : null,
                     level: this.isCombat ? null : level, description: this.description || null,
                     participant_free: this.participant_free,
+                    // The amount is what the server prices from; the string is
+                    // only what the page shows, and the server composes it
+                    // from the amount anyway. Sending both keeps older readers
+                    // of this payload working.
                     participant_fee: this.participant_free ? null : (this.participant_amount ? (this.currency + ' ' + this.participant_amount) : 'Free'),
+                    participant_fee_amount: this.participant_free ? null : (this.participant_amount === '' || this.participant_amount === null ? 0 : parseFloat(this.participant_amount)),
                     spectator_enabled: this.spectator_enabled,
                     spectator_fee: this.spectator_enabled ? (this.spectator_amount ? (this.currency + ' ' + this.spectator_amount) : 'Free') : null,
+                    spectator_fee_amount: this.spectator_enabled ? (this.spectator_amount === '' || this.spectator_amount === null ? 0 : parseFloat(this.spectator_amount)) : null,
                     max_capacity: (this.isCombat || !this.max_capacity) ? null : parseInt(this.max_capacity, 10),
                     prize: (this.has('prize') && !this.isCombat) ? (this.prize || null) : null,
                     agenda: (this.has('schedule') && !this.isCombat) ? this.agenda.filter(a => (a.t||'').trim() || (a.d||'').trim()) : [],
@@ -365,7 +373,7 @@
                         <input x-model="sportSearch2" type="text" placeholder="{{ __('personal.personal_event_create_search_sport_ph') }}"
                                class="w-full ps-10 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                     </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[44vh] overflow-y-auto -mx-1 px-1">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 overflow-y-auto -mx-1 px-1" style="max-height:44vh">
                         <template x-for="c in sportCards()" :key="c.key">
                             <button type="button" @click="picked = c.key"
                                     class="m-press rounded-2xl p-3 border-2 flex flex-col items-center justify-center gap-1.5 text-center transition-colors min-h-[88px]"
@@ -593,7 +601,7 @@
         {{-- Divisions / categories (non-combat: free text) --}}
         <div class="m-card rounded-2xl p-4" x-show="has('divisions') && !isCombat" x-cloak>
             <div class="flex items-center justify-between mb-1">
-                <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 text-primary"></i> <span x-text="divisionLabel + 's'">{{ __('personal.personal_event_create_category_fallback') }}</span></p>
+                <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 bracket-icon text-primary"></i> <span x-text="divisionLabel + 's'">{{ __('personal.personal_event_create_category_fallback') }}</span></p>
                 <button type="button" @click="suggestDivisions()" x-show="(sportMeta.sample||[]).length" class="m-press text-[11px] font-bold text-primary"><i class="bi bi-magic"></i> {{ __('personal.personal_event_create_suggest') }}</button>
             </div>
             <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.personal_event_create_each') }} <span x-text="divisionLabel.toLowerCase()">{{ __('personal.personal_event_create_category_lc') }}</span> {{ __('personal.personal_event_create_gets_own_bracket') }}</p>
@@ -616,7 +624,7 @@
         {{-- Weight categories (combat) — pick age × gender × classes, then schedule per day --}}
         <div class="m-card rounded-2xl p-4" x-show="isCombat && has('divisions')" x-cloak>
             <div class="flex items-center justify-between mb-1">
-                <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 text-primary"></i> {{ __('personal.personal_event_create_weight_categories') }}</p>
+                <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 bracket-icon text-primary"></i> {{ __('personal.personal_event_create_weight_categories') }}</p>
                 <span class="text-[11px] text-muted-foreground" x-text="dayCount + (dayCount === 1 ? ' day' : ' days')"></span>
             </div>
             <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.personal_event_create_weight_cat_hint') }}</p>
@@ -852,6 +860,30 @@
         <div class="m-card rounded-2xl p-4 mt-4"
              x-data="{
                 officials: [], candidates: [], roles: [], role: 'jury', q: '', open: false, busy: false, loaded: false,
+                /*
+                 * Appointing takes one more decision than a tap.
+                 *
+                 * storeOfficial() requires `compensation` — a paid appointment is a
+                 * line in the event's P&L — and the form never sent it, so EVERY
+                 * appointment failed validation with "The compensation field is
+                 * required". Tapping a candidate therefore opens this sheet instead
+                 * of posting immediately.
+                 *
+                 * Nationality rides along because this is the only moment anyone is
+                 * looking at an official's details: an official is listed by country
+                 * on every officiating sheet, and a referee with none shows no flag.
+                 * Asked ONLY when the member has no country on file — it is their
+                 * data, and the form fills a blank rather than correcting it.
+                 */
+                compensations: [], currency: '', countries: [],
+                sheet: false, pick: null, comp: 'volunteer', fee: '', nat: '',
+                get needsNationality() { return !! this.pick && ! this.pick.nationality; },
+                get canAppoint() {
+                    if (this.busy || ! this.pick) return false;
+                    if (this.comp === 'paid' && ! (parseFloat(this.fee) > 0)) return false;
+                    return true;
+                },
+                choose(c) { this.pick = c; this.comp = 'volunteer'; this.fee = ''; this.nat = ''; this.open = false; this.sheet = true; },
                 get roleMeta() { return this.roles.find(r => r.value === this.role) || {}; },
                 roleLabel(v) { return (this.roles.find(r => r.value === v) || {}).label || v; },
                 byRole(v) { return this.officials.filter(o => o.role === v); },
@@ -864,22 +896,35 @@
                         if (!res.ok || !d.success) throw new Error(d.message || 'Could not load');
                         this.officials = d.officials; this.candidates = d.candidates;
                         this.roles = d.roles; this.loaded = true;
+                        this.compensations = d.compensations || []; this.currency = d.currency || '';
+                        if (! this.countries.length) {
+                            // The same list every country picker in the app uses.
+                            try {
+                                const cr = await fetch('/data/countries.json', { headers: { 'Accept': 'application/json' } });
+                                this.countries = (await cr.json()).map(c => ({ code: c.iso2, name: c.name, flag: c.flag }));
+                            } catch (e) { this.countries = []; }
+                        }
                     } catch (e) { window.showToast('error', e.message); }
                 },
-                async add(id) {
-                    if (this.busy) return; this.busy = true;
+                async add() {
+                    if (! this.canAppoint) return; this.busy = true;
                     try {
+                        const body = { user_id: this.pick.id, role: this.role, compensation: this.comp };
+                        if (this.comp === 'paid') body.fee = parseFloat(this.fee);
+                        // Only ever sent when it was actually missing.
+                        if (this.needsNationality && this.nat) body.nationality = this.nat;
+
                         const res = await fetch('{{ route('me.events.officials.store', $ev->uuid) }}', {
                             method: 'POST',
                             headers: { 'Accept': 'application/json', 'Content-Type': 'application/json',
                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
                             credentials: 'same-origin',
-                            body: JSON.stringify({ user_id: id, role: this.role }),
+                            body: JSON.stringify(body),
                         });
                         const d = await res.json().catch(() => ({}));
                         if (!res.ok || !d.success) throw new Error(d.message || 'Could not appoint');
                         window.showToast('success', d.message);
-                        this.q = ''; this.open = false; await this.load();
+                        this.q = ''; this.sheet = false; this.pick = null; await this.load();
                     } catch (e) { window.showToast('error', e.message); }
                     finally { this.busy = false; }
                 },
@@ -926,7 +971,13 @@
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <p class="text-sm font-semibold text-foreground truncate" x-text="o.name"></p>
-                                        <p class="text-[10px] text-muted-foreground truncate">
+                                        <p class="text-[10px] text-muted-foreground truncate flex items-center gap-1.5">
+                                            {{-- The flag the bout page will show, visible here so a
+                                                 missing country is noticed before the event, not after. --}}
+                                            <template x-if="o.nationality">
+                                                <span :class="'fi fi-' + o.nationality.toLowerCase()"
+                                                      style="width:14px;height:11px;background-size:cover;border-radius:2px;flex:none"></span>
+                                            </template>
                                             <span x-text="o.email"></span><template x-if="o.phone"><span> · <span x-text="o.phone"></span></span></template>
                                         </p>
                                     </div>
@@ -973,7 +1024,7 @@
                 <div x-show="open" x-cloak x-transition.opacity.duration.120ms
                      class="absolute inset-x-0 top-full mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-40 py-1">
                     <template x-for="c in candidates" :key="c.id">
-                        <button type="button" @click="add(c.id)" :disabled="busy || c.roles.includes(role)"
+                        <button type="button" @click="choose(c)" :disabled="busy || c.roles.includes(role)"
                                 class="w-full flex items-center gap-2.5 px-3 py-2 text-start hover:bg-muted/60 transition-colors disabled:opacity-50">
                             <div class="w-7 h-7 rounded-full grid place-items-center bg-muted text-[10px] font-bold text-muted-foreground flex-shrink-0 overflow-hidden">
                                 <template x-if="c.avatar"><img :src="c.avatar" alt="" class="w-full h-full object-cover"></template>
@@ -1002,6 +1053,98 @@
                     </p>
                 </div>
             </div>
+
+            {{-- Appointment sheet. Teleported to <body> so the mobile shell's
+                 transformed wrapper cannot become its containing block and clip it;
+                 scrollable body, safe-area footer. --}}
+            <template x-teleport="body">
+                <div x-show="sheet" x-cloak class="fixed inset-0" style="z-index:70" @keydown.escape.window="sheet = false">
+                    <div x-show="sheet" x-transition.opacity class="absolute inset-0 bg-black/50" @click="sheet = false"></div>
+                    <div x-show="sheet"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         class="absolute inset-x-0 bottom-0 flex flex-col bg-background rounded-t-3xl shadow-2xl" style="max-height:92vh">
+
+                        <div class="flex-shrink-0 px-5 pt-3 pb-2">
+                            <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full grid place-items-center bg-primary text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                                    <template x-if="pick && pick.avatar"><img :src="pick.avatar" alt="" class="w-full h-full object-cover"></template>
+                                    <template x-if="pick && !pick.avatar"><span x-text="initials(pick.name)"></span></template>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-foreground truncate" x-text="pick ? pick.name : ''"></p>
+                                    <p class="text-[11px] text-muted-foreground" x-text="roleLabel(role)"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 min-h-0 overflow-y-auto px-5 pb-2">
+                            {{-- Volunteer or paid. Required by the endpoint, and a paid
+                                 appointment becomes an expense on the event. --}}
+                            <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mt-3 mb-1.5">
+                                {{ __('personal.personal_event_officials_pay') }}
+                            </p>
+                            <div class="space-y-2">
+                                <template x-for="c in compensations" :key="c.value">
+                                    <button type="button" @click="comp = c.value"
+                                            class="w-full flex items-start gap-3 p-3 rounded-xl border text-start transition-colors"
+                                            :class="comp === c.value ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'">
+                                        <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 mt-0.5"
+                                              :class="comp === c.value ? 'border-primary' : 'border-gray-300'">
+                                            <span x-show="comp === c.value" class="w-2.5 h-2.5 rounded-full bg-primary"></span>
+                                        </span>
+                                        <span class="min-w-0">
+                                            <span class="block text-sm font-bold text-foreground" x-text="c.label"></span>
+                                            <span class="block text-[11px] text-muted-foreground" x-text="c.hint"></span>
+                                        </span>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <div x-show="comp === 'paid'" x-cloak class="mt-3">
+                                <label class="block text-[11px] font-bold text-muted-foreground mb-1">
+                                    {{ __('personal.personal_event_officials_fee') }} <span x-text="currency"></span>
+                                </label>
+                                <input type="number" step="0.001" min="0.001" x-model="fee" inputmode="decimal"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            </div>
+
+                            {{-- Only when we have no country for them. Their data: fill a
+                                 blank, never overwrite. The server enforces the same rule. --}}
+                            <div x-show="needsNationality" x-cloak class="mt-4">
+                                <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-1.5">
+                                    {{ __('personal.personal_event_officials_nationality') }}
+                                </p>
+                                <p class="text-[11px] text-muted-foreground mb-2">
+                                    {{ __('personal.personal_event_officials_nationality_hint') }}
+                                </p>
+                                <div class="grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto pe-1">
+                                    <template x-for="c in countries" :key="c.code">
+                                        <button type="button" @click="nat = c.code" :title="c.name"
+                                                class="flex flex-col items-center gap-1 py-2 rounded-lg border transition-colors"
+                                                :class="nat === c.code ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'">
+                                            <span :class="'fi fi-' + c.flag" style="width:20px;height:15px;background-size:cover;border-radius:2px"></span>
+                                            <span class="text-[9px] font-bold text-muted-foreground" x-text="c.code"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-shrink-0 flex gap-2 px-5 pt-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="sheet = false"
+                                    class="flex-1 h-12 rounded-xl border border-gray-200 bg-white text-sm font-bold text-muted-foreground">
+                                {{ __('shared.cancel') }}
+                            </button>
+                            <button type="button" @click="add()" :disabled="!canAppoint"
+                                    class="h-12 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50" style="flex:1.4">
+                                {{ __('personal.personal_event_officials_add') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
         @endif
 

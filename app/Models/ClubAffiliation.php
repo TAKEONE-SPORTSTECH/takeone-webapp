@@ -139,7 +139,11 @@ class ClubAffiliation extends Model
     {
         $endDate = $this->end_date ?? now();
 
-        return $this->start_date->diffInMonths($endDate);
+        // Carbon 3 returns a FLOAT here, so returning it straight from an `int`
+        // accessor is an implicit narrowing PHP now warns about. Only surfaced
+        // once affiliations existed with a start date inside the current month
+        // (a fraction of a month); floor keeps the previous whole-month meaning.
+        return (int) floor($this->start_date->diffInMonths($endDate));
     }
 
     /**

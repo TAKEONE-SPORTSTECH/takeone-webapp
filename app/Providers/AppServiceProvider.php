@@ -26,6 +26,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /*
+         * Keep the profile's Affiliations and Tournaments tabs in step with what
+         * the club actually did. Those tabs read the member's self-reported log;
+         * `memberships` and `club_event_registrations` are the authoritative
+         * records, and without this a member could be enrolled and have competed
+         * while both tabs sat empty.
+         *
+         * Both observers are created-only, idempotent and best-effort — joining a
+         * club or entering an event must never fail because a profile row could
+         * not be written. See App\Support\ProfileHistorySync.
+         */
+        \App\Models\Membership::observe(\App\Observers\MembershipObserver::class);
+        \App\Models\ClubEventRegistration::observe(\App\Observers\ClubEventRegistrationObserver::class);
+
         // Horizon dashboard — super-admin only
         Horizon::auth(function (Request $request) {
             return $request->user()?->hasRole('super-admin') ?? false;
@@ -128,6 +142,51 @@ class AppServiceProvider extends ServiceProvider
         // an authenticated organiser adopts it. Bulk creation remains pointless.
         RateLimiter::for('court-enroll', function (Request $request) {
             return Limit::perHour(120)->by($request->ip());
+        });
+
+        // Handing a bare television its own app. Unauthenticated by necessity,
+        // for the same reason enrolling is: the machine asking has no keyboard,
+        // no account and — this being the point — no app yet. It is the one
+        // thing a screen needs BEFORE it can be a screen.
+        //
+        // Capped because it is the most expensive open response on the platform:
+        // ~44 MB streamed per call.
+        //
+        // Six an hour was the first guess and it was wrong for the same reason
+        // court-enroll's five was: a venue is ONE NAT address, and kitting out a
+        // wall is iterative. Six screens is six downloads before anybody has
+        // retried anything, there are now two builds to fetch, and running out
+        // looks exactly like a broken download button on a machine with no way
+        // to read an error. Twenty leaves room for a hall plus its mistakes and
+        // is still a pointless way to spend the box's bandwidth.
+        //
+        // The artifact carries no secret — it is a kiosk browser pointed at one
+        // host — so what a caller gains by fetching it is a copy of something we
+        // hand out on purpose.
+        RateLimiter::for('screen-app', function (Request $request) {
+            return Limit::perHour(20)->by($request->ip());
+        });
+
+        // TAKEONE Play looking a person up while a match video is being filled
+        // in. A typeahead fires per keystroke, so it has to be generous — but it
+        // reads real people, so it is capped per TOKEN rather than per address:
+        // one connected account cannot spend another's allowance, and a token
+        // being used to sweep the member base runs out on its own.
+        RateLimiter::for('play-lookup', function (Request $request) {
+            return Limit::perMinute(90)->by(
+                optional($request->user()?->currentAccessToken())->id
+                    ?: ($request->user()?->id ?: $request->ip())
+            );
+        });
+
+        // Writing a headshot or a crest back from TAKEONE Play. Far tighter than
+        // the lookups: an upload is expensive, it replaces real profile data, and
+        // nobody legitimately does it in a burst.
+        RateLimiter::for('play-write', function (Request $request) {
+            return Limit::perMinute(12)->by(
+                optional($request->user()?->currentAccessToken())->id
+                    ?: ($request->user()?->id ?: $request->ip())
+            );
         });
 
         // File uploads (gallery, profile pictures, facility images, etc.):

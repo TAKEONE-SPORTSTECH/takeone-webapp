@@ -53,7 +53,7 @@ class Roster
                     // competitor can be drawn. `weighed` is the OFFICIAL
                     // weigh-in (weighed_in_at), which is not the same as
                     // `weighed_in` below — that only means a weight is on file.
-                    'country' => $r->meta ?: null,
+                    'country' => $r->countryCode(),
                     'enrolled' => $r->status === 'joined',
                     // Claimed vs verified: amber until an official has put their
                     // name to it (paid_by / weighed_in_by), then green.

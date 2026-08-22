@@ -5,6 +5,7 @@ namespace App\Events;
 use App\Events\Contracts\EventType;
 use App\Events\Support\BracketView;
 use App\Events\Support\EnrolmentDecision;
+use App\Events\Support\EventFee;
 use App\Events\Support\Milestone;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
@@ -97,6 +98,12 @@ abstract class AbstractEventType implements EventType
     public function enrolmentGate(ClubEvent $event, User $user, ?ClubEventRegistration $existing = null): EnrolmentDecision
     {
         return EnrolmentDecision::allow();
+    }
+
+    /** A type with no divisions has nowhere to place anyone. */
+    public function classifyEntry(ClubEvent $event, ClubEventRegistration $registration): ?EventCategory
+    {
+        return null;
     }
 
     public function onEntrantsChanged(ClubEvent $event, ?EventCategory $category = null): void
@@ -316,7 +323,7 @@ abstract class AbstractEventType implements EventType
     public function rosterRows(ClubEvent $event): array
     {
         return $event->participantRegistrations()
-            ->with(['user:id,full_name,name,gender', 'category:id,name,weight_class'])
+            ->with(['user:id,full_name,name,gender', 'category:id,name,weight_class', 'representingTenant:id,country'])
             ->latest('registered_at')->get()
             ->map(fn ($r) => [
                 'id' => $r->user?->id,
@@ -325,10 +332,15 @@ abstract class AbstractEventType implements EventType
                 'category' => $r->category?->name,
                 'weight_class' => $r->category?->weight_class,
                 'meta' => $r->meta ?: ($r->category?->name ?? ($r->paid ? 'Registered' : 'Pending payment')),
+                // The ENTRY's own id and photo, so the roster can show a face
+                // for someone with no account and let an organiser add one. Kept
+                // separate from the user's picture: this belongs to the entry.
+                'registration' => $r->id,
+                'registration_photo' => $r->photo,
                 // The three things an organiser checks off before a competitor
-                // can be drawn. `meta` is the entry's country, the same field
-                // BracketView reads to fly a flag.
-                'country' => $r->meta ?: null,
+                // can be drawn. The flag is the country of the CLUB they compete
+                // for — see ClubEventRegistration::countryCode().
+                'country' => $r->countryCode(),
                 'enrolled' => $r->status === 'joined',
                 // Claimed vs verified. Money and weight are both things a
                 // competitor asserts and an official confirms; the roster shows
@@ -344,8 +356,9 @@ abstract class AbstractEventType implements EventType
 
     public function finance(ClubEvent $event): array
     {
-        $pFee = $this->feeAmount($event->participant_fee);
-        $sFee = $event->spectator_enabled ? $this->feeAmount($event->spectator_fee) : 0.0;
+        // The stated price, not a number scraped out of the display line.
+        $pFee = EventFee::amount($event, 'participant') ?? 0.0;
+        $sFee = $event->spectator_enabled ? (EventFee::amount($event, 'spectator') ?? 0.0) : 0.0;
 
         $paidP = $event->registrations()->where('role', 'participant')->where('paid', true)->count();
         $paidS = $event->registrations()->where('role', 'spectator')->where('paid', true)->count();
@@ -357,7 +370,7 @@ abstract class AbstractEventType implements EventType
         $expTotal = array_sum(array_column($expenses, 'amount'));
 
         return [
-            'currency' => $event->tenant?->currency ?: 'BHD',
+            'currency' => EventFee::currency($event),
             'participant_fee' => $pFee,
             'paid_participants' => $paidP,
             'participant_revenue' => $pRev,
@@ -373,10 +386,14 @@ abstract class AbstractEventType implements EventType
         ];
     }
 
-    /** First numeric value in a fee string ("BHD 10" → 10.0). */
+    /**
+     * @deprecated Prices are columns now — use EventFee::amount($event, $role).
+     *             Kept so a package still calling this keeps working; it can
+     *             only ever guess, which is why nothing here calls it.
+     */
     protected function feeAmount(?string $fee): float
     {
-        return ($fee && preg_match('/[\d.]+/', $fee, $m)) ? (float) $m[0] : 0.0;
+        return EventFee::parse($fee) ?? 0.0;
     }
 
     /* ---------------- Display ---------------- */
@@ -483,7 +500,7 @@ abstract class AbstractEventType implements EventType
             'podium' => $c->podium ?? [],
             'roster' => $c->registrations->map(fn ($r) => [
                 'name' => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
-                'country' => $r->meta ?: '',
+                'country' => $r->countryCode() ?: '',
             ])->all(),
             'roster_names' => $c->registrations
                 ->map(fn ($r) => $r->user?->full_name ?? $r->user?->name ?? 'Athlete')->values()->all(),

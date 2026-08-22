@@ -17,4 +17,12 @@ return [
     'division_label' => 'Weight category',
     'weigh_in' => 'Weigh-in',
     'mat' => 'Mat',
+
+    // ── Officiating panel (WT kyorugi) ───────────────────────────────────
+    'official_center_referee'   => 'Center Referee',
+    'official_corner_judge'     => 'Corner Judge :n',
+    'official_review_jury'      => 'Review Jury',
+    'official_court_supervisor' => 'Court Supervisor',
+    'official_table_recorder'   => 'Table Recorder',
+    'official_timekeeper'       => 'Timekeeper',
 ];

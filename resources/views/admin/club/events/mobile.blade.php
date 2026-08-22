@@ -117,6 +117,7 @@
             'tags'        => is_array($e->tags) ? $e->tags : [],
             'description' => $e->description,
             'participant_fee' => $e->participant_fee ?? '',
+            'participant_fee_amount' => $e->participant_fee_amount,
             'images'      => is_array($e->images) ? $e->images : [],
             'is_archived' => (bool) $e->is_archived,
         ]]);
@@ -181,6 +182,7 @@ window.__eventSaved = function (ev) {
         tags: Array.isArray(raw.tags) ? raw.tags : [],
         description: raw.description,
         participant_fee: raw.participant_fee || '',
+        participant_fee_amount: raw.participant_fee_amount ?? null,
         images: Array.isArray(raw.images) ? raw.images : [],
         is_archived: !!raw.is_archived,
     };

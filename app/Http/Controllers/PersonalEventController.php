@@ -6,14 +6,17 @@ use App\Events\Contracts\EventType;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\EntryService;
 use App\Events\Support\EventAccess;
+use App\Events\Support\EventFee;
 use App\Events\Support\RosterPeople;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
+use App\Models\EventMatch;
 use App\Models\EventCategory;
 use App\Models\EventChecklistItem;
 use App\Models\EventExpense;
 use App\Models\EventOfficial;
 use App\Models\EventParticipantBan;
+use App\Models\Tenant;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +25,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -211,6 +215,10 @@ class PersonalEventController extends Controller
 
         $view = $this->packageView($type, 'show', $device, $isMobile ? 'personal.mobile.event-show' : 'personal.desktop.event-show');
 
+        $entries = app(EntryService::class);
+        $myClubs = $entries->representableClubs($me);
+        $entriesState = $entries->entriesState($event);
+
         return view($view, [
             'e' => $e,
             'canManage' => $canManage,
@@ -230,6 +238,26 @@ class PersonalEventController extends Controller
                 : [],
             // How to pay, for the join sheet.
             'payment' => $this->paymentInstructions($event),
+            // Entering a squad: offered only to someone who holds the grant for
+            // a club, and only while the event is still taking entries.
+            // Only while entries are actually open — a card that opens a sheet
+            // where every row is refused is a door onto a wall.
+            'canEnterAthletes' => $entriesState['open'] && $entries->administeredClubIds($me) !== [],
+            // Whether anyone may still take a place, and the reason when not.
+            'entriesOpen' => $entriesState['open'],
+            'entriesNote' => $entriesState['note'],
+            // Which club the viewer competes for. Only asked at events that
+            // reach past one club — inside a club's own event there is nothing
+            // to represent, and the question would be noise.
+            'representing' => [
+                'ask' => $myClubs !== [] && in_array($event->scope ?? 'internal', ['inter_club', 'nationwide', 'regional', 'worldwide'], true),
+                'clubs' => $myClubs,
+                'claim' => (int) ($myReg->get($event->id)?->representedTenantId() ?? 0),
+                'disowned' => (bool) $myReg->get($event->id)?->isDisowned(),
+                // Pre-selected when they have not chosen yet: where they last
+                // practised this event's sport. See EntryService.
+                'default' => $myClubs !== [] ? $entries->defaultRepresentingClub($me, $event) : null,
+            ],
             // Attached documents — the viewer already passed assertVisible()
             // above, which is exactly the rule the download route re-checks.
             'documents' => $event->documents()
@@ -298,6 +326,25 @@ class PersonalEventController extends Controller
             'screenSurfaces' => app(\App\Events\Support\HallScreenRouter::class)->surfaces($event),
             // The address to open ON a screen so it joins THIS event's fleet.
             'screenNewUrl' => app(\App\Events\Support\HallScreenRouter::class)->newScreenUrl($event),
+            // What the screens PLAY: the introduction, the celebration and a
+            // noise per scoring action. Only for an event whose type drives
+            // screens at all — an event with no wall boards has nothing to play
+            // it on, and the section is absent rather than empty.
+            'screenAudio' => $canManage && $type->hallScreens($event)
+                ? collect(\App\Events\Support\ScreenMedia::forEvent($event))->map(fn ($m) => [
+                    'name' => $m->original_name,
+                    'bytes' => $m->bytes,
+                    'uploaded_at' => $m->updated_at?->toIso8601String(),
+                ])->all()
+                : null,
+            // One audition URL per slot that actually has a file, so the panel
+            // never offers Play for silence. Organiser-authorised, not the
+            // token route the screens use.
+            'screenAudioUrls' => $canManage && $type->hallScreens($event)
+                ? collect(\App\Events\Support\ScreenMedia::forEvent($event))
+                    ->mapWithKeys(fn ($m, $slot) => [$slot => route('me.events.screen-audio.show', [$event->uuid, $slot])])
+                    ->all()
+                : null,
             // Counts for the section cards, so each one says what is waiting
             // inside it before it is opened.
             'counts' => [
@@ -331,6 +378,30 @@ class PersonalEventController extends Controller
         $type->onEntrantsChanged($event);
 
         $categories = $type->runData($event, $me)['categories'] ?? [];
+
+        /*
+         * Which division to open on.
+         *
+         * The board used to open on the FIRST category whatever the link said, so
+         * "View draw" from a bout in any other division showed the wrong bracket
+         * and the wrong match. A caller can now name either the category or the
+         * bout it came from.
+         *
+         * Resolved against THIS event's own categories, so an id belonging to
+         * another event (or an invented one) falls back to the first rather than
+         * naming a division the viewer never asked for.
+         */
+        $wantedCategory = (int) $request->query('category', 0);
+
+        if ($wantedCategory === 0 && $request->filled('bout')) {
+            $wantedCategory = (int) EventMatch::where('event_id', $event->id)
+                ->where('match_no', (int) $request->query('bout'))
+                ->value('category_id');
+        }
+
+        $initialCategory = collect($categories)->firstWhere('id', $wantedCategory)['key']
+            ?? (collect($categories)->first()['key'] ?? '');
+
         $e = $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: true);
         $canManage = $this->canManage($event, $me);
 
@@ -342,6 +413,8 @@ class PersonalEventController extends Controller
             [
                 'e' => $e,
                 'categories' => $categories,
+                // The division to open on.
+                'initialCategory' => $initialCategory,
                 'canManage' => $canManage,
                 'canArrange' => $this->canArrangeDraw($event, $type, $canManage),
                 // The viewer's own entries, so the board can mark their bouts.
@@ -407,6 +480,86 @@ class PersonalEventController extends Controller
     }
 
     /** Record an official weight. Signing it is the point — hence weighed_in_by. */
+    /**
+     * A face for a competitor, uploaded by whoever is running the event.
+     *
+     * The screens already show a picture when the athlete has one on their
+     * profile AND has made it public — but a competition is full of people who
+     * were entered off a federation list or at a weigh-in desk and have no
+     * account at all, and those bouts were being introduced with a silhouette.
+     * This is the organiser's own photo, taken for this event, and it lives on
+     * the ENTRY rather than on the person: it is a fact about this competition,
+     * not a change to somebody's profile, and it goes away with the entry.
+     *
+     * Bytes are validated by the shared trait, which sniffs the real MIME and
+     * assigns the extension itself. A client-supplied extension here would be an
+     * upload endpoint that stores whatever it is told to.
+     */
+    public function competitorPhoto(Request $request, ClubEvent $event, ClubEventRegistration $registration): JsonResponse
+    {
+        $me = Auth::user();
+        abort_unless(app(EventAccess::class)->canManage($event, $me), 403);
+        // Scoped, always: an entry id from another event must not be writable
+        // through this event's URL.
+        abort_unless($registration->event_id === $event->id, 404);
+
+        $request->validate([
+            'image' => ['required', 'string', 'starts_with:data:image/'],
+        ]);
+
+        $previous = $registration->photo;
+
+        // Folder built by US from the event's public id, never from the request.
+        $path = $this->storeBase64Image(
+            $request->input('image'),
+            'events/'.$event->uuid.'/competitors',
+            'c'.$registration->id.'-'.Str::random(16),
+        );
+
+        if ($path === null) {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.event_photo_rejected'),
+            ], 422);
+        }
+
+        $registration->update(['photo' => $path]);
+
+        // Only once the new one is safely stored, and only if it moved.
+        if ($previous && $previous !== $path) {
+            Storage::disk('public')->delete($previous);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.event_photo_saved'),
+            'photo' => asset('storage/'.$path),
+            'registration' => $registration->id,
+        ]);
+    }
+
+    /** Take the event photo off an entry, falling back to whatever their profile allows. */
+    public function competitorPhotoDestroy(Request $request, ClubEvent $event, ClubEventRegistration $registration): JsonResponse
+    {
+        abort_unless(app(EventAccess::class)->canManage($event, Auth::user()), 403);
+        abort_unless($registration->event_id === $event->id, 404);
+
+        $path = $registration->photo;
+
+        // File first, then the row's reference to it.
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
+
+        $registration->update(['photo' => null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.event_photo_removed'),
+            'registration' => $registration->id,
+        ]);
+    }
+
     public function verifyWeighIn(Request $request, ClubEvent $event, ClubEventRegistration $registration): JsonResponse
     {
         $me = Auth::user();
@@ -433,12 +586,37 @@ class PersonalEventController extends Controller
             'weighed_in_by' => $me->id,
         ], fn ($v) => $v !== null));
 
+        // An athlete their club entered before anyone had a weight for them is
+        // unclassified until exactly this moment. The scale is what places them,
+        // so the package is asked where this weight puts them — and the draw is
+        // told the entrant set moved.
+        $registration->refresh();
+        $division = $this->typeFor($event)->classifyEntry($event, $registration);
+
+        if ($division) {
+            $this->typeFor($event)->onEntrantsChanged($event, $division);
+        }
+
+        // Weighed, and it places them in nothing this event is running — a
+        // cadet at a seniors-only championship, say. Deferring the weight is
+        // what let them in; the desk has to be TOLD when that turns out badly,
+        // because a silent "signed off" would leave an entrant nobody can draw.
+        $unplaced = ! $division && ! $registration->fresh()->category_id;
+
         $belt = app(\App\Sports\Combat\BeltRank::class)->for($registration->user, $registration->fresh());
 
         return response()->json([
             'success' => true,
-            'message' => __('personal.event_verify_weight_recorded'),
+            'message' => $division
+                ? __('personal.event_verify_weight_placed', ['division' => $division->name])
+                : ($unplaced
+                    ? __('personal.event_verify_weight_unplaced')
+                    : __('personal.event_verify_weight_recorded')),
             'weight' => (float) $data['weight'],
+            // The division they were just placed in, when the weigh-in is what
+            // decided it — so the desk sees the result of what it did.
+            'division' => $division?->name,
+            'unplaced' => $unplaced,
             // Echoed back so the desk shows what the arena screen will announce
             // — including a rank that came from the profile rather than this
             // form, which is the official's cue that they need not type it.
@@ -544,12 +722,15 @@ class PersonalEventController extends Controller
         // Nothing actionable is assembled here — no registration ids, no
         // weights, no payment state, no moderation. An official who needs those
         // goes to verify(), which is a different screen with a different guard.
-        $people = app(RosterPeople::class)->build($e['participants']);
+        $people = app(RosterPeople::class)->build($e['participants'], $event);
 
         return view('personal.event-people', [
             'e' => $e,
             'participants' => $people['participants'],
             'clubs' => $people['clubs'],
+            // Whether this viewer may put a face on an entry. The roster is
+            // readable by everyone in the event; only whoever runs it may edit.
+            'canManage' => app(EventAccess::class)->canManage($event, Auth::user()),
         ]);
     }
 
@@ -648,6 +829,577 @@ class PersonalEventController extends Controller
      * realtime nudge, so a draw someone else arranges — or a bout that just
      * landed — appears without anyone reloading.
      */
+    /**
+     * One bout, and where in the event it sat.
+     *
+     * This is the page a match video links back to (VIDEO-INTEGRATION.md §6.6):
+     * from a clip on the video platform, "which bout was this?" — its division,
+     * round, mat and day, who fought, and how it ended.
+     *
+     * Addressed by the EVENT's uuid plus the bout's match number rather than by
+     * a bout id. `event_matches` has no public identifier of its own, and a
+     * sequential id in a link shared between platforms is exactly what the
+     * Unpredictable Resource Identifiers rule forbids. The unguessable part is
+     * the event uuid, which a viewer holding this link already has; the match
+     * number is only meaningful inside it.
+     *
+     * Authorisation is the event's own: assertVisible() — the same gate as the
+     * event page and the bracket. Nothing about a bout is visible to someone who
+     * could not see the event it belongs to.
+     */
+    public function bout(Request $request, ClubEvent $event, int $matchNo): View
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $match = EventMatch::where('event_id', $event->id)
+            ->where('match_no', $matchNo)
+            ->with([
+                'category:id,name,weight_class',
+                // Both corners, with what a sheet prints beside a name. The club
+                // they compete FOR, not the one they train at — competingClub().
+                'competitorA.user:id,uuid,full_name,name,birthdate,gender,profile_picture,profile_picture_is_public,is_discoverable,updated_at',
+                'competitorA.representingTenant:id,club_name,slug,logo,country',
+                'competitorA.user.memberClubs:id,club_name,slug,logo,country',
+                'competitorB.user:id,uuid,full_name,name,birthdate,gender,profile_picture,profile_picture_is_public,is_discoverable,updated_at',
+                'competitorB.representingTenant:id,club_name,slug,logo,country',
+                'competitorB.user.memberClubs:id,club_name,slug,logo,country',
+            ])
+            ->first();
+
+        // A bout number that does not exist in this event is a 404, not an empty
+        // page — and it says nothing about which numbers do exist.
+        abort_if($match === null, 404);
+
+        $e = $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: false);
+
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+        $device = $isMobile ? 'mobile' : 'desktop';
+
+        return view('personal.'.$device.'.event-bout', [
+            'e' => $e,
+            'bout' => $this->boutView($event, $match),
+            'officials' => $this->eventOfficials($event),
+            'canManage' => $this->canManage($event, $me),
+        ]);
+    }
+
+    /**
+     * Who officiated, for the panel under the bout.
+     *
+     * Appointments are recorded per EVENT, not per bout — event_officials has no
+     * match column — so this is the officiating panel of the championship, and the
+     * heading says so rather than implying these four stood on this one mat.
+     *
+     * Only what an official's own name and role disclose is returned. Compensation
+     * and fee live on the same row and are deliberately NOT read here: what a
+     * volunteer or a paid official is owed is the organiser's business, and this
+     * page is visible to everyone the event reaches.
+     *
+     * Faces and profile links follow the same rules as the corners above: a face
+     * only when the person made their picture public, a link only when they are
+     * discoverable and not a minor. Withholding is silent.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function eventOfficials(ClubEvent $event): array
+    {
+        // Referee first, then the rest of the mat, then the administrative roles —
+        // reading order on an officiating sheet, not insertion order.
+        $rank = ['referee' => 0, 'judge' => 1, 'timekeeper' => 2, 'recorder' => 3, 'jury' => 4, 'organiser' => 5];
+
+        return \App\Models\EventOfficial::where('event_id', $event->id)
+            ->with('user:id,uuid,full_name,name,birthdate,nationality,profile_picture,profile_picture_is_public,is_discoverable,updated_at')
+            ->get()
+            ->sortBy(fn ($o) => [$rank[$o->role] ?? 99, mb_strtolower((string) ($o->user?->full_name ?? ''))])
+            ->map(function (\App\Models\EventOfficial $o) {
+                $user = $o->user;
+
+                $isMinor = $user?->birthdate ? Carbon::parse($user->birthdate)->age < 18 : false;
+
+                /*
+                 * An official's flag is their NATIONALITY, not a club country.
+                 * The club-country rule exists because a competitor represents the
+                 * club that entered them; an official represents nobody, and is
+                 * listed by country on every officiating sheet. Validated to two
+                 * letters before it reaches a CSS class name — the field is member-
+                 * editable, and an unexpected value must produce no flag rather
+                 * than a junk selector.
+                 */
+                $country = strtoupper(trim((string) $user?->nationality));
+                $country = preg_match('/^[A-Z]{2}$/', $country) === 1 ? $country : null;
+
+                return [
+                    'name' => $user?->full_name ?: ($user?->name ?: __('shared.unknown')),
+                    'role_label' => $this->officialRoleLabel((string) $o->role),
+                    'country' => $country,
+                    'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
+                        ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                        : null,
+                    'profile_url' => ($user !== null && $user->uuid !== null && (bool) $user->is_discoverable && ! $isMinor)
+                        ? route('people.show', $user->uuid)
+                        : null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The label for an officiating role.
+     *
+     * Mat roles (referee, judge, timekeeper, recorder) come from the sport's own
+     * federation vocabulary; the administrative appointments (jury, weigh-in,
+     * payments, organiser) have their own. An unrecognised role is titled rather
+     * than dropped, so a federation that invents one still reads sensibly.
+     */
+    private function officialRoleLabel(string $role): string
+    {
+        foreach (['events.official_'.$role, 'personal.event_officials_role_'.$role] as $key) {
+            if (\Illuminate\Support\Facades\Lang::has($key)) {
+                return __($key);
+            }
+        }
+
+        return \Illuminate\Support\Str::title(str_replace('_', ' ', $role));
+    }
+
+    /**
+     * Tell TAKEONE Play that a bout's competition truth changed.
+     *
+     * Dispatched from the write paths rather than hung off a model observer: a
+     * seeder, an import or a demo purge saves these rows too, and none of those
+     * should be pushing to another platform. Being explicit here means the push
+     * happens exactly where a human made a decision.
+     *
+     * Queued and coalesced, so ten edits in a minute are one push. A no-op when
+     * the integration is off or the bout has no video.
+     */
+    private function pushBoutToPlay(?EventMatch $match): void
+    {
+        if ($match === null || ! config('play.enabled')) {
+            return;
+        }
+
+        \App\Jobs\PushBoutToPlay::dispatch($match->id);
+    }
+
+    /** Push every bout of an event — used when something event-wide changed. */
+    private function pushEventBoutsToPlay(ClubEvent $event): void
+    {
+        if (! config('play.enabled')) {
+            return;
+        }
+
+        // Only bouts that actually have a video: the rest have nowhere to go.
+        \App\Models\EventRecording::where('event_id', $event->id)
+            ->where('status', \App\Models\EventRecording::STATUS_LINKED)
+            ->whereNotNull('match_id')
+            ->pluck('match_id')
+            ->unique()
+            ->each(fn ($id) => \App\Jobs\PushBoutToPlay::dispatch((int) $id));
+    }
+
+    /**
+     * The athletes who may stand in this bout.
+     *
+     * Restricted to entrants of THIS event in THIS bout's own category, because a
+     * bout belongs to a division: offering the whole entry list would let an
+     * organiser put a -68 kg fighter into a -61 kg final by mistyping, which is
+     * precisely what a free-text name field allowed.
+     *
+     * Returns registration ids, not user ids. The registration IS the entry — it
+     * carries the club they compete for and the weight they made — so naming it
+     * keeps the bout tied to the draw rather than to a person in the abstract.
+     */
+    public function boutCompetitors(Request $request, ClubEvent $event, int $matchNo): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $match = EventMatch::where('event_id', $event->id)->where('match_no', $matchNo)->first();
+        abort_if($match === null, 404);
+
+        $entries = ClubEventRegistration::where('event_id', $event->id)
+            ->when($match->category_id !== null, fn ($q) => $q->where('category_id', $match->category_id))
+            ->whereIn('role', ['participant', 'athlete'])
+            ->with('user:id,full_name,name,profile_picture,profile_picture_is_public,updated_at')
+            ->get(['id', 'user_id', 'category_id', 'meta', 'representing_tenant_id', 'club_disowned_at']);
+
+        return response()->json([
+            'success' => true,
+            'competitors' => $entries->map(function (ClubEventRegistration $r) {
+                $user = $r->user;
+
+                return [
+                    'id' => $r->id,
+                    'name' => $user?->full_name ?: ($user?->name ?: __('shared.unknown')),
+                    // Honours the athlete's own "show my picture" choice, like every
+                    // other surface that draws a competitor's face.
+                    'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
+                        ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                        : null,
+                    'club' => $r->competingClub()?->club_name,
+                    'country' => $r->countryCode(),
+                ];
+            })->sortBy('name')->values(),
+        ]);
+    }
+
+    /**
+     * Organiser corrections to one bout.
+     *
+     * WHO WINS, stated plainly because two things can write a result:
+     *
+     *   During the bout the MAT is authoritative. The scoring console holds its
+     *   own state and writes the result when the bout is committed, so anything
+     *   typed here for a bout still to be fought is a pre-fill the console will
+     *   legitimately overwrite — that is correct, not a bug.
+     *
+     *   After the bout, THIS is authoritative. A finished scoresheet being
+     *   corrected by the officials' table is how the paper version has always
+     *   worked, and refusing it would leave a wrong result permanent.
+     *
+     * Every correction is appended to the officiating log, so a hand-edited
+     * result is never indistinguishable from what the mat recorded. Corrections
+     * are recorded, not disguised.
+     *
+     * Competitor NAMES are editable here (a typo on a sheet); WHO is in the bout
+     * is not — that is the draw's job, through the bracket's Arrange mode, which
+     * keeps the registration link intact.
+     */
+    public function updateBout(Request $request, ClubEvent $event, int $matchNo): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate([
+            'a_corner' => ['nullable', Rule::in(['red', 'blue'])],
+            'b_corner' => ['nullable', Rule::in(['red', 'blue'])],
+            'a_score'  => ['nullable', 'integer', 'min:0', 'max:999'],
+            'b_score'  => ['nullable', 'integer', 'min:0', 'max:999'],
+            'winner'   => ['nullable', Rule::in(['a', 'b'])],
+            'a_name'   => ['nullable', 'string', 'max:120'],
+            'b_name'   => ['nullable', 'string', 'max:120'],
+            // A picked entrant, by registration id. Validated against this event
+            // and this bout's category below — an id alone is not authority to
+            // place someone in a division they never entered.
+            'a_competitor_id' => ['nullable', 'integer'],
+            'b_competitor_id' => ['nullable', 'integer'],
+            // Empty string unlinks. A URL must live on the configured Play host:
+            // this value ends up as an href on a page other people read.
+            'video_url' => ['nullable', 'string', 'max:2048'],
+        ]);
+
+        $match = EventMatch::where('event_id', $event->id)->where('match_no', $matchNo)->first();
+        abort_if($match === null, 404);
+
+        $a = $data['a_corner'] ?? null;
+        $b = $data['b_corner'] ?? null;
+
+        // Two fighters cannot share a corner. Rejected rather than silently
+        // corrected, because guessing which one the organiser meant is how a
+        // point ends up attributed to the wrong athlete.
+        if ($a !== null && $a === $b) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.bout_corners_conflict'),
+            ], 422);
+        }
+
+        $videoUrl = trim((string) ($data['video_url'] ?? ''));
+        $videoKey = null;
+
+        if ($videoUrl !== '') {
+            $host = parse_url((string) config('play.url'), PHP_URL_HOST);
+            $got  = parse_url($videoUrl);
+
+            if (! $got || ! in_array($got['scheme'] ?? '', ['http', 'https'], true) || ($got['host'] ?? '') !== $host) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('events.bout_video_host', ['host' => $host]),
+                ], 422);
+            }
+
+            // .../videos/<key> — the key is the last non-empty path segment.
+            $segments = array_values(array_filter(explode('/', (string) ($got['path'] ?? ''))));
+            $videoKey = $segments === [] ? null : end($segments);
+
+            if ($videoKey === null || preg_match('/^[A-Za-z0-9_-]{3,64}$/', $videoKey) !== 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('events.bout_video_invalid'),
+                ], 422);
+            }
+        }
+
+        /*
+         * Placing an entrant in a corner.
+         *
+         * Only an entry in THIS event and THIS bout's category qualifies, and the
+         * same entry cannot hold both corners — a bout against oneself is not a
+         * bout. Rejected rather than ignored, so a bad pick is visible instead of
+         * silently discarded.
+         */
+        $picks = [];
+
+        foreach (['a', 'b'] as $side) {
+            $id = $data[$side.'_competitor_id'] ?? null;
+            if ($id === null) {
+                continue;
+            }
+
+            $entry = ClubEventRegistration::where('id', $id)
+                ->where('event_id', $event->id)
+                ->when($match->category_id !== null, fn ($q) => $q->where('category_id', $match->category_id))
+                ->first();
+
+            if ($entry === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('events.bout_competitor_ineligible'),
+                ], 422);
+            }
+
+            $picks[$side] = $entry;
+        }
+
+        if (isset($picks['a'], $picks['b']) && $picks['a']->id === $picks['b']->id) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.bout_competitor_duplicate'),
+            ], 422);
+        }
+
+        foreach ($picks as $side => $entry) {
+            $match->{$side.'_competitor_id'} = $entry->id;
+            $match->{$side.'_name'} = $entry->user?->full_name ?: ($entry->user?->name ?: $match->{$side.'_name'});
+        }
+
+        // What actually changed, for the log. Recording the diff rather than the
+        // whole row keeps the audit readable and the payload small.
+        $before = [
+            'a_corner' => $match->getOriginal('a_corner'), 'b_corner' => $match->getOriginal('b_corner'),
+            'a_score' => $match->getOriginal('a_score'), 'b_score' => $match->getOriginal('b_score'),
+            'winner' => $match->getOriginal('winner'),
+            'a_name' => $match->getOriginal('a_name'), 'b_name' => $match->getOriginal('b_name'),
+            'a_competitor_id' => $match->getOriginal('a_competitor_id'),
+            'b_competitor_id' => $match->getOriginal('b_competitor_id'),
+        ];
+
+        $match->a_corner = $a;
+        $match->b_corner = $b;
+        $match->a_score  = $data['a_score'] ?? null;
+        $match->b_score  = $data['b_score'] ?? null;
+        $match->winner   = $data['winner'] ?? null;
+
+        // A cleared name falls back to what the draw holds rather than blanking
+        // the sheet: an unnamed corner reads as a missing competitor.
+        if (array_key_exists('a_name', $data) && trim((string) $data['a_name']) !== '') {
+            $match->a_name = trim($data['a_name']);
+        }
+        if (array_key_exists('b_name', $data) && trim((string) $data['b_name']) !== '') {
+            $match->b_name = trim($data['b_name']);
+        }
+
+        $match->save();
+
+        $this->linkBoutVideo($event, $match, $videoUrl, $videoKey);
+
+        // Compared as strings: the columns come back from the database as strings
+        // while the request supplies integers, so a strict comparison reported an
+        // unchanged score as changed and put noise in the audit trail.
+        $changed = collect($before)
+            ->reject(fn ($old, $field) => (string) $old === (string) $match->{$field})
+            ->keys()
+            ->all();
+
+        if ($changed !== []) {
+            // Cannot throw (MatchEventLog swallows everything) — an audit row must
+            // never be the reason a correction fails to save.
+            \App\Events\Support\MatchEventLog::record(
+                event: $event,
+                court: (string) ($match->court ?? ''),
+                sport: (string) ($event->sport ?? ''),
+                command: 'organiser_correction',
+                payload: ['by' => $me->id, 'fields' => $changed],
+                matchId: $match->id,
+                scoreA: (int) $match->a_score,
+                scoreB: (int) $match->b_score,
+            );
+        }
+
+        // Other organisers, and anyone whose profile shows this bout, are nudged
+        // to re-read rather than sent the change: what each viewer may see of a
+        // bout differs, so the refresh signal is the safe shape here.
+        $this->pushEventRefresh($event);
+
+        // And the video platform, so the clip's header stops disagreeing with the
+        // scoresheet.
+        $this->pushBoutToPlay($match);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.bout_saved'),
+            'bout' => $this->boutView($event, $match->refresh()),
+        ]);
+    }
+
+    /**
+     * Point this bout at a video on TAKEONE Play, or unlink it.
+     *
+     * Unlink NEVER deletes: it clears the reference and keeps the row, which is
+     * the record that a video once existed. Deletion does not cross between the
+     * platforms in either direction (Match Sync Contract).
+     */
+    private function linkBoutVideo(ClubEvent $event, EventMatch $match, string $url, ?string $key): void
+    {
+        $recording = \App\Models\EventRecording::where('match_id', $match->id)->latest('id')->first();
+
+        if ($url === '') {
+            if ($recording !== null) {
+                $recording->forceFill([
+                    'status' => \App\Models\EventRecording::STATUS_UNLINKED,
+                    'play_url' => null,
+                    'play_video_key' => null,
+                    'play_video_id' => null,
+                ])->save();
+            }
+
+            return;
+        }
+
+        $recording ??= new \App\Models\EventRecording([
+            'event_id' => $event->id,
+            'match_id' => $match->id,
+            'court' => $match->court,
+        ]);
+
+        $recording->forceFill([
+            'event_id' => $event->id,
+            'match_id' => $match->id,
+            'play_url' => $url,
+            'play_video_key' => $key,
+            'status' => \App\Models\EventRecording::STATUS_LINKED,
+        ])->save();
+    }
+
+    /**
+     * Shape one bout for display, including the links back out to profiles and
+     * club pages that the video platform mirrors (§6.6).
+     */
+    private function boutView(ClubEvent $event, EventMatch $match): array
+    {
+        return [
+            'match_no' => $match->match_no,
+            'round' => $match->round,
+            'phase' => $match->phase,
+            'division' => $match->category?->weight_class ?: $match->category?->name,
+            'court' => $match->court,
+            'day' => $match->day,
+            'scheduled_time' => $match->scheduled_time,
+            'status' => $match->status,
+            'winner' => $match->winner,
+            'a' => $this->boutSide($match, 'a'),
+            'b' => $this->boutSide($match, 'b'),
+            // Scoped to this bout's own division. Unscoped, this opened whichever
+            // division sorts first — a different bracket and a different match.
+            'bracket_url' => route('me.events.bracket', array_filter([
+                'event' => $event->uuid,
+                'category' => $match->category_id,
+                'bout' => $match->match_no,
+            ])),
+            /*
+             * Where the bout can be watched, or null.
+             *
+             * Only a still-linked recording offers a link: an unlinked row is the
+             * record that a video ONCE existed (its media was deleted on Play), and
+             * pointing at it would be a dead end. A bout that was never filmed has
+             * no row at all, which is the ordinary case — so the button is absent
+             * rather than disabled.
+             */
+            'video_url' => \App\Models\EventRecording::where('match_id', $match->id)
+                ->where('status', \App\Models\EventRecording::STATUS_LINKED)
+                ->whereNotNull('play_url')
+                ->latest('id')
+                ->value('play_url'),
+        ];
+    }
+
+    /**
+     * One corner of a bout.
+     *
+     * The two links here are disclosures, so each is withheld rather than
+     * rendered when it should not exist:
+     *
+     *   profile — only for a member who is discoverable and not a minor. Opting
+     *             out of discovery is a choice not to be found, and a link from
+     *             a shared match page is precisely being found.
+     *   club    — only when the entry actually has one. competingClub() returns
+     *             null for an unattached or disowned entry, and that must stay
+     *             null: re-badging an athlete with a club they merely train at
+     *             is the thing that method exists to prevent.
+     *
+     * Withholding is silent. A greyed-out link or a "profile hidden" label would
+     * disclose the very fact the guard protects.
+     */
+    private function boutSide(EventMatch $match, string $side): array
+    {
+        /** @var ClubEventRegistration|null $reg */
+        $reg = $side === 'a' ? $match->competitorA : $match->competitorB;
+        $user = $reg?->user;
+        $club = $reg?->competingClub();
+
+        $isMinor = $user?->birthdate
+            ? Carbon::parse($user->birthdate)->age < 18
+            : false;
+
+        $showProfile = $user !== null
+            && (bool) $user->is_discoverable
+            && ! $isMinor
+            && $user->uuid !== null;
+
+        return [
+            'name' => $match->{$side.'_name'},
+            /*
+             * Their face, or null. Honours the athlete's own "show my picture"
+             * choice, exactly as BracketView does — a bout page reaches everyone
+             * the event reaches, so it is not a place to override that. An athlete
+             * who has not opted in gets the gendered silhouette instead.
+             */
+            'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
+                ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                : null,
+            'gender' => $user?->gender,
+            /*
+             * Which corner they actually fought in.
+             *
+             * Recorded per bout rather than inferred from the draw slot: seeding
+             * decides the slot, the mat decides the corner, and they do not always
+             * agree. Falls back to the old aka='a'/ao='b' assumption only when
+             * nothing was recorded, so an unannotated bout looks exactly as before.
+             */
+            'corner' => $match->{$side.'_corner'} ?: ($side === 'a' ? 'red' : 'blue'),
+            'country' => $reg?->countryCode() ?: $match->{$side.'_country'},
+            'seed' => $match->{$side.'_seed'},
+            'score' => $match->{$side.'_score'},
+            'provisional' => (bool) $match->{$side.'_provisional'},
+            'won' => $match->winner === $side,
+            'belt' => $reg?->belt_colour,
+            'profile_url' => $showProfile ? route('people.show', $user->uuid) : null,
+            'club' => $club ? [
+                'name' => $club->club_name,
+                'logo' => $club->logo,
+                // The public club page needs the ISO country prefix; without a
+                // country there is no valid URL, so the link is dropped rather
+                // than built broken.
+                'url' => $club->country && $club->slug
+                    ? route('clubs.show', ['country' => strtolower($club->country), 'slug' => $club->slug])
+                    : null,
+            ] : null,
+        ];
+    }
+
     public function bracketData(ClubEvent $event): JsonResponse
     {
         $me = Auth::user();
@@ -997,7 +1749,7 @@ class PersonalEventController extends Controller
         $me = Auth::user();
         $this->assertCanManage($event, $me);
 
-        $appointed = $event->officials()->with('user:id,full_name,name,email,mobile,profile_picture')->get();
+        $appointed = $event->officials()->with('user:id,full_name,name,email,mobile,nationality,profile_picture')->get();
 
         // One person may hold two jobs — the club treasurer often runs the
         // weigh-in as well — so the candidate list no longer drops someone the
@@ -1021,9 +1773,25 @@ class PersonalEventController extends Controller
             }
         }
 
+        /*
+         * Which pool to search. Filling a mat role searches the platform, because
+         * that is where referees are; filling a permission role searches the host
+         * club only, matching what storeOfficial() will actually accept — an
+         * offered candidate the server would refuse is a worse experience than a
+         * shorter list.
+         *
+         * The wider pool is still limited to DISCOVERABLE members: being findable
+         * is the member's own choice, and an organiser browsing for a referee is
+         * exactly the kind of finding it governs.
+         */
+        $forRole = (string) $request->query('role', '');
+        $wide = $forRole !== '' && $this->isMatRole($event, $forRole);
+
         $candidates = User::query()
             ->distinct()
-            ->whereIn('id', DB::table('memberships')->where('tenant_id', $event->tenant_id)->distinct()->pluck('user_id'))
+            ->when($wide,
+                fn ($q) => $q->where('is_discoverable', true),
+                fn ($q) => $q->whereIn('id', DB::table('memberships')->where('tenant_id', $event->tenant_id)->distinct()->pluck('user_id')))
             ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q, $phone) {
                 $w->where('full_name', 'like', "%{$q}%")
                     ->orWhere('name', 'like', "%{$q}%")
@@ -1033,10 +1801,13 @@ class PersonalEventController extends Controller
                     $w->orWhere('mobile', 'like', "%{$phone}%");
                 }
             }))
+            // A platform-wide list with no search term is an invitation to browse
+            // every member, so the wide pool answers only an actual query.
+            ->when($wide && $q === '', fn ($query) => $query->whereRaw('1 = 0'))
             ->orderBy('full_name')
             ->orderBy('id')
             ->limit(20)
-            ->get(['id', 'full_name', 'name', 'email', 'mobile', 'profile_picture']);
+            ->get(['id', 'full_name', 'name', 'email', 'mobile', 'nationality', 'profile_picture']);
 
         // Names repeat — clubs have two Ahmeds — so every row carries the email
         // and phone that tell them apart. A picker that shows four identical rows
@@ -1049,6 +1820,11 @@ class PersonalEventController extends Controller
                 ? trim(($u->mobile['code'] ?? '').' '.$u->mobile['number'])
                 : null,
             'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture) : null,
+            // An official is listed by country on every officiating sheet, and it
+            // is the one fact about them the bout page cannot derive from anything
+            // else. Sent so the form can show what is on file and ask when it is
+            // blank — which is how a referee ended up with no flag at all.
+            'nationality' => $u->nationality ?: null,
         ];
 
         return response()->json([
@@ -1056,7 +1832,16 @@ class PersonalEventController extends Controller
             // `id` is the APPOINTMENT, not the person: the same member can appear
             // twice with two roles, and removing one must not remove the other.
             'officials' => $appointed
-                ->map(fn (EventOfficial $o) => $shape($o->user) + [
+                /*
+                 * array_merge, NOT `+`.
+                 *
+                 * `+` keeps the LEFT operand for a duplicate key, so
+                 * $shape($o->user) + ['id' => $o->id] silently kept the USER's id
+                 * and threw the appointment's away — which made every delete and
+                 * every role change address a row that does not exist, answer
+                 * success, and change nothing.
+                 */
+                ->map(fn (EventOfficial $o) => array_merge($shape($o->user), [
                     'id' => $o->id,
                     'user_id' => $o->user_id,
                     'role' => $o->role,
@@ -1064,15 +1849,20 @@ class PersonalEventController extends Controller
                     // line in the event's P&L, kept in step automatically.
                     'compensation' => $o->compensation,
                     'fee' => $o->fee !== null ? (float) $o->fee : null,
-                ])
+                ]))
                 ->values(),
             'candidates' => $candidates
                 ->map(fn (User $u) => $shape($u) + ['roles' => ($heldRoles[$u->id] ?? collect())->values()])
                 ->values(),
-            'roles' => collect(EventOfficial::roles())->map(fn ($r) => [
-                'value' => $r,
-                'label' => __('personal.personal_event_officials_role_'.$r),
-                'hint' => __('personal.personal_event_officials_role_'.$r.'_hint'),
+            'roles' => collect($this->officialRoleOptions($event))->map(fn ($label, $key) => [
+                'value' => $key,
+                'label' => $label,
+                // Only the platform roles carry a permission, so only they have a
+                // hint explaining what it grants.
+                'hint' => in_array($key, EventOfficial::roles(), true)
+                    ? __('personal.personal_event_officials_role_'.$key.'_hint')
+                    : null,
+                'group' => in_array($key, EventOfficial::roles(), true) ? 'platform' : 'mat',
             ])->values(),
             'compensations' => collect(EventOfficial::compensations())->map(fn ($c) => [
                 'value' => $c,
@@ -1083,6 +1873,111 @@ class PersonalEventController extends Controller
         ]);
     }
 
+    /**
+     * The ISO-2 codes the app itself offers, read from the one list the country
+     * pickers already use — so validation can never drift from the options a
+     * user was given. Memoised: it is a 29 KB file and this runs on a write path.
+     *
+     * @return array<int, string>
+     */
+    private function countryCodes(): array
+    {
+        static $codes = null;
+
+        if ($codes !== null) {
+            return $codes;
+        }
+
+        $path = public_path('data/countries.json');
+        $rows = is_readable($path) ? json_decode((string) file_get_contents($path), true) : null;
+
+        $codes = is_array($rows)
+            ? collect($rows)->pluck('iso2')->filter()->map(fn ($c) => strtoupper((string) $c))->values()->all()
+            : [];
+
+        return $codes;
+    }
+
+    /**
+     * Record an official's nationality, but only when we do not already have one.
+     *
+     * The country belongs on the PERSON, not on the appointment: duplicating it
+     * per event would give the same referee two countries the first time someone
+     * typed it differently. Nationality is also the member's own data, so this
+     * form fills a blank and never overwrites — an organiser appointing someone
+     * to a job is not the authority to correct their passport.
+     */
+    private function recordOfficialNationality(?User $user, ?string $nationality): void
+    {
+        if ($user === null || $nationality === null || $nationality === '') {
+            return;
+        }
+
+        // Already on file: leave it alone. See the docblock.
+        if (trim((string) $user->nationality) !== '') {
+            return;
+        }
+
+        $user->nationality = strtoupper($nationality);
+        $user->save();
+    }
+
+    /**
+     * Every officiating role this event can appoint, as key => label.
+     *
+     * Two vocabularies, because they answer different questions. The SPORT names
+     * the panel that runs a mat — referee, judges, tatami manager — and each
+     * federation words them its own way. The PLATFORM names the jobs that carry
+     * permissions: jury arranges the draw, weigh-in signs weights, payments
+     * approves proof.
+     *
+     * Merging them here is what makes a referee appointable at all: the form
+     * accepted only the platform's four, so a karate event could not record the
+     * person who actually refereed the bout, which is exactly what an officiating
+     * sheet exists to state.
+     *
+     * @return array<string, string>
+     */
+    private function officialRoleOptions(ClubEvent $event): array
+    {
+        $out = [];
+
+        $sport = app(\App\Sports\Combat\SportRegistry::class)->get($event->sport);
+
+        if ($sport !== null) {
+            foreach ($sport->officialRoles() as $role) {
+                if (! empty($role['key'])) {
+                    $out[$role['key']] = $role['label'] ?? \Illuminate\Support\Str::title($role['key']);
+                }
+            }
+        }
+
+        foreach (EventOfficial::roles() as $role) {
+            $out[$role] = __('personal.personal_event_officials_role_'.$role);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Is this a role that runs the mat, rather than one that grants access?
+     *
+     * The distinction decides who may be appointed. A referee, judge or
+     * timekeeper is usually a federation official who has never been a member of
+     * the host club — which is why appointing one failed until now, and why both
+     * referees on the National Team Selection Trials had to be inserted directly.
+     * These roles grant NOTHING: EventAccess derives every permission from the
+     * platform roles below, so widening the pool for them opens no door.
+     *
+     * jury / weigh_in / payments / organiser DO carry access to a club's event
+     * data, so those stay members-only.
+     */
+    private function isMatRole(ClubEvent $event, string $role): bool
+    {
+        return array_key_exists($role, $this->officialRoleOptions($event))
+            && ! in_array($role, EventOfficial::roles(), true);
+    }
+
     /** Appoint someone to one officiating job on this event. */
     public function storeOfficial(Request $request, ClubEvent $event): JsonResponse
     {
@@ -1091,24 +1986,32 @@ class PersonalEventController extends Controller
 
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'role' => ['required', Rule::in(EventOfficial::roles())],
+            'role' => ['required', Rule::in(array_keys($this->officialRoleOptions($event)))],
             // Officiating is volunteered or paid; if paid, the amount is not
             // optional — it becomes a line in the event's P&L.
             'compensation' => ['required', Rule::in(EventOfficial::compensations())],
             'fee' => ['nullable', 'numeric', 'min:0.001', 'max:999999', 'required_if:compensation,'.EventOfficial::COMP_PAID],
+            // Optional: the form only asks when the member has no country on file.
+            'nationality' => ['nullable', 'string', 'size:2', 'alpha', Rule::in($this->countryCodes())],
         ]);
 
-        // Only from the host club — the same pool officials() offers.
-        $isMember = DB::table('memberships')
-            ->where('tenant_id', $event->tenant_id)
-            ->where('user_id', $data['user_id'])
-            ->exists();
+        /*
+         * A role that grants access must come from the host club; a role that
+         * runs the mat may come from anywhere, because a referee is a federation
+         * official and has usually never joined the club hosting the event.
+         */
+        if (! $this->isMatRole($event, $data['role'])) {
+            $isMember = DB::table('memberships')
+                ->where('tenant_id', $event->tenant_id)
+                ->where('user_id', $data['user_id'])
+                ->exists();
 
-        if (! $isMember) {
-            return response()->json([
-                'success' => false,
-                'message' => __('personal.personal_event_officials_not_a_member'),
-            ], 422);
+            if (! $isMember) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('personal.personal_event_officials_not_a_member'),
+                ], 422);
+            }
         }
 
         $official = EventOfficial::firstOrNew([
@@ -1132,9 +2035,17 @@ class PersonalEventController extends Controller
         // Saving syncs the matching expense (EventOfficial::booted).
         $official->save();
 
+        $this->recordOfficialNationality(User::find($data['user_id']), $data['nationality'] ?? null);
+
+        $this->pushEventBoutsToPlay($event);
+
         return response()->json([
             'success' => true,
-            'message' => __('personal.personal_event_officials_added'),
+            // Says which role, because there are now thirteen of them rather than
+            // the one the copy used to assume.
+            'message' => __('personal.personal_event_officials_added', [
+                'role' => $this->officialRoleOptions($event)[$data['role']] ?? $data['role'],
+            ]),
         ]);
     }
 
@@ -1153,11 +2064,40 @@ class PersonalEventController extends Controller
         $data = $request->validate([
             'compensation' => ['required', Rule::in(EventOfficial::compensations())],
             'fee' => ['nullable', 'numeric', 'min:0.001', 'max:999999', 'required_if:compensation,'.EventOfficial::COMP_PAID],
+            // Lets a blank country be filled without re-appointing the official.
+            'nationality' => ['nullable', 'string', 'size:2', 'alpha', Rule::in($this->countryCodes())],
+            // Changing the position in place, rather than removing and re-adding —
+            // which would lose the appointment's history and its linked expense.
+            'role' => ['nullable', Rule::in(array_keys($this->officialRoleOptions($event)))],
         ]);
 
         $official->compensation = $data['compensation'];
         $official->fee = $data['compensation'] === EventOfficial::COMP_PAID ? $data['fee'] : null;
+
+        if (! empty($data['role']) && $data['role'] !== $official->role) {
+            // Moving to a role that grants access requires what that role requires.
+            if (! $this->isMatRole($event, $data['role'])) {
+                $isMember = DB::table('memberships')
+                    ->where('tenant_id', $event->tenant_id)
+                    ->where('user_id', $official->user_id)
+                    ->exists();
+
+                if (! $isMember) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => __('personal.personal_event_officials_not_a_member'),
+                    ], 422);
+                }
+            }
+
+            $official->role = $data['role'];
+        }
+
         $official->save();
+
+        $this->recordOfficialNationality($official->user, $data['nationality'] ?? null);
+
+        $this->pushEventBoutsToPlay($event);
 
         return response()->json([
             'success' => true,
@@ -1166,6 +2106,8 @@ class PersonalEventController extends Controller
                 'id' => $official->id,
                 'compensation' => $official->compensation,
                 'fee' => $official->fee !== null ? (float) $official->fee : null,
+                'nationality' => $official->user?->nationality ?: null,
+                'role' => $official->role,
             ],
             // The finance modal reads this to refresh without a reload.
             'finance' => $this->typeFor($event)->finance($event),
@@ -1179,6 +2121,8 @@ class PersonalEventController extends Controller
         $this->assertCanManage($event, $me);
 
         $event->officials()->whereKey($official)->delete();
+
+        $this->pushEventBoutsToPlay($event);
 
         return response()->json([
             'success' => true,
@@ -1241,8 +2185,11 @@ class PersonalEventController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'participant_free' => ['required', 'boolean'],
             'participant_fee' => ['nullable', 'string', 'max:40'],
+            // The real price. The string above is the line the page shows.
+            'participant_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'spectator_enabled' => ['required', 'boolean'],
             'spectator_fee' => ['nullable', 'string', 'max:40'],
+            'spectator_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
             'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
@@ -1282,15 +2229,14 @@ class PersonalEventController extends Controller
             'break_end' => $data['break_end'] ?? null,
             'level' => $data['level'] ?? null,
             'description' => $data['description'] ?? null,
-            'participant_fee' => $data['participant_free'] ? null : ($data['participant_fee'] ?: 'Free'),
-            'spectator_enabled' => (bool) $data['spectator_enabled'],
-            'spectator_fee' => $data['spectator_enabled'] ? ($data['spectator_fee'] ?: 'Free') : null,
             'prize' => $data['prize'] ?? null,
             'max_capacity' => $data['max_capacity'] ?? null,
             'color' => $this->typeColor($data['event_type']),
             'status' => 'active',
             'is_archived' => false,
-        ]);
+            // Priced in the host club's currency, from the amount that was
+            // typed — never from a sentence assembled in the browser.
+        ] + $this->feeColumns($data, Tenant::whereKey($data['tenant_id'])->value('currency') ?: 'BHD'));
 
         $type->saveRelatedData($event, $data);
 
@@ -1336,8 +2282,11 @@ class PersonalEventController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'participant_free' => ['required', 'boolean'],
             'participant_fee' => ['nullable', 'string', 'max:40'],
+            // The real price. The string above is the line the page shows.
+            'participant_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'spectator_enabled' => ['required', 'boolean'],
             'spectator_fee' => ['nullable', 'string', 'max:40'],
+            'spectator_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
             'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
@@ -1370,12 +2319,9 @@ class PersonalEventController extends Controller
             'break_end' => $data['break_end'] ?? null,
             'level' => $data['level'] ?? null,
             'description' => $data['description'] ?? null,
-            'participant_fee' => $data['participant_free'] ? null : ($data['participant_fee'] ?: 'Free'),
-            'spectator_enabled' => (bool) $data['spectator_enabled'],
-            'spectator_fee' => $data['spectator_enabled'] ? ($data['spectator_fee'] ?: 'Free') : null,
             'prize' => $data['prize'] ?? null,
             'max_capacity' => $data['max_capacity'] ?? null,
-        ]);
+        ] + $this->feeColumns($data, EventFee::currency($event)));
 
         // Divisions, fixtures, re-scheduling — whatever this type keeps outside
         // the event row.
@@ -1386,6 +2332,59 @@ class PersonalEventController extends Controller
             'message' => 'Event updated',
             'redirect' => route('me.events.show', $event->uuid),
         ]);
+    }
+
+    /**
+     * The three fee columns, from what the form submitted.
+     *
+     * The form has always had the two things money needs — an amount typed into
+     * a box, and the club's currency beside it — and then threw them away by
+     * concatenating them into a sentence for the server to un-parse later. When
+     * an amount comes through, it is authoritative and the display line is
+     * composed FROM it, so the two can never disagree.
+     *
+     * When no amount comes through (an older form, an integration), the string
+     * is kept exactly as sent — some of them are legitimately prose, like
+     * "Qualified finalists" — and the model's saving hook derives what number it
+     * can from it.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function feeColumns(array $data, string $currency): array
+    {
+        $free = (bool) ($data['participant_free'] ?? false);
+        $spectators = (bool) ($data['spectator_enabled'] ?? false);
+
+        $pAmount = isset($data['participant_fee_amount']) ? (float) $data['participant_fee_amount'] : null;
+        $sAmount = isset($data['spectator_fee_amount']) ? (float) $data['spectator_fee_amount'] : null;
+
+        $columns = ['fee_currency' => $currency, 'spectator_enabled' => $spectators];
+
+        // Participants.
+        if ($free) {
+            $columns['participant_fee'] = null;
+            $columns['participant_fee_amount'] = null;
+        } elseif ($pAmount !== null) {
+            $columns['participant_fee'] = EventFee::display($pAmount, $currency);
+            $columns['participant_fee_amount'] = $pAmount;
+        } else {
+            // String only — leave the amount alone so the model derives it.
+            $columns['participant_fee'] = ($data['participant_fee'] ?? null) ?: __('events.fee_free');
+        }
+
+        // Spectators.
+        if (! $spectators) {
+            $columns['spectator_fee'] = null;
+            $columns['spectator_fee_amount'] = null;
+        } elseif ($sAmount !== null) {
+            $columns['spectator_fee'] = EventFee::display($sAmount, $currency);
+            $columns['spectator_fee_amount'] = $sAmount;
+        } else {
+            $columns['spectator_fee'] = ($data['spectator_fee'] ?? null) ?: __('events.fee_free');
+        }
+
+        return $columns;
     }
 
     /** Set / update the event's winners (podium). Manager only. */
@@ -1474,6 +2473,24 @@ class PersonalEventController extends Controller
             return response()->json(['success' => false, 'code' => 'banned', 'message' => 'You can’t register for this event.'], 403);
         }
 
+        // Once it has started, the entry list IS the competition being run — the
+        // draw is cut from it and the mats are working through it. Nobody new
+        // joins, by either door.
+        //
+        // Someone already entered is NOT refused here: this same endpoint is how
+        // they upload a receipt, and paying at the venue on the day is the most
+        // ordinary thing there is.
+        $alreadyIn = ClubEventRegistration::where('event_id', $event->id)
+            ->where('user_id', $me->id)->where('role', 'participant')->exists();
+
+        if (($event->hasStarted() || $event->isOverdueToStart()) && ! $alreadyIn) {
+            return response()->json([
+                'success' => false,
+                'code' => 'started',
+                'message' => __('events.entry_event_started'),
+            ], 422);
+        }
+
         $type = $this->typeFor($event);
 
         $data = $request->validate([
@@ -1481,6 +2498,10 @@ class PersonalEventController extends Controller
             // Optional manual proof-of-payment (base64 data-URI). No gateway — the
             // club admin approves it elsewhere; here we only RECORD it.
             'payment_proof' => ['nullable', 'string', 'starts_with:data:image'],
+            // The club they compete FOR. Claimed, never approved — but only from
+            // clubs they actually belong to, checked below against the server's
+            // own list rather than the one the form was rendered with.
+            'representing_tenant_id' => ['nullable', 'integer'],
         ]);
 
         // Participation-by-qualification events can't be self-joined.
@@ -1522,7 +2543,8 @@ class PersonalEventController extends Controller
         $division = $decision->category?->name;
         $weight = $decision->weight;
 
-        $paidFee = $event->participant_fee && ! str_contains(strtolower($event->participant_fee), 'free');
+        // What it costs is a number now (EventFee), not a word in a sentence.
+        $paidFee = EventFee::isPaid($event, 'participant');
 
         // Optional proof-of-payment (paid participant events only). Manual flow —
         // we record the member's proof on the PRIVATE disk and leave paid=false so
@@ -1548,6 +2570,29 @@ class PersonalEventController extends Controller
             $storedNewProof = true;
         }
 
+        // Which club they compete for. A member may only claim a club they are
+        // an ACTIVE member of; anything else is silently dropped rather than
+        // trusted, and no claim at all means competing unattached.
+        $entryService = app(EntryService::class);
+        $claimable = collect($entryService->representableClubs($me))->pluck('id')->all();
+        $representing = $data['representing_tenant_id'] ?? null;
+
+        if ($representing !== null && ! in_array((int) $representing, $claimable, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.claim_not_your_club'),
+            ], 422);
+        }
+
+        // Nothing chosen and only one club to choose from — there was no
+        // decision to make, so do not leave the sheet unattached by accident.
+        if ($representing === null && ! $existing?->representing_tenant_id && count($claimable) === 1) {
+            $representing = $claimable[0];
+        }
+
+        $representing = $representing !== null ? (int) $representing : $existing?->representing_tenant_id;
+        $claimChanged = $representing && (int) ($existing?->representing_tenant_id ?? 0) !== $representing;
+
         ClubEventRegistration::updateOrCreate(
             ['event_id' => $event->id, 'user_id' => $me->id],
             [
@@ -1558,8 +2603,19 @@ class PersonalEventController extends Controller
                 'weight' => $weight,
                 'payment_proof' => $paidFee ? $proofPath : null,
                 'registered_at' => now(),
+                'entry_channel' => 'individual',
+                'representing_tenant_id' => $representing,
+                // A fresh claim starts unrejected — the club gets to look at it
+                // again rather than inherit its verdict on an older one.
+                'club_disowned_at' => $claimChanged ? null : $existing?->club_disowned_at,
             ]
         );
+
+        // The club finds out it is being represented. It cannot pre-approve
+        // this; it can only disown it afterwards, so being told is the point.
+        if ($claimChanged) {
+            $entryService->notifyClaim($event, $me, $representing);
+        }
 
         // The entrant set changed — let the package re-derive whatever depends
         // on it (a provisional bracket, a fixture list).
@@ -1644,7 +2700,7 @@ class PersonalEventController extends Controller
 
         abort_unless($event->spectator_enabled, 422, 'This event has no spectator tickets.');
 
-        $paidFee = $event->spectator_fee && ! str_contains(strtolower($event->spectator_fee), 'free');
+        $paidFee = EventFee::isPaid($event, 'spectator');
 
         ClubEventRegistration::updateOrCreate(
             ['event_id' => $event->id, 'user_id' => $me->id],
@@ -1669,7 +2725,7 @@ class PersonalEventController extends Controller
         if ($reg) {
             // Registration is final — no self-cancel once you've joined.
             $fee = $reg->role === 'spectator' ? $event->spectator_fee : $event->participant_fee;
-            $hasFee = $fee && ! str_contains(strtolower($fee), 'free');
+            $hasFee = EventFee::isPaid($event, $reg->role === 'spectator' ? 'spectator' : 'participant');
 
             return response()->json([
                 'success' => false,
@@ -1760,17 +2816,21 @@ class PersonalEventController extends Controller
      * The athletes this coach may enter, each with its verdict already worked
      * out — who is enterable, who is already in, and why anyone is not.
      */
-    public function entryRoster(ClubEvent $event, EntryService $entries): JsonResponse
+    public function entryRoster(Request $request, ClubEvent $event, EntryService $entries): JsonResponse
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);
 
         abort_if($entries->administeredClubIds($me) === [] && ! $me->isSuperAdmin(), 403);
 
-        return response()->json([
-            'success' => true,
-            'athletes' => $entries->roster($event, $me),
-        ]);
+        // Name, email or phone. The search runs against the actor's OWN club
+        // members only, so it can narrow a squad list without ever becoming a
+        // lookup for the platform's user table.
+        $data = $request->validate(['q' => ['nullable', 'string', 'max:80']]);
+
+        $result = $entries->roster($event, $me, $data['q'] ?? null);
+
+        return response()->json(['success' => true] + $result);
     }
 
     /**
@@ -1794,6 +2854,11 @@ class PersonalEventController extends Controller
 
         $result = $entries->enterMany($event, $me, $data['user_ids']);
 
+        // A squad landing at once changes the draw everyone else is looking at.
+        if ($result['entered']) {
+            $this->pushEventRefresh($event);
+        }
+
         return response()->json([
             'success' => true,
             'message' => __('events.entry_result', [
@@ -1801,6 +2866,55 @@ class PersonalEventController extends Controller
                 'rejected' => count($result['rejected']),
             ]),
         ] + $result);
+    }
+
+    /**
+     * Self-entries claiming a club this coach runs, and the state of each.
+     *
+     * Read-only company for the entry roster: the same sheet answers "who can I
+     * enter" and "who has put my club's name on themselves".
+     */
+    public function entryClaims(ClubEvent $event, EntryService $entries): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if($entries->administeredClubIds($me) === [], 403);
+
+        return response()->json([
+            'success' => true,
+            'claims' => $entries->claims($event, $me),
+        ]);
+    }
+
+    /**
+     * Reject a claim on the club's name.
+     *
+     * The athlete stays in the event and competes unattached — this is the
+     * club's say over its own name, never a veto on someone competing.
+     */
+    public function disownClaim(ClubEvent $event, User $user, EntryService $entries): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        if ($event->enrollment_ends_at && now()->startOfDay()->gt($event->enrollment_ends_at)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.claim_disown_closed'),
+            ], 422);
+        }
+
+        $entries->disown($event, $me, $user);
+
+        rescue(fn () => \Realtime()->publishToUser($user->id, 'events', [
+            'action' => 'refresh', 'event' => $event->uuid,
+        ]), null, false);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.claim_disowned_done'),
+        ]);
     }
 
     /* ===================== Owner moderation ===================== */

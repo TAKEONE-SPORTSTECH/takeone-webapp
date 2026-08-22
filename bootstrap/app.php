@@ -54,6 +54,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'business'   => \App\Http\Middleware\EnsureHasBusiness::class,
             // Override the default `verified` gate so impersonation can bypass it.
             'verified'   => \App\Http\Middleware\EnsureEmailIsVerifiedOrImpersonating::class,
+            // Sanctum token-ability gates. Needed so a token minted for one
+            // integration (e.g. TAKEONE Play lookups) cannot be replayed against
+            // any other token-authenticated surface.
+            'abilities'  => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+            'ability'    => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

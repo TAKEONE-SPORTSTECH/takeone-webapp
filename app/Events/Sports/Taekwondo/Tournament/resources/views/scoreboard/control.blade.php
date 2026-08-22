@@ -146,6 +146,10 @@
         display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
   .pt span { font-family:'Anton',sans-serif; font-size:52px; display:block; line-height:1; }
 </style>
+
+{{-- The winner celebration: the same scene the wall shows, with this console's
+     own controls dropped into the one slot it offers. --}}
+<x-winner-celebration font-route="court-display.font" />
 </head>
 <body>
 
@@ -332,15 +336,14 @@
      cannot do: send the result and call the next match up. It sits over the
      console rather than beside it because once a match is decided there is
      nothing else on this page worth pressing. --}}
-<div id="winnerOverlay" hidden style="position:absolute; inset:0; z-index:40; background:rgba(0,0,0,0.72); overflow:hidden;">
-  <div id="winnerConfetti" style="position:absolute; inset:0; pointer-events:none; overflow:hidden;"></div>
-  <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:22px; animation:stampIn .8s cubic-bezier(.2,.8,.2,1) both;">
-    <div style="font-family:'Barlow Condensed',sans-serif; font-size:34px; font-weight:700; letter-spacing:.5em; color:oklch(0.85 0.16 85); text-transform:uppercase;">{{ __('event-taekwondo_tournament::messages.sb_winner') }}</div>
-    <div id="winnerPlate" style="padding:22px 70px;">
-      <div id="winnerName" style="font-family:'Anton',sans-serif; font-size:110px; line-height:1; color:#fff; text-transform:uppercase; white-space:nowrap;"></div>
-    </div>
-    <div id="winnerHow" style="font-weight:700; font-size:26px; letter-spacing:.22em; text-transform:uppercase; color:rgba(232,230,224,0.75);"></div>
-    <div style="display:flex; gap:14px; align-items:center; margin-top:8px;">
+<div id="winnerOverlay" hidden style="position:absolute; inset:0; z-index:40; overflow:hidden;">
+  {{-- The scene is painted here, and it is the SAME scene the wall is showing.
+       The controls live outside it: the celebration clears its own host on every
+       restage, and these two buttons keep their handlers by being moved into the
+       one slot it offers rather than rebuilt. --}}
+  <div id="winnerScene" style="position:absolute; inset:0;"></div>
+  <div id="winnerControls" style="display:flex; flex-direction:column; gap:10px;">
+    <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
       <button id="winnerNext" class="btn btn-go" style="font-size:24px; padding:18px 40px;"></button>
       <button id="winnerBack" class="btn" style="font-size:18px; padding:18px 26px;">{{ __('event-taekwondo_tournament::messages.ctl_winner_back') }}</button>
     </div>
@@ -1110,9 +1113,9 @@
     var over = STATE.matchOver && STATE.matchWinner;
     var host = el('winnerOverlay');
 
-    if (!over) { staged = null; host.hidden = true; return; }
+    if (!over) { staged = null; WinnerCelebration.clear(el('winnerScene')); host.hidden = true; return; }
 
-    // Which bout comes next on this mat, so the button can name it.
+    // Which match comes next on this mat, so the button can name it.
     var next = null;
     for (var i = 0; i < QUEUE.length; i++) {
       if (QUEUE[i].runnable && QUEUE[i].id !== STATE.matchId) { next = QUEUE[i]; break; }
@@ -1124,36 +1127,30 @@
     staged = key;
 
     var c = (side === 'aka' ? STATE.aka : STATE.ao) || {};
-    var colour = side === 'aka' ? 'oklch(0.55 0.21 25)' : 'oklch(0.5 0.18 255)';
-
-    el('winnerName').textContent = c.name || '';
-    el('winnerPlate').style.background = 'linear-gradient(135deg,' + colour + ', #000)';
-    el('winnerPlate').style.boxShadow = '0 0 120px ' + colour;
-
-    // How it was won — the rounds, or the rule that ended it early.
-    el('winnerHow').textContent =
-      STATE.endReason === 'gamjeom' ? T.byPun
-      : STATE.endReason === 'golden' ? T.byGolden
-      : T.byRounds.replace(':a', STATE.akaRounds).replace(':b', STATE.aoRounds);
 
     el('winnerNext').textContent = next ? T.recordNext : T.recordLast;
     el('winnerHint').textContent = next
       ? T.nextIs.replace(':aka', next.aka || TBD).replace(':ao', next.ao || TBD)
       : '';
 
-    var host2 = el('winnerConfetti');
-    host2.textContent = '';
-    var palette = ['#ffd666', '#fff', '#ff5548', '#4d9aff'];
-    for (var j = 0; j < 34; j++) {
-      var p = document.createElement('div');
-      p.style.cssText = 'position:absolute; left:' + (j * 2.9 % 100) + '%; top:-40px; width:' + (8 + (j % 5) * 3) + 'px;' +
-        'height:' + (18 + (j % 4) * 5) + 'px; background:' + palette[j % 4] + ';' +
-        'transform:rotate(' + (j * 37 % 360) + 'deg);' +
-        'animation:confettiFall ' + (2.4 + (j % 5) * 0.4) + 's ' + ((j % 7) * 0.3) + 's linear infinite;';
-      host2.appendChild(p);
-    }
-
     host.hidden = false;
+
+    // The overlay must be on the page before the scene measures it, or it is
+    // painted against a box of no size.
+    var scene = WinnerCelebration.paint(el('winnerScene'), {
+      corner: side === 'aka' ? 'red' : 'blue',
+      name: c.name || '',
+      club: c.club || '',
+      logo: c.logo || null,
+      photo: c.photo || null,
+      label: T.winner,
+      // How it was won — the rounds, or the rule that ended it early.
+      note: STATE.endReason === 'gamjeom' ? T.byPun
+        : STATE.endReason === 'golden' ? T.byGolden
+        : T.byRounds.replace(':a', STATE.akaRounds).replace(':b', STATE.aoRounds)
+    });
+
+    scene.actions.appendChild(el('winnerControls'));
   }
 
   /* ── Undo ──────────────────────────────────────────────────────────────── */

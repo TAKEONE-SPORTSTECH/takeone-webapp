@@ -142,12 +142,43 @@
                     {{-- Portrait, or the silhouette when they have not published
                          a picture. No initial-letter crest stand-in: invented
                          detail about a person reads as fact. --}}
-                    <div class="relative flex-shrink-0">
-                        @if($p['photo'])
-                            <img src="{{ $p['photo'] }}" alt=""
-                                 class="w-12 h-12 rounded-2xl object-cover border border-gray-100">
+                    <div class="relative flex-shrink-0" @if($canManage && $p['registration']) x-data="competitorPhoto({ event: @js($e['key']), registration: @js($p['registration']), photo: @js($p['photo']), owned: @js((bool) $p['has_entry_photo']) })" @endif>
+                        @if($canManage && $p['registration'])
+                            <template x-if="photo">
+                                <img :src="photo" alt="" class="w-12 h-12 rounded-2xl object-cover border border-gray-100">
+                            </template>
+                            <template x-if="!photo">
+                                <span class="block">
+                                    <x-gender-avatar :gender="$p['gender']" class="w-12 h-12 rounded-2xl border border-gray-100" />
+                                </span>
+                            </template>
+
+                            {{-- The organiser's way to put a face on an entry that
+                                 has none — a competitor entered off a paper list
+                                 has no account and so no picture, and their bout
+                                 was being introduced with a silhouette. Stops the
+                                 row's own navigation: this is a control, not a
+                                 link to the person. --}}
+                            <label @click.stop @click.prevent="$refs.file.click()"
+                                   class="absolute -top-1 -start-1 w-6 h-6 rounded-full bg-primary text-white grid place-items-center shadow-md cursor-pointer hover:bg-primary/90 transition-colors"
+                                   :title="busy ? '…' : @js(__('personal.event_photo_add'))">
+                                <i class="bi text-[11px]" :class="busy ? 'bi-hourglass' : 'bi-camera-fill'"></i>
+                            </label>
+                            <input x-ref="file" type="file" accept="image/*" class="hidden"
+                                   @click.stop @change="upload($event.target)">
+
+                            <button type="button" x-show="owned" @click.stop.prevent="clear()"
+                                    class="absolute -top-1 -end-1 w-6 h-6 rounded-full bg-white text-red-600 border border-red-200 grid place-items-center shadow-sm hover:bg-red-50 transition-colors"
+                                    :title="@js(__('personal.event_photo_remove'))">
+                                <i class="bi bi-x text-[13px]"></i>
+                            </button>
                         @else
-                            <x-gender-avatar :gender="$p['gender']" class="w-12 h-12 rounded-2xl border border-gray-100" />
+                            @if($p['photo'])
+                                <img src="{{ $p['photo'] }}" alt=""
+                                     class="w-12 h-12 rounded-2xl object-cover border border-gray-100">
+                            @else
+                                <x-gender-avatar :gender="$p['gender']" class="w-12 h-12 rounded-2xl border border-gray-100" />
+                            @endif
                         @endif
 
                         @if($flag)
@@ -260,3 +291,106 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+/**
+ * A face for one entry.
+ *
+ * Reads the chosen file in the browser and posts it as a data URI, which is the
+ * shape every image endpoint in this project takes — the server sniffs the real
+ * bytes and assigns the extension itself, so nothing here decides what the file
+ * is. Patches its own row on success; no reload.
+ */
+function competitorPhoto(config) {
+    return {
+        photo: config.photo,
+        owned: config.owned,
+        busy: false,
+
+        async upload(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            // Ten megabytes of camera photo is a phone's full-resolution shot;
+            // refused here so the upload does not travel before being rejected.
+            if (file.size > 10 * 1024 * 1024) {
+                window.showToast && window.showToast('error', @js(__('personal.event_photo_too_big')));
+                input.value = '';
+                return;
+            }
+
+            this.busy = true;
+
+            try {
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = () => resolve(r.result);
+                    r.onerror = () => reject(new Error('read failed'));
+                    r.readAsDataURL(file);
+                });
+
+                const res = await fetch(`/me/events/${config.event}/competitors/${config.registration}/photo`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ image: dataUrl }),
+                });
+                const data = await res.json().catch(() => ({}));
+
+                if (!data.success) throw new Error(data.message || 'Upload failed');
+
+                // Cache-busted: the path changes per upload, but a replaced photo
+                // at the same size would otherwise look unchanged behind a proxy.
+                this.photo = data.photo + '?v=' + Date.now();
+                this.owned = true;
+                window.showToast && window.showToast('success', data.message);
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally {
+                this.busy = false;
+                input.value = '';
+            }
+        },
+
+        async clear() {
+            if (window.confirmAction && !(await window.confirmAction({
+                title: @js(__('personal.event_photo_remove')),
+                message: @js(__('personal.event_photo_remove_confirm')),
+                type: 'danger',
+            }))) return;
+
+            this.busy = true;
+
+            try {
+                const res = await fetch(`/me/events/${config.event}/competitors/${config.registration}/photo`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    credentials: 'same-origin',
+                });
+                const data = await res.json().catch(() => ({}));
+
+                if (!data.success) throw new Error(data.message || 'Failed');
+
+                // Back to whatever their profile allows — which is usually the
+                // silhouette, and that is the honest answer.
+                this.photo = null;
+                this.owned = false;
+                window.showToast && window.showToast('success', data.message);
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally {
+                this.busy = false;
+            }
+        },
+    };
+}
+</script>
+@endpush

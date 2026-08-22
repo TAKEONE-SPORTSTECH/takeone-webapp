@@ -7,6 +7,7 @@
     'canArrange' => false,          // SERVER truth; the runtime re-reads it on every load
     'myCompetitorIds' => [],        // highlights the viewer's own bouts
     'height' => '70vh',             // a CSS length, applied inline — see below
+    'initialDivision' => null,      // open on THIS division instead of the first
     'showDivisions' => true,        // false when the host page has its own switcher
     'bare' => false,                // the board IS the page, not a card on it —
                                     // drop the rounding, border and shadow
@@ -194,6 +195,10 @@
             arrangeUrl: @json($arrangeEndpoint),
             clearUrl: @json($clearEndpoint),
             eventUuid: @json($eventUuid),
+            // Which division to open on. A bout's "View draw" names its own, so
+            // the board opens where that bout is rather than on the first
+            // division. Null keeps the previous behaviour exactly.
+            initialDivision: @json($initialDivision),
             csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
             myCompetitorIds: @json(array_values((array) $myCompetitorIds)),
             rtl: {{ $rtl ? 'true' : 'false' }},

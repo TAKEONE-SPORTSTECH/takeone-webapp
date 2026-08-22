@@ -1134,6 +1134,15 @@
 
         <!-- Affiliations Tab -->
         <div x-show="activeTab === 'affiliations'" x-transition id="affiliations" role="tabpanel">
+            {{-- Clubs the platform already knows this member belongs to, shown
+                 above their own hand-written history. Additive: the self-reported
+                 cards below are keyed on a real row id for their edit controls,
+                 so derived entries are never merged into them. --}}
+            @include('components-templates.member.partials.derived-history', [
+                'rows' => $derivedAffiliations ?? collect(),
+                'kind' => 'affiliations',
+            ])
+
             @include('components-templates.member.partials.affiliations-enhanced')
         </div>
 
@@ -1253,6 +1262,13 @@
                         ];
                         $medalNone = ['rail' => 'bg-gray-200', 'tile' => 'bg-gray-50 text-gray-400 ring-gray-100', 'icon' => 'bi-flag'];
                     @endphp
+
+                    {{-- Events the member was actually entered into, above the
+                         self-logged list. --}}
+                    @include('components-templates.member.partials.derived-history', [
+                        'rows' => $derivedTournaments ?? collect(),
+                        'kind' => 'tournaments',
+                    ])
 
                     <div id="tournamentsListWrapper" class="space-y-3" style="{{ $tournamentEvents->count() > 0 ? '' : 'display:none;' }}">
                         <div id="tournamentsList" class="space-y-3">

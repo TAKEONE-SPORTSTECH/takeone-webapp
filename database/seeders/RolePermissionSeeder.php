@@ -32,6 +32,9 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'Manage Gallery', 'slug' => 'manage-gallery', 'description' => 'Upload and manage gallery images'],
             ['name' => 'Manage Messages', 'slug' => 'manage-messages', 'description' => 'Send and receive messages'],
             ['name' => 'View Analytics', 'slug' => 'view-analytics', 'description' => 'View club analytics and reports'],
+            // Entering a squad commits the club to the entry fees, so it is a
+            // grant an owner hands out deliberately — not something every coach has.
+            ['name' => 'Enter Athletes', 'slug' => 'enter-athletes', 'description' => 'Enter this club’s athletes into competitions'],
 
             // Instructor Permissions
             ['name' => 'View Members', 'slug' => 'view-members', 'description' => 'View club members'],
@@ -79,6 +82,7 @@ class RolePermissionSeeder extends Seeder
                     'manage-gallery',
                     'manage-messages',
                     'view-analytics',
+                    'enter-athletes',
                 ]
             ],
             [

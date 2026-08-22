@@ -1,5 +1,108 @@
 # TAKEONE Project — Claude Instructions
 
+## RULE #0 — Answer Questions Short and Simple — STRICT
+
+**When the user asks a question, answer it briefly. Direct answer first, a few lines at most.**
+
+The user does not have time to read long analyses. Detail is opt-in, not the default.
+
+- **Lead with the answer**, not the reasoning that produced it.
+- **A few sentences, or a short list.** No multi-section write-ups, no big tables, no exhaustive walkthroughs unless explicitly asked.
+- **Offer depth instead of delivering it** — "want the detail?" costs one line and lets them choose.
+- **Say what matters, drop the rest.** If something is genuinely important (a risk, a blocker, data loss), say it in one line — do not bury it in an essay, and do not omit it either.
+
+**This governs ANSWERS, not workmanship.** When asked to build, investigate or fix, do the work as thoroughly as ever — then report it briefly. Short answers never mean cutting corners on the task, skipping verification, or staying silent about a real problem.
+
+## RULE #1 — Never Break What Works — STRICT, OVERRIDES EVERYTHING
+
+**Both TAKEONE systems are live, working, and represent years of accumulated work. No change may break an existing working feature. Ever. There is no improvement worth a regression.**
+
+This outranks every other rule in this file. If a change cannot be made without risking something that currently works, **stop and ask** — do not proceed and hope.
+
+### What this means in practice
+
+- **Additive, never destructive.** New tables and new columns, not altered or dropped ones. New endpoints alongside old ones, not replacements. New code paths beside working ones, not rewrites of them.
+- **Never touch working code you were not asked to touch.** No opportunistic refactors, no cleanup, no renames, no "while I was in there". (Reinforces Design Rule #3.)
+- **Both databases hold real data.** No `migrate:fresh`, no destructive migration, no bulk delete without an explicit request and a fresh backup. See the never-migrate-fresh rule.
+- **Migrate in parallel, then cut over.** When something must change shape: build the new path, run both, verify the new one, switch, and only then retire the old one — as a separate, deliberate step.
+- **Feature-flag anything new and risky**, defaulted OFF, so the blast radius of a mistake is a disabled flag rather than a broken event day.
+- **Security fixes are not exempt.** Closing a hole must not take a working screen down with it — add the guarded path, verify the callers, then close the old one.
+- **Verify before and after.** Know what worked before you started, and check it still works when you finish. State plainly what you verified and what you did not.
+- **Small reversible steps** over one large change. If something goes wrong it must be obvious which step did it.
+- **When in doubt, ask.** "I could do this, but it risks X" is always the right message. A blocked task is recoverable; a broken production system on an event day is not.
+
+### Applies to both systems
+This repo **and** TAKEONE Play (`/var/www/videoplatform` on `192.168.0.31`). The video platform is live at `video.takeone.bh` with real uploaded media and real match annotations — its existing manual match-annotation flow must keep working untouched through any integration work.
+
+---
+
+## RULE #2 — Back Up Before Anything That Could Lose Data — STRICT
+
+**Before any migration, schema change, bulk update/delete, data repair, seeder, reset, or any operation that could erase or corrupt data — take a database backup FIRST, verify it, and only then proceed.** If it goes wrong, the data comes back.
+
+This is a precondition, not a precaution. No backup → no destructive operation. Not "probably fine", not "it's only additive so it can't hurt" — a migration that was meant to be additive is exactly how data gets lost.
+
+### What triggers it
+- any `php artisan migrate` (yes, including additive ones)
+- any schema change, index change, or column type change
+- bulk `update()` / `delete()` / truncate / `forceDelete`
+- seeders, resets (`takeone:reset-baseline`), demo purge, data-repair scripts
+- anything touching the storage/upload folders destructively
+- **any of the above on either system** — takeone *and* TAKEONE Play
+
+### How
+**takeone:** `php artisan takeone:backup` — SQLite `VACUUM INTO` after a WAL checkpoint (consistent under load), plus the upload folders, verified by reading each artifact back, non-zero exit on failure. Scheduled nightly 03:30.
+
+**TAKEONE Play:** `ssh videoplatform 'cd /var/www/videoplatform && php artisan takeone:backup'` — same command name and same mechanism as this side, so both platforms back up and restore identically. Snapshots land in `data/backups/` (git-ignored), verified by integrity check + migration/video row counts, pruned on the same retention window. Runs nightly at 03:30 from **www-data's crontab**.
+
+⚠️ Two things to know about Play:
+- It runs **SQLite in production** (`database/database.sqlite`), despite its own CLAUDE.md saying MySQL. The command handles both drivers.
+- **The Laravel scheduler is not running there** — no cron, no timer, no supervisor — so `cleanup:orphaned-videos --force`, `nas:auto-sync` and `digest:weekly` have never fired on a schedule. The backup therefore has its **own dedicated cron entry**, not `schedule:run`. Do NOT "fix" this by enabling `schedule:run` without deciding about those three dormant jobs first — `cleanup:orphaned-videos --force` deletes media files, and switching it on after a long dormancy is exactly the kind of thing RULE #1 exists to prevent.
+
+**Media is not covered by default.** Play's uploaded video (`data/app/users`, ~2.6 GB) is the one thing that cannot be regenerated, and it is far too large to archive nightly. `takeone:backup --media` mirrors it incrementally with rsync, but only once `BACKUP_MEDIA_DEST` points at a NAS mount or remote path. **Until that is set, the video library has no backup at all.**
+
+`VACUUM INTO` (not `cp`) — copying a live SQLite file mid-write yields a corrupt snapshot. Always verify the copy; an unverified backup is not a backup.
+
+### Rules about the backups themselves
+- **Verify every backup** by reading it back before proceeding. Untested backups fail exactly when needed.
+- **Timestamp** them; never overwrite the previous one.
+- **Say so** — state that the backup was taken, where it is, and that it verified, before reporting the change done.
+- Keep at least one copy **off the box**. A backup on the same disk does not survive losing the disk. (Open item for both systems — see the Pre-Launch Runbook.)
+- The media files on Play (uploaded video) are the irreplaceable asset — the DB backup does not cover them.
+
+---
+
+## RULE #3 — On TAKEONE Play, Only Touch `match` — STRICT
+
+**On the video platform, work only on the `match` video type. Never modify the `music` type or the `generic` type.** Not to improve them, not to refactor them, not "while I was in there".
+
+**Why it matters:** `videos.type` today is **54 music, 4 match**. The music library is that platform's live content — its audio player, track editor, lyrics/ML stack and playlists are what actually gets used. Match is the new work. A careless edit trades a working product for an unbuilt one.
+
+### Free to change (match-owned)
+- `resources/views/videos/types/match.blade.php` and `resources/views/videos/partials/match/`
+- `app/Http/Controllers/MatchEventController.php`, `SportsMatchController.php`
+- `app/Models/SportsMatch.php`, `MatchRound.php`, `MatchPoint.php`, `CoachReview.php`
+- match-only migrations, `RenderMatchOgImage`, match-only routes and assets
+
+### Never touch (off limits)
+- `resources/views/videos/types/music.blade.php`, `types/generic.blade.php`
+- `resources/views/videos/partials/audio-player.blade.php`, `components/track-editor-form.blade.php`
+- `ReorganizeAudioTracks`, `GenerateLyrics`, the `ml/` lyrics stack, audio/NAS commands
+- anything else whose only consumers are music or generic
+
+### The real danger — shared code
+The risk is not the music files; it is the code **all three types run through**: `VideoController`, `MediaController`, `PlaylistController`, `app/Models/Video.php`, `videos/show.blade.php`, `components/video-player`, `video-card`, `video-comments`, the layouts, and the routes file.
+
+When match work genuinely needs something there:
+- **Add a type-guarded branch; never change existing behaviour.** `if ($video->type === 'match')` around the new path, leaving every other type on exactly the code it runs today.
+- **Never change a shared signature, query, scope or accessor** in a way any other type observes. Add alongside instead.
+- **Never "generalise" shared code** to accommodate match. Duplication in the match branch beats a refactor that alters the music path.
+- After any shared-file edit, **verify a music video and a generic video still play, list, and edit** — not just the match page.
+
+> Note the asymmetry with this repo's Events-Are-Packages rule: there, type branching in shared code is forbidden. Here it is the *safe* option, because the goal is not architectural purity — it is that the music side runs the identical code tomorrow that it runs today. RULE #1 wins.
+
+---
+
 ## TOP PRIORITY — Design-First: Creative, Innovative, Artistic, Modern — STRICT
 
 **Rule:** Always focus on design. Every piece of UI built in this project must be creative, innovative, artistic, and modern. Never ship plain, default-looking, or "good enough" UI.
@@ -39,6 +142,27 @@ Laravel 12 SaaS platform for sports clubs (TAKEONE-SPORTSTECH). Multi-tenant arc
   - `resources/views/` — admin/club/*, admin/platform/*, platform/, auth/, family/, trainer/
 
 - **Trainer/Instructor data model:** `bio`, `skills`, `experience_years`, `is_personal_trainer` live on `User`. `ClubInstructor` holds only club-specific data: `tenant_id`, `user_id`, `role`, `rating`. Routes `/trainer/{user}` and `/t/{user}` use User model binding (User ID, not ClubInstructor ID).
+
+---
+
+## Sibling Platform — TAKEONE Play (`video.takeone.bh`)
+
+**There are two platforms and they are meant to work together.** TAKEONE Play is the video side of TAKEONE: a Laravel 10 video-sharing platform with sports-match annotation, HLS adaptive streaming and GPU (NVENC) transcoding. It already models a match timeline — `sports_matches`, `match_rounds`, `match_points` (timestamp, action, competitor blue/red, running score) and `coach_reviews` — which is what powers the **Highlights** panel on a match video page.
+
+| | |
+|---|---|
+| **Host** | `192.168.0.31` (hostname `video`) |
+| **Project root** | `/var/www/videoplatform` (has its own `CLAUDE.md` — read it before touching that repo) |
+| **Public URL** | `https://video.takeone.bh` |
+| **Stack** | Laravel 10, PHP 8.1+, FFmpeg/FFProbe + NVIDIA NVENC, HLS, MySQL (prod), Sanctum |
+| **Access** | `ssh videoplatform` — key-based, passwordless (dedicated key `~/.ssh/videoplatform_ed25519`, alias in `~/.ssh/config`). **Never write credentials into this repo** — no passwords in CLAUDE.md, docs, code, or commit messages. |
+
+### The relationship
+takeone owns the **competition truth** (competitors, category, bracket, official result); Play owns the **media** (recording, transcoding, playback, the timeline as rendered on the video). The intended integration is that a mat's scoring console produces the video timeline automatically instead of someone re-typing the points into Play by hand.
+
+Full design — time model, contract, endpoints, phasing, and the security prerequisites — is in **`Documentation/VIDEO-INTEGRATION.md`**. Read it before starting any video work.
+
+⚠️ **Known blocker:** Play's match-event routes (`routes/web.php:306` onward) are currently **unauthenticated** ("removed auth requirement for demo purposes") — anyone can rewrite or delete any match's timeline. That must be closed before any integration writes through them.
 
 ---
 
@@ -948,6 +1072,37 @@ Every page that introduces a subject (an event, a club, a member, a console) ope
 
 **Never** open a page with a small `rounded-2xl p-4` gradient card holding a back arrow and a squeezed title, and never with a gradient stat card standing in for a header. Those are *cards* — fine inside the page, never as its header.
 
+### 7. The bracket icon is always rotated 90° clockwise
+`bi-diagram-3` (and `bi-diagram-3-fill`) is drawn as a **top-down org chart**, but a
+knockout bracket runs **left to right**. So wherever that glyph stands for a **draw or
+a bracket**, it is turned a quarter turn clockwise — every time, on every screen,
+mobile and desktop.
+
+**How:** add the shared class `bracket-icon` next to it. Never hand-roll the rotation.
+
+```blade
+<i class="bi bi-diagram-3 bracket-icon"></i>
+<i class="bi bi-diagram-3-fill bracket-icon text-2xl"></i>
+```
+
+`.bracket-icon` lives in `resources/css/app.css` and is `display:inline-block` +
+`transform: rotate(90deg)`. **The `inline-block` is load-bearing** — a bare `<i>` is an
+inline box and CSS transforms do not apply to those, so `rotate-90` alone silently does
+nothing.
+
+**When the icon name arrives as DATA** — an event package's action list, a milestone, a
+console tile, `<x-event-section-band icon="…">` — do not concatenate the class by hand:
+call **`App\Support\Icon::bi($name, $extraClasses)`**, which whitelists the `bi-*` name
+and appends `bracket-icon` itself when the name is a `bi-diagram-3*` one.
+
+```blade
+<i class="{{ \App\Support\Icon::bi($card['icon'], 'text-xl') }}"></i>
+```
+
+**Only for brackets.** The same glyph is used for the family tree, the business/chain
+hierarchy, club affiliations, roles and hall screens — those stay **upright**. Rotating
+them would be a regression, not consistency.
+
 ---
 
 ## No Page Reload Rule — STRICT
@@ -1094,6 +1249,109 @@ These values are final and must never be changed:
 - Must use: `class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: {{ $modalMaxWidth }}; width: {{ $modalWidth }}px;"`
 - Do NOT replace with `.modal-lg` or any class-only approach
 - Default params: `$modalMaxWidth = '75%'`, `$modalWidth = 1000`
+
+---
+
+## Profile Pictures Are Portrait 3:4 — STRICT
+
+**Every profile picture on this platform is portrait: 3 wide by 4 tall.** Stored at
+**600×800**, cropped through the locked `<x-takeone-cropper>` viewport at `300×400`.
+Verified against the real library — 53 of 54 stored pictures are exactly 600×800, and the
+one exception (1194×1579) is the same ratio uploaded at full resolution.
+
+**Never assume square.** Any container that shows a person's face must be 3:4, so the
+crop the member chose is what the reader sees. A `w-10 h-10` avatar silently centre-crops
+a portrait into a square and cuts the top of the head — it does not fail, it just looks
+wrong, which is why this needs stating once rather than being caught per screen.
+
+### How to size one
+Pick the height, then take three-quarters of it for the width:
+
+| Height | Width | Tailwind |
+|---|---|---|
+| 32px | 24px | `w-6 h-8` |
+| 48px | 36px | `w-9 h-12` |
+| 56px | 42px | `w-[42px] h-14` |
+| 64px | 48px | `w-12 h-16` |
+| 128px | 96px | `w-24 h-32` |
+
+Always pair with `object-cover` on the `<img>` and `overflow-hidden` on the container.
+
+### Two rules that travel with it
+- **Fall back to `<x-gender-avatar>`**, not an icon or initials, wherever a real person's
+  face is expected and missing — it is drawn for this ratio.
+- **Honour `users.profile_picture_is_public`** on any surface wider than the member's own
+  profile (bout pages, brackets, court displays, public profiles). It is the member's own
+  choice about their face; `BracketView::photo()` is the reference implementation. No
+  picture is not a bug, and the absence must be silent — never a "hidden" label.
+
+> Applies to club logos too, in the opposite direction: logos are transparent PNGs of
+> arbitrary shape and use `object-contain` on a bare sizing box (Design Rule #5), never a
+> 3:4 crop.
+
+---
+
+## Who Fills The Form Decides What It Demands — STRICT
+
+**A person form's required fields depend on WHO is filling it in, never on whether
+it is a create or an edit.** Two cases, and they pull in opposite directions:
+
+- **Staff entering someone else** — super-admin, club owner, club admin, event
+  organiser, appointed event official — must be asked for **a name and nothing
+  else**. They routinely do not have the rest: a referee arrives on a federation
+  list with only a name, an athlete is entered at a weigh-in off a paper sheet, a
+  walk-in is registered at the door mid-session. Forcing a value there does not
+  produce data, it produces an **invented** birthdate — which is worse than a
+  blank, because it looks authoritative and nobody revisits it.
+- **The member on their own profile** — the only person who actually knows these
+  answers. Their form stays strict, and their first visit to the edit screen is
+  the moment worth asking. Anyone else editing a person they know (a guardian and
+  their dependent) stays strict too.
+
+### How it is enforced
+- `User::entersPeopleOnBehalfOfOthers()` is the predicate: super-admin, owns a
+  tenant, holds `club-admin`, or has any `event_officials` row. It decides
+  **strictness only** — never what anyone may DO. Every authorisation check stays
+  exactly where it is; widening this grants no access.
+- `App\Http\Requests\Concerns\PersonFieldRules` supplies the presence rule.
+  Use `$this->personRule('date')` rather than writing `required|date`, and pass
+  the subject's user id on an edit so a member's own profile resolves as strict:
+  `$this->personRule('in:Male,Female', (int) $this->route('id'))`.
+- Applied to `StoreMemberRequest`, `StoreFamilyMemberRequest`,
+  `Admin\StorePlatformMemberRequest`, `UpdateMemberRequest`,
+  `UpdateFamilyMemberRequest`, `UpdateProfileRequest`. **A new person form joins
+  them** — do not hand-write `required` on these fields again.
+
+### Non-negotiables
+- **`full_name` is always required.** A member without a name breaks every
+  listing, card and search result on the platform.
+- **`birthdate` is NEVER required — of anyone, on any form, including a member
+  editing their own profile.** It is the field people least often have to hand,
+  and an invented one is the worst kind of bad data: it drives age groups, weight
+  categories and the minor safeguards, so a guess there is not a cosmetic
+  blemish. The format is still enforced when a value is given (`date`, and
+  `before:today` where it already applied). ⚠️ Consequence to keep in mind: code
+  that asks "is this a minor?" reads a NULL birthdate as an ADULT
+  (`$user->birthdate ? age < 18 : false`), so a missing birthdate silently
+  removes the minor protections — see `PersonalEventController::boutSide()`. If
+  that default is ever wrong for a surface, fix it at that surface; do not fix it
+  by demanding a birthdate.
+- **Format rules are never relaxed.** A gender is still `Male`/`Female`
+  (Canonical Enum Vocabularies), a birthdate is still a date, an email is still
+  an email. Only the demand that a value be *present* is lifted.
+- **The client must agree with the server.** `<x-profile-modal>` computes
+  `$demandPersonFields` from the same predicate and gates its own checks on it. A
+  browser that refuses what the endpoint would accept is a worse bug than no
+  validation, because the user cannot get past it.
+- **Absent is not the same as blank.** On an update, a field the request never
+  sent must be left ALONE; a field sent empty is a deliberate clear. Reading
+  `$validated['gender']` unconditionally lets a partial request wipe a value that
+  was already on file — see the `$optional` block in `MemberController::update()`
+  and `FamilyController::update()` for the shape to copy.
+
+> Rationale: the platform's job is to record what is known, not to extract what
+> is not. A blank field an organiser can fill in later beats a fabricated one
+> nobody knows is fabricated.
 
 ---
 

@@ -68,8 +68,15 @@ window.eventFormSheet = function () {
             this.cancel_within_days = d.cancel_within_days ?? '';
             this.tags = Array.isArray(d.tags) ? d.tags.join(', ') : (d.tags || '');
             this.description = d.description || '';
+            // The stated amount, when the event has one. The string is only
+            // read for rows written before that column existed.
+            const feeAmt = d.participant_fee_amount;
             const feeRaw = String(d.participant_fee ?? '').trim();
-            if (feeRaw) {
+            if (feeAmt !== null && feeAmt !== undefined && feeAmt !== '') {
+                const n = parseFloat(feeAmt);
+                this.feeType = n > 0 ? 'paid' : 'free';
+                this.feeAmount = n > 0 ? String(n) : '';
+            } else if (feeRaw) {
                 const m = feeRaw.match(/[\d.]+/);
                 this.feeType = 'paid';
                 this.feeAmount = m ? m[0] : '';
@@ -225,6 +232,10 @@ window.eventFormSheet = function () {
                 <div>
                     <label class="form-label">{{ __('admin.evt_entry_fee') }}</label>
                     <input type="hidden" name="participant_fee" :value="participantFee">
+                    {{-- The amount itself: the server prices from this, and
+                         composes the display line above from it. --}}
+                    <input type="hidden" name="participant_fee_amount"
+                           :value="feeType === 'paid' && feeAmount !== '' && feeAmount !== null ? feeAmount : ''">
                     <div class="flex mb-2 rounded-xl overflow-hidden border border-gray-200 text-sm">
                         <button type="button" @click="feeType = 'free'"
                                 :class="feeType !== 'paid' ? 'bg-primary text-white' : 'bg-white text-muted-foreground'"

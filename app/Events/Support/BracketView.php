@@ -152,7 +152,7 @@ class BracketView
             'competitor_id' => $r->id,
             'name' => $r->user?->full_name ?: $r->user?->name ?: __('events.athlete'),
             'seed' => null,
-            'country' => $r->meta ?: null,
+            'country' => $r->countryCode(),
             // Unpaid or not yet weighed in — in the draw, but at risk of coming
             // out of it when the final one is locked.
             'provisional' => ! $r->paid || $r->weight === null,

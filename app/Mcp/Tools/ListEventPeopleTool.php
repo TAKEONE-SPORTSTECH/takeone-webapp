@@ -54,7 +54,7 @@ class ListEventPeopleTool extends BaseTool
         }
 
         $rows = app(EventTypeRegistry::class)->for($event)->rosterRows($event);
-        $people = app(RosterPeople::class)->build($rows);
+        $people = app(RosterPeople::class)->build($rows, $event);
 
         return Response::json([
             'event' => ['uuid' => $event->uuid, 'title' => $event->title],

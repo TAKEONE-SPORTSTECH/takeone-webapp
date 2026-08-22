@@ -21,6 +21,37 @@ class ClubEvent extends Model
                 $event->uuid = (string) \Illuminate\Support\Str::uuid();
             }
         });
+
+        // Entries cannot close AFTER the event they are for. The create form
+        // already refuses it, but a seeder, an import or an admin path could
+        // still write it — and an event advertising a closing date past its own
+        // start reads as open when it is not.
+        static::saving(function (self $event) {
+            if ($event->enrollment_ends_at && $event->date && $event->enrollment_ends_at->gt($event->date)) {
+                $event->enrollment_ends_at = $event->date;
+            }
+        });
+
+        // Keep the money in step with the display line, whichever a caller set.
+        //
+        // Several forms still post only the sentence ("BHD 20"), assembled in
+        // the browser from an amount and the club's currency. Rather than trust
+        // that string later — which is how "10-15 BHD" came to bill 10 — the
+        // number is derived here, once, at the edge. A caller that sets the
+        // amount itself is authoritative and is never overwritten.
+        static::saving(function (self $event) {
+            if (! $event->fee_currency) {
+                $event->fee_currency = $event->tenant?->currency ?: 'BHD';
+            }
+
+            foreach (['participant_fee', 'spectator_fee'] as $column) {
+                $amountColumn = $column.'_amount';
+
+                if ($event->isDirty($column) && ! $event->isDirty($amountColumn)) {
+                    $event->{$amountColumn} = \App\Events\Support\EventFee::parse($event->{$column});
+                }
+            }
+        });
     }
 
     public function getActivitylogOptions(): LogOptions
@@ -75,9 +106,15 @@ class ClubEvent extends Model
         'sport',
         'league',
         'icon',
+        // `*_fee` is the DISPLAY line; `*_fee_amount` + `fee_currency` are the
+        // money. See App\Events\Support\EventFee — nothing computes a price
+        // from the string any more.
         'participant_fee',
+        'participant_fee_amount',
         'spectator_enabled',
         'spectator_fee',
+        'spectator_fee_amount',
+        'fee_currency',
         'prize',
         'results',
         'requirements',
@@ -104,6 +141,8 @@ class ClubEvent extends Model
         'day_courts' => 'array',
         'is_archived' => 'boolean',
         'spectator_enabled' => 'boolean',
+        'participant_fee_amount' => 'decimal:3',
+        'spectator_fee_amount' => 'decimal:3',
         'requirements' => 'array',
         'phases' => 'array',
         'agenda' => 'array',

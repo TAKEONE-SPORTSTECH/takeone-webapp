@@ -113,6 +113,10 @@
 
   @media (prefers-reduced-motion: reduce) { #stage *, #stage { animation:none !important; } }
 </style>
+
+{{-- The winner celebration: one scene shared by every mat of every sport. It
+     brings its own faces, keyframes and painter; this board only calls it. --}}
+<x-winner-celebration font-route="karate-court-display.font" />
 </head>
 <body>
 
@@ -131,7 +135,6 @@
         <div id="sbLogo" style="width:72px;height:72px;border:2px dashed rgba(255,255,255,.3);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:12px;color:#7d8296;text-align:center;line-height:1.2;background-size:cover;background-position:center;">event<br>logo</div>
         <div id="sbTournament" style="font-size:44px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;"></div>
       </div>
-      <div id="sbCategory" style="font-size:38px; font-weight:600; letter-spacing:.14em; color:#ffd666; text-transform:uppercase;"></div>
       <div style="display:flex; align-items:center; gap:36px; font-size:36px; font-weight:700; text-transform:uppercase;">
         <div style="display:flex; align-items:baseline; gap:12px;"><span style="color:#7d8296; font-size:26px; letter-spacing:.18em;">{{ __('event-karate_tournament::messages.court_match') }}</span><span id="sbMatchNo" style="font-family:'Anton',sans-serif;"></span></div>
         <div style="display:flex; align-items:baseline; gap:12px;"><span style="color:#7d8296; font-size:26px; letter-spacing:.18em;">{{ __('event-karate_tournament::messages.sb_tatami') }}</span><span id="sbCourt" style="font-family:'Anton',sans-serif;"></span></div>
@@ -163,6 +166,15 @@
 
       {{-- Clock --}}
       <div style="width:470px; background:#0a0b10; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; position:relative; z-index:2; box-shadow:0 0 80px rgba(0,0,0,.8);">
+        {{-- The weight class, ABOVE the clock and big.
+             It used to be a 38px line in the header strip, sharing that band
+             with the logo, the tournament, the bout number, the mat and the
+             round — which is the one place on this board where nothing is
+             readable from the far side of a hall. It is also the single fact a
+             coach or a spectator looks for first ("is this my division?"), so it
+             now sits in the column everybody is already watching, in the same
+             face as the clock. --}}
+        <div id="sbCategory" style="font-family:'Anton',sans-serif; font-size:84px; line-height:1; letter-spacing:.06em; color:#ffd666; text-transform:uppercase; white-space:nowrap; max-width:440px; text-align:center;"></div>
         <div id="sbTimer" style="font-family:'Anton',sans-serif; font-size:200px; line-height:1; letter-spacing:.02em; font-variant-numeric:tabular-nums; color:#fff;">3:00</div>
         <div style="width:340px; height:10px; background:rgba(255,255,255,.1); border-radius:5px; overflow:hidden;">
           <div id="sbBar" style="height:100%; width:100%; background:#ffd666; border-radius:5px; transition:width .12s linear, background .3s;"></div>
@@ -446,9 +458,125 @@
 
   /* ── The callout: YUKO / WAZA-ARI / IPPON, once, on the scoring side. ──── */
   var lastCallout = 0;
+  /* ── Sound ───────────────────────────────────────────────────────────────
+     What the hall hears: music under the introduction, a sting over the
+     celebration, and a noise per scoring action. Every file is this EVENT's own,
+     fetched through this screen's token — nothing is shipped with the app and
+     nothing is shared between events.
+
+     Three things make this less simple than new Audio().play():
+
+     1. A browser will not play sound before the page has been interacted with,
+        and nobody ever touches a screen on a wall. So a blocked play is expected
+        rather than exceptional: the screen keeps the element, retries on the
+        first touch or keypress it ever gets, and says so quietly in the corner
+        until then. Silence with no explanation is the one outcome an operator
+        cannot diagnose from across a hall.
+     2. A missing slot is normal. An event that uploaded only a celebration track
+        gets a 404 for the other five, and that is not an error to draw.
+     3. Point sounds must not stack. Three points scored in four seconds is three
+        overlapping copies of the same sting otherwise, which is worse than one. */
+  var AUDIO_BASE = @json($audioBase ?? null);
+  var sounds = {}, musicOn = null;
+
+  function sound(slot) {
+    if (!AUDIO_BASE) return null;
+    if (sounds[slot] === undefined) {
+      var a = new Audio(AUDIO_BASE + slot);
+      a.preload = 'auto';
+      // A 404 is the normal answer for a slot nobody uploaded. Remember that,
+      // so the screen asks once and not on every point.
+      a.addEventListener('error', function () { sounds[slot] = null; });
+      sounds[slot] = a;
+    }
+
+    return sounds[slot];
+  }
+
+  /** A one-shot: rewound rather than layered, so rapid points never overlap. */
+  function ping(slot) {
+    var a = sound(slot);
+    if (!a) return;
+
+    try { a.pause(); a.currentTime = 0; } catch (e) {}
+
+    var p = a.play();
+    // Swallowed deliberately: a point that could not be heard is over, and
+    // playing it late would announce the wrong moment.
+    if (p && p.catch) p.catch(function () {});
+  }
+
+  /** Music: at most one track at a time, looping under the screen it belongs to. */
+  function music(slot) {
+    if (musicOn === slot) return;
+
+    if (musicOn && sounds[musicOn]) {
+      try { sounds[musicOn].pause(); sounds[musicOn].currentTime = 0; } catch (e) {}
+    }
+
+    musicOn = slot;
+    if (!slot) return;
+
+    var a = sound(slot);
+    if (!a) { musicOn = null; return; }
+
+    a.loop = true;
+    attempt(a, slot);
+  }
+
+  /**
+   * Try to play, and keep trying.
+   *
+   * A refusal is not always permanent. A kiosk grants autoplay through a
+   * platform setting, and that setting can land a moment AFTER the page has
+   * already tried and been refused — which is exactly what a screen looks like
+   * when it boots straight into an introduction. One retry a second for the
+   * first ten seconds costs nothing and turns "silent all bout" into "silent for
+   * a second", with no human needed.
+   *
+   * Retries stop the moment it plays, when the track is no longer the one
+   * wanted, or after ten seconds — at which point the corner note is the honest
+   * answer and a tap is the only way through.
+   */
+  function attempt(a, slot, tries) {
+    tries = tries || 0;
+
+    var p = a.play();
+
+    if (!p || !p.then) return;
+
+    p.catch(function () {
+       // Still the track this screen wants? A bout may have moved on while we
+       // were being refused, and re-trying a stale one would talk over it.
+       if (musicOn !== slot || tries >= 30) return;
+
+       setTimeout(function () { attempt(a, slot, tries + 1); }, 1000);
+     });
+  }
+
+  // Not the plan, just a free second chance: if this board ever does receive a
+  // tap or a keypress, take it. The kiosks grant autoplay outright (the TV app
+  // through the WebView, the Pi through cog), and the retry loop above covers a
+  // setting that lands late — so nothing on this screen ever ASKS to be touched.
+  ['pointerdown', 'keydown'].forEach(function (evt) {
+    window.addEventListener(evt, function unlock() {
+      window.removeEventListener(evt, unlock);
+      if (musicOn) { var a = sounds[musicOn]; if (a) { var p = a.play(); if (p && p.catch) p.catch(function () {}); } }
+    }, { once: true });
+  });
+
   function callout(ev) {
     if (!ev || ev.ts === lastCallout) return;
     lastCallout = ev.ts;
+
+    // The noise goes with the callout, not with the score changing: the score
+    // is also rewritten by a correction, a reload and a reconnect, and none of
+    // those should make a sound in the hall.
+    ping(ev.penalty ? 'foul' : ('point_' + Math.min(3, Math.max(1, ev.n || 1))));
+
+    // A penalty is heard, not drawn. The board already shows the ladder as chips
+    // beside the score, and a "+0" burst over the mat would say nothing.
+    if (ev.penalty) return;
 
     var host = el('sbCallout');
     var colour = ev.side === 'aka' ? '#ff3b47' : '#4d9aff';
@@ -478,35 +606,42 @@
   }
 
   /* ── The winner stamp, with confetti. ──────────────────────────────────── */
-  function winner(side, name) {
-    var host = el('sbWinner');
-    host.hidden = false;
-    host.textContent = '';
-    var colour = side === 'aka' ? '#b3121f' : '#0d55b8';
-    var palette = ['#ffd666', '#fff', '#ff3b47', '#4d9aff'];
+  @php
+      // Pre-assigned, never inline: Blade's bracket matcher chokes on an array
+      // literal inside @json(), which is documented in CLAUDE.md and which this
+      // view proved the hard way — it took the whole board down with a parse
+      // error rather than failing quietly.
+      $reasonLabels = [
+          'hansoku' => __('event-karate_tournament::messages.end_reason_hansoku'),
+          'shikkaku' => __('event-karate_tournament::messages.end_reason_shikkaku'),
+          'kiken' => __('event-karate_tournament::messages.end_reason_kiken'),
+          'medical' => __('event-karate_tournament::messages.end_reason_medical'),
+          'no_show' => __('event-karate_tournament::messages.end_reason_no_show'),
+          'other' => __('event-karate_tournament::messages.end_reason_other'),
+      ];
+  @endphp
+  var WON_BY = @json(__('event-karate_tournament::messages.sb_won_by'));
+  var REASONS = @json($reasonLabels);
+  var WINNER_LABEL = @json(__('event-karate_tournament::messages.sb_winner'));
 
-    for (var i = 0; i < 34; i++) {
-      var c = document.createElement('div');
-      c.style.cssText = 'position:absolute; left:' + (i * 2.9 % 100) + '%; top:-40px; width:' + (8 + (i % 5) * 3) + 'px;' +
-        'height:' + (18 + (i % 4) * 5) + 'px; background:' + palette[i % 4] + ';' +
-        'transform:rotate(' + (i * 37 % 360) + 'deg);' +
-        'animation:confettiFall ' + (2.4 + (i % 5) * 0.4) + 's ' + ((i % 7) * 0.3) + 's linear infinite;';
-      host.appendChild(c);
-    }
+  /**
+   * The celebration is the shared one — see components/winner-celebration. The
+   * board decides nothing about it beyond who won and what to say about it: the
+   * scene, its colours and its motion are the same on every mat of every sport.
+   */
+  function winner(side, competitor, reason) {
+    var c = competitor || {};
 
-    var stamp = document.createElement('div');
-    stamp.style.cssText = 'position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; flex-direction:column;' +
-      'align-items:center; gap:18px; animation:stampIn .8s cubic-bezier(.2,.8,.2,1) both;';
-    var w = document.createElement('div');
-    w.style.cssText = "font-family:'Barlow Condensed',sans-serif; font-size:44px; font-weight:700; letter-spacing:.5em; color:#ffd666; text-transform:uppercase;";
-    w.textContent = @json(__('event-karate_tournament::messages.sb_winner'));
-    var plate = document.createElement('div');
-    plate.style.cssText = 'background:linear-gradient(135deg,' + colour + ', #000); padding:26px 80px; box-shadow:0 0 120px ' + colour + ';';
-    var n = document.createElement('div');
-    n.style.cssText = "font-family:'Anton',sans-serif; font-size:140px; line-height:1; color:#fff; text-transform:uppercase;";
-    n.textContent = name || '';
-    plate.appendChild(n); stamp.appendChild(w); stamp.appendChild(plate);
-    host.appendChild(stamp);
+    WinnerCelebration.paint(el('sbWinner'), {
+      corner: side === 'aka' ? 'red' : 'blue',
+      name: c.name || '',
+      club: c.club || '',
+      logo: c.logo || null,
+      photo: c.photo || null,
+      label: WINNER_LABEL,
+      // WHY, when it was not the score.
+      note: (reason && reason !== 'points') ? WON_BY.replace(':reason', REASONS[reason] || reason) : ''
+    });
   }
 
   /* ── The introduction ─────────────────────────────────────────────────── */
@@ -566,6 +701,11 @@
       lg.style.backgroundImage = 'url("' + encodeURI(EVENT_LOGO) + '")';
     }
     text('sbCategory', s.division || '');
+    var catEl = el('sbCategory');
+    if (catEl) {
+      var n = (s.division || '').length;
+      catEl.style.fontSize = (n <= 9 ? 84 : n <= 14 ? 64 : n <= 22 ? 46 : 34) + 'px';
+    }
     text('sbMatchNo', s.matchNo || '');
     text('sbCourt', COURT.replace(/[^0-9]/g, '') || COURT);
     text('sbRound', s.stage || '');
@@ -598,22 +738,43 @@
     el('sbAkaWin').hidden = !(s.finished && s.akaLeads);
     el('sbAoWin').hidden = !(s.finished && s.aoLeads);
 
-    if (s.finished && (s.akaLeads || s.aoLeads)) {
-      winner(s.akaLeads ? 'aka' : 'ao', (s.akaLeads ? a.name : b.name));
+    // The stamp follows the scoring table's decision, not just the score: an
+    // official who has put the celebration away has put it away for the hall
+    // too. The winner's border glow above stays either way — the bout IS won,
+    // and the wall should still say by whom.
+    if (s.finished && (s.akaLeads || s.aoLeads) && !s.celebrationClosed) {
+      winner(s.akaLeads ? 'aka' : 'ao', s.akaLeads ? a : b, s.winReason);
+      // Over the confetti, and looping until the celebration is put away or the
+      // next bout walks on. Closing it at the scoring table stops the music in
+      // the hall too, which is the whole point of that button.
+      music('winner_music');
     } else {
-      el('sbWinner').hidden = true;
-      el('sbWinner').textContent = '';
+      WinnerCelebration.clear(el('sbWinner'));
+      if (musicOn === 'winner_music') music(null);
     }
 
     callout(s.lastEvent);
   }
 
   /* ── The contract ─────────────────────────────────────────────────────── */
-  var mode = null;
+  var mode = null, primed = false;
   function update(state) {
     if (!state || typeof state !== 'object') return;
     S = state;
     received = performance.now();
+
+    // The FIRST state a screen is handed is history, not news.
+    //
+    // A board reloads for all sorts of reasons — a resync from the table, an
+    // uploaded sound, a dropped link coming back — and the state it wakes up to
+    // still carries whatever point was scored last. Announcing it would fire the
+    // callout and, now that there is sound, replay the point noise over a hall
+    // for something that happened ten minutes ago. So the first update adopts
+    // the last event as already-seen and says nothing about it.
+    if (!primed) {
+      primed = true;
+      if (state.lastEvent && state.lastEvent.ts) lastCallout = state.lastEvent.ts;
+    }
 
     if (state.mode === 'vs' || state.mode === 'scoreboard') {
       paintVs(state);
@@ -628,14 +789,20 @@
       el('sb').hidden = mode !== 'scoreboard';
 
       if (mode === 'vs') {
+        // The introduction has its own music, looping under it until the mat
+        // moves on. Whatever is playing stops first — one track at a time.
+        music('vs_music');
         el('vs').hidden = false;
         el('vs').style.animation = '';
       } else if (wasVs && mode === 'scoreboard') {
         // The handover: the introduction wipes itself off the scoreboard that
-        // is already drawn behind it, rather than the page changing.
+        // is already drawn behind it, rather than the page changing. Its music
+        // goes with it — a bout is scored in silence unless something happens.
+        music(null);
         el('vs').style.animation = 'vsExit .55s cubic-bezier(.4,0,1,1) both';
         setTimeout(function () { if (mode !== 'vs') el('vs').hidden = true; }, 560);
       } else {
+        music(null);
         el('vs').hidden = true;
       }
 
@@ -667,14 +834,20 @@
   // The same beat the queue board sends, for the same two reasons: the
   // organiser's console cannot otherwise tell a mat that is running from one
   // that was unplugged, and a screen that has been unpaired needs to notice by
-  // itself and go back to its code. Once a minute — a twelfth of the pairing
-  // screen's poll, which is already considered acceptable on a metered link.
+  // itself and go back to its code.
+  //
+  // Five seconds, not the minute this used to be. The minute was sized on the
+  // assumption that the realtime push always arrives first and this is only a
+  // safety net — but when the push does not arrive (a WebView that cannot run
+  // the client in a Worker, a venue that blocks websockets) the safety net IS
+  // the experience, and unpairing a screen took two minutes to show. Twelve
+  // requests a minute against a one-field endpoint is nothing next to that.
   setInterval(function () {
     fetch(@json($statusUrl), { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (s) { if (s && s.claimed === false) window.location.reload(); })
       .catch(function () { /* offline — keep the bout on screen */ });
-  }, 60000);
+  }, 5000);
 @endisset
 })();
 </script>

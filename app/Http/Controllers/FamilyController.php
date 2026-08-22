@@ -149,6 +149,11 @@ class FamilyController extends Controller
 
         // Pass user directly and a flag to indicate it's the current user's profile
         return view('family.show', [
+            // What the platform already knows about this member's clubs and
+            // events — the two tabs otherwise show only what they typed in
+            // themselves. Read-only, de-duplicated against the self-reported rows.
+            'derivedAffiliations' => app(\App\Support\ProfileHistory::class)->derivedAffiliations($user),
+            'derivedTournaments'  => app(\App\Support\ProfileHistory::class)->derivedTournaments($user),
             'relationship' => (object) [
                 'dependent' => $user,
                 'relationship_type' => 'self',
@@ -666,6 +671,11 @@ class FamilyController extends Controller
         })->filter()->unique('id')->count();
 
         return view('family.show', [
+            // What the platform already knows about this member's clubs and
+            // events — the two tabs otherwise show only what they typed in
+            // themselves. Read-only, de-duplicated against the self-reported rows.
+            'derivedAffiliations' => app(\App\Support\ProfileHistory::class)->derivedAffiliations($relationship->dependent),
+            'derivedTournaments'  => app(\App\Support\ProfileHistory::class)->derivedTournaments($relationship->dependent),
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,
@@ -795,17 +805,26 @@ class FamilyController extends Controller
             'number' => $validated['mobile'] ?? null,
         ];
 
+        /*
+         * Absent means "leave it alone"; blank means "clear it".
+         *
+         * Now that these three are optional, reading them unconditionally would let
+         * a caller that simply omits a field wipe a value that was already on file —
+         * a 422 used to prevent that by accident. The modal always posts all three,
+         * so a blank one is a deliberate clear; anything that does not post them at
+         * all leaves them untouched.
+         */
+        $optional = [];
+        foreach (['gender', 'birthdate', 'nationality', 'email', 'blood_type', 'motto', 'marital_status'] as $field) {
+            if ($request->has($field)) {
+                $optional[$field] = $validated[$field] ?? null;
+            }
+        }
+
         $dependent->update([
             'full_name' => $validated['full_name'],
-            'email' => $validated['email'],
             'mobile' => $mobile,
-            'gender' => $validated['gender'],
-            'marital_status' => $validated['marital_status'] ?? null,
-            'birthdate' => $validated['birthdate'],
-            'blood_type' => $validated['blood_type'],
-            'nationality' => $validated['nationality'],
             'social_links' => $socialLinks,
-            'motto' => $validated['motto'],
             'profile_picture_is_public' => $request->has('profile_picture_is_public') ? true : false,
         ]);
 

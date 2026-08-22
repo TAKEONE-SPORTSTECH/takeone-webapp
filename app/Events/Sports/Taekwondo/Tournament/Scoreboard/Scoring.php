@@ -3,6 +3,7 @@
 namespace App\Events\Sports\Taekwondo\Tournament\Scoreboard;
 
 use App\Events\EventTypeRegistry;
+use App\Events\Support\MatchEventLog;
 use App\Events\Sports\Taekwondo\Tournament\RunningOrder;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
@@ -140,6 +141,27 @@ class Scoring
             default => null,
         };
 
+        // Append the command to the officiating timeline, after the dispatch
+        // above has mutated the state and before it is saved — so the scores
+        // recorded are the running totals as of this command, and no caller
+        // can reach the scoreboard without passing through here.
+        //
+        // Corners are handed over as neutral sides: aka is 'a', ao is 'b',
+        // exactly as load() built them from the bout's a_/b_ columns.
+        //
+        // This call cannot throw; see MatchEventLog. A mat must never stop
+        // because an audit row did not insert.
+        MatchEventLog::record(
+            event: $event,
+            court: $court,
+            sport: 'taekwondo',
+            command: $command,
+            payload: $payload,
+            matchId: $state->matchId,
+            scoreA: $state->akaScore,
+            scoreB: $state->aoScore,
+        );
+
         return $state->save($event, $court);
     }
 
@@ -225,7 +247,9 @@ class Scoring
             ->with(['user:id,full_name,name,gender,birthdate,nationality,height_cm,profile_picture,profile_picture_is_public',
                 'user.certifications:id,user_id,title,issue_date',
                 'user.skillAcquisitions:id,user_id,proficiency_level,start_date',
-                'user.memberClubs:id,club_name,logo,country'])
+                'user.memberClubs:id,club_name,logo,country',
+                // The club they compete FOR, which is what the screens print.
+                'representingTenant:id,club_name,logo,country'])
             ->get()->keyBy('id');
     }
 
@@ -332,14 +356,17 @@ class Scoring
         $id = $match->{$side.'_competitor_id'};
         $reg = $id ? $registrations->get($id) : null;
         $user = $reg?->user;
-        $club = $user?->memberClubs->first();
+        // The club they COMPETE FOR — see ClubEventRegistration::competingClub().
+        $club = $reg?->competingClub();
         $belt = $user ? $this->belts->for($user, $reg) : null;
 
         return [
             'name' => $match->{$side.'_name'} ?: ($user?->full_name ?? $user?->name ?? ''),
             'club' => $club?->club_name ?? '',
-            'country' => $user?->nationality ?: ($match->{$side.'_country'} ?: ''),
-            'flag' => strtolower((string) ($match->{$side.'_country'} ?: $user?->nationality ?: $club?->country ?: '')) ?: null,
+            // The club's country, never the person's passport: they are here
+            // as their club, and that is what the hall is told.
+            'country' => $club?->country ?: ($match->{$side.'_country'} ?: ''),
+            'flag' => strtolower((string) ($match->{$side.'_country'} ?: $club?->country ?: '')) ?: null,
             // Same resolver as the picture: the crest an official supplied for
             // this event first, then one supplied for this club anywhere in it,
             // then the club's own logo.

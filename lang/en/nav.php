@@ -250,4 +250,5 @@ return [
     'partials_mobile_chat_unblock' => 'Unblock',
     'partials_mobile_chat_view_profile' => 'View profile',
     'partials_mobile_chat_you_prefix' => 'You:',
+    'layouts_admin_nav_error_log' => 'Error log',
 ];

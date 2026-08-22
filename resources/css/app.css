@@ -3743,3 +3743,16 @@ html[dir="rtl"] :is(
     padding-right: 2.5rem;
     text-overflow: ellipsis;
 }
+
+/* The draw/bracket icon always reads sideways.
+   `bi-diagram-3` is drawn as a top-down org chart, but a knockout bracket runs
+   left-to-right, so wherever the icon stands for a DRAW or a BRACKET it is turned
+   a quarter turn clockwise. Add `bracket-icon` alongside the `bi-diagram-3` /
+   `bi-diagram-3-fill` class — never to the family-tree, business-chain, roles or
+   affiliation uses of the same glyph, which stay upright.
+   `inline-block` is required: a bare <i> is an inline box and CSS transforms do
+   not apply to those, so the rotation would silently do nothing. */
+.bracket-icon {
+    display: inline-block;
+    transform: rotate(90deg);
+}

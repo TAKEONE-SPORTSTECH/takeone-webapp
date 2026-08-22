@@ -9,6 +9,7 @@ use App\Models\ClubEvent;
 use App\Models\EventMatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -188,6 +189,19 @@ class CourtDisplayController extends Controller
                 // The host club's crest fills the design's dashed logo box.
                 'eventLogo' => $device->event->tenant?->logo
                     ? asset('storage/'.$device->event->tenant->logo) : null,
+                // Where this screen fetches what it plays: the PREFIX, with the
+                // page appending a slot the first time it needs one and
+                // remembering a 404 as "this event did not upload that".
+                //
+                // Built by generating a real url and trimming the slot off it,
+                // rather than interpolating a ':slot' placeholder — the route
+                // constrains that segment, so a placeholder that is not a legal
+                // slot makes route() throw, and it threw while rendering the
+                // BOARD. A screen 500ing because of the audio it might play is
+                // exactly the wrong failure.
+                'audioBase' => \Illuminate\Support\Str::beforeLast(
+                    route('karate-court-display.audio', [$token, 'x'], false), 'x'
+                ),
             ]);
         }
 
@@ -621,6 +635,39 @@ class CourtDisplayController extends Controller
      * then resolved with basename(): the path is built by us, never by the
      * request, so no traversal input can reach the filesystem.
      */
+    /**
+     * A sound this screen plays: the introduction music, the celebration, or the
+     * noise a point makes.
+     *
+     * Authorised by the screen's own TOKEN, like everything else a board fetches.
+     * A hall screen has nobody signed in to it, and the alternative — putting
+     * event audio in the web root — would publish every club's licensed music to
+     * anyone who guessed a filename.
+     *
+     * The slot is whitelisted inside ScreenMedia, so no arrangement of characters
+     * in the URL becomes a path. Streamed rather than downloaded: a screen plays
+     * it, it does not save it.
+     */
+    public function audio(string $token, string $slot)
+    {
+        $device = CourtDisplayDevice::resolve($token);
+
+        abort_unless($device && $device->event, 404);
+
+        $media = \App\Events\Support\ScreenMedia::slot($device->event, $slot);
+
+        // Nothing uploaded for this slot is a 404, not an error: the board asks
+        // for all six on load and plays the ones that answer.
+        abort_unless($media && $media->exists(), 404);
+
+        return Storage::disk($media->disk)->response($media->path, null, [
+            'Content-Type' => $media->mime ?: 'audio/mpeg',
+            // A track does not change under a given path — the path is
+            // regenerated on every upload — so a screen may hold it all day.
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+
     public function font(string $file): BinaryFileResponse
     {
         abort_unless(preg_match('/^[a-z0-9-]+\.woff2$/', $file), 404);

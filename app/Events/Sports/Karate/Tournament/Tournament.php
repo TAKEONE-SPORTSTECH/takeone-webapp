@@ -141,6 +141,30 @@ class Tournament extends AbstractEventType
     }
 
     /**
+     * Place an entrant the club entered before anyone knew their weight.
+     *
+     * The official weight from the scale is what classifies them — the same
+     * routing self-entry uses, run again with a number nobody had at entry time.
+     * An entry that ALREADY has a division is left alone: re-cutting a drawn
+     * competitor into another division on a weigh-in is an organiser's decision,
+     * not a side effect of the desk.
+     */
+    public function classifyEntry(ClubEvent $event, ClubEventRegistration $registration): ?EventCategory
+    {
+        if ($registration->category_id || ! $registration->user || ! $registration->weight) {
+            return null;
+        }
+
+        $division = $this->enrolment()->resolveDivision($event, $registration->user, (float) $registration->weight);
+
+        if ($division) {
+            $registration->update(['category_id' => $division->id]);
+        }
+
+        return $division;
+    }
+
+    /**
      * Keep the provisional draw in step with the entrant set. Before the event
      * starts the bracket is rebuilt as competitors join or are removed; once it
      * starts the paid-and-weighed-in draw is locked and never re-cut.

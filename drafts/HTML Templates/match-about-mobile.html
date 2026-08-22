@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match Summary — Mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0f0f0f; font-family: 'Barlow Condensed', sans-serif; padding: 16px; }
+  .match-card-m a { text-decoration: none; transition: color .15s; }
+  .match-card-m a:hover { color: #ffd75e !important; }
+  .match-card-m img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  @property --orbit { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+  @keyframes winner-orbit { to { --orbit: 360deg; } }
+  .winner-frame { position: relative; isolation: isolate; padding: .9cqw; border-radius: 2.6cqw; }
+  .winner-frame::before {
+    content: ''; position: absolute; inset: 0; border-radius: 2.6cqw; z-index: 0;
+    padding: .9cqw; box-sizing: border-box;
+    background: conic-gradient(from var(--orbit), rgba(255,215,94,.15) 0 62%, #ffd75e 78%, #fff 85%, #ffd75e 92%, rgba(255,215,94,.15) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: winner-orbit 2.2s linear infinite;
+    filter: drop-shadow(0 0 1.2cqw rgba(255,215,94,.8));
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== MATCH ABOUT CARD — MOBILE (copy from here) ===== -->
+<div class="match-card-m" style="container-type: inline-size; width: 100%; max-width: 430px; margin: 0 auto;">
+  <div style="position: relative; width: 100%; background: #17171a; border: 1px solid #2a2a2e; border-radius: 3.2cqw; overflow: hidden; color: #eaeaea; display: flex; flex-direction: column;">
+    <div style="position: absolute; top: 0; left: 0; right: 50%; height: 1cqw; background: #e01a2b;"></div>
+    <div style="position: absolute; top: 0; left: 50%; right: 0; height: 1cqw; background: #1e46e0;"></div>
+
+    <!-- header -->
+    <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.4cqw; padding: 5cqw 5.5cqw 0;">
+      <a href="/event/national-team-selection-trials" style="font-family: 'Archivo Black', sans-serif; font-size: 5.2cqw; line-height: 1.1; letter-spacing: .2cqw; color: #fff;">NATIONAL TEAM SELECTION TRIALS</a>
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2cqw; font-size: 3.2cqw; font-weight: 600; letter-spacing: .4cqw; text-transform: uppercase; color: #9a9aa0;">
+        <a href="/event/discipline/kumite" style="color: #9a9aa0;">Karate</a><span>·</span>
+        <a href="/event/finals" style="color: #ffd75e;">Finals · −61 kg</a><span>·</span>
+        <a href="/event/match-12" style="color: #9a9aa0;">Match #12 · Court 1</a>
+      </div>
+      <div style="display: flex; gap: 2cqw; font-size: 3.2cqw; font-weight: 600; letter-spacing: .3cqw; text-transform: uppercase;">
+        <a href="/event/schedule/aug-08-2026" style="color: #d9d9d9;">Aug 08, 2026 · 18:30</a><span style="color: #55555c;">·</span>
+        <a href="/venue/manama-bahrain" style="color: #9a9aa0;">Manama, Bahrain</a>
+      </div>
+    </div>
+
+    <!-- fighters side by side -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4cqw; padding: 4.5cqw 5.5cqw 3cqw; align-items: start;">
+      <a href="/athlete/fawzia-abdulla" style="display: flex; flex-direction: column; align-items: center; gap: 1.6cqw; text-align: center; min-width: 0; color: #eaeaea;">
+        <span class="winner-frame"><span style="position: relative; z-index: 1; display: block; width: 22cqw; height: 26cqw; border-radius: 2cqw; overflow: hidden; background: #1f1f23; border: .6cqw solid #e01a2b;"><img src="fighter-red.jpg" alt="Fawzia Abdulla"></span></span>
+        <span style="display: flex; align-items: center; gap: 1.4cqw; font-size: 2.8cqw; font-weight: 700; letter-spacing: .4cqw; color: #ff5c6a;">AKA <span style="font-size: 3.4cqw;">🇧🇭</span></span>
+        <span style="font-family: 'Archivo Black', sans-serif; font-size: 4.6cqw; line-height: 1.05; color: #fff; min-height: 9.7cqw; display: flex; align-items: center; justify-content: center;">FAWZIA<br>ABDULLA</span>
+        <span style="display: flex; align-items: center; justify-content: center; gap: 1.4cqw; font-size: 2.9cqw; font-weight: 600; letter-spacing: .25cqw; text-transform: uppercase; color: #9a9aa0;">
+          <span style="width: 5cqw; height: 5cqw; flex: none; border-radius: 50%; overflow: hidden; background: #1f1f23;"><img src="logo-sparta-warrior.png" alt="Sparta Warrior"></span>
+          Sparta Warrior
+        </span>
+      </a>
+      <a href="/athlete/sharifa-sanad" style="display: flex; flex-direction: column; align-items: center; gap: 1.6cqw; text-align: center; min-width: 0; color: #eaeaea;">
+        <span style="padding: .9cqw; border-radius: 2.6cqw;"><span style="display: block; width: 22cqw; height: 26cqw; border-radius: 2cqw; overflow: hidden; background: #1f1f23; border: .6cqw solid #1e46e0;"><img src="fighter-blue.jpg" alt="Sharifa Sanad"></span></span>
+        <span style="display: flex; align-items: center; gap: 1.4cqw; font-size: 2.8cqw; font-weight: 700; letter-spacing: .4cqw; color: #6f8cff;">AO <span style="font-size: 3.4cqw;">🇧🇭</span></span>
+        <span style="font-family: 'Archivo Black', sans-serif; font-size: 4.6cqw; line-height: 1.05; color: #fff; min-height: 9.7cqw; display: flex; align-items: center; justify-content: center;">SHARIFA<br>SANAD</span>
+        <span style="display: flex; align-items: center; justify-content: center; gap: 1.4cqw; font-size: 2.9cqw; font-weight: 600; letter-spacing: .25cqw; text-transform: uppercase; color: #9a9aa0;">
+          Al Hala Karate Club
+          <span style="width: 5cqw; height: 5cqw; flex: none; border-radius: 50%; overflow: hidden; background: #1f1f23;"><img src="logo-al-hala.png" alt="Al Hala Karate Club"></span>
+        </span>
+      </a>
+    </div>
+
+    <!-- score below -->
+    <a href="/event/match-12/score" style="display: flex; align-items: center; gap: 3.5cqw; padding: 0 5.5cqw 4cqw; color: #eaeaea;">
+      <span style="flex: 1; height: 1px; background: #2a2a2e;"></span>
+      <span style="display: flex; flex-direction: column; align-items: center; gap: .4cqw;">
+        <span style="font-size: 2.8cqw; font-weight: 700; letter-spacing: 1cqw; color: #9a9aa0;">FINAL</span>
+        <span style="display: flex; align-items: baseline; gap: 1.8cqw; font-family: 'Archivo Black', sans-serif;">
+          <span style="font-size: 10cqw; color: #ff5c6a;">5</span>
+          <span style="font-size: 4.5cqw; color: #55555c;">–</span>
+          <span style="font-size: 10cqw; color: #6f8cff;">3</span>
+        </span>
+      </span>
+      <span style="flex: 1; height: 1px; background: #2a2a2e;"></span>
+    </a>
+
+    <!-- footer -->
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 3cqw; padding: 3.5cqw 5.5cqw; border-top: 1px solid #2a2a2e;">
+      <a href="/official/anoj-kr-mahadwa-k" style="display: flex; align-items: center; gap: 2.2cqw; color: #eaeaea;">
+        <span style="width: 7.5cqw; height: 7.5cqw; flex: none; border-radius: 50%; overflow: hidden; background: #1f1f23;"><img src="referee.jpg" alt="Referee"></span>
+        <span style="display: flex; flex-direction: column; gap: .3cqw;">
+          <span style="font-size: 2.4cqw; font-weight: 700; letter-spacing: .8cqw; color: #9a9aa0;">REFEREE</span>
+          <span style="font-size: 3.6cqw; font-weight: 700; line-height: 1; color: #d9d9d9;">Anoj K.R — Mahadwa K <span style="font-size: 3cqw;">🇮🇳</span></span>
+        </span>
+      </a>
+      <a href="/event/national-team-selection-trials" style="font-size: 3cqw; font-weight: 600; letter-spacing: .4cqw; text-transform: uppercase; color: #9a9aa0; text-align: right;">FULL EVENT RESULTS →</a>
+    </div>
+  </div>
+</div>
+<!-- ===== end mobile card ===== -->
+
+</body>
+</html>

@@ -182,7 +182,16 @@
                         const d = await this.send(`{{ url('me/events/'.$e['key'].'/verify') }}/${g.reg_id}/weigh-in`, body);
                         g.weight = d.weight; g.weigh_verified = true;
                         if (d.belt !== undefined) g.belt = d.belt;
-                        window.showToast('success', d.message);
+
+                        {{-- An athlete their club entered before anyone had a
+                             weight for them is placed by THIS scale. Show the
+                             division on the sheet straight away — and warn,
+                             rather than congratulate, when the weight fits no
+                             division this event is running. --}}
+                        if (d.division) {
+                            g.meta = [g.meta, d.division].filter(Boolean).join(' · ');
+                        }
+                        window.showToast(d.unplaced ? 'warning' : 'success', d.message);
                     } catch (e) { window.showToast('error', e.message); }
                     finally { this.busy = null; }
                 },

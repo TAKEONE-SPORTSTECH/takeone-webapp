@@ -904,4 +904,7 @@ return [
     'schedule_session_modal_intensity_low' => 'Low',
     'schedule_session_modal_intensity_moderate' => 'Moderate',
     'schedule_session_modal_intensity_high' => 'High',
+    'share'            => 'Share',
+    'link_copied'      => 'Link copied',
+    'something_went_wrong' => 'Something went wrong',
 ];

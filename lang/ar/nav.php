@@ -250,4 +250,5 @@ return [
     'partials_mobile_chat_unblock' => 'إلغاء الحظر',
     'partials_mobile_chat_view_profile' => 'عرض الملف الشخصي',
     'partials_mobile_chat_you_prefix' => 'أنت:',
+    'layouts_admin_nav_error_log' => 'سجل الأخطاء',
 ];

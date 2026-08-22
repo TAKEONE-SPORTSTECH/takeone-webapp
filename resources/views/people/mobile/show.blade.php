@@ -3,258 +3,465 @@
 @section('hide-navbar', true)
 @section('title', $person->full_name)
 
-@section('content')
-@php
-    $avatar = $person->profile_picture ? asset('storage/'.$person->profile_picture).'?v='.optional($person->updated_at)->timestamp : null;
-@endphp
-<div class="min-h-screen bg-background pb-20" x-data="{ following: {{ $isFollowing ? 'true' : 'false' }} }">
+{{--
+    Public athlete profile — mobile.
 
-    {{-- Glass back bar, floating over the hero (same treatment as the member profile). --}}
-    <div class="fixed top-0 inset-x-0 z-50 flex items-center px-3 h-14">
-        <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.people') }}')"
-                class="m-press w-10 h-10 rounded-full bg-white/20 backdrop-blur border border-white/30 flex items-center justify-center text-white"
-                aria-label="{{ __('shared.back') }}">
-            <i class="bi bi-arrow-left text-lg"></i>
-        </button>
-    </div>
+    The whole page is one Alpine scope with four exchangeable panels. The stat
+    row IS the tab bar: every headline number on the profile opens the list that
+    produced it, so a reader never sees a figure they cannot go behind. The hero
+    tally chips are the same idea one level deeper — tapping "gold" opens Honours
+    already filtered to gold.
+
+    Styling is deliberately inline and self-contained rather than drawn from the
+    shared mobile card tokens: this screen is its own art direction, and pinning
+    the exact values here means a later change to the shared tokens cannot
+    silently redraw it.
+--}}
+
+@php
+    $avatar = $person->profile_picture
+        ? asset('storage/'.$person->profile_picture).'?v='.optional($person->updated_at)->timestamp
+        : null;
+
+    $age = $person->birthdate ? \Illuminate\Support\Carbon::parse($person->birthdate)->age : null;
+
+    // "Verified" under the portrait means a club has attested something on this
+    // profile — never merely that the account exists.
+    $isAttested = $verifiedMedals->isNotEmpty()
+        || $activeAffil->contains(fn ($a) => ($a->verification_status ?? null) === 'verified');
+
+    $flag = $countryCode ? mb_strtolower($countryCode) : null;
+
+    $tiers = [
+        ['key' => 'gold',   'label' => __('personal.honour_gold'),      'count' => $honourTally['gold'],   'ring' => '#e0a300', 'face' => '#ffcb3d', 'ink' => '#7a5200', 'ribbon' => '#5b9bd5', 'ribbonDark' => '#3f7fb8', 'num' => 1],
+        ['key' => 'silver', 'label' => __('personal.honour_silver'),    'count' => $honourTally['silver'], 'ring' => '#9aa4b4', 'face' => '#dfe5ec', 'ink' => '#4d5666', 'ribbon' => '#7f8b9c', 'ribbonDark' => '#67717f', 'num' => 2],
+        ['key' => 'bronze', 'label' => __('personal.honour_bronze'),    'count' => $honourTally['bronze'], 'ring' => '#a9662f', 'face' => '#e08d4d', 'ink' => '#5f3413', 'ribbon' => '#c07a3c', 'ribbonDark' => '#9c5e2a', 'num' => 3],
+    ];
+
+    $tones = [
+        'gold'   => ['#fff5da', '#b58500'],
+        'silver' => ['#f2f4f7', '#7d8794'],
+        'bronze' => ['#fdefe4', '#a4693a'],
+        'trophy' => ['#f2effe', '#6d4bd8'],
+    ];
+
+    $glassBtn = 'width:38px;height:38px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.16);backdrop-filter:blur(8px);border-radius:50%;color:#fff;display:grid;place-items:center;cursor:pointer;transition:transform .16s cubic-bezier(.22,.61,.36,1),background .16s ease';
+    $card = 'background:#fff;border-radius:18px;box-shadow:0 6px 20px rgba(28,16,72,.07)';
+    $chipMeta = 'display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:8px;padding:5px 9px';
+@endphp
+
+@section('content')
+<style>
+    .prof-page a { color: #6d4bd8; text-decoration: none; }
+    @keyframes profFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes profRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+    @keyframes profPop  { 0% { opacity: 0; transform: scale(.86); } 60% { transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes profDrift { 0%, 100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(-14px,12px,0) scale(1.08); } }
+    .prof-rise { animation: profRise .5s cubic-bezier(.22,.61,.36,1) both; }
+    .prof-fade { animation: profFade .28s ease-out both; }
+    .prof-row  { animation: profRise .42s cubic-bezier(.22,.61,.36,1) both; transition: transform .2s ease, box-shadow .2s ease; }
+    .prof-row:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(28,16,72,.13); }
+    .prof-press:active { transform: scale(.94); }
+    /* Panels toggled by x-show take their display from a class, never from an inline
+       style: Alpine shows an element by writing style.display = '', which would erase
+       an inline display:flex and collapse the layout. */
+    .prof-stack { display: flex; flex-direction: column; gap: 10px; }
+    .prof-stack-lg { display: flex; flex-direction: column; gap: 12px; }
+    .prof-line { display: flex; align-items: center; gap: 12px; }
+    .prof-chip { display: flex; align-items: center; gap: 6px; }
+    .prof-col { display: flex; flex-direction: column; }
+    @media (prefers-reduced-motion: reduce) {
+        .prof-page *, .prof-page *::before, .prof-page *::after { animation: none !important; transition: none !important; }
+    }
+</style>
+
+<div class="prof-page"
+     style="max-width:430px;margin:0 auto;background:#f4f5f9;min-height:100vh;padding-bottom:28px;color:#1c1c28"
+     x-data="{
+        tab: 'record',
+        honour: 'all',
+        following: {{ $isFollowing ? 'true' : 'false' }},
+        photos: false,
+        open(tab, honour = 'all') { this.tab = tab; this.honour = honour; },
+        toggleFollow() {
+            const was = this.following;
+            this.following = !was;
+            fetch('{{ url('u') }}/{{ $person->slug }}/follow', {
+                method: was ? 'DELETE' : 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content,
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            }).then(r => { if (! r.ok) throw r; })
+              .catch(() => { this.following = was; window.showToast && window.showToast('error', @js(__('shared.something_went_wrong'))); });
+        },
+        share() {
+            const url = window.location.href;
+            if (navigator.share) { navigator.share({ title: @js($person->full_name), url }).catch(() => {}); return; }
+            navigator.clipboard?.writeText(url)
+                .then(() => window.showToast && window.showToast('success', @js(__('shared.link_copied'))))
+                .catch(() => {});
+        },
+     }">
+
+    {{-- ===== Portrait lightbox — teleported so the mobile shell's transformed
+         wrapper cannot become its containing block and clip it. ===== --}}
+    @if($avatar)
+        <template x-teleport="body">
+            <div x-show="photos" x-cloak x-transition.opacity.duration.180ms
+                 @keydown.escape.window="photos = false"
+                 class="prof-col" style="position:fixed;inset:0;z-index:70;max-width:430px;margin:0 auto;background:rgba(9,5,22,.94)">
+                <div style="display:flex;align-items:center;justify-content:flex-end;padding:calc(env(safe-area-inset-top) + 12px) 14px 10px">
+                    <button type="button" @click="photos = false" class="prof-press"
+                            style="width:40px;height:40px;border:0;background:rgba(255,255,255,.14);border-radius:50%;color:#fff;font-size:16px;display:grid;place-items:center;cursor:pointer;transition:transform .16s cubic-bezier(.22,.61,.36,1)"
+                            aria-label="{{ __('shared.close') }}"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div @click="photos = false" style="flex:1;min-height:0;overflow:hidden;padding:0 12px 30px">
+                    <div style="width:100%;height:100%;border-radius:14px;background:url('{{ $avatar }}') center/contain no-repeat"></div>
+                </div>
+            </div>
+        </template>
+    @endif
 
     {{-- ===== Hero ===== --}}
-    <header class="m-hero relative px-5 pt-20 pb-14 text-white text-center">
-        <div class="relative z-10">
-            <span class="w-28 h-[149px] mx-auto rounded-[22px] overflow-hidden grid place-items-center ring-4 ring-white/25 shadow-xl block">
+    <div style="position:relative;background:linear-gradient(165deg,#8f70f6 0%,#6d4bd8 58%,#5834bd 100%);padding:calc(env(safe-area-inset-top) + 14px) 20px 68px;color:#fff;overflow:hidden">
+        <div style="position:absolute;top:-90px;right:-70px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.10);animation:profDrift 14s ease-in-out infinite"></div>
+        <div style="position:absolute;bottom:-120px;left:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07);animation:profDrift 18s ease-in-out infinite reverse"></div>
+
+        <div style="position:relative;display:flex;align-items:center;justify-content:space-between">
+            <button type="button" class="prof-press"
+                    onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.people') }}')"
+                    style="{{ $glassBtn }};font-size:17px" aria-label="{{ __('shared.back') }}"><i class="bi bi-arrow-left rtl:rotate-180"></i></button>
+            <button type="button" class="prof-press" @click="share()"
+                    style="{{ $glassBtn }};font-size:15px" aria-label="{{ __('shared.share') }}"><i class="bi bi-share"></i></button>
+        </div>
+
+        <div class="prof-rise" style="position:relative;display:flex;gap:16px;align-items:stretch;margin-top:18px">
+            <div style="position:relative;flex-shrink:0">
                 @if($avatar)
-                    <img src="{{ $avatar }}" alt="{{ $person->full_name }}" class="w-28 h-[149px] object-cover">
+                    <img @click="photos = true" src="{{ $avatar }}" alt="{{ $person->full_name }}"
+                         style="width:104px;height:128px;object-fit:cover;border-radius:18px;box-shadow:0 12px 28px rgba(20,10,60,.32);outline:3px solid rgba(255,255,255,.30);cursor:zoom-in;animation:profPop .55s cubic-bezier(.22,.61,.36,1) both;display:block">
                 @else
-                    <x-gender-avatar :gender="$person->gender" class="w-28 h-[149px]" />
-                @endif
-            </span>
-
-            <h1 class="mt-3.5 text-2xl font-extrabold leading-tight">{{ $person->full_name }}</h1>
-
-            <div class="mt-2 flex items-center gap-2 flex-wrap justify-center">
-                @if($person->is_personal_trainer)
-                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/20 backdrop-blur border border-white/25">
-                        <i class="bi bi-mortarboard-fill"></i>{{ __('personal.people_trainer') }}
+                    <span style="display:block;width:104px;height:128px;border-radius:18px;overflow:hidden;box-shadow:0 12px 28px rgba(20,10,60,.32);outline:3px solid rgba(255,255,255,.30);animation:profPop .55s cubic-bezier(.22,.61,.36,1) both">
+                        <x-gender-avatar :gender="$person->gender" class="w-full h-full" />
                     </span>
                 @endif
-                <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full bg-white/10 text-white/85">
-                    <i class="bi bi-calendar3"></i>{{ __('personal.member_since') }} {{ optional($person->created_at)->format('M Y') }}
-                </span>
+
+                @if($isAttested)
+                    <span style="position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:#fff;color:#5834bd;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:999px;box-shadow:0 4px 12px rgba(20,10,60,.22);white-space:nowrap">
+                        <i class="bi bi-patch-check-fill" style="font-size:11px"></i>{{ __('personal.verified_badge') }}
+                    </span>
+                @endif
             </div>
 
-            {{-- Actions --}}
-            <div class="mt-5 flex items-center justify-center gap-2">
-                <button type="button" @click="
-                        const was = following; following = !was;
-                        fetch('{{ url('u') }}/{{ $person->slug }}/follow', { method: was ? 'DELETE' : 'POST', headers: { 'X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content,'Accept':'application/json' }, credentials:'same-origin' }).then(r=>{if(!r.ok)throw r}).catch(()=>{ following = was; window.showToast && window.showToast('error','Could not update'); });"
-                        class="m-press min-w-[7.5rem] text-sm font-bold py-2.5 px-5 rounded-full transition-colors shadow-sm"
-                        :class="following ? 'bg-white/20 backdrop-blur border border-white/30 text-white' : 'bg-white text-primary'"
-                        x-text="following ? '{{ __('personal.following') }}' : '{{ __('personal.follow') }}'"></button>
+            <div style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:6px;padding:2px 0 4px">
+                <p style="margin:0;display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.2;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.78);white-space:nowrap">
+                    @if($flag)
+                        <span class="fi fi-{{ $flag }}" style="flex-shrink:0;width:22px;height:16px;border-radius:3px;background-size:cover;box-shadow:0 0 0 1px rgba(255,255,255,.35)"></span>
+                    @endif
+                    {{ $person->is_personal_trainer ? __('personal.people_trainer') : __('personal.profile_eyebrow') }}
+                </p>
+
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                    @if($person->gender === 'Female' || $person->gender === 'Male')
+                        @php $isF = $person->gender === 'Female'; @endphp
+                        <svg viewBox="4 -3 26 52" width="12.5" height="25" fill="none" style="flex-shrink:0;display:block;overflow:visible" aria-label="{{ $person->gender }}">
+                            <defs><linearGradient id="gGender{{ $person->id }}" x1="4" y1="2" x2="30" y2="44" gradientUnits="userSpaceOnUse">
+                                <stop offset="0" stop-color="{{ $isF ? '#ff2f9b' : '#2f8bff' }}"></stop>
+                                <stop offset="1" stop-color="{{ $isF ? '#ff9ecd' : '#9ecdff' }}"></stop>
+                            </linearGradient></defs>
+                            <g stroke="url(#gGender{{ $person->id }})" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="17" cy="{{ $isF ? '14.5' : '30' }}" r="9.5"></circle>
+                                @if($isF)
+                                    <path d="M17 24v19"></path><path d="M8.5 34.5h17"></path>
+                                @else
+                                    <path d="M24 23L31 16"></path><path d="M23 14h9v9"></path>
+                                @endif
+                            </g>
+                        </svg>
+                    @endif
+                    <h1 style="margin:0;font-size:21px;line-height:1.15;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $person->full_name }}</h1>
+                </div>
+
+                {{-- Tally chips: a shortcut into Honours, already filtered. --}}
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px">
+                    @foreach($tiers as $t)
+                        <button type="button" @click="open('honours', '{{ $t['key'] }}')"
+                                :style="'box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:4px;height:28px;font-family:inherit;font-size:13px;font-weight:800;border-radius:9px;cursor:pointer;transition:background .16s,border-color .16s,transform .16s cubic-bezier(.22,.61,.36,1);color:#fff;' + (tab === 'honours' && honour === '{{ $t['key'] }}' ? 'transform:translateY(-1px);background:rgba(255,255,255,.34);border:1px solid rgba(255,255,255,.55);' : 'background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.18);')"
+                                aria-label="{{ $t['label'] }}">
+                            <span style="position:relative;flex-shrink:0;width:16px;height:16px;display:block">
+                                <svg viewBox="0 0 24 24" width="16" height="16" style="display:block">
+                                    <path d="M6 1.5h4l4 8H10z" fill="{{ $t['ribbon'] }}"></path>
+                                    <path d="M18 1.5h-4l-4 8h4z" fill="{{ $t['ribbonDark'] }}"></path>
+                                    <circle cx="12" cy="15.6" r="6.9" fill="{{ $t['ring'] }}"></circle>
+                                    <circle cx="12" cy="15.6" r="5.1" fill="{{ $t['face'] }}"></circle>
+                                </svg>
+                                <span style="position:absolute;left:0;right:0;top:6.2px;text-align:center;font-size:8px;font-weight:800;line-height:1;color:{{ $t['ink'] }}">{{ $t['num'] }}</span>
+                            </span>
+                            {{ $t['count'] }}
+                        </button>
+                    @endforeach
+                    <button type="button" @click="open('honours', 'trophy')"
+                            :style="'box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:4px;height:28px;font-family:inherit;font-size:13px;font-weight:800;border-radius:9px;cursor:pointer;transition:background .16s,border-color .16s,transform .16s cubic-bezier(.22,.61,.36,1);color:#ffd76a;' + (tab === 'honours' && honour === 'trophy' ? 'transform:translateY(-1px);background:rgba(255,255,255,.34);border:1px solid rgba(255,255,255,.55);' : 'background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.18);')"
+                            aria-label="{{ __('personal.trophies') }}">
+                        <i class="bi bi-trophy-fill" style="font-size:14px"></i>{{ $honourTally['trophy'] }}
+                    </button>
+                    <button type="button" @click="open('honours', 'cert')"
+                            :style="'box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:4px;height:28px;font-family:inherit;font-size:13px;font-weight:800;border-radius:9px;cursor:pointer;transition:background .16s,border-color .16s,transform .16s cubic-bezier(.22,.61,.36,1);color:#9be7c4;' + (tab === 'honours' && honour === 'cert' ? 'transform:translateY(-1px);background:rgba(255,255,255,.34);border:1px solid rgba(255,255,255,.55);' : 'background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.18);')"
+                            aria-label="{{ __('personal.certifications') }}">
+                        <i class="bi bi-patch-check-fill" style="font-size:14px"></i>{{ $certifications->count() }}
+                    </button>
+                </div>
+
+                <p style="margin:0;display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;white-space:nowrap;color:rgba(255,255,255,.85)">
+                    @if($age)
+                        <span>{{ __('personal.years_old', ['count' => $age]) }}</span><span style="opacity:.55">·</span>
+                    @endif
+                    <span style="display:flex;align-items:center;gap:5px;font-weight:500;color:rgba(255,255,255,.75)">
+                        <i class="bi bi-calendar3" style="font-size:12px"></i>{{ __('personal.member_since') }} {{ optional($person->created_at)->format('M Y') }}
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        {{-- ===== Actions ===== --}}
+        <div class="prof-rise" style="position:relative;display:flex;gap:8px;margin-top:20px;animation-delay:.12s">
+            @if($isGuest ?? false)
+                {{-- A guest is offered sign-in, never a Follow button that would fail the moment they pressed it. --}}
+                <a href="{{ route('login') }}" class="prof-press"
+                   style="flex:1;height:46px;border-radius:14px;background:#fff;border:1px solid #fff;color:#5834bd;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 6px 16px rgba(20,10,60,.18);transition:transform .16s cubic-bezier(.22,.61,.36,1)">
+                    <i class="bi bi-box-arrow-in-right"></i>{{ __('personal.sign_in_to_connect') }}
+                </a>
+            @else
+                <button type="button" class="prof-press" @click="toggleFollow()"
+                        :style="'flex:1.15;height:46px;border-radius:14px;font-family:inherit;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;transition:transform .16s cubic-bezier(.22,.61,.36,1),background .18s ease;' + (following ? 'background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.30);color:#fff;' : 'background:#fff;border:1px solid #fff;color:#5834bd;box-shadow:0 6px 16px rgba(20,10,60,.18);')">
+                    <i :class="following ? 'bi bi-check2' : 'bi bi-plus-lg'"></i>
+                    <span x-text="following ? @js(__('personal.following')) : @js(__('personal.follow'))"></span>
+                </button>
 
                 @if($canMessage)
-                    <form method="POST" action="{{ route('messages.start', $person) }}">
+                    <form method="POST" action="{{ route('messages.start', $person) }}" style="flex:1;display:flex">
                         @csrf
-                        <button type="submit" class="m-press w-11 h-11 rounded-full bg-white/20 backdrop-blur border border-white/30 grid place-items-center text-white"
-                                aria-label="{{ __('personal.message') }}">
-                            <i class="bi bi-chat-dots text-lg"></i>
+                        <button type="submit" class="prof-press"
+                                style="flex:1;height:46px;border:1px solid rgba(255,255,255,.30);background:rgba(255,255,255,.16);backdrop-filter:blur(8px);border-radius:14px;color:#fff;font-family:inherit;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;transition:transform .16s cubic-bezier(.22,.61,.36,1),background .16s ease">
+                            <i class="bi bi-chat-dots"></i>{{ __('personal.message') }}
                         </button>
                     </form>
                 @endif
 
-                <a href="{{ route('me.challenge.create') }}"
-                   class="m-press w-11 h-11 rounded-full bg-white/20 backdrop-blur border border-white/30 grid place-items-center text-white"
-                   aria-label="{{ __('personal.challenge') }}">
-                    <i class="bi bi-lightning-charge-fill text-lg"></i>
-                </a>
-            </div>
+                <a href="{{ route('me.challenge.create') }}" class="prof-press"
+                   style="width:46px;height:46px;border:1px solid rgba(255,255,255,.30);background:rgba(255,255,255,.16);backdrop-filter:blur(8px);border-radius:14px;color:#fff;font-size:17px;display:grid;place-items:center;transition:transform .16s cubic-bezier(.22,.61,.36,1),background .16s ease"
+                   aria-label="{{ __('personal.challenge') }}"><i class="bi bi-lightning-charge-fill"></i></a>
+            @endif
         </div>
-    </header>
+    </div>
 
-    <div class="px-4 mobile-stagger" x-data="{ section: 'clubs' }">
+    {{-- ===== Body — rides up over the hero's tail ===== --}}
+    <div style="padding:0 16px;margin-top:-46px;position:relative;z-index:2;display:flex;flex-direction:column;gap:20px">
 
-        {{-- ===== Stats — floats over the hero's lower edge; also the tab switcher for the card below ===== --}}
-        <div class="m-card -mt-8 relative z-10 grid grid-cols-3 py-3.5">
-            <button type="button" class="text-center m-press" @click="section = 'clubs'">
-                <p class="text-xl font-extrabold leading-none" :class="section === 'clubs' ? 'text-primary' : 'text-foreground'">{{ $activeAffil->count() }}</p>
-                <p class="text-[10px] mt-1.5" :class="section === 'clubs' ? 'text-primary' : 'text-muted-foreground'">{{ __('personal.active_clubs') }}</p>
-            </button>
-            <button type="button" class="text-center border-x border-border/70 m-press" @click="section = 'medals'">
-                <p class="text-xl font-extrabold leading-none" :class="section === 'medals' ? 'text-primary' : 'text-foreground'">{{ $awards->count() }}</p>
-                <p class="text-[10px] mt-1.5" :class="section === 'medals' ? 'text-primary' : 'text-muted-foreground'">{{ __('personal.medals') }}</p>
-            </button>
-            <button type="button" class="text-center m-press" @click="section = 'challenges'">
-                <p class="text-xl font-extrabold leading-none" :class="section === 'challenges' ? 'text-primary' : 'text-foreground'">{{ $winRate }}%</p>
-                <p class="text-[10px] mt-1.5" :class="section === 'challenges' ? 'text-primary' : 'text-muted-foreground'">{{ __('personal.win_rate') }}</p>
-            </button>
+        {{-- Stat row = the tab bar. Every number opens the list behind it. --}}
+        @php
+            // Reading order: what they did, then what they do it in, then where,
+            // then what it won them.
+            $statTabs = [
+                ['tab' => 'record',  'value' => $competition['fought'],                     'label' => __('personal.record')],
+                ['tab' => 'sports',  'value' => $sports->count(),                          'label' => __('personal.sports')],
+                ['tab' => 'clubs',   'value' => $activeAffil->count(),                      'label' => __('personal.clubs')],
+                ['tab' => 'honours', 'value' => $honours->count() + $certifications->count(), 'label' => __('personal.honours')],
+            ];
+        @endphp
+        <div class="prof-rise" style="background:#fff;border-radius:20px;box-shadow:0 10px 30px rgba(28,16,72,.10);padding:16px 8px;display:grid;grid-template-columns:repeat(4,1fr);animation-delay:.18s">
+            @foreach($statTabs as $i => $st)
+                <button type="button" @click="open('{{ $st['tab'] }}')"
+                        :style="'text-align:center;padding:2px 4px;border:0;background:none;font-family:inherit;cursor:pointer;position:relative;transition:opacity .16s ease;{{ $i ? 'border-inline-start:1px solid #ecedf3;' : '' }}' + (tab === '{{ $st['tab'] }}' ? '' : 'opacity:.55;')">
+                    <p style="margin:0;font-size:22px;font-weight:800;line-height:1;letter-spacing:-.02em" :style="{ color: tab === '{{ $st['tab'] }}' ? '#6d4bd8' : '#1c1c28' }">{{ $st['value'] }}</p>
+                    <p style="margin:6px 0 0;font-size:10.5px;font-weight:700" :style="{ color: tab === '{{ $st['tab'] }}' ? '#6d4bd8' : '#1c1c28' }">{{ $st['label'] }}</p>
+                </button>
+            @endforeach
         </div>
 
-        {{-- ===== Skills ===== --}}
-        @if($skills->count())
-            <div class="m-card mt-3 px-4 py-4">
-                <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">{{ __('personal.skills') }}</p>
-                <div class="flex flex-wrap gap-1.5">
-                    @foreach($skills as $s)
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-accent text-primary">{{ $s }}</span>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        {{-- ===== Clubs / Medals / Challenges — one card, content swaps with the stat tapped above ===== --}}
-        <div class="m-card mt-3 px-4 py-4">
-            {{-- Clubs --}}
-            <div x-show="section === 'clubs'" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-                <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">{{ __('personal.active_clubs') }}</p>
-                @forelse($activeAffil as $a)
-                    @include('people.partials.club-row', ['a' => $a, 'active' => true])
-                @empty
-                    <div class="py-6 text-center">
-                        <i class="bi bi-buildings text-2xl text-muted-foreground/50"></i>
-                        <p class="text-sm text-muted-foreground mt-1.5">{{ __('personal.no_public_clubs') }}</p>
-                    </div>
-                @endforelse
-
-                @if($pastAffil->count())
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mt-5 mb-2.5">{{ __('personal.previous_clubs') }}</p>
-                    @foreach($pastAffil as $a)
-                        @include('people.partials.club-row', ['a' => $a, 'active' => false])
-                    @endforeach
-                @endif
-            </div>
-
-            {{-- Medals --}}
-            <div x-show="section === 'medals'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-                <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">{{ __('personal.medals') }}</p>
-                @php $medalEmoji = fn($mt) => ['1st'=>'🥇','2nd'=>'🥈','3rd'=>'🥉','special'=>'🏆'][$mt] ?? '🏅'; @endphp
-                @if($awards->count() || $verifiedMedals->count())
-                    <div class="space-y-2">
-                        @foreach($awards as $a)
-                            @php $r = mb_strtolower($a->member_award ?? ''); $emoji = str_contains($r,'gold')?'🥇':(str_contains($r,'silver')?'🥈':(str_contains($r,'bronze')?'🥉':'🏅')); @endphp
-                            <div class="flex items-center gap-3 rounded-xl border border-gray-100 p-2.5">
-                                <span class="w-10 h-10 rounded-full bg-amber-50 grid place-items-center text-xl flex-shrink-0">{{ $emoji }}</span>
-                                <div class="min-w-0">
-                                    <p class="font-semibold text-sm text-foreground truncate">{{ $a->member_award ?: __('member.award_default') }}</p>
-                                    <p class="text-[11px] text-muted-foreground truncate">{{ $a->tenant?->club_name }}</p>
-                                </div>
-                            </div>
-                        @endforeach
-                        @foreach($verifiedMedals as $t)
-                            @foreach($t->performanceResults as $r)
-                                <div class="flex items-center gap-3 rounded-xl border border-gray-100 p-2.5">
-                                    <span class="w-10 h-10 rounded-full bg-amber-50 grid place-items-center text-xl flex-shrink-0">{{ $medalEmoji($r->medal_type) }}</span>
-                                    <div class="min-w-0">
-                                        <p class="font-semibold text-sm text-foreground truncate">{{ $t->title }}</p>
-                                        <p class="text-[11px] text-muted-foreground truncate flex items-center gap-1"><i class="bi bi-patch-check-fill text-green-600"></i>{{ $t->verifiedByTenant?->tr('club_name') ?? $t->verifiedByTenant?->club_name }}</p>
-                                    </div>
-                                </div>
-                            @endforeach
-                        @endforeach
-                    </div>
-                @else
-                    <div class="py-6 text-center">
-                        <i class="bi bi-award text-2xl text-muted-foreground/50"></i>
-                        <p class="text-sm text-muted-foreground mt-1.5">{{ __('personal.no_medals') }}</p>
-                    </div>
-                @endif
-
-                {{-- Awaiting peer/coach verification --}}
-                @if($vouchable->count())
-                    <div class="mt-4" x-data="peopleVouchMobile()">
-                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">{{ __('Awaiting verification') }}</p>
-                        <div class="space-y-2">
-                            @foreach($vouchable as $t)
-                                <div class="flex items-center justify-between gap-2 rounded-xl border border-gray-100 p-2.5" data-vouch-card="{{ $t->uuid }}">
-                                    <div class="min-w-0">
-                                        <p class="font-semibold text-sm text-foreground truncate">{{ $t->title }}</p>
-                                        <p class="text-[11px] text-muted-foreground truncate">{{ $t->sport }} · {{ optional($t->date)->format('M Y') }}</p>
-                                    </div>
-                                    <div class="flex items-center gap-2 flex-shrink-0">
-                                        <x-verification-badge :status="$t->verification_status" size="xs" />
-                                        @if($canVouch)
-                                            <button type="button" @click="openVouch('{{ route('attestations.vouch', ['achievement', $t->uuid]) }}', $el.closest('[data-vouch-card]'))" class="text-xs font-medium text-primary border border-primary rounded-lg px-2.5 py-1">{{ __('Vouch') }}</button>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endforeach
+        {{-- ===== Sports ===== --}}
+        <div x-show="tab === 'sports'" x-cloak class="prof-fade prof-stack">
+            @forelse($sports as $s)
+                @php
+                    // Competing outranks enrolled: being entered into a championship
+                    // is the stronger statement, so it wins the tag.
+                    $competing = $s['competing'];
+                @endphp
+                <div class="prof-row" style="display:flex;align-items:stretch;gap:14px;{{ $card }};padding:15px 16px">
+                    <span style="flex-shrink:0;display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:linear-gradient(150deg,#8f70f6,#6d4bd8);color:#fff;font-size:19px"><i class="bi {{ $s['icon'] }}"></i></span>
+                    <div style="min-width:0;flex:1">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <p style="margin:0;flex:1;min-width:0;font-size:16px;font-weight:800;letter-spacing:-.01em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $s['name'] }}</p>
+                            <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;{{ $competing ? 'background:#e7f7ee;color:#15803d' : 'background:#f1f2f7;color:#7a7f94' }}">{{ $competing ? __('personal.sport_competing') : ($s['active'] ? __('personal.sport_registered') : __('personal.sport_past')) }}</span>
                         </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+                            {{-- Grade: only a club-attested level is stated as one; a
+                                 self-typed belt is a claim, so it reads "No grading". --}}
+                            <span style="{{ $chipMeta }};color:#5834bd;background:#f2effe"><i class="bi bi-patch-check-fill" style="font-size:11px"></i>{{ $s['grade'] ?: __('personal.no_grading') }}</span>
 
-                        {{-- Vouch bottom-sheet (teleported) --}}
-                        <template x-teleport="body">
-                            <div x-show="showModal" x-cloak class="fixed inset-0 z-[70]" @keydown.escape.window="showModal=false">
-                                <div x-show="showModal" x-transition.opacity class="absolute inset-0 bg-black/50" @click="showModal=false"></div>
-                                <div x-show="showModal" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-                                     class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl p-5" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
-                                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
-                                    <h3 class="font-bold text-foreground mb-1">{{ __('Vouch for this achievement') }}</h3>
-                                    <p class="text-xs text-muted-foreground mb-3">{{ __('Only vouch for what you personally witnessed.') }}</p>
-                                    <div class="grid grid-cols-2 gap-2 mb-3">
-                                        <template x-for="opt in relOptions" :key="opt.v">
-                                            <button type="button" @click="relationship=opt.v" class="px-3 py-2.5 rounded-xl border text-sm text-start" :class="relationship===opt.v ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-gray-200 text-gray-600'" x-text="opt.l"></button>
-                                        </template>
-                                    </div>
-                                    <textarea x-model="note" rows="2" placeholder="{{ __('Add a note (optional)') }}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent mb-3"></textarea>
-                                    <button type="button" @click="submit()" :disabled="saving" class="w-full bg-primary text-white py-3 rounded-xl font-semibold disabled:opacity-60">{{ __('Submit vouch') }}</button>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                    <script>
-                    function peopleVouchMobile() {
-                        return {
-                            showModal: false, saving: false, relationship: 'teammate', note: '', url: '', card: null,
-                            relOptions: [ { v:'coach', l:@js(__('Coach')) }, { v:'official', l:@js(__('Official')) }, { v:'teammate', l:@js(__('Teammate')) }, { v:'other', l:@js(__('Other')) } ],
-                            openVouch(url, card) { this.url = url; this.card = card; this.relationship = 'teammate'; this.note = ''; this.showModal = true; },
-                            async submit() {
-                                this.saving = true;
-                                try {
-                                    const res = await fetch(this.url, { method: 'POST', headers: { 'X-CSRF-TOKEN': @js(csrf_token()), 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ stance: 'vouch', relationship: this.relationship, note: this.note }) });
-                                    const data = await res.json();
-                                    if (data.success) {
-                                        if (this.card && data.verification && data.verification.status === 'verified') this.card.remove();
-                                        window.showToast && window.showToast('success', data.message);
-                                        this.showModal = false;
-                                    } else { window.showToast && window.showToast('error', data.message || @js(__('Could not record your vouch.'))); }
-                                } catch (e) { window.showToast && window.showToast('error', @js(__('Something went wrong.'))); }
-                                this.saving = false;
-                            },
-                        };
-                    }
-                    </script>
-                @endif
-            </div>
-
-            {{-- Challenges --}}
-            <div x-show="section === 'challenges'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-                <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">{{ __('personal.challenges') }}</p>
-                @forelse($duels as $d)
-                    @php
-                        $resultStyle = match($d->result) {
-                            'win' => ['bg-green-100', 'text-green-700', __('personal.challenge_win')],
-                            'loss' => ['bg-red-100', 'text-red-700', __('personal.challenge_loss')],
-                            default => ['bg-gray-100', 'text-gray-500', __('personal.challenge_draw')],
-                        };
-                    @endphp
-                    <div class="flex items-center gap-3 rounded-xl border border-gray-100 p-2.5 mb-2 last:mb-0">
-                        <span class="w-10 h-10 rounded-full bg-muted grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-gray-100">
-                            @if($d->rival_picture)
-                                <img src="{{ asset('storage/'.$d->rival_picture) }}" alt="" class="w-10 h-10 object-cover">
-                            @else
-                                <i class="bi bi-lightning-charge-fill text-muted-foreground"></i>
+                            {{-- Time in the sport: the union of every enrolment spell and
+                                 the first event entered, so overlaps count once. --}}
+                            @if($s['experience'])
+                                <span style="{{ $chipMeta }};color:#8a8fa3;background:#f8f8fb"><i class="bi bi-hourglass-split" style="font-size:11px"></i>{{ $s['experience'] }}</span>
                             @endif
-                        </span>
-                        <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-sm text-foreground truncate">{{ $d->rival_name }}</p>
-                            <p class="text-[11px] text-muted-foreground truncate">{{ $d->discipline ?: \App\Models\Duel::formatLabel($d->format) }} · {{ optional($d->completed_at)->format('M j, Y') }}</p>
+
+                            {{-- The slot the draft used for a national rank. There is no
+                                 ranking system to read, so it carries the real figure off
+                                 the draw instead of an invented position. --}}
+                            @if($s['bouts'] || $s['events'])
+                                <span style="{{ $chipMeta }};color:#1c1c28;background:#f1f2f7"><i class="bi bi-bar-chart-fill" style="font-size:11px"></i>{{ $s['bouts']
+                                    ? trans_choice('personal.sport_bouts', $s['bouts'], ['count' => $s['bouts']])
+                                    : trans_choice('personal.sport_events', $s['events'], ['count' => $s['events']]) }}</span>
+                            @endif
                         </div>
-                        <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $resultStyle[0] }} {{ $resultStyle[1] }}">{{ $resultStyle[2] }}</span>
+                    </div>
+                </div>
+            @empty
+                <x-people.empty-state icon="bi bi-person-arms-up" :title="__('personal.nothing_here')" :message="__('personal.no_sports')" />
+            @endforelse
+        </div>
+
+        {{-- ===== Competition record ===== --}}
+        <div x-show="tab === 'record'" class="prof-fade prof-stack-lg">
+            @forelse($competitionBouts as $b)
+                @php
+                    $initials = collect(preg_split('/\s+/', (string) $b['opponent']))->take(2)->map(fn ($w) => mb_substr($w, 0, 1))->implode('');
+                    // The opponent's own face when they have opted into showing it,
+                    // and their initials when they have not.
+                    $tile = $b['opponent_photo'] ?: 'data:image/svg+xml,'.rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" width="88" height="88"><rect width="88" height="88" fill="#eceaf7"/><text x="44" y="56" text-anchor="middle" font-family="Inter,sans-serif" font-size="32" font-weight="700" fill="#8b8ba7">'.mb_strtoupper($initials).'</text></svg>');
+                    $meta = collect([$b['event'], $b['division'], $b['round']])->filter()->implode(' · ');
+                @endphp
+                <div class="prof-row" style="display:grid;grid-template-columns:88px 1fr;min-height:117px;{{ $card }};overflow:hidden">
+                    <span style="position:relative">
+                        <span style="position:absolute;inset:0;display:block;background:#f1f2f7 url('{{ $tile }}') center/cover no-repeat"></span>
+                        @if($b['decided'])
+                            <span style="position:absolute;bottom:8px;inset-inline-end:-9px;z-index:1;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;border:2px solid #fff;font-size:10px;color:#fff;background:{{ $b['won'] ? '#22c55e' : '#dc2626' }}">
+                                <i class="bi {{ $b['won'] ? 'bi-check-lg' : 'bi-x-lg' }}"></i>
+                            </span>
+                        @endif
+                    </span>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:11px;padding:12px 12px 11px 13px">
+                        <div style="display:flex;align-items:flex-start;gap:10px">
+                            <div style="min-width:0;flex:1">
+                                <p style="margin:0;font-size:14px;font-weight:700;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ __('personal.vs_opponent', ['name' => $b['opponent']]) }}</p>
+                                <p style="margin:3px 0 0;font-size:11px;color:#8a8fa3;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ $meta }}</p>
+                            </div>
+                            <div style="text-align:end;flex-shrink:0">
+                                @if($b['my_score'] !== null || $b['their_score'] !== null)
+                                    <p style="margin:0;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1">{{ $b['my_score'] ?? '–' }}–{{ $b['their_score'] ?? '–' }}</p>
+                                @endif
+                                <span style="display:inline-flex;align-items:center;justify-content:center;margin-top:5px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;{{ ! $b['decided'] ? 'background:#fdf4e3;color:#92700f' : ($b['won'] ? 'background:#e7f7ee;color:#15803d' : 'background:#fdecec;color:#b91c1c') }}">
+                                    {{ ! $b['decided'] ? __('personal.awaiting_result') : ($b['won'] ? __('personal.challenge_win') : __('personal.challenge_loss')) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- Only real destinations are rendered: an unfilmed bout has no
+                             Watch button rather than a dead one. --}}
+                        @if($b['bout_url'] || $b['video_url'])
+                            <div style="display:flex;gap:6px">
+                                @if($b['bout_url'])
+                                    <a href="{{ $b['bout_url'] }}" class="prof-press" style="box-sizing:border-box;flex:1;height:32px;padding:0 10px;border:1px solid #e4e5ee;background:#fff;color:#5834bd;border-radius:10px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform .16s ease"><i class="bi bi-list-ul"></i>{{ __('personal.match_details') }}</a>
+                                @endif
+                                @if($b['video_url'])
+                                    <a href="{{ $b['video_url'] }}" target="_blank" rel="noopener" class="prof-press" style="box-sizing:border-box;flex:1;height:32px;padding:0 10px;border-radius:10px;background:#6d4bd8;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform .16s ease"><i class="bi bi-play-fill" style="font-size:15px"></i>{{ __('personal.watch') }}</a>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <x-people.empty-state icon="bi bi-lightning-charge" :title="__('personal.nothing_here')" :message="__('personal.no_bouts')" />
+            @endforelse
+        </div>
+
+        {{-- ===== Clubs ===== --}}
+        <div x-show="tab === 'clubs'" x-cloak class="prof-fade prof-stack">
+            @forelse($activeAffil as $i => $a)
+                @include('people.partials.club-card', ['a' => $a, 'active' => true, 'primary' => $i === 0])
+            @empty
+                <x-people.empty-state icon="bi bi-buildings" :title="__('personal.nothing_here')" :message="__('personal.no_public_clubs')" />
+            @endforelse
+
+            @if($pastAffil->count())
+                <p style="margin:6px 2px 0;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a8fa3">{{ __('personal.previous_clubs') }}</p>
+                @foreach($pastAffil as $a)
+                    @include('people.partials.club-card', ['a' => $a, 'active' => false, 'primary' => false])
+                @endforeach
+            @endif
+        </div>
+
+        {{-- ===== Honours — medals, trophies and certifications ===== --}}
+        <div x-show="tab === 'honours'" x-cloak class="prof-fade prof-stack-lg">
+            {{-- The filter chip only appears once a hero tally narrowed the list,
+                 and clearing it is the way back to everything. --}}
+            <button type="button" x-show="honour !== 'all'" x-cloak @click="honour = 'all'" class="prof-chip"
+                    style="align-self:flex-start;height:30px;padding:0 12px;border:1px solid #d8d0f6;background:#f2effe;color:#5834bd;border-radius:999px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
+                <i class="bi bi-funnel-fill" style="font-size:11px"></i>
+                <span x-text="{ gold: @js(__('personal.honours_gold')), silver: @js(__('personal.honours_silver')), bronze: @js(__('personal.honours_bronze')), trophy: @js(__('personal.trophies')), cert: @js(__('personal.certifications')) }[honour]"></span>
+                <i class="bi bi-x-lg" style="font-size:11px;opacity:.7"></i>
+            </button>
+
+            <div x-show="honour !== 'cert'" class="prof-stack">
+                @forelse($honours as $h)
+                    @php $tone = $tones[$h['tier']] ?? $tones['trophy']; @endphp
+                    <div class="prof-row prof-line" x-show="honour === 'all' || honour === '{{ $h['tier'] }}'"
+                         style="{{ $card }};padding:14px;color:#1c1c28">
+                        <span style="flex-shrink:0;display:grid;place-items:center;width:34px;height:34px;border-radius:11px;font-size:16px;background:{{ $tone[0] }};color:{{ $tone[1] }}"><i class="bi {{ $h['tier'] === 'trophy' ? 'bi-trophy-fill' : 'bi-award-fill' }}"></i></span>
+                        <div style="min-width:0;flex:1">
+                            <p style="margin:0;font-size:13.5px;font-weight:700;line-height:1.25">{{ $h['place'] }}</p>
+                            @if($h['event'])
+                                <p style="margin:3px 0 0;font-size:11px;color:#8a8fa3;line-height:1.35">{{ $h['event'] }}</p>
+                            @endif
+                        </div>
+                        @if($h['date'])
+                            <span style="flex-shrink:0;font-size:11px;font-weight:600;color:#8a8fa3">{{ \Illuminate\Support\Carbon::parse($h['date'])->format('M Y') }}</span>
+                        @endif
                     </div>
                 @empty
-                    <div class="py-6 text-center">
-                        <i class="bi bi-lightning-charge text-2xl text-muted-foreground/50"></i>
-                        <p class="text-sm text-muted-foreground mt-1.5">{{ __('personal.no_challenges') }}</p>
-                    </div>
+                    <x-people.empty-state icon="bi bi-award" :title="__('personal.nothing_here')" :message="__('personal.no_honours')" />
                 @endforelse
             </div>
+
+            <div x-show="honour === 'all' || honour === 'cert'" x-cloak class="prof-stack">
+                @foreach($certifications as $c)
+                    @php
+                        $expired = $c->expiry_date !== null && $c->expiry_date->isPast();
+                        // A certificate URL is member-supplied, so only http(s) is ever linked.
+                        $link = filter_var((string) $c->credential_url, FILTER_VALIDATE_URL) && \Illuminate\Support\Str::startsWith($c->credential_url, ['http://', 'https://'])
+                            ? $c->credential_url : null;
+                    @endphp
+                    <{{ $link ? 'a' : 'div' }} @if($link) href="{{ $link }}" target="_blank" rel="noopener nofollow" @endif
+                        class="prof-row" style="display:flex;align-items:center;gap:12px;{{ $card }};padding:14px;color:#1c1c28">
+                        <span style="flex-shrink:0;display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:#f2effe;color:#6d4bd8;font-size:15px"><i class="bi bi-patch-check"></i></span>
+                        <div style="min-width:0;flex:1">
+                            <p style="margin:0;font-size:13.5px;font-weight:700;line-height:1.25">{{ $c->title }}</p>
+                            <p style="margin:3px 0 0;font-size:11px;color:#8a8fa3;line-height:1.35">{{ collect([$c->issuer, $c->credential_id])->filter()->implode(' · ') }}</p>
+                        </div>
+                        <span style="flex-shrink:0;display:flex;align-items:center;gap:7px">
+                            @if($c->expiry_date)
+                                <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;{{ $expired ? 'background:#fdecec;color:#b91c1c' : 'background:#e7f7ee;color:#15803d' }}">{{ $expired ? __('personal.certificate_expired') : __('personal.certificate_valid') }}</span>
+                            @endif
+                            @if($link)<i class="bi bi-box-arrow-up-right" style="font-size:11px;color:#a2a6b8"></i>@endif
+                        </span>
+                    </{{ $link ? 'a' : 'div' }}>
+                @endforeach
+
+                @if($certifications->isEmpty())
+                    <div x-show="honour === 'cert'" x-cloak>
+                        <x-people.empty-state icon="bi bi-patch-check" :title="__('personal.nothing_here')" :message="__('personal.no_certifications')" />
+                    </div>
+                @endif
+            </div>
+
+            {{-- Claims still awaiting a peer/coach vouch — shown plainly as unverified
+                 and never counted in the tallies above. --}}
+            @if($vouchable->count())
+                @include('people.partials.vouch-list', ['vouchable' => $vouchable, 'canVouch' => $canVouch])
+            @endif
         </div>
     </div>
 </div>

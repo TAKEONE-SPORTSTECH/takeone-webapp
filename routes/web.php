@@ -98,6 +98,17 @@ Route::get('/screen', [\App\Events\Support\ScreenPairingController::class, 'scre
     ->name('screen.new')->middleware('throttle:court-enroll');
 Route::post('/screen/enroll', [\App\Events\Support\ScreenPairingController::class, 'enroll'])
     ->name('screen.enroll')->middleware('throttle:court-enroll');
+// The app itself, for a television that does not have it yet. Ahead of the
+// token route so the literal segment wins, and deliberately SHORT: this address
+// gets typed with a remote control, one letter at a time, on a TV that has
+// nothing on it but a sideloader.
+Route::get('/screen/app', [\App\Events\Support\ScreenPairingController::class, 'app'])
+    ->name('screen.app')->middleware('throttle:screen-app');
+// The same, for the scoring table. A second address rather than a query string
+// because this one is also typed by hand: `/screen/tab` is four characters more
+// than `/screen/app`, and `?device=tab` is a punctuation lesson on a remote.
+Route::get('/screen/tab', [\App\Events\Support\ScreenPairingController::class, 'app'])
+    ->name('screen.app.tab')->defaults('variant', 'tab')->middleware('throttle:screen-app');
 Route::get('/screen/{token}', [\App\Events\Support\ScreenPairingController::class, 'show'])
     ->name('screen.show')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 Route::get('/screen/{token}/status', [\App\Events\Support\ScreenPairingController::class, 'status'])
@@ -194,6 +205,13 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 
 Route::get('/karate/court-display/font/{file}', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'font'])
     ->name('karate-court-display.font')->where('file', '[a-z0-9.-]+')->middleware('throttle:60,1');
+// A sound this screen plays. Authorised by the screen's own token, like every
+// other file a board fetches, and served from private storage: a club's
+// introduction music is licensed to them, not published to the internet.
+Route::get('/karate/court/{token}/audio/{slot}', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'audio'])
+    ->name('karate-court-display.audio')
+    ->where('token', '[A-Za-z0-9]{40}')->where('slot', '[a-z_0-9]{1,24}')
+    ->middleware('throttle:screen-token');
 
 // The mat's live state, for a screen that just loaded or reconnected. Same
 // contract as the board payload above: the DEVICE's token authorises it, because
@@ -267,6 +285,21 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 */
 Route::get('/karate/court/{token}/control', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'tokenControl'])
     ->name('karate-scoreboard.token-control')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+// Uploads from the scoring table itself: the event's sounds, and a face for
+// whoever is in a corner right now. Authorised by the same token that already
+// writes results — and only on the control surface. See the controller.
+Route::post('/karate/court/{token}/audio/{slot}', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'tokenAudio'])
+    ->name('karate-scoreboard.token-audio')
+    ->where('token', '[A-Za-z0-9]{40}')->where('slot', '[a-z_0-9]{1,24}')
+    ->middleware('throttle:uploads');
+Route::delete('/karate/court/{token}/audio/{slot}', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'tokenAudioDestroy'])
+    ->name('karate-scoreboard.token-audio-destroy')
+    ->where('token', '[A-Za-z0-9]{40}')->where('slot', '[a-z_0-9]{1,24}')
+    ->middleware('throttle:screen-token');
+Route::post('/karate/court/{token}/photo/{side}', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'tokenPhoto'])
+    ->name('karate-scoreboard.token-photo')
+    ->where('token', '[A-Za-z0-9]{40}')->where('side', 'aka|ao')
+    ->middleware('throttle:uploads');
 Route::post('/karate/court/{token}/command', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'tokenCommand'])
     ->name('karate-scoreboard.token-command')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 
@@ -349,6 +382,23 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::put('/events/{event:uuid}/results', [App\Http\Controllers\PersonalEventController::class, 'setResults'])->name('events.results')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'destroy'])->name('events.destroy')->middleware('throttle:member-write');
     Route::get('/events/{event:uuid}/brackets', [App\Http\Controllers\PersonalEventController::class, 'bracket'])->name('events.bracket');
+
+    // One bout, and where in the event it sat — the page a match video on the
+    // video platform links back to (Documentation/VIDEO-INTEGRATION.md §6.6).
+    // Keyed by the EVENT's uuid plus the bout's match number: event_matches has
+    // no public identifier of its own, and the unguessable part of the link is
+    // the event uuid, which the viewer already holds.
+    Route::get('/events/{event:uuid}/bout/{matchNo}', [App\Http\Controllers\PersonalEventController::class, 'bout'])
+        ->whereNumber('matchNo')->name('events.bout');
+    // Organiser corrections to one bout: corners, scores, winner, the names on
+    // the sheet, and the video link. The mat is authoritative while a bout is
+    // being fought; this is authoritative once it is finished, and every change
+    // is appended to the officiating log.
+    // The entrants who may stand in one bout: this event, this bout's category.
+    Route::get('/events/{event:uuid}/bout/{matchNo}/competitors', [App\Http\Controllers\PersonalEventController::class, 'boutCompetitors'])
+        ->whereNumber('matchNo')->name('events.bout.competitors');
+    Route::put('/events/{event:uuid}/bout/{matchNo}', [App\Http\Controllers\PersonalEventController::class, 'updateBout'])
+        ->whereNumber('matchNo')->name('events.bout.update')->middleware('throttle:member-write');
     // The same board, full screen and free of chrome, for organisers arranging a
     // draw. Redirects back to the bracket for anyone who may not arrange.
     Route::get('/events/{event:uuid}/brackets/manage', [App\Http\Controllers\PersonalEventController::class, 'manageBracket'])->name('events.bracket.manage');
@@ -362,12 +412,27 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::post('/events/{event:uuid}/documents', [App\Http\Controllers\EventDocumentController::class, 'store'])->name('events.documents.store')->middleware('throttle:uploads');
     Route::get('/events/{event:uuid}/documents/{document:uuid}', [App\Http\Controllers\EventDocumentController::class, 'download'])->name('events.documents.download');
     Route::delete('/events/{event:uuid}/documents/{document:uuid}', [App\Http\Controllers\EventDocumentController::class, 'destroy'])->name('events.documents.destroy')->middleware('throttle:member-write');
+    // What this event's screens play: the introduction, the celebration, and the
+    // noise a point makes. Uploaded by an organiser here; read by the screens
+    // through their own token-authorised route, never through this one.
+    Route::post('/events/{event:uuid}/screen-audio/{slot}', [App\Events\Support\ScreenMediaController::class, 'store'])
+        ->name('events.screen-audio.store')->where('slot', '[a-z_0-9]{1,24}')->middleware('throttle:uploads');
+    Route::get('/events/{event:uuid}/screen-audio/{slot}', [App\Events\Support\ScreenMediaController::class, 'show'])
+        ->name('events.screen-audio.show')->where('slot', '[a-z_0-9]{1,24}')->middleware('throttle:60,1');
+    Route::delete('/events/{event:uuid}/screen-audio/{slot}', [App\Events\Support\ScreenMediaController::class, 'destroy'])
+        ->name('events.screen-audio.destroy')->where('slot', '[a-z_0-9]{1,24}')->middleware('throttle:member-write');
 
     // Officials' desk: weigh-ins and payment checks, on a screen of its own.
     // "Who's joined" (events.people) is the reading surface and carries no
     // controls for anyone. Each action authorises against its own role — a
     // weigh-in official cannot approve money.
     Route::get('/events/{event:uuid}/verify', [App\Http\Controllers\PersonalEventController::class, 'verify'])->name('events.verify');
+    // A face for a competitor, for the introduction screen. The organiser's own
+    // photo, on the ENTRY rather than on the person — see the controller.
+    Route::post('/events/{event:uuid}/competitors/{registration}/photo', [App\Http\Controllers\PersonalEventController::class, 'competitorPhoto'])
+        ->name('events.competitors.photo')->middleware('throttle:uploads');
+    Route::delete('/events/{event:uuid}/competitors/{registration}/photo', [App\Http\Controllers\PersonalEventController::class, 'competitorPhotoDestroy'])
+        ->name('events.competitors.photo.destroy')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/verify/{registration}/weigh-in', [App\Http\Controllers\PersonalEventController::class, 'verifyWeighIn'])->name('events.verify.weigh-in')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/verify/{registration}/payment', [App\Http\Controllers\PersonalEventController::class, 'verifyPayment'])->name('events.verify.payment')->middleware('throttle:member-write');
     Route::get('/events/{event:uuid}/verify/{registration}/proof', [App\Http\Controllers\PersonalEventController::class, 'verifyProof'])->name('events.verify.proof');
@@ -423,8 +488,14 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::post('/events/{event:uuid}/screens', [\App\Events\Support\HallScreenRouter::class, 'pair'])->name('events.screens.pair')->middleware('throttle:admin-write');
     Route::delete('/events/{event:uuid}/screens/{device}', [\App\Events\Support\HallScreenRouter::class, 'revoke'])->name('events.screens.revoke')->whereNumber('device')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/next-up', [App\Http\Controllers\PersonalEventController::class, 'nextUp'])->name('events.next-up');
-    Route::get('/events/{event:uuid}/entry-roster', [App\Http\Controllers\PersonalEventController::class, 'entryRoster'])->name('events.entry-roster');
+    // Throttled: it takes a search term, and a searchable endpoint is one
+    // someone will try to hammer.
+    Route::get('/events/{event:uuid}/entry-roster', [App\Http\Controllers\PersonalEventController::class, 'entryRoster'])->name('events.entry-roster')->middleware('throttle:60,1');
     Route::post('/events/{event:uuid}/entries', [App\Http\Controllers\PersonalEventController::class, 'storeEntries'])->name('events.entries')->middleware('throttle:admin-write');
+    // A club's say over its own name: who has entered themselves claiming it,
+    // and rejecting a claim (which never removes the athlete from the event).
+    Route::get('/events/{event:uuid}/claims', [App\Http\Controllers\PersonalEventController::class, 'entryClaims'])->name('events.claims');
+    Route::post('/events/{event:uuid}/claims/{user}/disown', [App\Http\Controllers\PersonalEventController::class, 'disownClaim'])->name('events.claims.disown')->whereNumber('user')->middleware('throttle:admin-write');
     Route::post('/events/{event:uuid}/register', [App\Http\Controllers\PersonalEventController::class, 'register'])->name('events.register')->middleware('throttle:member-write');
     Route::post('/events/{event:uuid}/ticket', [App\Http\Controllers\PersonalEventController::class, 'ticket'])->name('events.ticket')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/register', [App\Http\Controllers\PersonalEventController::class, 'cancel'])->name('events.cancel')->middleware('throttle:member-write');
@@ -597,6 +668,36 @@ Route::post('/email/resend-verification', function (Request $request) {
 // Public club page - no login required (used for QR code)
 Route::get('/mobile/{country}/{slug}', [PlatformController::class, 'showPublic'])->name('clubs.show.public');
 
+/*
+ * The club page, open to anyone.
+ *
+ * Not a new exposure: showPublic() above already serves the SAME page from the
+ * SAME controller to guests at /mobile/{country}/{slug}. This makes the
+ * canonical URL behave the same way, so a link shared from the video platform
+ * (VIDEO-INTEGRATION.md 6.6) does not dead-end on a login screen.
+ *
+ * Everything that CHANGES anything — join, leave, collect a perk — stays behind
+ * auth in the group further down. A guest reads the page and nothing more, and
+ * the top bar is hidden for them (layouts/app.blade.php).
+ */
+Route::prefix('{country}')->where(['country' => '[a-z]{2,3}'])->group(function () {
+    Route::get('/clubs/{slug}', [PlatformController::class, 'show'])
+        ->name('clubs.show')->middleware('throttle:60,1');
+});
+
+/*
+ * The safe public profile, open to anyone.
+ *
+ * Deliberately narrower for a guest than for a member: a signed-in viewer may
+ * see any profile they are not blocked by, but an ANONYMOUS visitor only sees a
+ * member who is discoverable and is not a minor. Discoverability is the member's
+ * own opt-in to being found, and a minor's name, photo and club do not go to the
+ * open internet on the strength of a shared link. Anything else 404s — the same
+ * answer a non-existent uuid gets, so the difference discloses nothing.
+ */
+Route::get('/people/{uuid}', [App\Http\Controllers\PeopleController::class, 'show'])
+    ->name('people.show')->middleware('throttle:60,1');
+
 // Public trainer page - no login required (used for QR code)
 Route::get('/t/{user}', [TrainerController::class, 'showPublic'])->name('trainer.show.public');
 
@@ -622,8 +723,10 @@ Route::middleware(['auth', 'two-factor'])->group(function () {
     Route::get('/trainer/{user}', [TrainerController::class, 'show'])->name('trainer.show');
 
     // Country-prefixed club routes
+    // NOTE: clubs.show itself is PUBLIC and defined outside this group (see
+    // near clubs.show.public). Everything below still requires a signed-in
+    // user — joining, leaving, collecting a perk.
     Route::prefix('{country}')->where(['country' => '[a-z]{2,3}'])->group(function () {
-        Route::get('/clubs/{slug}', [PlatformController::class, 'show'])->name('clubs.show');
         Route::get('/clubs/{slug}/packages-json', [PlatformController::class, 'clubPackages'])->name('clubs.packages.json');
         Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join')->middleware('verified', 'throttle:join-club');
         Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join')->middleware('verified', 'throttle:join-club');
@@ -722,6 +825,10 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::post('/members/{user}/verify-email', [App\Http\Controllers\Admin\PlatformController::class, 'verifyMemberEmail'])->name('platform.members.verify-email')->middleware('throttle:admin-write');
 
     // Database Backup & Restore
+    // The error log. Read-only, super-admin only (inherited from this group), and
+    // throttled: it reads a file that grows on the worst day of the year.
+    Route::get('/logs', [App\Http\Controllers\Admin\PlatformController::class, 'logs'])
+        ->middleware('throttle:60,1')->name('platform.logs');
     Route::get('/settings', [App\Http\Controllers\Admin\PlatformController::class, 'settings'])->name('platform.settings');
     Route::put('/settings', [App\Http\Controllers\Admin\PlatformController::class, 'updateSettings'])->name('platform.settings.update')->middleware('throttle:admin-write');
     Route::put('/settings/whatsapp', [App\Http\Controllers\Admin\PlatformController::class, 'updateWhatsAppSettings'])->name('platform.settings.whatsapp.update')->middleware('throttle:admin-write');
@@ -965,8 +1072,6 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 
     // Individual member routes
     Route::get('/member/{uuid}', [MemberController::class, 'show'])->name('member.show');
-    // Safe public profile (people discovery) — broadly viewable, sensitive data omitted.
-    Route::get('/people/{uuid}', [App\Http\Controllers\PeopleController::class, 'show'])->name('people.show');
     Route::get('/member/{id}/edit', [MemberController::class, 'edit'])->name('member.edit');
     Route::put('/member/{id}', [MemberController::class, 'update'])->name('member.update')->middleware('throttle:member-write');
     Route::delete('/member/{id}/confirm-delete', [MemberController::class, 'confirmDelete'])->name('member.confirm-delete');

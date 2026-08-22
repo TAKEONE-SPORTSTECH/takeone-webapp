@@ -522,9 +522,27 @@ class User extends Authenticatable implements MustVerifyEmail
      * exposes only non-sensitive fields, so it is broadly viewable — private
      * data stays on the family/admin-gated member.show.
      */
-    public function canViewPublicProfile(User $viewer): bool
+    public function canViewPublicProfile(?User $viewer): bool
     {
+        // Anonymous visitor: a deliberately narrower rule than for a member.
+        //
+        // A signed-in viewer may see anyone who has not blocked them. The open
+        // internet may see only a member who has opted IN to being found
+        // (is_discoverable) and who is not a minor. Discoverability is consent to
+        // be found; a child's name, photo and club do not become public on the
+        // strength of a link someone shared.
+        if ($viewer === null) {
+            return (bool) $this->is_discoverable && ! $this->isMinor();
+        }
+
         return $viewer->id === $this->id || ! $viewer->blockedEitherWay($this->id);
+    }
+
+    /** Under 18 on the birthdate we hold. Unknown birthdate is NOT treated as a minor. */
+    public function isMinor(): bool
+    {
+        return $this->birthdate !== null
+            && \Carbon\Carbon::parse($this->birthdate)->age < 18;
     }
 
     /** A unique, URL-safe slug derived from a display name (e.g. "john-doe", "john-doe-2"). */
@@ -656,6 +674,41 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Get the roles for the user.
      */
+
+    /**
+     * Does this person enter OTHER people into the platform as part of a job?
+     *
+     * True for a super admin, anyone who owns or administers a club, and anyone
+     * appointed to officiate an event — the four groups that routinely create a
+     * player from incomplete information: a name on a federation list, a paper
+     * weigh-in sheet, a walk-in at the door.
+     *
+     * Used to decide how strict a person form is (PersonFieldRules), never to
+     * decide what someone may DO — every authorisation check stays exactly where
+     * it was. Widening this grants no access; it only stops the platform
+     * demanding a birthdate from someone who does not have one.
+     */
+    public function entersPeopleOnBehalfOfOthers(): bool
+    {
+        if ($this->hasRole('super-admin')) {
+            return true;
+        }
+
+        // Owns a club outright.
+        if (Tenant::where('owner_user_id', $this->id)->exists()) {
+            return true;
+        }
+
+        // Administers one. Any tenant: whether they may touch a given member is
+        // an authorisation question, already answered before a form is reached.
+        if ($this->roles()->where('slug', 'club-admin')->exists()) {
+            return true;
+        }
+
+        // Appointed to officiate an event — organiser, jury, referee, any of them.
+        return EventOfficial::where('user_id', $this->id)->exists();
+    }
+
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_roles')

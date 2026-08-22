@@ -91,6 +91,19 @@ interface EventType
     public function enrolmentGate(ClubEvent $event, User $user, ?ClubEventRegistration $existing = null): EnrolmentDecision;
 
     /**
+     * Place an entry now that its weight is known.
+     *
+     * A club may enter an athlete before anyone has recorded a weight — they are
+     * weighed on the day like everyone else (see EnrolmentDecision::defer). This
+     * is how they stop being unclassified: the weigh-in desk records the
+     * official weight and asks the package where that puts them.
+     *
+     * Returns the division they were placed in, or null when the type has no
+     * divisions or the weight matches none being run.
+     */
+    public function classifyEntry(ClubEvent $event, ClubEventRegistration $registration): ?EventCategory;
+
+    /**
      * The entrant set changed (join, removal, moderation). Let the package
      * re-derive whatever depends on it — a provisional draw, a fixture list.
      */

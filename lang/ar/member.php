@@ -1150,4 +1150,9 @@ return [
     'search_in_list' => 'بحث…',
     'no_matches' => 'لا توجد نتائج مطابقة.',
     'new_challenge' => 'تحدٍ جديد',
+    'derived_affiliations_title' => 'من سجلات النادي',
+    'derived_affiliations_note'  => 'الأندية المسجّل بها. مؤكدة من النادي وليست مُدخلة ذاتياً.',
+    'derived_tournaments_title'  => 'من سجلات النادي',
+    'derived_tournaments_note'   => 'الفعاليات التي تم تسجيلك بها. مؤكدة من النادي وليست مُدخلة ذاتياً.',
+    'derived_since'              => 'عضو منذ :date',
 ];

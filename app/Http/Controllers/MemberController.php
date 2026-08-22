@@ -149,7 +149,7 @@ class MemberController extends Controller
      * @param  int  $id
      * @return \Illuminate\View\View
      */
-    public function show($uuid)
+    public function show($uuid, \App\Support\ProfileHistory $profileHistory)
     {
         $user = Auth::user();
 
@@ -526,6 +526,11 @@ class MemberController extends Controller
             'invoices' => $invoices,
             'payments' => $payments,
             'tournamentEvents' => $tournamentEvents,
+            // What the platform already KNOWS, for the two tabs that otherwise
+            // only ever show what the member typed in themselves. Read-only and
+            // de-duplicated against the self-reported rows — see App\Support\ProfileHistory.
+            'derivedAffiliations' => $profileHistory->derivedAffiliations($relationship->dependent),
+            'derivedTournaments'  => $profileHistory->derivedTournaments($relationship->dependent),
             'awardCounts' => $awardCounts,
             'selfReportedCounts' => $selfReportedCounts,
             'sports' => $sports,
@@ -796,22 +801,31 @@ class MemberController extends Controller
             ->values()
             ->all();
 
+        /*
+         * Absent means "leave it alone"; blank means "clear it".
+         *
+         * Now that these three are optional, reading them unconditionally would let
+         * a caller that simply omits a field wipe a value that was already on file —
+         * a 422 used to prevent that by accident. The modal always posts all three,
+         * so a blank one is a deliberate clear; anything that does not post them at
+         * all leaves them untouched.
+         */
+        $optional = [];
+        foreach (['gender', 'birthdate', 'nationality', 'email', 'blood_type', 'motto', 'marital_status'] as $field) {
+            if ($request->has($field)) {
+                $optional[$field] = $validated[$field] ?? null;
+            }
+        }
+
         $member->update([
             'full_name' => $validated['full_name'],
-            'email' => $validated['email'],
             'mobile' => $mobile,
-            'gender' => $validated['gender'],
-            'marital_status' => $validated['marital_status'] ?? null,
-            'birthdate' => $validated['birthdate'],
-            'blood_type' => $validated['blood_type'],
-            'nationality' => $validated['nationality'],
             'social_links' => $socialLinks,
-            'motto' => $validated['motto'],
             'profile_picture_is_public' => $request->has('profile_picture_is_public') ? true : false,
             'emergency_contacts' => $emergencyContacts,
             'health_conditions' => $healthConditions,
             'documents' => $documents,
-        ]);
+        ] + $optional);
 
         // Update relationship if it exists (not for admin or own profile)
         if (! $isSuperAdmin && ! $isOwnProfile && isset($relationship)) {

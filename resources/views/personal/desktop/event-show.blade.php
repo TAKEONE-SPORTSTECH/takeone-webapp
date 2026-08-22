@@ -625,7 +625,24 @@
                  static style on the same element is asking for one to clobber
                  the other. The pulse falls back to the brand primary, which
                  reads against every state this row takes. --}}
+
+            {{-- Entries are closed and this viewer holds no place: the way in is
+                 GONE, not greyed out. A disabled join button invites a tap that can
+                 only ever say no. What replaces it is the one fact they need —
+                 which door closed, and when. --}}
+            <div x-show="! entriesOpen && ! registered" x-cloak
+                 class="mt-3 rounded-2xl border border-gray-200 bg-muted/40 p-4 flex items-start gap-3">
+                <span class="w-10 h-10 rounded-xl bg-white grid place-items-center flex-shrink-0 shadow-sm">
+                    <i class="bi bi-lock text-muted-foreground text-lg"></i>
+                </span>
+                <div class="min-w-0">
+                    <p class="text-sm font-bold text-foreground">{{ __('personal.event_show_entries_closed') }}</p>
+                    <p class="text-[12px] text-muted-foreground leading-snug mt-0.5" x-text="entriesNote"></p>
+                </div>
+            </div>
+
             <button type="button" id="join-participate"
+                    x-show="entriesOpen || registered" x-cloak
                     @click="{{ $canJoin ? "startJoin('participant')" : 'explainIneligible()' }}"
                     :disabled="registered && !feeDue"
                     class="w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
@@ -723,7 +740,7 @@
                                 <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
                                 <div class="relative flex items-center gap-3">
                                     <div class="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                                        <i class="bi bi-diagram-3-fill text-xl"></i>
+                                        <i class="bi bi-diagram-3-fill bracket-icon text-xl"></i>
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <h3 class="font-black text-[15px] leading-tight">{{ __('personal.event_show_brackets_draws') }}</h3>
@@ -771,6 +788,13 @@
                  have nowhere else to live. --}}
             <div>
 
+                {{-- Which club this athlete competes for, and — for a coach —
+                     the door to entering a whole squad. --}}
+                <div class="space-y-3 mb-3">
+                    @include('partials.event-representing')
+                    @include('partials.event-squad-entry')
+                </div>
+
                 {{-- Optional manual proof-of-payment (paid participant events) --}}
                 @include('partials.event-payment-proof')
 
@@ -782,7 +806,7 @@
                 @include('partials.event-join-sheet')
 
                 <div x-show="joinedDivision" x-cloak class="mt-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex items-center gap-2 text-xs">
-                    <i class="bi bi-diagram-3 text-primary"></i>
+                    <i class="bi bi-diagram-3 bracket-icon text-primary"></i>
                     <span class="text-muted-foreground">{{ __('personal.event_show_placed_in') }} <span class="font-bold text-foreground" x-text="joinedDivision"></span></span>
                 </div>
             </div>
@@ -812,7 +836,7 @@
                     <div class="flex-1 overflow-y-auto p-4 space-y-3">
                         @foreach($e['bracket_results'] as $r)
                             <div class="rounded-2xl border border-gray-100 p-3">
-                                <p class="text-sm font-bold text-foreground mb-2 flex items-center gap-2"><i class="bi bi-diagram-3 text-primary"></i> {{ $r['division'] }}</p>
+                                <p class="text-sm font-bold text-foreground mb-2 flex items-center gap-2"><i class="bi bi-diagram-3 bracket-icon text-primary"></i> {{ $r['division'] }}</p>
                                 <div class="space-y-1.5">
                                     @foreach($r['medals'] as $m)
                                         @php $medal = [1 => ['🥇', '#f59e0b', __('personal.event_show_champion')], 2 => ['🥈', '#9ca3af', __('personal.event_show_runner_up')], 3 => ['🥉', '#b45309', __('personal.event_show_third_place')]][$m['place']]; @endphp

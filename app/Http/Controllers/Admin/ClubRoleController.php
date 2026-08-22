@@ -35,6 +35,7 @@ class ClubRoleController extends Controller
         'Content' => ['manage-gallery'],
         'Messaging' => ['send-messages', 'manage-messages'],
         'Attendance' => ['mark-attendance'],
+        'Competitions' => ['enter-athletes'],
         'Profile' => ['view-own-profile', 'update-own-profile'],
         'System' => ['database-backup'],
     ];

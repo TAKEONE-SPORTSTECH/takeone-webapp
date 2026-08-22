@@ -14,4 +14,12 @@ return [
     'division_label' => 'الفئة الوزنية',
     'weigh_in' => 'الوزن الرسمي',
     'mat' => 'بساط',
+
+    // ── طاقم التحكيم (الكيوروغي) ────────────────────────────────────────
+    'official_center_referee'   => 'حكم الوسط',
+    'official_corner_judge'     => 'حكم زاوية :n',
+    'official_review_jury'      => 'لجنة المراجعة',
+    'official_court_supervisor' => 'مشرف الساحة',
+    'official_table_recorder'   => 'مسجّل الطاولة',
+    'official_timekeeper'       => 'مسجّل الوقت',
 ];

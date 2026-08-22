@@ -39,6 +39,7 @@
 
     Contract — see ScreenChannel for the other side:
       {action: paired|unpaired}   → this is a different page now; reload.
+      {action: reload}            → the table says start again; reload.
       {action: board, payload:{}} → same page, new queue; redraw in place.
 
     Expects: $screenLink = ['ws_url','username','password','topic','payload_url']
@@ -263,7 +264,12 @@
     }
 
     // Paired or unpaired: this is a different PAGE now, not different numbers.
-    if (msg.action === 'paired' || msg.action === 'unpaired') window.location.reload();
+    // Reload: the scoring table has asked for this screen to start again,
+    // because from the floor it looks stuck. Same treatment — there is nothing
+    // on this page worth preserving that is not re-fetched on load.
+    if (msg.action === 'paired' || msg.action === 'unpaired' || msg.action === 'reload') {
+      window.location.reload();
+    }
   }
 
   // ── Off the main thread, if we can ───────────────────────────────────────
@@ -274,9 +280,36 @@
     var src = 'self.onmessage=function(e){self.onmessage=null;(' + mqtt.toString() +
               ')(e.data,function(m){self.postMessage(m);});};';
     var worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
-    worker.onmessage = function (e) { handle(e.data); };
+    var heard = false;
+
+    worker.onmessage = function (e) { heard = true; handle(e.data); };
+    // An error the Worker reports is the easy case — take the inline path at
+    // once rather than waiting out the watchdog below.
+    worker.onerror = function () { if (!heard) { fallback(worker); } };
     worker.postMessage(CFG);
+
+    // ── The watchdog ───────────────────────────────────────────────────────
+    // `new Worker` succeeding is not the same as the link working. A Worker
+    // built from a blob can start and then fail to open its socket with no
+    // error anywhere — which is what an Android TV WebView does — and the screen
+    // then has no live link at all while looking perfectly healthy. Every
+    // symptom of that is a delay: scores arriving late, and an unpaired screen
+    // taking a minute to notice, because the slow poll is quietly doing all the
+    // work.
+    //
+    // The client posts {t:'up'} the moment the broker accepts it, so silence for
+    // eight seconds means the Worker is not going to deliver. Drop it and run
+    // the same client inline, where the socket is the page's own.
+    setTimeout(function () {
+      if (!heard) { fallback(worker); }
+    }, 8000);
   } catch (e) {
+    mqtt(CFG, handle);
+  }
+
+  /** Abandon the Worker and run the client on this thread instead. */
+  function fallback(worker) {
+    try { worker.terminate(); } catch (e) {}
     mqtt(CFG, handle);
   }
 })();

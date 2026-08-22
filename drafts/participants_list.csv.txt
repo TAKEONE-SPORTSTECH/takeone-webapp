@@ -1,0 +1,15 @@
+Group,ID,Name,Birth Date,Age (Years),Age (Months),Age (Days),Category,Weight,Club
+1,1,Abdullah Bassam,2012-02-14,14,6,24,Under 15,52 kg,Sparta
+1,2,Waleed Waheeb,2012-06-30,14,2,8,Under 15,57 kg,Shotokan Muharraq
+1,3,Zakaria Shuwaiter,2011-02-26,15,6,12,Under 16,50 kg,Shotokan Muharraq
+2,1,Mohammed Ahmed,2007-01-12,19,7,26,Under 21,75 kg,Shotokan Muharraq
+2,2,Hassan Faramarzi,2008-08-03,18,1,4,Under 21,81 kg,Sparta
+2,3,Khalifa Sanad,2007-12-13,18,11,25,Under 21,54 kg,Shotokan Al-Hala
+3,1,Sharifa Sanad,2012-09-21,13,11,17,Under 14,60 kg,Shotokan Al-Hala
+3,2,Dana Mohammed,2007-05-26,19,3,12,Under 21,75 kg,Shotokan Muharraq
+3,3,Fawzia Abdullah,2009-02-10,17,6,28,Under 21,61 kg,Sparta
+4,6,Mohammed Nabeel,2007-06-17,19,2,21,Under 21,60 kg,Shotokan
+4,9,Yousef Nawaf,2006-10-07,19,11,0,Under 21,67 kg,Budaiya
+5,1,Mohammed Hameed,2009-11-27,16,9,11,Under 17,55 kg,Shotokan Muharraq
+5,2,Abdullah Al-Mirbati,2009-05-31,17,3,7,Under 21,60 kg,Shotokan Muharraq
+5,3,Hamad Sanad,2008-12-13,17,8,25,Under 21,75 kg,Shotokan Al-Hala

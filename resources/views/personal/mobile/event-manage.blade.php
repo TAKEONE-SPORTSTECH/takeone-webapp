@@ -152,7 +152,7 @@
                 <a href="{{ $row['href'] }}" data-shell-link data-route="me.events"
                    class="m-card m-press bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
                     <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 {{ $row['tone'] }}">
-                        <i class="bi {{ $row['icon'] }} text-lg"></i>
+                        <i class="{{ \App\Support\Icon::bi($row['icon'], 'text-lg') }}"></i>
                     </span>
                     <span class="min-w-0 flex-1">
                         <span class="block text-sm font-bold text-foreground truncate">{{ $row['label'] }}</span>
@@ -173,6 +173,17 @@
                              :new-url="$screenNewUrl ?? null"
                          :color="$mgColor" />
     @endif
+
+    {{-- ===== What the screens play — same condition as the screens themselves,
+              since audio with nothing to play it on is a setting nobody can
+              hear. ===== --}}
+    @if($canManage && ! empty($screens))
+        <x-event-screen-audio :event="$e['key']"
+                              :media="$screenAudio ?? []"
+                              :audio-url="$screenAudioUrls ?? []"
+                              :color="$mgColor" />
+    @endif
+
 
     @if($canManage)
         {{-- ===== Finish here ===== --}}
@@ -227,7 +238,7 @@
                         @csrf
                         <button type="submit"
                                 class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
-                            <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 bg-primary/10 text-primary"><i class="bi {{ $action['icon'] ?? 'bi-lightning-charge' }} text-lg"></i></span>
+                            <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 bg-primary/10 text-primary"><i class="{{ \App\Support\Icon::bi($action['icon'] ?? null, 'text-lg', 'bi-lightning-charge') }}"></i></span>
                             <span class="min-w-0 flex-1">
                                 <span class="block text-sm font-bold text-foreground">{{ $action['label'] }}</span>
                             </span>

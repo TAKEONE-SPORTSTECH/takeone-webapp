@@ -41,13 +41,32 @@ return [
     'entry_out_of_scope' => 'هذه الفعالية غير متاحة لنادي :name.',
     'entry_banned' => 'تم منع :name من هذه الفعالية.',
     'entry_event_ended' => 'انتهت هذه الفعالية.',
+    'entry_event_started' => 'انطلقت المنافسة — قائمة المشاركين نهائية.',
+    'entry_closed_generic' => 'التسجيل مغلق لهذه الفعالية.',
     'entry_not_open' => 'يفتح التسجيل في :date.',
     'entry_closed' => 'أُغلق التسجيل في :date.',
     'entry_full' => 'اكتمل العدد في هذه الفعالية.',
     'entry_not_eligible' => ':name غير مؤهل لهذه الفعالية.',
+    'entry_pending_weigh_in' => 'لا يوجد وزن مسجّل — سيتم تصنيفه عند الوزن الرسمي.',
     'entry_notify_title' => 'تم تسجيلك — :title',
     'entry_notify_body' => 'قام :club بتسجيلك في هذه الفعالية.',
     'entry_notify_body_division' => 'قام :club بتسجيلك في هذه الفعالية · :division',
+
+    // تمثيل النادي — يختاره اللاعب بنفسه، ولا يحتاج موافقة، ويمكن للنادي رفضه لاحقاً
+    'claim_unknown_athlete' => 'عضو',
+    'claim_not_your_club' => 'يمكنك التمثيل فقط عن نادٍ أنت عضو فعّال فيه.',
+    'claim_notify_title' => ':name يمثّل ناديك',
+    'claim_notify_body' => 'سجّل نفسه في :title. إن كان ذلك غير صحيح يمكنك رفض التمثيل.',
+    'claim_disowned_title' => 'أزال :club اسمه من تسجيلك',
+    'claim_disowned_body' => 'ما زلت مسجلاً في :title — وتشارك دون انتماء لنادٍ.',
+    'claim_disowned_done' => 'تم رفض التمثيل — يشارك الآن دون انتماء لنادٍ.',
+    'claim_disown_closed' => 'أُغلق التسجيل — لم يعد بالإمكان رفض التمثيل.',
+
+    // What an entry costs. The amount is a column now; this is only the
+    // line shown when there is nothing to pay.
+    'fee_free' => 'مجاني',
+
+    'claim_unattached' => 'دون نادٍ',
 
     // القرعة والمخطط — مشتركة بين كل أنواع الفعاليات التي تُقام بنظام الإقصاء
     'athlete' => 'لاعب',
@@ -98,11 +117,37 @@ return [
     'screen_new_retry' => 'حاول مرة أخرى',
     'screen_new_busy' => 'الخادم مشغول — سنحاول بعد لحظات.',
     'screen_new_retrying' => 'تعذّر الوصول إلى الخادم — سنحاول بعد لحظات.',
+    'screen_audio_saved' => 'تم الرفع — ستعتمده الشاشات.',
+    'screen_audio_removed' => 'تم الحذف.',
+    'screen_audio_rejected' => 'هذا الملف لا تستطيع الشاشة تشغيله. استخدم MP3 أو WAV أو OGG أو M4A أو AAC وبحد 10 ميجابايت.',
+    'screen_audio_unknown_slot' => 'صوت غير معروف.',
+    'screen_audio_denied' => 'الحدث غير موجود.',
+    'screen_audio_title' => 'الصوت',
+    'screen_audio_intro' => 'ما تشغّله شاشات هذا الحدث. كل ملف يستبدل السابق.',
+    'screen_audio_vs_music' => 'موسيقى التقديم',
+    'screen_audio_winner_music' => 'احتفال الفائز',
+    'screen_audio_point_1' => 'نقطة واحدة',
+    'screen_audio_point_2' => 'نقطتان',
+    'screen_audio_point_3' => 'ثلاث نقاط',
+    'screen_audio_foul' => 'عقوبة',
+    'screen_audio_choose' => 'اختر ملفًا',
+    'screen_audio_replace' => 'استبدال',
+    'screen_audio_none' => 'لا يوجد ملف',
+    'screen_audio_play' => 'تشغيل',
+    'screen_audio_remove' => 'حذف',
     'screen_title' => 'امسح الرمز لتجهيز هذه الشاشة',
     'screen_code_label' => 'رمز الإقران',
     'screen_hint' => 'امسح هذا الرمز بتطبيق تيك ون، ثم اختر ما تعرضه هذه الشاشة.',
     'screen_waiting' => 'في انتظار التجهيز',
     'screen_another' => 'جهّز شاشة أخرى هنا',
+    'screen_headline' => 'اقرن هذه الشاشة بتطبيق تيك ون',
+    'screen_scan_pill' => 'امسح بالتطبيق',
+    'screen_step_open' => 'افتح تطبيق تيك ون على هاتفك',
+    'screen_step_scan' => 'امسح رمز QR أو أدخل رمز الإقران',
+    'screen_step_choose' => 'اختر ما تعرضه هذه الشاشة',
+    'screen_app_head' => 'نزّل التطبيق',
+    'screen_app_tv' => 'تنزيل للتلفاز',
+    'screen_app_tab' => 'تنزيل للجهاز اللوحي',
 
     'screen_claim_title' => 'ماذا تعرض هذه الشاشة؟',
     'screen_claim_sub' => 'الشاشة :code في انتظار تحديد وظيفتها.',
@@ -126,4 +171,63 @@ return [
     'screen_new_trouble' => 'تعذّر إعداد الشاشة',
     'screen_new_status' => 'رفض الخادم الطلب (:code). ستتم إعادة المحاولة.',
     'screen_new_malformed' => 'ردّ الخادم بشيء غير صالح.',
+
+    // One bout page (VIDEO-INTEGRATION.md §6.6) — the page a match video links back to.
+    'bout_vs' => 'ضد',
+    'bout_tbd' => 'لم يُحدد',
+    'bout_view_draw' => 'عرض القرعة',
+    'bout_result' => 'النتيجة',
+    'bout_where' => 'مكان النزال',
+    'bout_mat' => 'البساط',
+    'bout_mat_n' => 'البساط :n',
+    'bout_day' => 'اليوم',
+    'bout_day_n' => 'اليوم :n',
+    'bout_time' => 'الوقت',
+    'bout_host' => 'المستضيف',
+    'bout_seed_n' => 'التصنيف :n',
+    'bout_unattached' => 'مستقل',
+    'bout_status_upcoming' => 'لم يبدأ بعد',
+    'bout_status_live' => 'على البساط الآن',
+    'bout_status_done' => 'النتيجة',
+
+    'official_referee'    => 'حكم',
+    'official_judge'      => 'حكم مساعد',
+    'official_timekeeper' => 'مسجّل الوقت',
+    'official_recorder'   => 'مسجّل',
+    'sport_generic' => 'رياضة أخرى',
+    'bout_officials' => 'الحكّام والإداريون',
+    'bout_officials_hint' => 'مُعيَّنون لهذه البطولة.',
+    'bout_watch' => 'شاهد النزال',
+    'bout_corners' => 'الأركان',
+    'bout_corners_hint' => 'رُكن كل متسابق في النزال. يعتمد الخط الزمني عليه لإسناد النقاط.',
+    'bout_corners_swap' => 'تبديل',
+    'bout_corners_set' => 'تحديد الأركان',
+    'bout_corners_unset' => 'غير مسجّل',
+    'bout_corners_saved' => 'تم حفظ الأركان',
+    'bout_corners_conflict' => 'لا يمكن أن يكون المتسابقان في الركن نفسه.',
+    'bout_manage_officials' => 'إدارة الحكّام',
+    'bout_edit' => 'ØªØ¹Ø¯ÙÙ Ø§ÙÙØ²Ø§Ù',
+    'bout_saved' => 'ØªÙ ØªØ­Ø¯ÙØ« Ø§ÙÙØ²Ø§Ù',
+    'bout_scores' => 'Ø§ÙÙÙØ§Ø·',
+    'bout_winner' => 'Ø§ÙÙØ§Ø¦Ø²',
+    'bout_winner_none' => 'Ø¨ÙØ§ ÙØªÙØ¬Ø©',
+    'bout_names' => 'Ø§ÙØ£Ø³ÙØ§Ø¡ ÙÙ Ø§ÙÙØ´Ù',
+    'bout_video' => 'Ø±Ø§Ø¨Ø· Ø§ÙÙÙØ¯ÙÙ',
+    'bout_video_hint' => 'Ø±Ø§Ø¨Ø· ÙØ²Ø§Ù Ø¹ÙÙ TAKEONE Play. Ø§ÙØ³Ø­Ù ÙØ¥ÙØºØ§Ø¡ Ø§ÙØ±Ø¨Ø· — Ø§ÙÙÙØ¯ÙÙ ÙÙØ³Ù ÙØ§ ÙÙØ­Ø°Ù Ø£Ø¨Ø¯Ø§Ù.',
+    'bout_video_host' => 'ÙØ¬Ø¨ Ø£Ù ÙÙÙÙ Ø±Ø§Ø¨Ø· Ø§ÙÙÙØ¯ÙÙ Ø¹ÙÙ :host.',
+    'bout_video_invalid' => 'ÙØ°Ø§ ÙØ§ ÙØ¨Ø¯Ù Ø±Ø§Ø¨Ø· ÙÙØ¯ÙÙ.',
+    'bout_edit_live_note' => 'Ø£Ø«ÙØ§Ø¡ Ø§ÙÙØ²Ø§Ù ØªÙÙÙ Ø·Ø§ÙÙØ© Ø§ÙØªØ­ÙÙÙ ÙÙ Ø§ÙÙØ±Ø¬Ø¹ ÙØ³ØªØ³ØªØ¨Ø¯Ù ÙØ°Ù Ø§ÙÙÙÙ. Ø£ÙØ§ ØªØµØ­ÙØ­ ÙØ²Ø§Ù ÙÙØªÙÙ ÙÙÙØ«Ø¨ÙÙØª ÙÙÙØ³Ø¬ÙÙÙ ÙÙ Ø³Ø¬Ù Ø§ÙØªØ­ÙÙÙ.',
+    'bout_competitor_ineligible' => 'ÙØ°Ø§ Ø§ÙÙØ§Ø¹Ø¨ ØºÙØ± ÙØ³Ø¬ÙÙ ÙÙ ÙØ°Ù Ø§ÙÙØ¦Ø©.',
+    'bout_competitor_duplicate' => 'ÙØ§ ÙÙÙÙ ÙÙØ§Ø¹Ø¨ ÙÙØ³Ù Ø£Ù ÙØ´ØºÙ Ø§ÙØ±ÙÙÙÙ.',
+    'bout_pick_athlete' => 'Ø§Ø¨Ø­Ø« ÙÙ Ø§ÙÙØ´Ø§Ø±ÙÙÙâ¦',
+    'bout_athletes' => 'Ø§ÙÙØ§Ø¹Ø¨ÙÙ',
+    'bout_athletes_hint' => 'Ø§ÙÙØ´Ø§Ø±ÙÙÙ ÙÙ ÙØ°Ù Ø§ÙÙØ¦Ø© ÙÙØ·. ØªØ­Ø¯ÙØ¯ ÙÙ ÙØ®ÙØ¶ Ø§ÙÙØ²Ø§Ù ÙØ±Ø§Ø± Ø§ÙÙØ±Ø¹Ø©Ø ÙØ°ÙÙ Ø§ÙÙØ§Ø¦ÙØ© ÙÙØ³Øª ÙØµØ§Ù Ø­Ø±Ø§Ù.',
+    'bout_officials_add' => 'Ø¥Ø¶Ø§ÙØ© Ø­ÙÙ',
+    'bout_officials_role' => 'Ø§ÙÙØ±ÙØ²',
+    'bout_officials_search' => 'Ø§Ø¨Ø­Ø« Ø¨Ø§ÙØ§Ø³Ù Ø£Ù Ø§ÙÙØ§ØªÙ Ø£Ù Ø§ÙØ¨Ø±ÙØ¯â¦',
+    'bout_officials_none' => 'ÙØ§ Ø£Ø­Ø¯ ÙØ¹ÙÙÙ Ø¨Ø¹Ø¯.',
+    'bout_officials_added' => 'ØªÙ ØªØ¹ÙÙÙ Ø§ÙØ­ÙÙ',
+    'bout_officials_removed' => 'ØªÙ Ø¥Ø²Ø§ÙØ© Ø§ÙØ­ÙÙ',
+    'bout_officials_role_search' => 'ابحث في المراكز…',
+    'bout_officials_type_to_search' => 'اكتب اسماً أو هاتفاً أو بريداً.',
 ];

@@ -1,0 +1,23 @@
+# Flutter / Dart
+.dart_tool/
+build/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Built screens app — rebuilt by build.sh, never committed
+dist/
+*.apk
+*.aab
+
+# Android build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.keystore
+*.jks
+keystore.properties
+
+# OS
+.DS_Store

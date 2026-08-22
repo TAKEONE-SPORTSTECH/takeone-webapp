@@ -26,6 +26,9 @@ class EventRequest extends FormRequest
             'cancel_within_days' => 'nullable|integer|min:1|max:365',
             'tags' => 'nullable|string',
             'color' => 'nullable|string|max:20',
+            // The display line and the price behind it — see App\Events\Support\EventFee.
+            'participant_fee' => 'nullable|string|max:40',
+            'participant_fee_amount' => 'nullable|numeric|min:0|max:1000000',
         ];
     }
 }

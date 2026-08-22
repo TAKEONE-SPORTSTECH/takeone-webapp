@@ -43,4 +43,33 @@ class Karate extends AbstractCombatSport
     {
         return 'repechage';
     }
+
+    /**
+     * The WKF kumite officiating panel, in match-sheet order: the Shushin
+     * (Referee) in the tatami, four Fukushin (Judges) at the corners, the Kansa
+     * (Match Supervisor) at the table, then the tatami and table officials.
+     *
+     * Karate names its officials in Japanese and the federation titles are what
+     * appear on a bout sheet, so the label carries both — "Referee (Shushin)" —
+     * rather than forcing a choice between the two.
+     *
+     * Keys are stable and never translated: they are what gets stored against a
+     * bout and sent to the video platform.
+     *
+     * @return array<int, array{key: string, label: string}>
+     */
+    public function officialRoles(): array
+    {
+        return [
+            ['key' => 'referee',          'label' => __('sport-karate::messages.official_referee')],
+            ['key' => 'judge_1',          'label' => __('sport-karate::messages.official_judge', ['n' => 1])],
+            ['key' => 'judge_2',          'label' => __('sport-karate::messages.official_judge', ['n' => 2])],
+            ['key' => 'judge_3',          'label' => __('sport-karate::messages.official_judge', ['n' => 3])],
+            ['key' => 'judge_4',          'label' => __('sport-karate::messages.official_judge', ['n' => 4])],
+            ['key' => 'match_supervisor', 'label' => __('sport-karate::messages.official_match_supervisor')],
+            ['key' => 'tatami_manager',   'label' => __('sport-karate::messages.official_tatami_manager')],
+            ['key' => 'scorekeeper',      'label' => __('sport-karate::messages.official_scorekeeper')],
+            ['key' => 'timekeeper',       'label' => __('sport-karate::messages.official_timekeeper')],
+        ];
+    }
 }

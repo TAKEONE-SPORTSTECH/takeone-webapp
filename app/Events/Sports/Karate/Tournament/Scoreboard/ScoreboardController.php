@@ -6,6 +6,7 @@ use App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayDevice;
 use App\Events\Sports\Karate\Tournament\CourtDisplay\ScreenChannel;
 use App\Events\Sports\Karate\Tournament\RunningOrder;
 use App\Events\Support\EventAccess;
+use App\Events\Support\ScreenMedia;
 use App\Http\Controllers\Controller;
 use App\Models\ClubEvent;
 use App\Models\EventMatch;
@@ -28,6 +29,8 @@ use Illuminate\Support\Facades\Cache;
  */
 class ScoreboardController extends Controller
 {
+    use \App\Traits\StoresBase64Images;
+
     public function __construct(private Scoring $scoring) {}
 
     /**
@@ -48,6 +51,17 @@ class ScoreboardController extends Controller
 
         return $this->consoleView($event, $mats, $court, [
             'commandUrl' => route('karate-scoreboard.command', $event->uuid),
+            // The same panel, through the organiser's own authorisation rather
+            // than a screen token: one console body, two front doors, and the
+            // upload has to work through both or the feature is only there for
+            // whoever happens to be holding the tablet.
+            'audioUploadBase' => \Illuminate\Support\Str::beforeLast(
+                route('me.events.screen-audio.store', [$event->uuid, 'x'], false), 'x'
+            ),
+            // A face for a corner needs the entry behind it, which only the
+            // token door can resolve from the mat state. From a laptop the
+            // roster is the place for that, so this door offers no photo upload.
+            'photoUploadBase' => null,
         ], $request->boolean('adjust'));
     }
 
@@ -80,6 +94,12 @@ class ScoreboardController extends Controller
             // console is sized to land inside 1080 and that row is what tips it
             // over. ?adjust=1 brings them back for a screen with room.
             'showTimeAdjust' => $showTimeAdjust,
+            // Which of this event's sounds are already uploaded, so the panel
+            // says what is set without the console having to fetch anything.
+            // Names only — the console never sees a path.
+            'audioSlots' => collect(ScreenMedia::forEvent($event))
+                ->map(fn ($m) => ['name' => $m->original_name, 'bytes' => $m->bytes])
+                ->all(),
         ] + $urls);
     }
 
@@ -130,6 +150,15 @@ class ScoreboardController extends Controller
             // twenty minutes for the next bout as offline — the opposite of the
             // truth, and exactly when an organiser checks. So it beats.
             'heartbeatUrl' => route('karate-court-display.status', $token, false),
+            // Uploading from the table itself. Prefixes, with the console
+            // appending the slot or the side — see the note on the board's audio
+            // base for why these are not built with a placeholder.
+            'audioUploadBase' => \Illuminate\Support\Str::beforeLast(
+                route('karate-scoreboard.token-audio', [$token, 'x'], false), 'x'
+            ),
+            'photoUploadBase' => \Illuminate\Support\Str::beforeLast(
+                route('karate-scoreboard.token-photo', [$token, 'aka'], false), 'aka'
+            ),
         ]);
     }
 
@@ -152,6 +181,151 @@ class ScoreboardController extends Controller
      * Mirrors controlDevice() exactly. If the two ever disagree, a screen
      * bounces — so they are written to be read side by side.
      */
+    /**
+     * Upload one of this event's sounds from the scoring table itself.
+     *
+     * The organiser's console can already do this. The reason this exists too is
+     * that the person who discovers the hall is silent is the one AT the mat,
+     * ten minutes before the first bout, holding the only device that matters —
+     * and telling them to find a laptop and sign in is how a competition starts
+     * without its music.
+     *
+     * Authorised by the SCORING token, which is not a widening of what that
+     * token holds: it already writes results into the bracket, which is a far
+     * more consequential act than replacing a sound file. It is still only the
+     * control surface — a bout board cannot upload anything — and still only for
+     * its own event.
+     */
+    public function tokenAudio(Request $request, string $token, string $slot): JsonResponse
+    {
+        abort_unless($this->canOpenControl($token), 403);
+
+        [, $event] = $this->controlDevice($token);
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:'.(ScreenMedia::MAX_BYTES / 1024)],
+        ]);
+
+        $media = ScreenMedia::put($event, $slot, $request->file('file'), null);
+
+        if (! $media) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.screen_audio_rejected'),
+            ], 422);
+        }
+
+        // Every screen on this mat reloads, which is how they pick the new file
+        // up: the audio elements are built once per page and cache what they
+        // fetched, so a replaced track would otherwise keep playing the old one
+        // until somebody power-cycled the wall.
+        ScreenChannel::notifyCourt($event, null, ['action' => 'reload']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.screen_audio_saved'),
+            'slot' => $slot,
+            'name' => $media->original_name,
+            'bytes' => $media->bytes,
+        ]);
+    }
+
+    /** Take a sound away again, from the same place it was uploaded. */
+    public function tokenAudioDestroy(string $token, string $slot): JsonResponse
+    {
+        abort_unless($this->canOpenControl($token), 403);
+
+        [, $event] = $this->controlDevice($token);
+
+        if ($media = ScreenMedia::slot($event, $slot)) {
+            $media->purge();
+        }
+
+        ScreenChannel::notifyCourt($event, null, ['action' => 'reload']);
+
+        return response()->json(['success' => true, 'message' => __('events.screen_audio_removed'), 'slot' => $slot]);
+    }
+
+    /**
+     * A face for whoever is in one of the corners RIGHT NOW.
+     *
+     * Scoped to the bout on this mat, not to an arbitrary entry id: the only two
+     * competitors this token may photograph are the two standing in front of it.
+     * That is both the useful case — the athlete is right there — and the narrow
+     * one, which is why the side comes from the state rather than from the
+     * request naming a registration.
+     */
+    public function tokenPhoto(Request $request, string $token, string $side): JsonResponse
+    {
+        abort_unless($this->canOpenControl($token), 403);
+        abort_unless(in_array($side, ['aka', 'ao'], true), 404);
+
+        [$device, $event] = $this->controlDevice($token);
+
+        $request->validate([
+            'image' => ['required', 'string', 'starts_with:data:image/'],
+        ]);
+
+        $state = MatState::load($event, $device->court);
+
+        abort_unless($state->matchId, 422);
+
+        $match = EventMatch::where('event_id', $event->id)->find($state->matchId);
+        $column = $side === 'aka' ? 'a_competitor_id' : 'b_competitor_id';
+        $registrationId = $match?->{$column};
+
+        // A corner filled in by hand — a name typed at the table with no entry
+        // behind it — has nothing to attach a photo to. Said plainly rather than
+        // failing silently.
+        if (! $registrationId) {
+            return response()->json([
+                'success' => false,
+                'message' => __('event-karate_tournament::messages.ctl_photo_no_entry'),
+            ], 422);
+        }
+
+        $registration = \App\Models\ClubEventRegistration::where('event_id', $event->id)->find($registrationId);
+
+        abort_unless($registration, 404);
+
+        $previous = $registration->photo;
+
+        $path = $this->storeBase64Image(
+            $request->input('image'),
+            'events/'.$event->uuid.'/competitors',
+            'c'.$registration->id.'-'.\Illuminate\Support\Str::random(16),
+        );
+
+        if ($path === null) {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.event_photo_rejected'),
+            ], 422);
+        }
+
+        $registration->update(['photo' => $path]);
+
+        if ($previous && $previous !== $path) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($previous);
+        }
+
+        // The corner is rebuilt from the registration, so the wall shows the face
+        // as soon as it is told the state changed.
+        // 'resync' is the defined no-op: it changes nothing, saves the state as
+        // it stands, and hands it back — which is exactly what is needed to push
+        // a corner the registration behind it just changed.
+        $fresh = $this->scoring->apply($event, $device->court, 'resync');
+        ScreenChannel::notifyCourt($event, $device->court, ['action' => 'mat', 'state' => $fresh->toArray()]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.event_photo_saved'),
+            'photo' => asset('storage/'.$path),
+            'side' => $side,
+            'state' => $fresh->toArray(),
+        ]);
+    }
+
     private function canOpenControl(string $token): bool
     {
         $device = CourtDisplayDevice::resolve($token);
@@ -236,6 +410,13 @@ class ScoreboardController extends Controller
             'courtLabel' => ['nullable', 'string', 'max:20'],
             'stage' => ['nullable', 'string', 'max:40'],
             'referee' => ['nullable', 'string', 'max:60'],
+            // Ending a bout by decision rather than on points. Validated here as
+            // well as inside Scoring, because this endpoint is the contract and
+            // the console is only a convenience: a second laptop or a replayed
+            // request must be held to the same vocabulary.
+            'winner' => ['nullable', 'string', 'in:aka,ao'],
+            'reason' => ['nullable', 'string', 'in:'.implode(',', Scoring::WIN_REASONS)],
+            'note' => ['nullable', 'string', 'max:200'],
         ]);
 
         // The mat must be one this event actually runs — not a string the
@@ -298,6 +479,20 @@ class ScoreboardController extends Controller
             'action' => 'mat',
             'state' => $state->toArray(),
         ]);
+
+        // The sledgehammer, and the reason it exists: a screen on a wall has no
+        // keyboard, no pointer and nobody standing at it. If one has hung — a
+        // dropped websocket that never came back, a board stuck on a
+        // celebration, a page that has been up since the morning — there is
+        // otherwise no way to make it start again short of pulling the power.
+        //
+        // Sent AFTER the state, so a screen that is merely behind has already
+        // been corrected by the cheap message and this only matters to one that
+        // was not listening. Reload is safe by construction: every screen
+        // re-fetches everything it shows on load.
+        if ($data['command'] === 'resync') {
+            ScreenChannel::notifyCourt($event, $data['mat'], ['action' => 'reload']);
+        }
 
         return response()->json([
             'success' => true,

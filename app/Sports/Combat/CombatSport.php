@@ -37,4 +37,17 @@ interface CombatSport
 
     /** Bronze-medal convention: 'repechage' | 'both_sf_losers' | 'third_place_match'. */
     public function bronzeRule(): string;
+
+    /**
+     * The officiating positions this sport's matches are run by, in panel order.
+     *
+     * Each entry is ['key' => string, 'label' => string]: a stable machine key
+     * and a translated human label. A karate kumite bout is run by a Shushin and
+     * four Fukushin; a taekwondo kyorugi bout by a Center Referee and corner
+     * judges — so the vocabulary belongs to the SPORT, not to any one screen
+     * that happens to display it.
+     *
+     * @return array<int, array{key: string, label: string}>
+     */
+    public function officialRoles(): array;
 }

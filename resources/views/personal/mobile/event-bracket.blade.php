@@ -11,7 +11,9 @@
 --}}
 @php
     $color = $e['color'];
-    $first = collect($categories)->first()['key'] ?? '';
+    // The division to open on: whatever the link asked for (a bout's "View draw"
+    // names its own), else the first. Drives the initial view mode too.
+    $first = $initialCategory ?? (collect($categories)->first()['key'] ?? '');
     // helpers
     $ini = fn ($n) => collect(explode(' ', $n))->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->implode('');
 
@@ -156,13 +158,13 @@
                 <i class="bi bi-arrow-left text-lg"></i>
             </button>
             <span class="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur inline-flex items-center gap-1.5">
-                <i class="bi bi-diagram-3-fill"></i> {{ __('personal.personal_event_bracket_title') }}
+                <i class="bi bi-diagram-3-fill bracket-icon"></i> {{ __('personal.personal_event_bracket_title') }}
             </span>
         </div>
         <div class="relative z-10 mt-4">
             <h1 class="text-xl font-black leading-tight">{{ $e['title'] }}</h1>
             <p class="text-sm text-white/85 mt-1 flex items-center gap-1.5">
-                <i class="bi bi-diagram-3"></i><span x-text="stat.name">{{ count($categories) }} {{ __('personal.personal_event_bracket_weight_categories') }}</span>
+                <i class="bi bi-diagram-3 bracket-icon"></i><span x-text="stat.name">{{ count($categories) }} {{ __('personal.personal_event_bracket_weight_categories') }}</span>
                 <template x-if="stat.class"><span class="text-white/60" x-text="'· ' + stat.class"></span></template>
             </p>
 
@@ -212,7 +214,7 @@
                         :aria-pressed="view === 'board'"
                         class="m-press flex-1 min-w-0 px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
                         :class="view === 'board' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
-                    <i class="bi bi-diagram-3-fill"></i>{{ __('personal.personal_event_bracket_view_board') }}
+                    <i class="bi bi-diagram-3-fill bracket-icon"></i>{{ __('personal.personal_event_bracket_view_board') }}
                 </button>
                 <button type="button" @click="setView('table')"
                         :aria-pressed="view === 'table'"
@@ -232,6 +234,8 @@
             :data-url="route('me.events.bracket.data', $e['key'])"
             :event-uuid="$e['key']"
             :can-arrange="false"
+            {{-- Open on the division this page opened on, not the first. --}}
+            :initial-division="$catStats[$first]['id'] ?? null"
             :show-divisions="false"
             :my-competitor-ids="$myCompetitorIds ?? []"
             height="62vh" />
@@ -456,7 +460,7 @@
                  x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
                 <div class="p-4 border-b border-gray-100 flex items-center justify-between">
                     <div class="min-w-0">
-                        <h3 class="font-black text-foreground flex items-center gap-2 truncate"><i class="bi bi-diagram-3-fill" style="color: {{ $color }};"></i> <span x-text="editName">{{ __('personal.personal_event_bracket_draw_fallback') }}</span></h3>
+                        <h3 class="font-black text-foreground flex items-center gap-2 truncate"><i class="bi bi-diagram-3-fill bracket-icon" style="color: {{ $color }};"></i> <span x-text="editName">{{ __('personal.personal_event_bracket_draw_fallback') }}</span></h3>
                         <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_bracket_set_bracket_results_podium') }}</p>
                     </div>
                     <button type="button" @click="editing=null" class="m-press w-8 h-8 rounded-full bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>

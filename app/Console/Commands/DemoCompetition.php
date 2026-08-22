@@ -96,9 +96,13 @@ class DemoCompetition extends Command
             'karate' => [
                 'title' => 'Gulf Karate Open 2026',
                 'type' => 'tournament',
+                'fee' => 15,
                 'colour' => '#b3121f',
                 'venue' => 'Isa Sports City · Hall 2',
-                'clubs' => ['Budokan Elite Dojo', 'Al Hala Karate Club', 'Manama Shotokan', 'Riffa Fight Academy'],
+                // Club => the country the club is REGISTERED in. This is the
+                // flag its competitors fly, whatever passports they hold.
+                'clubs' => ['Budokan Elite Dojo' => 'BH', 'Al Hala Karate Club' => 'QA',
+                    'Manama Shotokan' => 'OM', 'Riffa Fight Academy' => 'SA'],
                 // One rung = one (colour, grade) pair. Kept together because
                 // they are not independent: "Black Belt · 1st Kyu" is a
                 // contradiction — kyu grades are the coloured belts BELOW black.
@@ -116,11 +120,13 @@ class DemoCompetition extends Command
                 'court_path' => '/karate/court/',
             ],
             'taekwondo' => [
-                'title' => 'Bahrain Taekwondo Grand Prix 2026',
+                'title' => 'Gulf Taekwondo Grand Prix 2026',
                 'type' => 'championship',
+                'fee' => 20,
                 'colour' => '#0d55b8',
                 'venue' => 'Khalifa Sports City · Isa Town',
-                'clubs' => ['Tiger Taekwondo Academy', 'Falcon Dojang', 'Muharraq TKD Centre', 'Sitra Black Belt Club'],
+                'clubs' => ['Tiger Taekwondo Academy' => 'BH', 'Falcon Dojang' => 'SA',
+                    'Muharraq TKD Centre' => 'AE', 'Sitra Black Belt Club' => 'KW'],
                 // Same rule: gup grades belong to the coloured belts, dan to black.
                 'ladder' => [
                     ['White', '10th Gup'], ['Yellow', '8th Gup'], ['Green', '6th Gup'],
@@ -253,9 +259,14 @@ class DemoCompetition extends Command
                 'paid' => true,
                 'paid_at' => now()->subDay(),
                 'paid_by' => $this->admin->id,
-                'meta' => $a['user']->nationality,
+                // The flag is the CLUB's country, never the athlete's own —
+                // they are here as their club. Their nationality stays on their
+                // profile, and is deliberately seeded to differ from it.
+                'meta' => $a['club']->country,
                 'registered_at' => now()->subDays(random_int(3, 20)),
                 'entered_by' => $this->admin->id,
+                'entry_channel' => 'club',
+                'representing_tenant_id' => $a['club']->id,
             ]);
             $this->m->track('club_event_registrations', $reg->id);
         }
@@ -310,12 +321,15 @@ class DemoCompetition extends Command
     {
         $clubs = [];
 
-        foreach ($bp['clubs'] as $i => $name) {
+        foreach ($bp['clubs'] as $name => $country) {
             $club = Tenant::create([
                 'owner_user_id' => $this->admin->id,
                 'club_name' => $name,
                 'slug' => 'demo-'.$sportKey.'-'.Str::slug($name),
-                'country' => 'BH',
+                // Spread across the Gulf on purpose: a competition prints the
+                // CLUB's country beside a competitor, so a demo where every
+                // club sits in one country proves nothing.
+                'country' => $country,
                 'description' => 'Demo club seeded by demo:competition — safe to delete.',
             ]);
             $this->m->track('tenants', $club->id);
@@ -339,10 +353,19 @@ class DemoCompetition extends Command
             'location' => $bp['venue'],
             'sport' => $sportKey,
             'event_type' => $bp['type'],
-            'scope' => 'nationwide',
+            // Worldwide, not nationwide: the entrant clubs sit in five
+            // countries, and a nationwide event only reaches the host's own.
+            'scope' => 'worldwide',
             'status' => 'active',
             'color' => $bp['colour'],
-            'participant_fee' => 'BHD 20',
+            'participant_fee' => 'BHD '.$bp['fee'],
+            'participant_fee_amount' => $bp['fee'],
+            'fee_currency' => 'BHD',
+            // Entries close the day before the competition, which is both how a
+            // real one runs and what the create form enforces (a closing date
+            // after the event date is refused there). Reopen it by editing the
+            // event if you want to demonstrate entering a squad.
+            'enrollment_ends_at' => now()->subDay()->startOfDay(),
             'courts' => $bp['courts'],
             'minutes_per_match' => 8,
             'created_by' => $this->admin->id,
@@ -443,6 +466,7 @@ class DemoCompetition extends Command
 
             $athletes[] = [
                 'user' => $user,
+                'club' => $club,
                 'age' => $age,
                 'weight' => $weight,
                 'belt_colour' => $colour,

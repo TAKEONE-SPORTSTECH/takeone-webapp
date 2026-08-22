@@ -25,6 +25,21 @@
     $modalIcon = $icon ?? ($isCreate ? 'bi-person-plus' : 'bi-person-circle');
     $submitText = $submitText ?? ($isCreate ? __('shared.components_profile_modal_add_member') : __('shared.components_profile_modal_update_profile'));
     $submitIcon = $submitIcon ?? ($isCreate ? 'bi-person-plus' : 'bi-check-circle');
+    /*
+     * Whether this form insists on gender, birthdate and nationality.
+     *
+     * Mirrors the server rule (App\Http\Requests\Concerns\PersonFieldRules)
+     * so the browser never refuses what the server would happily accept — the
+     * two must agree or a staff member is stopped by a message no endpoint would
+     * have sent. Staff entering somebody else need only a name; the member on
+     * their own profile is asked for the rest.
+     */
+    $formActor = auth()->user();
+    $isOwnProfile = $formActor && isset($user) && $user && (int) $formActor->id === (int) ($user->id ?? 0);
+    $demandPersonFields = ! $formActor
+        || $isOwnProfile
+        || ! $formActor->entersPeopleOnBehalfOfOthers();
+
     $formId = $isCreate ? 'memberCreateForm' : 'profileEditForm';
     $alpineComponent = $isCreate ? 'memberProfileModal_create' : 'memberProfileModal_edit';
     $eventName = $eventName ?? ($isCreate ? 'open-member-create-modal' : 'open-profile-modal');
@@ -443,6 +458,7 @@ function {{ $alpineComponent }}() {
 
             let valid = true;
             const fid = '{{ $formId }}';
+            const demandPersonFields = @js($demandPersonFields);
 
             // Full name
             const nameEl = document.getElementById(fid + '_full_name');
@@ -479,21 +495,20 @@ function {{ $alpineComponent }}() {
                 }
             }
 
-            // Gender (custom dropdown — hidden input)
+            // Gender / birthdate / nationality — asked for only when this form
+            // demands them, which mirrors the server rule exactly.
             const genderEl = document.getElementById(fid + '_gender');
-            if (!genderEl || !genderEl.value) {
+            if (demandPersonFields && (!genderEl || !genderEl.value)) {
                 this.showInputError(fid + '_gender', '{{ __("shared.components_profile_modal_err_gender_required") }}'); valid = false;
             } else { this.clearInputError(fid + '_gender'); }
 
             // Birthdate (custom dropdown — hidden input)
-            const bdEl = document.getElementById(fid + '_birthdate');
-            if (!bdEl || !bdEl.value) {
-                this.showInputError(fid + '_birthdate', '{{ __("shared.components_profile_modal_err_birthdate_required") }}'); valid = false;
-            } else { this.clearInputError(fid + '_birthdate'); }
+            // Birthdate is never required, of anyone — nothing to check here.
+            this.clearInputError(fid + '_birthdate');
 
             // Nationality (custom dropdown — hidden input)
             const natEl = document.getElementById(fid + '_nationality');
-            if (!natEl || !natEl.value) {
+            if (demandPersonFields && (!natEl || !natEl.value)) {
                 this.showInputError(fid + '_nationality', '{{ __("shared.components_profile_modal_err_nationality_required") }}'); valid = false;
             } else { this.clearInputError(fid + '_nationality'); }
 

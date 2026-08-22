@@ -3,6 +3,7 @@
 namespace App\Events\Sports\Karate\Tournament\Scoreboard;
 
 use App\Events\EventTypeRegistry;
+use App\Events\Support\MatchEventLog;
 use App\Events\Sports\Karate\Tournament\RunningOrder;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
@@ -26,6 +27,23 @@ use App\Sports\Combat\BeltRank;
 class Scoring
 {
     /** Every command an official can issue. Anything else is rejected. */
+    /**
+     * Why a bout was won when the score is not the answer.
+     *
+     * WKF's own vocabulary, plus the two an official actually needs beyond it.
+     * A closed list because it reaches the record: 'other' is the escape hatch
+     * and it is the one that expects the note to be filled in.
+     */
+    public const WIN_REASONS = [
+        'points',    // the normal case — the score decided it
+        'hansoku',   // disqualification for a foul
+        'shikkaku',  // disqualification for serious misconduct
+        'kiken',     // withdrawal / did not continue
+        'medical',   // retired injured, or withdrawn by the doctor
+        'no_show',   // never came to the mat
+        'other',     // anything else — say what in the note
+    ];
+
     public const COMMANDS = [
         'load',        // put a bout on the screen (mode → vs)
         'start',       // hajime — also leaves the VS intro for the scoreboard
@@ -39,6 +57,11 @@ class Scoring
         'finish',      // stop the clock and declare it over
         'clear',       // take the bout off the screen entirely (mode → upcoming)
         'commit',      // WRITE the result, advance the bracket, call the next bout
+        'dismiss',     // put the celebration away — on the table AND the wall
+        'celebrate',   // bring it back
+        'resync',      // tell every screen on this mat to reload itself
+        'board',       // end the VS introduction and show the scoreboard, clock untouched
+        'intro',       // put the introduction back up — the other half of 'board'
         'duration',    // {minutes} — the operator sets the bout length
         'corner',      // {side, name, club, country, flag} — fix what is announced
         'meta',        // {tournament, division, matchNo, courtLabel, stage} — header text
@@ -53,7 +76,7 @@ class Scoring
      */
     private const NEEDS_BOUT = [
         'start', 'pause', 'point', 'undo_point', 'penalty',
-        'senshu', 'time', 'reset', 'finish', 'commit',
+        'senshu', 'time', 'reset', 'finish', 'commit', 'board', 'intro',
     ];
 
     public function __construct(private BeltRank $belts) {}
@@ -95,14 +118,60 @@ class Scoring
             'senshu' => $this->senshu($state, $payload),
             'time' => $this->time($state, $payload),
             'reset' => $this->reset($state),
-            'finish' => $this->finish($state),
+            'finish' => $this->finish($state, $payload),
             'clear' => $this->clear($state),
             'commit' => $this->commit($event, $court, $state),
+            // Neither of these touches the bout: they decide whether the hall is
+            // still being shown a celebration for a result that is already
+            // decided and not yet filed.
+            'dismiss' => $state->celebrationClosed = true,
+            'celebrate' => $state->celebrationClosed = false,
+            // A no-op on purpose. It changes nothing and saves the state
+            // unchanged; what makes it useful is the reload the controller
+            // publishes afterwards, which is the one recovery a screen with no
+            // keyboard has.
+            'resync' => null,
+            // Leave the introduction WITHOUT starting the bout. Hajime already
+            // does both, and that was the only way off the VS screen — so an
+            // introduction that had run its course held the wall until the
+            // referee was ready to start, and an official who wanted the
+            // scoreboard up early had to start the clock to get it. The clock is
+            // not touched here: this is a change of what the wall shows, not of
+            // the bout.
+            'board' => $state->mode = MatState::MODE_SCOREBOARD,
+            'intro' => $this->intro($state),
             'duration' => $this->duration($state, $payload),
             'corner' => $this->cornerEdit($state, $payload),
             'meta' => $this->meta($state, $payload),
             default => null,
         };
+
+        // Append the command to the officiating timeline, after the dispatch
+        // above has mutated the state and before it is saved — so the scores
+        // recorded are the running totals as of this command, and no caller
+        // can reach the scoreboard without passing through here.
+        //
+        // Corners are handed over as neutral sides: aka is 'a', ao is 'b',
+        // exactly as load() built them from the bout's a_/b_ columns.
+        //
+        // This call cannot throw; see MatchEventLog. A mat must never stop
+        // because an audit row did not insert.
+        MatchEventLog::record(
+            event: $event,
+            court: $court,
+            sport: 'karate',
+            command: $command,
+            payload: $payload,
+            matchId: $state->matchId,
+            scoreA: $state->akaScore,
+            scoreB: $state->aoScore,
+            // The clock has already been settled against now() above, so this is
+            // the bout time as the command landed rather than as it was last
+            // painted — the difference is seconds, and seconds are the whole
+            // point of recording it.
+            clockRemaining: $state->matchId ? round($state->remaining, 2) : null,
+            clockDuration: $state->matchId ? round($state->duration, 2) : null,
+        );
 
         return $state->save($event, $court);
     }
@@ -152,7 +221,9 @@ class Scoring
             ->with(['user:id,full_name,name,gender,birthdate,nationality,height_cm,profile_picture,profile_picture_is_public',
                 'user.certifications:id,user_id,title,issue_date',
                 'user.skillAcquisitions:id,user_id,proficiency_level,start_date',
-                'user.memberClubs:id,club_name,logo,country'])
+                'user.memberClubs:id,club_name,logo,country',
+                // The club they compete FOR, which is what the screens print.
+                'representingTenant:id,club_name,logo,country'])
             ->get()->keyBy('id');
 
         $state->mode = MatState::MODE_VS;
@@ -176,6 +247,8 @@ class Scoring
         $state->akaSenshu = $state->aoSenshu = false;
         $state->running = false;
         $state->finished = false;
+        // Nothing carries over, the last bout's dismissed celebration included.
+        $state->celebrationClosed = false;
         $state->lastEvent = null;
     }
 
@@ -256,18 +329,29 @@ class Scoring
         $id = $match->{$side.'_competitor_id'};
         $reg = $id ? $registrations->get($id) : null;
         $user = $reg?->user;
-        $club = $user?->memberClubs->first();
+        // The club they COMPETE FOR — see ClubEventRegistration::competingClub().
+        $club = $reg?->competingClub();
         $belt = $user ? $this->belts->for($user, $reg) : null;
 
         return [
             'name' => $match->{$side.'_name'} ?: ($user?->full_name ?? $user?->name ?? ''),
             'club' => $club?->club_name ?? '',
-            'country' => $user?->nationality ?: ($match->{$side.'_country'} ?: ''),
-            'flag' => strtolower((string) ($match->{$side.'_country'} ?: $user?->nationality ?: $club?->country ?: '')) ?: null,
+            // The club's country, never the person's passport: they are here
+            // as their club, and that is what the hall is told.
+            'country' => $club?->country ?: ($match->{$side.'_country'} ?: ''),
+            'flag' => strtolower((string) ($match->{$side.'_country'} ?: $club?->country ?: '')) ?: null,
             'logo' => $club?->logo ? asset('storage/'.$club->logo) : null,
-            'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
-                ? asset('storage/'.$user->profile_picture)
-                : null,
+            // The event's OWN photo wins, then the member's profile picture if
+            // they published it. The first was uploaded by an organiser FOR this
+            // competition — including for the many competitors who have no
+            // account to have a profile picture on — so it needs no privacy gate
+            // beyond the one that put it there. The second is somebody's private
+            // picture and keeps its gate: a hall screen is a publication.
+            'photo' => $reg?->photo
+                ? asset('storage/'.$reg->photo)
+                : (($user?->profile_picture && $user->profile_picture_is_public)
+                    ? asset('storage/'.$user->profile_picture)
+                    : null),
             'belt' => $belt['label'] ?? null,
             'record' => $this->record($user?->id),
             // The stat line. Each part is null when unknown, and the screen
@@ -288,6 +372,28 @@ class Scoring
         // itself out and the scoreboard is behind it.
         $state->mode = MatState::MODE_SCOREBOARD;
         $state->running = true;
+    }
+
+    /**
+     * Back to the introduction.
+     *
+     * The other half of 'board', so the console's one button can go both ways —
+     * an introduction is shown, dismissed too early, and wanted again more often
+     * than anybody would guess, and until now the only way back was to reload
+     * the bout.
+     *
+     * Refused while the clock is RUNNING, and that refusal is the point: the
+     * introduction covers the score, and a bout in progress whose scoreboard has
+     * been replaced by two portraits is a hall that cannot see what is
+     * happening. Stop the clock first, deliberately.
+     */
+    private function intro(MatState $state): void
+    {
+        if ($state->running) {
+            throw new \RuntimeException(__('event-karate_tournament::messages.intro_running'));
+        }
+
+        $state->mode = MatState::MODE_VS;
     }
 
     private function pause(MatState $state): void
@@ -326,7 +432,15 @@ class Scoring
 
         $dir = ((int) ($payload['dir'] ?? 1)) >= 0 ? 1 : -1;
         $field = $side.'Pen';
+        $before = $state->$field;
         $state->$field = max(0, min(count(MatState::PENALTIES), $state->$field + $dir));
+
+        // A penalty going UP is an event the hall should hear. Going down is a
+        // correction and makes no noise — and neither does a press that changed
+        // nothing because the ladder was already at its end.
+        $state->lastEvent = ($dir === 1 && $state->$field !== $before)
+            ? ['side' => $side, 'n' => 0, 'penalty' => true, 'ts' => (int) (microtime(true) * 1000)]
+            : null;
     }
 
     /** Bout length, in minutes and seconds. Resets the clock with it. */
@@ -406,14 +520,52 @@ class Scoring
         $state->remaining = $state->duration;
         $state->running = false;
         $state->finished = false;
+        // A bout that is no longer over has nothing to celebrate. clear() runs
+        // through here too, so taking a bout off the mat clears it as well.
+        $state->celebrationClosed = false;
         $state->lastEvent = null;
     }
 
-    private function finish(MatState $state): void
+    /**
+     * The bout is over — and this is where WHO won is settled, not just WHEN.
+     *
+     * Two ways in. Without a winner in the payload it behaves exactly as it
+     * always did: the clock stops, the score decides, and senshu breaks a tie.
+     * WITH one, the official has declared it — a disqualification, a withdrawal,
+     * a doctor's call — and that outranks the points, which is the whole reason
+     * this exists. Either way nothing is filed yet: commit is still a separate,
+     * deliberate act.
+     */
+    private function finish(MatState $state, array $payload = []): void
     {
         $state->running = false;
         $state->finished = true;
         $state->lastEvent = null;
+
+        $winner = in_array($payload['winner'] ?? null, ['aka', 'ao'], true) ? $payload['winner'] : null;
+
+        // Declaring a winner takes the side that was named. Not declaring one
+        // CLEARS any previous declaration rather than leaving it standing: an
+        // official who ends the bout again on the score has changed their mind,
+        // and a stale override would quietly file the wrong athlete.
+        $state->winner = $winner;
+
+        if ($winner === null) {
+            $state->winReason = null;
+            $state->winNote = null;
+
+            return;
+        }
+
+        $reason = (string) ($payload['reason'] ?? 'other');
+        $state->winReason = in_array($reason, self::WIN_REASONS, true) && $reason !== 'points'
+            ? $reason
+            : 'other';
+
+        // Trimmed and capped to what the column holds. Never trusted as markup —
+        // every screen renders it as text.
+        $note = trim((string) ($payload['note'] ?? ''));
+        $state->winNote = $note === '' ? null : mb_substr($note, 0, 200);
     }
 
     /**
@@ -445,9 +597,17 @@ class Scoring
         }
 
         app(EventTypeRegistry::class)->for($event)->recordOutcome($event, $state->matchId, [
+            // akaLeads() already answers the DECLARED winner when there is one,
+            // so a disqualification advances the right athlete through the same
+            // path as a bout won on points.
             'winner' => $state->akaLeads() ? 'a' : 'b',
             'a_score' => (string) $state->akaScore,
             'b_score' => (string) $state->aoScore,
+            // Why, when it was not the score. This is the part that has to
+            // outlive the mat state: the cache is gone by the afternoon and
+            // "how did the athlete with two points win that" is asked later.
+            'win_reason' => $state->winner !== null ? ($state->winReason ?: 'other') : null,
+            'win_note' => $state->winner !== null ? $state->winNote : null,
             'status' => 'done',
         ]);
 

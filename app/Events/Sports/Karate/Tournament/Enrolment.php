@@ -37,9 +37,13 @@ class Enrolment
             );
         }
 
+        // No weight on file. That is a fact nobody has recorded yet, not a
+        // reason to keep an athlete out of a competition where every entrant
+        // stands on the scale on the day — so it is DEFERRED to weigh-in, and a
+        // coach entering their own squad is not stopped by it.
         $weight = $this->declaredWeight($user);
         if (! $weight) {
-            return EnrolmentDecision::deny(
+            return EnrolmentDecision::defer(
                 'no_weight',
                 __('event-karate_tournament::messages.gate_no_weight'),
             );

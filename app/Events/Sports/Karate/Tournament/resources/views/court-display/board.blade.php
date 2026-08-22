@@ -462,7 +462,10 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (s) { if (s && s.claimed === false) window.location.reload(); })
       .catch(function () { /* offline — keep the last known board up */ });
-  }, 60000);
+    // Five seconds. This board sends nothing else, so twelve one-field requests
+    // a minute is the whole of its budget — and it is what makes unpairing feel
+    // immediate when the realtime push cannot get through.
+  }, 5000);
 @endisset
 })();
 </script>

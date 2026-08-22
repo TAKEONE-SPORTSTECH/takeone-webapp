@@ -120,6 +120,17 @@ class ScreenPairingController extends Controller
             'code' => $screen->pairing_code,
             'claimUrl' => route('screen.claim', $screen->pairing_code),
             'statusUrl' => route('screen.status', $token),
+            // The address as it is READ off the glass and typed into a
+            // sideloader — without the scheme, which is eight keystrokes on a
+            // remote that a sideloader adds by itself. The button's href is the
+            // full route; this is only the legible half. Null when no build is
+            // published, so the page never offers a download that 404s.
+            'appUrl' => self::appAvailable('tv')
+                ? preg_replace('#^https?://#', '', route('screen.app'))
+                : null,
+            'tabUrl' => self::appAvailable('tab')
+                ? preg_replace('#^https?://#', '', route('screen.app.tab'))
+                : null,
         ]);
     }
 
@@ -145,6 +156,68 @@ class ScreenPairingController extends Controller
         }
 
         return response()->json(['go' => $screen->destination]);
+    }
+
+    /**
+     * Hands a television the app that makes it a screen.
+     *
+     * Open, like the rest of this controller, and for a sharper version of the
+     * same reason: the machine fetching this has no account, no keyboard and no
+     * app — it is a TV with a sideloader and a remote control. Requiring a
+     * session here would mean the one address a bare screen needs is the one
+     * address it cannot reach.
+     *
+     * What it serves is not a secret. The APK is a kiosk browser pinned to this
+     * host; it carries no credential, and every screen it can ever become still
+     * has to be claimed by an authenticated organiser. It is rate limited
+     * because it is big, not because it is sensitive.
+     *
+     * Served from private storage rather than the web root so the file is never
+     * listable, always passes through the limiter, and can be replaced without
+     * a deploy.
+     */
+    public function app(string $variant = 'tv')
+    {
+        $path = self::appPath($variant);
+
+        // An unknown variant is a 404, not a guess. The value reaches the
+        // filesystem, so it is resolved through a whitelist rather than
+        // interpolated — there is no arrangement of characters a caller can send
+        // that becomes a path.
+        //
+        // A missing FILE is also a 404 rather than an error page: it is an
+        // artifact nobody has published yet, not a broken route, and the screen
+        // page hides the address of anything it cannot serve.
+        abort_unless($path && is_file($path), 404);
+
+        return response()->download($path, 'takeone-screen-'.$variant.'.apk', [
+            'Content-Type' => 'application/vnd.android.package-archive',
+            // A sideloader on a TV must fetch the bytes, not a cached 304 from
+            // whatever proxy the venue's wifi runs.
+            'Cache-Control' => 'no-store, must-revalidate',
+        ]);
+    }
+
+    /** The published builds, by the only names there are. */
+    private const APPS = [
+        'tv' => 'takeone-screen-tv.apk',
+        'tab' => 'takeone-screen-tab.apk',
+    ];
+
+    /** Resolves a variant to a file, or null if it is not one of ours. */
+    private static function appPath(string $variant): ?string
+    {
+        $file = self::APPS[$variant] ?? null;
+
+        return $file ? storage_path('app/private/tv/'.$file) : null;
+    }
+
+    /** Whether a given build has been published. Cheap enough to ask per render. */
+    public static function appAvailable(string $variant = 'tv'): bool
+    {
+        $path = self::appPath($variant);
+
+        return $path !== null && is_file($path);
     }
 
     /** The organiser's form, reached by scanning the screen. */

@@ -21,7 +21,7 @@
 
 @section('content')
 <div class="px-4 sm:px-6 lg:px-8 py-6"
-     x-data="{ cat: '{{ collect($categories)->first()['key'] ?? '' }}', busy: false,
+     x-data="{ cat: '{{ $initialCategory ?? (collect($categories)->first()['key'] ?? '') }}', busy: false,
         // Server-side auto-draw: (re)builds every division's bracket + numbers.
         async generateNewDraw() {
             if (this.busy) return;
@@ -69,7 +69,7 @@
                 <h1 class="text-2xl font-black leading-tight">{{ $e['title'] }}</h1>
                 <p class="text-sm text-white/80 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span class="inline-flex items-center gap-1.5">
-                        <i class="bi bi-diagram-3"></i>
+                        <i class="bi bi-diagram-3 bracket-icon"></i>
                         {{ count($categories) }} {{ __('personal.personal_event_bracket_divisions') }}
                     </span>
                     @if($e['started'] ?? false)
@@ -95,6 +95,9 @@
         {{-- Read-only board: no arrange mode, and no arrange/clear endpoints
              handed to the client at all. The console owns rearranging. --}}
         :can-arrange="false"
+        {{-- Open on the division the link asked for (a bout's "View draw"),
+             else the first — the board keeps its own switcher here. --}}
+        :initial-division="collect($categories)->firstWhere('key', $initialCategory ?? null)['id'] ?? null"
         :my-competitor-ids="$myCompetitorIds ?? []"
         height="68vh"
         bare bleed />
@@ -177,7 +180,7 @@
                             </div>
                         @empty
                             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
-                                <i class="bi bi-diagram-3 text-3xl text-muted-foreground/60"></i>
+                                <i class="bi bi-diagram-3 bracket-icon text-3xl text-muted-foreground/60"></i>
                                 <p class="text-sm text-muted-foreground mt-2">{{ __('events.bracket_no_draw') }}</p>
                             </div>
                         @endforelse

@@ -103,7 +103,7 @@ class DrawEngine
             'name' => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
             // The entry's country (ISO alpha-2), so the board can fly a flag.
             // Same source Arrangement::place() reads when a draw is hand-made.
-            'country' => $r->meta ?: null,
+            'country' => $r->countryCode(),
             // "At risk of removal when the draw goes final" — so it has to ask
             // the same question the final draw asks, signatures included. Marking
             // a self-declared entry as safe here would promise a place the final

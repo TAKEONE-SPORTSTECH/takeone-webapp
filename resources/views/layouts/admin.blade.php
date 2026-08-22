@@ -230,6 +230,7 @@
             ['route'=>'admin.platform.settings',      'pattern'=>['admin.platform.settings*'],  'icon'=>'bi-gear',          'label'=>__('nav.layouts_admin_nav_settings')],
             ['route'=>'admin.platform.backup',        'pattern'=>['admin.platform.backup*'],    'icon'=>'bi-database',      'label'=>__('nav.layouts_admin_nav_backup')],
             ['route'=>'admin.platform.audit-log',     'pattern'=>['admin.platform.audit-log*'], 'icon'=>'bi-journal-text',  'label'=>__('nav.layouts_admin_nav_audit_log')],
+            ['route'=>'admin.platform.logs',          'pattern'=>['admin.platform.logs*'],      'icon'=>'bi-bug',           'label'=>__('nav.layouts_admin_nav_error_log')],
         ],
     ];
 

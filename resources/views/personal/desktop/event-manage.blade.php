@@ -141,7 +141,7 @@
                 <a href="{{ $card['href'] }}"
                    class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-start gap-4 hover:shadow-md hover:border-primary/30 transition-all group">
                     <span class="w-12 h-12 rounded-xl grid place-items-center flex-shrink-0 {{ $card['tone'] }}">
-                        <i class="bi {{ $card['icon'] }} text-xl"></i>
+                        <i class="{{ \App\Support\Icon::bi($card['icon'], 'text-xl') }}"></i>
                     </span>
                     <span class="min-w-0 flex-1">
                         <span class="block text-sm font-bold text-gray-900">{{ $card['label'] }}</span>
@@ -187,6 +187,18 @@
         </div>
     @endif
 
+    {{-- ===== What the screens play — same condition as the screens themselves,
+              since audio with nothing to play it on is a setting nobody can
+              hear. ===== --}}
+    @if($canManage && ! empty($screens))
+        <div class="max-w-md">
+            <x-event-screen-audio :event="$e['key']"
+                                  :media="$screenAudio ?? []"
+                                  :audio-url="$screenAudioUrls ?? []"
+                                  :color="$mgColor" />
+        </div>
+    @endif
+
     @if($canManage)
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {{-- Documents --}}
@@ -216,7 +228,7 @@
                             @csrf
                             <button type="submit"
                                     class="w-full text-start flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors">
-                                <i class="bi {{ $action['icon'] ?? 'bi-lightning-charge' }} text-primary"></i>
+                                <i class="{{ \App\Support\Icon::bi($action['icon'] ?? null, 'text-primary', 'bi-lightning-charge') }}"></i>
                                 <span class="text-sm font-medium text-gray-900">{{ $action['label'] }}</span>
                             </button>
                         </form>

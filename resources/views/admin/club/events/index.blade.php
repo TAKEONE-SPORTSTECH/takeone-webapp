@@ -22,6 +22,7 @@ $eventsJson = $events->map(function($e) {
         'tags'         => $e->tags ?? [],
         'color'        => $e->color ?? '#1d4ed8',
         'participant_fee' => $e->participant_fee ?? '',
+        'participant_fee_amount' => $e->participant_fee_amount,
         'is_archived'  => (bool) $e->is_archived,
         'images'       => collect($e->images ?? [])->map(fn($p) => str_starts_with($p, 'http') ? $p : asset('storage/' . $p))->values()->toArray(),
         'images_paths' => $e->images ?? [],
@@ -540,8 +541,13 @@ const emptyForm = {
     fee_type: 'free', fee_amount: '',
 };
 
-// Parse a stored participant_fee string ("BHD 10") into { type, amount }.
-function parseEventFee(raw) {
+// The stated fee, for the amount box. The event carries a real number now;
+// the string is only read for rows written before that column existed.
+function parseEventFee(raw, amount) {
+    if (amount !== null && amount !== undefined && amount !== '') {
+        const n = parseFloat(amount);
+        return n > 0 ? { type: 'paid', amount: String(n) } : { type: 'free', amount: '' };
+    }
     const s = String(raw ?? '').trim();
     if (!s) return { type: 'free', amount: '' };
     const m = s.match(/[\d.]+/);
@@ -578,7 +584,7 @@ function eventsAdmin() {
             if (!ev) return;
             this.isEdit      = true;
             this.formAction  = baseEditUrl + '/' + id;
-            const fee        = parseEventFee(ev.participant_fee);
+            const fee        = parseEventFee(ev.participant_fee, ev.participant_fee_amount);
             this.formData    = { ...emptyForm, ...ev, fee_type: fee.type, fee_amount: fee.amount };
             this.locationTab = ev.location?.startsWith('http') ? 'url' : 'facility';
             this.showModal   = true;

@@ -36,4 +36,28 @@ class Taekwondo extends AbstractCombatSport
     {
         return 'repechage';
     }
+
+    /**
+     * The WT kyorugi officiating panel, in the order it is listed on a match
+     * sheet: one Center Referee in the ring, three corner Judges, then the
+     * table and court officials.
+     *
+     * Keys are stable and never translated — they are what gets stored against a
+     * bout and sent to the video platform. Only the labels are localised.
+     *
+     * @return array<int, array{key: string, label: string}>
+     */
+    public function officialRoles(): array
+    {
+        return [
+            ['key' => 'center_referee',   'label' => __('sport-taekwondo::messages.official_center_referee')],
+            ['key' => 'corner_judge_1',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 1])],
+            ['key' => 'corner_judge_2',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 2])],
+            ['key' => 'corner_judge_3',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 3])],
+            ['key' => 'review_jury',      'label' => __('sport-taekwondo::messages.official_review_jury')],
+            ['key' => 'court_supervisor', 'label' => __('sport-taekwondo::messages.official_court_supervisor')],
+            ['key' => 'table_recorder',   'label' => __('sport-taekwondo::messages.official_table_recorder')],
+            ['key' => 'timekeeper',       'label' => __('sport-taekwondo::messages.official_timekeeper')],
+        ];
+    }
 }

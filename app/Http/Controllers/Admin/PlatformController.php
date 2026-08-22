@@ -511,6 +511,24 @@ class PlatformController extends Controller
             'email_verified_at' => now(),
         ];
 
+        /*
+         * Drop the keys nobody filled in, so the column defaults apply.
+         *
+         * users.blood_type is NOT NULL DEFAULT 'Unknown', and a default only takes
+         * effect when the column is OMITTED from the insert — passing an explicit
+         * NULL violates the constraint instead. So leaving blood type blank on this
+         * form threw
+         *
+         *   SQLSTATE[23000]: NOT NULL constraint failed: users.blood_type
+         *
+         * and no member was created at all. Filtering nulls here fixes that for
+         * every optional column at once, rather than one magic value at a time.
+         *
+         * full_name is exempt: it is genuinely required, and validation has already
+         * refused a blank one, so it must not be silently dropped here.
+         */
+        $data = array_filter($data, fn ($value, $key) => $value !== null || $key === 'full_name', ARRAY_FILTER_USE_BOTH);
+
         $softDeleted = User::withTrashed()->where('email', $request->email)->whereNotNull('deleted_at')->first();
         if ($softDeleted) {
             $softDeleted->restore();
@@ -716,6 +734,147 @@ class PlatformController extends Controller
     /**
      * Display database backup page.
      */
+    /**
+     * The error log, so a problem can be reported instead of described.
+     *
+     * There was no way to see what actually went wrong on this platform: an error
+     * became "it broke", and the stack trace stayed on the server. This is the
+     * same tool TAKEONE Play has — filter, level, tail, copy — so a failure can be
+     * pasted somewhere useful the moment it happens.
+     *
+     * Reads the log file and nothing else. It writes nothing, and there is no
+     * delete: a log a viewer can prune is not an audit trail.
+     *
+     * SECURITY. Log lines are the most sensitive text on the box — stack traces
+     * carry file paths, request payloads carry personal data, and a careless
+     * Log::info can carry a token. So:
+     *   - super-admin only, enforced by the route group, never by this method;
+     *   - read from a FIXED path, never one the request can influence, so no
+     *     traversal is possible;
+     *   - bounded output, so a huge log cannot be used to exhaust memory;
+     *   - escaped on render (Blade default), because a log line contains whatever
+     *     an attacker managed to get logged, including markup.
+     */
+    public function logs(Request $request)
+    {
+        $filter = trim((string) $request->query('filter', ''));
+        $level = strtoupper(trim((string) $request->query('level', '')));
+        $limit = (int) $request->query('limit', 200);
+
+        // Bounded, and only from the set the form offers.
+        $limit = in_array($limit, [50, 100, 200, 500, 1000], true) ? $limit : 200;
+        $level = in_array($level, ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY', 'WARNING', 'INFO', 'DEBUG'], true) ? $level : '';
+
+        // A fixed path. Nothing from the request reaches it.
+        $path = storage_path('logs/laravel.log');
+
+        $entries = [];
+        $size = 0;
+        $truncated = false;
+
+        if (is_file($path) && is_readable($path)) {
+            $size = filesize($path);
+
+            /*
+             * Read the TAIL, not the file.
+             *
+             * This log is already megabytes and only grows; file() would load all
+             * of it into memory to show the last 200 lines. Seeking back from the
+             * end keeps the page's cost flat no matter how large the log gets —
+             * which matters because the page is most wanted on the worst day.
+             */
+            $entries = $this->tailLogEntries($path, $limit, $filter, $level, $truncated);
+        }
+
+        return view('admin.platform.logs', [
+            'entries' => $entries,
+            'filter' => $filter,
+            'level' => $level,
+            'limit' => $limit,
+            'logSize' => $size,
+            'logPath' => $path,
+            'truncated' => $truncated,
+            'logMissing' => ! is_file($path),
+        ]);
+    }
+
+    /**
+     * The last matching log ENTRIES, newest first.
+     *
+     * An entry is not a line: a stack trace is dozens of lines belonging to one
+     * error, and splitting on newlines turns one failure into forty rows of
+     * gibberish. A new entry starts at a `[YYYY-MM-DD HH:MM:SS]` stamp; everything
+     * after it belongs to it.
+     *
+     * @return array<int, array{stamp: string, level: string, message: string, trace: string}>
+     */
+    private function tailLogEntries(string $path, int $limit, string $filter, string $level, bool &$truncated): array
+    {
+        $handle = fopen($path, 'rb');
+
+        if ($handle === false) {
+            return [];
+        }
+
+        // Enough to hold the requested entries in all but pathological cases, and
+        // a hard ceiling either way.
+        $window = min(filesize($path), max(512 * 1024, $limit * 4096));
+
+        fseek($handle, -$window, SEEK_END);
+        $chunk = (string) fread($handle, $window);
+        fclose($handle);
+
+        $truncated = $window < filesize($path);
+
+        // The first stamp may be mid-entry after seeking; drop the partial head.
+        $parts = preg_split('/\n(?=\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/', $chunk) ?: [];
+
+        if ($truncated && count($parts) > 1) {
+            array_shift($parts);
+        }
+
+        $out = [];
+
+        foreach (array_reverse($parts) as $raw) {
+            $raw = rtrim($raw);
+
+            if ($raw === '') {
+                continue;
+            }
+
+            if ($filter !== '' && stripos($raw, $filter) === false) {
+                continue;
+            }
+
+            preg_match('/^\[([^\]]+)\]\s*(\S+?)\.(\w+):\s*(.*)$/s', $raw, $m);
+
+            $entryLevel = strtoupper($m[3] ?? '');
+
+            if ($level !== '' && $entryLevel !== $level) {
+                continue;
+            }
+
+            // Head line and trace kept apart so the page can fold the trace away
+            // rather than drowning the message in it.
+            $body = $m[4] ?? $raw;
+            $split = explode("
+", $body, 2);
+
+            $out[] = [
+                'stamp' => $m[1] ?? '',
+                'level' => $entryLevel ?: 'LOG',
+                'message' => trim($split[0]),
+                'trace' => trim($split[1] ?? ''),
+            ];
+
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
     public function backup()
     {
         $mobile = request()->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.backup');
@@ -997,6 +1156,11 @@ class PlatformController extends Controller
         ];
 
         return view('family.show', [
+            // What the platform already knows about this member's clubs and
+            // events — the two tabs otherwise show only what they typed in
+            // themselves. Read-only, de-duplicated against the self-reported rows.
+            'derivedAffiliations' => app(\App\Support\ProfileHistory::class)->derivedAffiliations($relationship->dependent),
+            'derivedTournaments'  => app(\App\Support\ProfileHistory::class)->derivedTournaments($relationship->dependent),
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,
@@ -1045,6 +1209,30 @@ class PlatformController extends Controller
     /**
      * Update a member.
      */
+
+    /**
+     * 'required' or 'nullable' for the person details on an admin edit.
+     *
+     * Same rule as PersonFieldRules: staff entering somebody else are asked for a
+     * name and nothing more, because a referee off a federation list or an athlete
+     * off a paper sheet arrives without the rest, and an invented value is worse
+     * than a blank. Their own profile stays strict.
+     */
+    private function personPresence($subjectId): string
+    {
+        $actor = Auth::user();
+
+        if (! $actor) {
+            return 'required';
+        }
+
+        if ((int) $actor->id === (int) $subjectId) {
+            return 'required';
+        }
+
+        return $actor->entersPeopleOnBehalfOfOthers() ? 'nullable' : 'required';
+    }
+
     public function updateMember(Request $request, $id)
     {
         $validated = $request->validate([
@@ -1052,11 +1240,20 @@ class PlatformController extends Controller
             'email' => 'nullable|email|max:255|unique:users,email,'.$id,
             'mobile_code' => 'nullable|string|max:5',
             'mobile' => 'nullable|string|max:20',
-            'gender' => 'required|in:Male,Female',
+            /*
+             * Presence follows WHO is filling the form, exactly as
+             * App\Http\Requests\Concerns\PersonFieldRules does for every other
+             * person form — this endpoint validates inline, so it has to make the
+             * same decision rather than inherit it. A super admin editing somebody
+             * else is the case that must not be asked for what it does not have.
+             *
+             * Birthdate is never required, of anyone.
+             */
+            'gender' => $this->personPresence($id).'|in:Male,Female',
             'marital_status' => 'nullable|in:single,married,divorced,widowed',
-            'birthdate' => 'required|date',
+            'birthdate' => 'nullable|date',
             'blood_type' => 'nullable|string|max:10',
-            'nationality' => 'required|string|max:100',
+            'nationality' => $this->personPresence($id).'|string|max:100',
             'social_links' => 'nullable|array',
             'social_links.*.platform' => 'required_with:social_links.*.url|string',
             'social_links.*.url' => 'required_with:social_links.*.platform|url',
@@ -1112,21 +1309,26 @@ class PlatformController extends Controller
             ])->values()->all();
 
         $member = User::findOrFail($id);
+        /*
+         * Absent means "leave it alone"; blank means "clear it". Reading an
+         * optional field unconditionally would let a request that simply omits it
+         * wipe what was already stored — and would 500 on the missing key first.
+         */
+        $optional = [];
+        foreach (['gender', 'birthdate', 'nationality', 'email', 'blood_type', 'motto', 'marital_status'] as $field) {
+            if ($request->has($field)) {
+                $optional[$field] = $validated[$field] ?? null;
+            }
+        }
+
         $member->update([
             'full_name' => $validated['full_name'],
-            'email' => $validated['email'],
             'mobile' => $mobile,
-            'gender' => $validated['gender'],
-            'marital_status' => $validated['marital_status'] ?? null,
-            'birthdate' => $validated['birthdate'],
-            'blood_type' => $validated['blood_type'],
-            'nationality' => $validated['nationality'],
             'social_links' => $socialLinks,
-            'motto' => $validated['motto'],
             'emergency_contacts' => $emergencyContacts,
             'health_conditions' => $healthConditions,
             'documents' => $documents,
-        ]);
+        ] + $optional);
 
         // Return JSON for AJAX requests
         if ($request->wantsJson() || $request->ajax()) {

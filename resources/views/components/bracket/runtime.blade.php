@@ -206,7 +206,13 @@ window.BracketBoard = window.BracketBoard || (function () {
             if (!S.canArrange) { S.arrange = false; S.pick = null; }
 
             const stillThere = S.divisions.some(d => d.id === S.division);
-            if (!stillThere) S.division = S.divisions[0] ? S.divisions[0].id : null;
+            if (!stillThere) {
+                // Nothing selected yet (first load), or the selection is gone.
+                // The host may have asked for a particular division — a bout's
+                // "View draw" names the bout's own — otherwise the first.
+                const wanted = S.divisions.find(d => String(d.id) === String(S.cfg.initialDivision ?? ''));
+                S.division = wanted ? wanted.id : (S.divisions[0] ? S.divisions[0].id : null);
+            }
 
             render(keepView);
             emit('bracket:loaded', {
@@ -217,7 +223,7 @@ window.BracketBoard = window.BracketBoard || (function () {
             S.layer.innerHTML = '';
             S.svg.innerHTML = '';
             const box = el('div', 'bk-empty');
-            const icon = el('i', 'bi bi-diagram-3 text-4xl'); box.appendChild(icon);
+            const icon = el('i', 'bi bi-diagram-3 bracket-icon text-4xl'); box.appendChild(icon);
             const msg = el('div'); msg.textContent = S.cfg.text.loadFailed; box.appendChild(msg);
             S.canvas.appendChild(box);
         }
@@ -252,7 +258,7 @@ window.BracketBoard = window.BracketBoard || (function () {
         if (!div || !div.rounds.length) {
             renderBench(div);
             const box = el('div', 'bk-empty');
-            const icon = el('i', 'bi bi-diagram-3 text-4xl'); box.appendChild(icon);
+            const icon = el('i', 'bi bi-diagram-3 bracket-icon text-4xl'); box.appendChild(icon);
             const msg = el('div'); msg.textContent = S.cfg.text.noDraw; box.appendChild(msg);
             S.canvas.appendChild(box);
             return;

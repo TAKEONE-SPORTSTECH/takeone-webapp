@@ -220,7 +220,9 @@
                 :id="$formId . '_gender'"
                 label="{{ __('shared.profile_modal_fields_gender') }}"
                 :value="$userGender"
-                :required="true"
+                {{-- Asterisk follows the real rule, so it never asks for
+                     something the endpoint would accept without. --}}
+                :required="$demandPersonFields"
                 :error="$errors->first('gender')" />
         </div>
         <div>
@@ -239,7 +241,8 @@
             :id="$formId . '_birthdate'"
             label="{{ __('shared.profile_modal_fields_date_of_birth') }}"
             :value="$userBirthdate"
-            :required="true"
+            {{-- Never required, of anyone. --}}
+            :required="false"
             :min-age="$isCreate ? 0 : 10"
             :max-age="120"
             :error="$errors->first('birthdate')" />
@@ -260,7 +263,7 @@
                 :id="$formId . '_nationality'"
                 label="{{ __('shared.profile_modal_fields_nationality') }}"
                 :value="$userNationality"
-                :required="true"
+                :required="$demandPersonFields"
                 :error="$errors->first('nationality')" />
         </div>
     </div>

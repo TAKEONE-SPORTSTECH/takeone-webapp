@@ -126,6 +126,10 @@
 
   @media (prefers-reduced-motion: reduce) { #stage *, #stage { animation:none !important; } }
 </style>
+
+{{-- The winner celebration: one scene shared by every mat of every sport. It
+     brings its own faces, keyframes and painter; this board only calls it. --}}
+<x-winner-celebration font-route="court-display.font" />
 </head>
 <body>
 
@@ -318,7 +322,12 @@
     rest: @json(__('event-taekwondo_tournament::messages.sb_rest')),
     golden: @json(__('event-taekwondo_tournament::messages.sb_golden')),
     round: @json(__('event-taekwondo_tournament::messages.sb_round')),
-    winner: @json(__('event-taekwondo_tournament::messages.sb_winner'))
+    winner: @json(__('event-taekwondo_tournament::messages.sb_winner')),
+    // How it was won. The hall is told the same thing the console is told —
+    // a match that ended on a fifth gam-jeom reads as a broken board otherwise.
+    byRounds: @json(__('event-taekwondo_tournament::messages.ctl_won_rounds')),
+    byPun: @json(__('event-taekwondo_tournament::messages.ctl_won_pun')),
+    byGolden: @json(__('event-taekwondo_tournament::messages.ctl_won_golden'))
   };
 
   var root = document.getElementById('root');
@@ -515,39 +524,26 @@
     setTimeout(function () { if (lastCallout === ev.ts) host.textContent = ''; }, 1600);
   }
 
-  /* ── The winner stamp, with confetti. ──────────────────────────────────── */
-  var stamped = null;
-  function winner(side, name) {
-    if (stamped === side + name) return;      // do not restage on every push
-    stamped = side + name;
-    var host = el('sbWinner');
-    host.hidden = false;
-    host.textContent = '';
-    var colour = side === 'aka' ? '#b3121f' : '#0d55b8';
-    var palette = ['#ffd666', '#fff', '#ff5548', '#4d9aff'];
+  /* ── The celebration ───────────────────────────────────────────────────── */
+  /**
+   * The shared scene — see components/winner-celebration. The board decides
+   * nothing about it beyond who won and what to say about it, which is why a
+   * hall running Karate on one mat and Taekwondo on the next sees one ending.
+   */
+  function winner(side, competitor, s) {
+    var c = competitor || {};
 
-    for (var i = 0; i < 34; i++) {
-      var c = document.createElement('div');
-      c.style.cssText = 'position:absolute; left:' + (i * 2.9 % 100) + '%; top:-40px; width:' + (8 + (i % 5) * 3) + 'px;' +
-        'height:' + (18 + (i % 4) * 5) + 'px; background:' + palette[i % 4] + ';' +
-        'transform:rotate(' + (i * 37 % 360) + 'deg);' +
-        'animation:confettiFall ' + (2.4 + (i % 5) * 0.4) + 's ' + ((i % 7) * 0.3) + 's linear infinite;';
-      host.appendChild(c);
-    }
-
-    var stamp = document.createElement('div');
-    stamp.style.cssText = 'position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; flex-direction:column;' +
-      'align-items:center; gap:18px; animation:stampIn .8s cubic-bezier(.2,.8,.2,1) both;';
-    var w = document.createElement('div');
-    w.style.cssText = "font-family:'Barlow Condensed',sans-serif; font-size:44px; font-weight:700; letter-spacing:.5em; color:oklch(0.85 0.16 85); text-transform:uppercase;";
-    w.textContent = T.winner;
-    var plate = document.createElement('div');
-    plate.style.cssText = 'background:linear-gradient(135deg,' + colour + ', #000); padding:26px 80px; box-shadow:0 0 120px ' + colour + ';';
-    var n = document.createElement('div');
-    n.style.cssText = "font-family:'Anton',sans-serif; font-size:140px; line-height:1; color:#fff; text-transform:uppercase;";
-    n.textContent = name || '';
-    plate.appendChild(n); stamp.appendChild(w); stamp.appendChild(plate);
-    host.appendChild(stamp);
+    WinnerCelebration.paint(el('sbWinner'), {
+      corner: side === 'aka' ? 'red' : 'blue',
+      name: c.name || '',
+      club: c.club || '',
+      logo: c.logo || null,
+      photo: c.photo || null,
+      label: T.winner,
+      note: s.endReason === 'gamjeom' ? T.byPun
+        : s.endReason === 'golden' ? T.byGolden
+        : T.byRounds.replace(':a', s.akaRounds).replace(':b', s.aoRounds)
+    });
   }
 
   /* ── The introduction ─────────────────────────────────────────────────── */
@@ -629,11 +625,9 @@
     roundDots(s);
 
     if (s.matchOver && s.matchWinner) {
-      winner(s.matchWinner, s.matchWinner === 'aka' ? a.name : b.name);
+      winner(s.matchWinner, s.matchWinner === 'aka' ? a : b, s);
     } else {
-      stamped = null;
-      el('sbWinner').hidden = true;
-      el('sbWinner').textContent = '';
+      WinnerCelebration.clear(el('sbWinner'));
     }
 
     callout(s.lastEvent);

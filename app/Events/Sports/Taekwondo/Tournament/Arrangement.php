@@ -233,7 +233,7 @@ class Arrangement
             ? [
                 'competitor_id' => $who->id,
                 'name' => $who->user?->full_name ?: $who->user?->name ?: __('events.athlete'),
-                'country' => $who->meta ?: null,
+                'country' => $who->countryCode(),
                 'seed' => null,
                 'provisional' => ! $who->paid || $who->weight === null,
             ]

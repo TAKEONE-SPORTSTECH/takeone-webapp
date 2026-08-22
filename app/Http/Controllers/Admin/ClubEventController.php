@@ -105,6 +105,13 @@ class ClubEventController extends Controller
         $this->authorizeClub($club);
 
         $data = $request->only(['title', 'date', 'end_date', 'start_time', 'end_time', 'location', 'level', 'description', 'max_capacity', 'cancel_within_days', 'color', 'participant_fee']);
+        // The stated price, when the form sent one. Without it the model derives
+        // what it can from the display line — the last place that ever guesses.
+        if ($request->filled('participant_fee_amount')) {
+            $data['participant_fee_amount'] = (float) $request->input('participant_fee_amount');
+            $data['fee_currency'] = $club->currency ?: 'BHD';
+            $data['participant_fee'] = \App\Events\Support\EventFee::display($data['participant_fee_amount'], $data['fee_currency']);
+        }
         $data['tenant_id'] = $club->id;
         $data['status'] = 'active';
         $data['tags'] = $request->filled('tags')
@@ -129,6 +136,13 @@ class ClubEventController extends Controller
         $event = ClubEvent::where('tenant_id', $club->id)->findOrFail($eventId);
 
         $data = $request->only(['title', 'date', 'end_date', 'start_time', 'end_time', 'location', 'level', 'description', 'max_capacity', 'cancel_within_days', 'color', 'participant_fee']);
+        // The stated price, when the form sent one. Without it the model derives
+        // what it can from the display line — the last place that ever guesses.
+        if ($request->filled('participant_fee_amount')) {
+            $data['participant_fee_amount'] = (float) $request->input('participant_fee_amount');
+            $data['fee_currency'] = $club->currency ?: 'BHD';
+            $data['participant_fee'] = \App\Events\Support\EventFee::display($data['participant_fee_amount'], $data['fee_currency']);
+        }
         $data['tags'] = $request->filled('tags')
             ? array_values(array_filter(array_map('trim', explode(',', $request->input('tags')))))
             : null;
