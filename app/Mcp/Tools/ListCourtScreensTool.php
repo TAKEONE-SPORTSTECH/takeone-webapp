@@ -24,7 +24,7 @@ use Laravel\Mcp\Server\Attributes\Title;
  * tool here would turn a public code into a remotely exploitable one.
  */
 #[Title('List court screens')]
-#[Description("The Raspberry Pi hall screens paired to an event: which mat each shows, whether it has reported in recently, and when it was last seen — plus the mats this event runs on. Restricted to the event's organiser.")]
+#[Description("The hall screens paired to an event: which mat each shows, whether it has reported in recently, and when it was last seen — plus the mats this event runs on. Restricted to the event's organiser.")]
 class ListCourtScreensTool extends BaseTool
 {
     public function schema(JsonSchema $schema): array

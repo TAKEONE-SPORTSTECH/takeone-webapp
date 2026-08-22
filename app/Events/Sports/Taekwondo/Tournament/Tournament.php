@@ -737,7 +737,7 @@ class Tournament extends AbstractEventType
      * A championship runs several mats at once, each with its own wall screen.
      *
      * The mats come from the draw rather than from a setting, so an organiser
-     * pairing a Pi picks a board that actually has bouts on it — the mistake
+     * pairing a screen picks a board that actually has bouts on it — the mistake
      * this prevents (a screen pointed at "Mat 3" when the draw only made two)
      * only shows itself on competition morning, in front of a hall.
      */

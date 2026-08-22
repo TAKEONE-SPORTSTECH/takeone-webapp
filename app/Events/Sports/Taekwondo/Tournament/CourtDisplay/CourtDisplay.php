@@ -44,7 +44,7 @@ class CourtDisplay
      *
      * `version` is a content hash, not a counter: the agent and the board both use
      * it to skip a repaint when a re-publish carries no visible change, which on a
-     * Pi 3B is the difference between a still board and one that restarts its
+     * low-powered screen is the difference between a still board and one that restarts its
      * entrance animation every few seconds.
      *
      * @return array{version: string, event: array, court: string, matches: array<int, array>}

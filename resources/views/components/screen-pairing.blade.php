@@ -363,7 +363,7 @@
   // claimed by itself.
   //
   // Slow on purpose. Pairing is a one-off human action measured in tens of
-  // seconds, this runs on a Pi 3B over a metered 4G link, and every hall screen
+  // seconds, this runs on a low-powered screen over a metered 4G link, and every hall screen
   // does it at once — so seconds are responsive to a person and nothing to the
   // server.
   var GO = @json($pollMode === 'go');

@@ -1,5 +1,5 @@
 {{--
-    Hall screens — the Raspberry Pi wall displays showing this event's mats.
+    Hall screens — the wall displays showing this event's mats.
 
     On the page it is a panel: one row per paired screen, each saying which mat
     it shows and whether it is actually alive, plus the button that adds one.

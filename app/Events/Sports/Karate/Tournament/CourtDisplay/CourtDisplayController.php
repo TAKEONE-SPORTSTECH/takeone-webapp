@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 /**
  * The two web surfaces the hall board needs.
  *
- * Neither of these is what the Pi will ultimately talk to — the device receives
+ * Neither of these is what the screen will ultimately talk to — the device receives
  * its board over MQTT and renders a cached copy of this same Blade file. These
  * exist so the board can be built, reviewed and rehearsed by a human in a browser
  * before any hardware is involved, and so the fonts have somewhere to come from.
@@ -44,7 +44,7 @@ class CourtDisplayController extends Controller
     /**
      * Preview one court's board — organiser only.
      *
-     * The Pi's own board is public-by-token (nobody is logged in to a wall), but
+     * The screen's own board is public-by-token (nobody is logged in to a wall), but
      * THIS route is a normal authenticated page and must stay that way: it takes
      * a court straight off the URL, so without the manage check it would be a
      * tidy way to read any event's running order by guessing a uuid.
@@ -64,7 +64,7 @@ class CourtDisplayController extends Controller
     /**
      * The board itself, as a paired screen sees it. No session, ever.
      *
-     * This is the route the Raspberry Pi opens. A hall screen cannot sign in —
+     * This is the route the screen opens. A hall screen cannot sign in —
      * there is no keyboard, no person, and a logged-in session sitting on an
      * unattended machine in a public venue would be a worse thing to steal than
      * the board. The device's token IS its identity, and it is scoped to one
@@ -145,7 +145,7 @@ class CourtDisplayController extends Controller
         //
         // TWO ways to say it, and the URL wins.
         //
-        // In the URL is right for a Raspberry Pi: it is flashed with one address
+        // In the URL is right for a screen: it is set up with one address
         // and opens it forever, so the pin rides along with its identity and
         // survives a reboot with nothing to keep in step.
         //
@@ -239,7 +239,7 @@ class CourtDisplayController extends Controller
     /**
      * A screen asking for an identity on its very first boot.
      *
-     * Nothing is written to the SD card ahead of time, so a Pi that has never
+     * Nothing is written to the device ahead of time, so a screen that has never
      * run has no token and no way to get one but to ask. What it gets back is
      * deliberately worthless on its own: an UNCLAIMED device, which can render
      * nothing but a pairing code until an authenticated organiser assigns it a
@@ -269,7 +269,7 @@ class CourtDisplayController extends Controller
      *
      * A JSON flag rather than re-fetching the board: the screen has no keyboard
      * and nobody watching it, so it has to notice being claimed by itself, and
-     * this runs every few seconds on every Pi in the hall over a metered 4G
+     * this runs every few seconds on every screen in the hall over a metered 4G
      * link. Sniffing the board's HTML for a marker would also be fragile in a
      * way that fails silently — the pairing page necessarily contains whatever
      * string it searches for, which is a reload loop waiting to happen.
@@ -317,7 +317,7 @@ class CourtDisplayController extends Controller
      * The screen's own realtime credentials, for the agent on the device.
      *
      * The board page carries these too, but a page cannot be relied on to act on
-     * them: the board animates continuously and on a Pi 3B that saturates the
+     * them: the board animates continuously and on a low-powered screen that saturates the
      * renderer, so an inbound socket message can sit for minutes behind paint
      * work. The agent is a separate process — nothing the browser does can starve
      * it — so it holds the subscription and restarts the display when the
@@ -516,7 +516,7 @@ class CourtDisplayController extends Controller
      * Scoped to the event in the URL, so an organiser can only unpair screens on
      * an event they manage — never one belonging to somebody else's competition.
      *
-     * Unclaims rather than revokes: the Pi keeps its token, notices on its next
+     * Unclaims rather than revokes: the screen keeps its token, notices on its next
      * heartbeat that it is no longer claimed, and comes back showing a fresh
      * code ready for another mat. Revoking would kill the token, and the agent
      * only enrols when its token file is empty — the screen would sit on a 404

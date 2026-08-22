@@ -416,7 +416,7 @@ abstract class AbstractEventType implements EventType
      * The hall screens this event drives, or null when the type has none.
      *
      * A belt test has one room and no wall board; a championship runs several
-     * mats, each with a Raspberry Pi showing that mat's queue. So the console
+     * mats, each with a screen showing that mat's queue. So the console
      * asks the type rather than assuming — a type that returns null simply has
      * no screens section, with no branching in the shared controller or view.
      *

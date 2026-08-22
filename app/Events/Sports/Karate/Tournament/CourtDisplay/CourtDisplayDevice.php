@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 /**
- * A paired hall screen — the Raspberry Pi's whole identity.
+ * A paired hall screen — its whole identity.
  *
  * The device never signs in. Nobody stands at a wall-mounted screen to type a
  * password, and a session on an unattended machine in a public hall would be a
@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
  *  · It is revocable in one click, without disturbing any other screen.
  *  · It is stored hashed, so the database row cannot be replayed as a device.
  *
- * The plaintext exists exactly once, at pairing, and goes straight to the Pi.
+ * The plaintext exists exactly once, at pairing, and goes straight to the screen.
  */
 class CourtDisplayDevice extends Model
 {
@@ -77,7 +77,7 @@ class CourtDisplayDevice extends Model
     /**
      * A brand-new screen that does not yet know which mat it is.
      *
-     * This is what a Pi does on first boot: it asks for an identity, stores the
+     * This is what a screen does on first boot: it asks for an identity, stores the
      * token, and then stands there showing its pairing code until somebody
      * claims it. No event, no court, nothing to display yet.
      *
@@ -118,7 +118,7 @@ class CourtDisplayDevice extends Model
      * Guarantee this screen has a code to show.
      *
      * A device can arrive back at the pairing screen without one — its event was
-     * deleted, or it was reset — and a QR encoding nothing would leave a Pi
+     * deleted, or it was reset — and a QR encoding nothing would leave a screen
      * stuck with no way back other than a keyboard it does not have.
      */
     public function ensurePairable(): void
@@ -239,7 +239,7 @@ class CourtDisplayDevice extends Model
             // Ten minutes for a beat asked for every sixty seconds, because the
             // appliance browser does not honour that interval: cog/WPE on DRM
             // throttles background timers hard — measured at ~2m50s for a 60s
-            // interval on a Pi 3B, and ~2m45s for the pairing screen's 5s poll.
+            // interval on a low-powered screen, and ~2m45s for the pairing screen's 5s poll.
             // A window near the nominal period would flap green/amber on a
             // perfectly healthy screen, which is worse than saying nothing. Ten
             // minutes still catches the case that matters: a screen unplugged or
@@ -266,7 +266,7 @@ class CourtDisplayDevice extends Model
      * Send this screen back to its pairing code, keeping its identity.
      *
      * The console's "unpair" — and deliberately NOT revoke(). A revoked token
-     * resolves to nothing, and the Pi agent only ever enrols when its token file
+     * resolves to nothing, and the screen agent only ever enrols when its token file
      * is empty: it would sit on a 404 forever, recoverable only by editing the
      * SD card. Unclaiming keeps the token valid, so the device polls, sees it is
      * no longer claimed, and comes back showing a fresh code — which is the

@@ -13,7 +13,7 @@ use App\Models\ClubEvent;
  * the queue it should now be showing.
  *
  * Why not simply let it poll: cog/WPE on DRM throttles background timers to
- * minutes (measured ~2m50s for a 60s interval on a Pi 3B), so an organiser who
+ * minutes (measured ~2m50s for a 60s interval on a low-powered screen), so an organiser who
  * unpaired a screen stood in front of it watching the wrong mat's queue. An
  * inbound socket message wakes the page immediately and sidesteps the throttle
  * entirely.
@@ -25,7 +25,7 @@ use App\Models\ClubEvent;
  *   {action: board, payload:{}} — same page, new numbers. Redraw in place.
  *
  * Why the board's payload rides along instead of being fetched. Screens are
- * remote — a Pi in a hall on the other side of a WAN link, not on our network —
+ * remote — a screen in a hall on the other side of a WAN link, not on our network —
  * so a bare nudge cost a second internet round trip back to the origin, plus a
  * PHP render, before a single pixel could change. Carrying the queue in the
  * message deletes that hop: the frame that wakes the screen already contains

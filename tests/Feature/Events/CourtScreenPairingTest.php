@@ -13,7 +13,7 @@ use Tests\TestCase;
 /**
  * Pairing a hall screen from inside the event console.
  *
- * The organiser scans the QR on a Raspberry Pi while standing in the event they
+ * The organiser scans the QR on a screen while standing in the event they
  * are running, so the event comes from the URL rather than from the form. That
  * shifts where the security sits, and these cover it: the scanned code is public
  * by design (it is printed a metre tall on a wall), so the session plus manage
@@ -176,7 +176,7 @@ class CourtScreenPairingTest extends TestCase
     }
 
     /**
-     * Unpairing must leave the device RECOVERABLE. The agent on the Pi only
+     * Unpairing must leave the device RECOVERABLE. The agent on the screen only
      * enrols when its token file is empty, so killing the token here would
      * strand the screen on a 404 until somebody pulled the SD card.
      */

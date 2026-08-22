@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
  * A screen that exists but does not yet know what it is.
  *
  * Every fleet in the product is per package by design — Taekwondo's screens and
- * Karate's are separate tables, separate tokens, separate Pi builds, so one
+ * Karate's are separate tables, separate tokens, separate screen builds, so one
  * token set can never hand a Karate screen a Taekwondo board. That is right for
  * a screen that HAS a job. It is wrong for the moment before.
  *

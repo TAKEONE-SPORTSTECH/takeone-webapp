@@ -70,7 +70,7 @@ return [
     'board_live' => 'Live',
     'board_stale' => 'Reconnecting',
 
-    // Court display — the hall screen driven by the Raspberry Pi. Distinct from
+    // Court display — the hall screen on the wall. Distinct from
     // the 'board_*' venue board above: this is signage seen from ten metres.
     'court_title' => 'Upcoming Matches',
     'court_court' => 'Court',

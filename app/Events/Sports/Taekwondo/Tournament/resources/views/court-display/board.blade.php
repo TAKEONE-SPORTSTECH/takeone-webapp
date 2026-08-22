@@ -5,7 +5,7 @@
     viewer — it is a wall, seen from ten metres by people holding coffee. So it
     breaks house style deliberately and on purpose:
 
-      · It does not extend a layout. The Pi renders it as a whole document under
+      · It does not extend a layout. The screen renders it as a whole document under
         cog/WPE with nothing else on the machine, and the agent caches this exact
         file to disk so the board is on screen before the network exists.
       · Its palette is the broadcast red/blue of a competition mat, not the app's
@@ -15,7 +15,7 @@
         agreement, never as a side effect.
 
     The stage is authored at 1920x1080 and scaled by --stage-scale, so the same
-    file is correct on a 4K panel and on a Pi 3B rendering at 720p. Change the
+    file is correct on a 4K panel and on a low-powered screen rendering at 720p. Change the
     output resolution, never the stage.
 --}}
 <!DOCTYPE html>
@@ -52,7 +52,7 @@
   {{-- Root-relative, never absolute. route(…, absolute: false) keeps the font
        on whatever origin is serving the board: an absolute URL is built from
        APP_URL, so a board opened on any other host or port (a dev server, the
-       Pi's cached copy, a LAN address at a venue) would ask a machine that
+       screen's cached copy, a LAN address at a venue) would ask a machine that
        isn't there, get nothing, and silently fall back to a system sans — which
        collapses the whole layout, because the typography IS the design. --}}
   src: url("{{ route('court-display.font', $slug.'-'.$subset.'.woff2', false) }}") format('woff2');
@@ -74,14 +74,14 @@
      `infinite`.
 
      Recorded so nobody has to rediscover it: this is a paint-and-layout load
-     that a Pi 3B cannot carry. It repaints each row every frame forever, and
+     that a low-powered screen cannot carry. It repaints each row every frame forever, and
      measurably starved inbound socket messages in the renderer for minutes
      (cog eventually took a SIGSEGV). The composited, settling equivalents that
      used to be here are in git — `git log -p` this file, or the copies kept
      beside it — and can be put back in one edit.
 
      Restored deliberately, with that trade-off understood: the target screen is
-     no longer necessarily a Pi 3B. On an Android TV box or a PC these are free. */
+     no longer necessarily a low-powered screen. On an Android TV box or a PC these are free. */
   @keyframes goldRun { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
   @keyframes nextBreathe { 0%,100% { box-shadow: 0 0 16px rgba(253,196,54,0.35), 0 0 44px rgba(253,196,54,0.15); box-shadow: 0 0 16px oklch(0.85 0.16 85 / 0.35), 0 0 44px oklch(0.85 0.16 85 / 0.15); } 50% { box-shadow: 0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35); box-shadow: 0 0 36px oklch(0.85 0.16 85 / 0.8), 0 0 110px oklch(0.85 0.16 85 / 0.35); } }
   @keyframes titleShimmer { 0% { background-position: -200% 50%; } 100% { background-position: 300% 50%; } }
@@ -164,7 +164,7 @@
 
   // ── Stage scaling ────────────────────────────────────────────────────────
   // The layout is authored at 1920x1080 and never reflows; it only scales. That
-  // is what lets a Pi 3B render at 720p to save fill rate while staying pixel-
+  // is what lets a low-powered screen render at 720p to save fill rate while staying pixel-
   // proportional to the approved design.
   function fit() {
     var r = root.getBoundingClientRect();
@@ -209,14 +209,14 @@
     return v !== '';
   }
 
-  // TODO(offline): flags come from flagcdn. Harmless on 4G, but the Pi agent
+  // TODO(offline): flags come from flagcdn. Harmless on 4G, but the screen agent
   // should mirror them to disk so a dead uplink never empties the flag boxes.
   function flagUrl(code) {
     return /^[a-z]{2}$/.test(String(code || '')) ? 'https://flagcdn.com/w1280/' + code + '.png' : null;
   }
 
   // ── Colour has to survive an old engine ──────────────────────────────────
-  // The Pi images ship WPE WebKit 2.38 (cog), which does not implement oklch():
+  // The screen images ship WPE WebKit 2.38 (cog), which does not implement oklch():
   // it drops the WHOLE declaration, so a lone `background:oklch(...)` painted
   // black and took the entire palette down with it. Every oklch colour is
   // therefore declared twice — the sRGB twin first, the oklch second — and each
@@ -425,7 +425,7 @@
   /**
    * The board's whole external contract.
    *
-   * Phase 1 injects the payload server-side. The Pi agent will later call
+   * Phase 1 injects the payload server-side. The screen agent will later call
    * update() on each retained MQTT message and stale() when the broker drops,
    * against this same file cached to disk — so the transport can change without
    * this view changing at all.

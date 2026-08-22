@@ -1069,7 +1069,7 @@ return [
     'event_manage_board' => 'Run-day board',
     'event_manage_board_sub' => 'The hall screen and court displays',
 
-    // Hall screens — pairing a Raspberry Pi to a mat from the console
+    // Hall screens — pairing a screen to a mat from the console
     'event_screens_title' => 'Hall screens',
     'event_screens_sub' => 'The wall displays showing this event\'s mats',
     'event_screens_empty' => 'No screens paired',

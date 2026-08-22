@@ -11,24 +11,24 @@ use Illuminate\Console\Command;
  *
  * The organiser's real flow is scan-the-QR from the event's court screen; this
  * is the same issuance underneath, reachable before that UI exists — and it
- * stays useful afterwards for bench-testing a Pi without a phone.
+ * stays useful afterwards for bench-testing a screen without a phone.
  */
 class PairCourtDisplay extends Command
 {
     protected $signature = 'court:pair
         {event? : The event uuid}
         {court? : The mat, exactly as it appears on the draw (e.g. "Mat 1")}
-        {--new : Create an UNPAIRED screen — it shows the QR pairing code, as a fresh Pi does}
+        {--new : Create an UNPAIRED screen — it shows the QR pairing code, as a fresh screen does}
         {--label= : A name for this screen, so it can be told apart later}
         {--list : List this event\'s paired screens instead of adding one}
         {--revoke= : Revoke the screen with this id}
         {--prune : Delete screens that enrolled but were never claimed}';
 
-    protected $description = 'Issue (or revoke) a court-display token for a Raspberry Pi hall screen';
+    protected $description = 'Issue (or revoke) a court-display token for a hall screen';
 
     public function handle(): int
     {
-        // A fresh Pi has no event and no mat — it stands there showing its code.
+        // A fresh screen has no event and no mat — it stands there showing its code.
         if ($this->option('new')) {
             return $this->unpaired();
         }
@@ -65,11 +65,11 @@ class PairCourtDisplay extends Command
     /**
      * Clear out screens that enrolled and were never claimed.
      *
-     * Enrolment is open (a fresh Pi has no credential to offer), so this is the
+     * Enrolment is open (a fresh screen has no credential to offer), so this is the
      * other half of that trade: an unclaimed row grants access to nothing, and
      * anything abandoned for a day is swept up rather than accumulating.
      * Deliberately never touches a claimed screen, however long it has been dark
-     * — a Pi in a store cupboard between events must come back to its own mat.
+     * — a screen in a store cupboard between events must come back to its own mat.
      */
     private function prune(): int
     {
@@ -84,7 +84,7 @@ class PairCourtDisplay extends Command
         return self::SUCCESS;
     }
 
-    /** A screen that does not yet know what it is — exactly a Pi's first boot. */
+    /** A screen that does not yet know what it is — exactly a screen's first boot. */
     private function unpaired(): int
     {
         ['device' => $device, 'token' => $token] = CourtDisplayDevice::begin($this->option('label') ?: null);

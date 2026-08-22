@@ -284,7 +284,7 @@ class DemoCompetition extends Command
         }
 
         // A screen per mat, already paired, so the boards are openable in a
-        // browser the moment this finishes. Pairing is normally a Pi enrolling
+        // browser the moment this finishes. Pairing is normally a screen enrolling
         // and an organiser scanning its code; issue() is the same end state
         // reached directly, and it hands back the one plaintext token that will
         // ever exist for that screen — which is why the URLs are printed here

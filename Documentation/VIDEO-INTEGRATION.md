@@ -71,7 +71,7 @@ CRUD lives in `MatchEventController` (`storeRound`/`storePoint`/`storeReview` + 
 - `EventMatch` — the bout: `event_id`, `category_id`, `round`, `phase`, `match_no`, `a_name`/`a_competitor_id`/`a_country`/`a_score`, same for `b_`, `winner`, `court`, `day`, `scheduled_time`, `status`.
 - `app/Events/Sports/{Karate,Taekwondo}/Tournament/Scoreboard/Scoring.php` — **`apply(ClubEvent $event, string $court, string $command, array $payload): MatState`** is the single entry point every scoring command passes through: `load`, `start`, `pause`, `point`, `undo_point`, `penalty`, `senshu` (Karate), `time`, `reset`, `finish`, `clear`, `commit`, `duration`, `corner`, `meta`.
 - `MatState` — the live mat blob (`aka`/`ao` corners, scores, penalties, senshu, `running`, `finished`, clock as remaining-as-of-a-moment).
-- `CourtDisplayDevice` + `PairCourtDisplay` + `ScreenChannel` — the Raspberry Pi wall-screen fleet: 6-character pairing code, claim, mat assignment, liveness, unpair, MQTT nudges.
+- `CourtDisplayDevice` + `PairCourtDisplay` + `ScreenChannel` — the wall-screen fleet: 6-character pairing code, claim, mat assignment, liveness, unpair, MQTT nudges.
 - MQTT via `Realtime()->publishToUser()` / `publishMany()`.
 
 ### The one real gap
@@ -260,7 +260,7 @@ status              string      recording|cutting|uploading|processing|ready|fai
 
 ### 5.3 Recorder enrolment — reuse the court-screen pattern
 
-Cameras enrol **exactly like the Pi wall screens already do**: `CourtDisplayDevice` + `PairCourtDisplay` + a 6-character pairing code, claimed by an organiser, assigned to a mat, with liveness and unpair. Generalise that pairing flow to a device *kind* (`screen` | `recorder`) rather than writing a second one.
+Cameras enrol **exactly like the hall screens already do**: `CourtDisplayDevice` + `PairCourtDisplay` + a 6-character pairing code, claimed by an organiser, assigned to a mat, with liveness and unpair. Generalise that pairing flow to a device *kind* (`screen` | `recorder`) rather than writing a second one.
 
 Same reasoning as the existing rule: **unpair ≠ revoke.** Unclaiming returns the recorder to a fresh pairing code; revoking the token strands a device the venue crew can never re-enrol.
 
@@ -620,7 +620,7 @@ Two hard constraints:
 
 Storage: 4 × 4 Mbps × 8 h × 8 mats ≈ **450 GB per tournament day** of masters. Keep masters days, keep per-match clips seasons. Needs a stated retention policy before the first event, not after.
 
-Hardware: cameras that encode themselves (any PoE/IP camera with RTSP out) into a modest x86 box per mat. **The Raspberry Pi court screens cannot do this** — they are display devices and will not encode 4×1080p. Phones as cameras are a demo, not a product (battery, thermal throttling, sync).
+Hardware: cameras that encode themselves (any PoE/IP camera with RTSP out) into a modest x86 box per mat. **The hall screens cannot do this** — they are display devices and will not encode 4×1080p. Phones as cameras are a demo, not a product (battery, thermal throttling, sync).
 
 ---
 

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
  * deliberately its OWN table rather than a shared one with Taekwondo.
  *
  * The two packages run separate screen fleets: separate routes (/karate/court/*
- * against /court/*), separate Pi builds, separate systemd units. Sharing the
+ * against /court/*), separate screen builds, separate systemd units. Sharing the
  * table would undo that — CourtDisplayDevice::resolve() looks a device up by
  * token hash alone, so Taekwondo's controller would happily resolve a Karate
  * screen and hand it a Taekwondo board, and the two would compete for the same
@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * The shape is the merge of the two Taekwondo migrations (create + add pairing),
  * which is the schema that package actually runs today: event and court are
- * nullable because a Pi exists, and shows a pairing code, before an organiser
+ * nullable because a screen exists, and shows a pairing code, before an organiser
  * has told it which mat it is looking at.
  */
 return new class extends Migration

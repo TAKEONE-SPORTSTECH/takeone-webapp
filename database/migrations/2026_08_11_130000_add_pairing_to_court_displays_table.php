@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * A screen exists before it knows which mat it is.
  *
- * A Pi is unboxed, powered on, and stands there showing a QR code until an
+ * A screen is unboxed, powered on, and stands there showing a QR code until an
  * organiser tells it what it is looking at. So the event and the court become
  * nullable, and the row gains the pairing code that the QR carries.
  */

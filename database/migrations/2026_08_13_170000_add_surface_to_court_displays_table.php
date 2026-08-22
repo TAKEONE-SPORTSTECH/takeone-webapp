@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
  * Which of the two boards this screen was hung up to be.
  *
  * The surface already existed as a `?surface=` on the URL, which is right for a
- * Raspberry Pi — it is flashed with one address and opens it forever, so the pin
+ * screen — it is set up with one address and opens it forever, so the pin
  * rides along with its identity. It is useless for a screen that is a browser
  * somebody pointed at a QR code: they never type a URL, they scan, and whatever
  * they are given has to remember what it is.
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Schema;
  *    null    follow the mat: the queue between matches, the bout during one.
  *            The single board hanging over the mat, and the default.
  *
- * The URL still wins when it says something, so a Pi already in a hall keeps
+ * The URL still wins when it says something, so a screen already in a hall keeps
  * behaving exactly as it was flashed.
  */
 return new class extends Migration

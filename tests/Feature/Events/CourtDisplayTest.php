@@ -13,7 +13,7 @@ use App\Models\User;
 use Tests\TestCase;
 
 /**
- * The hall board for one mat — the payload behind the Raspberry Pi court screen.
+ * The hall board for one mat — the payload behind the screen court screen.
  *
  * Two properties matter more than the rest and are covered first: the queue is
  * ordered closest-bout-first and shortens as results land, and the board never
@@ -568,11 +568,11 @@ class CourtDisplayTest extends TestCase
             ->assertDontSee('Somebody Elses Cup', false);
     }
 
-    // ── A Pi's first boot ────────────────────────────────────────────────────
+    // ── A screen's first boot ────────────────────────────────────────────────────
 
     public function test_a_fresh_screen_can_enroll_itself_with_no_credential(): void
     {
-        // Nothing is written to the SD card ahead of time, so a Pi that has
+        // Nothing is written to the device ahead of time, so a screen that has
         // never run has no credential and no keyboard — it has to be able to ask.
         $response = $this->postJson('/court/enroll', ['label' => 'mat-1-wall'])
             ->assertCreated();
@@ -603,7 +603,7 @@ class CourtDisplayTest extends TestCase
 
     public function test_enrolment_is_throttled(): void
     {
-        // A Pi enrols once, ever. Anything past a handful an hour is somebody
+        // A screen enrols once, ever. Anything past a handful an hour is somebody
         // making rows for the sake of it.
         for ($i = 0; $i < 5; $i++) {
             $this->postJson('/court/enroll')->assertCreated();
@@ -626,7 +626,7 @@ class CourtDisplayTest extends TestCase
         $this->artisan('court:pair --prune')->assertSuccessful();
 
         $this->assertNull(CourtDisplayDevice::find($abandoned->id));
-        // A Pi in a cupboard between events must come back to its own mat.
+        // A screen in a cupboard between events must come back to its own mat.
         $this->assertNotNull(CourtDisplayDevice::find($working->id));
     }
 

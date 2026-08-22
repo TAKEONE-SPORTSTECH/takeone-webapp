@@ -108,7 +108,7 @@ class AppServiceProvider extends ServiceProvider
         // A screen asking about ITSELF — its board, its own status.
         //
         // Keyed by the TOKEN, deliberately, not by the address. A venue is one
-        // NAT'd IP: every screen in the building, every Pi and every television,
+        // NAT'd IP: every screen in the building, every board and every television,
         // arrives from the same address. Under a per-IP limit one misbehaving
         // screen — a stale token, a tab left open on an old page — spends the
         // whole venue's allowance and every OTHER screen in the hall starts
@@ -119,11 +119,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // A hall screen enrolling itself. Unauthenticated by necessity — a fresh
-        // Pi has no credential and no keyboard — and what it gets back grants no
+        // screen has no credential and no keyboard — and what it gets back grants no
         // access to any data, only the right to show a pairing code until an
         // organiser claims it. But it does write a row, so it is capped.
         //
-        // 30 an hour per address, raised from 5. Five was right while a Pi was
+        // 30 an hour per address, raised from 5. Five was right while a screen was
         // the only thing that enrolled, ONCE, ever. Now `/court/new` lets any
         // browser become a screen, and a venue has three per mat — a hall with
         // three mats sets up nine, every one of them from the building's single

@@ -5,13 +5,13 @@
     A hall screen has to notice things it cannot ask about: that it has been
     given a mat, that it has been taken off one, and that the queue on its mat
     has moved. All of it used to depend on a timer, and cog/WPE on DRM throttles
-    background timers to minutes (measured ~2m50s for a 60s interval on a Pi
-    3B) — so an organiser unpaired a screen and then stood watching it show the
+    background timers to minutes (measured ~2m50s for a 60s interval on a
+    low-powered screen) — so an organiser unpaired a screen and then stood watching it show the
     wrong queue. An inbound socket message wakes the page immediately.
 
     ── Why a Worker ────────────────────────────────────────────────────────────
     Because the main thread is the thing that was slow. This page draws a
-    full-screen board on a Pi 3B with no GPU acceleration, and a socket message
+    full-screen board on a low-powered screen with no GPU acceleration, and a socket message
     arriving on that thread waits behind paint work — measured at minutes on the
     real display against seven seconds for the same page run headless. That is
     the entire reason the separate Python agent exists, and it is why the first
