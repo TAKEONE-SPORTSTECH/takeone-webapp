@@ -47,10 +47,17 @@ jobs:
         # development (removes files deleted from the repo), but every
         # excluded path is protected from deletion too, so persistent state
         # never gets touched by a deploy.
+        # The database glob covers the -wal and -shm SIDECARS, not just the
+        # database file. They are not in the repo, so without the glob --delete
+        # removed them from the deploy path on every deploy — and deleting a WAL
+        # out from under a live SQLite database discards whatever it still holds
+        # that has not been checkpointed into the main file. That is committed
+        # data (production carried a 1.4 MB WAL when this was found), so the
+        # deploy could silently lose the last transactions before it.
         run: |
           rsync -a --delete \
             --exclude='.env' \
-            --exclude='database/database.sqlite' \
+            --exclude='database/database.sqlite*' \
             --exclude='storage/' \
             ./ "$DEPLOY_PATH/"
 
