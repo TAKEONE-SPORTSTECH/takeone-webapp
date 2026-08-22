@@ -61,7 +61,7 @@ Route::middleware(['auth', 'verified'])->get('/market/forms-preview', function (
 // Public version manifest polled by the installed Android app to detect updates.
 Route::get('/app/manifest.json', [App\Http\Controllers\MobileAppController::class, 'manifest'])->name('app.manifest');
 
-// The hall board a Raspberry Pi opens. Unauthenticated BY DESIGN: a wall screen
+// The hall board a screen opens. Unauthenticated BY DESIGN: a wall screen
 // has no keyboard and nobody to sign in, so the device's own token is its
 // identity. The URL carries no event and no court — both are read off the paired
 // device — so there is no identifier here to tamper with or enumerate.
@@ -123,11 +123,17 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
         ->name('screen.claimed');
 });
 
-// "Make this screen a display." The one address a hall television, a laptop or
-// a spare monitor is pointed at: it enrols itself and stands there showing its
-// pairing QR until an organiser scans it. Ahead of `/court/{token}` so the
-// literal segment is matched before the token pattern.
-Route::get('/court/new', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'screen'])
+// The OLD per-fleet enrolment door, kept only so a television already
+// bookmarked at it still lands somewhere useful. `/screen` is the one address a
+// hall display is pointed at now, for every sport and every job: it enrols into
+// the sport-neutral waiting room and the CLAIM decides which fleet, which mat
+// and which surface (see HallScreenRouter). Two doors per sport was a fact
+// about our storage that an operator in a hall had to memorise.
+// Still ahead of `/court/{token}` so the literal segment wins over the token.
+// GET only, and via RedirectController rather than a closure, so `route:cache`
+// keeps working.
+Route::get('/court/new', \Illuminate\Routing\RedirectController::class)
+    ->defaults('destination', '/screen')->defaults('status', 302)
     ->name('court-display.new')->middleware('throttle:60,1');
 
 // The board as JSON, so a paired screen can redraw in place instead of
@@ -165,7 +171,7 @@ Route::get('/court-display/font/{file}', [\App\Events\Sports\Taekwondo\Tournamen
 |--------------------------------------------------------------------------
 | The same surface as the Taekwondo block above, for the Karate Tournament
 | package's own screen fleet: its own controller, its own devices table
-| (karate_court_displays), its own Pi build and systemd unit.
+| (karate_court_displays), its own screen build and systemd unit.
 |
 | Separate rather than shared BY DESIGN. Both packages resolve a device from a
 | bare token, so one route set over one table could hand a Karate screen a
@@ -174,10 +180,12 @@ Route::get('/court-display/font/{file}', [\App\Events\Sports\Taekwondo\Tournamen
 | endpoint is or is not authenticated — is identical, so the notes above apply
 | here unchanged.
 */
-// "Make this screen a display", Karate's own. Ahead of the token route so the
-// literal segment wins, and separate from Taekwondo's because the address a
-// screen is opened with is what decides which fleet it joins.
-Route::get('/karate/court/new', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'screen'])
+// Karate's old enrolment door, redirected for the same reason as Taekwondo's
+// above: the fleet is now decided by the EVENT at claim time, not by the
+// address a screen was opened with, so there is nothing left for a second
+// per-sport URL to decide. Ahead of the token route so the literal wins.
+Route::get('/karate/court/new', \Illuminate\Routing\RedirectController::class)
+    ->defaults('destination', '/screen')->defaults('status', 302)
     ->name('karate-court-display.new')->middleware('throttle:60,1');
 
 Route::get('/karate/court/{token}', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'board'])
@@ -472,12 +480,12 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     // Run day: the athlete's countdown (and the coach's squad view of it).
     // Venue board — a hall screen for a mat (?mat=Mat+1) or the whole venue.
     Route::get('/events/{event:uuid}/board', [App\Http\Controllers\PersonalEventController::class, 'board'])->name('events.board');
-    // Court display — rehearse the Raspberry Pi hall screen in a browser. The Pi
+    // Court display — rehearse the hall screen in a browser. The screen
     // itself never calls this: it renders a cached copy of the same view against
     // board state pushed over MQTT. Organiser-only, because the court comes
     // straight off the URL.
     Route::get('/events/{event:uuid}/court/{court}/preview', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'preview'])->name('events.court-display.preview')->where('court', '[^/]{1,40}')->middleware('throttle:60,1');
-    // Hall screens, from inside the event console: scan the QR on a Pi and it is
+    // Hall screens, from inside the event console: scan the QR on a screen and it is
     // pointed at this event and one of its mats. The event comes from the URL
     // and is authorized per request — the scanned code is public by design.
     // Dispatched by the EVENT's sport, never hardcoded to one package: these

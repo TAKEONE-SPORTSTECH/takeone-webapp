@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
  * The event console's three screen endpoints — list, pair, unpair — were wired
  * straight to the Taekwondo controller, for every event of every sport. That
  * was invisible while Taekwondo was the only sport with wall screens. The
- * moment Karate got its own fleet, its own table and its own Pi build, pairing
+ * moment Karate got its own fleet, its own table and its own screen build, pairing
  * a screen from a KARATE console wrote a TAEKWONDO device row pointing at a
  * Karate event: a screen that then resolved against the wrong package, could
  * not be served, and could not be unpaired from the panel that made it.
@@ -45,7 +45,7 @@ class HallScreenRouter
     {
         // A code from the sport-neutral waiting room (/screen) — the address a
         // television is opened at. The console must accept these as readily as
-        // it accepts a Pi's own code: an organiser holding a phone in a hall
+        // it accepts a screen's own code: an organiser holding a phone in a hall
         // does not know, and must not need to know, which of the two kinds of
         // screen is in front of them. Without this the console answered "that
         // code does not match a screen waiting to be paired" for a screen that
@@ -54,7 +54,7 @@ class HallScreenRouter
             return $this->pairPending($request, $event, $pending);
         }
 
-        // A device already in this event's own fleet — a Pi that enrolled with
+        // A device already in this event's own fleet — a screen that enrolled with
         // the package directly.
         return $this->to($event)->pair($request, $event);
     }
@@ -145,22 +145,29 @@ class HallScreenRouter
     }
 
     /**
-     * The address to open ON a screen so it joins THIS event's fleet.
+     * The address to open ON a screen so it can be paired to this event.
      *
-     * The console shows it, as text and as a QR, because otherwise the operator
-     * has to know that a Karate screen enrols at a different address from a
-     * Taekwondo one — which is a fact about our storage, not about their hall.
-     * Getting it wrong is silent until the moment they try to pair, and then
-     * reads as "that code does not match a screen waiting to be paired", which
-     * points at the code and not at the real mistake.
+     * ONE address, for every sport and every job: `/screen`. It used to be a
+     * per-sport enrolment URL, which meant the operator had to know that a
+     * Karate screen enrols somewhere different from a Taekwondo one — a fact
+     * about our storage, not about their hall. Getting it wrong was silent
+     * until the moment they tried to pair, and then read as "that code does not
+     * match a screen waiting to be paired", which points at the code and not at
+     * the real mistake.
+     *
+     * Nothing is lost by unifying it: a screen at `/screen` is sport-neutral
+     * until it is claimed, and `pair()` above adopts a waiting code into THIS
+     * event's fleet — deciding sport, mat and surface at the one moment an
+     * organiser is actually looking at the screen. The old doors redirect here.
+     *
+     * Still nullable: a sport with no fleet has no panel, so it gets no address
+     * rather than an address that cannot lead anywhere.
      */
     public function newScreenUrl(ClubEvent $event): ?string
     {
-        return match ((string) $event->sport) {
-            'taekwondo' => route('court-display.new'),
-            'karate' => route('karate-court-display.new'),
-            default => null,
-        };
+        return isset(self::OWNERS[(string) $event->sport])
+            ? route('screen.new')
+            : null;
     }
 
     /**
