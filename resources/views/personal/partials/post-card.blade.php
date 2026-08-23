@@ -9,7 +9,7 @@
         <div class="flex items-center gap-3 min-w-0">
             <a :href="post.author.url" class="flex-shrink-0">
                 <span class="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                    <template x-if="post.author.avatar"><img :src="post.author.avatar" alt="" class="w-10 h-10 object-cover"></template>
+                    <template x-if="post.author.avatar"><img :src="post.author.avatar" alt="" class="w-[30px] h-10 object-cover"></template>
                     <template x-if="!post.author.avatar"><i class="bi bi-person text-muted-foreground"></i></template>
                 </span>
             </a>

@@ -95,9 +95,9 @@
   .bout[disabled]{opacity:.35;cursor:not-allowed;filter:none;}
 </style>
 
-{{-- The winner celebration: the same scene the wall shows, with this console's
-     own two controls dropped into the one slot it offers. --}}
-<x-winner-celebration font-route="karate-court-display.font" />
+{{-- The winner celebration — this package's own. The same scene the wall
+     shows, with this console's own two controls dropped into its one slot. --}}
+@include('event-karate_tournament::scoreboard.winner-celebration')
 </head>
 <body>
 
@@ -681,13 +681,21 @@
     go.textContent = @json(__('event-karate_tournament::messages.ctl_commit'));
     go.onclick = function () { send('commit'); };
 
-    // The way out that is NOT a write. Quiet next to the green one, because
-    // filing the result is still what normally happens next — but present, so
-    // the console is never held hostage by a bout that has already been won.
+    // The way out that is NOT a write. The same button as the green one — same
+    // size, same weight, same corners — and quiet only in its COLOUR: two
+    // controls side by side at a mat should look like two controls, not one
+    // control and an afterthought. The padding is a pixel short on each side
+    // because this one carries a border and the green one does not, so the two
+    // stand the same height on the glass.
     var close = document.createElement('button');
-    close.style.cssText = 'font-family:\'Barlow Condensed\',sans-serif;font-size:19px;font-weight:600;' +
-      'letter-spacing:.1em;text-transform:uppercase;background:rgba(255,255,255,.06);color:#cfd3e2;' +
-      'border:1px solid rgba(255,255,255,.28);border-radius:11px;padding:11px 26px;cursor:pointer;';
+    // A FILLED button, not a ghost one. Six percent white was invisible against
+    // the celebration behind it — a control an official has to hunt for is not a
+    // control. Slate carries its own weight next to the green without competing
+    // with it, and the gold accents on this console stay unique to the result.
+    close.style.cssText = 'font-family:\'Barlow Condensed\',sans-serif;font-size:30px;font-weight:700;' +
+      'letter-spacing:.1em;text-transform:uppercase;background:linear-gradient(135deg,#3c4460,#1b1f2e);' +
+      'color:#eef1f8;border:1px solid rgba(255,255,255,.38);border-radius:14px;padding:19px 55px;' +
+      'box-shadow:0 12px 34px rgba(0,0,0,.5);cursor:pointer;';
     close.textContent = @json(__('event-karate_tournament::messages.ctl_dismiss'));
     // Closes it HERE and on every screen on this mat: `dismiss` writes the flag
     // into the shared mat state and the boards redraw from it. It does not touch

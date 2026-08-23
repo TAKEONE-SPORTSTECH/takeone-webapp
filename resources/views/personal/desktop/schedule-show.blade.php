@@ -67,7 +67,7 @@
                     <{{ $coachTag }} class="border-x border-gray-100 block {{ !empty($coachLink) ? 'hover:bg-gray-50 transition-colors rounded-lg' : '' }}"
                         @if(!empty($coachLink)) href="{{ $coachLink['url'] }}" @endif>
                         @if(!empty($coachAvatar))
-                            <img src="{{ $coachAvatar }}" alt="" class="w-10 h-10 mx-auto rounded-xl object-cover">
+                            <img src="{{ $coachAvatar }}" alt="" class="w-[30px] h-10 mx-auto rounded-xl object-cover">
                         @else
                             <div class="w-10 h-10 mx-auto rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-person-badge"></i></div>
                         @endif

@@ -199,7 +199,7 @@
                                             class="w-full text-start px-3 py-2 text-sm hover:bg-muted flex items-center gap-2.5"
                                             :class="form.coach===ins.name ? 'bg-accent' : ''">
                                         <span class="w-8 h-8 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
-                                            <template x-if="ins.avatar"><img :src="ins.avatar" alt="" class="w-8 h-8 object-cover"></template>
+                                            <template x-if="ins.avatar"><img :src="ins.avatar" alt="" class="w-6 h-8 object-cover"></template>
                                             <template x-if="!ins.avatar"><span class="text-[10px] font-bold text-muted-foreground" x-text="ins.initials"></span></template>
                                         </span>
                                         <span class="truncate flex-1" :class="form.coach===ins.name ? 'text-primary font-semibold' : 'text-foreground'" x-text="ins.name"></span>

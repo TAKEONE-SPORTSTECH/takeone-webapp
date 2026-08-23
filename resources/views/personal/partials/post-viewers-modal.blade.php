@@ -41,7 +41,7 @@
                     <template x-for="v in people" :key="v.id">
                         <a :href="v.url" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors no-underline">
                             <span class="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                                <template x-if="v.avatar"><img :src="v.avatar" alt="" class="w-10 h-10 object-cover"></template>
+                                <template x-if="v.avatar"><img :src="v.avatar" alt="" class="w-[30px] h-10 object-cover"></template>
                                 <template x-if="!v.avatar"><i class="bi bi-person text-muted-foreground"></i></template>
                             </span>
                             <span class="flex-1 min-w-0">

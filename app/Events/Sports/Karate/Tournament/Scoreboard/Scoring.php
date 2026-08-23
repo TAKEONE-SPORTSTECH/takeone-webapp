@@ -542,6 +542,16 @@ class Scoring
         $state->finished = true;
         $state->lastEvent = null;
 
+        // A bout can be over without ever having been scored: the opponent does
+        // not turn up, the official ends it on the introduction and declares the
+        // athlete who did. The wall must follow that. Left on the introduction
+        // the celebration paints underneath it and the hall sees two athletes
+        // about to fight a bout that is already won — so ending a bout takes the
+        // introduction down, exactly as hajime would have.
+        if ($state->mode === MatState::MODE_VS) {
+            $state->mode = MatState::MODE_SCOREBOARD;
+        }
+
         $winner = in_array($payload['winner'] ?? null, ['aka', 'ao'], true) ? $payload['winner'] : null;
 
         // Declaring a winner takes the side that was named. Not declaring one

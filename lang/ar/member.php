@@ -1155,4 +1155,13 @@ return [
     'derived_tournaments_title'  => 'من سجلات النادي',
     'derived_tournaments_note'   => 'الفعاليات التي تم تسجيلك بها. مؤكدة من النادي وليست مُدخلة ذاتياً.',
     'derived_since'              => 'عضو منذ :date',
+    'new_password_generated' => 'تم إنشاء كلمة مرور جديدة',
+    'two_factor' => 'التحقق بخطوتين',
+    'two_factor_enable' => 'تفعيل التحقق بخطوتين',
+    'two_factor_manage' => 'إدارة التحقق بخطوتين',
+    'two_factor_member_only' => 'لا يمكن تفعيل التحقق بخطوتين أو إيقافه إلا من العضو نفسه — الرمز يأتي من تطبيق على هاتفه.',
+    'two_factor_off' => 'غير مُفعّل',
+    'two_factor_on' => 'مُفعّل',
+    'two_factor_on_since' => 'مُفعّل منذ :date',
+    'public_profile' => 'الملف العام',
 ];

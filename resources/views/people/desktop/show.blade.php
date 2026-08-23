@@ -5,6 +5,12 @@
 @section('content')
 @php
     $avatar = $person->profile_picture ? asset('storage/'.$person->profile_picture).'?v='.optional($person->updated_at)->timestamp : null;
+
+    // Same country the mobile profile shows, from the same controller value:
+    // the club's, falling back to the account's nationality only when this person
+    // has no club at all. Lower-cased because it becomes a flag-icons class.
+    $flag = $countryCode ? mb_strtolower($countryCode) : null;
+    $flagLabel = $countryCode ? (\App\Support\Countries::name($countryCode) ?: mb_strtoupper($countryCode)) : null;
 @endphp
 <div class="px-4 sm:px-6 lg:px-8 py-6" x-data="{ following: {{ $isFollowing ? 'true' : 'false' }} }">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -20,6 +26,13 @@
                 </span>
                 <h1 class="mt-4 text-xl font-bold text-gray-900">{{ $person->full_name }}</h1>
                 <div class="mt-1 flex items-center gap-2 flex-wrap justify-center">
+                    @if($flag)
+                        {{-- Who they represent. Named as well as flagged: a 22px flag
+                             is not readable as a country on its own. --}}
+                        <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-muted text-foreground" title="{{ $flagLabel }}">
+                            <span class="fi fi-{{ $flag }}" style="flex-shrink:0;width:18px;height:13px;border-radius:2px;background-size:cover;box-shadow:0 0 0 1px rgba(0,0,0,.08)"></span>{{ $flagLabel }}
+                        </span>
+                    @endif
                     @if($person->is_personal_trainer)
                         <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-accent text-primary"><i class="bi bi-mortarboard-fill"></i>{{ __('personal.people_trainer') }}</span>
                     @endif

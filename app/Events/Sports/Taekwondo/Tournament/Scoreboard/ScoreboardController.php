@@ -14,7 +14,6 @@ use App\Traits\StoresBase64Images;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * The table at a Taekwondo mat: one operator page, and the two endpoints behind it.
@@ -467,25 +466,13 @@ class ScoreboardController extends Controller
     /**
      * Countries as the picker wants them: ISO-2 code plus a display name.
      *
-     * Read from the app's own list rather than hard-coded here, so the picker
-     * and every country dropdown in the product stay in step.
+     * The product's one list (App\Support\Countries), so the picker at the mat,
+     * the name announced on the wall and every country dropdown elsewhere can
+     * never disagree about what a country is called.
      */
     private function countries(): array
     {
-        return Cache::remember('taekwondo.control.countries', now()->addDay(), function () {
-            $path = public_path('data/countries.json');
-
-            if (! is_file($path)) {
-                return [];
-            }
-
-            $rows = json_decode((string) file_get_contents($path), true) ?: [];
-
-            return collect($rows)
-                ->map(fn ($c) => ['code' => strtolower((string) ($c['iso2'] ?? '')), 'name' => (string) ($c['name'] ?? '')])
-                ->filter(fn ($c) => preg_match('/^[a-z]{2}$/', $c['code']) && $c['name'] !== '')
-                ->sortBy('name')->values()->all();
-        });
+        return \App\Support\Countries::all();
     }
 
     /**

@@ -153,7 +153,7 @@
                                 :class="u.is_member ? 'border-gray-100 bg-gray-50 opacity-60' : (selected.includes(u.id) ? 'border-primary bg-accent' : 'border-gray-100 bg-white hover:bg-muted')"
                                 :disabled="u.is_member">
                             <span class="w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                                <template x-if="u.profile_picture"><img :src="u.profile_picture" alt="" class="w-11 h-11 object-cover"></template>
+                                <template x-if="u.profile_picture"><img :src="u.profile_picture" alt="" class="w-[33px] h-11 object-cover"></template>
                                 <template x-if="!u.profile_picture"><i class="bi bi-person text-muted-foreground text-lg"></i></template>
                             </span>
                             <span class="min-w-0 flex-1">
@@ -207,7 +207,7 @@
                  class="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl p-5" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
                 <div class="flex items-center gap-3">
                     <span class="w-14 h-14 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                        <template x-if="resolved && resolved.profile_picture"><img :src="resolved.profile_picture" alt="" class="w-14 h-14 object-cover"></template>
+                        <template x-if="resolved && resolved.profile_picture"><img :src="resolved.profile_picture" alt="" class="w-[42px] h-14 object-cover"></template>
                         <template x-if="resolved && !resolved.profile_picture"><i class="bi bi-person text-muted-foreground text-2xl"></i></template>
                     </span>
                     <div class="min-w-0 flex-1">

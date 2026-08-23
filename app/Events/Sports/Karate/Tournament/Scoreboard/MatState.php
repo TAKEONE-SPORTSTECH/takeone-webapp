@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Cache;
  * busiest path in the hall, for data nobody reads afterwards.
  *
  * But it cannot be memory-only either: a wall screen reloads (a browser crash, a
- * Pi reboot, a stale JWT), and it has to come back showing the bout that is
+ * screen reboot, a stale JWT), and it has to come back showing the bout that is
  * still happening in front of it rather than a blank board. So it lives in the
  * cache — survives a reload, expires on its own, costs no schema.
  *
@@ -184,8 +184,12 @@ class MatState
             'tournament' => $this->tournament,
             'courtLabel' => $this->courtLabel,
             'referee' => $this->referee,
-            'aka' => $this->aka,
-            'ao' => $this->ao,
+            // Announced, not stored: a corner's country goes out as the full
+            // name every screen prints, whatever shape it was kept in. A club's
+            // `country` column holds an ISO code because the club's public URL
+            // is built from it — 'BH' on a wall screen reads as a fault.
+            'aka' => $this->announced($this->aka),
+            'ao' => $this->announced($this->ao),
             'akaScore' => $this->akaScore,
             'aoScore' => $this->aoScore,
             'akaPen' => $this->akaPen,
@@ -208,6 +212,22 @@ class MatState
             'aoLeads' => $this->aoLeads(),
             'boutStatus' => $this->boutStatus(),
         ];
+    }
+
+    /**
+     * One corner, as a screen should read it.
+     *
+     * Only the country is touched, and only its presentation: the flag stays
+     * the code (it is a filename), and a name we cannot place is passed through
+     * as it was given rather than blanked.
+     */
+    private function announced(array $corner): array
+    {
+        if (($corner['country'] ?? '') !== '') {
+            $corner['country'] = \App\Support\Countries::label($corner['country']);
+        }
+
+        return $corner;
     }
 
     public static function fromArray(array $a): self

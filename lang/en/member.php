@@ -1163,4 +1163,13 @@ return [
     'derived_tournaments_title'  => 'From your club records',
     'derived_tournaments_note'   => 'Events you were entered into. Confirmed by the club, not self-reported.',
     'derived_since'              => 'Member since :date',
+    'new_password_generated' => 'New password generated',
+    'two_factor' => 'Two-factor authentication',
+    'two_factor_enable' => 'Set up two-factor',
+    'two_factor_manage' => 'Manage two-factor',
+    'two_factor_member_only' => 'Only this member can set up or turn off their two-factor — the code comes from an app on their own phone.',
+    'two_factor_off' => 'Not set up',
+    'two_factor_on' => 'Active',
+    'two_factor_on_since' => 'Active since :date',
+    'public_profile' => 'Public profile',
 ];

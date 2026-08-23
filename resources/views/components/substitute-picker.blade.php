@@ -111,7 +111,7 @@
                 <template x-if="selected">
                     <div class="rounded-xl p-3 flex items-center gap-3 border-2" :style="`border-color:${color}`">
                         <span class="w-9 h-9 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
-                            <template x-if="selected.avatar"><img :src="selected.avatar" alt="" class="w-9 h-9 object-cover"></template>
+                            <template x-if="selected.avatar"><img :src="selected.avatar" alt="" class="w-[27px] h-9 object-cover"></template>
                             <template x-if="!selected.avatar"><span class="text-xs font-bold text-muted-foreground" x-text="selected.initials"></span></template>
                         </span>
                         <div class="min-w-0 flex-1">
@@ -129,7 +129,7 @@
                                 class="m-press w-full text-start rounded-xl p-3 flex items-center gap-3 bg-white border border-gray-100 transition-colors"
                                 :class="u.busy ? 'opacity-60 cursor-not-allowed' : 'hover:border-primary'">
                             <span class="w-9 h-9 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
-                                <template x-if="u.avatar"><img :src="u.avatar" alt="" class="w-9 h-9 object-cover"></template>
+                                <template x-if="u.avatar"><img :src="u.avatar" alt="" class="w-[27px] h-9 object-cover"></template>
                                 <template x-if="!u.avatar"><span class="text-xs font-bold text-muted-foreground" x-text="u.initials"></span></template>
                             </span>
                             <div class="min-w-0 flex-1">

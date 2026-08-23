@@ -61,15 +61,15 @@ class Karate extends AbstractCombatSport
     public function officialRoles(): array
     {
         return [
-            ['key' => 'referee',          'label' => __('sport-karate::messages.official_referee')],
-            ['key' => 'judge_1',          'label' => __('sport-karate::messages.official_judge', ['n' => 1])],
-            ['key' => 'judge_2',          'label' => __('sport-karate::messages.official_judge', ['n' => 2])],
-            ['key' => 'judge_3',          'label' => __('sport-karate::messages.official_judge', ['n' => 3])],
-            ['key' => 'judge_4',          'label' => __('sport-karate::messages.official_judge', ['n' => 4])],
-            ['key' => 'match_supervisor', 'label' => __('sport-karate::messages.official_match_supervisor')],
-            ['key' => 'tatami_manager',   'label' => __('sport-karate::messages.official_tatami_manager')],
-            ['key' => 'scorekeeper',      'label' => __('sport-karate::messages.official_scorekeeper')],
-            ['key' => 'timekeeper',       'label' => __('sport-karate::messages.official_timekeeper')],
+            ['key' => 'referee',          'label' => __('sport-karate::messages.official_referee'),          'hint' => __('sport-karate::messages.official_referee_hint')],
+            ['key' => 'judge_1',          'label' => __('sport-karate::messages.official_judge', ['n' => 1]), 'hint' => __('sport-karate::messages.official_judge_hint')],
+            ['key' => 'judge_2',          'label' => __('sport-karate::messages.official_judge', ['n' => 2]), 'hint' => __('sport-karate::messages.official_judge_hint')],
+            ['key' => 'judge_3',          'label' => __('sport-karate::messages.official_judge', ['n' => 3]), 'hint' => __('sport-karate::messages.official_judge_hint')],
+            ['key' => 'judge_4',          'label' => __('sport-karate::messages.official_judge', ['n' => 4]), 'hint' => __('sport-karate::messages.official_judge_hint')],
+            ['key' => 'match_supervisor', 'label' => __('sport-karate::messages.official_match_supervisor'), 'hint' => __('sport-karate::messages.official_match_supervisor_hint')],
+            ['key' => 'tatami_manager',   'label' => __('sport-karate::messages.official_tatami_manager'), 'hint' => __('sport-karate::messages.official_tatami_manager_hint')],
+            ['key' => 'scorekeeper',      'label' => __('sport-karate::messages.official_scorekeeper'), 'hint' => __('sport-karate::messages.official_scorekeeper_hint')],
+            ['key' => 'timekeeper',       'label' => __('sport-karate::messages.official_timekeeper'), 'hint' => __('sport-karate::messages.official_timekeeper_hint')],
         ];
     }
 }

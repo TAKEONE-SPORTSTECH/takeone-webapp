@@ -103,7 +103,7 @@
                     </template>
                     <span class="w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                         @if($u->profile_picture)
-                            <img src="{{ asset('storage/'.$u->profile_picture) }}?v={{ optional($u->updated_at)->timestamp }}" alt="" class="w-11 h-11 object-cover">
+                            <img src="{{ asset('storage/'.$u->profile_picture) }}?v={{ optional($u->updated_at)->timestamp }}" alt="" class="w-[33px] h-11 object-cover">
                         @else
                             <i class="bi bi-person text-muted-foreground text-lg"></i>
                         @endif

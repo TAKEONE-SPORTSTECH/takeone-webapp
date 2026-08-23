@@ -907,4 +907,6 @@ return [
     'share'            => 'Share',
     'link_copied'      => 'Link copied',
     'something_went_wrong' => 'Something went wrong',
+    'components_profile_modal_tab_security' => 'Security',
+    'components_profile_modal_tab_docs' => 'Docs',
 ];

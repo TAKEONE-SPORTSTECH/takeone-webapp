@@ -428,6 +428,12 @@ class PlatformController extends Controller
             'age' => $user->age ? $user->age.' years' : 'N/A',
             'since' => $membership ? $membership->created_at->format('d/m/Y') : $user->created_at->format('d/m/Y'),
             'profile_url' => route('member.show', $user->uuid),
+            // The safe public profile — what everyone else sees of this person.
+            // Null when this admin may not open it (a block either way), so the
+            // popup hides the control rather than offering a link into a 403.
+            'public_url' => $user->canViewPublicProfile(Auth::user())
+                ? route('people.show', $user->uuid)
+                : null,
             // Admin popup QR points to the member's management profile, not the public wall.
             'qr_url' => route('member.show', $user->uuid),
             'qr_svg_url' => route('qr.member.svg', ['user' => $user->id, 'target' => 'manage']),

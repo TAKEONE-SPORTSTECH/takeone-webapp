@@ -147,9 +147,9 @@
   .pt span { font-family:'Anton',sans-serif; font-size:52px; display:block; line-height:1; }
 </style>
 
-{{-- The winner celebration: the same scene the wall shows, with this console's
-     own controls dropped into the one slot it offers. --}}
-<x-winner-celebration font-route="court-display.font" />
+{{-- The winner celebration — this package's own. The same scene the wall
+     shows, with this console's own controls dropped into its one slot. --}}
+@include('event-taekwondo_tournament::scoreboard.winner-celebration')
 </head>
 <body>
 
@@ -345,7 +345,13 @@
   <div id="winnerControls" style="display:flex; flex-direction:column; gap:10px;">
     <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
       <button id="winnerNext" class="btn btn-go" style="font-size:24px; padding:18px 40px;"></button>
-      <button id="winnerBack" class="btn" style="font-size:18px; padding:18px 26px;">{{ __('event-taekwondo_tournament::messages.ctl_winner_back') }}</button>
+      {{-- Same size, same weight, same corners as the green one beside it; quiet
+           only in its colour. A pixel off the padding because .btn carries a
+           border and .btn-go does not, so the two stand the same height. --}}
+      {{-- Filled, not a ghost: .btn's 8% white vanishes against the celebration
+           behind it. The fill is inline so the class keeps serving every other
+           button on this console exactly as it does today. --}}
+      <button id="winnerBack" class="btn" style="font-size:24px; font-weight:800; padding:17px 39px; background:linear-gradient(135deg,#3c4460,#1b1f2e); color:#eef1f8; border-color:rgba(255,255,255,0.38); box-shadow:0 12px 34px rgba(0,0,0,0.5);">{{ __('event-taekwondo_tournament::messages.ctl_winner_back') }}</button>
     </div>
     <div id="winnerHint" style="font-weight:600; font-size:16px; letter-spacing:.08em; text-transform:uppercase; color:rgba(232,230,224,0.45);"></div>
   </div>

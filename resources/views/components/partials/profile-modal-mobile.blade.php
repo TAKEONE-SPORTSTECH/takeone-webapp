@@ -8,6 +8,8 @@
     $mTabs[] = ['key' => 'personal',   'icon' => 'bi-person-badge', 'label' => 'Personal'];
     $mTabs[] = ['key' => 'social',     'icon' => 'bi-share',        'label' => 'Social'];
     $mTabs[] = ['key' => 'additional', 'icon' => 'bi-shield-plus',  'label' => 'Medical'];
+    $mTabs[] = ['key' => 'docs', 'icon' => 'bi-file-earmark-person', 'label' => __('shared.components_profile_modal_tab_docs')];
+    if ($showSecurityTab ?? false) $mTabs[] = ['key' => 'security', 'icon' => 'bi-shield-lock', 'label' => __('shared.components_profile_modal_tab_security')];
 @endphp
 
 <div class="flex min-h-full items-end justify-center sm:items-center sm:p-4">
@@ -36,14 +38,33 @@
             <button type="button" @click="closeModal()" class="text-white/90 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center -mr-1">&times;</button>
         </div>
 
-        {{-- Tab bar — horizontally scrollable pills --}}
-        <div class="border-b border-gray-100 overflow-x-auto scrollbar-hide flex-shrink-0">
-            <nav class="flex gap-1.5 px-3 py-2.5 min-w-max" role="tablist">
+        {{-- Tab bar — one row, no scrolling.
+             Six tabs will not fit as labelled pills on a phone, and a bar that
+             scrolls sideways hides its own contents: the tab you want is the one
+             off-screen. So only the SELECTED pill carries its label and the rest
+             collapse to their icon, which is enough to recognise them and leaves
+             the whole set visible at once. The label slides in as a pill is
+             chosen, so nothing appears or vanishes abruptly.
+
+             Every pill keeps an aria-label and a title, because an icon on its
+             own is not a name. --}}
+        <div class="border-b border-gray-100 flex-shrink-0">
+            <nav class="flex items-center gap-1 px-2.5 py-2" role="tablist">
                 @foreach($mTabs as $t)
                 <button type="button" @click="activeTab = '{{ $t['key'] }}'"
-                        :class="activeTab === '{{ $t['key'] }}' ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600'"
-                        class="px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-colors m-press">
-                    <i class="bi {{ $t['icon'] }}"></i>{{ $t['label'] }}
+                        role="tab"
+                        :aria-selected="activeTab === '{{ $t['key'] }}'"
+                        aria-label="{{ $t['label'] }}" title="{{ $t['label'] }}"
+                        :class="activeTab === '{{ $t['key'] }}'
+                            ? 'bg-primary text-white shadow-sm shadow-primary/25 px-3'
+                            : 'bg-gray-100 text-gray-500 px-0 w-9'"
+                        class="h-8 rounded-full text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 transition-all duration-200 m-press flex-shrink-0 overflow-hidden">
+                    <i class="bi {{ $t['icon'] }} text-[13px]"></i>
+                    <span x-show="activeTab === '{{ $t['key'] }}'"
+                          x-transition:enter="transition ease-out duration-200"
+                          x-transition:enter-start="opacity-0 max-w-0"
+                          x-transition:enter-end="opacity-100 max-w-[7rem]"
+                          class="max-w-[7rem]">{{ $t['label'] }}</span>
                 </button>
                 @endforeach
             </nav>
@@ -76,8 +97,9 @@
                     <span x-show="isSubmitting"><span class="inline-block animate-spin mr-2">&#8635;</span>{{ $isCreate ? 'Creating...' : 'Updating...' }}</span>
                 </button>
 
+                {{-- Follows the tab list, so the conditional Security tab is reachable. --}}
                 <button type="button"
-                        x-show="activeTab !== 'additional'"
+                        x-show="activeTab !== tabs[tabs.length - 1]"
                         @click="nextTab()"
                         class="flex-shrink-0 btn btn-primary py-2.5 px-4">
                     Next<i class="bi bi-arrow-right ml-1"></i>

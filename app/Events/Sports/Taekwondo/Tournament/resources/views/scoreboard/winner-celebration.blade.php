@@ -1,29 +1,37 @@
 {{--
-    The winner celebration — one scene, every mat, every sport.
+    The winner celebration — this sport's own.
 
     A bout ends and the hall gets this: the athlete's own photograph lit from the
     corner they fought from, their name slammed across the wall, their club named
-    under it, embers and confetti in the corner's colours. Karate and Taekwondo
-    both call it, on the wall boards and on the scoring console, so it lives here
-    rather than in either package — the boards differ, the moment does not.
+    under it, embers and confetti in the corner's colours. Included by this
+    package's mat board and its scoring console.
 
-    Transcribed from the approved layouts (drafts/HTML Templates/winner-red.html
-    and winner-blue.html): RED puts the photograph on the right and the name on
-    the left, BLUE mirrors it. Treat the visual output as fixed and restyle by
-    agreement, never as a side effect.
+    Transcribed from the approved layouts in ../../../Scoreboard/design/winner-{red,blue}.source.html:
+    RED puts the photograph on the right and the name on the left, BLUE mirrors
+    it. Treat the visual output as fixed and restyle by agreement, never as a
+    side effect.
+
+    It belongs to Taekwondo. The Karate package has its own copy of this file
+    and its own copy of the layouts behind it — deliberately, because an event
+    type is a package: deleting this directory must take its winner screen with
+    it, and a change to one sport's celebration must never move another sport's.
+    Its faces come from THIS package's font route, so the two are not even
+    reading the same files.
 
     Standalone by contract. It owns its faces, its keyframes and its whole scene,
     it measures its own host rather than reading the page, and it decides nothing
     — the caller hands it a winner and gets back the one element it may put its
     own buttons in.
 
+        @include('event-taekwondo_tournament::scoreboard.winner-celebration')
+
         var scene = WinnerCelebration.paint(hostEl, {
             corner: 'red',            // 'red' | 'blue' — which corner won
-            name:   'FAWZIA ABDULLA',
-            club:   'KARATE CLUB',
+            name:   'NOOR ALI',
+            club:   'MANAMA TAEKWONDO',
             logo:   '/storage/…png',  // optional; a monogram stands in
             photo:  '/storage/…webp', // optional; the card is dropped without one
-            note:   'WON BY HANSOKU', // optional line under the bar
+            note:   'WINS 2 - 1 ON ROUNDS', // optional line under the bar
             label:  'Winner',         // the localised word
         });
         scene.actions.appendChild(myCommitButton);   // console only
@@ -32,15 +40,9 @@
     never a placeholder. Every value is written with textContent / a validated
     URL — a competitor's name and their club's name are organiser input and reach
     a hall screen as text, never as markup.
-
-    @param  fontRoute  Route name serving this package's woff2 files, so a board
-                       with no internet still has the face. Null → fallback stack.
 --}}
-@props(['fontRoute' => null])
-
-@once('winner-celebration-styles')
+@once('taekwondo-winner-celebration-styles')
 <style>
-@if ($fontRoute)
 @php
     // Poppins italic is the design's voice. Self-hosted, per subset, because a
     // wall screen on a mat has no internet to ask Google for a font.
@@ -58,12 +60,11 @@
   font-weight: {{ $wcWeight }};
   font-display: swap;
   {{-- Root-relative: the board must never ask an origin that isn't there. --}}
-  src: url("{{ route($fontRoute, 'poppins-italic-'.$wcWeight.'-'.$wcSubset.'.woff2', false) }}") format('woff2');
+  src: url("{{ route('court-display.font', 'poppins-italic-'.$wcWeight.'-'.$wcSubset.'.woff2', false) }}") format('woff2');
   unicode-range: {{ $wcRange }};
 }
 @endforeach
 @endforeach
-@endif
 
 /* Every loop the scene runs. Namespaced `wc` so a board's own keyframes — and
    there are several, with names as ordinary as `shine` — can never collide. */
@@ -101,7 +102,7 @@
 </style>
 @endonce
 
-@once('winner-celebration-script')
+@once('taekwondo-winner-celebration-script')
 <script>
 /* The celebration, painted into whatever host it is handed. Defined once per
    document and never re-entered, so two callers on one page (the console paints

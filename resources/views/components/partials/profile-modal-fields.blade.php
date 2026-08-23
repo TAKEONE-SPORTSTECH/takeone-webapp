@@ -458,6 +458,15 @@
         </p>
     </div>
 
+
+</div>
+
+{{-- ═══════════════════════ Documents ═══════════════════════
+     Identity documents, on a tab of their own. They used to sit at the bottom of
+     the Medical tab, which is where nobody looked for a passport number — and
+     that tab was long enough that the uploader was below the fold on a phone.
+     Same fields, same uploader, same `docs` array on the form. --}}
+<div x-show="activeTab === 'docs'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
     {{-- Identity Documents with drag-and-drop upload --}}
     <div class="mb-2">
         <div class="flex justify-between items-center mb-2">
@@ -540,7 +549,6 @@
             {{ __('shared.profile_modal_fields_no_documents') }}
         </p>
     </div>
-
 </div>
 
 {{-- Document delete confirmation overlay — fixed so it centers over the whole screen --}}
@@ -587,3 +595,125 @@
         </div>
     </div>
 </div>
+
+{{-- ═══════════════════════ Security ═══════════════════════
+     Account security, for an existing person only. Two cards with very
+     different owners:
+
+       · Password — platform staff may set one or have one generated. Moved here
+         from a standalone card on the mobile profile page, so the place you edit
+         a person is the place you manage their access.
+       · Two-factor — the member's own, and nobody else's. Every
+         TwoFactorController action runs against Auth::user() because the secret
+         must be scanned by their own authenticator, so for an admin this reports
+         the state and offers nothing to press. A disable button with no endpoint
+         behind it would be worse than none.
+
+     Neither card is part of the surrounding form: both act through their own
+     requests, so nothing here is submitted by Save. --}}
+@if($showSecurityTab ?? false)
+<div x-show="activeTab === 'security'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-4">
+
+    @if($canSetPassword ?? false)
+        <div x-data="memberPwdAdmin(@js($securityPwdUrls['reset']), @js($securityPwdUrls['regenerate']), @js($user->full_name ?? ''))"
+             class="bg-white rounded-2xl shadow-sm border border-amber-200 p-4">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 grid place-items-center flex-shrink-0">
+                    <i class="bi bi-shield-lock-fill text-lg"></i>
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-bold text-foreground leading-tight">{{ __('member.account_security') }}</h3>
+                    <p class="text-[11px] text-muted-foreground">{{ __('member.super_admin_only') }}</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-3">
+                <button type="button" @click="openSet()" class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-foreground text-sm font-semibold active:bg-muted/70 transition-colors">
+                    <i class="bi bi-key"></i> {{ __('member.set') }}
+                </button>
+                <button type="button" @click="generate()" :disabled="busy" class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 transition-colors disabled:opacity-60">
+                    <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-magic'"></i> {{ __('member.generate') }}
+                </button>
+            </div>
+
+            {{-- Set a password. Teleported to body: this sheet lives inside a modal
+                 that is itself a positioned, scrolling container. --}}
+            <template x-teleport="body">
+            <div x-show="setOpen" x-cloak class="fixed inset-0 z-[80] flex items-end justify-center" @keydown.escape.window="setOpen=false">
+                <div class="absolute inset-0 bg-black/50" @click="setOpen=false" x-transition.opacity></div>
+                <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8"
+                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                     x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+                    <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
+                    <h3 class="font-bold text-lg text-foreground flex items-center gap-2"><i class="bi bi-key-fill text-amber-500"></i> {{ __('member.set_password') }}</h3>
+                    <p class="text-sm text-muted-foreground mt-1 mb-4" x-text="@js(__('member.set_password_for')).replace(':name', name)"></p>
+                    <div class="space-y-3">
+                        <input type="password" x-model="pw1" placeholder="{{ __('member.new_password') }}" minlength="8" autocomplete="new-password"
+                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                        <input type="password" x-model="pw2" placeholder="{{ __('member.confirm_password') }}" minlength="8" autocomplete="new-password"
+                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                    </div>
+                    <div class="flex gap-2 mt-5">
+                        <button type="button" @click="setOpen=false" class="m-press flex-1 py-3 rounded-xl bg-muted text-foreground text-sm font-semibold">{{ __('shared.cancel') }}</button>
+                        <button type="button" @click="submitSet()" :disabled="busy" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60">
+                            <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('member.set_password') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            </template>
+
+            {{-- What was generated. Shown once — the plaintext exists nowhere else. --}}
+            <template x-teleport="body">
+            <div x-show="resultOpen" x-cloak class="fixed inset-0 z-[80] flex items-end justify-center" @keydown.escape.window="resultOpen=false">
+                <div class="absolute inset-0 bg-black/50" @click="resultOpen=false" x-transition.opacity></div>
+                <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8 text-center"
+                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
+                    <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
+                    <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-600 grid place-items-center mx-auto"><i class="bi bi-check-circle-fill text-2xl"></i></div>
+                    <h3 class="font-bold text-lg text-foreground mt-3">{{ __('member.new_password_generated') }}</h3>
+                    <p class="text-sm text-muted-foreground mt-1" x-show="emailed">{{ __('member.password_emailed') }}</p>
+                    <p class="text-sm text-amber-600 mt-1" x-show="!emailed">{{ __('member.password_not_emailed') }}</p>
+                    <button type="button" @click="copy()" class="m-press w-full mt-4 flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-muted border border-dashed border-primary/40">
+                        <span class="font-mono font-bold text-base text-foreground tracking-wider select-all" x-text="newPw"></span>
+                        <i class="bi" :class="copied ? 'bi-clipboard-check text-green-600' : 'bi-clipboard text-primary'"></i>
+                    </button>
+                    <button type="button" @click="resultOpen=false" class="m-press w-full mt-4 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90">{{ __('shared.done') }}</button>
+                </div>
+            </div>
+            </template>
+        </div>
+    @endif
+
+    {{-- Two-factor. Theirs to manage; ours only to report. --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div class="flex items-center gap-2">
+            <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 {{ ($securityTwoFa['enabled'] ?? false) ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400' }}">
+                <i class="bi {{ ($securityTwoFa['enabled'] ?? false) ? 'bi-patch-check-fill' : 'bi-shield-slash' }} text-lg"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+                <h3 class="font-bold text-foreground leading-tight">{{ __('member.two_factor') }}</h3>
+                <p class="text-[11px] text-muted-foreground">
+                    @if($securityTwoFa['enabled'] ?? false)
+                        {{ $securityTwoFa['since'] ? __('member.two_factor_on_since', ['date' => $securityTwoFa['since']]) : __('member.two_factor_on') }}
+                    @else
+                        {{ __('member.two_factor_off') }}
+                    @endif
+                </p>
+            </div>
+        </div>
+
+        @if($securityTwoFa['mine'] ?? false)
+            {{-- Your own: the real flow lives on the security page (it needs a QR
+                 code and a confirmation code), so this points there rather than
+                 reimplementing it in a tab. --}}
+            <a href="{{ route('security.show') }}" class="m-press mt-3 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 transition-colors">
+                <i class="bi bi-shield-lock"></i>{{ ($securityTwoFa['enabled'] ?? false) ? __('member.two_factor_manage') : __('member.two_factor_enable') }}
+            </a>
+        @else
+            <p class="mt-3 text-xs text-muted-foreground bg-muted/60 rounded-xl px-3 py-2.5">
+                <i class="bi bi-info-circle me-1"></i>{{ __('member.two_factor_member_only') }}
+            </p>
+        @endif
+    </div>
+</div>
+@endif

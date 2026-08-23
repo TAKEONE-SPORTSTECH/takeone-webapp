@@ -223,7 +223,7 @@ window.instructorAddSheet = function () {
                         <template x-for="m in results" :key="m.id">
                             <button type="button" @click="pick(m)" class="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60 text-left">
                                 <span class="w-9 h-9 rounded-full bg-accent text-primary flex items-center justify-center overflow-hidden flex-shrink-0">
-                                    <template x-if="m.profile_picture"><img :src="m.profile_picture" class="w-9 h-9 object-cover"></template>
+                                    <template x-if="m.profile_picture"><img :src="m.profile_picture" class="w-[27px] h-9 object-cover"></template>
                                     <template x-if="!m.profile_picture"><i class="bi bi-person"></i></template>
                                 </span>
                                 <span class="min-w-0">

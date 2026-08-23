@@ -91,7 +91,7 @@
                             <button type="button" @click="linkInstead(match)"
                                     class="mt-2 w-full flex items-center gap-2.5 rounded-xl border border-sky-200 bg-sky-50 p-3 text-start">
                                 <span class="w-9 h-9 rounded-full overflow-hidden bg-white grid place-items-center flex-shrink-0 border border-sky-100">
-                                    <template x-if="match.avatar"><img :src="match.avatar" alt="" class="w-9 h-9 object-cover"></template>
+                                    <template x-if="match.avatar"><img :src="match.avatar" alt="" class="w-[27px] h-9 object-cover"></template>
                                     <template x-if="!match.avatar"><i class="bi bi-person-fill text-sky-400"></i></template>
                                 </span>
                                 <span class="min-w-0 flex-1">

@@ -72,7 +72,7 @@
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-3">
                     <a :href="p.profile_url" class="flex items-center gap-3 min-w-0 flex-1 no-underline">
                         <span class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 grid place-items-center bg-accent">
-                            <template x-if="p.avatar"><img :src="p.avatar" alt="" class="w-12 h-12 object-cover"></template>
+                            <template x-if="p.avatar"><img :src="p.avatar" alt="" class="w-9 h-12 object-cover"></template>
                             <template x-if="!p.avatar"><i class="bi bi-person-fill text-2xl text-primary/60"></i></template>
                         </span>
                         <div class="min-w-0">
@@ -97,7 +97,7 @@
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col items-center text-center">
                     <a :href="p.profile_url" class="no-underline w-full">
                         <span class="w-20 h-20 rounded-2xl overflow-hidden grid place-items-center bg-accent mx-auto">
-                            <template x-if="p.avatar"><img :src="p.avatar" alt="" class="w-20 h-20 object-cover"></template>
+                            <template x-if="p.avatar"><img :src="p.avatar" alt="" class="w-[60px] h-20 object-cover"></template>
                             <template x-if="!p.avatar"><i class="bi bi-person-fill text-4xl text-primary/60"></i></template>
                         </span>
                         <p class="font-semibold text-gray-900 text-sm truncate mt-3 w-full" x-text="p.name"></p>

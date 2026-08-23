@@ -895,4 +895,6 @@ return [
     'share'            => 'مشاركة',
     'link_copied'      => 'تم نسخ الرابط',
     'something_went_wrong' => 'حدث خطأ ما',
+    'components_profile_modal_tab_security' => 'الأمان',
+    'components_profile_modal_tab_docs' => 'المستندات',
 ];

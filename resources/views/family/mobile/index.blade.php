@@ -69,7 +69,7 @@
                    class="m-card m-press flex items-center gap-3.5 bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
                     <span class="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ring-1 ring-black/5">
                         @if($avatar)
-                            <img src="{{ $avatar }}" alt="" class="w-14 h-14 object-cover">
+                            <img src="{{ $avatar }}" alt="" class="w-[42px] h-14 object-cover">
                         @else
                             <i class="bi bi-person text-2xl text-muted-foreground"></i>
                         @endif

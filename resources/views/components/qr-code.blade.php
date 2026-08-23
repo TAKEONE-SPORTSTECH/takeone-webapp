@@ -156,7 +156,7 @@
                                 <button type="button" @click="sendToChat(u)" :disabled="chat.sending"
                                         class="m-press w-full text-start rounded-xl p-2 flex items-center gap-2.5 hover:bg-muted transition-colors disabled:opacity-50">
                                     <span class="w-9 h-9 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
-                                        <template x-if="u.avatar"><img :src="u.avatar" alt="" class="w-9 h-9 object-cover"></template>
+                                        <template x-if="u.avatar"><img :src="u.avatar" alt="" class="w-[27px] h-9 object-cover"></template>
                                         <template x-if="!u.avatar"><span class="text-[11px] font-bold text-muted-foreground" x-text="u.initial"></span></template>
                                     </span>
                                     <span class="min-w-0 flex-1 text-sm font-medium text-foreground truncate" x-text="u.name"></span>

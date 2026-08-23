@@ -1187,8 +1187,19 @@
                             <h5 class="font-bold mb-1"><i class="bi bi-trophy-fill text-warning me-2"></i>{{ __('member.templates_member_show_tournament_event_participation') }}</h5>
                             <p class="text-gray-500 text-sm mb-0">{{ __('member.templates_member_show_tournament_participation_sub') }}</p>
                         </div>
-                        <!-- Filter Section -->
+                        <!-- Add + Filter. The add button matches Attendance, Goals and
+                             the Event Log: this was the one tab where the only way in
+                             was the Action menu at the top of the page. -->
                         <div class="flex items-center gap-2 flex-shrink-0">
+                            {{-- Self and guardians, plus platform staff. NOT every
+                                 `admin_view`: that type covers a club admin too, and the
+                                 form posts to a super-admin-only route, so a club admin
+                                 would get a button that 403s. --}}
+                            @if($relationship->relationship_type !== 'admin_view' || Auth::user()?->isSuperAdmin())
+                                <button type="button" @click="$dispatch('open-tournament-modal')" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm whitespace-nowrap">
+                                    <i class="bi bi-plus-lg me-1"></i>{{ __('member.templates_member_show_add_tournament_participation') }}
+                                </button>
+                            @endif
                             <label for="sportFilter" class="text-sm font-semibold text-gray-700 whitespace-nowrap">{{ __('member.templates_member_show_filter_by_sport') }}</label>
                             <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary w-full sm:w-36" id="sportFilter">
                                 <option value="all">{{ __('member.templates_member_show_all_sports') }}</option>

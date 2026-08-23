@@ -114,9 +114,9 @@
   @media (prefers-reduced-motion: reduce) { #stage *, #stage { animation:none !important; } }
 </style>
 
-{{-- The winner celebration: one scene shared by every mat of every sport. It
-     brings its own faces, keyframes and painter; this board only calls it. --}}
-<x-winner-celebration font-route="karate-court-display.font" />
+{{-- The winner celebration — this package's own (resources/views/scoreboard).
+     It brings its own faces, keyframes and painter; this board only calls it. --}}
+@include('event-karate_tournament::scoreboard.winner-celebration')
 </head>
 <body>
 
@@ -149,7 +149,7 @@
         <div style="display:flex; align-items:center; gap:28px;">
           <img id="sbAkaFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.5);">
           <div style="display:flex; flex-direction:column;">
-            <div id="sbAkaCountry" style="font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
+            <div id="sbAkaCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
             <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">AKA</div>
           </div>
         </div>
@@ -188,7 +188,7 @@
         <div style="display:flex; align-items:center; gap:28px; flex-direction:row-reverse;">
           <img id="sbAoFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.5);">
           <div style="display:flex; flex-direction:column; align-items:flex-end;">
-            <div id="sbAoCountry" style="font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
+            <div id="sbAoCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
             <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">AO</div>
           </div>
         </div>
@@ -228,7 +228,7 @@
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#c8382c;background:oklch(0.55 0.2 25); padding:5.4px 15.1px 5.4px 18.9px;">AKA · RED</div>
       <div style="display:flex; align-items:center; gap:15.1px;">
         <div id="vsRedFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsRedCountry" style="font-weight:700; font-size:32.4px; letter-spacing:0.28em; color:#e8b3ad; color:oklch(0.85 0.05 25);"></div>
+        <div id="vsRedCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#e8b3ad; color:oklch(0.85 0.05 25);"></div>
       </div>
       <div id="vsRedName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
       <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px;">
@@ -242,7 +242,7 @@
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1f5aa8;background:oklch(0.5 0.16 255); padding:5.4px 15.1px 5.4px 18.9px;">AO · BLUE</div>
       <div style="display:flex; align-items:center; gap:15.1px; flex-direction:row-reverse;">
         <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsBlueCountry" style="font-weight:700; font-size:32.4px; letter-spacing:0.28em; color:#a9c6ea; color:oklch(0.85 0.05 255);"></div>
+        <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#a9c6ea; color:oklch(0.85 0.05 255);"></div>
       </div>
       <div id="vsBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
       <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px; flex-direction:row-reverse;">
@@ -556,7 +556,7 @@
 
   // Not the plan, just a free second chance: if this board ever does receive a
   // tap or a keypress, take it. The kiosks grant autoplay outright (the TV app
-  // through the WebView, the Pi through cog), and the retry loop above covers a
+  // through the WebView, the screen through cog), and the retry loop above covers a
   // setting that lands late — so nothing on this screen ever ASKS to be touched.
   ['pointerdown', 'keydown'].forEach(function (evt) {
     window.addEventListener(evt, function unlock() {
@@ -677,7 +677,10 @@
       var k = pair[0], c = pair[1];
       setName('vs' + k + 'Name', c.name || '', 71.3, 26);
       text('vs' + k + 'Club', c.club || '');
-      text('vs' + k + 'Country', c.country || '');
+      // The country is spelled out — 'BAHRAIN', never 'BH' — so it is fitted
+      // like the name is: a long one shrinks and then condenses rather than
+      // running off the panel.
+      setName('vs' + k + 'Country', c.country || '', 32.4, 18);
       bg('vs' + k + 'Flag', flagUrl(c.flag));
       bg('vs' + k + 'Logo', c.logo);
       bg('vs' + k + 'Photo', c.photo);
@@ -714,7 +717,7 @@
       var k = pair[0], c = pair[1];
       setName('sb' + k + 'Name', c.name || '', 120, 38);
       text('sb' + k + 'Club', c.club || '');
-      text('sb' + k + 'Country', c.country || '');
+      setName('sb' + k + 'Country', c.country || '', 52, 26);
       var f = el('sb' + k + 'Flag'), u = safeUrl(flagUrl(c.flag));
       f.style.visibility = u ? 'visible' : 'hidden';
       if (u) f.src = u;
@@ -798,7 +801,12 @@
         // The handover: the introduction wipes itself off the scoreboard that
         // is already drawn behind it, rather than the page changing. Its music
         // goes with it — a bout is scored in silence unless something happens.
-        music(null);
+        //
+        // Only ITS track, though. A bout ended from the introduction (an
+        // opponent who never came) hands the wall straight to the celebration,
+        // and the paint above has already started the celebration music — a
+        // blanket stop here silenced it a frame after it began.
+        if (musicOn === 'vs_music') music(null);
         el('vs').style.animation = 'vsExit .55s cubic-bezier(.4,0,1,1) both';
         setTimeout(function () { if (mode !== 'vs') el('vs').hidden = true; }, 560);
       } else {

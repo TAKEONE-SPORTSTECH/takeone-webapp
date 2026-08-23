@@ -93,7 +93,7 @@
                     {{-- member photo — hero, overlapping the band, ringed by celebratory pulses --}}
                     <div class="flex justify-center -mt-12">
                         <div class="nm-photo-wrap relative">
-                            <div class="nm-photo relative w-28 h-28 rounded-3xl ring-4 ring-white shadow-xl overflow-hidden grid place-items-center"
+                            <div class="nm-photo relative w-[84px] h-28 rounded-3xl ring-4 ring-white shadow-xl overflow-hidden grid place-items-center"
                                  :class="(a && a.image) ? 'bg-muted' : 'bg-primary'">
                                 <template x-if="a && a.image">
                                     <img :src="a.image" :alt="a.name" class="w-full h-full object-cover"

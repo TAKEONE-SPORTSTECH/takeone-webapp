@@ -972,8 +972,12 @@
                             <h5 class="font-bold mb-1"><i class="bi bi-trophy-fill text-warning me-2"></i>{{ __('member.family_show_tournament_participation_title') }}</h5>
                             <p class="text-muted small mb-0">{{ __('member.family_show_tournament_participation_sub') }}</p>
                         </div>
-                        <!-- Filter Section -->
-                        <div class="flex items-center">
+                        <!-- Add + Filter. Same affordance the Event Log below has;
+                             this tab used to be reachable only from the Action menu. -->
+                        <div class="flex items-center gap-2">
+                            <button type="button" class="btn btn-primary btn-sm rounded-pill whitespace-nowrap" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal">
+                                <i class="bi bi-plus-lg me-1"></i>{{ __('member.family_show_add_tournament_participation') }}
+                            </button>
                             <label for="sportFilter" class="form-label me-2 mb-0 font-semibold">{{ __('member.family_show_filter_by_sport') }}</label>
                             <select class="form-select form-select-sm" id="sportFilter" style="width: 150px;">
                                 <option value="all">{{ __('member.family_show_all_sports') }}</option>

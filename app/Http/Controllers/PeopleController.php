@@ -416,12 +416,25 @@ class PeopleController extends Controller
         $sports = $this->sportsPractised($person, $competitionBySport);
 
         /*
-         * The flag beside a competitor is their CLUB's country, never the
-         * nationality on their account — at an event a person represents the
-         * club that entered them.
+         * The flag beside a person is their CLUB's country — at an event they
+         * represent the club that entered them, not their passport.
+         *
+         * With no club at all, a profile would show no flag rather than say
+         * where its owner is from, so the nationality on the account is the LAST
+         * resort here. It is a fallback and nothing more: the moment a club is
+         * known, the club wins.
+         *
+         * This is the profile surface only. An event's competitor flag stays
+         * strictly club-derived (ClubEventRegistration::countryCode()) — there a
+         * nationality flag would misstate who the athlete is competing for.
+         *
+         * Length-guarded because the flag becomes a CSS class: nationality holds
+         * ISO-2 codes today, and a stray country NAME must yield no flag rather
+         * than a broken one.
          */
         $countryCode = $person->memberClubs()->value('tenants.country')
-            ?: $affiliations->first()?->tenant?->country;
+            ?: $affiliations->first()?->tenant?->country
+            ?: (preg_match('/^[A-Za-z]{2,3}$/', (string) $person->nationality) ? $person->nationality : null);
 
 
         $data = [

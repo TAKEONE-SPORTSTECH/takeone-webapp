@@ -22,7 +22,7 @@
 
                 <div class="flex items-start gap-3">
                     <span class="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                        @if($myAvatar)<img src="{{ $myAvatar }}" alt="" class="w-10 h-10 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                        @if($myAvatar)<img src="{{ $myAvatar }}" alt="" class="w-[30px] h-10 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                     </span>
                     <textarea x-model="body" x-ref="ta" rows="1" @input="autoGrow($el)"
                               :placeholder="pollOpen ? @js(__('personal.poll_question')) : @js(__('personal.whats_on_your_mind'))"
@@ -393,7 +393,7 @@
                         <div class="flex items-center gap-3 py-2.5">
                             <a :href="s.url" class="flex items-center gap-3 min-w-0 flex-1">
                                 <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                                    <template x-if="s.avatar"><img :src="s.avatar" alt="" class="w-9 h-9 object-cover"></template>
+                                    <template x-if="s.avatar"><img :src="s.avatar" alt="" class="w-[27px] h-9 object-cover"></template>
                                     <template x-if="!s.avatar"><i class="bi bi-person-fill text-primary/60"></i></template>
                                 </span>
                                 <span class="text-sm font-medium text-foreground truncate" x-text="s.name"></span>

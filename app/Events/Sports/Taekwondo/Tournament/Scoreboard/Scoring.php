@@ -531,6 +531,7 @@ class Scoring
             $state->endReason = 'gamjeom';
             $state->punWinner = $pun;
             $state->lastEvent = null;
+            $this->reveal($state);
 
             // Deliberately NO log entry. PUN is a consequence, not something
             // the operator did — the gam-jeom that triggered it already has
@@ -621,6 +622,7 @@ class Scoring
         // The match may be decided by that round.
         if ($state->matchWinner()) {
             $state->matchOver = true;
+            $this->reveal($state);
 
             return;
         }
@@ -809,6 +811,22 @@ class Scoring
             if (array_key_exists($field, $payload) && $payload[$field] !== null) {
                 $state->$field = trim((string) $payload[$field]) ?: null;
             }
+        }
+    }
+
+    /**
+     * Take the introduction down, because the match is over.
+     *
+     * A match can be decided without ever having been scored: the opponent does
+     * not turn up, and the officials settle it on the introduction. Left on the
+     * introduction the celebration paints underneath it and the hall sees two
+     * athletes about to fight a match that is already won — so a decided match
+     * moves the wall on, exactly as starting it would have.
+     */
+    private function reveal(MatState $state): void
+    {
+        if ($state->mode === MatState::MODE_VS) {
+            $state->mode = MatState::MODE_SCOREBOARD;
         }
     }
 

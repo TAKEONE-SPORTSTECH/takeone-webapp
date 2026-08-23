@@ -75,8 +75,12 @@
     }
 </style>
 
+{{-- Full width, no phone-canvas cap. It used to be max-width:430px centred,
+     which is invisible on a 412px phone but shows as grey margins the moment the
+     viewport is wider — a large phone, landscape, a foldable, or a tablet that
+     lands on the mobile view. The layout inside is fluid, so it simply fills. --}}
 <div class="prof-page"
-     style="max-width:430px;margin:0 auto;background:#f4f5f9;min-height:100vh;padding-bottom:28px;color:#1c1c28"
+     style="width:100%;background:#f4f5f9;min-height:100vh;padding-bottom:28px;color:#1c1c28"
      x-data="{
         tab: 'record',
         honour: 'all',
@@ -112,7 +116,7 @@
         <template x-teleport="body">
             <div x-show="photos" x-cloak x-transition.opacity.duration.180ms
                  @keydown.escape.window="photos = false"
-                 class="prof-col" style="position:fixed;inset:0;z-index:70;max-width:430px;margin:0 auto;background:rgba(9,5,22,.94)">
+                 class="prof-col" style="position:fixed;inset:0;z-index:70;background:rgba(9,5,22,.94)">
                 <div style="display:flex;align-items:center;justify-content:flex-end;padding:calc(env(safe-area-inset-top) + 12px) 14px 10px">
                     <button type="button" @click="photos = false" class="prof-press"
                             style="width:40px;height:40px;border:0;background:rgba(255,255,255,.14);border-radius:50%;color:#fff;font-size:16px;display:grid;place-items:center;cursor:pointer;transition:transform .16s cubic-bezier(.22,.61,.36,1)"

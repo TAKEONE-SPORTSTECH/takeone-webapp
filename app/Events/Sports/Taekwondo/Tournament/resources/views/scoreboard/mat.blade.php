@@ -127,9 +127,9 @@
   @media (prefers-reduced-motion: reduce) { #stage *, #stage { animation:none !important; } }
 </style>
 
-{{-- The winner celebration: one scene shared by every mat of every sport. It
-     brings its own faces, keyframes and painter; this board only calls it. --}}
-<x-winner-celebration font-route="court-display.font" />
+{{-- The winner celebration — this package's own (resources/views/scoreboard).
+     It brings its own faces, keyframes and painter; this board only calls it. --}}
+@include('event-taekwondo_tournament::scoreboard.winner-celebration')
 </head>
 <body>
 
@@ -202,7 +202,7 @@
           <div id="sbAkaName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:78px; line-height:1; text-transform:uppercase; color:#fff;"></div>
           <div style="display:flex; align-items:center; gap:16px; max-width:100%;">
             <div id="sbAkaFlag" style="width:84px; flex:0 0 auto; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:2px solid rgba(255,255,255,0.45);"></div>
-            <div id="sbAkaCountry" style="font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
+            <div id="sbAkaCountry" style="max-width:470px; flex:0 1 auto; min-width:0; font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
             <div style="width:8px; height:8px; flex:0 0 auto; transform:rotate(45deg); background:oklch(0.85 0.16 85);"></div>
             <div id="sbAkaClub" style="font-weight:600; font-size:38px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,230,224,0.75); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
           </div>
@@ -213,7 +213,7 @@
           <div id="sbAoName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:78px; line-height:1; text-transform:uppercase; color:#fff;"></div>
           <div style="display:flex; align-items:center; gap:16px; max-width:100%; flex-direction:row-reverse;">
             <div id="sbAoFlag" style="width:84px; flex:0 0 auto; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:2px solid rgba(255,255,255,0.45);"></div>
-            <div id="sbAoCountry" style="font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
+            <div id="sbAoCountry" style="max-width:470px; flex:0 1 auto; min-width:0; font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
             <div style="width:8px; height:8px; flex:0 0 auto; transform:rotate(45deg); background:oklch(0.85 0.16 85);"></div>
             <div id="sbAoClub" style="font-weight:600; font-size:38px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,230,224,0.75); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
           </div>
@@ -244,7 +244,7 @@
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#c8382c;background:oklch(0.55 0.2 25); padding:5.4px 15.1px 5.4px 18.9px;">{{ __('event-taekwondo_tournament::messages.sb_hong') }}</div>
       <div style="display:flex; align-items:center; gap:15.1px;">
         <div id="vsRedFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsRedCountry" style="font-weight:700; font-size:32.4px; letter-spacing:0.28em; color:#e8b3ad; color:oklch(0.85 0.05 25);"></div>
+        <div id="vsRedCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#e8b3ad; color:oklch(0.85 0.05 25);"></div>
       </div>
       <div id="vsRedName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
       <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px;">
@@ -258,7 +258,7 @@
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1f5aa8;background:oklch(0.5 0.16 255); padding:5.4px 15.1px 5.4px 18.9px;">{{ __('event-taekwondo_tournament::messages.sb_chung') }}</div>
       <div style="display:flex; align-items:center; gap:15.1px; flex-direction:row-reverse;">
         <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsBlueCountry" style="font-weight:700; font-size:32.4px; letter-spacing:0.28em; color:#a9c6ea; color:oklch(0.85 0.05 255);"></div>
+        <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#a9c6ea; color:oklch(0.85 0.05 255);"></div>
       </div>
       <div id="vsBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
       <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px; flex-direction:row-reverse;">
@@ -576,7 +576,10 @@
       var k = pair[0], c = pair[1];
       setName('vs' + k + 'Name', c.name || '', 71.3, 26);
       text('vs' + k + 'Club', c.club || '');
-      text('vs' + k + 'Country', c.country || '');
+      // The country is spelled out — 'BAHRAIN', never 'BH' — so it is fitted
+      // like the name is: a long one shrinks and then condenses rather than
+      // running off the panel.
+      setName('vs' + k + 'Country', c.country || '', 32.4, 18);
       bg('vs' + k + 'Flag', flagUrl(c.flag));
       bg('vs' + k + 'Logo', c.logo);
       bg('vs' + k + 'Photo', c.photo);
@@ -613,7 +616,7 @@
       var k = pair[0], c = pair[1];
       setName('sb' + k + 'Name', c.name || '', 78, 30);
       text('sb' + k + 'Club', c.club || '');
-      text('sb' + k + 'Country', c.country || '');
+      setName('sb' + k + 'Country', c.country || '', 44, 20);
       bg('sb' + k + 'Flag', flagUrl(c.flag));
       bg('sb' + k + 'Logo', c.logo);
     });

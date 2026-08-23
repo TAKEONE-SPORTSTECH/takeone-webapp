@@ -22,4 +22,10 @@ return [
     'official_tatami_manager'   => 'مدير البساط',
     'official_scorekeeper'      => 'مسجّل النقاط',
     'official_timekeeper'       => 'مسجّل الوقت',
+    'official_referee_hint' => 'يدير النزال على البساط: يبدأه ويوقفه ويعلن النقاط.',
+    'official_judge_hint' => 'يجلس في الزاوية ويشير إلى النقاط التي يراها.',
+    'official_match_supervisor_hint' => 'يراقب الحكام ويحسم الاعتراضات.',
+    'official_tatami_manager_hint' => 'ينظّم سير البساط ويستدعي اللاعبين.',
+    'official_scorekeeper_hint' => 'يسجّل النقاط والعقوبات في الكشف.',
+    'official_timekeeper_hint' => 'يضبط الوقت: زمن النزال والتوقفات وصافرة النهاية.',
 ];

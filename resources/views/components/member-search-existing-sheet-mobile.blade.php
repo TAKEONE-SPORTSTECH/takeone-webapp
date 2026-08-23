@@ -63,7 +63,7 @@
                             <button type="button" @click="selected = r"
                                     class="m-press w-full text-start flex items-center gap-3 rounded-xl border border-gray-100 p-3">
                                 <span class="w-10 h-10 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
-                                    <template x-if="r.avatar"><img :src="r.avatar" alt="" class="w-10 h-10 object-cover"></template>
+                                    <template x-if="r.avatar"><img :src="r.avatar" alt="" class="w-[30px] h-10 object-cover"></template>
                                     <template x-if="!r.avatar"><i class="bi bi-person-fill text-muted-foreground"></i></template>
                                 </span>
                                 <span class="min-w-0 flex-1">
@@ -82,7 +82,7 @@
                 <div>
                     <div class="flex items-center gap-3 rounded-xl border border-sky-100 bg-sky-50 p-3 mb-4">
                         <span class="w-11 h-11 rounded-full overflow-hidden bg-white grid place-items-center flex-shrink-0 border border-sky-100">
-                            <template x-if="selected.avatar"><img :src="selected.avatar" alt="" class="w-11 h-11 object-cover"></template>
+                            <template x-if="selected.avatar"><img :src="selected.avatar" alt="" class="w-[33px] h-11 object-cover"></template>
                             <template x-if="!selected.avatar"><i class="bi bi-person-fill text-sky-400"></i></template>
                         </span>
                         <span class="min-w-0 flex-1">

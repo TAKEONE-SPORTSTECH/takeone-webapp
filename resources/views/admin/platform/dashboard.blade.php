@@ -203,7 +203,7 @@
                     <a href="{{ route('member.show', $m->uuid) }}" class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/60 transition-colors no-underline">
                         <span class="w-9 h-9 rounded-full overflow-hidden shrink-0">
                             @if($m->profile_picture)
-                                <img src="{{ asset('storage/'.$m->profile_picture) }}?v={{ $m->updated_at?->timestamp }}" alt="" class="w-9 h-9 object-cover">
+                                <img src="{{ asset('storage/'.$m->profile_picture) }}?v={{ $m->updated_at?->timestamp }}" alt="" class="w-[27px] h-9 object-cover">
                             @else
                                 <x-gender-avatar :gender="$m->gender" class="w-9 h-9 rounded-full" />
                             @endif
