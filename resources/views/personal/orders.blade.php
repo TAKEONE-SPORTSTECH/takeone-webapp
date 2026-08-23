@@ -19,8 +19,8 @@
         <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10"></div>
         <div class="relative z-10 flex items-center gap-3">
             <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.market') }}')"
-               class="m-press w-9 h-9 rounded-xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left"></i>
+               class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold flex-shrink-0" aria-label="{{ __('shared.back') }}">
+                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('nav.tab_market') }}
             </button>
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('nav.tab_market') }}</p>

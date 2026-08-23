@@ -131,6 +131,22 @@
                     <span id="mpHeaderTitle" class="text-sm font-bold text-gray-900 truncate"></span>
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
+                    {{-- Preview: this member as everyone else sees them (people.show —
+                         name, photo, clubs, medals; never health, billing or documents).
+                         Hidden until the payload says this admin may open it. --}}
+                    <a id="mpPublicLink" href="#"
+                       aria-label="{{ __('admin.partials_member_popup_preview_public') }}" title="{{ __('admin.partials_member_popup_preview_public') }}"
+                       class="m-press w-9 h-9 rounded-full bg-accent text-primary grid place-items-center hover:bg-primary hover:text-white transition-colors no-underline hidden"><i class="bi bi-person-vcard"></i></a>
+                    {{-- Edit: the editor lives on the member's own profile page, so
+                         this links there with ?edit=1, which opens <x-profile-modal>
+                         on arrival. Hidden until the payload carries a profile URL. --}}
+                    <a id="mpEditLink" href="#"
+                       aria-label="{{ __('admin.partials_member_popup_edit') }}" title="{{ __('admin.partials_member_popup_edit') }}"
+                       class="m-press w-9 h-9 rounded-full bg-accent text-primary grid place-items-center hover:bg-primary hover:text-white transition-colors no-underline hidden"><i class="bi bi-pencil-square"></i></a>
+                    {{-- Share that same public link — never the admin profile URL. --}}
+                    <button type="button" id="mpShareBtn" onclick="mpSharePublic()"
+                            aria-label="{{ __('admin.partials_member_popup_share_public') }}" title="{{ __('admin.partials_member_popup_share_public') }}"
+                            class="m-press w-9 h-9 rounded-full bg-accent text-primary grid place-items-center hover:bg-primary hover:text-white transition-colors hidden"><i class="bi bi-share"></i></button>
                     <button type="button" onclick="openMpQr()" aria-label="{{ __('admin.partials_member_popup_member_qr') }}" title="{{ __('admin.partials_member_popup_member_qr') }}"
                             class="m-press w-9 h-9 rounded-full bg-accent text-primary grid place-items-center hover:bg-primary hover:text-white transition-colors"><i class="bi bi-qr-code"></i></button>
                     <button type="button" onclick="closeMemberPopup()" aria-label="{{ __('admin.partials_member_popup_close') }}"
@@ -141,8 +157,11 @@
             {{-- Identity (profile view only) --}}
             <div id="mpIdentity" class="px-6 pt-1 pb-1">
                 <div class="flex items-center gap-4">
+                    {{-- 3:4 portrait, like every person's picture on the platform
+                         (stored 600x800). A square box centre-crops the face and cuts
+                         the top of the head. --}}
                     <div id="mpAvatar"
-                         class="w-20 h-20 rounded-2xl grid place-items-center text-white font-bold text-3xl shadow ring-1 ring-gray-100 overflow-hidden flex-shrink-0 bg-muted"></div>
+                         class="w-[60px] h-20 rounded-2xl grid place-items-center text-white font-bold text-3xl shadow ring-1 ring-gray-100 overflow-hidden flex-shrink-0 bg-muted"></div>
                     <div class="min-w-0">
                         <h4 id="mpName" class="font-extrabold text-gray-900 text-lg leading-tight truncate"></h4>
                         <span id="mpMemberId" class="inline-block mt-1.5 text-[11px] text-primary bg-accent rounded-full px-2.5 py-0.5 font-semibold"></span>
@@ -509,6 +528,27 @@
             .catch(() => window.showToast && window.showToast('error', '{{ __("admin.partials_member_popup_could_not_copy") }}'));
     };
 
+    /**
+     * Share the member's public profile.
+     *
+     * The share sheet where the browser has one (a phone, and the Android
+     * WebView the app runs in), the clipboard otherwise — so a desktop admin
+     * still gets the link. Always the PUBLIC url: sharing the admin profile
+     * link would send someone to a page they cannot open.
+     */
+    window.mpSharePublic = function () {
+        const d = window._mpData || {};
+        if (!d.public_url) return;
+
+        if (navigator.share) {
+            navigator.share({ title: d.name || '', url: d.public_url }).catch(() => {});
+            return;
+        }
+        navigator.clipboard.writeText(d.public_url)
+            .then(() => window.showToast && window.showToast('success', '{{ __("admin.partials_member_popup_link_copied") }}'))
+            .catch(() => window.showToast && window.showToast('error', '{{ __("admin.partials_member_popup_could_not_copy") }}'));
+    };
+
     // Start impersonating the member shown in the popup (super-admin only).
     window.impersonateMember = function () {
         const id = window._mpCurrentUserId;
@@ -611,20 +651,46 @@
         }
     };
 
+    {{-- The portrait placeholders, from public/images/avatars, stamped with each
+         file's mtime so replacing the artwork is picked up through the CDN.
+
+         Built in a PHP block and passed as a VARIABLE, because a bare
+         filemtime() call written with a leading at-sign reads as a Blade
+         directive, and Blade's bracket matcher chokes on an array literal passed
+         straight to the json directive (see CLAUDE.md).
+
+         NB: no at-signs in this comment on purpose. Blade compiles directives
+         BEFORE it strips comments, so an @-directive named in a comment is
+         executed — which is how this block first shipped a PHP syntax error. --}}
+    @php
+        $mpAvatarFallback = [];
+        foreach (['male', 'female'] as $mpG) {
+            $mpPath = public_path("images/avatars/{$mpG}.jpg");
+            $mpAvatarFallback[$mpG] = asset("images/avatars/{$mpG}.jpg")
+                .'?v='.(is_file($mpPath) ? filemtime($mpPath) : '1');
+        }
+    @endphp
+    const MP_PLACEHOLDER = @json($mpAvatarFallback);
+
     function _populatePopup(d) {
         window._mpSubStore = {};
         window._mpData     = d;
 
-        // Avatar
+        // Avatar — their picture, or the platform's portrait placeholder.
+        //
+        // Built here rather than by the gender-avatar component because this panel is
+        // populated client-side from JSON, so the two placeholder URLs are handed
+        // in from Blade (version-stamped, since they sit behind a CDN). It used to
+        // draw a gradient tile with the member's initial, which meant this one
+        // panel had its own idea of what "no picture" looks like.
         const avatarEl = document.getElementById('mpAvatar');
         if (d.has_picture && d.picture_url) {
-            avatarEl.innerHTML = `<img src="${mpEsc(d.picture_url)}" alt="${mpEsc(d.name)}" class="w-full h-full object-cover">`;
+            avatarEl.innerHTML = `<img src="${mpEsc(d.picture_url)}" alt="${mpEsc(d.name)}" class="w-full h-full object-cover object-top">`;
             avatarEl.style.background = '';
         } else {
-            avatarEl.style.background = d.gender === 'Male'
-                ? 'linear-gradient(135deg, hsl(250 65% 65%) 0%, hsl(250 65% 60%) 100%)'
-                : 'linear-gradient(135deg, #d63384 0%, #a61e4d 100%)';
-            avatarEl.textContent = d.initial;
+            const silhouette = d.gender === 'Female' ? MP_PLACEHOLDER.female : MP_PLACEHOLDER.male;
+            avatarEl.innerHTML = `<img src="${silhouette}" alt="" aria-hidden="true" class="w-full h-full object-cover object-top">`;
+            avatarEl.style.background = d.gender === 'Female' ? '#ec4899' : 'hsl(250 55% 60%)';
         }
 
         // Basic info
@@ -636,6 +702,34 @@
         document.getElementById('mpAgeGender').textContent = `${d.age} / ${d.gender === 'Male' ? '{{ __("admin.partials_member_popup_male") }}' : '{{ __("admin.partials_member_popup_female") }}'}`;
         document.getElementById('mpSince').textContent     = d.since;
         document.getElementById('mpProfileLink').href      = d.profile_url;
+
+        // Edit — the same profile URL, asking it to open the editor on arrival.
+        const editLink = document.getElementById('mpEditLink');
+        if (editLink) {
+            if (d.profile_url) {
+                editLink.href = d.profile_url + (d.profile_url.includes('?') ? '&' : '?') + 'edit=1';
+                editLink.classList.remove('hidden');
+            } else {
+                editLink.removeAttribute('href');
+                editLink.classList.add('hidden');
+            }
+        }
+
+        // Preview + Share point at the PUBLIC profile, and appear only when the
+        // payload carried one — the server decides whether this admin may see it.
+        const publicLink = document.getElementById('mpPublicLink');
+        const shareBtn   = document.getElementById('mpShareBtn');
+        if (publicLink && shareBtn) {
+            if (d.public_url) {
+                publicLink.href = d.public_url;
+                publicLink.classList.remove('hidden');
+                shareBtn.classList.remove('hidden');
+            } else {
+                publicLink.removeAttribute('href');
+                publicLink.classList.add('hidden');
+                shareBtn.classList.add('hidden');
+            }
+        }
         document.getElementById('mpRemoveBtn').dataset.removeUrl  = d.remove_url;
         document.getElementById('mpRemoveBtn').dataset.memberName = d.name;
         window._mpCurrentUserId = d.id;

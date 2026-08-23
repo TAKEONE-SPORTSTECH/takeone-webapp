@@ -57,9 +57,9 @@
 
         <div class="flex items-center justify-between gap-3 relative z-50">
             <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0"
+               class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline flex-shrink-0"
                aria-label="{{ $e['title'] }}">
-                <i class="bi bi-arrow-left text-lg rtl:rotate-180"></i>
+                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
             </a>
         </div>
 
@@ -149,7 +149,7 @@
                             </template>
                             <template x-if="!photo">
                                 <span class="block">
-                                    <x-gender-avatar :gender="$p['gender']" class="w-12 h-12 rounded-2xl border border-gray-100" />
+                                    <x-gender-avatar :gender="$p['gender']" class="w-9 h-12 rounded-2xl border border-gray-100" />
                                 </span>
                             </template>
 
@@ -177,7 +177,7 @@
                                 <img src="{{ $p['photo'] }}" alt=""
                                      class="w-12 h-12 rounded-2xl object-cover border border-gray-100">
                             @else
-                                <x-gender-avatar :gender="$p['gender']" class="w-12 h-12 rounded-2xl border border-gray-100" />
+                                <x-gender-avatar :gender="$p['gender']" class="w-9 h-12 rounded-2xl border border-gray-100" />
                             @endif
                         @endif
 

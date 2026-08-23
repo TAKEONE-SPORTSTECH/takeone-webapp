@@ -180,19 +180,6 @@
     </div>
 
 
-    {{-- ===== Show results (everyone, when finals decided) =====
-         Finance used to sit beside this as a second full-width button; it is an
-         owner-only tool, not something a competitor acts on while reading the
-         event, so it moved up to the cover's action row next to the QR button. --}}
-    @if(!empty($e['bracket_results']))
-        <div class="px-4 mt-4">
-            <button type="button" @click="showResultsOpen=true"
-                    class="m-press w-full py-3 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-2" style="background: {{ $e['color'] }};">
-                <i class="bi bi-trophy-fill"></i> {{ __('personal.event_show_show_results') }}
-            </button>
-        </div>
-    @endif
-
     {{-- ===== The event, in one card =====
          Five sections, five different voices — not five copies of
          icon + eyebrow + text, which is what made the first attempt read flat.
@@ -258,7 +245,10 @@
                                 $startTagged = ($startTagged ?? false) || $isStart;
                             @endphp
                             <div @if($isStart) id="run-start" @endif
-                                 class="flex gap-3.5 rounded-xl {{ $done ? 'opacity-45' : '' }}"
+                                 {{-- Never dimmed. A phase that has happened is not less true than one
+                                      that has not — the agenda is a record as much as a plan, and
+                                      fading the finished half makes a completed event look broken. --}}
+                                 class="flex gap-3.5 rounded-xl"
                                  style="--m-attn-color: {{ $e['color'] }}80;">
 
                                 {{-- The date column: a calendar leaf, so the eye can
@@ -288,6 +278,13 @@
                                            style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $ph['label'] }}</p>
                                         @if($active)
                                             <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide" style="background: {{ $e['color'] }};">{{ __('personal.event_show_now') }}</span>
+                                        @elseif($done)
+                                            {{-- A phase that has already happened says so. The rows are no longer
+                                                 dimmed (a finished event is not a broken one), so "when did this
+                                                 stop being ahead of me?" needs saying in words. --}}
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide bg-green-50 text-green-700">
+                                                <i class="bi bi-check-circle-fill text-[8px]"></i>{{ __('personal.event_show_phase_done') }}
+                                            </span>
                                         @endif
                                     </div>
 
@@ -558,50 +555,70 @@
         @endif
     @endif
 
-    {{-- ===== Brackets & draws + Who's joined — two square doors side by side.
-         The Brackets tile only exists when the event has categories; when it
-         doesn't, Who's joined stands alone and stretches to the full width. --}}
-    @php $hasBrackets = !empty($e['categories']); @endphp
-    <div class="px-4 mt-4">
-        <div class="grid grid-cols-2 gap-3">
-            @if($hasBrackets)
-                @php
-                    $catCount = count($e['categories']);
-                    $athleteTotal = collect($e['categories'])->sum('joined');
-                @endphp
-                <a href="{{ route('me.events.bracket', $e['key']) }}" data-shell-link data-route="me.events"
-                   class="aspect-square m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex flex-col justify-between"
-                   style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
-                    <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
-                    <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                        {{-- inline-block: a bare <i> is an inline box and CSS
-                         transforms do not apply to those, so rotate-90 would
-                         silently do nothing without it. --}}
-                    <i class="bi bi-diagram-3-fill bracket-icon text-2xl"></i>
-                    </div>
-                    <div class="relative min-w-0">
-                        <h3 class="font-black text-base leading-tight">{{ __('personal.event_show_brackets_draws') }}</h3>
-                        <p class="text-xs text-white/85 mt-0.5">{{ $catCount }} {{ \Illuminate\Support\Str::plural(strtolower($e['division_label'] ?? 'category'), $catCount) }} · {{ $athleteTotal }} {{ __('personal.event_show_entrants') }} · {{ __('personal.event_show_live_results') }}</p>
-                    </div>
-                </a>
-            @endif
+    {{-- ===== Draw · Officials · Participants — the three doors out of this page.
+         Three identical full-width rows, icon beside the label rather than above
+         it. They were squares in one row; at a third of a phone's width the label
+         had 44px to live in, so "Participants" truncated and the count under it
+         was unreadable. Stacked, all three are the same size and each one says
+         what it is and how many are in it. The Draw row only exists when the
+         event has categories. --}}
+    @php
+        $hasBrackets = !empty($e['categories']);
+        $doors = [];
 
-            {{-- Who's joined — opens on its own page. The roster used to sit
-                 inline here: three tabs and up to 48 names that every visitor
-                 had to scroll past to reach the location and the join button.
-                 It is now one tile that opens the full list. --}}
+        if ($hasBrackets) {
+            // Entrants, not divisions: "how many are in the draw" is the number
+            // an organiser is checking, and a division count reads as full when
+            // nobody has entered a single one of them.
+            $athleteTotal = collect($e['categories'])->sum('joined');
+            $doors[] = [
+                'href' => route('me.events.bracket', $e['key']),
+                'icon' => 'bi-diagram-3-fill bracket-icon',
+                'label' => __('personal.event_show_tile_draw'),
+                'sub' => $athleteTotal.' '.__('personal.event_show_entrants'),
+            ];
+        }
+
+        $doors[] = [
+            'href' => route('me.events.officiating', $e['key']),
+            'icon' => 'bi-person-badge-fill',
+            'label' => __('personal.event_show_tile_officials'),
+            'sub' => trans_choice('personal.event_manage_officials_count', $e['officials_count'] ?? 0, ['count' => $e['officials_count'] ?? 0]),
+        ];
+    @endphp
+    <div class="px-4 mt-4">
+        <div class="space-y-3">
+            @foreach($doors as $d)
+                <a href="{{ $d['href'] }}" data-shell-link data-route="me.events"
+                   class="m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5"
+                   style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
+                    <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                        {{-- inline-block via .bracket-icon: a bare <i> is an inline
+                             box and CSS transforms do not apply to those, so the
+                             bracket's quarter turn would silently do nothing. --}}
+                        <i class="bi {{ $d['icon'] }} text-2xl"></i>
+                    </div>
+                    <div class="relative min-w-0 flex-1">
+                        <h3 class="font-black text-base leading-tight">{{ $d['label'] }}</h3>
+                        <p class="text-xs text-white/85 mt-0.5">{{ $d['sub'] }}</p>
+                    </div>
+                    <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0 rtl:rotate-180"></i>
+                </a>
+            @endforeach
+
+            {{-- Participants — the roster, on its own page. Bound to this page's
+                 Alpine counters, so joining or removing someone updates the row
+                 without a reload. --}}
             <a href="{{ route('me.events.people', $e['key']) }}" data-shell-link data-route="me.events"
-               class="{{ $hasBrackets ? 'aspect-square flex flex-col justify-between' : 'col-span-2 flex items-center gap-3' }} m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg"
+               class="m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5"
                style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
-                <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
                 <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
                     <i class="bi bi-people-fill text-2xl"></i>
                 </div>
-                <div class="relative min-w-0 {{ $hasBrackets ? '' : 'flex-1' }}">
-                    <h3 class="font-black text-base leading-tight">{{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_whos_joined') }}</h3>
-                    {{-- Bound to the page's own Alpine counters, so joining or
-                         removing someone updates this card without a reload —
-                         the same numbers the tabs used to show. --}}
+                <div class="relative min-w-0 flex-1">
+                    <h3 class="font-black text-base leading-tight">{{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_tile_participants') }}</h3>
                     <p class="text-xs text-white/85 mt-0.5">
                         <span x-text="goingCount">{{ $e['participants_total'] ?? $e['going'] }}</span> {{ __('personal.event_show_in') }}
                         @if($hasTicket)
@@ -609,10 +626,30 @@
                         @endif
                     </p>
                 </div>
-                @if(!$hasBrackets)
-                    <i class="bi bi-chevron-right text-white/80 relative rtl:rotate-180"></i>
-                @endif
+                <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0 rtl:rotate-180"></i>
             </a>
+
+            {{-- Results — the same row as the doors above it, in gold: it is the
+                 last thing to happen at an event, and the only one of these rows
+                 that opens a sheet rather than a page. Appears only once the
+                 finals are decided. --}}
+            @if(!empty($e['bracket_results']))
+                <button type="button" @click="showResultsOpen=true"
+                        class="m-press w-full rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5 text-start"
+                        style="background: linear-gradient(135deg, #eab308, #78350f);">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
+                    <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                        <i class="bi bi-trophy-fill text-2xl"></i>
+                    </div>
+                    <div class="relative min-w-0 flex-1">
+                        <h3 class="font-black text-base leading-tight">{{ __('personal.event_show_show_results') }}</h3>
+                        <p class="text-xs text-white/85 mt-0.5">
+                            {{ trans_choice('personal.event_show_results_divisions', count($e['bracket_results']), ['count' => count($e['bracket_results'])]) }}
+                        </p>
+                    </div>
+                    <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0 rtl:rotate-180"></i>
+                </button>
+            @endif
         </div>
     </div>
 
@@ -713,21 +750,6 @@
              --m-attn-color: the row carries an Alpine :style binding and a
              second static style on the same element is asking for one to
              clobber the other, so the pulse uses the brand primary. --}}
-
-        {{-- Entries are closed and this viewer holds no place: the way in is
-             GONE, not greyed out. A disabled join button invites a tap that can
-             only ever say no. What replaces it is the one fact they need —
-             which door closed, and when. --}}
-        <div x-show="! entriesOpen && ! registered" x-cloak
-             class="mt-3 rounded-2xl border border-gray-200 bg-muted/40 p-4 flex items-start gap-3">
-            <span class="w-10 h-10 rounded-xl bg-white grid place-items-center flex-shrink-0 shadow-sm">
-                <i class="bi bi-lock text-muted-foreground text-lg"></i>
-            </span>
-            <div class="min-w-0">
-                <p class="text-sm font-bold text-foreground">{{ __('personal.event_show_entries_closed') }}</p>
-                <p class="text-[12px] text-muted-foreground leading-snug mt-0.5" x-text="entriesNote"></p>
-            </div>
-        </div>
 
         <button type="button" id="join-participate"
                 x-show="entriesOpen || registered" x-cloak

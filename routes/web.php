@@ -414,6 +414,12 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     // Who's joined — the roster that used to render inline on the event screen.
     Route::get('/events/{event:uuid}/people', [App\Http\Controllers\PersonalEventController::class, 'people'])->name('events.people');
 
+    // The officiating sheet — who is running the competition. Reading only, open
+    // to anyone the event is visible to; appointing lives on the edit screen and
+    // the appointment paperwork (email, phone, fee) stays on events.officials,
+    // which is organiser-guarded.
+    Route::get('/events/{event:uuid}/officiating', [App\Http\Controllers\PersonalEventController::class, 'officiating'])->name('events.officiating');
+
     // Documents attached to an event (rulebook, entry form, schedule).
     // Upload/delete are organiser-only; download is anyone the event reaches —
     // each is re-checked in the controller, never inferred from the URL.

@@ -148,29 +148,65 @@
         }
      }" class="-mx-4 -mt-4 pb-6">
 
-    {{-- ===== Header ===== --}}
-    <header class="m-hero px-5 pt-5 pb-12 text-white relative overflow-hidden"
-            style="background: linear-gradient(150deg, {{ $color }}, #1f2937);">
-        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
-        <div class="flex items-center justify-between relative z-10">
-            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.events.show', $e['key']) }}')"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left text-lg"></i>
-            </button>
-            <span class="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur inline-flex items-center gap-1.5">
-                <i class="bi bi-diagram-3-fill bracket-icon"></i> {{ __('personal.personal_event_bracket_title') }}
-            </span>
+    {{-- ===== Header ===== The standard event hero band (Design Rule #6): the
+         subject's own colour lightened to +b0 (never faded to charcoal), two soft
+         circles, a labelled back pill on the left with round 40px actions on the
+         right, then chips → title → who it belongs to. The content below rides up
+         over its tail. --}}
+    <header class="m-hero px-5 pt-5 pb-14 text-white relative overflow-hidden"
+            style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        {{-- Control row. z-50 so any dropdown paints above the title block. --}}
+        <div class="flex items-center justify-between gap-2 relative z-50">
+            <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
+               class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline">
+                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
+            </a>
+
+            <div class="flex items-center gap-2">
+                @if($canManage ?? false)
+                    <a href="{{ route('me.events.manage', $e['key']) }}" data-shell-link data-route="me.events"
+                       class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center"
+                       aria-label="{{ __('personal.event_manage_title') }}">
+                        <i class="bi bi-sliders text-base"></i>
+                    </a>
+                @endif
+                <x-qr-code
+                    :url="route('me.events.show', ['event' => $e['key']])"
+                    :title="$e['title'] . ' — ' . __('personal.event_show_event')"
+                    caption="{{ __('personal.event_show_qr_caption') }}"
+                    :filename="'qr-event-' . $e['key']"
+                    label=""
+                    icon="bi-qr-code"
+                    :poster-url="route('qr.event', ['event' => $e['key']])"
+                    button-class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center text-white" />
+            </div>
         </div>
-        <div class="relative z-10 mt-4">
-            <h1 class="text-xl font-black leading-tight">{{ $e['title'] }}</h1>
-            <p class="text-sm text-white/85 mt-1 flex items-center gap-1.5">
-                <i class="bi bi-diagram-3 bracket-icon"></i><span x-text="stat.name">{{ count($categories) }} {{ __('personal.personal_event_bracket_weight_categories') }}</span>
-                <template x-if="stat.class"><span class="text-white/60" x-text="'· ' + stat.class"></span></template>
+
+        {{-- Identity: chips, the title, then who it belongs to. --}}
+        <div class="relative z-10 mt-6">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-diagram-3-fill bracket-icon"></i> {{ __('personal.personal_event_bracket_title') }}
+                </span>
+                @if(!empty($e['sport_label']))
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi {{ $e['sport_icon'] ?? 'bi-dribbble' }}"></i> {{ $e['sport_label'] }}</span>
+                @endif
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-people-fill"></i> <span x-text="stat.name">{{ count($categories) }} {{ __('personal.personal_event_bracket_weight_categories') }}</span>
+                </span>
+            </div>
+
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ $e['title'] }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-building"></i>{{ $e['club'] }}
             </p>
 
             {{-- How full the picked division is. It was a bar inside a card below;
                  the header is where "where does this stand" belongs. --}}
-            <div class="mt-3">
+            <div class="mt-4">
                 <div class="flex items-center justify-between text-[11px] font-medium text-white/85">
                     <span><span x-text="stat.joined">0</span> {{ __('personal.personal_event_bracket_joined') }}</span>
                     <span class="text-white/70"

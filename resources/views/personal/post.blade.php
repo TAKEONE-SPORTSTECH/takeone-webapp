@@ -12,8 +12,8 @@
         <div class="flex items-center justify-between gap-3 relative z-10 max-w-xl mx-auto">
             <div class="flex items-center gap-3 min-w-0">
                 <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.home') }}')"
-                        class="m-press w-12 h-12 shrink-0 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('shared.back') }}">
-                    <i class="bi bi-arrow-left text-xl"></i>
+                        class="m-press shrink-0 inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/20 border border-white/30 backdrop-blur text-white text-sm font-semibold active:scale-95 transition-transform" aria-label="{{ __('shared.back') }}">
+                    <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('nav.tab_feed') }}
                 </button>
                 <div class="min-w-0">
                     <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('nav.news_feed') }}</p>

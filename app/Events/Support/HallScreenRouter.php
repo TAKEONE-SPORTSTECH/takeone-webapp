@@ -97,10 +97,23 @@ class HallScreenRouter
             }
         }
 
+        // Spend the code BEFORE adopting, and only proceed if this request is
+        // the one that spent it. Two requests carrying the same code (a
+        // double-tapped Pair, two consoles) both used to pass the read above and
+        // both created a screen — one live board and one orphan device that no
+        // panel could show and nobody could unpair.
+        if (! $pending->spend()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.event_screens_code_spent'),
+            ], 409);
+        }
+
         ['device' => $device, 'url' => $url] = $this->adopt($event, $court, $data['surface'], $request->user()->id);
 
-        // The waiting row is spent; the screen polls and moves on by itself.
-        $pending->settle($url);
+        // The waiting row now knows where to send the screen; it polls and moves
+        // on by itself.
+        $pending->land($url);
 
         return response()->json([
             'success' => true,

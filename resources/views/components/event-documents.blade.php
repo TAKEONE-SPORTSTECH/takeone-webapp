@@ -29,6 +29,11 @@
     'documents' => [],
     'canManage' => false,
     'color' => '#7c3aed',
+    // sheet: render as one console row that opens a bottom sheet holding the
+    // list and the uploader, instead of laying the whole thing out on the page.
+    // A console is a page of doors; an upload form sitting open among them reads
+    // as something half-finished.
+    'sheet' => false,
 ])
 @php
     // Reaches a style attribute — whitelist it like the other event surfaces do.
@@ -41,7 +46,55 @@
         canManage: @js((bool) $canManage),
         storeUrl: @js(route('me.events.documents.store', $event)),
      })"
-     class="space-y-2">
+     @class(['space-y-2' => ! $sheet])>
+
+@if($sheet)
+    {{-- The row. Same card as every other door on the console, with the count as
+         its standing so an organiser knows whether to open it. --}}
+    <button type="button" @click="open = true"
+            class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
+        <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
+              style="background: {{ $docColor }};"><i class="bi bi-paperclip text-lg"></i></span>
+        <span class="min-w-0 flex-1">
+            <span class="block text-sm font-bold text-foreground">{{ __('personal.event_manage_documents') }}</span>
+            <span class="block text-[11px] text-muted-foreground mt-0.5"
+                  x-text="items.length
+                            ? items.length + ' {{ __('personal.event_manage_documents') }}'
+                            : @js(__('personal.event_docs_empty'))"></span>
+        </span>
+        <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
+    </button>
+
+    {{-- The sheet. Teleported to <body> so the mobile shell's transformed wrapper
+         cannot become its containing block and clip it. --}}
+    <template x-teleport="body">
+    <div x-show="open" x-cloak class="fixed inset-0" style="z-index:75" @keydown.escape.window="open = false">
+        <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/50" @click="open = false"></div>
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+             class="absolute inset-x-0 bottom-0 flex flex-col bg-white rounded-t-3xl shadow-2xl sm:mx-auto sm:max-w-lg"
+             style="max-height:92vh">
+            <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
+                <div class="w-10 h-1.5 rounded-full bg-gray-300 mx-auto mb-3"></div>
+                <div class="flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 text-white"
+                          style="background: {{ $docColor }};"><i class="bi bi-paperclip text-lg"></i></span>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-sm font-bold text-foreground">{{ __('personal.event_manage_documents') }}</h3>
+                        <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('personal.event_docs_hint') }}</p>
+                    </div>
+                    <button type="button" @click="open = false"
+                            class="m-press w-9 h-9 rounded-full bg-muted grid place-items-center text-muted-foreground flex-shrink-0">
+                        <i class="bi bi-x-lg text-xs"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-2"
+                 style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+@endif
 
     {{-- The list. Empty state only shows for organisers: a competitor with no
          documents to download should see nothing at all, not an empty box. --}}
@@ -112,6 +165,13 @@
             <p class="text-[11px] text-muted-foreground">{{ __('personal.event_docs_hint') }}</p>
         </div>
     @endif
+
+@if($sheet)
+            </div>
+        </div>
+    </div>
+    </template>
+@endif
 </div>
 
 @once
@@ -125,6 +185,7 @@
         // shell swap re-executes this tag.
         window.eventDocuments = window.eventDocuments || function (config) {
             return {
+                open: false,
                 event: config.event,
                 items: config.items || [],
                 canManage: !!config.canManage,

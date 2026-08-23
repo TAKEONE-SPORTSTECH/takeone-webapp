@@ -859,15 +859,20 @@
         @if($isEdit)
         <div class="m-card rounded-2xl p-4 mt-4"
              x-data="{
-                officials: [], candidates: [], roles: [], role: 'jury', q: '', open: false, busy: false, loaded: false,
+                officials: [], candidates: [], roles: [], role: 'jury', roleChosen: false, q: '', open: false, busy: false, loaded: false,
                 /*
                  * Appointing takes one more decision than a tap.
                  *
                  * storeOfficial() requires `compensation` — a paid appointment is a
                  * line in the event's P&L — and the form never sent it, so EVERY
-                 * appointment failed validation with "The compensation field is
-                 * required". Tapping a candidate therefore opens this sheet instead
+                 * appointment failed validation with 'The compensation field is
+                 * required'. Tapping a candidate therefore opens this sheet instead
                  * of posting immediately.
+                 *
+                 * NB: single quotes on purpose. This whole object lives inside an
+                 * x-data attribute, so a double quote anywhere in it — comments
+                 * included — closes the attribute early and the rest of the
+                 * component is rendered on the page as visible text.
                  *
                  * Nationality rides along because this is the only moment anyone is
                  * looking at an official's details: an official is listed by country
@@ -875,35 +880,48 @@
                  * Asked ONLY when the member has no country on file — it is their
                  * data, and the form fills a blank rather than correcting it.
                  */
-                compensations: [], currency: '', countries: [],
-                sheet: false, pick: null, comp: 'volunteer', fee: '', nat: '',
-                get needsNationality() { return !! this.pick && ! this.pick.nationality; },
+                compensations: [], currency: '',
+                sheet: false, pick: null, comp: 'volunteer', fee: '',
                 get canAppoint() {
                     if (this.busy || ! this.pick) return false;
                     if (this.comp === 'paid' && ! (parseFloat(this.fee) > 0)) return false;
                     return true;
                 },
-                choose(c) { this.pick = c; this.comp = 'volunteer'; this.fee = ''; this.nat = ''; this.open = false; this.sheet = true; },
+                setRole(v) { this.role = v; this.load(); },
+                choose(c) { this.pick = c; this.comp = 'volunteer'; this.fee = ''; this.open = false; this.sheet = true; },
                 get roleMeta() { return this.roles.find(r => r.value === this.role) || {}; },
                 roleLabel(v) { return (this.roles.find(r => r.value === v) || {}).label || v; },
                 byRole(v) { return this.officials.filter(o => o.role === v); },
                 async load() {
                     try {
-                        const res = await fetch(`{{ route('me.events.officials', $ev->uuid) }}?q=${encodeURIComponent(this.q)}`, {
+                        // The role goes with the query: a MAT role searches the whole
+                        // platform (referees are rarely members of the host club), a
+                        // permission role searches the club only. Without it the server
+                        // always assumed the narrow pool, so a federation referee could
+                        // never be found here at all.
+                        const res = await fetch(`{{ route('me.events.officials', $ev->uuid) }}?q=${encodeURIComponent(this.q)}&role=${encodeURIComponent(this.role)}`, {
                             headers: { 'Accept': 'application/json' }, credentials: 'same-origin',
                         });
                         const d = await res.json();
                         if (!res.ok || !d.success) throw new Error(d.message || 'Could not load');
                         this.officials = d.officials; this.candidates = d.candidates;
                         this.roles = d.roles; this.loaded = true;
-                        this.compensations = d.compensations || []; this.currency = d.currency || '';
-                        if (! this.countries.length) {
-                            // The same list every country picker in the app uses.
-                            try {
-                                const cr = await fetch('/data/countries.json', { headers: { 'Accept': 'application/json' } });
-                                this.countries = (await cr.json()).map(c => ({ code: c.iso2, name: c.name, flag: c.flag }));
-                            } catch (e) { this.countries = []; }
+                        /*
+                         * Land on a MAT role, not the hardcoded 'jury'.
+                         *
+                         * 'jury' is a PERMISSION role, and those are appointable only
+                         * from the host club — so the picker opened on a pool of the
+                         * club's membership rows (one, on a club whose members joined
+                         * some other way) and read as 'there is nobody to appoint'.
+                         * The sport's own first job is both the commonest appointment
+                         * and the one that searches the whole platform.
+                         */
+                        if (! this.roleChosen) {
+                            this.roleChosen = true;
+                            const mat = d.roles.find(r => r.group === 'mat');
+                            if (mat && mat.value !== this.role) { this.role = mat.value; return this.load(); }
                         }
+                        this.compensations = d.compensations || []; this.currency = d.currency || '';
                     } catch (e) { window.showToast('error', e.message); }
                 },
                 async add() {
@@ -911,8 +929,6 @@
                     try {
                         const body = { user_id: this.pick.id, role: this.role, compensation: this.comp };
                         if (this.comp === 'paid') body.fee = parseFloat(this.fee);
-                        // Only ever sent when it was actually missing.
-                        if (this.needsNationality && this.nat) body.nationality = this.nat;
 
                         const res = await fetch('{{ route('me.events.officials.store', $ev->uuid) }}', {
                             method: 'POST',
@@ -998,59 +1014,130 @@
                 </p>
             </div>
 
-            {{-- Appoint. The job is chosen FIRST, then the person: the search
-                 result you tap is appointed to whatever is selected here, so the
-                 selected chip must always be visible above the picker. --}}
-            <div class="mt-4">
-                <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-1.5">
-                    {{ __('personal.personal_event_officials_role') }}
-                </p>
-                <div class="flex gap-1.5">
-                    <template x-for="r in roles" :key="r.value">
-                        <button type="button" @click="role = r.value"
-                                class="flex-1 py-2 rounded-xl border-2 text-[11px] font-black transition-colors"
-                                :class="role === r.value ? 'border-transparent bg-primary text-white' : 'border-gray-200 bg-white text-muted-foreground'"
-                                x-text="r.label"></button>
-                    </template>
-                </div>
-                <p class="text-[11px] text-muted-foreground mt-1.5" x-text="roleMeta.hint"></p>
-            </div>
+            {{-- Appointing. Nothing is on screen until it is asked for: one + Add
+                 button, and only when it is pressed does the picker open — a search
+                 box with the JOB it appoints to sitting right beside it, because the
+                 person you tap is appointed to whatever that button says. The role
+                 list itself expands in normal flow (never absolutely), since this
+                 panel lives inside a scrolling page and an absolute one is clipped. --}}
+            <div class="mt-4" x-data="{ adding: false, pickerOpen: false }">
+                <button type="button" x-show="! adding"
+                        @click="adding = true; pickerOpen = false; $nextTick(() => $refs.search?.focus())"
+                        class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-primary/40 text-primary text-sm font-bold hover:bg-primary/5 transition-colors">
+                    <i class="bi bi-plus-lg"></i>
+                    {{ __('personal.personal_event_officials_appoint') }}
+                </button>
 
-            <div class="relative mt-3" @click.outside="open = false">
-                <input type="text" x-model="q" @focus="open = true" @input.debounce.250ms="load()"
-                       placeholder="{{ __('personal.personal_event_officials_search') }}"
-                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                <div x-show="adding" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 -translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0">
 
-                <div x-show="open" x-cloak x-transition.opacity.duration.120ms
-                     class="absolute inset-x-0 top-full mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-40 py-1">
-                    <template x-for="c in candidates" :key="c.id">
-                        <button type="button" @click="choose(c)" :disabled="busy || c.roles.includes(role)"
-                                class="w-full flex items-center gap-2.5 px-3 py-2 text-start hover:bg-muted/60 transition-colors disabled:opacity-50">
-                            <div class="w-7 h-7 rounded-full grid place-items-center bg-muted text-[10px] font-bold text-muted-foreground flex-shrink-0 overflow-hidden">
-                                <template x-if="c.avatar"><img :src="c.avatar" alt="" class="w-full h-full object-cover"></template>
-                                <template x-if="!c.avatar"><span x-text="initials(c.name)"></span></template>
+                    <div class="flex items-center gap-2">
+                        {{-- Search, and its results. Absolute inside this wrapper only —
+                             a short list over the row below, not a page reflow. --}}
+                        <div class="relative flex-1 min-w-0" @click.outside="open = false">
+                            <input type="text" x-ref="search" x-model="q" @focus="open = true" @input.debounce.250ms="load()"
+                                   placeholder="{{ __('personal.personal_event_officials_search') }}"
+                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+
+                            {{-- Opens UPWARD. The search box sits near the bottom of a
+                                 long edit page, so a list dropping down was half
+                                 off-screen and covered the role picker under it. --}}
+                            <div x-show="open" x-cloak x-transition.opacity.duration.120ms
+                                 class="absolute inset-x-0 bottom-full mb-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-40 py-1">
+                                <template x-for="c in candidates" :key="c.id">
+                                    <button type="button" @click="choose(c)" :disabled="busy || c.roles.includes(role)"
+                                            class="w-full flex items-center gap-2.5 px-3 py-2 text-start hover:bg-muted/60 transition-colors disabled:opacity-50">
+                                        <div class="w-7 h-7 rounded-full grid place-items-center bg-muted text-[10px] font-bold text-muted-foreground flex-shrink-0 overflow-hidden">
+                                            <template x-if="c.avatar"><img :src="c.avatar" alt="" class="w-full h-full object-cover"></template>
+                                            <template x-if="!c.avatar"><span x-text="initials(c.name)"></span></template>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-semibold text-foreground truncate" x-text="c.name"></p>
+                                            <p class="text-[10px] text-muted-foreground truncate">
+                                                <template x-if="c.roles.length">
+                                                    {{-- What they already do here matters more than their email. --}}
+                                                    <span class="text-primary font-bold" x-text="c.roles.map(r => roleLabel(r)).join(' · ')"></span>
+                                                </template>
+                                                <template x-if="! c.roles.length">
+                                                    <span><span x-text="c.email"></span><template x-if="c.phone"><span> · <span x-text="c.phone"></span></span></template></span>
+                                                </template>
+                                            </p>
+                                        </div>
+                                        <span class="text-[10px] font-bold flex-shrink-0"
+                                              :class="c.roles.includes(role) ? 'text-muted-foreground' : 'text-primary'"
+                                              x-text="c.roles.includes(role) ? '{{ __('personal.personal_event_officials_appointed') }}' : '{{ __('personal.personal_event_officials_add') }}'"></span>
+                                    </button>
+                                </template>
+
+                                <p x-show="! candidates.length" x-cloak class="text-[11px] text-muted-foreground text-center py-3"
+                                   x-text="roleMeta.group === 'mat' && ! q
+                                        ? @js(__('personal.personal_event_officials_type_to_search'))
+                                        : @js(__('personal.personal_event_officials_no_matches'))"></p>
                             </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-sm font-semibold text-foreground truncate" x-text="c.name"></p>
-                                <p class="text-[10px] text-muted-foreground truncate">
-                                    <template x-if="c.roles.length">
-                                        {{-- What they already do here matters more than their email. --}}
-                                        <span class="text-primary font-bold" x-text="c.roles.map(r => roleLabel(r)).join(' · ')"></span>
-                                    </template>
-                                    <template x-if="! c.roles.length">
-                                        <span><span x-text="c.email"></span><template x-if="c.phone"><span> · <span x-text="c.phone"></span></span></template></span>
-                                    </template>
-                                </p>
+                        </div>
+
+                        {{-- The job, beside the search rather than above it: it is what
+                             the next tap appoints to, so it must never scroll away. --}}
+                        <div class="relative flex-shrink-0 max-w-[46%]">
+                            <button type="button" @click="pickerOpen = ! pickerOpen"
+                                    class="w-full flex items-center gap-1.5 px-2.5 py-2.5 rounded-xl border bg-white transition-colors"
+                                    :class="pickerOpen ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
+                                <i class="bi flex-shrink-0"
+                                   :class="roleMeta.group === 'platform' ? 'bi-shield-lock text-amber-600' : 'bi-person-arms-up text-primary'"></i>
+                                <span class="text-[12px] font-bold text-foreground truncate" x-text="roleLabel(role)"></span>
+                                <i class="bi bi-chevron-down text-muted-foreground text-[11px] transition-transform flex-shrink-0"
+                                   :class="pickerOpen && 'rotate-180'"></i>
+                            </button>
+
+                            {{-- The thirteen jobs a Karate tournament has, grouped so the
+                                 ones that carry ACCESS are visibly apart from those that
+                                 run a mat. Opens UPWARD, like the candidate list: this row
+                                 sits low on a long edit page, and thirteen rows dropping
+                                 down landed off-screen. --}}
+                            <div x-show="pickerOpen" x-cloak @click.outside="pickerOpen = false"
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 class="absolute end-0 bottom-full mb-2 w-64 max-w-[80vw] max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-50">
+                                <template x-for="g in ['mat', 'platform']" :key="g">
+                                    <div x-show="roles.some(r => r.group === g)">
+                                        <p class="px-3 pt-2.5 pb-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground"
+                                           x-text="g === 'platform' ? @js(__('personal.personal_event_officials_group_platform')) : @js(__('personal.personal_event_officials_group_mat'))"></p>
+                                        <template x-for="r in roles.filter(x => x.group === g)" :key="r.value">
+                                            <button type="button" @click="setRole(r.value); pickerOpen = false; $nextTick(() => $refs.search?.focus())"
+                                                    class="w-full flex items-start gap-3 px-3 py-2.5 text-start transition-colors"
+                                                    :class="role === r.value ? 'bg-primary/5' : 'hover:bg-muted/60'">
+                                                <span class="w-4 h-4 mt-0.5 rounded-full border-2 grid place-items-center flex-shrink-0"
+                                                      :class="role === r.value ? 'border-primary' : 'border-gray-300'">
+                                                    <span x-show="role === r.value" class="w-2 h-2 rounded-full bg-primary"></span>
+                                                </span>
+                                                <span class="min-w-0 flex-1">
+                                                    <span class="block text-[13px] font-bold leading-tight"
+                                                          :class="role === r.value ? 'text-primary' : 'text-foreground'" x-text="r.label"></span>
+                                                    <span x-show="r.hint" class="block text-[10px] text-muted-foreground leading-snug mt-0.5" x-text="r.hint"></span>
+                                                </span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </template>
                             </div>
-                            <span class="text-[10px] font-bold flex-shrink-0"
-                                  :class="c.roles.includes(role) ? 'text-muted-foreground' : 'text-primary'"
-                                  x-text="c.roles.includes(role) ? '{{ __('personal.personal_event_officials_appointed') }}' : '{{ __('personal.personal_event_officials_add') }}'"></span>
+                        </div>
+
+                        <button type="button" @click="adding = false; pickerOpen = false; open = false; q = ''"
+                                class="w-9 h-9 rounded-lg grid place-items-center text-muted-foreground hover:bg-muted/60 transition-colors flex-shrink-0"
+                                title="{{ __('personal.personal_event_officials_remove') }}">
+                            <i class="bi bi-x-lg text-[13px]"></i>
                         </button>
-                    </template>
+                    </div>
 
-                    <p x-show="!candidates.length" x-cloak class="text-[11px] text-muted-foreground text-center py-3">
-                        {{ __('personal.personal_event_officials_no_matches') }}
-                    </p>
+                    {{-- Who the search reaches, and what this job carries. --}}
+                    <p class="text-[11px] text-muted-foreground mt-1.5"
+                       x-text="(roleMeta.group === 'mat'
+                            ? @js(__('personal.personal_event_officials_pool_wide'))
+                            : @js(__('personal.personal_event_officials_pool_club'))) + ' · ' + roleMeta.hint"></p>
+
                 </div>
             </div>
 
@@ -1110,26 +1197,6 @@
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                             </div>
 
-                            {{-- Only when we have no country for them. Their data: fill a
-                                 blank, never overwrite. The server enforces the same rule. --}}
-                            <div x-show="needsNationality" x-cloak class="mt-4">
-                                <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-1.5">
-                                    {{ __('personal.personal_event_officials_nationality') }}
-                                </p>
-                                <p class="text-[11px] text-muted-foreground mb-2">
-                                    {{ __('personal.personal_event_officials_nationality_hint') }}
-                                </p>
-                                <div class="grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto pe-1">
-                                    <template x-for="c in countries" :key="c.code">
-                                        <button type="button" @click="nat = c.code" :title="c.name"
-                                                class="flex flex-col items-center gap-1 py-2 rounded-lg border transition-colors"
-                                                :class="nat === c.code ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'">
-                                            <span :class="'fi fi-' + c.flag" style="width:20px;height:15px;background-size:cover;border-radius:2px"></span>
-                                            <span class="text-[9px] font-bold text-muted-foreground" x-text="c.code"></span>
-                                        </button>
-                                    </template>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="flex-shrink-0 flex gap-2 px-5 pt-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">

@@ -3464,6 +3464,16 @@ a.text-decoration-none:hover .family-card { text-decoration: none; }
     border-radius: 0.75rem !important;
 }
 
+/* …except one with a leading icon inside it (the birthdate YEAR field). The rule
+   above sets `padding: 0 0.875rem !important`, which beat the field's own ps-9 and
+   printed the word "Year" on top of the calendar icon. Logical padding, so RTL
+   pads the correct side. */
+#profileEditForm .tf-dropdown-trigger.tf-has-leading-icon,
+#memberCreateForm .tf-dropdown-trigger.tf-has-leading-icon,
+.profile-modal-form .tf-dropdown-trigger.tf-has-leading-icon {
+    padding-inline-start: 2.25rem !important;
+}
+
 /* tf-input (social links URL input) — also needs to match */
 #profileEditForm .tf-input,
 .profile-modal-form .tf-input {

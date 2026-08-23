@@ -65,7 +65,9 @@
             'icon' => 'bi-person-badge-fill', 'tone' => 'bg-teal-50 text-teal-600',
             'label' => __('personal.event_manage_officials'),
             'sub' => trans_choice('personal.event_manage_officials_count', $counts['officials'], ['count' => $counts['officials']]),
-            'href' => route('me.events.officials', $e['key']),
+            // The officiating sheet, not the JSON endpoint of the same name —
+            // that one answers the appoint picker and rendered as raw JSON here.
+            'href' => route('me.events.officiating', $e['key']),
         ];
         $cards[] = [
             'icon' => 'bi-tv-fill', 'tone' => 'bg-slate-100 text-slate-600',
@@ -184,20 +186,16 @@
                              :surfaces="$screenSurfaces ?? []"
                              :new-url="$screenNewUrl ?? null"
                              :color="$mgColor" />
-        </div>
-    @endif
 
-    {{-- ===== What the screens play — same condition as the screens themselves,
-              since audio with nothing to play it on is a setting nobody can
-              hear. ===== --}}
-    @if($canManage && ! empty($screens))
-        <div class="max-w-md">
+            {{-- What those screens PLAY. Renders nothing on the page — only the
+                 sheet the panel's gear opens. --}}
             <x-event-screen-audio :event="$e['key']"
                                   :media="$screenAudio ?? []"
                                   :audio-url="$screenAudioUrls ?? []"
                                   :color="$mgColor" />
         </div>
     @endif
+
 
     @if($canManage)
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

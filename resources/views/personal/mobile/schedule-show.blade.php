@@ -34,8 +34,8 @@
 
         <div class="flex items-center justify-between relative z-10">
             <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.schedule', ['day' => $s['day'] ?? null]) }}')"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left text-lg"></i>
+               class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline flex-shrink-0" aria-label="{{ __('shared.back') }}">
+                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('nav.tab_schedule') }}
             </button>
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
                 <i class="bi {{ $s['icon'] }}"></i> {{ $s['discipline'] }}
@@ -72,7 +72,7 @@
                 <{{ $coachTag }} class="border-x border-gray-100 block {{ !empty($coachLink) ? 'm-press' : '' }}"
                     @if(!empty($coachLink)) href="{{ $coachLink['url'] }}" @endif>
                     @if(!empty($coachAvatar))
-                        <img src="{{ $coachAvatar }}" alt="" class="w-10 h-10 mx-auto rounded-xl object-cover">
+                        <img src="{{ $coachAvatar }}" alt="" class="w-[30px] h-10 mx-auto rounded-xl object-cover">
                     @else
                         <div class="w-10 h-10 mx-auto rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-person-badge"></i></div>
                     @endif

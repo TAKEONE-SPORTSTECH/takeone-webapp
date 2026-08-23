@@ -28,7 +28,39 @@
                 <div class="w-64 h-64 max-w-[70vw] max-h-[70vw] rounded-3xl border-2 border-white/90"
                      style="box-shadow: 0 0 0 100vmax rgba(0,0,0,.45);"></div>
             </div>
-            <p class="absolute bottom-10 inset-x-0 text-center text-white/90 text-sm px-8">{{ __('header.scan_hint') }}</p>
+            <p x-show="! manualOnly" class="absolute bottom-10 inset-x-0 text-center text-white/90 text-sm px-8">{{ __('header.scan_hint') }}</p>
+
+            {{-- Camera missing or refusing: say so where the picture would be,
+                 rather than closing the overlay and leaving a toast behind. --}}
+            <div x-show="manualOnly" class="absolute inset-0 grid place-items-center px-8 text-center">
+                <div>
+                    <i class="bi bi-camera-video-off text-4xl text-white/40"></i>
+                    <p class="text-white/80 text-sm mt-3" x-text="manualOnlyNote"></p>
+                </div>
+            </div>
+        </div>
+
+        {{-- Typed code — for a caller that says it accepts one. A code that will
+             not scan (glare, a dead camera, a screen across the hall) must still
+             be one field away, and this is where the reader already is. Hands the
+             value back exactly as a scan does, so the caller has one path. --}}
+        <div x-show="manual" x-cloak
+             class="flex-shrink-0 bg-black/85 backdrop-blur px-5 pt-4 border-t border-white/10"
+             style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+            <p class="text-white/70 text-[11px] font-semibold uppercase tracking-wider" x-text="manualLabel"></p>
+            <div class="flex items-center gap-2 mt-2">
+                <input type="text" x-model="manualCode" x-ref="manualInput"
+                       @input="manualCode = manualCode.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, manualLength || 12)"
+                       @keydown.enter="submitManual()"
+                       :placeholder="manualPlaceholder"
+                       inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false"
+                       class="flex-1 min-w-0 px-3 py-3 rounded-xl bg-white/10 border border-white/25 text-white text-center text-lg font-black tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/40 placeholder:font-normal placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/40">
+                <button type="button" @click="submitManual()"
+                        :disabled="manualLength ? manualCode.length !== manualLength : ! manualCode"
+                        class="m-press flex-shrink-0 h-12 px-5 rounded-xl bg-white text-black text-sm font-bold disabled:opacity-40">
+                    <i class="bi bi-check-lg"></i>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -41,15 +73,39 @@
             raf: null,
             emit: null,
             title: null,
+            manual: false,
+            manualOnly: false,
+            manualOnlyNote: '',
+            manualLabel: '',
+            manualPlaceholder: '',
+            manualLength: 0,
+            manualCode: '',
 
             async open(detail) {
                 // Reset every time: a previous hand-back caller must never keep
                 // receiving scans from a later, unrelated "Scan QR" tap.
                 this.emit = (detail && detail.emit) || null;
                 this.title = (detail && detail.title) || null;
+                this.manual = !! (detail && detail.manual);
+                this.manualLabel = (detail && detail.manualLabel) || '';
+                this.manualPlaceholder = (detail && detail.manualPlaceholder) || '';
+                this.manualLength = (detail && detail.manualLength) || 0;
+                this.manualCode = '';
+                this.manualOnly = false;
+                this.manualOnlyNote = '';
 
                 if (!('BarcodeDetector' in window)) {
-                    window.showToast && window.showToast('info', @js(__('header.scan_unsupported')));
+                    // With a typed code on offer there is still a way through, so
+                    // the overlay opens anyway and says the camera is out.
+                    if (! this.manual) {
+                        window.showToast && window.showToast('info', @js(__('header.scan_unsupported')));
+                        return;
+                    }
+                    this.active = true;
+                    this.manualOnly = true;
+                    this.manualOnlyNote = @js(__('header.scan_unsupported'));
+                    await this.$nextTick();
+                    this.$refs.manualInput && this.$refs.manualInput.focus();
                     return;
                 }
                 this.active = true;
@@ -62,6 +118,12 @@
                     await v.play();
                     this.scan();
                 } catch (e) {
+                    if (this.manual) {
+                        this.manualOnly = true;
+                        this.manualOnlyNote = @js(__('header.scan_no_camera'));
+                        this.$refs.manualInput && this.$refs.manualInput.focus();
+                        return;
+                    }
                     window.showToast && window.showToast('error', @js(__('header.scan_no_camera')));
                     this.close();
                 }
@@ -71,6 +133,10 @@
                 if (!this.active || !this.detector) return;
                 try {
                     const codes = await this.detector.detect(this.$refs.qrVideo);
+                    // The await can resolve after close() — whoever got there
+                    // first (a scan, or the typed code) has already been handed
+                    // back, and pairing twice would post twice.
+                    if (! this.active) return;
                     if (codes && codes.length && codes[0].rawValue) {
                         this.handle(codes[0].rawValue);
                         return;
@@ -81,6 +147,9 @@
 
             // Scanned a URL → navigate (same pattern as notifications: http(s) only).
             handle(value) {
+                // First one through wins: the scanner is already gone by the time
+                // the caller hears about it, so nothing else can hand back again.
+                if (! this.active) return;
                 var emit = this.emit;
                 this.close();
 
@@ -101,6 +170,14 @@
                 window.showToast && window.showToast('info', value);
             },
 
+            /** A typed code takes the same path out as a scanned one. */
+            submitManual() {
+                const v = (this.manualCode || '').trim();
+                if (! v) return;
+                if (this.manualLength && v.length !== this.manualLength) return;
+                this.handle(v);
+            },
+
             close() {
                 this.active = false;
                 if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
@@ -108,6 +185,10 @@
                 this.detector = null;
                 this.emit = null;
                 this.title = null;
+                this.manual = false;
+                this.manualOnly = false;
+                this.manualOnlyNote = '';
+                this.manualCode = '';
             },
         };
     };

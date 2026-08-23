@@ -71,7 +71,9 @@
             'icon' => 'bi-person-badge-fill', 'tone' => 'bg-teal-50 text-teal-600',
             'label' => __('personal.event_manage_officials'),
             'sub' => trans_choice('personal.event_manage_officials_count', $counts['officials'], ['count' => $counts['officials']]),
-            'href' => route('me.events.officials', $e['key']),
+            // The officiating sheet, not the JSON endpoint of the same name —
+            // that one answers the appoint picker and rendered as raw JSON here.
+            'href' => route('me.events.officiating', $e['key']),
         ];
         $links[] = [
             'icon' => 'bi-tv-fill', 'tone' => 'bg-slate-100 text-slate-600',
@@ -91,16 +93,16 @@
          m-hero band, event colour to colour+b0, two soft circles, a control row
          on top, then chips · title · owner beneath. Never a small rounded card
          with the title squeezed beside a back arrow. --}}
-    <header class="m-hero -mx-4 -mt-4 px-5 pt-5 pb-16 text-white relative overflow-hidden"
+    <header class="m-hero -mx-4 -mt-4 px-5 pt-5 pb-8 text-white relative overflow-hidden"
             style="background: linear-gradient(150deg, {{ $mgColor }}, {{ $mgColor }}b0);">
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
         <div class="flex items-center justify-between relative z-50">
             <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center"
+               class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline flex-shrink-0"
                aria-label="{{ __('personal.event_manage_back_to_page') }}">
-                <i class="bi bi-arrow-left text-lg rtl:rotate-180"></i>
+                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
             </a>
             <div class="flex items-center gap-2">
                 <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
@@ -131,8 +133,11 @@
         </div>
     </header>
 
-    {{-- The cards ride up over the band's tail, as on the event page. --}}
-    <div class="-mt-10 relative z-10 space-y-4">
+    {{-- The cards start BELOW the band, never over it. They are controls — a
+         button clipped by the header reads as broken, and half a tile sitting on
+         the colour looks like a mistake rather than depth. The band's own bottom
+         padding is sized to its content instead. --}}
+    <div class="mt-4 relative z-10 space-y-4">
 
     {{-- ===== Preparations — the component brings its own button and sheet ===== --}}
     @if($canOfficiate)
@@ -164,25 +169,25 @@
         </div>
     @endif
 
-    {{-- ===== Hall screens — only for a type that drives any ===== --}}
+    {{-- ===== Hall screens — one row, opening the whole panel as a sheet. Only
+              for a type that drives any. ===== --}}
     @if($canManage && ! empty($screens))
         <x-court-screens :event="$e['key']"
                          :mats="$screens['mats'] ?? []"
                          :screens="$screens['screens'] ?? []"
                          :surfaces="$screenSurfaces ?? []"
-                             :new-url="$screenNewUrl ?? null"
-                         :color="$mgColor" />
-    @endif
+                         :new-url="$screenNewUrl ?? null"
+                         :color="$mgColor"
+                         :sheet="true" />
 
-    {{-- ===== What the screens play — same condition as the screens themselves,
-              since audio with nothing to play it on is a setting nobody can
-              hear. ===== --}}
-    @if($canManage && ! empty($screens))
+        {{-- What those screens PLAY. Renders nothing on the page — only the sheet
+             the panel's gear opens. --}}
         <x-event-screen-audio :event="$e['key']"
                               :media="$screenAudio ?? []"
                               :audio-url="$screenAudioUrls ?? []"
                               :color="$mgColor" />
     @endif
+
 
 
     @if($canManage)
@@ -207,13 +212,14 @@
                 </span>
                 <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
             </button>
+
+            {{-- Documents — one row like the others, opening a sheet. The list and
+                 its uploader used to sit open on the page, which put a file field
+                 and a dashed drop box in the middle of a column of doors. --}}
+            <x-event-documents :event="$e['key']" :documents="$documents ?? []"
+                               :can-manage="true" :color="$mgColor" :sheet="true" />
         </div>
 
-        {{-- ===== Documents — small enough to just be here ===== --}}
-        <div>
-            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2 px-1">{{ __('personal.event_manage_documents') }}</p>
-            <x-event-documents :event="$e['key']" :documents="$documents ?? []" :can-manage="true" :color="$mgColor" />
-        </div>
 
         {{-- ===== The event itself ===== --}}
         <div>

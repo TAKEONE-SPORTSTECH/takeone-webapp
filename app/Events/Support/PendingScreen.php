@@ -74,6 +74,32 @@ class PendingScreen extends Model
     }
 
     /**
+     * Spend the code, atomically, and say whether THIS caller is the one who
+     * spent it.
+     *
+     * Read-then-write was not safe: two pairing requests carrying the same code
+     * — a double-tapped button, two consoles, one duplicated event — both saw an
+     * unclaimed row, and both went on to create a screen. That left a live board
+     * plus an orphan device nobody could see or unpair. The UPDATE carries the
+     * condition, so the database picks a winner and the loser is told no.
+     *
+     * The destination is not known yet (the screen has to be adopted first), so
+     * it is written afterwards by land().
+     */
+    public function spend(): bool
+    {
+        return static::whereKey($this->getKey())
+            ->whereNull('claimed_at')
+            ->update(['claimed_at' => now(), 'pairing_code' => null]) === 1;
+    }
+
+    /** Where the screen goes, once it has actually been adopted. */
+    public function land(string $destination): void
+    {
+        $this->forceFill(['destination' => $destination])->save();
+    }
+
+    /**
      * Hashed with a plain SHA-256, deliberately — this is a 40-character random
      * token, not a password. There is nothing to guess and nothing to stretch.
      */

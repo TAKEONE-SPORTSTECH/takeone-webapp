@@ -61,8 +61,8 @@
 
         {{-- Back --}}
         <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('clubs.explore') }}')"
-                class="m-press absolute top-3 left-3 w-10 h-10 rounded-full bg-black/35 backdrop-blur text-white flex items-center justify-center" aria-label="{{ __('shared.back') }}">
-            <i class="bi bi-arrow-left text-lg"></i>
+                class="m-press absolute top-3 start-3 inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-black/35 backdrop-blur text-white text-sm font-semibold" aria-label="{{ __('shared.back') }}">
+            <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('nav.layouts_app_explore') }}
         </button>
 
         {{-- One QR button → modal with a Register / Club page tab switcher --}}
@@ -233,7 +233,7 @@
                             <a href="{{ route('trainer.show', $ins->user_id) }}"
                                class="m-press snap-start flex-shrink-0 w-60 flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-2.5">
                                 <span class="w-14 h-14 flex-shrink-0 rounded-xl bg-muted overflow-hidden flex items-center justify-center">
-                                    @if($ins->user?->profile_picture)<img src="{{ asset('storage/'.$ins->user->profile_picture) }}" alt="" class="w-14 h-14 object-cover">@else<i class="bi bi-person text-2xl text-muted-foreground"></i>@endif
+                                    @if($ins->user?->profile_picture)<img src="{{ asset('storage/'.$ins->user->profile_picture) }}" alt="" class="w-[42px] h-14 object-cover">@else<i class="bi bi-person text-2xl text-muted-foreground"></i>@endif
                                 </span>
                                 <span class="flex-1 min-w-0">
                                     <span class="block text-[13px] font-semibold text-foreground truncate">{{ $ins->user?->full_name ?? __('club.coach') }}</span>
@@ -758,7 +758,7 @@
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     <div class="flex items-center gap-2.5">
                         <span class="w-9 h-9 rounded-full bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
-                            @if($r->user?->profile_picture)<img src="{{ asset('storage/'.$r->user->profile_picture) }}" alt="" class="w-9 h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                            @if($r->user?->profile_picture)<img src="{{ asset('storage/'.$r->user->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                         </span>
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-semibold text-foreground truncate">{{ $r->user?->full_name ?? __('club.member') }}</p>

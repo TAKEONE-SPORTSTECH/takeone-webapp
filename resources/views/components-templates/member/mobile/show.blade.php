@@ -207,17 +207,34 @@
         <div x-data="memberFollow({{ $isFollowing ? 'true' : 'false' }}, @js(route('wall.follow', $user)), @js($user->full_name), @js($canChat ? route('messages.start', $user) : null))"
              class="flex items-center justify-center gap-4 mp-reveal" style="animation-delay:.05s">
 
-            {{-- Follow (left of the profile picture) --}}
-            @if(!$isSelf)
-                <button type="button" @click="toggleFollow()" :disabled="busy"
-                        class="m-press w-12 h-12 rounded-full backdrop-blur flex items-center justify-center text-white border border-white/30 transition-colors disabled:opacity-60"
-                        :class="following ? 'bg-white/35' : 'bg-white/20'"
-                        :aria-label="following ? @js(__('member.unfollow')) : @js(__('member.follow'))">
-                    <i class="bi text-xl" :class="busy ? 'bi-arrow-repeat animate-spin' : (following ? 'bi-person-check-fill' : 'bi-person-plus')"></i>
-                </button>
-            @else
-                <span class="w-12 h-12 flex-shrink-0" aria-hidden="true"></span>
-            @endif
+            {{-- Left controls: follow, with the public profile underneath — mirrors
+                 the share + chat stack on the right. --}}
+            <div class="flex flex-col items-center gap-2">
+                @if(!$isSelf)
+                    <button type="button" @click="toggleFollow()" :disabled="busy"
+                            class="m-press w-12 h-12 rounded-full backdrop-blur flex items-center justify-center text-white border border-white/30 transition-colors disabled:opacity-60"
+                            :class="following ? 'bg-white/35' : 'bg-white/20'"
+                            :aria-label="following ? @js(__('member.unfollow')) : @js(__('member.follow'))">
+                        <i class="bi text-xl" :class="busy ? 'bi-arrow-repeat animate-spin' : (following ? 'bi-person-check-fill' : 'bi-person-plus')"></i>
+                    </button>
+
+                    {{-- What everybody else sees of this person: the safe public
+                         profile (name, photo, clubs, medals — never health, billing
+                         or documents). Rendered only when this viewer may actually
+                         open it, so it is never a link into a 403. Not offered on
+                         your OWN profile, where people.show redirects straight back
+                         here. --}}
+                    @if($user->canViewPublicProfile($viewer))
+                        <a href="{{ route('people.show', $user->uuid) }}"
+                           class="m-press w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30 transition-colors"
+                           aria-label="{{ __('member.public_profile') }}" title="{{ __('member.public_profile') }}">
+                            <i class="bi bi-person-vcard text-xl"></i>
+                        </a>
+                    @endif
+                @else
+                    <span class="w-12 h-12 flex-shrink-0" aria-hidden="true"></span>
+                @endif
+            </div>
 
             {{-- Profile picture --}}
             <div class="relative inline-block flex-shrink-0"
@@ -828,90 +845,20 @@
         {{-- ===== Overview ===== --}}
         <div x-show="tab==='overview'" x-transition.opacity class="space-y-3">
 
-            @if($canRegeneratePassword ?? false)
-            {{-- ===== Super-admin password controls — reset (any account) or
-                 auto-generate a new one (shown + emailed to the member). ===== --}}
-            <div x-data="memberPwdAdmin('{{ route('member.reset-password', $user->id) }}', '{{ route('member.regenerate-password', $user->id) }}', @js($user->full_name))"
-                 class="bg-white rounded-2xl shadow-sm border border-amber-200 p-4 mp-reveal" style="animation-delay:.2s">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 grid place-items-center flex-shrink-0">
-                        <i class="bi bi-shield-lock-fill text-lg"></i>
-                    </span>
-                    <div class="min-w-0">
-                        <h3 class="font-bold text-foreground leading-tight">{{ __('member.account_security') }}</h3>
-                        <p class="text-[11px] text-muted-foreground">{{ __('member.super_admin_only') }}</p>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mt-3">
-                    <button type="button" @click="openSet()"
-                            class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-foreground text-sm font-semibold active:bg-muted/70 transition-colors">
-                        <i class="bi bi-key"></i> {{ __('member.set') }}
-                    </button>
-                    <button type="button" @click="generate()" :disabled="busy"
-                            class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 transition-colors disabled:opacity-60">
-                        <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-magic'"></i> {{ __('member.generate') }}
-                    </button>
-                </div>
-
-                {{-- Manual "set password" bottom sheet — teleported to body so it isn't trapped by the card's transform/animation --}}
-                <template x-teleport="body">
-                <div x-show="setOpen" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center" @keydown.escape.window="setOpen=false">
-                    <div class="absolute inset-0 bg-black/50" @click="setOpen=false"
-                         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
-                    <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8"
-                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
-                        <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
-                        <h3 class="font-bold text-lg text-foreground flex items-center gap-2"><i class="bi bi-key-fill text-amber-500"></i> {{ __('member.set_password') }}</h3>
-                        <p class="text-sm text-muted-foreground mt-1 mb-4" x-text="@js(__('member.set_password_for')).replace(':name', name)"></p>
-                        <div class="space-y-3">
-                            <input type="password" x-model="pw1" placeholder="{{ __('member.new_password') }}" minlength="8"
-                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                            <input type="password" x-model="pw2" placeholder="{{ __('member.confirm_password') }}" minlength="8"
-                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                        </div>
-                        <div class="flex gap-2 mt-5">
-                            <button type="button" @click="setOpen=false" class="m-press flex-1 py-3 rounded-xl bg-muted text-foreground text-sm font-semibold">{{ __('shared.cancel') }}</button>
-                            <button type="button" @click="submitSet()" :disabled="busy" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60">
-                                <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('member.set_password') }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                </template>
-
-                {{-- Generated-password result sheet (shows the new password once) — teleported to body --}}
-                <template x-teleport="body">
-                <div x-show="resultOpen" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center" @keydown.escape.window="resultOpen=false">
-                    <div class="absolute inset-0 bg-black/50" @click="resultOpen=false"
-                         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
-                    <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8 text-center"
-                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-                        <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
-                        <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-600 grid place-items-center mx-auto"><i class="bi bi-check-circle-fill text-2xl"></i></div>
-                        <h3 class="font-bold text-lg text-foreground mt-3">{{ __('member.password_generated') }}</h3>
-                        <p class="text-sm text-muted-foreground mt-1" x-show="emailed">{{ __('member.password_emailed') }}</p>
-                        <p class="text-sm text-amber-600 mt-1" x-show="!emailed">{{ __('member.password_not_emailed') }}</p>
-                        <button type="button" @click="copy()"
-                                class="m-press w-full mt-4 flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-muted border border-dashed border-primary/40">
-                            <span class="font-mono font-bold text-base text-foreground tracking-wider select-all" x-text="newPw"></span>
-                            <i class="bi" :class="copied ? 'bi-clipboard-check text-green-600' : 'bi-clipboard text-primary'"></i>
-                        </button>
-                        <button type="button" @click="resultOpen=false" class="m-press w-full mt-4 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90">{{ __('shared.done') }}</button>
-                    </div>
-                </div>
-                </template>
-            </div>
-            @endif
-
+            {{-- Account security (setting or generating a password) now lives in the
+                 edit sheet's Security tab: the place a person is edited is the place
+                 their access is managed, and it sits beside their two-factor state
+                 there. See components/partials/profile-modal-fields. --}}
             <div>
                 {{-- Header always outside the card (matches Work history / Active clubs) --}}
                 <div class="flex items-center justify-between gap-2 mb-2">
                     <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-person-vcard text-primary"></i>{{ __('member.personal') }}</h3>
                     @if($canEditBasic ?? false)
+                        {{-- Same pill as "Add weight" and the other section actions:
+                             a filled primary chip, not a bare text link. --}}
                         <button type="button" @click="$dispatch('open-profile-modal')"
-                                class="m-press inline-flex items-center gap-1.5 text-primary text-sm font-semibold flex-shrink-0">
-                            <i class="bi bi-pencil-square"></i> {{ __('member.edit') }}
+                                class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                            <i class="bi bi-pencil-square"></i>{{ __('member.edit') }}
                         </button>
                     @endif
                 </div>
@@ -1050,8 +997,12 @@
                 @endforeach
             </div>
             @endif
-            {{-- Section header — above the metric cards it summarises (shown once there are readings) --}}
-            <div class="flex items-center justify-between gap-2" x-show="rows.length" x-cloak>
+            {{-- Section header. Always outside the card, and always rendered — so the
+                 empty state keeps the same header (and the same add button) as the
+                 filled one, exactly as the Tournaments section does. It used to be
+                 hidden until the first reading existed, with a second copy of the
+                 header nested inside the empty card, styled differently. --}}
+            <div class="flex items-center justify-between gap-2">
                 <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-graph-up-arrow text-primary"></i>{{ __('member.weight_history') }}</h3>
                 @if($canEditBasic)
                     <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
@@ -1180,14 +1131,6 @@
             {{-- Empty state --}}
             <template x-if="!rows.length">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-graph-up-arrow text-primary"></i> {{ __('member.weight_history') }}</h3>
-                        @if($canEditBasic)
-                            <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
-                                <i class="bi bi-plus-lg"></i>{{ __('member.add_weight') }}
-                            </button>
-                        @endif
-                    </div>
                     <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_weight_records') }}</p>
                 </div>
             </template>
@@ -1547,20 +1490,29 @@
             $tvStoreUrl = $relationship->relationship_type === 'admin_view'
                 ? route('admin.platform.members.store-tournament', $relationship->dependent->id)
                 : route('member.store-tournament', $relationship->dependent->id);
+            // Who may ADD a record here, as opposed to who may see the tab.
+            //
+            // Not simply $isSelf: a guardian adds records for their dependent, and
+            // desktop has always offered it to them. And not `admin_view` either,
+            // because that type covers a club admin as well as a super-admin while
+            // the endpoint it posts to is super-admin only — offering it to a club
+            // admin would be a button that 403s.
+            $tvCanAdd = $relationship->relationship_type !== 'admin_view'
+                || (bool) (Auth::user()?->isSuperAdmin());
             $tvAffiliations = ($clubAffiliations ?? collect())->map(fn ($a) => [
                 'id' => $a->id, 'name' => $a->club_name, 'linked' => (bool) $a->tenant_id,
             ])->values();
         @endphp
         <div x-show="tab==='tournaments'" x-transition.opacity x-cloak class="space-y-3"
-             x-data="tournamentSheet({ storeUrl: '{{ $tvStoreUrl }}', csrf: '{{ csrf_token() }}', memberId: {{ (int) $relationship->dependent->id }}, canAdd: {{ $isSelf ? 'true' : 'false' }}, affiliations: @js($tvAffiliations) })"
+             x-data="tournamentSheet({ storeUrl: '{{ $tvStoreUrl }}', csrf: '{{ csrf_token() }}', memberId: {{ (int) $relationship->dependent->id }}, canAdd: {{ $tvCanAdd ? 'true' : 'false' }}, affiliations: @js($tvAffiliations) })"
              @open-achievement-sheet.window="openAdd()">
             @php $hasTournamentContent = ($awardedAchievements ?? collect())->isNotEmpty() || $tournamentEvents->isNotEmpty(); @endphp
-            @if($isSelf || ! $hasTournamentContent)
+            @if($tvCanAdd || ! $hasTournamentContent)
                 {{-- Bare section header + labeled add button (matches Work History / Active clubs).
                      Always outside the card, so the empty state keeps the same header as the filled one. --}}
                 <div class="flex items-center justify-between gap-2">
                     <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-trophy text-primary"></i>{{ __('member.tab_tournaments') }}</h3>
-                    @if($isSelf)
+                    @if($tvCanAdd)
                         <button type="button" @click="openAdd()" aria-label="{{ __('Add achievement') }}"
                                 class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
                             <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
@@ -3554,69 +3506,6 @@ window.weightLogger = function (opts) {
 
 // Super-admin password controls (reset / regenerate). Defined globally so
 // Alpine resolves it whether the view loads standalone or in the mobile shell.
-window.memberPwdAdmin = function (resetUrl, regenerateUrl, name) {
-    return {
-        name: name,
-        busy: false,
-        setOpen: false, resultOpen: false,
-        pw1: '', pw2: '',
-        newPw: '', emailed: false, copied: false,
-        _csrf() { return document.querySelector('meta[name=csrf-token]')?.content || ''; },
-        async _post(url, body) {
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this._csrf() },
-                credentials: 'same-origin',
-                body: body ? JSON.stringify(body) : null,
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok || data.success === false) {
-                throw new Error(data.message || (data.errors?.password?.[0]) || @js(__('shared.error')));
-            }
-            return data;
-        },
-        openSet() { this.pw1 = ''; this.pw2 = ''; this.setOpen = true; },
-        async submitSet() {
-            if (this.busy) return;
-            if (this.pw1.length < 8) { window.showToast && window.showToast('error', @js(__('member.password_min'))); return; }
-            if (this.pw1 !== this.pw2) { window.showToast && window.showToast('error', @js(__('member.passwords_no_match'))); return; }
-            this.busy = true;
-            try {
-                const data = await this._post(resetUrl, { password: this.pw1, password_confirmation: this.pw2 });
-                this.setOpen = false;
-                window.showToast && window.showToast('success', data.message || @js(__('member.password_reset_ok')));
-            } catch (e) {
-                window.showToast && window.showToast('error', e.message);
-            } finally { this.busy = false; }
-        },
-        async generate() {
-            if (this.busy) return;
-            const ok = await window.confirmAction({
-                title: @js(__('member.generate_password')),
-                message: @js(__('member.generate_confirm')).replace(':name', this.name),
-                type: 'warning', confirmText: @js(__('member.generate_password')),
-            });
-            if (!ok) return;
-            this.busy = true;
-            try {
-                const data = await this._post(regenerateUrl, {});
-                this.newPw = data.password;
-                this.emailed = !!data.emailed;
-                this.copied = false;
-                this.resultOpen = true;
-            } catch (e) {
-                window.showToast && window.showToast('error', e.message);
-            } finally { this.busy = false; }
-        },
-        copy() {
-            const done = () => { this.copied = true; window.showToast && window.showToast('success', @js(__('member.password_copied'))); };
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(this.newPw).then(done).catch(() => {});
-            } else { done(); }
-        },
-    };
-};
-
 // Follow / share / chat controls flanking the profile picture in the hero.
 window.memberFollow = function (initial, followUrl, name, chatUrl) {
     return {

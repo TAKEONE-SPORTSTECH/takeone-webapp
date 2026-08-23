@@ -24,8 +24,8 @@
 
         <div class="flex items-center justify-between relative z-10">
             <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.challenge') }}')"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left text-lg"></i>
+               class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline flex-shrink-0" aria-label="{{ __('shared.back') }}">
+                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('nav.tab_challenge') }}
             </button>
             <span class="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur inline-flex items-center gap-1.5">
                 <i class="bi {{ $d['icon'] }}"></i> {{ $typeLabel }}

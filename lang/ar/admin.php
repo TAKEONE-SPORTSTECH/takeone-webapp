@@ -2140,4 +2140,7 @@ return [
     'error_log_no_file' => 'ÙØ§ ÙÙØ¬Ø¯ ÙÙÙ Ø³Ø¬Ù Ø¨Ø¹Ø¯',
     'error_log_none' => 'ÙØ§ Ø´ÙØ¡ ÙØ³Ø¬ÙÙ',
     'error_log_none_hint' => 'ÙØ§ ÙØ¯Ø®ÙØ§Øª ØªØ·Ø§Ø¨Ù ÙØ°Ù Ø§ÙØªØµÙÙØ©.',
+    'partials_member_popup_edit' => 'تعديل العضو',
+    'partials_member_popup_preview_public' => 'معاينة الملف العام',
+    'partials_member_popup_share_public' => 'مشاركة الملف العام',
 ];

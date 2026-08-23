@@ -204,7 +204,10 @@
                                     $startTagged = ($startTagged ?? false) || $isStart;
                                 @endphp
                                 <div @if($isStart) id="run-start" @endif
-                                     class="flex gap-3.5 rounded-xl {{ $done ? 'opacity-45' : '' }}"
+                                     {{-- Never dimmed. A phase that has happened is not less true than one
+                                      that has not — the agenda is a record as much as a plan, and
+                                      fading the finished half makes a completed event look broken. --}}
+                                 class="flex gap-3.5 rounded-xl"
                                      style="--m-attn-color: {{ $e['color'] }}80;">
 
                                     {{-- The date column: a calendar leaf, so the eye can
@@ -234,6 +237,13 @@
                                                style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $ph['label'] }}</p>
                                             @if($active)
                                                 <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide" style="background: {{ $e['color'] }};">{{ __('personal.event_show_now') }}</span>
+                                            @elseif($done)
+                                                {{-- A phase that has already happened says so. The rows are no longer
+                                                     dimmed (a finished event is not a broken one), so "when did this
+                                                     stop being ahead of me?" needs saying in words. --}}
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide bg-green-50 text-green-700">
+                                                    <i class="bi bi-check-circle-fill text-[8px]"></i>{{ __('personal.event_show_phase_done') }}
+                                                </span>
                                             @endif
                                         </div>
 
@@ -626,21 +636,6 @@
                  the other. The pulse falls back to the brand primary, which
                  reads against every state this row takes. --}}
 
-            {{-- Entries are closed and this viewer holds no place: the way in is
-                 GONE, not greyed out. A disabled join button invites a tap that can
-                 only ever say no. What replaces it is the one fact they need —
-                 which door closed, and when. --}}
-            <div x-show="! entriesOpen && ! registered" x-cloak
-                 class="mt-3 rounded-2xl border border-gray-200 bg-muted/40 p-4 flex items-start gap-3">
-                <span class="w-10 h-10 rounded-xl bg-white grid place-items-center flex-shrink-0 shadow-sm">
-                    <i class="bi bi-lock text-muted-foreground text-lg"></i>
-                </span>
-                <div class="min-w-0">
-                    <p class="text-sm font-bold text-foreground">{{ __('personal.event_show_entries_closed') }}</p>
-                    <p class="text-[12px] text-muted-foreground leading-snug mt-0.5" x-text="entriesNote"></p>
-                </div>
-            </div>
-
             <button type="button" id="join-participate"
                     x-show="entriesOpen || registered" x-cloak
                     @click="{{ $canJoin ? "startJoin('participant')" : 'explainIneligible()' }}"
@@ -728,7 +723,7 @@
                     </h2>
 
                     <div class="space-y-2">
-                        {{-- Brackets & draws --}}
+                        {{-- Draw --}}
                         @if($hasBrackets)
                             @php
                                 $catCount = count($e['categories']);
@@ -743,13 +738,32 @@
                                         <i class="bi bi-diagram-3-fill bracket-icon text-xl"></i>
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <h3 class="font-black text-[15px] leading-tight">{{ __('personal.event_show_brackets_draws') }}</h3>
-                                        <p class="text-[11px] text-white/85 mt-0.5 truncate">{{ $catCount }} {{ \Illuminate\Support\Str::plural(strtolower($e['division_label'] ?? 'category'), $catCount) }} · {{ $athleteTotal }} {{ __('personal.event_show_entrants') }}</p>
+                                        <h3 class="font-black text-[15px] leading-tight">{{ __('personal.event_show_tile_draw') }}</h3>
+                                        <p class="text-[11px] text-white/85 mt-0.5 truncate">{{ $athleteTotal }} {{ __('personal.event_show_entrants') }}</p>
                                     </div>
                                     <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
                                 </div>
                             </a>
                         @endif
+
+                        {{-- Officials — the officiating sheet. Reading only for
+                             everyone, the organiser included; appointing lives on
+                             the edit screen, where the authority to appoint is. --}}
+                        <a href="{{ route('me.events.officiating', $e['key']) }}"
+                           class="block rounded-2xl p-4 text-white relative overflow-hidden shadow-md hover:shadow-lg transition-shadow"
+                           style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
+                            <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
+                            <div class="relative flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                                    <i class="bi bi-person-badge-fill text-xl"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-black text-[15px] leading-tight">{{ __('personal.event_show_tile_officials') }}</h3>
+                                    <p class="text-[11px] text-white/85 mt-0.5 truncate">{{ trans_choice('personal.event_manage_officials_count', $e['officials_count'] ?? 0, ['count' => $e['officials_count'] ?? 0]) }}</p>
+                                </div>
+                                <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
+                            </div>
+                        </a>
 
                         {{-- Who's joined — the full roster, and the only door to it.
                              There was a second card here ("Verification desk") that
@@ -767,7 +781,7 @@
                                     <i class="bi bi-people-fill text-xl"></i>
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="font-black text-[15px] leading-tight">{{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_whos_joined') }}</h3>
+                                    <h3 class="font-black text-[15px] leading-tight">{{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_tile_participants') }}</h3>
                                     <p class="text-[11px] text-white/85 mt-0.5 truncate">
                                         <span x-text="goingCount">{{ $e['participants_total'] ?? $e['going'] }}</span> {{ __('personal.event_show_in') }}
                                         @if($hasTicket)

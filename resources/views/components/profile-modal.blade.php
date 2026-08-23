@@ -36,6 +36,30 @@
      */
     $formActor = auth()->user();
     $isOwnProfile = $formActor && isset($user) && $user && (int) $formActor->id === (int) ($user->id ?? 0);
+
+    // ── The Security tab ────────────────────────────────────────────────────
+    //
+    // Offered only on an EXISTING person, and only to somebody with business
+    // there: platform staff (who may set or regenerate a password) or the person
+    // themselves (who may manage their own two-factor).
+    //
+    // Two-factor is deliberately NOT an admin action. Every TwoFactorController
+    // method acts on Auth::user(), because the secret has to be scanned by the
+    // member's own authenticator — so for anyone else this tab reports the
+    // STATE and offers nothing to click. Showing an admin a disable button that
+    // no endpoint backs would be worse than showing nothing.
+    $viewerIsPlatformStaff = (bool) ($formActor?->isSuperAdmin());
+    $canSetPassword = ! $isCreate && $user && $viewerIsPlatformStaff;
+    $showSecurityTab = ! $isCreate && $user && ($canSetPassword || $isOwnProfile);
+    $securityPwdUrls = $canSetPassword ? [
+        'reset' => route('member.reset-password', $user->id),
+        'regenerate' => route('member.regenerate-password', $user->id),
+    ] : null;
+    $securityTwoFa = $user ? [
+        'enabled' => (bool) $user->hasTwoFactorEnabled(),
+        'since' => $user->two_factor_confirmed_at?->isoFormat('D MMM YYYY'),
+        'mine' => (bool) $isOwnProfile,
+    ] : null;
     $demandPersonFields = ! $formActor
         || $isOwnProfile
         || ! $formActor->entersPeopleOnBehalfOfOthers();
@@ -154,6 +178,18 @@
                             class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
                         <i class="bi bi-shield-plus me-1"></i>{{ __('shared.components_profile_modal_tab_medical') }}
                     </button>
+                    <button type="button" @click="activeTab = 'docs'"
+                            :class="activeTab === 'docs' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
+                        <i class="bi bi-file-earmark-person me-1"></i>{{ __('shared.components_profile_modal_tab_docs') }}
+                    </button>
+                    @if($showSecurityTab)
+                    <button type="button" @click="activeTab = 'security'"
+                            :class="activeTab === 'security' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
+                        <i class="bi bi-shield-lock me-1"></i>{{ __('shared.components_profile_modal_tab_security') }}
+                    </button>
+                    @endif
                 </nav>
             </div>
 
@@ -185,7 +221,9 @@
                     <button type="button" class="btn btn-outline-secondary me-2" x-show="activeTab !== tabs[0]" @click="prevTab()">
                         <i class="bi bi-arrow-left me-1"></i>{{ __('shared.components_profile_modal_previous') }}
                     </button>
-                    <button type="button" class="btn btn-primary" x-show="activeTab !== 'additional'" @click="nextTab()">
+                    {{-- Follows the tab list rather than naming the last tab, so a
+                         conditional tab (Security) does not strand the Next button. --}}
+                    <button type="button" class="btn btn-primary" x-show="activeTab !== tabs[tabs.length - 1]" @click="nextTab()">
                         {{ __('shared.components_profile_modal_next') }}<i class="bi bi-arrow-right ms-1"></i>
                     </button>
                 </div>
@@ -200,6 +238,71 @@
 <x-toast-notification />
 
 @push('scripts')
+<script>
+window.memberPwdAdmin = function (resetUrl, regenerateUrl, name) {
+    return {
+        name: name,
+        busy: false,
+        setOpen: false, resultOpen: false,
+        pw1: '', pw2: '',
+        newPw: '', emailed: false, copied: false,
+        _csrf() { return document.querySelector('meta[name=csrf-token]')?.content || ''; },
+        async _post(url, body) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this._csrf() },
+                credentials: 'same-origin',
+                body: body ? JSON.stringify(body) : null,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.success === false) {
+                throw new Error(data.message || (data.errors?.password?.[0]) || @js(__('shared.error')));
+            }
+            return data;
+        },
+        openSet() { this.pw1 = ''; this.pw2 = ''; this.setOpen = true; },
+        async submitSet() {
+            if (this.busy) return;
+            if (this.pw1.length < 8) { window.showToast && window.showToast('error', @js(__('member.password_min'))); return; }
+            if (this.pw1 !== this.pw2) { window.showToast && window.showToast('error', @js(__('member.passwords_no_match'))); return; }
+            this.busy = true;
+            try {
+                const data = await this._post(resetUrl, { password: this.pw1, password_confirmation: this.pw2 });
+                this.setOpen = false;
+                window.showToast && window.showToast('success', data.message || @js(__('member.password_reset_ok')));
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally { this.busy = false; }
+        },
+        async generate() {
+            if (this.busy) return;
+            const ok = await window.confirmAction({
+                title: @js(__('member.generate_password')),
+                message: @js(__('member.generate_confirm')).replace(':name', this.name),
+                type: 'warning', confirmText: @js(__('member.generate_password')),
+            });
+            if (!ok) return;
+            this.busy = true;
+            try {
+                const data = await this._post(regenerateUrl, {});
+                this.newPw = data.password;
+                this.emailed = !!data.emailed;
+                this.copied = false;
+                this.resultOpen = true;
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally { this.busy = false; }
+        },
+        copy() {
+            const done = () => { this.copied = true; window.showToast && window.showToast('success', @js(__('member.password_copied'))); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(this.newPw).then(done).catch(() => {});
+            } else { done(); }
+        },
+    };
+};
+</script>
+
 <script>
 // Shared phone country data for inline code pickers inside x-for
 window._phoneCodes = [
@@ -226,7 +329,10 @@ function {{ $alpineComponent }}() {
     return {
         open: false,
         activeTab: '{{ $defaultTab }}',
-        tabs: {!! json_encode($showPhotoTab ? ['photo', 'personal', 'social', 'additional'] : ['personal', 'social', 'additional']) !!},
+        tabs: {!! json_encode(array_values(array_filter([
+            $showPhotoTab ? 'photo' : null, 'personal', 'social', 'additional', 'docs',
+            $showSecurityTab ? 'security' : null,
+        ]))) !!},
         isSubmitting: false,
         isCreateMode: {{ $isCreate ? 'true' : 'false' }},
         showPasswordFields: {{ $showPasswordFields ? 'true' : 'false' }},
@@ -352,6 +458,18 @@ function {{ $alpineComponent }}() {
             // Open if there are validation errors
             @if($errors->any())
                 this.open = true;
+            @endif
+
+            @if(!$isCreate)
+            // Arrived here to edit — ?edit=1 on the profile URL opens the editor
+            // straight away. It is how the admin member sheet's Edit button works:
+            // the editor lives on the member's own page, so the button links here
+            // rather than trying to host a second copy of this modal.
+            try {
+                if (new URLSearchParams(window.location.search).get('edit') === '1') {
+                    this.open = true;
+                }
+            } catch (e) {}
             @endif
 
             @if(!$isCreate)

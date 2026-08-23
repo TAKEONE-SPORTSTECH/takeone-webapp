@@ -2148,4 +2148,7 @@ return [
     'error_log_no_file' => 'No log file yet',
     'error_log_none' => 'Nothing logged',
     'error_log_none_hint' => 'No entries match this filter.',
+    'partials_member_popup_edit' => 'Edit member',
+    'partials_member_popup_preview_public' => 'Preview public profile',
+    'partials_member_popup_share_public' => 'Share public profile',
 ];

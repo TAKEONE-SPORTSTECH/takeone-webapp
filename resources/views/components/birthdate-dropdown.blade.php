@@ -102,13 +102,13 @@
 
         {{-- Year --}}
         <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <span class="absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none">
                 <i class="bi bi-calendar-event text-primary/40" :class="{ 'text-primary': selectedYear }"></i>
             </span>
             <input type="text" inputmode="numeric" maxlength="4" placeholder="Year"
                    x-model="selectedYear"
                    @input="onYearInput($event)"
-                   class="tf-dropdown-trigger pl-9 text-sm text-gray-800 placeholder:text-gray-400 {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
+                   class="tf-dropdown-trigger tf-has-leading-icon ps-9 text-sm text-gray-800 placeholder:text-gray-400 {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
         </div>
     </div>
 

@@ -33,26 +33,52 @@
     ];
 @endphp
 
+{{-- Rendered as a SHEET, not a card. Sound is a setting you go and change once
+     while setting a hall up, not a panel to read past on every visit — so it
+     lives behind the gear on the hall-screens panel and opens on the
+     `open-screen-audio` window event. Teleported to <body> so the mobile shell's
+     transformed wrapper cannot become its containing block and clip it. --}}
 <div
     x-data="eventScreenAudio({
         event: @js($event),
         media: @js((object) $media),
         audio: @js((object) ($audioUrl ?? [])),
     })"
-    class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+    @open-screen-audio.window="open = true"
 >
-    <div class="px-5 py-4 border-b border-gray-100 flex items-start gap-3">
-        <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
-              style="background: {{ $color }}1a; color: {{ $color }};">
-            <i class="bi bi-volume-up text-xl"></i>
-        </span>
-        <div class="min-w-0">
-            <h3 class="text-sm font-bold text-gray-900">{{ __('events.screen_audio_title') }}</h3>
-            <p class="text-xs text-muted-foreground mt-0.5">{{ __('events.screen_audio_intro') }}</p>
-        </div>
-    </div>
+<template x-teleport="body">
+<div x-show="open" x-cloak class="fixed inset-0" style="z-index:75" @keydown.escape.window="open = false">
+    <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/50" @click="close()"></div>
 
-    <div class="divide-y divide-gray-100">
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+         class="absolute inset-x-0 bottom-0 flex flex-col bg-white rounded-t-3xl shadow-2xl sm:mx-auto sm:max-w-lg"
+         style="max-height:92vh">
+
+        {{-- Header — the sheet's own, with the drag handle and a way out. --}}
+        <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
+            <div class="w-10 h-1.5 rounded-full bg-gray-300 mx-auto mb-3"></div>
+            <div class="flex items-start gap-3">
+                <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
+                      style="background: {{ $color }}1a; color: {{ $color }};">
+                    <i class="bi bi-volume-up text-xl"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <h3 class="text-sm font-bold text-gray-900">{{ __('events.screen_audio_title') }}</h3>
+                    <p class="text-xs text-muted-foreground mt-0.5">{{ __('events.screen_audio_intro') }}</p>
+                </div>
+                <button type="button" @click="close()"
+                        class="m-press w-9 h-9 rounded-full bg-muted grid place-items-center text-muted-foreground flex-shrink-0">
+                    <i class="bi bi-x-lg text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+    <div class="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100"
+         style="padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));">
         @foreach ($slots as $slot => $meta)
             <div class="px-5 py-3.5 flex items-center gap-3">
                 <i class="bi {{ $meta['icon'] }} text-lg text-muted-foreground w-5 text-center flex-shrink-0"></i>
@@ -77,8 +103,13 @@
                         <i class="bi" :class="playing === @js($slot) ? 'bi-stop-fill' : 'bi-play-fill'"></i>
                     </button>
 
-                    <label class="px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                    {{-- h-9 + a minimum width, and centred: this is a 36px control
+                         like the two round buttons beside it. Left to padding
+                         alone it shrank to a badge the moment its label became
+                         '…', and sat a few pixels short of the others always. --}}
+                    <label class="h-9 min-w-[104px] px-3 inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors"
                            :class="busy === @js($slot) ? 'bg-muted text-muted-foreground' : 'bg-primary text-white hover:bg-primary/90'">
+                        <i class="bi text-[13px]" :class="busy === @js($slot) ? 'bi-arrow-repeat animate-spin' : 'bi-upload'"></i>
                         <span x-text="busy === @js($slot)
                             ? '…'
                             : (media[@js($slot)] ? @js(__('events.screen_audio_replace')) : @js(__('events.screen_audio_choose')))"></span>
@@ -95,23 +126,44 @@
             </div>
         @endforeach
     </div>
+    </div>
+</div>
+</template>
 </div>
 
 @once
-@push('scripts')
+{{-- Deliberately INLINE, not @push('scripts') — pushed scripts land in
+     #shell-scripts, OUTSIDE <main id="shell-content">, and the mobile shell
+     navigator only re-runs scripts inside the swapped content. Pushed, this
+     definition never arrived after an in-shell navigation: x-data then threw
+     "eventScreenAudio is not defined", Alpine aborted the tree after clearing
+     x-cloak, and the fixed sheet painted itself over the console the moment you
+     arrived from the event page. Same note as event-documents / event-checklist. --}}
 <script>
 /**
  * One <audio> for all six slots, so auditioning a second sound stops the first —
  * an organiser checking their uploads should never end up with two tracks
  * playing over each other in a hall.
+ *
+ * Defined once per document; instantiated per instance. Guarded because a shell
+ * swap re-executes this tag.
  */
-function eventScreenAudio(config) {
+window.eventScreenAudio = window.eventScreenAudio || function (config) {
     return {
+        open: false,
         media: config.media || {},
         audio: config.audio || {},
         busy: null,
         playing: null,
         player: null,
+
+        // Closing stops whatever is auditioning: a sound still playing from a
+        // sheet nobody can see is the kind of thing that happens once, in a hall.
+        close() {
+            if (this.player) { this.player.pause(); this.player.currentTime = 0; }
+            this.playing = null;
+            this.open = false;
+        },
 
         size(bytes) {
             if (!bytes) return '';
@@ -204,7 +256,6 @@ function eventScreenAudio(config) {
             this.playing = null;
         },
     };
-}
+};
 </script>
-@endpush
 @endonce

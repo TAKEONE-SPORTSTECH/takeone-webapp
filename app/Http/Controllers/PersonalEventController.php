@@ -205,6 +205,10 @@ class PersonalEventController extends Controller
         $myReg = $this->myRegistrations($me->id, collect([$event->id]));
         $e = $this->eventView($event, $me->id, $myReg, full: true);
         $e['cancelled'] = $event->status === 'cancelled';
+        // Just the number, for the Officials tile. Counted here rather than in
+        // eventView() because that runs once per row on the events LIST, and one
+        // more query per card there buys nothing.
+        $e['officials_count'] = $event->officials()->count();
 
         $canManage = $this->canManage($event, $me);
         $banned = $this->isBanned($event, $me->id);
@@ -739,6 +743,75 @@ class PersonalEventController extends Controller
             'canManage' => app(EventAccess::class)->canManage($event, Auth::user()),
         ]);
     }
+
+    /**
+     * The officiating sheet — who is running this competition.
+     *
+     * A reading screen, like people(): no controls for anybody, the same page
+     * for an organiser and for a first-time competitor. Appointing still happens
+     * on the event's own edit screen, which is where the authority to appoint
+     * lives.
+     *
+     * It says a name, the job, and the country beside it — the three things an
+     * officiating sheet has always printed, and nothing else. The email, phone
+     * and fee that officials() returns are appointment paperwork and stay behind
+     * assertCanManage(); a photo appears only when the member published one
+     * (`profile_picture_is_public`), because a face is their own choice.
+     */
+    public function officiating(ClubEvent $event, Request $request): View
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $labels = $this->officialRoleOptions($event);
+
+        $rows = $event->officials()
+            ->with('user:id,uuid,full_name,name,gender,nationality,profile_picture,profile_picture_is_public,updated_at')
+            ->get()
+            ->filter(fn (EventOfficial $o) => $o->user !== null)
+            ->map(fn (EventOfficial $o) => [
+                'role' => $o->role,
+                'name' => $o->user->full_name ?: $o->user->name,
+                'uuid' => $o->user->uuid,
+                'gender' => $o->user->gender,
+                'nationality' => $o->user->nationality ?: null,
+                'country' => $o->user->nationality
+                    ? ($this->countryNames()[strtoupper($o->user->nationality)] ?? null)
+                    : null,
+                'photo' => ($o->user->profile_picture && $o->user->profile_picture_is_public)
+                    ? asset('storage/'.$o->user->profile_picture).'?v='.($o->user->updated_at?->timestamp ?? 0)
+                    : null,
+            ]);
+
+        $byRole = $rows->groupBy('role');
+        // What the job actually is, in one line — the sport's own words for a mat
+        // role, the access granted for a platform one. Printed on the card so a
+        // competitor reading the sheet knows what the person beside their name
+        // will be doing, and an organiser can check they appointed the right job.
+        $hints = $this->officialRoleHints($event);
+
+        // Grouped by job, in the SPORT's own order — a sheet reads Shushin
+        // first, not whoever was appointed first.
+        $groups = collect($labels)
+            ->map(fn ($label, $key) => [
+                'key' => $key,
+                'label' => $label,
+                'hint' => $hints[$key] ?? null,
+                'people' => ($byRole[$key] ?? collect())->values()->all(),
+            ])
+            ->filter(fn ($g) => $g['people'] !== [])
+            ->values()
+            ->all();
+
+        $myReg = $this->myRegistrations($me->id, collect([$event->id]));
+
+        return view('personal.event-officials', [
+            'e' => $this->eventView($event, $me->id, $myReg),
+            'groups' => $groups,
+            'total' => $rows->count(),
+        ]);
+    }
+
 
     /**
      * Merge the officiating payload onto roster rows — officials only.
@@ -1790,6 +1863,8 @@ class PersonalEventController extends Controller
          * is the member's own choice, and an organiser browsing for a referee is
          * exactly the kind of finding it governs.
          */
+        $hints = $this->officialRoleHints($event);
+
         $forRole = (string) $request->query('role', '');
         $wide = $forRole !== '' && $this->isMatRole($event, $forRole);
 
@@ -1807,9 +1882,17 @@ class PersonalEventController extends Controller
                     $w->orWhere('mobile', 'like', "%{$phone}%");
                 }
             }))
-            // A platform-wide list with no search term is an invitation to browse
-            // every member, so the wide pool answers only an actual query.
-            ->when($wide && $q === '', fn ($query) => $query->whereRaw('1 = 0'))
+            /*
+             * An empty query used to answer NOTHING for a mat role, so an organiser
+             * whose host club has one membership row opened the picker and saw one
+             * name and concluded there was nobody to appoint. It now lists the
+             * pool it is about to search — the first 20 discoverable members by
+             * name — and typing narrows it by name, email or phone.
+             *
+             * Still not a browsable directory: organiser-only, throttled, capped
+             * at 20, and DISCOVERABLE members only (being findable is the
+             * member's own choice).
+             */
             ->orderBy('full_name')
             ->orderBy('id')
             ->limit(20)
@@ -1860,16 +1943,17 @@ class PersonalEventController extends Controller
             'candidates' => $candidates
                 ->map(fn (User $u) => $shape($u) + ['roles' => ($heldRoles[$u->id] ?? collect())->values()])
                 ->values(),
-            'roles' => collect($this->officialRoleOptions($event))->map(fn ($label, $key) => [
-                'value' => $key,
-                'label' => $label,
-                // Only the platform roles carry a permission, so only they have a
-                // hint explaining what it grants.
-                'hint' => in_array($key, EventOfficial::roles(), true)
-                    ? __('personal.personal_event_officials_role_'.$key.'_hint')
-                    : null,
-                'group' => in_array($key, EventOfficial::roles(), true) ? 'platform' : 'mat',
-            ])->values(),
+            'roles' => collect($this->officialRoleOptions($event))
+                ->map(function ($label, $key) use ($event, $hints) {
+                    return [
+                        'value' => $key,
+                        'label' => $label,
+                        // Every role explains itself now: a mat role says what the job
+                        // is, a platform role says what access it grants.
+                        'hint' => $hints[$key] ?? null,
+                        'group' => in_array($key, EventOfficial::roles(), true) ? 'platform' : 'mat',
+                    ];
+                })->values(),
             'compensations' => collect(EventOfficial::compensations())->map(fn ($c) => [
                 'value' => $c,
                 'label' => __('personal.event_officials_'.$c),
@@ -1886,6 +1970,33 @@ class PersonalEventController extends Controller
      *
      * @return array<int, string>
      */
+    /**
+     * ISO-2 → the country's full name, from the same list every country picker
+     * in the app reads. Officiating sheets print "Bahrain", not "BH": two
+     * letters is a form value, not something a reader should have to decode.
+     *
+     * @return array<string, string>
+     */
+    private function countryNames(): array
+    {
+        static $names = null;
+
+        if ($names !== null) {
+            return $names;
+        }
+
+        $path = public_path('data/countries.json');
+        $rows = is_readable($path) ? json_decode((string) file_get_contents($path), true) : null;
+
+        $names = is_array($rows)
+            ? collect($rows)->filter(fn ($r) => ! empty($r['iso2']) && ! empty($r['name']))
+                ->mapWithKeys(fn ($r) => [strtoupper((string) $r['iso2']) => (string) $r['name']])
+                ->all()
+            : [];
+
+        return $names;
+    }
+
     private function countryCodes(): array
     {
         static $codes = null;
@@ -1960,6 +2071,36 @@ class PersonalEventController extends Controller
 
         foreach (EventOfficial::roles() as $role) {
             $out[$role] = __('personal.personal_event_officials_role_'.$role);
+        }
+
+        return $out;
+    }
+
+    /**
+     * What each role actually does, for the picker to print under its name.
+     *
+     * A mat role's description comes from the SPORT (only Karate knows what a
+     * Kansa does); a platform role's explains the access it grants, which is the
+     * more important sentence of the two.
+     *
+     * @return array<string, string|null>
+     */
+    private function officialRoleHints(ClubEvent $event): array
+    {
+        $out = [];
+
+        $sport = app(\App\Sports\Combat\SportRegistry::class)->get($event->sport);
+
+        if ($sport !== null) {
+            foreach ($sport->officialRoles() as $role) {
+                if (! empty($role['key'])) {
+                    $out[$role['key']] = $role['hint'] ?? null;
+                }
+            }
+        }
+
+        foreach (EventOfficial::roles() as $role) {
+            $out[$role] = __('personal.personal_event_officials_role_'.$role.'_hint');
         }
 
         return $out;

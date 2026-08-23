@@ -1069,6 +1069,11 @@ Every page that introduces a subject (an event, a club, a member, a console) ope
 - **Bottom padding sized to what overlaps it** — `pb-16`/`pb-20` when a card rides up over the tail, less (≈`pb-10`) when the thing straddling the edge is a compact control like a filter tray. The band should end just under what overlaps it, never leave a strip of empty colour between the title and the first element.
 - **Title is `text-2xl font-black` (mobile) / `text-3xl` (desktop)** on its own line, with chips above and the owner line below.
 - **Round 40px controls**: `w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center`.
+- **Back is a LABELLED PILL, not a bare arrow** — `inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold`, holding `<i class="bi bi-arrow-left rtl:rotate-180"></i>` plus **the name of where it goes** ("Events", "Event", the club). A lone arrow does not say what you are going back TO, which on a deep screen (a draw inside an event inside a list) is the only thing the reader wants to know. Round 40px controls are for the ACTIONS on the right — console, QR, share — never for back.
+- **Actions cluster on the right**, in this order where they exist: console (`bi-sliders`, only when the viewer may manage) → `<x-qr-code>` (`button-class` set to the round-control classes) → share. Nothing else lives in that row.
+- **The subject's chips carry its identity**, not the control row: a screen's own label ("Draw", "Officials") is a chip in the identity block, not a badge floating opposite the back button.
+
+> **This band is the standard header for EVERY mobile page that introduces a subject** — event, draw, roster, officiating sheet, club, member, console. Reference implementations: `personal/mobile/event-show.blade.php` and `personal/mobile/event-bracket.blade.php` (and `personal/desktop/event-show.blade.php` for the desktop measurements). A new screen copies that band; it does not invent a header of its own.
 
 **Never** open a page with a small `rounded-2xl p-4` gradient card holding a back arrow and a squeezed title, and never with a gradient stat card standing in for a header. Those are *cards* — fine inside the page, never as its header.
 
