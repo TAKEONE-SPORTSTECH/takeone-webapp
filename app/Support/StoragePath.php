@@ -263,6 +263,42 @@ class StoragePath
             : self::join(self::event($event, 'matches'), (string) $id, $purpose);
     }
 
+    /**
+     * Where footage LANDS: the context it was captured in, never the bout it
+     * is currently believed to show.
+     *
+     * A camera filmed on a mat, at an event, on a day. That is a fact and it
+     * never changes. WHICH bout the footage depicts is an interpretation, and
+     * interpretations get corrected — `live_streams.match_repointed` exists
+     * precisely because an operator reassigns a running stream to a different
+     * bout mid-session.
+     *
+     * If the path named the match, every one of those corrections would have to
+     * MOVE a multi-gigabyte file, and any URL already handed out would break.
+     * Keyed on the capture instead, a re-point is one UPDATE and nothing on disk
+     * moves. The match lives in `media_files.owner_id`, where it belongs.
+     *
+     * The date segment keeps a mat's folder from growing without bound across a
+     * multi-day championship, and makes "what did mat 2 film on the Saturday?"
+     * answerable by looking.
+     */
+    public static function capture(
+        ClubEvent $event,
+        string|int|null $court = null,
+        ?\DateTimeInterface $at = null,
+    ): string {
+        $mat = preg_replace('/[^A-Za-z0-9\-_]/', '', (string) $court);
+        $mat = $mat !== '' ? $mat : 'unassigned';
+        $day = ($at ?? now())->format('Y-m-d');
+
+        return self::join(self::event($event, 'mats'), $mat, $day);
+    }
+
+    /**
+     * @deprecated Use capture(): a path that names the match has to be rewritten
+     *             whenever the match is corrected. Kept so older callers and
+     *             already-stored paths keep resolving.
+     */
     /** Where a camera's video of a bout lands. The path this all existed for. */
     public static function boutClips(ClubEvent $event, EventMatch|int|null $match): string
     {

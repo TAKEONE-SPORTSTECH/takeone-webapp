@@ -13,6 +13,8 @@ use App\Support\StoragePath;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use App\Models\MediaFileSubject;
+use App\Models\ClubEventRegistration;
 
 /**
  * One clip, from this server's scratch disk into our own storage.
@@ -94,9 +96,13 @@ class IngestClipMedia implements ShouldQueue
             return;
         }
 
-        // Under the bout, under the event. A competition's footage is then one
-        // folder, and two cameras on the same bout are two files side by side.
-        $directory = StoragePath::boutClips($event, $match);
+        // Filed by WHERE AND WHEN IT WAS FILMED, not by the bout it is believed
+        // to show. A stream gets re-pointed to a different match mid-session
+        // (live_streams.match_repointed), and a path naming the match would
+        // then have to move gigabytes and invalidate every URL already issued.
+        // Which bout this depicts lives on the media_files row, and is free to
+        // be corrected there.
+        $directory = StoragePath::capture($event, $clip->court, $clip->started_at);
 
         $file = $ingest->fromFile(
             scratchAbs: $this->scratchPath,
@@ -166,6 +172,14 @@ class IngestClipMedia implements ShouldQueue
         if ($match === null) {
             return;
         }
+
+        // Who is in this footage, recorded rather than inferred.
+        //
+        // The library currently works this out by walking the draw, which finds
+        // competitors and only competitors — and gives a different answer after
+        // the draw is re-cut. A row survives that, and leaves somewhere to name
+        // the coach or official who is also on camera.
+        $this->rememberSubjects($file, $match);
 
         $vaults->putMeta($file->vault, StoragePath::match($event, $match), array_filter([
             'bout' => $match->getKey(),
@@ -284,5 +298,36 @@ class IngestClipMedia implements ShouldQueue
             'play_status' => EventCameraClip::PLAY_FAILED,
             'upload_error' => mb_substr($e->getMessage(), 0, 200),
         ]);
+    }
+
+    /**
+     * Note the competitors of this bout as subjects of the file.
+     *
+     * Sourced from the draw, so it may be re-asserted whenever the draw changes
+     * — MediaFileSubject::remember() refuses to overwrite a claim a human made
+     * by hand.
+     */
+    private function rememberSubjects(MediaFile $file, EventMatch $match): void
+    {
+        $entryIds = array_filter([$match->a_competitor_id, $match->b_competitor_id]);
+
+        if ($entryIds === []) {
+            return;
+        }
+
+        $userIds = ClubEventRegistration::whereIn('id', $entryIds)
+            ->pluck('user_id')
+            ->filter()
+            ->unique();
+
+        foreach ($userIds as $userId) {
+            // Best-effort, exactly like the meta above: a bout's footage must
+            // never fail to file because a side table would not take a row.
+            rescue(fn () => MediaFileSubject::remember(
+                (int) $file->getKey(),
+                (int) $userId,
+                MediaFileSubject::ROLE_COMPETITOR,
+            ), null, false);
+        }
     }
 }

@@ -138,9 +138,10 @@ class IngestLiveRecording implements ShouldQueue
             ]);
         }
 
-        $directory = $isBoutVideo
-            ? StoragePath::boutClips($stream->event, $stream->match_id)
-            : StoragePath::matClips($stream->event, $stream->court);
+        // One path either way: the mat and the day it was filmed. Whether this
+        // is one bout or an hour of a mat is a question about the RECORDING,
+        // answered by media_files.owner_id — not by which folder it sits in.
+        $directory = StoragePath::capture($stream->event, $stream->court, $stream->started_at);
 
         // The same door every other clip comes through: uuid filename, checksum,
         // vault decision, transcode dispatch.

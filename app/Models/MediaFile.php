@@ -50,6 +50,15 @@ class MediaFile extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    /**
+     * The people in this file. Several, which is why they are rows and not a
+     * folder — see MediaFileSubject.
+     */
+    public function subjects(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(MediaFileSubject::class);
+    }
+
     public function uniqueIds(): array
     {
         return ['uuid'];

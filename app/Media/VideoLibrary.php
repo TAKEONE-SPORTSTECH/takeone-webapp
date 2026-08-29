@@ -12,6 +12,7 @@ use App\Models\MediaFile;
 use App\Support\BoutStage;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use App\Models\MediaFileSubject;
 
 /**
  * Everything filmed, arranged for a person or for an event.
@@ -232,15 +233,29 @@ class VideoLibrary
     /** Their competition footage, newest event first. */
     private function boutShelf(User $user): ?array
     {
+        // Two ways in, and the recorded one is authoritative.
+        //
+        // media_file_subjects says who is actually IN a file — including a coach
+        // or official who is in no draw at all — and it survives the draw being
+        // re-cut. The draw walk below stays as the fallback, because every file
+        // ingested before subjects existed has no rows yet, and a member should
+        // not lose footage they could already see.
+        $subjectMatchIds = MediaFileSubject::where('user_id', $user->id)
+            ->join('event_recordings', 'event_recordings.media_file_id', '=', 'media_file_subjects.media_file_id')
+            ->pluck('event_recordings.match_id')
+            ->filter()
+            ->unique();
+
         $entries = ClubEventRegistration::where('user_id', $user->id)->pluck('id');
 
-        if ($entries->isEmpty()) {
+        if ($entries->isEmpty() && $subjectMatchIds->isEmpty()) {
             return null;
         }
 
         $matches = EventMatch::with(['category', 'event'])
             ->where(fn ($q) => $q->whereIn('a_competitor_id', $entries)
-                ->orWhereIn('b_competitor_id', $entries))
+                ->orWhereIn('b_competitor_id', $entries)
+                ->orWhereIn('id', $subjectMatchIds))
             ->get();
 
         if ($matches->isEmpty()) {
