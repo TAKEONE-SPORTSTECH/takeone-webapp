@@ -397,7 +397,7 @@ class CameraController extends Controller
      */
     private function scratchPath(EventCameraClip $clip): string
     {
-        return storage_path('app/private/camera-uploads/clip-'.$clip->id.'.mp4');
+        return storage_path('app/camera-uploads/clip-'.$clip->id.'.mp4');
     }
 
     /**

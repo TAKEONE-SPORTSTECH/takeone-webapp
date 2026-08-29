@@ -120,8 +120,15 @@ return [
     |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    /*
+     * Deliberately EMPTY.
+     *
+     * `storage:link` used to publish storage/app/public into the web root, and
+     * that symlink WAS the access-control decision — anything behind it was
+     * readable by anyone holding the URL. Files are served by FileController
+     * now, which asks FileAccess who is looking, so re-creating this link would
+     * quietly re-expose every file it covers.
+     */
+    'links' => [],
 
 ];

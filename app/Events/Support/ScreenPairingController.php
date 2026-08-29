@@ -217,7 +217,7 @@ class ScreenPairingController extends Controller
     {
         $file = self::APPS[$variant] ?? null;
 
-        return $file ? storage_path('app/private/tv/'.$file) : null;
+        return $file ? storage_path('app/tv/'.$file) : null;
     }
 
     /** Whether a given build has been published. Cheap enough to ask per render. */
