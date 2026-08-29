@@ -421,7 +421,7 @@ class PlatformController extends Controller
             'initial' => mb_strtoupper(mb_substr($user->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
             'has_picture' => (bool) $user->profile_picture,
             'picture_url' => $user->profile_picture
-                ? asset('storage/'.$user->profile_picture).'?v='.$user->updated_at->timestamp
+                ? file_url($user->profile_picture).'?v='.$user->updated_at->timestamp
                 : null,
             'gender' => $user->gender ?? 'Male',
             // ISO-3166 alpha-2, which is what the flag is built from client-side.
@@ -570,7 +570,7 @@ class PlatformController extends Controller
                 'email' => $user->email,
                 'mobile' => $user->mobile_formatted,
                 'profile_picture' => $user->profile_picture
-                    ? asset('storage/'.$user->profile_picture)
+                    ? file_url($user->profile_picture)
                     : null,
             ];
         });
@@ -624,7 +624,7 @@ class PlatformController extends Controller
         // leaves branding scattered outside the club subtree. The slug is a
         // validated field on this request, so the club's folder is known even
         // though the row does not exist yet.
-        $brandingFolder = StoragePath::clubBySlug((string) $validated['slug'], 'branding');
+        $brandingFolder = StoragePath::clubBySlug((string) $validated['slug'], 'branding', $validated['country'] ?? null);
 
         foreach (['logo', 'cover_image', 'registration_splash_image'] as $field) {
             $folder = $brandingFolder;
@@ -668,7 +668,7 @@ class PlatformController extends Controller
                 'email' => $user->email,
                 'mobile' => $user->mobile_formatted,
                 'profile_picture' => $user->profile_picture
-                    ? asset('storage/'.$user->profile_picture)
+                    ? file_url($user->profile_picture)
                     : null,
             ];
         });
@@ -1059,7 +1059,7 @@ class PlatformController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -1104,7 +1104,7 @@ class PlatformController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -1482,7 +1482,7 @@ class PlatformController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

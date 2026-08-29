@@ -38,7 +38,7 @@ class ClubCreationService
         // Branding lands in this club's own folder from the first file. The row
         // does not exist yet, but the slug is already validated and in $data, so
         // there is no need for the flat `clubs/logos` root these used to use.
-        $branding = StoragePath::clubBySlug((string) ($data['slug'] ?? ''), 'branding');
+        $branding = StoragePath::clubBySlug((string) ($data['slug'] ?? ''), 'branding', $data['country'] ?? null);
 
         if ($request->filled('logo') && str_starts_with($request->logo, 'data:image')) {
             $data['logo'] = $this->handleBase64Image($request->logo, $branding, 'logo_'.Str::random(24));

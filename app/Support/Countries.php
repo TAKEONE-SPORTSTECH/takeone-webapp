@@ -84,6 +84,42 @@ final class Countries
         return $value;
     }
 
+    /**
+     * The ISO 3166-1 alpha-3 code for a country, e.g. BH -> BHR.
+     *
+     * Storage groups clubs by country, and a three-letter code is the one form
+     * that is unambiguous at a glance on a NAS listing — `BH` reads as an
+     * abbreviation of something, `BHR` reads as a country.
+     *
+     * Falls back to `UNK` rather than an empty segment: a club with no country
+     * still needs somewhere to live, and a path must never collapse to
+     * `clubs//my-club`.
+     */
+    public static function iso3(?string $code): string
+    {
+        $code = strtoupper(trim((string) $code));
+
+        if ($code === '') {
+            return 'UNK';
+        }
+
+        if (strlen($code) === 3 && isset(self::index()[$code])) {
+            return $code;
+        }
+
+        foreach (self::rows() as $row) {
+            if (strtoupper(trim((string) ($row['iso2'] ?? ''))) === $code) {
+                $iso3 = strtoupper(trim((string) ($row['iso3'] ?? '')));
+
+                if ($iso3 !== '') {
+                    return $iso3;
+                }
+            }
+        }
+
+        return 'UNK';
+    }
+
     /** code (upper, alpha-2 AND alpha-3) => name */
     private static function index(): array
     {

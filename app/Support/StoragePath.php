@@ -156,10 +156,17 @@ class StoragePath
      * The slug rather than a uuid because a club is a PUBLIC entity — its slug
      * is already in its public URL, it is stable, and it makes a NAS browsable
      * by somebody who knows the clubs but not their ids.
+     *
+     * Grouped under the country as ISO 3166-1 alpha-3 (`clubs/BHR/my-club`),
+     * which mirrors the club's own public URL `/{country}/clubs/{slug}` and
+     * keeps a growing list browsable. The slug is already unique platform-wide
+     * (`tenants_slug_unique`), so the country groups clubs — it is not what
+     * makes them distinct. A club with no country on file lands under `UNK`
+     * rather than collapsing the segment.
      */
     public static function club(Tenant $club, string $purpose = ''): string
     {
-        return self::join('clubs', self::key($club->slug, $club->id), $purpose);
+        return self::clubBySlug((string) $club->slug, $purpose, $club->country, $club->id);
     }
 
     /**
@@ -170,9 +177,13 @@ class StoragePath
      * in hand at that point, so the folder can be the club's own from the very
      * first file — no flat root, and nothing to migrate afterwards.
      */
-    public static function clubBySlug(string $slug, string $purpose = ''): string
-    {
-        return self::join('clubs', self::key($slug, null), $purpose);
+    public static function clubBySlug(
+        string $slug,
+        string $purpose = '',
+        ?string $country = null,
+        int|string|null $id = null,
+    ): string {
+        return self::join('clubs', Countries::iso3($country), self::key($slug, $id), $purpose);
     }
 
     public static function clubBranding(Tenant $club): string
