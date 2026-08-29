@@ -28,7 +28,7 @@ return [
     | layer (and thus onto whatever storage is attached) and then deleted. It is
     | a staging area, and anything left in it is either in flight or a failure.
     */
-    'record_path' => env('LIVE_RECORD_PATH', storage_path('app/private/live-recordings')),
+    'record_path' => env('LIVE_RECORD_PATH', storage_path('app/live-recordings')),
 
     /*
     | The longest a single broadcast can be and still be somebody's BOUT video.
