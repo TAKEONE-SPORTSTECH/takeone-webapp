@@ -137,6 +137,24 @@ class HallScreenRouter
     {
         abort_unless(app(EventAccess::class)->canManage($event, $request->user()), 403);
 
+        /*
+         * Does this event have wall boards at all?
+         *
+         * The EVENT TYPE is the authority on that — it is the thing that either
+         * has screens to drive or does not — and asking it here is what makes
+         * /screen work for every sport rather than the three this router happens
+         * to hold a device class for. Without it, an event whose sport has no
+         * fleet failed further down on "that surface is not available", which
+         * describes a surface problem and sends somebody looking for a setting
+         * that was never the issue.
+         */
+        if (app(\App\Events\EventTypeRegistry::class)->for($event)->hallScreens($event) === null) {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.event_screens_unsupported', ['event' => $event->title]),
+            ], 422);
+        }
+
         $data = $request->validate([
             'court' => ['required', 'string', 'max:40'],
             'surface' => ['required', 'string', 'in:bout,queue,control'],
