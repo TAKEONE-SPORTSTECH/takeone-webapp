@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import 'clips.dart';
+import 'recorder.dart';
 import 'kit.dart';
 
 /// Watch one bout back, at the tripod.
@@ -62,11 +63,35 @@ class _ClipPlayerState extends State<ClipPlayer> {
       // private file when it was not. Same recording, different door.
       final uri = widget.clip.uri;
 
-      final controller = uri != null
+      var controller = uri != null
           ? VideoPlayerController.contentUri(Uri.parse(uri))
           : VideoPlayerController.file(File(widget.clip.file));
 
-      await controller.initialize();
+      try {
+        await controller.initialize();
+      } on Object catch (first) {
+        // A published clip that will not open is usually a media-library row
+        // whose pending flag was never cleared: the whole recording is there and
+        // nothing will read it. We own the row, so ask the platform to clear it
+        // and try once more before telling an operator their bout is gone.
+        await controller.dispose();
+
+        if (uri == null || !await Recorder.repairVideo(uri)) {
+          // Not repairable. If the private original is still on the phone — it
+          // is, for anything this build published — play that instead.
+          final original = File(widget.clip.file);
+
+          if (uri == null || !original.existsSync()) rethrow;
+
+          controller = VideoPlayerController.file(original);
+        } else {
+          controller = VideoPlayerController.contentUri(Uri.parse(uri));
+        }
+
+        debugPrint('takeone: clip needed recovery — ${first.runtimeType}: $first');
+        await controller.initialize();
+      }
+
       controller.addListener(() {
         if (mounted) setState(() {});
       });
@@ -80,7 +105,12 @@ class _ClipPlayerState extends State<ClipPlayer> {
       setState(() => _controller = controller);
       await controller.play();
       _restartFade();
-    } catch (_) {
+    } catch (e) {
+      // The reason, not just the verdict. A volunteer cannot act on it, but the
+      // person they hand the phone to can, and "could not be opened" told
+      // nobody anything the last time this happened.
+      debugPrint('takeone: clip failed to open — ${e.runtimeType}: $e');
+
       if (mounted) setState(() => _fault = 'This clip could not be opened.');
     }
   }

@@ -247,6 +247,21 @@ class Recorder {
   ///
   /// True when the video is gone — including when it was already gone, because
   /// the caller's intent is satisfied either way.
+  /// Ask the platform to make a stranded published clip playable again.
+  ///
+  /// Some clips were published by a build that deleted the private original
+  /// before checking the media-library copy could be read. When the pending flag
+  /// was never cleared, the row holds the whole recording and refuses to open —
+  /// and there is no second copy left to fall back on. We still own the row, so
+  /// the flag can be cleared. True means it opens now.
+  static Future<bool> repairVideo(String uri) async {
+    try {
+      return await _platform.invokeMethod<bool>('repairVideo', {'uri': uri}) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<bool> deleteVideo({String? uri, required String path}) async {
     try {
       return await _platform.invokeMethod<bool>('deleteVideo', {'uri': uri, 'path': path}) ?? false;

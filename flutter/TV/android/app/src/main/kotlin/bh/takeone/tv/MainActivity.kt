@@ -217,6 +217,24 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                     /*
+                     * Make a stranded clip playable again.
+                     *
+                     * A published row whose pending flag was never cleared holds
+                     * the whole recording and refuses to open. We own the row, so
+                     * clearing the flag is ours to do. Called by the player before
+                     * it tells an operator their bout cannot be opened.
+                     */
+                    "repairVideo" -> {
+                        val uri = call.argument<String>("uri")
+
+                        if (uri == null) {
+                            result.error("bad_args", "uri is required", null)
+                            return@setMethodCallHandler
+                        }
+
+                        result.success(runCatching { repairPublished(Uri.parse(uri)) }.getOrDefault(false))
+                    }
+                    /*
                      * Delete a clip, from wherever it actually is.
                      *
                      * Two homes, two doors: a published clip is a MediaStore row
@@ -359,6 +377,26 @@ class MainActivity : FlutterActivity() {
             values.put(MediaStore.Video.Media.IS_PENDING, 0)
             resolver.update(uri, values, null, null)
 
+            /*
+             * Prove the published copy opens BEFORE deleting the only other one.
+             *
+             * A row left IS_PENDING is not readable by anything, including us —
+             * and the update above can fail quietly, or the process can be killed
+             * between writing the bytes and clearing the flag. Deleting the source
+             * on the assumption it worked is how a phone ends up holding a bout
+             * that exists in the gallery listing and cannot be played, with no
+             * second copy to fall back on.
+             *
+             * If it will not open, the row is thrown away and null returned: the
+             * clip stays a private file, which the in-app player opens perfectly
+             * well, and the operator can press publish again.
+             */
+            if (!readable(uri)) {
+                runCatching { resolver.delete(uri, null, null) }
+
+                return null
+            }
+
             source.delete()
 
             return uri.toString()
@@ -380,6 +418,41 @@ class MainActivity : FlutterActivity() {
         }
 
         return resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)?.toString()
+    }
+
+    /**
+     * Can these bytes actually be read back? The only answer worth trusting.
+     *
+     * Opening is not enough — a pending row can hand back a stream that is
+     * immediately at EOF. One byte has to come out of it, so `read()` returning
+     * -1 counts as a failure just like a thrown exception does.
+     */
+    private fun readable(uri: Uri): Boolean = runCatching {
+        contentResolver.openInputStream(uri)?.use { it.read() != -1 } ?: false
+    }.getOrDefault(false)
+
+    /**
+     * Try to make an already-published clip playable again.
+     *
+     * For clips stranded by the bug the check above now prevents: the bytes were
+     * written and the pending flag was never cleared, so the row is real,
+     * complete and unopenable. We still own it, so we can clear the flag.
+     *
+     * Returns true only if the clip opens afterwards — this reports what IS, not
+     * what was attempted, because the caller uses it to decide whether to tell
+     * the operator their footage is back.
+     */
+    private fun repairPublished(uri: Uri): Boolean {
+        if (readable(uri)) return true
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            runCatching {
+                val values = ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }
+                contentResolver.update(uri, values, null, null)
+            }
+        }
+
+        return readable(uri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
