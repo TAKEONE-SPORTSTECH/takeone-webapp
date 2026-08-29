@@ -59,7 +59,21 @@ class _ClipDrawerState extends State<ClipDrawer> {
 
   int get _chosenBytes => _chosen.fold(0, (sum, c) => sum + (c.bytes ?? 0));
 
-  static String _gb(int bytes) => '${(bytes / 1073741824).toStringAsFixed(1)} GB';
+  /// A size in the unit that actually says something.
+  ///
+  /// This was always GB to one decimal, so every clip a camera realistically
+  /// records — a three-minute bout is tens of megabytes — displayed as "0.0 GB".
+  /// A screen full of recordings all claiming to be empty is how you end up
+  /// hunting a storage bug that was never there.
+  static String _size(int bytes) {
+    if (bytes >= 1073741824) return '${(bytes / 1073741824).toStringAsFixed(1)} GB';
+    if (bytes >= 1048576) return '${(bytes / 1048576).round()} MB';
+    if (bytes >= 1024) return '${(bytes / 1024).round()} KB';
+
+    // Worth saying plainly: a clip with no bytes is a recording that failed,
+    // not a small one.
+    return bytes == 0 ? 'EMPTY' : '$bytes B';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +142,7 @@ class _ClipDrawerState extends State<ClipDrawer> {
             Expanded(
               child: Text(
                 '${stale.length} CLIP${stale.length == 1 ? '' : 'S'} UPLOADED OVER $days DAYS AGO'
-                '${bytes > 0 ? ' · ${_gb(bytes)}' : ''}',
+                '${bytes > 0 ? ' · ${_size(bytes)}' : ''}',
                 style: Cam.cap(11, color: Cam.paper.withValues(alpha: 0.55)),
               ),
             ),
@@ -149,7 +163,7 @@ class _ClipDrawerState extends State<ClipDrawer> {
           children: [
             Expanded(
               child: Text(
-                '${_selected.length} SELECTED · ${_gb(_chosenBytes)}',
+                '${_selected.length} SELECTED · ${_size(_chosenBytes)}',
                 style: Cam.cap(14, color: Cam.gold),
               ),
             ),
@@ -179,7 +193,7 @@ class _ClipDrawerState extends State<ClipDrawer> {
         children: [
           Expanded(
             child: Text(
-              'TODAY · ${widget.clips.length} CLIPS · ${_gb(total)}',
+              'TODAY · ${widget.clips.length} ${widget.clips.length == 1 ? 'CLIP' : 'CLIPS'} · ${_size(total)}',
               style: Cam.cap(14, color: Cam.paper.withValues(alpha: 0.85)),
             ),
           ),
@@ -211,7 +225,7 @@ class _ClipDrawerState extends State<ClipDrawer> {
     final saved = clip.uri != null;
     final minutes = clip.length.inMinutes.toString().padLeft(2, '0');
     final seconds = (clip.length.inSeconds % 60).toString().padLeft(2, '0');
-    final size = clip.bytes != null ? ' · ${_gb(clip.bytes!)}' : '';
+    final size = clip.bytes != null ? ' · ${_size(clip.bytes!)}' : '';
 
     return GestureDetector(
       onTap: () {
@@ -460,7 +474,7 @@ class _ClipDrawerState extends State<ClipDrawer> {
       barrierDismissible: true,
       builder: (_) => _DeleteDialog(
           count: clips.length,
-          freed: _gb(bytes),
+          freed: _size(bytes),
           notUploaded: clips.where((c) => !c.isSafelyUploaded).length,
         ),
     );
