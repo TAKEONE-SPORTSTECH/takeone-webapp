@@ -58,6 +58,12 @@ Route::middleware(['auth', 'verified'])->get('/market/forms-preview', function (
     return view('market.forms-preview');
 })->name('market.forms-preview');
 
+// The one door to stored files. There is a single storage root and no
+// public symlink: App\Support\FileAccess decides in code who may read a path,
+// and denies anything it has not been taught about.
+Route::get('/file/{path}', [App\Http\Controllers\FileController::class, 'show'])
+    ->where('path', '.*')->name('file.show')->middleware('throttle:240,1');
+
 // Public version manifest polled by the installed Android app to detect updates.
 Route::get('/app/manifest.json', [App\Http\Controllers\MobileAppController::class, 'manifest'])->name('app.manifest');
 

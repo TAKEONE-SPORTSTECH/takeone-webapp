@@ -16,7 +16,7 @@
 return [
 
     // Where artifacts are written locally before any off-server copy.
-    'path' => env('BACKUP_PATH', storage_path('app/private/backups')),
+    'path' => env('BACKUP_PATH', storage_path('app/backups')),
 
     /*
     | A configured Laravel disk to copy each artifact to — this is what makes
@@ -39,8 +39,7 @@ return [
     | pointing at files that no longer exist.
     */
     'uploads' => [
-        storage_path('app/public'),
-        storage_path('app/private/payment-proofs'),
+        storage_path('app'),
     ],
 
     // Skip an uploads archive larger than this (MB); 0 = no limit. Guards a

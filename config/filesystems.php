@@ -30,9 +30,29 @@ return [
 
     'disks' => [
 
+        /*
+        |----------------------------------------------------------------------
+        | ONE storage root
+        |----------------------------------------------------------------------
+        |
+        | There is no public/private split any more. Both names resolve to the
+        | same directory, and NOTHING under it is reachable from the web: the
+        | `public/storage` symlink is gone and every file is served by
+        | App\Http\Controllers\FileController, which asks App\Support\FileAccess
+        | who is looking.
+        |
+        | The split used to BE the access-control decision — a file's folder
+        | decided whether the world could read it, and a file written to the
+        | wrong one was public with no way to take it back. Access is decided in
+        | code now, so the two disks only have to agree on where bytes live.
+        |
+        | Both are kept as names so the ~100 existing `disk('public')` call
+        | sites keep working; they are the same disk.
+        */
+
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app/private'),
+            'root' => storage_path('app'),
             'serve' => true,
             'throw' => false,
             'report' => false,
@@ -40,9 +60,8 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL'), '/').'/storage',
-            'visibility' => 'public',
+            'root' => storage_path('app'),
+            'visibility' => 'private',
             'throw' => false,
             'report' => false,
         ],

@@ -206,7 +206,24 @@ class BackupCommand extends Command
             $paths,
         ));
 
-        exec('tar -czf '.escapeshellarg($target).' '.$args.' 2>/dev/null', $out, $status);
+        // Never archive the archives. Since the storage root was collapsed to a
+        // single directory, `backup.uploads` can legitimately BE that root — and
+        // the backup folder lives inside it, so each run would pack every
+        // previous run, and tar would be reading the file it is writing.
+        //
+        // The pattern has to be ARCHIVE-RELATIVE: members are stored as
+        // `app/backups/…`, and a bare `--exclude=backups` matches only a member
+        // named exactly that, so it silently does nothing.
+        $excludes = '';
+        foreach ($paths as $p) {
+            $relative = ltrim(str_replace(rtrim(dirname($p), '/'), '', rtrim($dir, '/')), '/');
+
+            if ($relative !== '' && ! str_starts_with($relative, '..')) {
+                $excludes .= '--exclude='.escapeshellarg($relative).' ';
+            }
+        }
+
+        exec('tar -czf '.escapeshellarg($target).' '.$excludes.$args.' 2>/dev/null', $out, $status);
 
         if ($status !== 0 || ! is_file($target)) {
             $this->error('Uploads archive failed (exit '.$status.').');
