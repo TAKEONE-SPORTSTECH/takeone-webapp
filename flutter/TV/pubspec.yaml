@@ -46,7 +46,7 @@ dependencies:
   # after a final, by somebody standing next to the mat, and the answer has to
   # be watchable there and then rather than after somebody finds a cable.
   video_player: ^2.9.2
-  file_picker: ^12.1.2
+  flutter_inappwebview: 6.2.0-beta.3
 
 dev_dependencies:
   flutter_lints: ^4.0.0
