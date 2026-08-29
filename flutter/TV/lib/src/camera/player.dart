@@ -106,13 +106,45 @@ class _ClipPlayerState extends State<ClipPlayer> {
       await controller.play();
       _restartFade();
     } catch (e) {
-      // The reason, not just the verdict. A volunteer cannot act on it, but the
-      // person they hand the phone to can, and "could not be opened" told
-      // nobody anything the last time this happened.
+      // Say WHAT went wrong, on the screen, not only in a log nobody at a mat
+      // can read. "This clip could not be opened" is a dead end for the operator
+      // and for whoever they hand the phone to afterwards; the door it tried and
+      // the error it got are the whole diagnosis.
       debugPrint('takeone: clip failed to open — ${e.runtimeType}: $e');
 
-      if (mounted) setState(() => _fault = 'This clip could not be opened.');
+      if (mounted) setState(() => _fault = _diagnosis(e));
     }
+  }
+
+  /// The failure, in the terms someone can act on.
+  String _diagnosis(Object error) {
+    final uri = widget.clip.uri;
+    final path = widget.clip.file;
+
+    final lines = <String>['This clip could not be opened.', ''];
+
+    if (uri != null) {
+      lines.add('Published to the gallery.');
+      lines.add(uri.length > 60 ? '${uri.substring(0, 60)}…' : uri);
+    } else {
+      final file = File(path);
+      final exists = file.existsSync();
+
+      lines.add(exists ? 'Private file, still on the phone.' : 'Private file, NOT on the phone.');
+      lines.add(path.length > 60 ? '…${path.substring(path.length - 60)}' : path);
+
+      if (exists) {
+        // A zero-length file is a recording that never wrote, which looks
+        // identical to a corrupt one until somebody checks the size.
+        final bytes = file.lengthSync();
+        lines.add(bytes == 0 ? 'The file is empty (0 bytes).' : '${(bytes / 1048576).toStringAsFixed(1)} MB on disk.');
+      }
+    }
+
+    lines.add('');
+    lines.add('${error.runtimeType}: $error');
+
+    return lines.join('\n');
   }
 
   void _restartFade() {
@@ -159,7 +191,14 @@ class _ClipPlayerState extends State<ClipPlayer> {
           children: [
             Center(
               child: _fault != null
-                  ? Text(_fault!, style: Cam.body(15, color: Cam.gold))
+                  ? SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                      child: Text(
+                        _fault!,
+                        textAlign: TextAlign.center,
+                        style: Cam.body(13, color: Cam.gold),
+                      ),
+                    )
                   : controller == null || value == null || !value.isInitialized
                       ? const CircularProgressIndicator(strokeWidth: 2.4, color: Cam.gold)
                       : AspectRatio(
