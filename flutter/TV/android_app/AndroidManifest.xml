@@ -53,6 +53,16 @@
              MainActivity: the Dart build-time define is invisible to the platform,
              and the notification service runs with no Flutter engine at all.
              build.sh stamps the URL in. -->
+        <!-- Skia, not Impeller.
+
+             This app is one WebView and nothing else. Impeller is the better
+             renderer for Flutter's own drawing, but it has to synchronise an
+             embedded platform view with its frame pipeline, and that sync is
+             where a scroll fling loses frames. The member app draws no Flutter
+             UI worth the trade, so it takes the renderer that gets out of the
+             WebView's way. The hall variants keep the default. -->
+        <meta-data android:name="io.flutter.embedding.android.EnableImpeller" android:value="false" />
+
         <meta-data android:name="bh.takeone.variant" android:value="app" />
         <meta-data android:name="bh.takeone.baseUrl" android:value="__TAKEONE_BASE_URL__" />
 
