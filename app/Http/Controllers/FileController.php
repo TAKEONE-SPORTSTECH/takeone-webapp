@@ -34,11 +34,32 @@ class FileController extends Controller
 
         abort_unless($disk->exists($path), 404);
 
-        return $disk->response($path, null, [
+        $headers = [
             'Content-Disposition' => 'inline',
             // These are per-viewer decisions, so a shared cache must not hold
             // one. The browser may keep its own copy briefly.
             'Cache-Control' => 'private, max-age=600',
-        ]);
+        ];
+
+        // The authorisation above is cheap; streaming the bytes through PHP is
+        // not, and an image-heavy page ties up one worker per picture. When the
+        // web server can do it, PHP names the file and steps out of the way —
+        // Apache serves it with sendfile(2), ranges and its own caching.
+        //
+        // Guarded by a flag that is OFF unless mod_xsendfile is actually
+        // enabled: a server that does not understand the header passes it
+        // straight to the browser and sends an EMPTY body, which would break
+        // every file on the site at once.
+        if (config('filesystems.x_sendfile')) {
+            $absolute = $disk->path($path);
+
+            return response('', 200, $headers + [
+                'X-Sendfile' => $absolute,
+                // Apache needs to be told what it is; it will not sniff for us.
+                'Content-Type' => $disk->mimeType($path) ?: 'application/octet-stream',
+            ]);
+        }
+
+        return $disk->response($path, null, $headers);
     }
 }

@@ -28,6 +28,34 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Hand file delivery back to the web server
+    |--------------------------------------------------------------------------
+    |
+    | Every file is served through FileController so that access is decided in
+    | code. That check is cheap; streaming the BYTES through PHP is not, and on
+    | an image-heavy page it ties up a worker per picture.
+    |
+    | With mod_xsendfile, PHP does the authorisation and then names the file in
+    | an X-Sendfile header — Apache sends it, with its own sendfile(2) path,
+    | caching and range support, and the PHP worker is free immediately.
+    |
+    | OFF by default, and it must stay off until the module is actually enabled:
+    | if Apache does not understand the header it passes it to the browser and
+    | the response body is EMPTY, so every file silently breaks. Turn it on with
+    | FILE_XSENDFILE=true only after:
+    |
+    |     sudo apt-get install libapache2-mod-xsendfile
+    |     sudo a2enmod xsendfile
+    |     # in the vhost:  XSendFile On
+    |     #                XSendFilePath /var/www/takeone/storage/app
+    |     sudo systemctl reload apache2
+    |
+    */
+
+    'x_sendfile' => (bool) env('FILE_XSENDFILE', false),
+
     'disks' => [
 
         /*
