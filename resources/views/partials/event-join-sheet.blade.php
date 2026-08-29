@@ -31,15 +31,28 @@
              class="relative w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl">
 
             {{-- Handle + what you are joining --}}
-            <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
-                <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3 sm:hidden"></div>
-                <h3 class="text-lg font-bold text-gray-900"
-                    x-text="joinMode === 'settle'
-                        ? '{{ __('personal.event_show_join_settle_title') }}'
-                        : (joinRole === 'spectator'
-                            ? '{{ __('personal.event_show_spectator_ticket') }}'
-                            : '{{ __('personal.event_show_join_participant') }}')"></h3>
-                <p class="text-sm text-muted-foreground truncate">{{ $e['title'] }}</p>
+            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                 style="background: linear-gradient(150deg, {{ $e['color'] }}, {{ $e['color'] }}b0);">
+                <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3 sm:hidden"></div>
+                <div class="relative flex items-start gap-3">
+                    <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                        <i class="bi bi-ticket-perforated text-xl"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-lg font-black leading-tight"
+                            x-text="joinMode === 'settle'
+                                ? '{{ __('personal.event_show_join_settle_title') }}'
+                                : (joinRole === 'spectator'
+                                    ? '{{ __('personal.event_show_spectator_ticket') }}'
+                                    : '{{ __('personal.event_show_join_participant') }}')"></h3>
+                        <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $e['title'] }}</p>
+                    </div>
+                    <button type="button" @click="closeJoin()" aria-label="{{ __('shared.close') }}"
+                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">

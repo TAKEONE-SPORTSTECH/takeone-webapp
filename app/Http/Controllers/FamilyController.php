@@ -22,6 +22,8 @@ use App\Services\KinshipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 class FamilyController extends Controller
 {
@@ -216,7 +218,20 @@ class FamilyController extends Controller
             // server-assigned extension (real MIME sniffed; PHP/HTML/SVG rejected).
             // Replaces the previous raw file_put_contents path, which allowed
             // client-controlled extensions and directory traversal.
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::memberProfile($user),
+                'profile_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
@@ -868,7 +883,20 @@ class FamilyController extends Controller
 
             // Validate + store the base64 image with a server-assigned extension
             // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::memberProfile($familyMember),
+                'profile_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }

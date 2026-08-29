@@ -23,6 +23,14 @@
         ],
         'Community' => [
             ['route'=>'me.events',   'icon'=>'bi-calendar-heart',  'label'=>__('nav.events')],
+            // Open Mat had no door anywhere in the product: its only address was
+            // one somebody had to be told out loud, and inside the Android app
+            // there is no address bar to type it into. A drawer row, not a bottom
+            // tab — it is a thing you do occasionally, not a place you live.
+            ['route'=>'openmat',     'icon'=>'bi-fire',            'label'=>__('nav.open_mat')],
+            // Footage: bouts, duels, clips. A drawer row for the same reason as
+            // Open Mat — somewhere you go back to, not somewhere you live.
+            ['route'=>'me.videos',   'icon'=>'bi-camera-reels',    'label'=>__('nav.my_videos')],
         ],
         'Settings' => [
             ['route'=>'me.settings', 'icon'=>'bi-gear',            'label'=>__('nav.account_settings')],

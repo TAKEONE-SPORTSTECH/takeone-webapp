@@ -32,6 +32,14 @@ return [
         // rules of its own, it borrows the sport's scoring table whole.
         \App\Events\Sparring\Sparring::class,
 
+        // Open Mat — a scoreboard for a fight nobody planned. No entries, no
+        // draw, no queue: two corners, and either may be a member found by
+        // search, a member who scanned the mat's code, or a stranger whose name
+        // was typed in. Opened by ANY member from /me, for any club they belong
+        // to. Sits below Sparring because both claim by event_type and neither
+        // overlaps; order between them is immaterial.
+        \App\Events\OpenMat\OpenMat::class,
+
         // TODO — port the remaining types out of the generic bucket. Each
         // lives under its SPORT's folder (see Documentation/EVENTS.md):
         // \App\Events\Sports\Taekwondo\BeltTest\BeltTest::class,

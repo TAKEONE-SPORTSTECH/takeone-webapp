@@ -13,10 +13,51 @@ use App\Traits\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ClubActivityController extends Controller
 {
     use HandlesClubAuthorization, PersistsTranslations, StoresBase64Images;
+
+    /**
+     * Resolve a "reuse this picture" URL to a path we are willing to copy FROM.
+     *
+     * The picker hands back the URL of a picture already on screen — either one
+     * of this club's own activity images or a row from the shared catalogue.
+     * That URL is a request field, so it decides what gets copied, and the copy
+     * lands in this club's folder under a URL the club then owns.
+     *
+     * Previously the only check was `exists()`, which meant any club admin could
+     * name any file on the public disk — another club's logo, a member's
+     * profile picture, an order proof — and obtain their own copy of it.
+     *
+     * Returns null when the source is not one of ours, which the caller treats
+     * exactly like "no picture supplied".
+     */
+    private function reusableSource(string $url, int $clubId): ?string
+    {
+        $path = ltrim(str_replace(asset('storage').'/', '', $url), '/');
+
+        // A URL that did not resolve to a relative path on our own public disk —
+        // a foreign host, or a traversal attempt — is not a source at all.
+        if ($path === '' || $path === $url && str_contains($url, '://')) {
+            return null;
+        }
+
+        if (str_contains($path, '..')) {
+            return null;
+        }
+
+        // The two places a reusable activity picture legitimately comes from.
+        $allowed = str_starts_with($path, 'clubs/'.$clubId.'/activities/')
+            || str_starts_with($path, 'activity-catalog/');
+
+        if (! $allowed) {
+            return null;
+        }
+
+        return Storage::disk('public')->exists($path) ? $path : null;
+    }
 
     public function activities(Tenant $club)
     {
@@ -77,10 +118,11 @@ class ClubActivityController extends Controller
         } elseif ($request->hasFile('picture')) {
             $data['picture_url'] = $request->file('picture')->store('clubs/'.$clubId.'/activities', 'public');
         } elseif ($request->filled('existing_picture_url')) {
-            $storagePath = str_replace(asset('storage').'/', '', $request->existing_picture_url);
-            if (Storage::disk('public')->exists($storagePath)) {
+            $storagePath = $this->reusableSource($request->existing_picture_url, $clubId);
+
+            if ($storagePath !== null) {
                 $extension = pathinfo($storagePath, PATHINFO_EXTENSION);
-                $newPath = 'clubs/'.$clubId.'/activities/activity_'.time().'.'.$extension;
+                $newPath = 'clubs/'.$clubId.'/activities/activity_'.Str::random(24).'.'.$extension;
                 Storage::disk('public')->copy($storagePath, $newPath);
                 $data['picture_url'] = $newPath;
             }

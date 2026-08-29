@@ -174,13 +174,23 @@
                  x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                  class="fixed inset-x-0 bottom-0 z-[60] bg-white rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
-                <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
-                    <div class="flex justify-center pb-2"><span class="w-10 h-1.5 rounded-full bg-gray-200"></span></div>
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-foreground">{{ __('admin.club_members_index_bulk_enroll_modal_title') }}</h3>
-                        <button type="button" @click="if (!bulkSubmitting) bulkSheetOpen = false" class="m-press w-9 h-9 -mr-1 rounded-full flex items-center justify-center hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-people-fill text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('admin.club_members_index_bulk_enroll_modal_title') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('admin.club_members_index_bulk_enroll_modal_subtitle') }}</p>
+                        </div>
+                        <button type="button" @click="if (!bulkSubmitting) bulkSheetOpen = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <p class="text-sm text-muted-foreground mt-1">{{ __('admin.club_members_index_bulk_enroll_modal_subtitle') }}</p>
                 </div>
 
                 <div class="flex-1 overflow-y-auto px-5 py-4 space-y-5">

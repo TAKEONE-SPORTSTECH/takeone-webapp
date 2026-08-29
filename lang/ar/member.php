@@ -124,6 +124,8 @@ return [
     'time_ago_today' => 'اليوم',
     'unit_yr' => 'سنة',
     'unit_yrs' => 'سنوات',
+    'unit_kg' => 'كجم',
+    'representing' => 'يمثل',
     'unit_mo' => 'شهر',
     'unit_mos' => 'أشهر',
     'unit_day' => 'يوم',

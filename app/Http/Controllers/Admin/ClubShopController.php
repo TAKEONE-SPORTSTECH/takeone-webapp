@@ -17,6 +17,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 /**
  * The club Shop — products the club sells. A product is held in stock
@@ -530,7 +532,9 @@ class ClubShopController extends Controller
         // Image: a fresh data URL is stored; an existing /storage URL is left as-is.
         $image = $data['image'] ?? null;
         if ($image && str_starts_with($image, 'data:image')) {
-            $path = $this->storeBase64Image($image, 'club-products/'.$club->id, 'product_'.uniqid());
+            // fill() runs BEFORE save(), so the product has no id yet — keyed on the
+            // CLUB, which is the owner that matters and always exists here.
+            $path = $this->storeBase64Image($image, StoragePath::club($club, 'products'), 'product_'.Str::random(24));
             if ($path) {
                 $product->image_path = $path;
             }

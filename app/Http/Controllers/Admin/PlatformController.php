@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Support\StoragePath;
 
 class PlatformController extends Controller
 {
@@ -423,6 +424,12 @@ class PlatformController extends Controller
                 ? asset('storage/'.$user->profile_picture).'?v='.$user->updated_at->timestamp
                 : null,
             'gender' => $user->gender ?? 'Male',
+            // ISO-3166 alpha-2, which is what the flag is built from client-side.
+            // Anything else (a full country name on an old row) is dropped rather
+            // than rendered as two wrong letters.
+            'nationality' => preg_match('/^[A-Za-z]{2}$/', (string) $user->nationality)
+                ? mb_strtoupper($user->nationality)
+                : null,
             'phone' => $phone ?: 'N/A',
             'email' => $user->email ?? 'N/A',
             'age' => $user->age ? $user->age.' years' : 'N/A',
@@ -611,7 +618,16 @@ class PlatformController extends Controller
         // fields are IGNORED — storeBase64Image() inspects the real bytes (finfo),
         // allowlists the MIME, and builds a server-controlled path. Path traversal
         // and disguised-payload uploads are not possible here.
-        foreach (['logo' => 'clubs/logos', 'cover_image' => 'clubs/covers', 'registration_splash_image' => 'clubs/splash'] as $field => $folder) {
+        // Each image goes in THIS CLUB's own folder. It used to be a flat
+        // `clubs/logos` / `clubs/covers` / `clubs/splash` — purpose first, owner
+        // second — which makes "what belongs to this club?" unanswerable and
+        // leaves branding scattered outside the club subtree. The slug is a
+        // validated field on this request, so the club's folder is known even
+        // though the row does not exist yet.
+        $brandingFolder = StoragePath::clubBySlug((string) $validated['slug'], 'branding');
+
+        foreach (['logo', 'cover_image', 'registration_splash_image'] as $field) {
+            $folder = $brandingFolder;
             if ($request->filled($field) && str_starts_with((string) $request->input($field), 'data:image')
                 && ($stored = $this->storeBase64Image($request->input($field), $folder, $field.'_'.Str::uuid()))) {
                 $validated[$field] = $stored;
@@ -696,7 +712,7 @@ class PlatformController extends Controller
             if ($club->logo) {
                 Storage::disk('public')->delete($club->logo);
             }
-            $validated['logo'] = $request->file('logo')->store('clubs/logos', 'public');
+            $validated['logo'] = $request->file('logo')->store(StoragePath::clubBranding($club), 'public');
         }
 
         // Handle cover image upload
@@ -705,7 +721,7 @@ class PlatformController extends Controller
             if ($club->cover_image) {
                 Storage::disk('public')->delete($club->cover_image);
             }
-            $validated['cover_image'] = $request->file('cover_image')->store('clubs/covers', 'public');
+            $validated['cover_image'] = $request->file('cover_image')->store(StoragePath::clubBranding($club), 'public');
         }
 
         $club->update($validated);
@@ -1014,7 +1030,20 @@ class PlatformController extends Controller
         try {
             // Validate + store the base64 image with a server-assigned extension
             // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::clubBranding($club),
+                'logo_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
@@ -1046,7 +1075,20 @@ class PlatformController extends Controller
         try {
             // Validate + store the base64 image with a server-assigned extension
             // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::clubBranding($club),
+                'cover_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
@@ -1310,7 +1352,9 @@ class PlatformController extends Controller
                 'number' => trim($d['number'] ?? ''),
                 'file_path' => $d['file_path'] ?? null,
                 'file_name' => $d['file_name'] ?? null,
-                'file_url' => $d['file_url'] ?? null,
+                // file_url is deliberately NOT stored. It is derived from
+                // file_path at render time, so the row never carries a hostname
+                // and never carries a link that bypasses authorization.
                 'uploaded_at' => $d['uploaded_at'] ?? now()->format('Y-m-d'),
             ])->values()->all();
 
@@ -1409,7 +1453,20 @@ class PlatformController extends Controller
 
             // Validate + store the base64 image with a server-assigned extension
             // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::memberProfile($member),
+                'profile_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
@@ -1438,6 +1495,13 @@ class PlatformController extends Controller
     public function removeMemberPicture($id)
     {
         $member = User::findOrFail($id);
+
+        // The avatar is also one of the profile's pictures — drop that row first so
+        // the picture viewer never points at a file this method is about to delete.
+        // (The row's own trait purges the file, hence before the Storage delete.)
+        if ($member->profile_picture) {
+            $member->photos()->where('path', $member->profile_picture)->get()->each->delete();
+        }
 
         if ($member->profile_picture && Storage::disk('public')->exists($member->profile_picture)) {
             Storage::disk('public')->delete($member->profile_picture);

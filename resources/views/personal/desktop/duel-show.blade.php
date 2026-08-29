@@ -12,11 +12,33 @@
 
     @include('partials.personal-desktop-subnav')
 
-    <a href="{{ route('me.challenge') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors mb-4">
-        <i class="bi bi-arrow-left"></i> {{ __('challenge.subtitle') }}
-    </a>
+    {{-- Standard header band (Design Rule #6). Drill-down: the subject's own
+         colour and a labelled back pill. --}}
+    <div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative"
+         style="background: linear-gradient(150deg, {{ $d['color'] }}, {{ $d['color'] }}b0);">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
-    {{-- ===== VS hero ===== --}}
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center justify-between gap-2 mb-4">
+                <a href="{{ route('me.challenge') }}"
+                   class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors">
+                    <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('challenge.subtitle') }}
+                </a>
+            </div>
+
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-lightning-charge-fill"></i> {{ __('challenge.subtitle') }}
+                </span>
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight" x-text="disp.discipline">{{ $d['discipline'] }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-people"></i>{{ $d['a']['name'] ?? '' }} vs {{ $d['b']['name'] ?? '' }}
+            </p>
+        </div>
+    </div>
+
     <div class="rounded-2xl overflow-hidden shadow-sm mb-6 text-white relative" style="background: linear-gradient(150deg, {{ $d['color'] }}, #1f2937);">
         <div class="absolute -end-12 -top-12 w-56 h-56 rounded-full bg-white/10"></div>
         <div class="relative p-6 sm:p-8">
@@ -31,7 +53,7 @@
                 @endif
             </div>
 
-            <h1 class="text-2xl font-black mt-4 text-center" x-text="disp.discipline">{{ $d['discipline'] }}</h1>
+            <p class="text-lg font-black mt-4 text-center" x-text="disp.discipline">{{ $d['discipline'] }}</p>
             <p class="text-center text-xs font-semibold text-white/80 mt-1">
                 <i class="bi bi-trophy"></i> <span x-text="disp.formatLabel">{{ $d['format_label'] ?? __('challenge.personal_duel_show_single_match') }}</span>
             </p>

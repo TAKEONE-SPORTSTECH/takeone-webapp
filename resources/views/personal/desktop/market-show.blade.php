@@ -15,9 +15,33 @@
 
     @include('partials.personal-desktop-subnav')
 
-    <a href="{{ route('me.market') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors mb-4">
-        <i class="bi bi-arrow-left"></i> {{ __('nav.tab_market') }}
-    </a>
+    {{-- Standard header band (Design Rule #6). Drill-down: the product's own
+         colour and a labelled back pill. --}}
+    <div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative"
+         style="background: linear-gradient(150deg, {{ $p['color'] }}, {{ $p['color'] }}b0);">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center justify-between gap-2 mb-4">
+                <a href="{{ route('me.market') }}"
+                   class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors">
+                    <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('nav.tab_market') }}
+                </a>
+            </div>
+
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-shop"></i> {{ __('nav.tab_market') }}
+                </span>
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ $p['name'] }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-building"></i>{{ $p['club'] ?? '' }}
+            </p>
+        </div>
+    </div>
+
 
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8 items-start">
         {{-- ===== Left: gallery + description/specs/reviews ===== --}}

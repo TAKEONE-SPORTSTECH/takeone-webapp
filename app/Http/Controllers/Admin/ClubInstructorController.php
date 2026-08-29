@@ -21,6 +21,8 @@ use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 class ClubInstructorController extends Controller
 {
@@ -89,11 +91,19 @@ class ClubInstructorController extends Controller
                 'nationality' => $request->nationality,
             ]);
 
+            // An instructor's photo is that PERSON's avatar, so it belongs in
+            // their own folder beside the rest of their files — not in a flat
+            // `users/{numeric-id}` root, which is a fourth avatar location and
+            // keys on the id rather than the uuid.
             if ($request->filled('photo') && str_starts_with($request->input('photo'), 'data:image')) {
-                $photoPath = $this->storeBase64Image($request->input('photo'), 'users/'.$user->id, 'profile_'.time());
+                $photoPath = $this->storeBase64Image(
+                    $request->input('photo'),
+                    StoragePath::memberProfile($user),
+                    'photo_'.Str::random(24),
+                );
                 $user->update(['profile_picture' => $photoPath]);
             } elseif ($request->hasFile('photo')) {
-                $photoPath = $request->file('photo')->store('users/'.$user->id, 'public');
+                $photoPath = $request->file('photo')->store(StoragePath::memberProfile($user), 'public');
                 $user->update(['profile_picture' => $photoPath]);
             }
 
@@ -228,11 +238,16 @@ class ClubInstructorController extends Controller
             $this->syncCertificationSkills((int) $instructor->user_id, (int) $club->id, $skills ?: []);
         }
 
+        // Same person, same folder — see the note in store().
         if ($request->filled('photo') && str_starts_with($request->input('photo'), 'data:image')) {
-            $photoPath = $this->storeBase64Image($request->input('photo'), 'users/'.$instructor->user_id, 'profile_'.time());
+            $photoPath = $this->storeBase64Image(
+                $request->input('photo'),
+                StoragePath::memberProfile($instructor->user),
+                'photo_'.Str::random(24),
+            );
             $instructor->user->update(['profile_picture' => $photoPath]);
         } elseif ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('users/'.$instructor->user_id, 'public');
+            $photoPath = $request->file('photo')->store(StoragePath::memberProfile($instructor->user), 'public');
             $instructor->user->update(['profile_picture' => $photoPath]);
         }
 
@@ -327,7 +342,20 @@ class ClubInstructorController extends Controller
 
             // Validate + store the base64 image with a server-assigned extension
             // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::memberProfile($instructor->user),
+                'photo_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }

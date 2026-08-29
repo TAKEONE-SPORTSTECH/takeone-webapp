@@ -37,7 +37,7 @@ class TournamentRequest extends FormRequest
             'performance_results.*.description' => 'nullable|string|max:500',
             'notes_media' => 'nullable|array',
             'notes_media.*.note_text' => 'nullable|string|max:1000',
-            'notes_media.*.media_link' => 'nullable|url',
+            'notes_media.*.media_link' => 'nullable|url:http,https',
             // Optional supporting evidence (certificate / medal photo) as a base64
             // data-URI. Stored via StoresBase64Images (real-byte sniff, SVG rejected).
             // Evidence is SUPPORT ONLY — it never verifies a claim on its own.

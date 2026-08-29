@@ -215,14 +215,24 @@ window.packageFormSheet = function () {
              class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col"
              style="height: 92vh; max-height: 92vh;" @click.stop>
 
-            <div class="pt-2.5 pb-1 flex justify-center sm:hidden flex-shrink-0"><span class="w-10 h-1.5 rounded-full bg-gray-300"></span></div>
-
             {{-- Header --}}
-            <div class="flex items-center justify-between px-4 py-3 bg-primary text-white rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
-                <h5 class="text-base font-semibold flex items-center">
-                    <i class="bi bi-box-seam mr-2"></i><span x-text="mode === 'edit' ? '{{ __('admin.pkg_edit') }}' : '{{ __('admin.pkg_add') }}'"></span>
-                </h5>
-                <button type="button" @click="open = false" class="text-white/90 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center -mr-1">&times;</button>
+            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                 style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                <div class="relative flex items-start gap-3">
+                    <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                        <i class="bi bi-box-seam text-xl"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-lg font-black leading-tight truncate"><span x-text="mode === 'edit' ? '{{ __('admin.pkg_edit') }}' : '{{ __('admin.pkg_add') }}'"></span></h3>
+                        <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $club->name }}</p>
+                    </div>
+                    <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
+                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
             </div>
 
             {{-- Tabs --}}

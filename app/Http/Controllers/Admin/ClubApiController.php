@@ -12,6 +12,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 class ClubApiController extends Controller
 {
@@ -166,7 +168,7 @@ class ClubApiController extends Controller
                 if ($club->logo) {
                     Storage::disk('public')->delete($club->logo);
                 }
-                $data['logo'] = $this->handleBase64Image($request->logo, 'clubs/logos', 'logo_'.time());
+                $data['logo'] = $this->handleBase64Image($request->logo, StoragePath::clubBranding($club), 'logo_'.Str::random(24));
             }
 
             // Handle cover image upload
@@ -174,7 +176,7 @@ class ClubApiController extends Controller
                 if ($club->cover_image) {
                     Storage::disk('public')->delete($club->cover_image);
                 }
-                $data['cover_image'] = $this->handleBase64Image($request->cover_image, 'clubs/covers', 'cover_'.time());
+                $data['cover_image'] = $this->handleBase64Image($request->cover_image, StoragePath::clubBranding($club), 'cover_'.Str::random(24));
             }
 
             // Set status

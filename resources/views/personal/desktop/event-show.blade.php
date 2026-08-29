@@ -792,6 +792,30 @@
                                 <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
                             </div>
                         </a>
+
+                        {{-- Gallery — every filmed bout, grouped by division.
+                             Always shown, like Who's joined: footage is a place
+                             people go looking for, and the gallery states its
+                             own empty case. --}}
+                            <a href="{{ route('me.events.gallery', $e['key']) }}"
+                               class="block rounded-2xl p-4 text-white relative overflow-hidden shadow-md hover:shadow-lg transition-shadow"
+                               style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
+                                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
+                                <div class="relative flex items-center gap-3">
+                                    <div class="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                                        <i class="bi bi-camera-reels-fill text-xl"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <h3 class="font-black text-[15px] leading-tight">{{ __('events.bout_gallery_title') }}</h3>
+                                        <p class="text-[11px] text-white/85 mt-0.5 truncate">
+                                            {{ ($e['clips_count'] ?? 0) > 0
+                                                ? trans_choice('events.bout_gallery_count', $e['clips_count'], ['count' => $e['clips_count']])
+                                                : __('events.bout_gallery_none') }}
+                                        </p>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
+                                </div>
+                            </a>
                     </div>
                 </div>
             @endif

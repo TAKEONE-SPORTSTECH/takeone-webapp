@@ -270,7 +270,7 @@
     {{-- A guest on a public club page or public profile gets the page and nothing
          else: no top bar, no nav. Signed-in members keep the full chrome, so this
          can only ever affect visitors who could not reach these pages before. --}}
-    @php $__publicGuest = auth()->guest() && request()->routeIs('clubs.show', 'people.show'); @endphp
+    @php $__publicGuest = auth()->guest() && request()->routeIs('clubs.show', 'people.show', 'live.watch'); @endphp
     @if(!$__publicGuest && !request()->routeIs('clubs.show.public') && !(session('club.context') && request()->routeIs('register', 'verification.notice')) && !$__env->hasSection('hide-navbar'))
     <div x-data="{ mobileMenuOpen: false }" @keydown.escape.window="mobileMenuOpen = false">
     <nav class="to-bar">

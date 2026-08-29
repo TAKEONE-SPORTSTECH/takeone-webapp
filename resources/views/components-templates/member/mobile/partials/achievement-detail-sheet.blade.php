@@ -10,9 +10,29 @@
                  class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col" style="max-height:92vh" @click.stop>
                 <template x-if="ach">
                     <div class="flex flex-col overflow-hidden">
+                        {{-- Header band --}}
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #b45309, #d97706b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <span class="text-xl leading-none" x-text="ach.emoji"></span>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight" x-text="ach.title"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5" x-text="ach.member_award"></p>
+                                </div>
+                                <button type="button" @click="showAch=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+
                         {{-- Media --}}
                         <div class="relative flex-shrink-0">
-                            <div class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-t-3xl sm:rounded-t-2xl" x-ref="strip" @scroll.debounce.50ms="idx = Math.round($refs.strip.scrollLeft / $refs.strip.offsetWidth)">
+                            <div class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide" x-ref="strip" @scroll.debounce.50ms="idx = Math.round($refs.strip.scrollLeft / $refs.strip.offsetWidth)">
                                 <template x-if="ach.images && ach.images.length">
                                     <template x-for="img in ach.images" :key="img">
                                         <img :src="img" class="snap-start flex-shrink-0 w-full h-56 object-cover">
@@ -24,24 +44,18 @@
                                     </div>
                                 </template>
                             </div>
-                            <button type="button" @click="showAch=false" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur text-white grid place-items-center"><i class="bi bi-x-lg"></i></button>
                             <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
                             <div x-show="ach.images && ach.images.length > 1" class="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5">
                                 <template x-for="(img,i) in ach.images" :key="i">
                                     <span class="h-1.5 rounded-full transition-all" :class="idx===i ? 'bg-white w-4' : 'bg-white/50 w-1.5'"></span>
                                 </template>
                             </div>
-                            {{-- The member's own award, front and centre --}}
-                            <span class="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-black/45 backdrop-blur">
-                                <span class="text-[13px] leading-none" x-text="ach.emoji"></span><span x-text="ach.member_award"></span>
-                            </span>
                         </div>
 
                         {{-- Body --}}
                         <div class="overflow-y-auto p-4 space-y-3" style="max-height:calc(92vh - 14rem)">
                             <div>
-                                <h3 class="text-lg font-extrabold text-foreground leading-tight" x-text="ach.title"></h3>
-                                <p class="mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+                                <p class="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
                                     <span x-show="ach.location"><i class="bi bi-geo-alt mr-0.5"></i><span x-text="ach.location"></span></span>
                                     <span x-show="ach.date_label"><i class="bi bi-calendar-event mr-0.5"></i><span x-text="ach.date_label"></span></span>
                                     <span x-show="ach.club"><i class="bi bi-buildings mr-0.5"></i><span x-text="ach.club"></span></span>

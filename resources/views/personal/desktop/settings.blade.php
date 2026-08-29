@@ -3,10 +3,27 @@
 @section('title', __('settings.title'))
 
 @section('content')
-<div class="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-    <div>
-        <h1 class="text-3xl font-bold text-gray-900">{{ __('settings.title') }}</h1>
+<div class="px-4 sm:px-6 lg:px-8 py-6">
+    {{-- Standard header band (Design Rule #6). Platform hub: the shared
+         m-hero mesh, no back pill. --}}
+    <div class="m-hero -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-gear"></i> {{ __('settings.title') }}
+                </span>
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('settings.title') }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-person"></i>{{ $user->full_name }}
+            </p>
+        </div>
     </div>
+
+    <div class="space-y-6">
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h3 class="font-semibold text-foreground mb-3">{{ __('settings.account') }}</h3>
@@ -66,6 +83,8 @@
         <a href="{{ route('bills.index') }}" class="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors"><span class="text-sm text-foreground"><i class="bi bi-receipt me-2 text-muted-foreground"></i>{{ __('settings.invoices') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
     </div>
 </div>
+</div>
+
 
 <script>
 window.switchLocale = function (code) {

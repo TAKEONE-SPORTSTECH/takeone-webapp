@@ -10,6 +10,7 @@ use App\Mcp\Tools\ClubStaffTool;
 use App\Mcp\Tools\EnrollMembersTool;
 use App\Mcp\Tools\EnterEventAthletesTool;
 use App\Mcp\Tools\GetClubTool;
+use App\Mcp\Tools\GetBoutVideoTool;
 use App\Mcp\Tools\GetEventBracketTool;
 use App\Mcp\Tools\GetEventReadinessTool;
 use App\Mcp\Tools\GetMemberTool;
@@ -19,6 +20,7 @@ use App\Mcp\Tools\ListCourtScreensTool;
 use App\Mcp\Tools\ListEventDocumentsTool;
 use App\Mcp\Tools\ListEventPeopleTool;
 use App\Mcp\Tools\ListEventsTool;
+use App\Mcp\Tools\ListEventVideosTool;
 use App\Mcp\Tools\ListMembersTool;
 use App\Mcp\Tools\ManageMemberPhotoTool;
 use App\Mcp\Tools\NotifyMemberTool;
@@ -50,6 +52,7 @@ Getting started:
   6. `list_event_documents` lists files attached to an event (rulebook, entry form, schedule) with download links.
   7. `get_event_bracket` reads an event's knockout draw — divisions, rounds, bouts, scores, podium.
   8. `search_people` finds discoverable members who share a confirmed club membership with the acting user (never platform-wide; safe public fields only).
+  9. `list_event_videos` lists the bouts of an event that were filmed, grouped by division; `get_bout_video` reads one bout's camera angles, its scoring timeline (derived from the officiating log — timestamps are seconds into the video) and its coach notes. An athlete always reaches their OWN bout, whatever the event's scope and after it is archived.
 
 Write tools (may be globally disabled via server config):
   • `record_transaction` — log manual income/expense for a club (admins only).
@@ -81,6 +84,8 @@ class TakeOneServer extends Server
         ListEventPeopleTool::class,
         EnterEventAthletesTool::class,
         GetEventBracketTool::class,
+        ListEventVideosTool::class,
+        GetBoutVideoTool::class,
         GetEventReadinessTool::class,
         ListCourtScreensTool::class,
         ArrangeEventBracketTool::class,

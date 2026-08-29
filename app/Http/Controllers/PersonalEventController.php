@@ -209,6 +209,9 @@ class PersonalEventController extends Controller
         // eventView() because that runs once per row on the events LIST, and one
         // more query per card there buys nothing.
         $e['officials_count'] = $event->officials()->count();
+        // How many bouts were filmed, for the Gallery door. A count, not the
+        // gallery — the event page should not pay for a page it only links to.
+        $e['clips_count'] = app(\App\Media\VideoLibrary::class)->eventClipCount($event);
 
         $canManage = $this->canManage($event, $me);
         $banned = $this->isBanned($event, $me->id);
@@ -330,6 +333,11 @@ class PersonalEventController extends Controller
             // Hall screens, if this type drives any. The type answers; a type
             // with no wall boards returns null and the section is simply absent.
             'screens' => $canManage ? $type->hallScreens($event) : null,
+            // The phones filming the mats. Sport-neutral and type-neutral, so
+            // this is asked directly rather than of the package: pointing a
+            // lens at a mat needs nothing from the sport, and an event that
+            // drives no wall screens can still be filmed.
+            'cameras' => $canManage ? \App\Events\Support\Cameras\CameraFleet::console($event) : null,
             // Which screen roles this event's package can actually serve. The
             // panel offers only these — a slot it cannot serve ends with a
             // screen in a hall showing an error and no way back.
@@ -433,6 +441,67 @@ class PersonalEventController extends Controller
                 'actions' => $canManage ? $type->availableActions($event) : [],
             ] + $type->viewData($event, $me)
         );
+    }
+
+    /* ---------------- The gallery ---------------- */
+
+    /**
+     * Everything filmed at this event, grouped by division.
+     *
+     * A competition is read by division, not by bout number — nobody looks for
+     * bout 34, they look for the -61 kg final. So the shelves here are the same
+     * `event_categories` the draw uses, in the organiser's own order, and a
+     * division with nothing filmed is left out entirely.
+     *
+     * Shaped exactly like bracket(): same guard, same package-view resolution,
+     * so a sport that wants its own gallery screen can take it over later
+     * without a line changing here.
+     */
+    public function gallery(Request $request, ClubEvent $event): View
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $type = $this->typeFor($event);
+
+        $e = $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: true);
+        $canManage = $this->canManage($event, $me);
+
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+        $device = $isMobile ? 'mobile' : 'desktop';
+
+        $library = app(\App\Media\VideoLibrary::class);
+        $divisions = $library->forEvent($event);
+
+        return view(
+            $this->packageView($type, 'gallery', $device, 'personal.'.$device.'.event-gallery'),
+            [
+                'e' => $e,
+                'divisions' => $divisions,
+                // A tab per stage as well as per division — a viewer looks for
+                // "the finals" as readily as for a weight class. Derived from the
+                // filmed bouts, so a stage that was not fought offers no tab.
+                'stages' => $library->stagesIn($divisions),
+                'clipCount' => (int) collect($divisions)->sum('count'),
+                'canManage' => $canManage,
+            ] + $type->viewData($event, $me)
+        );
+    }
+
+    /** The same shelves as JSON, for a live refresh after a bout is filmed. */
+    public function galleryData(ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $library = app(\App\Media\VideoLibrary::class);
+        $divisions = $library->forEvent($event);
+
+        return response()->json([
+            'divisions' => $divisions,
+            'stages' => $library->stagesIn($divisions),
+            'count' => (int) collect($divisions)->sum('count'),
+        ]);
     }
 
     /* ---------------- Officials' console ---------------- */
@@ -1044,42 +1113,6 @@ class PersonalEventController extends Controller
     }
 
     /**
-     * Tell TAKEONE Play that a bout's competition truth changed.
-     *
-     * Dispatched from the write paths rather than hung off a model observer: a
-     * seeder, an import or a demo purge saves these rows too, and none of those
-     * should be pushing to another platform. Being explicit here means the push
-     * happens exactly where a human made a decision.
-     *
-     * Queued and coalesced, so ten edits in a minute are one push. A no-op when
-     * the integration is off or the bout has no video.
-     */
-    private function pushBoutToPlay(?EventMatch $match): void
-    {
-        if ($match === null || ! config('play.enabled')) {
-            return;
-        }
-
-        \App\Jobs\PushBoutToPlay::dispatch($match->id);
-    }
-
-    /** Push every bout of an event — used when something event-wide changed. */
-    private function pushEventBoutsToPlay(ClubEvent $event): void
-    {
-        if (! config('play.enabled')) {
-            return;
-        }
-
-        // Only bouts that actually have a video: the rest have nowhere to go.
-        \App\Models\EventRecording::where('event_id', $event->id)
-            ->where('status', \App\Models\EventRecording::STATUS_LINKED)
-            ->whereNotNull('match_id')
-            ->pluck('match_id')
-            ->unique()
-            ->each(fn ($id) => \App\Jobs\PushBoutToPlay::dispatch((int) $id));
-    }
-
-    /**
      * The athletes who may stand in this bout.
      *
      * Restricted to entrants of THIS event in THIS bout's own category, because a
@@ -1165,9 +1198,6 @@ class PersonalEventController extends Controller
             // place someone in a division they never entered.
             'a_competitor_id' => ['nullable', 'integer'],
             'b_competitor_id' => ['nullable', 'integer'],
-            // Empty string unlinks. A URL must live on the configured Play host:
-            // this value ends up as an href on a page other people read.
-            'video_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $match = EventMatch::where('event_id', $event->id)->where('match_no', $matchNo)->first();
@@ -1184,32 +1214,6 @@ class PersonalEventController extends Controller
                 'success' => false,
                 'message' => __('events.bout_corners_conflict'),
             ], 422);
-        }
-
-        $videoUrl = trim((string) ($data['video_url'] ?? ''));
-        $videoKey = null;
-
-        if ($videoUrl !== '') {
-            $host = parse_url((string) config('play.url'), PHP_URL_HOST);
-            $got  = parse_url($videoUrl);
-
-            if (! $got || ! in_array($got['scheme'] ?? '', ['http', 'https'], true) || ($got['host'] ?? '') !== $host) {
-                return response()->json([
-                    'success' => false,
-                    'message' => __('events.bout_video_host', ['host' => $host]),
-                ], 422);
-            }
-
-            // .../videos/<key> — the key is the last non-empty path segment.
-            $segments = array_values(array_filter(explode('/', (string) ($got['path'] ?? ''))));
-            $videoKey = $segments === [] ? null : end($segments);
-
-            if ($videoKey === null || preg_match('/^[A-Za-z0-9_-]{3,64}$/', $videoKey) !== 1) {
-                return response()->json([
-                    'success' => false,
-                    'message' => __('events.bout_video_invalid'),
-                ], 422);
-            }
         }
 
         /*
@@ -1283,8 +1287,6 @@ class PersonalEventController extends Controller
 
         $match->save();
 
-        $this->linkBoutVideo($event, $match, $videoUrl, $videoKey);
-
         // Compared as strings: the columns come back from the database as strings
         // while the request supplies integers, so a strict comparison reported an
         // unchanged score as changed and put noise in the audit trail.
@@ -1313,10 +1315,6 @@ class PersonalEventController extends Controller
         // bout differs, so the refresh signal is the safe shape here.
         $this->pushEventRefresh($event);
 
-        // And the video platform, so the clip's header stops disagreeing with the
-        // scoresheet.
-        $this->pushBoutToPlay($match);
-
         return response()->json([
             'success' => true,
             'message' => __('events.bout_saved'),
@@ -1325,47 +1323,8 @@ class PersonalEventController extends Controller
     }
 
     /**
-     * Point this bout at a video on TAKEONE Play, or unlink it.
-     *
-     * Unlink NEVER deletes: it clears the reference and keeps the row, which is
-     * the record that a video once existed. Deletion does not cross between the
-     * platforms in either direction (Match Sync Contract).
-     */
-    private function linkBoutVideo(ClubEvent $event, EventMatch $match, string $url, ?string $key): void
-    {
-        $recording = \App\Models\EventRecording::where('match_id', $match->id)->latest('id')->first();
-
-        if ($url === '') {
-            if ($recording !== null) {
-                $recording->forceFill([
-                    'status' => \App\Models\EventRecording::STATUS_UNLINKED,
-                    'play_url' => null,
-                    'play_video_key' => null,
-                    'play_video_id' => null,
-                ])->save();
-            }
-
-            return;
-        }
-
-        $recording ??= new \App\Models\EventRecording([
-            'event_id' => $event->id,
-            'match_id' => $match->id,
-            'court' => $match->court,
-        ]);
-
-        $recording->forceFill([
-            'event_id' => $event->id,
-            'match_id' => $match->id,
-            'play_url' => $url,
-            'play_video_key' => $key,
-            'status' => \App\Models\EventRecording::STATUS_LINKED,
-        ])->save();
-    }
-
-    /**
-     * Shape one bout for display, including the links back out to profiles and
-     * club pages that the video platform mirrors (§6.6).
+     * Shape one bout for display, including the links out to profiles and club
+     * pages.
      */
     private function boutView(ClubEvent $event, EventMatch $match): array
     {
@@ -1391,17 +1350,40 @@ class PersonalEventController extends Controller
             /*
              * Where the bout can be watched, or null.
              *
-             * Only a still-linked recording offers a link: an unlinked row is the
-             * record that a video ONCE existed (its media was deleted on Play), and
-             * pointing at it would be a dead end. A bout that was never filmed has
-             * no row at all, which is the ordinary case — so the button is absent
-             * rather than disabled.
+             * Our own review page — the picture, the angles, and the highlights
+             * bar derived from the officiating log. Only when the media is
+             * actually watchable: a clip still transcoding offers no link rather
+             * than a broken one, and a bout that was never filmed has no
+             * recording row at all, which is the ordinary case. The button is
+             * absent rather than disabled.
+             *
+             * `play_url` is the legacy fallback and nothing writes it any more.
+             * The video-platform integration has been removed; a handful of
+             * bouts still carry a URL published there before that, and those
+             * links are left working rather than blanked. When those videos are
+             * gone, this branch and the column can go with them.
              */
-            'video_url' => \App\Models\EventRecording::where('match_id', $match->id)
-                ->where('status', \App\Models\EventRecording::STATUS_LINKED)
-                ->whereNotNull('play_url')
-                ->latest('id')
-                ->value('play_url'),
+            'video_url' => (function () use ($event, $match) {
+                $row = \App\Models\EventRecording::with('mediaFile')
+                    ->where('match_id', $match->id)
+                    ->where('status', \App\Models\EventRecording::STATUS_LINKED)
+                    ->where(fn ($q) => $q->whereNotNull('play_url')->orWhereNotNull('media_file_id'))
+                    ->latest('id')
+                    ->first();
+
+                if ($row === null) {
+                    return null;
+                }
+
+                if ($row->mediaFile?->isPlayable()) {
+                    return route('me.events.bout.video', [
+                        'event' => $event->uuid,
+                        'matchNo' => $match->match_no,
+                    ]);
+                }
+
+                return filled($row->play_url) ? $row->play_url : null;
+            })(),
         ];
     }
 
@@ -2184,7 +2166,6 @@ class PersonalEventController extends Controller
 
         $this->recordOfficialNationality(User::find($data['user_id']), $data['nationality'] ?? null);
 
-        $this->pushEventBoutsToPlay($event);
 
         return response()->json([
             'success' => true,
@@ -2244,7 +2225,6 @@ class PersonalEventController extends Controller
 
         $this->recordOfficialNationality($official->user, $data['nationality'] ?? null);
 
-        $this->pushEventBoutsToPlay($event);
 
         return response()->json([
             'success' => true,
@@ -2269,7 +2249,6 @@ class PersonalEventController extends Controller
 
         $event->officials()->whereKey($official)->delete();
 
-        $this->pushEventBoutsToPlay($event);
 
         return response()->json([
             'success' => true,

@@ -585,6 +585,19 @@
             'label' => __('personal.event_show_tile_officials'),
             'sub' => trans_choice('personal.event_manage_officials_count', $e['officials_count'] ?? 0, ['count' => $e['officials_count'] ?? 0]),
         ];
+
+        // The gallery — every bout that was filmed, grouped by division. Always
+        // a door, like Participants: an event's footage is a place people go
+        // looking for, and a door that only appears once something is behind it
+        // cannot be found before then. The gallery says so itself when empty.
+        $doors[] = [
+            'href' => route('me.events.gallery', $e['key']),
+            'icon' => 'bi-camera-reels-fill',
+            'label' => __('events.bout_gallery_title'),
+            'sub' => ($e['clips_count'] ?? 0) > 0
+                ? trans_choice('events.bout_gallery_count', $e['clips_count'], ['count' => $e['clips_count']])
+                : __('events.bout_gallery_none'),
+        ];
     @endphp
     <div class="px-4 mt-4">
         <div class="space-y-3">
@@ -821,9 +834,23 @@
             <div class="absolute inset-0 bg-black/40" @click="showResultsOpen=false" x-transition.opacity></div>
             <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl max-h-[88vh] flex flex-col"
                  x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-                <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-                    <h3 class="font-black text-foreground flex items-center gap-2"><i class="bi bi-trophy-fill text-amber-500"></i> {{ __('personal.event_show_results_medals') }}</h3>
-                    <button type="button" @click="showResultsOpen=false" class="m-press w-8 h-8 rounded-full bg-muted grid place-items-center"><i class="bi bi-x-lg text-xs"></i></button>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #b45309, #d97706b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-trophy-fill text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('personal.event_show_results_medals') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $e['title'] }}</p>
+                        </div>
+                        <button type="button" @click="showResultsOpen=false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="flex-1 overflow-y-auto p-4 space-y-3">
                     @foreach($e['bracket_results'] as $r)

@@ -186,7 +186,7 @@
                 <span class="notification-badge chat-badge">{{ $chatUnread > 99 ? '99+' : $chatUnread }}</span>
             @endif
         </button>
-        <button type="button" onclick="window.dispatchEvent(new CustomEvent('qr-scan:open'))" class="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0" aria-label="{{ __('header.scan_qr') }}"><i class="bi bi-qr-code-scan"></i></button>
+        <button type="button" onclick="window.dispatchEvent(new CustomEvent('qr-scan:open', { detail: { manual: true, manualLength: 6, manualLabel: @js(__('header.scan_or_type')), manualPlaceholder: @js(__('header.scan_code_placeholder')) } }))" class="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0" aria-label="{{ __('header.scan_qr') }}"><i class="bi bi-qr-code-scan"></i></button>
     </div>
 </header>
 

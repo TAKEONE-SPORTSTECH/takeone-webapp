@@ -30,6 +30,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 class MemberController extends Controller
 {
@@ -526,6 +528,11 @@ class MemberController extends Controller
             'invoices' => $invoices,
             'payments' => $payments,
             'tournamentEvents' => $tournamentEvents,
+            // The platform's own record of the same competitions: the event to
+            // open, and every bout the member fought there, from their corner.
+            // Keyed by tournament_events.id — see App\Support\BoutHistory.
+            'tournamentBouts' => app(\App\Support\BoutHistory::class)
+                ->forTournaments($relationship->dependent, $tournamentEvents, $user),
             // What the platform already KNOWS, for the two tabs that otherwise
             // only ever show what the member typed in themselves. Read-only and
             // de-duplicated against the self-reported rows — see App\Support\ProfileHistory.
@@ -795,7 +802,9 @@ class MemberController extends Controller
                 'number' => trim($d['number'] ?? ''),
                 'file_path' => $d['file_path'] ?? null,
                 'file_name' => $d['file_name'] ?? null,
-                'file_url' => $d['file_url'] ?? null,
+                // file_url is deliberately NOT stored. It is derived from
+                // file_path at render time, so the row never carries a hostname
+                // and never carries a link that bypasses authorization.
                 'uploaded_at' => $d['uploaded_at'] ?? now()->format('Y-m-d'),
             ])
             ->values()
@@ -904,7 +913,20 @@ class MemberController extends Controller
 
             // Validate + store the base64 image with a server-assigned extension
             // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::memberProfile($member),
+                'profile_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
@@ -943,6 +965,13 @@ class MemberController extends Controller
         }
 
         $member = User::findOrFail($id);
+
+        // The avatar is also one of the profile's pictures — drop that row first so
+        // the picture viewer never points at a file this method is about to delete.
+        // (The row's own trait purges the file, hence before the Storage delete.)
+        if ($member->profile_picture) {
+            $member->photos()->where('path', $member->profile_picture)->get()->each->delete();
+        }
 
         if ($member->profile_picture && Storage::disk('public')->exists($member->profile_picture)) {
             Storage::disk('public')->delete($member->profile_picture);
@@ -987,6 +1016,74 @@ class MemberController extends Controller
     /**
      * Upload an identity document file for a member.
      */
+    /**
+     * Which disk a member-document path lives on.
+     *
+     * Identity documents now go to the PRIVATE disk and are served only through
+     * downloadDocument(). Everything uploaded before that change sits on the
+     * public disk under `documents/{user-id}/…`, world-readable to anyone who
+     * knows the URL. Both shapes have to keep resolving, so the path itself says
+     * which disk to look on rather than a flag somebody has to remember to set.
+     */
+    private function documentDisk(string $path): string
+    {
+        return str_starts_with($path, 'documents/') ? 'public' : 'local';
+    }
+
+    /**
+     * Is this path one of THIS member's documents?
+     *
+     * The path arrives from the request on every one of these endpoints, so it
+     * decides which file is read or deleted. Containment is the whole guard.
+     */
+    private function ownsDocumentPath(User $member, string $path): bool
+    {
+        if ($path === '' || str_contains($path, '..')) {
+            return false;
+        }
+
+        return str_starts_with($path, StoragePath::memberDocuments($member).'/')
+            || str_starts_with($path, 'documents/'.$member->id.'/');
+    }
+
+    /**
+     * Serve one identity document.
+     *
+     * These are CPRs, passports and medical papers. They used to be written to
+     * the public disk and linked as `/storage/documents/{id}/…`, which meant
+     * anyone holding or guessing the URL could read them with no session at all.
+     * They are private now, so reaching one has to pass through here — where the
+     * same three-way check the rest of this controller uses is applied first.
+     */
+    public function downloadDocument(\Illuminate\Http\Request $request, $id)
+    {
+        $request->validate(['path' => 'required|string|max:512']);
+
+        $viewer = Auth::user();
+        $isSuperAdmin = $viewer->hasRole('super-admin');
+        $isOwnProfile = $viewer->id == $id;
+
+        if (! $isSuperAdmin && ! $isOwnProfile) {
+            UserRelationship::where('guardian_user_id', $viewer->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+        }
+
+        $member = User::findOrFail($id);
+        $path = (string) $request->input('path');
+
+        abort_unless($this->ownsDocumentPath($member, $path), 404);
+
+        $disk = Storage::disk($this->documentDisk($path));
+
+        abort_unless($disk->exists($path), 404);
+
+        // Inline rather than an attachment: the profile opens these in the
+        // media lightbox, and a forced download there is a worse experience
+        // than a picture that simply appears.
+        return $disk->response($path, null, ['Content-Disposition' => 'inline']);
+    }
+
     public function uploadDocument(\Illuminate\Http\Request $request, $id)
     {
         try {
@@ -1004,12 +1101,18 @@ class MemberController extends Controller
                     ->firstOrFail();
             }
 
-            $path = $request->file('file')->store('documents/'.$id, 'public');
+            $member = User::findOrFail($id);
+
+            // PRIVATE disk, and the documented per-member folder. An identity
+            // document has no business on the public disk: everything under it
+            // is fetchable by URL with no authorization check whatsoever.
+            $path = $request->file('file')->store(StoragePath::memberDocuments($member), 'local');
 
             return response()->json([
                 'success' => true,
                 'path' => $path,
-                'url' => asset('storage/'.$path),
+                // Served through the authorised endpoint, never a /storage/ link.
+                'url' => route('member.download-document', ['id' => $id, 'path' => $path]),
                 'file_name' => $request->file('file')->getClientOriginalName(),
             ]);
         } catch (\Exception $e) {
@@ -1036,14 +1139,20 @@ class MemberController extends Controller
             }
 
             $filePath = $request->input('file_path');
+            $member = User::findOrFail($id);
 
-            // Restrict deletion to files within that member's documents directory
-            if (! str_starts_with($filePath, 'documents/'.$id.'/')) {
+            // Restrict deletion to files within that member's documents directory.
+            // Accepts BOTH shapes: the private per-member folder documents are
+            // written to now, and the legacy public `documents/{id}/` files that
+            // predate the move — deleting one of those must still work.
+            if (! $this->ownsDocumentPath($member, $filePath)) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized file path.'], 403);
             }
 
-            if (Storage::disk('public')->exists($filePath)) {
-                Storage::disk('public')->delete($filePath);
+            $disk = Storage::disk($this->documentDisk($filePath));
+
+            if ($disk->exists($filePath)) {
+                $disk->delete($filePath);
             }
 
             return response()->json(['success' => true]);
@@ -1221,8 +1330,11 @@ class MemberController extends Controller
         // Support only; it never verifies the claim (see AchievementVerificationService).
         if (! empty($validated['evidence'])) {
             $owner = User::find($id);
-            $folder = 'people/'.($owner?->uuid ?? $id).'/achievements/'.$tournament->uuid;
-            $path = $this->storeBase64Image($validated['evidence'], $folder, 'evidence', 'local');
+            // The owner is looked up above; if the row has vanished there is no
+            // member folder to write into, so the evidence is simply not stored
+            // rather than landing in a stray `people/{id}` root.
+            $folder = $owner ? StoragePath::memberAchievement($owner, (string) $tournament->uuid) : null;
+            $path = $folder ? $this->storeBase64Image($validated['evidence'], $folder, 'evidence', 'local') : null;
             if ($path === null) {
                 $tournament->delete();
 
@@ -1291,9 +1403,12 @@ class MemberController extends Controller
         // Replacing evidence: store the new bytes first, drop the old file only on success.
         if (! empty($validated['evidence'])) {
             $owner = User::find($id);
-            $folder = 'people/'.($owner?->uuid ?? $id).'/achievements/'.$tournament->uuid;
+            // The owner is looked up above; if the row has vanished there is no
+            // member folder to write into, so the evidence is simply not stored
+            // rather than landing in a stray `people/{id}` root.
+            $folder = $owner ? StoragePath::memberAchievement($owner, (string) $tournament->uuid) : null;
             $previous = $tournament->evidence_path;
-            $path = $this->storeBase64Image($validated['evidence'], $folder, 'evidence', 'local');
+            $path = $folder ? $this->storeBase64Image($validated['evidence'], $folder, 'evidence', 'local') : null;
 
             if ($path === null) {
                 return response()->json(['success' => false, 'message' => __('Invalid or unsupported evidence image.')], 422);
@@ -1819,7 +1934,7 @@ class MemberController extends Controller
         if (! empty($validated['image'])) {
             $imagePath = $this->storeBase64Image(
                 $validated['image'],
-                'people/'.$member->uuid.'/certifications',
+                StoragePath::memberCertifications($member),
                 'cert_'.time()
             );
             if ($imagePath === null) {
@@ -1859,7 +1974,7 @@ class MemberController extends Controller
         if (! empty($validated['image'])) {
             $newPath = $this->storeBase64Image(
                 $validated['image'],
-                'people/'.$cert->user->uuid.'/certifications',
+                StoragePath::memberCertifications($cert->user),
                 'cert_'.time()
             );
             if ($newPath === null) {
@@ -2562,7 +2677,7 @@ class MemberController extends Controller
     /** Folder an affiliation's uploaded media images live in (app-generated path). */
     private function affiliationMediaFolder(User $member, \App\Models\ClubAffiliation $affiliation): string
     {
-        return 'people/'.$member->uuid.'/affiliations/'.$affiliation->id.'/media';
+        return StoragePath::memberAffiliationMedia($member, $affiliation->id);
     }
 
     /**

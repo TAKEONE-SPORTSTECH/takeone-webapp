@@ -112,12 +112,18 @@
                  class="relative max-h-[88vh] w-full sm:max-w-lg flex flex-col bg-background rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden">
 
                 {{-- Header: the same standing, so opening the sheet never loses it --}}
-                <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
-                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3 sm:hidden"></div>
-                    <div class="flex items-center justify-between gap-3">
-                        <div class="min-w-0">
-                            <h3 class="font-bold text-foreground">{{ __('personal.event_check_title') }}</h3>
-                            <p class="text-[11px] text-muted-foreground mt-0.5"
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, {{ $ckColor }}, {{ $ckColor }}b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-check2-square text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('personal.event_check_title') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5"
                                x-text="started
                                         ? (overridden ? @js(__('personal.event_start_was_overridden')) : @js(__('personal.event_start_running')))
                                         : (items.length === 0 || outstanding === 0
@@ -125,7 +131,7 @@
                                             : outstandingLabel())"></p>
                         </div>
                         <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
-                                class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
                     </div>
                 </div>
 

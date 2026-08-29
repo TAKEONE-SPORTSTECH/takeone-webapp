@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ $bout['a']['name'] }} vs {{ $bout['b']['name'] }} | {{ $e['title'] }}</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0a; --card:#111111; --card-2:#161616; --line:#1f1f1f; --line-2:#262626;
+    --ink:#ededed; --ink-2:#a3a3a3; --muted:#757575;
+    --red:#e61e1e; --red-soft:#ff6b6b; --blue:#2563eb; --blue-soft:#6ea8ff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Archivo',system-ui,sans-serif;overflow:hidden}
+  a{color:var(--ink);text-decoration:none}
+  ::selection{background:rgba(230,30,30,.35)}
+  *{scrollbar-width:thin;scrollbar-color:#2e2e2e transparent}
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#2e2e2e;border-radius:999px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--red)}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+
+  .app{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+
+  /* ── Player (pinned) ── */
+  .player{flex:0 0 auto;aspect-ratio:16/9;background:#000;display:flex;align-items:stretch}
+  .player.fs{position:fixed;inset:0;z-index:9999;aspect-ratio:auto;height:100%;max-width:none}
+  .player.fs-rot{position:fixed;top:0;left:0;width:100vh;height:100vw;transform:rotate(90deg) translateY(-100%);transform-origin:top left;z-index:9999;aspect-ratio:auto;max-width:none}
+  .video-area{position:relative;flex:1;min-width:0}
+  .video-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 42%,#242424 0%,#050505 75%)}
+  .video-el{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent}
+  /* Real integration: replace .video-bg with your <video> element */
+
+  .scorechip{position:absolute;top:10px;left:10px;display:flex;align-items:stretch;border-radius:7px;overflow:hidden;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  .scorechip .rnd{background:#141414;color:var(--ink-2);padding:6px 8px;font-family:'Archivo',sans-serif;font-size:9px;font-weight:800;letter-spacing:1.5px;display:flex;align-items:center}
+  .scorechip .aka{background:var(--red);color:#fff;padding:6px 10px}
+  .scorechip .ao{background:var(--blue);color:#fff;padding:6px 10px}
+  .scorechip .clk{background:#141414;color:var(--ink);padding:6px 8px;display:flex;align-items:center}
+
+  .play-btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;background:rgba(230,30,30,.92);color:#fff;font-size:20px;display:grid;place-items:center;box-shadow:0 6px 24px rgba(230,30,30,.4)}
+  .toast{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);max-width:90%;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);border-radius:7px;padding:6px 12px;font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none}
+  .toast.show{display:block}
+  .ctrl{position:absolute;left:0;right:0;bottom:0;padding:8px 12px 9px;background:linear-gradient(to top,rgba(0,0,0,.8),transparent);display:flex;flex-direction:column;gap:6px}
+  .ctrl-track{height:3px;border-radius:2px;background:rgba(255,255,255,.18);position:relative}
+  .ctrl-fill{position:absolute;left:0;top:0;bottom:0;background:var(--red);border-radius:2px}
+  .ctrl-row{display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#ccc}
+  .ctrl-right{display:inline-flex;align-items:center;gap:12px}
+  .ctrl-quality{font-family:'Archivo',sans-serif;font-weight:600;color:var(--ink-2)}
+  .fs-btn{background:none;border:none;color:#ccc;font-size:16px;line-height:1;cursor:pointer;padding:2px 4px}
+
+  /* Fullscreen highlights button + docked panel */
+  .back-btn{position:absolute;top:10px;right:10px;z-index:20;display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.55);color:var(--ink);font-family:inherit;font-size:11.5px;font-weight:700;text-decoration:none;backdrop-filter:blur(6px);letter-spacing:.3px}
+  .player.fs .back-btn,.player.fs-rot .back-btn{display:none}
+  .m-photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .fs-hl-btn{position:absolute;top:10px;right:10px;z-index:20;display:none;align-items:center;gap:6px;padding:8px 13px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.55);color:var(--ink);font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;backdrop-filter:blur(6px);letter-spacing:.3px}
+  .player.fs .fs-hl-btn,.player.fs-rot .fs-hl-btn{display:inline-flex}
+  .fs-hl-btn.on{border-color:rgba(230,30,30,.5);background:rgba(230,30,30,.25);color:var(--red-soft)}
+  .fs-panel{width:min(320px,45%);flex-shrink:0;display:none;flex-direction:column;background:#0d0d0d;border-left:1px solid var(--line-2);overflow:hidden}
+  .player.fs .fs-panel.open,.player.fs-rot .fs-panel.open{display:flex}
+  .fs-panel .tab{padding:11px 6px;font-size:12px}
+  .fs-panel .rhead{background:#0d0d0d}
+
+  /* ── Tabs ── */
+  .tabs{flex:0 0 auto;display:flex;gap:2px;padding:4px 12px 0;border-bottom:1px solid var(--line)}
+  .tab{flex:1;padding:10px 2px 12px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;letter-spacing:.2px;white-space:nowrap}
+  .tab.on{color:var(--ink);border-bottom-color:var(--red)}
+
+  /* ── The ONLY scrolling region ── */
+  .scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .pane{display:none}
+  .pane.on{display:block}
+
+  /* Points */
+  .pane-points{padding:0 16px 24px}
+  .rhead{position:sticky;top:0;z-index:2;background:var(--bg);display:flex;align-items:center;justify-content:space-between;margin:0 -16px;padding:12px 16px 8px;border-bottom:1px solid var(--line)}
+  .rname{font-size:11px;font-weight:800;letter-spacing:1.8px}
+  .rcount{font-size:10.5px;color:var(--muted);font-weight:500}
+  .pt-row{display:grid;grid-template-columns:52px 12px 1fr auto;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--card-2);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .pt-row:active{background:var(--card-2)}
+  .pt-time{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--ink-2);background:#181818;border:1px solid var(--line-2);border-radius:6px;padding:5px 0;text-align:center}
+  .pt-dot{width:8px;height:8px;border-radius:50%;justify-self:center}
+  .pt-dot.aka{background:var(--red)} .pt-dot.ao{background:var(--blue)}
+  /* Both fighters scored in the same instant — one moment, two colours. */
+  .pt-dot.both{background:linear-gradient(180deg,var(--red) 0 50%,var(--blue) 50% 100%)}
+  .pt-action{font-size:13px;font-weight:600;line-height:1.3}
+  .pt-pts{font-size:10px;font-weight:800;color:var(--muted);background:rgba(255,255,255,.06);border-radius:4px;padding:1px 5px;margin-left:3px}
+  .pt-who{font-size:10.5px;color:var(--muted);font-weight:500;margin-top:2px}
+  .pt-score{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--ink-2)}
+  .fs-panel .pt-row{grid-template-columns:46px 10px 1fr auto;gap:8px;padding:10px 0}
+  .fs-panel .pt-action{font-size:11.5px} .fs-panel .pt-who{font-size:10px}
+  .fs-panel .pt-time{font-size:10.5px;padding:4px 0} .fs-panel .pt-score{font-size:11px}
+
+  /* Review timeline */
+  .pane-review{padding:18px 16px 24px}
+  .rv-wrap{position:relative;padding-left:26px}
+  .rv-spine{position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:rgba(255,255,255,.07)}
+  .rv-item{position:relative;margin-bottom:18px}
+  .rv-item::before{content:'';position:absolute;left:-23px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--red);box-shadow:0 0 0 3px rgba(230,30,30,.2)}
+  .rv-range{font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.5px;color:var(--red-soft);margin-bottom:6px}
+  .rv-card{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:11px 12px;cursor:pointer}
+  .rv-card:active{background:rgba(255,255,255,.06)}
+  .rv-emoji{font-size:17px;line-height:1.3;flex-shrink:0}
+  .rv-note{font-size:13px;font-weight:500;line-height:1.45}
+  .rv-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px}
+  .rv-author{font-size:10.5px;color:var(--muted);font-weight:600}
+  .rv-slowmo{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;letter-spacing:.5px;color:var(--red-soft);background:rgba(230,30,30,.12);border-radius:6px;padding:4px 8px}
+  .fs-panel .pane-review{padding:14px 12px}
+  .fs-panel .rv-wrap{padding-left:22px} .fs-panel .rv-spine{left:6px}
+  .fs-panel .rv-item{margin-bottom:14px}
+  .fs-panel .rv-item::before{left:-21px;top:2px;width:11px;height:11px}
+  .fs-panel .rv-note{font-size:11.5px} .fs-panel .rv-emoji{font-size:15px}
+  .fs-panel .rv-range{font-size:10px}
+
+  /* Match tab */
+  /* The flex belongs to the ACTIVE state, not to the pane. Declared on
+     .pane-match it lands after .pane{display:none} at equal specificity and
+     wins, so the match pane stayed on screen under Points, Review and
+     Comments too. */
+  .pane-match{padding:16px;flex-direction:column;gap:16px}
+  .pane-match.on{display:flex}
+  .m-head{text-align:center}
+  .m-event{font-size:17px;font-weight:800;letter-spacing:.3px}
+  .m-sub{font-size:12px;font-weight:600;color:var(--ink-2);margin-top:4px}
+  .m-meta{font-size:10.5px;color:var(--muted);font-weight:500;margin-top:3px}
+  .m-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+  .m-fighter{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+  .m-photo{width:72px;height:96px;border-radius:10px;background:#1a1a1a;border:1px dashed #333;display:grid;place-items:center;font-size:9px;color:var(--muted);overflow:hidden}
+  .m-photo img{width:100%;height:100%;object-fit:cover}
+  .m-corner{font-size:10px;font-weight:800;letter-spacing:1.2px}
+  .m-name{font-size:13.5px;font-weight:700;margin-top:3px}
+  .m-team{font-size:10.5px;color:var(--muted);font-weight:500;margin-top:2px}
+  .m-score-lbl{font-size:9px;font-weight:800;letter-spacing:2px;color:var(--muted);margin-bottom:4px;text-align:center}
+  .m-score{display:flex;align-items:baseline;gap:7px;justify-content:center;font-family:'JetBrains Mono',monospace}
+  .m-score .aka{font-size:28px;font-weight:600;color:var(--red-soft)}
+  .m-score .ao{font-size:28px;font-weight:600;color:var(--blue-soft)}
+  .m-score .dash{font-size:14px;color:#404040}
+  .m-officials{padding-top:16px;border-top:1px solid var(--line)}
+  .m-off-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .sec-lbl{font-size:9px;font-weight:800;letter-spacing:2px;color:var(--muted)}
+  .m-off-meta{font-size:11px;color:var(--ink-2);font-weight:500}
+  .m-off-meta b{color:var(--muted);font-weight:500}
+  .m-off-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .m-official{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+  .o-photo{width:48px;height:64px;border-radius:8px;background:#1a1a1a;border:1px dashed #333;overflow:hidden}
+  .o-photo img{width:100%;height:100%;object-fit:cover}
+  .o-name{font-size:11px;font-weight:700;white-space:nowrap}
+  .o-role{font-size:9.5px;color:var(--muted);font-weight:500}
+  .m-actions{display:flex;gap:8px;padding-top:4px}
+  .m-actions button{flex:1;padding:10px;border-radius:9px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+  .m-actions .accent{border-color:rgba(230,30,30,.4);background:rgba(230,30,30,.12);color:var(--red-soft)}
+
+  /* Comments */
+  .pane-comments{padding:16px}
+  .cm-compose{display:flex;gap:10px;margin-bottom:18px}
+  .cm-avatar{width:33px;height:44px;flex-shrink:0;border-radius:7px;display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--ink)}
+  .cm-input{width:100%;background:var(--card-2);border:1px solid var(--line-2);border-radius:9px;padding:10px 13px;color:var(--ink);font-family:inherit;font-size:13px;outline:none}
+  .cm-input:focus{border-color:var(--red)}
+  .cm-post{padding:8px 15px;border-radius:8px;border:none;background:var(--red);color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+  .cm-cancel{padding:8px 13px;border-radius:8px;border:1px solid var(--line-2);background:none;color:var(--ink-2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  .cm-list{display:flex;flex-direction:column;gap:16px}
+  .cm-item{display:flex;gap:10px}
+  .cm-name{font-size:12.5px;font-weight:700}
+  .cm-when{font-size:10px;color:var(--muted);font-weight:500;margin-left:7px}
+  .cm-text{font-size:13px;line-height:1.5;margin-top:3px;color:#ccc}
+  .cm-stamp{display:inline-flex;align-items:center;border:1px solid rgba(62,166,255,.4);background:rgba(62,166,255,.12);color:#7dd3fc;border-radius:999px;padding:1px 8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;cursor:pointer;margin-right:5px;vertical-align:1px}
+  .cm-tools{display:flex;align-items:center;gap:12px;margin-top:6px;font-size:11px;font-weight:600;color:var(--muted)}
+  .cm-tools span{cursor:pointer}
+  .cm-tools .reply-on{color:var(--red-soft)}
+  .reply-compose{display:none;gap:8px;margin-top:10px}
+  .reply-compose.open{display:flex}
+  .reply-compose input{flex:1;min-width:0;background:var(--card-2);border:1px solid var(--line-2);border-radius:8px;padding:8px 11px;color:var(--ink);font-family:inherit;font-size:12.5px;outline:none}
+  .reply-compose input:focus{border-color:var(--red)}
+  .reply-compose button{padding:8px 13px;border-radius:8px;border:none;background:var(--red);color:#fff;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;flex-shrink:0}
+  .replies{margin-top:12px;padding-left:14px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:12px}
+  .rp-item{display:flex;gap:8px}
+  .rp-avatar{width:27px;height:36px;flex-shrink:0;border-radius:6px;display:grid;place-items:center;font-size:9.5px;font-weight:800;color:var(--ink)}
+  .rp-name{font-size:12px;font-weight:700}
+  .rp-when{font-size:9.5px;color:var(--muted);font-weight:500;margin-left:6px}
+  .rp-text{font-size:12.5px;line-height:1.5;margin-top:2px;color:#ccc}
+  .rp-mention{color:#7dd3fc;font-weight:600}
+  .rp-tools{margin-top:4px;font-size:10.5px;font-weight:600;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Player: pinned, never moves -->
+  <div class="player" id="player">
+    <div class="video-area">
+      <div class="video-bg"></div>
+@if ($angles)
+      {{-- The real picture. .video-bg stays as the backdrop behind it, so a
+           letterboxed clip still sits on the design's own ground. --}}
+      <video id="vid" class="video-el" playsinline preload="metadata"
+             @if ($angles[0]['poster']) poster="{{ $angles[0]['poster'] }}" @endif></video>
+@endif
+      <div class="scorechip"><span class="rnd">R1</span><span class="aka">0</span><span class="ao">0</span><span class="clk mono">00:00</span></div>
+      <a class="back-btn" href="{{ $bout['gallery_url'] }}">&#8249; {{ __('events.bout_gallery_title') }}</a>
+      <button class="play-btn" id="playBtn">&#9654;</button>
+      <button class="fs-hl-btn" id="fsHlBtn">&#9776; Highlights</button>
+      <div class="toast" id="toast"></div>
+      <div class="ctrl">
+        <div class="ctrl-track"><div class="ctrl-fill" id="fill" style="width:0%"></div></div>
+        <div class="ctrl-row">
+          <span id="clock">00:00 / 00:00</span>
+          <span class="ctrl-right">
+            <span class="ctrl-quality">1080p</span>
+            <button class="fs-btn" id="fsBtn" title="Fullscreen">&#x26F6;</button>
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- Fullscreen docked panel (JS fills tabs + lists) -->
+    <div class="fs-panel" id="fsPanel"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-pane="match">Match</button>
+    <button class="tab" data-pane="points">Points</button>
+    <button class="tab" data-pane="review">Review</button>
+    <button class="tab" data-pane="comments">Comments</button>
+  </div>
+
+  <!-- The ONLY scrolling region -->
+  <div class="scroll">
+
+    <div class="pane pane-match on" data-pane="match">
+      <div class="m-head">
+        <div class="m-event">{{ $e['title'] }}</div>
+        <div class="m-sub">{{ collect([$bout['round'], $bout['division'], __('events.bout_gallery_bout', ['n' => $bout['match_no']]), $bout['court'] ? __('events.bout_card_court').' '.$bout['court'] : null])->filter()->unique()->implode(' · ') }}</div>
+        <div class="m-meta">{{ $e['date'] }}</div>
+      </div>
+      <div class="m-grid">
+        <div class="m-fighter">
+          <div class="m-photo">@if ($bout['a']['photo'])<img src="{{ $bout['a']['photo'] }}" alt="">@else<span>{{ $bout['a']['corner_label'] }}</span>@endif</div>
+          <div>
+            <div class="m-corner" style="color:var(--{{ $bout['a']['colour'] === 'red' ? 'red' : 'blue' }}-soft)">{{ $bout['a']['corner_label'] }}</div>
+            <div class="m-name">{{ $bout['a']['name'] ?: '—' }}</div>
+            <div class="m-team">@if ($bout['a']['country'])<span class="fi fi-{{ strtolower($bout['a']['country']) }}"></span> @endif{{ $bout['a']['club'] }}</div>
+          </div>
+        </div>
+        <div>
+          <div class="m-score-lbl">{{ $bout['winner'] ? __('events.bout_video_final') : __('events.bout_video_score') }}</div>
+          <div class="m-score"><span class="aka">{{ $bout['a']['score'] ?? '0' }}</span><span class="dash">&ndash;</span><span class="ao">{{ $bout['b']['score'] ?? '0' }}</span></div>
+        </div>
+        <div class="m-fighter">
+          <div class="m-photo">@if ($bout['b']['photo'])<img src="{{ $bout['b']['photo'] }}" alt="">@else<span>{{ $bout['b']['corner_label'] }}</span>@endif</div>
+          <div>
+            <div class="m-corner" style="color:var(--{{ $bout['b']['colour'] === 'red' ? 'red' : 'blue' }}-soft)">{{ $bout['b']['corner_label'] }}</div>
+            <div class="m-name">{{ $bout['b']['name'] ?: '—' }}</div>
+            <div class="m-team">@if ($bout['b']['country'])<span class="fi fi-{{ strtolower($bout['b']['country']) }}"></span> @endif{{ $bout['b']['club'] }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="m-officials">
+        <div class="m-off-head">
+          <span class="sec-lbl">OFFICIALS</span>
+          <span class="m-off-meta">@if ($bout['court'])<b>{{ __('events.bout_card_court') }}&nbsp;</b>{{ $bout['court'] }}@endif</span>
+        </div>
+        <div class="m-off-grid" id="officials"></div>
+      </div>
+      <div class="m-actions">
+        <button>&#9825; Like</button>
+        <button>&#8599; Share</button>
+        <button class="accent">&#8681; Download</button>
+      </div>
+    </div>
+
+    <div class="pane pane-points" data-pane="points" id="pointsPane"></div>
+
+    <div class="pane pane-review" data-pane="review" id="reviewPane"></div>
+
+    <div class="pane pane-comments" data-pane="comments">
+      <div class="cm-compose">
+        <div class="cm-avatar" style="background:linear-gradient(135deg,#333,#1f1f1f)">You</div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+          <input class="cm-input" id="cmInput" placeholder="Add a comment&hellip;">
+          <div style="display:none;justify-content:flex-end;gap:8px" id="cmActions">
+            <button class="cm-cancel" id="cmCancel">Cancel</button>
+            <button class="cm-post" id="cmPost">Comment</button>
+          </div>
+        </div>
+      </div>
+      <div class="cm-list" id="cmList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════ DATA — from the platform, not typed by anyone ══════════ */
+const ROUNDS  = @json($rounds);
+const REVIEWS = @json($reviews);
+const OFFICIALS = @json($officials);
+const COMMENTS  = @json($comments);
+const DURATION  = @json($duration);
+const ENDPOINTS = {
+  comment: @json(route('me.events.bout.comments.store', ['event' => $e['key'], 'matchNo' => $bout['match_no']])),
+  csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
+};
+const SOURCES = @json(collect($angles)->map(fn ($a) => ['label' => $a['label'], 'hls' => $a['hls'], 'mp4' => $a['mp4']])->values());
+const HLS_LIB = @json(asset('vendor/hls/hls.min.js'));
+
+/* ══════════ Escaping ══════════
+   Every value below is written by a person — a competitor's name typed on the
+   entry sheet, a coach's note, somebody's comment — and every one of them ends
+   up inside an innerHTML string. Without this, a comment containing an image
+   tag with an onerror handler would execute for every viewer of the bout. Do
+   not write a literal example here: prose in a script is still bytes in the
+   page, and both scanners and reviewers have to treat it as real. The DATA
+   arrives safely — the Blade json directive hex-escapes it into the script — so
+   this closes
+   the second half of the path: safe data, unsafely re-assembled. */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* A class name is not free text: only the three the stylesheet knows. */
+const side = s => (['aka','ao','both'].includes(s) ? s : 'both');
+
+
+/* ══════════ Player — the real <video>, driving the design's own chrome ══════════ */
+const vid = document.getElementById('vid');
+const fmt = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+
+/* An HLS ladder needs hls.js everywhere but Safari. Fetched on demand: a
+   deferred <script> would lose the race with this file and every player would
+   silently fall back to the full-size original. */
+function attachSource(){
+  if (!vid || !SOURCES.length) return;
+  const s = SOURCES[0];
+  if (!s.hls) { vid.src = s.mp4; return; }
+  if (vid.canPlayType('application/vnd.apple.mpegurl')) { vid.src = s.hls; return; }
+  const go = () => {
+    if (!window.Hls || !window.Hls.isSupported()) { vid.src = s.mp4; return; }
+    const h = new window.Hls(); h.loadSource(s.hls); h.attachMedia(vid);
+  };
+  if (window.Hls) { go(); return; }
+  const tag = document.createElement('script');
+  tag.src = HLS_LIB; tag.onload = go; tag.onerror = () => { vid.src = s.mp4; };
+  document.head.appendChild(tag);
+}
+attachSource();
+
+function duration(){ return (vid && isFinite(vid.duration) && vid.duration) ? vid.duration : DURATION; }
+
+function paint(){
+  if (!vid) return;
+  const t = vid.currentTime || 0, d = duration();
+  document.getElementById('fill').style.width = (d ? t/d*100 : 0).toFixed(1)+'%';
+  document.getElementById('clock').textContent = fmt(Math.floor(t))+' / '+fmt(Math.floor(d));
+  scorechip(t);
+}
+
+function seek(secs, label){
+  if (vid) { vid.currentTime = Math.max(0, secs); vid.play().catch(()=>{}); }
+  paint();
+  const toast = document.getElementById('toast');
+  if(label){ toast.textContent = label; toast.classList.add('show'); clearTimeout(toast._h); toast._h = setTimeout(()=>toast.classList.remove('show'),2500); }
+}
+
+document.getElementById('playBtn').onclick = function(){
+  if (!vid) return;
+  if (vid.paused) { vid.play().catch(()=>{}); } else { vid.pause(); }
+};
+if (vid) {
+  vid.addEventListener('play',  () => document.getElementById('playBtn').innerHTML = '&#10074;&#10074;');
+  vid.addEventListener('pause', () => document.getElementById('playBtn').innerHTML = '&#9654;');
+  vid.addEventListener('timeupdate', paint);
+  vid.addEventListener('loadedmetadata', paint);
+  document.querySelector('.ctrl-track').addEventListener('click', e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    seek(((e.clientX - r.left) / r.width) * duration());
+  });
+}
+
+/* The chip over the picture follows the same derived timeline the lists do. */
+function scorechip(t){
+  const chip = document.querySelector('.scorechip'); if (!chip) return;
+  let round = null, last = null, n = 0;
+  ROUNDS.forEach((r, i) => r.points.forEach(p => {
+    if (p.secs <= t + 0.001) { last = p; round = r; n = i + 1; }
+  }));
+  chip.querySelector('.rnd').textContent = 'R' + (n || 1);
+  const score = (last ? last.score : '0–0').split('–');
+  chip.querySelector('.aka').textContent = score[0] ?? '0';
+  chip.querySelector('.ao').textContent  = score[1] ?? '0';
+  chip.querySelector('.clk').textContent = fmt(Math.floor(t));
+}
+
+/* ══════════ Shared list renderers ══════════ */
+function renderPoints(mount){
+  ROUNDS.forEach(r => {
+    const h = document.createElement('div'); h.className = 'rhead';
+    h.innerHTML = '<span class="rname">'+esc(r.name)+'</span><span class="rcount">'+r.points.length+' points</span>';
+    mount.append(h);
+    r.points.forEach(p => {
+      const row = document.createElement('div'); row.className = 'pt-row';
+      row.innerHTML = '<span class="pt-time">'+esc(p.time)+'</span><span class="pt-dot '+side(p.side)+'"></span>'
+        + '<span style="min-width:0"><span class="pt-action" style="display:block">'+esc(p.action)+'<span class="pt-pts">'+esc(p.pts)+'</span></span>'
+        + '<span class="pt-who" style="display:block">'+esc(p.who)+'</span></span>'
+        + '<span class="pt-score">'+esc(p.score)+'</span>';
+      row.onclick = () => seek(p.secs, p.action+' · '+p.who.split(' ·')[0]);
+      mount.append(row);
+    });
+  });
+}
+function renderReviews(mount){
+  const wrap = document.createElement('div'); wrap.className = 'rv-wrap';
+  wrap.innerHTML = '<div class="rv-spine"></div>';
+  REVIEWS.forEach(rv => {
+    const it = document.createElement('div'); it.className = 'rv-item';
+    it.innerHTML = '<div class="rv-range">'+esc(rv.range)+'</div>'
+      + '<div class="rv-card"><span class="rv-emoji">'+esc(rv.emoji)+'</span>'
+      + '<span style="min-width:0;flex:1"><span class="rv-note" style="display:block">'+esc(rv.note)+'</span>'
+      + '<span class="rv-foot"><span class="rv-author">'+esc(rv.author)+'</span>'
+      + '<span class="rv-slowmo">&#9654; SLOW-MO</span></span></span></div>';
+    it.querySelector('.rv-card').onclick = () => seek(rv.secs, 'Coach review · '+rv.range);
+    wrap.append(it);
+  });
+  mount.append(wrap);
+}
+renderPoints(document.getElementById('pointsPane'));
+renderReviews(document.getElementById('reviewPane'));
+
+/* ══════════ Main tabs ══════════ */
+document.getElementById('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab'); if(!tab) return;
+  document.querySelectorAll('#tabs .tab').forEach(x => x.classList.toggle('on', x === tab));
+  document.querySelectorAll('.scroll .pane').forEach(p => p.classList.toggle('on', p.dataset.pane === tab.dataset.pane));
+});
+
+/* ══════════ Fullscreen: landscape + docked highlights ══════════ */
+const player = document.getElementById('player');
+const fsPanel = document.getElementById('fsPanel');
+const fsHlBtn = document.getElementById('fsHlBtn');
+// build the docked panel: Points / Review tabs
+fsPanel.innerHTML = '<div style="display:flex;border-bottom:1px solid var(--line-2);flex-shrink:0">'
+  + '<button class="tab on" data-fs="points">Points</button><button class="tab" data-fs="review">Review</button></div>'
+  + '<div class="pane pane-points on" data-fs-pane="points" style="flex:1;min-height:0;overflow-y:auto;padding:2px 12px 12px"></div>'
+  + '<div class="pane pane-review" data-fs-pane="review" style="flex:1;min-height:0;overflow-y:auto"></div>';
+renderPoints(fsPanel.querySelector('[data-fs-pane=points]'));
+renderReviews(fsPanel.querySelector('[data-fs-pane=review]'));
+fsPanel.addEventListener('click', e => {
+  const tab = e.target.closest('.tab'); if(!tab) return;
+  fsPanel.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === tab));
+  fsPanel.querySelectorAll('[data-fs-pane]').forEach(p => p.classList.toggle('on', p.dataset.fsPane === tab.dataset.fs));
+});
+fsHlBtn.onclick = () => { fsHlBtn.classList.toggle('on', fsPanel.classList.toggle('open')); };
+
+function exitFs(){ player.classList.remove('fs','fs-rot'); fsPanel.classList.remove('open'); fsHlBtn.classList.remove('on'); }
+document.getElementById('fsBtn').onclick = () => {
+  if (document.fullscreenElement) { document.exitFullscreen(); return; }
+  if (player.classList.contains('fs') || player.classList.contains('fs-rot')) { exitFs(); return; }
+  const goFake = () => player.classList.add(window.innerHeight > window.innerWidth ? 'fs-rot' : 'fs');
+  if (document.fullscreenEnabled && player.requestFullscreen) {
+    player.requestFullscreen()
+      .then(() => { player.classList.add('fs'); try { screen.orientation.lock('landscape').catch(()=>{}); } catch(_){} })
+      .catch(goFake);
+  } else goFake();
+};
+document.addEventListener('fullscreenchange', () => {
+  if(!document.fullscreenElement){ try{ screen.orientation.unlock?.(); }catch(_){} exitFs(); }
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape') exitFs(); });
+
+/* ══════════ Officials ══════════ */
+document.getElementById('officials').innerHTML = OFFICIALS.map(o =>
+  '<div class="m-official"><div class="o-photo"></div><div><div class="o-name">'+esc(o.name)+'</div><div class="o-role">'+esc(o.role)+'</div></div></div>'
+).join('');
+
+/* ══════════ Comments + replies ══════════ */
+const cmList = document.getElementById('cmList');
+let replyOpenKey = null;
+function renderComments(){
+  cmList.innerHTML = '';
+  COMMENTS.forEach(c => {
+    const el = document.createElement('div'); el.className = 'cm-item';
+    const repliesHtml = c.replies.map(r =>
+      '<div class="rp-item"><div class="rp-avatar" style="background:'+esc(r.bg)+'">'+esc(r.initials)+'</div>'
+      + '<div style="min-width:0;flex:1"><span class="rp-name">'+esc(r.name)+'</span><span class="rp-when">'+esc(r.when)+'</span>'
+      + '<div class="rp-text">'+(r.mention ? '<span class="rp-mention">'+esc(r.mention)+'&nbsp;</span>' : '')+esc(r.text)+'</div>'
+      + '<div class="rp-tools" data-like="'+esc(r.key)+'">&#9825; '+Number(r.likes || 0)+'</div></div></div>'
+    ).join('');
+    el.innerHTML = '<div class="cm-avatar" style="background:'+esc(c.bg)+'">'+esc(c.initials)+'</div>'
+      + '<div style="min-width:0;flex:1"><span class="cm-name">'+esc(c.name)+'</span><span class="cm-when">'+esc(c.when)+'</span>'
+      + '<div class="cm-text">'+(c.stamp ? '<button class="cm-stamp">'+esc(c.stamp)+'</button>' : '')+esc(c.text)+'</div>'
+      + '<div class="cm-tools"><span class="cm-like'+(c.liked?' reply-on':'')+'">&#9825; '+Number(c.likes || 0)+'</span><span class="reply-btn'+(replyOpenKey===c.key?' reply-on':'')+'">Reply</span></div>'
+      + '<div class="reply-compose'+(replyOpenKey===c.key?' open':'')+'"><input placeholder="Reply to '+esc(c.name)+'&hellip;"><button>Reply</button></div>'
+      + (c.replies.length ? '<div class="replies">'+repliesHtml+'</div>' : '');
+    const st = el.querySelector('.cm-stamp');
+    if (st) st.onclick = () => seek(c.secs, 'Comment · '+c.stamp);
+    el.querySelector('.reply-btn').onclick = () => { replyOpenKey = replyOpenKey === c.key ? null : c.key; renderComments(); };
+    el.querySelector('.cm-like').onclick = () => {
+      fetch(ENDPOINTS.comment + '/' + c.key + '/like', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': ENDPOINTS.csrf },
+      }).then(r => r.json()).then(d => {
+        if (!d || !d.success) return;
+        c.likes = d.likes; c.liked = d.liked; renderComments();
+      }).catch(() => {});
+    };
+    const rc = el.querySelector('.reply-compose');
+    const post = () => {
+      const txt = rc.querySelector('input').value.trim(); if(!txt) return;
+      send({ body: txt, parent: c.key }).then(res => {
+        if (!res) return;
+        c.replies.push(Object.assign({}, res.comment, { mention: '@' + c.name.split(' ')[0] }));
+        replyOpenKey = null; renderComments();
+      });
+    };
+    rc.querySelector('button').onclick = post;
+    rc.querySelector('input').onkeydown = e => { if(e.key === 'Enter') post(); };
+    cmList.append(el);
+  });
+}
+renderComments();
+const cmInput = document.getElementById('cmInput'), cmActions = document.getElementById('cmActions');
+cmInput.oninput = () => cmActions.style.display = cmInput.value ? 'flex' : 'none';
+function postComment(){
+  const txt = cmInput.value.trim(); if(!txt) return;
+  /* Comment on the moment being watched: the design shows a timestamp chip, and
+     the only honest value for it is where the playhead actually is. */
+  const at = vid && vid.currentTime > 1 ? Math.floor(vid.currentTime) : null;
+  send({ body: txt, stamp_seconds: at }).then(res => {
+    if (!res) return;
+    COMMENTS.unshift(Object.assign({}, res.comment, { replies: [] }));
+    cmInput.value = ''; cmActions.style.display = 'none'; renderComments();
+  });
+}
+
+/* One door to the server for every comment write. */
+function send(payload){
+  return fetch(ENDPOINTS.comment, {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
+               'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': ENDPOINTS.csrf },
+    body: JSON.stringify(payload),
+  }).then(r => r.json()).then(d => (d && d.success) ? d : null).catch(() => null);
+}
+document.getElementById('cmPost').onclick = postComment;
+document.getElementById('cmCancel').onclick = () => { cmInput.value = ''; cmActions.style.display = 'none'; };
+cmInput.onkeydown = e => { if(e.key === 'Enter') postComment(); };
+
+/* First paint: the chrome must never show a score nobody has reached. */
+paint();
+</script>
+</body>
+</html>

@@ -108,11 +108,25 @@
                  x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                  class="relative w-full bg-white rounded-t-3xl overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
-                <div class="px-5 pt-3">
-                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
-                    <h3 class="text-base font-bold text-gray-900 pb-3">{{ __('admin.club_activities_index_add_activity') }}</h3>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-plus-lg text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('admin.club_activities_index_add_activity') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">Choose an existing activity or create your own</p>
+                        </div>
+                        <button type="button" @click="chooserOpen=false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3 px-5 pb-6">
+                <div class="grid grid-cols-2 gap-3 px-5 pt-4 pb-6">
                     <button type="button" @click="openLibrary()" class="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-dashed border-primary/30 active:scale-95 transition-transform">
                         <span class="w-11 h-11 rounded-full bg-accent text-primary grid place-items-center"><i class="bi bi-collection text-xl"></i></span>
                         <span class="font-semibold text-[13px] text-gray-900">Choose existing</span>
@@ -134,10 +148,25 @@
                  x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                  class="relative w-full bg-white rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden">
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-collection text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">Choose an activity</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">Tap to add it to your club instantly</p>
+                        </div>
+                        <button type="button" @click="libraryOpen=false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
                 <div class="flex-shrink-0 px-5 pt-3">
-                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
-                    <h3 class="text-base font-bold text-gray-900">Choose an activity</h3>
-                    <p class="text-xs text-muted-foreground pb-2">Tap to add it to your club instantly</p>
                     <div class="relative pb-3">
                         <i class="bi bi-search absolute left-3 top-2.5 text-gray-400"></i>
                         <input type="text" x-model="librarySearch" placeholder="Search…" class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm">
@@ -172,12 +201,25 @@
                  x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                  class="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
-                <div class="flex-shrink-0 px-5 pt-3">
-                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
-                    <h3 class="text-base font-bold text-gray-900">Choose a style</h3>
-                    <p class="text-xs text-muted-foreground pb-2"><span x-text="pendingActivity ? pendingActivity.name : ''"></span> has more than one style — pick the one you teach.</p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-award text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">Choose a style</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5"><span x-text="pendingActivity ? pendingActivity.name : ''"></span> has more than one style — pick the one you teach.</p>
+                        </div>
+                        <button type="button" @click="styleOpen=false; pendingActivity=null" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="flex-1 overflow-y-auto px-3 pb-5 space-y-2">
+                <div class="flex-1 overflow-y-auto px-3 pt-3 pb-5 space-y-2">
                     <template x-for="(v, i) in (pendingActivity ? pendingActivity.variants : [])" :key="i">
                         <button type="button" @click="chooseStyle(v)" :disabled="saving"
                                 class="w-full text-left px-4 py-3 rounded-xl border border-border active:bg-accent flex items-center gap-3">
@@ -204,16 +246,27 @@
                  x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                  class="relative w-full bg-white rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden">
                 {{-- Header --}}
-                <div class="flex-shrink-0 px-5 pt-3">
-                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
-                    <div class="flex items-center justify-between pb-3">
-                        <h3 class="text-base font-bold text-gray-900" x-text="editingId ? '{{ __('admin.club_activities_index_edit_activity') }}' : '{{ __('admin.club_activities_index_add_activity') }}'"></h3>
-                        <button type="button" @click="sheetOpen = false" class="w-8 h-8 rounded-full grid place-items-center text-gray-500 hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-activity text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight" x-text="editingId ? '{{ __('admin.club_activities_index_edit_activity') }}' : '{{ __('admin.club_activities_index_add_activity') }}'"></h3>
+                            <p class="text-[12px] text-white/85 mt-0.5" x-show="form.name" x-text="form.name"></p>
+                        </div>
+                        <button type="button" @click="sheetOpen = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
                 </div>
 
                 {{-- Scrollable body --}}
-                <div class="flex-1 overflow-y-auto px-5 pb-2 space-y-4">
+                <div class="flex-1 overflow-y-auto px-5 pt-4 pb-2 space-y-4">
                     {{-- Picture --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.components_activity_modal_activity_picture') }}</label>
@@ -293,19 +346,27 @@
                  x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                  class="relative w-full bg-white rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden">
                 {{-- Header --}}
-                <div class="flex-shrink-0 px-5 pt-3">
-                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
-                    <div class="flex items-center justify-between pb-3">
-                        <div class="min-w-0">
-                            <h3 class="text-base font-bold text-gray-900">{{ __('shared.activity_equipment_modal_title') }}</h3>
-                            <p class="text-xs text-muted-foreground mt-0.5 truncate">{{ __('shared.activity_equipment_modal_subtitle') }} <span class="font-medium text-foreground" x-text="equipActivityName"></span></p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-bag text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('shared.activity_equipment_modal_title') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ __('shared.activity_equipment_modal_subtitle') }} <span class="font-bold" x-text="equipActivityName"></span></p>
                         </div>
-                        <button type="button" @click="equipOpen = false" class="w-8 h-8 rounded-full grid place-items-center text-gray-500 hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                        <button type="button" @click="equipOpen = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
                 </div>
 
                 {{-- Scrollable body --}}
-                <div class="flex-1 overflow-y-auto px-5 pb-2 space-y-5">
+                <div class="flex-1 overflow-y-auto px-5 pt-4 pb-2 space-y-5">
                     <div x-show="equipLoading" class="text-center py-10 text-muted-foreground">
                         <i class="bi bi-arrow-repeat animate-spin text-2xl"></i>
                     </div>

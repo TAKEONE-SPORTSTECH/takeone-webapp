@@ -53,6 +53,7 @@
         </div>
     </header>
 
+
     @if(empty($demoList))
         <div class="px-4 mt-6">
             <div class="bg-white rounded-2xl border border-gray-100 px-5 py-12 text-center">

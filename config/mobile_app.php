@@ -8,10 +8,15 @@ return [
     |--------------------------------------------------------------------------
     |
     | Drives the in-app "Get the App / Update available" hub. After building a
-    | new APK, bump these to match `versionName`/`versionCode` in
-    | mobile/android/app/build.gradle, drop the new APK at the `apk_url` path
-    | (public/app/takeone.apk by default), and users on older builds will see
-    | "Update available".
+    | new APK — `./flutter/TV/build.sh app https://takeone.bh` — bump these to
+    | match the VERSION_CODE/VERSION_NAME that build.sh stamps for the `app`
+    | variant, drop the new APK at the `apk_url` path (public/app/takeone.apk by
+    | default), and users on older builds will see "Update available".
+    |
+    | ⚠️ Bump these ONLY once the APK is actually published at `apk_url`. The
+    | installed app compares its own versionCode against `version_code` and
+    | offers a download; raising this first sends every phone to a file that is
+    | not there yet.
     |
     */
 

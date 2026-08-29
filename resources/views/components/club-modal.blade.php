@@ -39,31 +39,36 @@
          class="fixed inset-0 flex items-end sm:items-center justify-center sm:p-4">
 
         <div class="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-5xl max-h-[92vh] sm:max-h-[90vh] flex flex-col" @click.stop>
-            <!-- Drag handle (mobile only) -->
-            <div class="pt-2.5 pb-1 flex justify-center sm:hidden flex-shrink-0"><span class="w-10 h-1.5 rounded-full bg-gray-300"></span></div>
+            <!-- Modal Header band (Design Rule #8) -->
+            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                 style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
 
-            <!-- Modal Header -->
-            <div class="px-4 sm:px-6 pt-2 sm:pt-6 pb-0 flex-shrink-0">
-                <div class="flex justify-between items-start mb-3">
-                    <div>
-                        <h4 class="text-xl font-bold mb-1" x-text="mode === 'edit' ? 'Edit Club' : 'Create New Club'"></h4>
-                        <p class="text-muted-foreground text-sm mb-0">{{ __('shared.components_club_modal_subtitle') }}</p>
+                <div class="relative flex items-start gap-3">
+                    <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                        <i class="bi bi-buildings text-xl"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h4 class="text-lg font-black leading-tight" x-text="mode === 'edit' ? 'Edit Club' : 'Create New Club'"></h4>
+                        <p class="text-[12px] text-white/85 mt-0.5">{{ __('shared.components_club_modal_subtitle') }}</p>
                     </div>
-                    <div class="flex items-center gap-1">
-                        <!-- Ask Coach — opens the AI assistant (continuously animated) -->
-                        <button type="button"
-                                @click="window.openCopilot && window.openCopilot()"
-                                title="{{ __('copilot.fab_title') }}"
-                                class="relative inline-flex items-center justify-center w-9 h-9 rounded-full bg-primary text-white hover:bg-primary/90 transition-colors">
-                            <span class="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 animate-ping"></span>
-                            <i class="bi bi-stars relative text-lg"></i>
-                        </button>
-                        <button @click="closeModal()" class="text-muted-foreground hover:text-foreground transition-colors w-9 h-9 flex items-center justify-center">
-                            <i class="bi bi-x-lg text-xl"></i>
-                        </button>
-                    </div>
+                    <!-- Ask Coach — opens the AI assistant (continuously animated) -->
+                    <button type="button"
+                            @click="window.openCopilot && window.openCopilot()"
+                            title="{{ __('copilot.fab_title') }}"
+                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                        <i class="bi bi-stars relative"></i>
+                    </button>
+                    <button @click="closeModal()" aria-label="{{ __('shared.close') }}"
+                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
                 </div>
+            </div>
 
+            <!-- Steps + tabs -->
+            <div class="px-4 sm:px-6 pt-4 pb-0 flex-shrink-0">
                 <!-- Progress Indicator -->
                 <div class="flex items-center gap-2 mb-3">
                     <span class="badge bg-primary text-white" x-text="'Step ' + (currentTab + 1) + ' of ' + tabs.length"></span>

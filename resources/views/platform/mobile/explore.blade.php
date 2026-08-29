@@ -84,17 +84,21 @@
                  @click.stop>
 
                 {{-- Grab handle + title --}}
-                <div class="flex-shrink-0">
-                    <div class="pt-2.5 pb-1 flex justify-center">
-                        <span class="w-10 h-1.5 rounded-full bg-gray-300"></span>
-                    </div>
-                    <div class="flex items-center justify-between px-4 pb-3">
-                        <h2 class="text-base font-bold text-foreground flex items-center gap-2">
-                            <span class="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-geo-alt-fill"></i></span>
-                            {{ __('explore.set_location') }}
-                        </h2>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-geo-alt-fill text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h2 class="text-lg font-black leading-tight">{{ __('explore.set_location') }}</h2>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('explore.drag_marker') }}</p>
+                        </div>
                         <button type="button" @click="closeMapModal()"
-                                class="m-press w-9 h-9 rounded-xl grid place-items-center text-muted-foreground hover:bg-muted transition-colors"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"
                                 aria-label="{{ __('shared.transactions_modal_close') }}">
                             <i class="bi bi-x-lg"></i>
                         </button>

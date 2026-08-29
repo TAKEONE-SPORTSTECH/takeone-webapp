@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ClubPerkController extends Controller
 {
@@ -24,15 +25,39 @@ class ClubPerkController extends Controller
         return view(\App\Support\ClubView::pick('perks'), compact('club', 'perks'));
     }
 
+    /**
+     * Where this club's perk images live.
+     *
+     * Deliberately unchanged from the path these images have always used
+     * (`perks/{slug}`, a documented legacy root) — moving it would orphan every
+     * perk image already on disk, which is a bigger problem than the tidiness
+     * it would buy. The point of this method is that the club decides the
+     * folder and the request cannot.
+     */
+    private function perkFolder(Tenant $club): string
+    {
+        return 'perks/'.$club->slug;
+    }
+
     public function storePerk(PerkRequest $request, Tenant $club)
     {
         $this->authorizeClub($club);
 
         $imagePath = null;
         if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
-            $folder = $request->input('image_folder', 'perks/'.$club->slug);
-            $filename = $request->input('image_filename', 'perk_'.time());
-            $imagePath = $this->storeBase64Image($request->image, $folder, $filename);
+            // Destination is OURS, never the caller's.
+            //
+            // This used to read `image_folder`/`image_filename` from the request,
+            // with no validation rule for either — so a club admin could write
+            // anywhere on the public disk under any name, and overwrite another
+            // club's logo or cover. No caller has ever sent those fields; the
+            // defaults were always what ran, so ignoring them changes nothing
+            // that works and closes the hole.
+            $imagePath = $this->storeBase64Image(
+                $request->image,
+                $this->perkFolder($club),
+                'perk_'.Str::random(24),
+            );
             if ($imagePath === null) {
                 return back()->withErrors(['image' => 'Invalid or unsupported image.']);
             }
@@ -70,9 +95,12 @@ class ClubPerkController extends Controller
         $data = $request->only(['title', 'description', 'badge', 'icon', 'bg_from', 'bg_to', 'perk_type', 'perk_value', 'status', 'sort_order']);
 
         if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
-            $folder = $request->input('image_folder', 'perks/'.$club->slug);
-            $filename = $request->input('image_filename', 'perk_'.time());
-            $stored = $this->storeBase64Image($request->image, $folder, $filename);
+            // Server-chosen destination — see storePerk().
+            $stored = $this->storeBase64Image(
+                $request->image,
+                $this->perkFolder($club),
+                'perk_'.Str::random(24),
+            );
             if ($stored === null) {
                 return back()->withErrors(['image' => 'Invalid or unsupported image.']);
             }

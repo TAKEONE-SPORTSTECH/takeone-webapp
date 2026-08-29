@@ -14,19 +14,24 @@
             <div class="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-xl max-h-[75vh] flex flex-col"
                  @click.stop
                  x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full sm:translate-y-8 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
-                {{-- grab handle (mobile) --}}
-                <div class="sm:hidden w-10 h-1 rounded-full bg-gray-300 mx-auto mt-2.5"></div>
-
                 {{-- Header --}}
-                <div class="flex items-center justify-between px-5 pt-3 pb-3 border-b border-gray-100">
-                    <div class="flex items-center gap-2">
-                        <i class="bi text-lg" :class="kind === 'likes' ? 'bi-heart-fill text-primary' : 'bi-eye text-primary'"></i>
-                        <p class="text-sm font-bold text-foreground" x-text="kind === 'likes' ? @js(__('personal.likers_title')) : @js(__('personal.viewers_title'))"></p>
-                        <span x-show="!loading" x-cloak class="text-[12px] text-muted-foreground" x-text="'· ' + people.length"></span>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi text-xl" :class="kind === 'likes' ? 'bi-heart-fill' : 'bi-eye'"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight" x-text="kind === 'likes' ? @js(__('personal.likers_title')) : @js(__('personal.viewers_title'))"></h3>
+                            <p x-show="!loading" x-cloak class="text-[12px] text-white/85 mt-0.5" x-text="'· ' + people.length"></p>
+                        </div>
+                        <button type="button" @click="close()" class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform" aria-label="{{ __('personal.close') }}">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <button type="button" @click="close()" class="m-press w-9 h-9 -me-1.5 rounded-full grid place-items-center text-gray-500 hover:bg-muted transition-colors" aria-label="{{ __('personal.close') }}">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
                 </div>
 
                 {{-- Body --}}

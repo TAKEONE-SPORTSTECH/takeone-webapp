@@ -50,38 +50,47 @@
 
     @include('partials.personal-desktop-subnav')
 
-    <a href="{{ route('me.events.show', $e['key']) }}"
-       class="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors mb-4">
-        <i class="bi bi-arrow-left rtl:rotate-180"></i> {{ $e['title'] }}
-    </a>
-
-    {{-- ===== Header band ===== --}}
-    <div class="rounded-2xl overflow-hidden shadow-sm mb-6 text-white relative"
+    {{-- Standard header band (Design Rule #6). Drill-down: the subject's own
+         colour and a labelled back pill to the event. --}}
+    <div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative"
          style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
-        <div class="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-white/10"></div>
-        <div class="absolute right-10 bottom-6 w-24 h-24 rounded-full bg-white/10"></div>
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
-        <div class="relative p-6 sm:p-7 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-                <p class="text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/70 mb-1">
-                    {{ __('personal.event_show_brackets_draws') }}
-                </p>
-                <h1 class="text-2xl font-black leading-tight">{{ $e['title'] }}</h1>
-                <p class="text-sm text-white/80 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span class="inline-flex items-center gap-1.5">
-                        <i class="bi bi-diagram-3 bracket-icon"></i>
-                        {{ count($categories) }} {{ __('personal.personal_event_bracket_divisions') }}
-                    </span>
-                    @if($e['started'] ?? false)
-                        <span class="inline-flex items-center gap-1.5"><i class="bi bi-lock-fill"></i> {{ __('events.bracket_locked') }}</span>
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center justify-between gap-2 mb-4">
+                <a href="{{ route('me.events.show', $e['key']) }}"
+                   class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors">
+                    <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
+                </a>
+
+                <div class="flex items-center gap-2">
+                    @if($canManage ?? false)
+                        <a href="{{ route('me.events.manage', $e['key']) }}" title="{{ __('personal.event_manage_title') }}"
+                           class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors">
+                            <i class="bi bi-sliders text-base"></i>
+                        </a>
                     @endif
-                </p>
+                </div>
             </div>
 
-            {{-- No draw controls here. This page SHOWS the draw; arranging it and
-                 re-cutting it are organiser work and live in the event console
-                 (/manage → Draw and brackets), which opens the full-screen board.
-                 A visitor came to read the bracket, not to run it. --}}
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-diagram-3 bracket-icon"></i> {{ __('personal.event_show_brackets_draws') }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    {{ count($categories) }} {{ __('personal.personal_event_bracket_divisions') }}
+                </span>
+                @if($e['started'] ?? false)
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                        <i class="bi bi-lock-fill"></i> {{ __('events.bracket_locked') }}
+                    </span>
+                @endif
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ $e['title'] }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-building"></i>{{ $e['club'] }}
+            </p>
         </div>
     </div>
 

@@ -49,10 +49,24 @@
             <div x-show="showSheet"
                  x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  class="vouch-col" style="position:absolute;inset-inline:0;bottom:0;max-height:92vh;background:#f4f5f9;border-radius:24px 24px 0 0;box-shadow:0 -12px 40px rgba(9,5,22,.35);color:#1c1c28">
-                <div style="flex-shrink:0;padding:12px 20px 4px">
-                    <div style="width:40px;height:4px;border-radius:999px;background:#d6d8e3;margin:0 auto 12px"></div>
-                    <h3 style="margin:0;font-size:16px;font-weight:800">{{ __('Vouch for this achievement') }}</h3>
-                    <p style="margin:5px 0 0;font-size:12px;line-height:1.5;color:#8a8fa3">{{ __('Only vouch for what you personally witnessed.') }}</p>
+                {{-- Header --}}
+                <div style="flex-shrink:0;position:relative;overflow:hidden;padding:12px 20px 16px;color:#fff;border-radius:24px 24px 0 0;background:linear-gradient(150deg, #7c6bf5, #7c6bf5b0)">
+                    <div style="position:absolute;right:-32px;top:-40px;width:144px;height:144px;border-radius:999px;background:rgba(255,255,255,.10)"></div>
+                    <div style="width:40px;height:4px;border-radius:999px;background:rgba(255,255,255,.4);margin:0 auto 12px"></div>
+
+                    <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                        <span style="flex-shrink:0;width:48px;height:48px;border-radius:16px;background:rgba(255,255,255,.2);display:grid;place-items:center">
+                            <i class="bi bi-patch-check-fill" style="font-size:20px"></i>
+                        </span>
+                        <div style="min-width:0;flex:1">
+                            <h3 style="margin:0;font-size:18px;font-weight:900;line-height:1.2">{{ __('Vouch for this achievement') }}</h3>
+                            <p style="margin:2px 0 0;font-size:12px;line-height:1.5;color:rgba(255,255,255,.85)">{{ __('Only vouch for what you personally witnessed.') }}</p>
+                        </div>
+                        <button type="button" @click="showSheet = false" aria-label="{{ __('shared.close') }}"
+                                style="flex-shrink:0;width:36px;height:36px;border-radius:999px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;display:grid;place-items:center;cursor:pointer;font-family:inherit">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div style="flex:1;min-height:0;overflow-y:auto;padding:14px 20px 4px">

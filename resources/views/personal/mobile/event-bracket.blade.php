@@ -494,12 +494,23 @@
             <div class="absolute inset-0 bg-black/40" @click="editing=null" x-transition.opacity></div>
             <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl max-h-[90vh] flex flex-col"
                  x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-                <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-                    <div class="min-w-0">
-                        <h3 class="font-black text-foreground flex items-center gap-2 truncate"><i class="bi bi-diagram-3-fill bracket-icon" style="color: {{ $color }};"></i> <span x-text="editName">{{ __('personal.personal_event_bracket_draw_fallback') }}</span></h3>
-                        <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_bracket_set_bracket_results_podium') }}</p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-diagram-3-fill bracket-icon text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight truncate"><span x-text="editName">{{ __('personal.personal_event_bracket_draw_fallback') }}</span></h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('personal.personal_event_bracket_set_bracket_results_podium') }}</p>
+                        </div>
+                        <button type="button" @click="editing=null" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <button type="button" @click="editing=null" class="m-press w-8 h-8 rounded-full bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 space-y-4">

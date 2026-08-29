@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Support\StoragePath;
 
 class MessengerController extends Controller
 {
@@ -23,7 +24,14 @@ class MessengerController extends Controller
     /** Private disk + folder where encrypted attachment blobs live. */
     private const ATTACHMENT_DISK = 'local';
 
-    private const ATTACHMENT_DIR = 'chat-attachments';
+    /**
+     * The flat root attachments used to be written to, kept for READING only.
+     *
+     * Files sent before attachments moved under their sender still live here,
+     * and serveAttachment() must keep decrypting them. Nothing writes here any
+     * more — see uploadFile().
+     */
+    private const LEGACY_ATTACHMENT_DIR = 'chat-attachments';
 
     /** Only these (sniffed) types are ever shown inline; all else downloads. */
     private const SAFE_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -214,7 +222,14 @@ class MessengerController extends Controller
         $name = mb_substr($file->getClientOriginalName() ?: ($kind === 'image' ? 'photo' : 'file'), 0, 255);
 
         // Encrypt the raw bytes before they ever touch disk.
-        $path = self::ATTACHMENT_DIR.'/'.$conversation->id.'/'.Str::uuid()->toString();
+        //
+        // Stored under the SENDER, not under the conversation. A conversation is
+        // a join between people and owns nothing on disk, so keying the folder
+        // on its id put every attachment outside any entity's subtree — which is
+        // how these ended up in a flat `chat-attachments/{conversation-id}` root
+        // that no owner can be derived from. The file belongs to the person who
+        // chose to send it.
+        $path = StoragePath::memberChat(Auth::user()).'/'.Str::uuid()->toString();
         Storage::disk(self::ATTACHMENT_DISK)->put($path, Crypt::encryptString($file->get()));
 
         $message = $conversation->messages()->create([

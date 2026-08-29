@@ -30,10 +30,23 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                  class="fixed inset-x-0 bottom-0 z-[60] bg-white rounded-t-3xl shadow-2xl"
                  style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
-                <div class="flex justify-center pt-3 pb-1"><span class="w-10 h-1.5 rounded-full bg-gray-200"></span></div>
-                <div class="px-5 pt-2 pb-1">
-                    <h3 class="text-lg font-bold text-foreground">{{ __('admin.add_member') }}</h3>
-                    <p class="text-sm text-muted-foreground">{{ __('admin.add_member_how') }}</p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-person-plus text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('admin.add_member') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('admin.add_member_how') }}</p>
+                        </div>
+                        <button type="button" @click="menuOpen = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="px-4 py-3 space-y-2.5">
                     <button type="button" @click="startScan()"
@@ -76,12 +89,23 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                  class="fixed inset-x-0 bottom-0 z-[60] bg-white rounded-t-3xl shadow-2xl"
                  style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
-                <div class="flex justify-center pt-3 pb-1"><span class="w-10 h-1.5 rounded-full bg-gray-200"></span></div>
-                <div class="px-5 pt-2 pb-1 flex items-center gap-2">
-                    <button type="button" @click="registerChoiceOpen = false; menuOpen = true" class="m-press -ml-1 w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted"><i class="bi bi-chevron-left"></i></button>
-                    <div>
-                        <h3 class="text-lg font-bold text-foreground">{{ __('admin.register_new') }}</h3>
-                        <p class="text-sm text-muted-foreground">{{ __('admin.register_who') }}</p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <button type="button" @click="registerChoiceOpen = false; menuOpen = true" aria-label="{{ __('shared.back') }}"
+                                class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-chevron-left rtl:rotate-180 text-xl"></i>
+                        </button>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('admin.register_new') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('admin.register_who') }}</p>
+                        </div>
+                        <button type="button" @click="registerChoiceOpen = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="px-4 py-3 space-y-2.5">
@@ -117,13 +141,26 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                  class="fixed inset-x-0 bottom-0 z-[60] bg-white rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
                 {{-- Header --}}
-                <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
-                    <div class="flex justify-center pb-2"><span class="w-10 h-1.5 rounded-full bg-gray-200"></span></div>
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-foreground">{{ __('admin.find_member') }}</h3>
-                        <button type="button" @click="closeFind()" class="m-press w-9 h-9 -mr-1 rounded-full flex items-center justify-center hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-search text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('admin.find_member') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('admin.find_member_hint') }}</p>
+                        </div>
+                        <button type="button" @click="closeFind()" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <div class="relative mt-3">
+                </div>
+                <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
+                    <div class="relative">
                         <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></i>
                         <input type="search" x-model="findQuery" @input.debounce.300ms="doSearch()"
                                placeholder="{{ __('admin.search_email_phone') }}" autocomplete="off"

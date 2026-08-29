@@ -161,19 +161,20 @@
                  class="fixed inset-x-0 bottom-0 z-[60] max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl">
 
                 {{-- Header --}}
-                <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-border rounded-t-3xl bg-white">
-                    <div class="w-10 h-1.5 rounded-full bg-gray-300 mx-auto"></div>
-                    <div class="flex items-center justify-between mt-3">
-                        <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="w-10 h-10 rounded-2xl bg-accent text-primary grid place-items-center flex-shrink-0">
-                                <i class="bi" :class="form.icon || 'bi-lightning-charge'"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <h2 class="text-base font-black leading-tight text-foreground" x-text="editing ? 'Edit activity' : 'Add activity'"></h2>
-                                <p class="text-[11px] text-muted-foreground truncate" x-text="form.name || 'Global directory'"></p>
-                            </div>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi text-xl" :class="form.icon || 'bi-lightning-charge'"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h2 class="text-lg font-black leading-tight" x-text="editing ? 'Edit activity' : 'Add activity'"></h2>
+                            <p class="text-[12px] text-white/85 mt-0.5 truncate" x-text="form.name || 'Global directory'"></p>
                         </div>
-                        <button type="button" @click="modalOpen=false" class="m-press w-9 h-9 rounded-full bg-muted grid place-items-center text-foreground flex-shrink-0">
+                        <button type="button" @click="modalOpen=false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
                             <i class="bi bi-x-lg"></i>
                         </button>
                     </div>

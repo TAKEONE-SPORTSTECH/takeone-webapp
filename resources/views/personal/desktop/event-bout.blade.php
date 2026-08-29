@@ -59,23 +59,23 @@
 <div class="pb-10">
 
     {{-- Hero band: full-bleed, content rides up over its tail --}}
-    <header class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-6 lg:px-8 pt-6 pb-20 text-white relative overflow-hidden"
+    <header class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-4 sm:px-6 lg:px-8 pt-6 pb-20 text-white relative overflow-hidden"
             style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
-        <div class="absolute -right-10 -top-10 w-56 h-56 rounded-full bg-white/10"></div>
-        <div class="absolute right-24 bottom-6 w-28 h-28 rounded-full bg-white/10"></div>
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
         <div class="flex items-center justify-between relative z-50">
+            {{-- Back is a LABELLED pill, never a bare arrow (Design Rule #6). --}}
             <a href="{{ route('me.events.show', $e['key']) }}"
-               class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors"
-               aria-label="{{ __('personal.back') }}">
-                <i class="bi bi-chevron-left rtl:rotate-180"></i>
+               class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors">
+                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
             </a>
             <div class="flex items-center gap-2">
             @if ($canManage)
                 {{-- The button and its sheet share one Alpine scope: the sheet is
                      teleported to <body> to escape the hero band, and x-teleport keeps
                      the scope with it, so its fields bind to this component. --}}
-                <div x-data="boutEditor(@js($bout), @js($bout['video_url']), {
+                <div x-data="boutEditor(@js($bout), {
                          update: @js(route('me.events.bout.update', ['event' => $e['key'], 'matchNo' => $bout['match_no']])),
                          competitors: @js(route('me.events.bout.competitors', ['event' => $e['key'], 'matchNo' => $bout['match_no']])),
                          officials: @js(route('me.events.officials', $e['key'])),
@@ -217,17 +217,8 @@
                         </div>
                     </div>
 
-                    {{-- Video link --}}
-                    <div>
-                        <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-2">{{ __('events.bout_video') }}</p>
-                        <input type="url" maxlength="2048" x-model="f.video_url" placeholder="{{ rtrim(config('play.url'), '/') }}/videos/…"
-                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                        <p class="text-[11px] text-muted-foreground mt-1.5">{{ __('events.bout_video_hint') }}</p>
-                    </div>
-
                     {{-- Officials, as rows: Add official, then pick the position and
-                         the person on that row. Mirrors the panel on TAKEONE Play so
-                         an organiser meets the same control on both platforms.
+                         the person on that row.
 
                          Appointed to the CHAMPIONSHIP, not to this one bout —
                          event_officials carries no match column — so the heading says
@@ -349,10 +340,13 @@
                title="{{ __('events.bout_view_draw') }}" aria-label="{{ __('events.bout_view_draw') }}">
                 <i class="bi bi-diagram-3 bracket-icon"></i>
             </a>
-            {{-- Only when a still-linked recording has a URL, so the page never
-                 shows a play button that goes nowhere. --}}
+            {{-- Only when there is something watchable, so the page never shows a
+                 play button that goes nowhere. Ours opens in place; a legacy
+                 external URL (nothing writes those any more) opens in a tab. --}}
             @if ($bout['video_url'])
-                <a href="{{ $bout['video_url'] }}" target="_blank" rel="noopener"
+                @php $boutVideoIsOurs = \Illuminate\Support\Str::startsWith($bout['video_url'], url('/')); @endphp
+                <a href="{{ $bout['video_url'] }}"
+                   @unless ($boutVideoIsOurs) target="_blank" rel="noopener" @endunless
                    class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 hover:bg-white/25 transition-colors"
                    title="{{ __('events.bout_watch') }}" aria-label="{{ __('events.bout_watch') }}">
                     <i class="bi bi-play-fill" style="margin-inline-start:1px"></i>
@@ -569,7 +563,7 @@
 @if ($canManage)
     @push('scripts')
             <script>
-                function boutEditor(bout, videoUrl, urls, labels) {
+                function boutEditor(bout, urls, labels) {
                     return {
                         open: false, saving: false, busy: false,
                         f: {
@@ -578,7 +572,6 @@
                             winner: bout.winner,
                             a_name: bout.a.name, b_name: bout.b.name,
                             a_competitor_id: null, b_competitor_id: null,
-                            video_url: videoUrl || '',
                         },
                         entrants: [], entQ: '', openPick: null,
                         officials: [], roles: [],
@@ -762,7 +755,6 @@
                                         a_name: this.f.a_name, b_name: this.f.b_name,
                                         a_competitor_id: this.f.a_competitor_id,
                                         b_competitor_id: this.f.b_competitor_id,
-                                        video_url: this.f.video_url,
                                     }),
                                 });
                                 const d = await res.json().catch(() => ({}));

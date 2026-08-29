@@ -740,21 +740,26 @@
                 @csrf
                 <template x-if="txMode === 'edit'"><input type="hidden" name="_method" value="PUT"></template>
 
-                <div class="pt-2 pb-1 flex justify-center sm:hidden flex-shrink-0"><span class="w-9 h-1 rounded-full bg-gray-200"></span></div>
-
-                <div class="flex items-center justify-between gap-3 px-5 pt-1.5 pb-3 flex-shrink-0">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors"
-                          :class="tx.type === 'income' ? 'bg-emerald-50 text-emerald-700' : (tx.type === 'refund' ? 'bg-amber-50 text-amber-700' : 'bg-accent text-primary')">
-                        <i class="bi text-[10px]" :class="txMode === 'edit' ? 'bi-pencil' : (txIsRecurring ? 'bi-arrow-repeat' : (tx.type === 'income' ? 'bi-arrow-down-left' : 'bi-arrow-up-right'))"></i>
-                        <span x-text="txMode === 'edit' ? @js(__('admin.fin_edit_tx')) : (txIsRecurring ? @js(__('admin.fin_record_recurring')) : (tx.type === 'income' ? @js(__('admin.fin_record_income')) : @js(__('admin.fin_record_expense'))))"></span>
-                    </span>
-                    <button type="button" @click="txOpen = false" aria-label="{{ __('admin.cancel') }}"
-                            class="w-8 h-8 -me-1.5 rounded-full grid place-items-center text-muted-foreground hover:bg-muted transition-colors flex-shrink-0">
-                        <i class="bi bi-x-lg text-sm"></i>
-                    </button>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #047857, #059669b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi text-xl" :class="txMode === 'edit' ? 'bi-pencil' : (txIsRecurring ? 'bi-arrow-repeat' : (tx.type === 'income' ? 'bi-arrow-down-left' : 'bi-arrow-up-right'))"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight" x-text="txMode === 'edit' ? @js(__('admin.fin_edit_tx')) : (txIsRecurring ? @js(__('admin.fin_record_recurring')) : (tx.type === 'income' ? @js(__('admin.fin_record_income')) : @js(__('admin.fin_record_expense'))))"></h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('admin.fin_amount') }} · {{ $cur }}</p>
+                        </div>
+                        <button type="button" @click="txOpen = false" aria-label="{{ __('admin.cancel') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-5">
+                <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-4 pb-5">
 
                     {{-- Amount — a tinted slab, the only coloured surface in the sheet.
                          The step chips are here because cash entries are almost always

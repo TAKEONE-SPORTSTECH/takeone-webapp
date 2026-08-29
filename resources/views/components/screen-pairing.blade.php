@@ -70,13 +70,48 @@
     $tabUrl = \App\Events\Support\ScreenPairingController::appAvailable('tab')
         ? preg_replace('#^https?://#', '', route('screen.app.tab'))
         : null;
+    $camUrl = \App\Events\Support\ScreenPairingController::appAvailable('cam')
+        ? preg_replace('#^https?://#', '', route('screen.app.cam'))
+        : null;
 @endphp
 
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{{-- A screen is not a document: it is authored at one size and scaled to fit
+     the glass, so there is nothing here to zoom INTO — magnifying it can only
+     push part of the surface off the edge, which on a wall nobody can undo and
+     on the scoring table hides the row of controls along the bottom. Pinch and
+     double-tap are therefore refused, and the system font-size setting is not
+     allowed to inflate text inside a stage that cannot grow with it.
+
+     This is the ONE place the house rule against `user-scalable=no` does not
+     apply (mobile web must always pinch-zoom, WCAG 1.4.4): these documents are
+     signage and a fixed console, not pages anybody reads. --}}
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+  /* `pan-x pan-y`, NOT `manipulation`: manipulation still permits pinch-zoom
+     (it only drops the double-tap delay), which is exactly the gesture being
+     refused here. Panning is left alone — the scoring console is taller than a
+     10" tablet and has to be scrollable. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; }
+  body { touch-action: pan-x pan-y; }
+</style>
+{{-- The same refusal for the two zoom gestures a browser will still offer even
+     with the viewport above: Safari's pinch (`gesture*`) and ctrl+wheel. Both
+     are cancelable, both are dead here, and neither is used by any screen. --}}
+<script>
+(function () {
+  'use strict';
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (e) {
+    document.addEventListener(e, function (ev) { ev.preventDefault(); }, { passive: false });
+  });
+  document.addEventListener('wheel', function (ev) {
+    if (ev.ctrlKey) ev.preventDefault();
+  }, { passive: false });
+})();
+</script>
 <title>{{ __('events.screen_title') }}</title>
 
 <style>
@@ -215,6 +250,81 @@
   .btn .sub { font-family: 'IBM Plex Mono', monospace; font-size: clamp(9px, min(0.8vw, 1.6vh), 14px);
              color: oklch(0.6 0.01 20); }
 
+  /* ── A 10" tablet on its side ─────────────────────────────────────────────
+     Wide enough for the two columns, too narrow for the desktop's generous
+     trough between them — which pushed the QR to the edge of the glass and
+     wrapped every download label. Same layout, tighter measure. */
+  @media (orientation: landscape) and (min-width: 901px) and (max-width: 1200px) {
+    .cols { gap: clamp(20px, 4vw, 46px); }
+    .left { flex: 1 1 340px; }
+    header, main, footer { padding-left: clamp(16px, 2.4vw, 32px); padding-right: clamp(16px, 2.4vw, 32px); }
+    footer { gap: 10px; }
+    .dl-group { gap: 12px; }
+  }
+
+  /* ── Handhelds: a phone, or a tablet held upright ─────────────────────────
+     One of these is not signage. Somebody is HOLDING it, it scrolls, and the
+     one-viewport rule above turns against it: a column of headline, QR, code,
+     steps and three downloads is simply taller than 640px of glass, and
+     `overflow: hidden` does not shorten that — it amputates it. Which is how a
+     phone ended up showing a cropped headline and no code at all.
+
+     So on a handheld the page becomes what a phone expects: one column, top to
+     bottom, allowed to scroll, with the QR and the pill that explains it first
+     — everything else is context, and context can be below the fold. Sizes are
+     taken off WIDTH alone here; height stops being a constraint the moment the
+     page is allowed to be taller than the screen. */
+  @media (orientation: portrait) and (max-width: 1300px), (max-width: 900px) {
+    html, body { overflow-y: auto; }
+    body { min-height: 100dvh; }
+    /* No overscan trim: a handheld crops nothing, and the safe area is the
+       real edge to respect instead. */
+    .page { height: auto; min-height: 100dvh; overflow: visible;
+            padding: 0 0 max(18px, env(safe-area-inset-bottom)); }
+
+    header { padding: max(14px, env(safe-area-inset-top)) 18px 10px; }
+    .brand img { width: 34px; height: 34px; }
+    .brand-name { font-size: 16px; }
+    .status { font-size: 12px; padding: 6px 12px; }
+
+    main { padding: 4px 18px 0; }
+    .cols { flex-direction: column; flex-wrap: nowrap; gap: clamp(18px, 5vw, 28px);
+            max-width: 540px; }
+
+    /* The symbol first. It is the only thing on this page anybody acts on. */
+    .qr-wrap { order: 1; width: 100%; }
+    .left { order: 2; flex: none; width: 100%; max-width: none;
+            align-items: center; text-align: center; gap: clamp(12px, 3.4vw, 18px); }
+
+    .qr-frame { padding: 14px; }
+    .corner { width: 26px; height: 26px; }
+    .qr-card { padding: 12px; border-radius: 14px; }
+    .qr-card svg { width: min(64vw, 300px); }
+    .scan-pill { margin-top: 14px; font-size: 12px; padding: 7px 16px; }
+
+    .kicker { font-size: 12px; }
+    h1 { font-size: clamp(21px, 6.4vw, 32px); }
+    .code-label { font-size: 13px; margin-bottom: 8px; }
+    /* Six tiles, one row, on the narrowest phone there is — the code is read
+       out loud from here, so it never wraps into two lines that look like two
+       codes. */
+    .code { justify-content: center; flex-wrap: nowrap; gap: min(1.8vw, 10px); }
+    .code span { width: min(13.2vw, 60px); height: min(17vw, 76px);
+                 font-size: min(8vw, 36px); border-radius: 10px; }
+    ol { align-self: stretch; text-align: start; font-size: 14px; gap: 6px; }
+
+    /* The downloads are for a television, not for the phone reading this — so
+       they go last, full width, one per row: findable by whoever is setting the
+       wall up, out of the way of everybody else. */
+    footer { flex-direction: column; align-items: stretch; gap: 10px;
+             margin-top: clamp(20px, 6vw, 32px); padding: 16px 18px 0; }
+    .dl-group { flex-direction: column; gap: 10px; }
+    .btn { border-radius: 12px; padding: 11px 14px; }
+    .btn .icon { width: 34px; height: 34px; }
+    .btn .title { font-size: 14px; }
+    .btn .sub { font-size: 11px; }
+  }
+
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 </style>
 </head>
@@ -336,6 +446,25 @@
           </span>
         </a>
       @endif
+
+      @if ($camUrl)
+        <a class="btn" href="{{ route('screen.app.cam') }}" download>
+          <span class="icon">
+            {{-- A camera body with its lens: the third silhouette, and the one
+                 that says this build films rather than displays. --}}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="oklch(0.68 0.2 25)"
+                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="2.5" y="6.5" width="13" height="11" rx="2"></rect>
+              <path d="M15.5 11l6-3.2v8.4l-6-3.2z"></path>
+            </svg>
+          </span>
+          <span class="txt">
+            <span class="title">{{ __('events.screen_app_cam') }}</span>
+            <span class="sub">{{ $camUrl }}</span>
+          </span>
+        </a>
+      @endif
+
     </div>
 
     {{-- The explicit start-over, so a machine that has already been a screen can

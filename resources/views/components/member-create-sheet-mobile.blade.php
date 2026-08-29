@@ -36,20 +36,22 @@
          class="fixed inset-x-0 bottom-0 z-[61] flex flex-col bg-background rounded-t-3xl shadow-2xl max-h-[94vh] h-[94vh]"
          style="display:none;" @click.stop>
 
-        {{-- Grab handle + header --}}
-        <div class="flex-shrink-0 rounded-t-3xl bg-white border-b border-border">
-            <div class="flex justify-center pt-2.5 pb-1">
-                <span class="h-1.5 w-10 rounded-full bg-gray-300"></span>
-            </div>
-            <div class="flex items-center gap-3 px-4 pb-3">
-                <span class="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center flex-shrink-0">
-                    <i class="bi bi-person-plus text-primary text-lg"></i>
+{{-- Grab handle + header band --}}
+        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+            <div class="relative flex items-start gap-3">
+                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                    <i class="bi bi-person-plus text-xl"></i>
                 </span>
                 <div class="min-w-0 flex-1">
-                    <p class="font-bold text-foreground leading-tight">{{ __('member.add_family_member') }}</p>
-                    <p class="text-[11px] text-muted-foreground leading-tight">{{ __('member.add_member_subtitle') }}</p>
+                    <h3 class="text-lg font-black leading-tight">{{ __('member.add_family_member') }}</h3>
+                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.add_member_subtitle') }}</p>
                 </div>
-                <button type="button" @click="close()" class="m-press w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted" aria-label="{{ __('member.close') }}">
+                <button type="button" @click="close()" aria-label="{{ __('member.close') }}"
+                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>

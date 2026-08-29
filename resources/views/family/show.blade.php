@@ -1045,7 +1045,7 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th class="text-muted small font-semibold">{{ __('member.family_show_th_tournament_details') }}</th>
-                                        <th class="text-muted small font-semibold">{{ __('member.family_show_th_club_affiliation') }}</th>
+                                        <th class="text-muted small font-semibold">{{ __('member.representing') }}</th>
                                         <th class="text-muted small font-semibold">{{ __('member.family_show_th_performance_result') }}</th>
                                         <th class="text-muted small font-semibold">{{ __('member.family_show_th_notes_media') }}</th>
                                     </tr>
@@ -1582,7 +1582,7 @@
                             <input type="number" class="form-control" id="participants_count" name="participants_count" min="1">
                         </div>
                         <div class="col-md-6">
-                            <label for="club_affiliation_id" class="form-label">{{ __('member.family_show_th_club_affiliation') }}</label>
+                            <label for="club_affiliation_id" class="form-label">{{ __('member.representing') }}</label>
                             <select class="form-select" id="club_affiliation_id" name="club_affiliation_id">
                                 <option value="">{{ __('member.family_show_select_club') }}</option>
                                 @foreach($clubAffiliations ?? [] as $affiliation)

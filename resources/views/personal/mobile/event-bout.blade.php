@@ -78,7 +78,7 @@
                 {{-- The button and its sheet share one Alpine scope: the sheet is
                      teleported to <body> to escape the hero band, and x-teleport keeps
                      the scope with it, so its fields bind to this component. --}}
-                <div x-data="boutEditor(@js($bout), @js($bout['video_url']), {
+                <div x-data="boutEditor(@js($bout), {
                          update: @js(route('me.events.bout.update', ['event' => $e['key'], 'matchNo' => $bout['match_no']])),
                          competitors: @js(route('me.events.bout.competitors', ['event' => $e['key'], 'matchNo' => $bout['match_no']])),
                          officials: @js(route('me.events.officials', $e['key'])),
@@ -99,11 +99,23 @@
                              x-transition:enter="transition ease-out duration-300"
                              x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                              class="absolute inset-x-0 bottom-0 flex flex-col bg-background rounded-t-3xl shadow-2xl" style="max-height:92vh">
-                            <div class="flex-shrink-0 px-5 pt-4 pb-2 flex items-center justify-between gap-3">
-                                <h3 class="font-bold text-foreground">{{ __('events.bout_edit') }}</h3>
-                                <button type="button" @click="open = false" class="w-9 h-9 rounded-full grid place-items-center text-muted-foreground hover:bg-muted transition-colors">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
+                            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                                 style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
+                                <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                                <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                                <div class="relative flex items-start gap-3">
+                                    <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                        <i class="bi bi-pencil-square text-xl"></i>
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <h3 class="text-lg font-black leading-tight">{{ __('events.bout_edit') }}</h3>
+                                        <p class="text-[12px] text-white/85 mt-0.5 truncate" x-text="(f.a_name || '\u2014') + ' \u00b7 ' + (f.b_name || '\u2014')"></p>
+                                    </div>
+                                    <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
+                                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="flex-1 min-h-0 overflow-y-auto px-5 pb-2 space-y-4">
@@ -220,17 +232,8 @@
                         </div>
                     </div>
 
-                    {{-- Video link --}}
-                    <div>
-                        <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-2">{{ __('events.bout_video') }}</p>
-                        <input type="url" maxlength="2048" x-model="f.video_url" placeholder="{{ rtrim(config('play.url'), '/') }}/videos/…"
-                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                        <p class="text-[11px] text-muted-foreground mt-1.5">{{ __('events.bout_video_hint') }}</p>
-                    </div>
-
                     {{-- Officials, as rows: Add official, then pick the position and
-                         the person on that row. Mirrors the panel on TAKEONE Play so
-                         an organiser meets the same control on both platforms.
+                         the person on that row.
 
                          Appointed to the CHAMPIONSHIP, not to this one bout —
                          event_officials carries no match column — so the heading says
@@ -352,10 +355,13 @@
                title="{{ __('events.bout_view_draw') }}" aria-label="{{ __('events.bout_view_draw') }}">
                 <i class="bi bi-diagram-3 bracket-icon"></i>
             </a>
-            {{-- Only when a still-linked recording has a URL, so the page never
-                 shows a play button that goes nowhere. --}}
+            {{-- Only when there is something watchable, so the page never shows a
+                 play button that goes nowhere. Ours opens in place; a legacy
+                 external URL (nothing writes those any more) opens in a tab. --}}
             @if ($bout['video_url'])
-                <a href="{{ $bout['video_url'] }}" target="_blank" rel="noopener"
+                @php $boutVideoIsOurs = \Illuminate\Support\Str::startsWith($bout['video_url'], url('/')); @endphp
+                <a href="{{ $bout['video_url'] }}"
+                   @if ($boutVideoIsOurs) data-shell-link data-route="me.events" @else target="_blank" rel="noopener" @endif
                    class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0"
                    title="{{ __('events.bout_watch') }}" aria-label="{{ __('events.bout_watch') }}">
                     <i class="bi bi-play-fill" style="margin-inline-start:1px"></i>
@@ -565,7 +571,7 @@
 @if ($canManage)
     @push('scripts')
             <script>
-                function boutEditor(bout, videoUrl, urls, labels) {
+                function boutEditor(bout, urls, labels) {
                     return {
                         open: false, saving: false, busy: false,
                         f: {
@@ -574,7 +580,6 @@
                             winner: bout.winner,
                             a_name: bout.a.name, b_name: bout.b.name,
                             a_competitor_id: null, b_competitor_id: null,
-                            video_url: videoUrl || '',
                         },
                         entrants: [], entQ: '', openPick: null,
                         officials: [], roles: [],
@@ -758,7 +763,6 @@
                                         a_name: this.f.a_name, b_name: this.f.b_name,
                                         a_competitor_id: this.f.a_competitor_id,
                                         b_competitor_id: this.f.b_competitor_id,
-                                        video_url: this.f.video_url,
                                     }),
                                 });
                                 const d = await res.json().catch(() => ({}));

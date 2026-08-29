@@ -116,7 +116,22 @@
     // JSON data for dynamic list Alpine components
     $initEmergencyContacts = !$isCreate && $user ? ($user->emergency_contacts ?? []) : [];
     $initHealthConditions  = !$isCreate && $user ? ($user->health_conditions ?? []) : [];
-    $initDocuments         = !$isCreate && $user ? ($user->documents ?? []) : [];
+    // The document URL is DERIVED here, never read from the row.
+    //
+    // It used to be persisted alongside the path — as a full absolute URL, which
+    // baked the environment's hostname into the database and pointed at
+    // /storage/, i.e. the file with no authorization in front of it. Identity
+    // documents are on the private disk now, so the only way to one is the
+    // route, and the route is cheap to recompute on every render.
+    $initDocuments = ! $isCreate && $user
+        ? collect($user->documents ?? [])->map(function ($d) use ($user) {
+            $d['file_url'] = ! empty($d['file_path'])
+                ? route('member.download-document', ['id' => $user->id, 'path' => $d['file_path']])
+                : null;
+
+            return $d;
+        })->values()->all()
+        : [];
     $docUploadUrl  = !$isCreate && $user ? route('member.upload-document', $user->id) : '';
     $docDeleteUrl  = !$isCreate && $user ? route('member.delete-document', $user->id) : '';
 

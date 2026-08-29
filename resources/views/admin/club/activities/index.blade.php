@@ -226,12 +226,23 @@
     <div x-show="showLibrary" x-cloak class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
         <div class="fixed inset-0 bg-black/50" @click="showLibrary=false"></div>
         <div class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col" @click.stop>
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-                <div>
-                    <h3 class="text-lg font-bold text-foreground">Choose an activity</h3>
-                    <p class="text-xs text-muted-foreground">Tap an activity to add it to your club instantly</p>
+            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                 style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                <div class="relative flex items-start gap-3">
+                    <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                        <i class="bi bi-collection text-xl"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-lg font-black leading-tight">Choose an activity</h3>
+                        <p class="text-[12px] text-white/85 mt-0.5">Tap an activity to add it to your club instantly</p>
+                    </div>
+                    <button @click="showLibrary=false" aria-label="{{ __('shared.close') }}"
+                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
                 </div>
-                <button @click="showLibrary=false" class="text-muted-foreground hover:text-foreground"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="px-5 py-3 border-b border-gray-100 flex-shrink-0">
                 <div class="relative">

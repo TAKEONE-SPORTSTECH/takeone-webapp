@@ -2751,6 +2751,45 @@ class PersonalMobileController extends Controller
         return view('personal.progress', compact('goals', 'goalStats'));
     }
 
+    /**
+     * Everything ever filmed of this member, on one shelf-per-kind page.
+     *
+     * "Related to me" is answered from three directions rather than one, because
+     * a member is filmed in more than one way: bouts they fought (resolved
+     * through their entries, so it holds for every club they have ever competed
+     * for), duels they posted evidence to, and clips they shot themselves. Each
+     * shelf disappears when empty — a competitor who has never taken a duel
+     * should see one clean list, not two apologies.
+     *
+     * Read-only and self-only. There is no "someone else's gallery" route: a
+     * member's footage is reached through the EVENT that filmed it, where the
+     * event's own visibility rules apply.
+     */
+    public function videos(Request $request): View
+    {
+        $library = app(\App\Media\VideoLibrary::class);
+        $shelves = $library->forUser(Auth::user());
+
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.videos' : 'personal.desktop.videos', [
+            'shelves' => $shelves,
+            'total' => $library->countFor($shelves),
+        ])->with('shellTitle', __('personal.videos_title'));
+    }
+
+    /** The same shelves as JSON, so the page can refresh without a reload. */
+    public function videosData(): JsonResponse
+    {
+        $library = app(\App\Media\VideoLibrary::class);
+        $shelves = $library->forUser(Auth::user());
+
+        return response()->json([
+            'shelves' => $shelves,
+            'total' => $library->countFor($shelves),
+        ]);
+    }
+
     public function payments(): View
     {
         $subscriptions = ClubMemberSubscription::where('user_id', Auth::id())

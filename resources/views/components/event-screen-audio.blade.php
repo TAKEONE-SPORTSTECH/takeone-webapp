@@ -23,6 +23,10 @@
 ])
 
 @php
+    // Reaches a style attribute (the header band gradient) — whitelisted hex,
+    // because `#rrggbb` + the `b0` alpha suffix is the only form that parses.
+    $saColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $color) ? $color : '#7c5cff';
+
     $slots = [
         'vs_music' => ['icon' => 'bi-music-note-beamed', 'label' => __('events.screen_audio_vs_music')],
         'winner_music' => ['icon' => 'bi-trophy', 'label' => __('events.screen_audio_winner_music')],
@@ -58,21 +62,23 @@
          class="absolute inset-x-0 bottom-0 flex flex-col bg-white rounded-t-3xl shadow-2xl sm:mx-auto sm:max-w-lg"
          style="max-height:92vh">
 
-        {{-- Header — the sheet's own, with the drag handle and a way out. --}}
-        <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
-            <div class="w-10 h-1.5 rounded-full bg-gray-300 mx-auto mb-3"></div>
-            <div class="flex items-start gap-3">
-                <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
-                      style="background: {{ $color }}1a; color: {{ $color }};">
+        {{-- Header — the sheet's own band, with the drag handle and a way out. --}}
+        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+             style="background: linear-gradient(150deg, {{ $saColor }}, {{ $saColor }}b0);">
+            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+            <div class="relative flex items-start gap-3">
+                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
                     <i class="bi bi-volume-up text-xl"></i>
                 </span>
                 <div class="min-w-0 flex-1">
-                    <h3 class="text-sm font-bold text-gray-900">{{ __('events.screen_audio_title') }}</h3>
-                    <p class="text-xs text-muted-foreground mt-0.5">{{ __('events.screen_audio_intro') }}</p>
+                    <h3 class="text-lg font-black leading-tight">{{ __('events.screen_audio_title') }}</h3>
+                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('events.screen_audio_intro') }}</p>
                 </div>
-                <button type="button" @click="close()"
-                        class="m-press w-9 h-9 rounded-full bg-muted grid place-items-center text-muted-foreground flex-shrink-0">
-                    <i class="bi bi-x-lg text-xs"></i>
+                <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
+                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                    <i class="bi bi-x-lg"></i>
                 </button>
             </div>
         </div>

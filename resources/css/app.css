@@ -3766,3 +3766,48 @@ html[dir="rtl"] :is(
     display: inline-block;
     transform: rotate(90deg);
 }
+
+/* ── The live dot ─────────────────────────────────────────────────────────
+   A broadcast tally, not a fading circle.
+
+   `animate-pulse` was doing this job, and it is the wrong motion for it: it
+   fades the whole dot in and out, so the signal READS as something switching
+   off and on again — which beside the word LIVE is exactly the wrong idea. A
+   tally light does not blink out. It sits there, solid, and throws a ring.
+
+   So: a solid core that never dims, and a ring that expands out of it and
+   fades — the radar ping every broadcast gallery in the world uses. The core
+   and the ring both inherit `currentColor`, so one class works on the red
+   badge, the white-on-gradient one, and anything else that comes later without
+   a second variant.
+
+   Give the element a size (w-1.5 h-1.5 …) and a colour; this adds the motion. */
+.m-live-dot {
+    position: relative;
+    border-radius: 9999px;
+    background: currentColor;
+    flex-shrink: 0;
+}
+.m-live-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    box-shadow: 0 0 0 0 currentColor;
+    animation: m-live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes m-live-ping {
+    0%   { box-shadow: 0 0 0 0 currentColor; opacity: 0.55; }
+    70%  { box-shadow: 0 0 0 6px currentColor; opacity: 0; }
+    100% { box-shadow: 0 0 0 0 currentColor; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Hold the ring instead of throwing one. The dot still reads as live —
+       it is simply not moving, which is the whole point of the setting. */
+    .m-live-dot::after {
+        animation: none;
+        box-shadow: 0 0 0 2.5px currentColor;
+        opacity: 0.35;
+    }
+}

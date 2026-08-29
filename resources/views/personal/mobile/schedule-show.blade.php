@@ -380,14 +380,20 @@
                      x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                      class="fixed inset-x-0 bottom-0 z-[60] max-h-[85vh] flex flex-col bg-background rounded-t-3xl shadow-2xl">
-                    <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-border/70 rounded-t-3xl">
-                        <div class="w-10 h-1.5 rounded-full bg-gray-300 mx-auto"></div>
-                        <div class="flex items-center justify-between mt-3" x-show="bd">
-                            <div class="min-w-0">
-                                <h2 class="text-base font-black text-foreground truncate" x-text="bd && bd.name"></h2>
-                                <p class="text-xs text-muted-foreground"><span class="font-bold text-foreground" x-text="bd && (bd.attended + '/' + bd.total)"></span> {{ __('personal.personal_schedule_show_classes_attended') }}</p>
+                    <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                         style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                        <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                        <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                        <div class="relative flex items-start gap-3" x-show="bd">
+                            <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                <i class="bi bi-clipboard-check text-xl"></i>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h2 class="text-lg font-black leading-tight truncate" x-text="bd && bd.name"></h2>
+                                <p class="text-[12px] text-white/85 mt-0.5"><span class="font-bold" x-text="bd && (bd.attended + '/' + bd.total)"></span> {{ __('personal.personal_schedule_show_classes_attended') }}</p>
                             </div>
-                            <button type="button" @click="bd=null" class="m-press w-9 h-9 rounded-full bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                            <button type="button" @click="bd=null" aria-label="{{ __('shared.close') }}"
+                                    class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
                         </div>
                     </div>
                     <div class="flex-1 overflow-y-auto px-4 py-3" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
@@ -641,11 +647,20 @@
                          x-show="panel" x-transition:enter="transition ease-out duration-250" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
                         {{-- Header --}}
-                        <div class="flex-shrink-0 px-4 pt-3 pb-3 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-300 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center justify-between">
-                                <h2 class="text-base font-bold text-foreground flex items-center gap-2"><i class="bi bi-emoji-smile text-primary"></i> {{ __('personal.personal_schedule_show_enjoyed_class') }}</h2>
-                                <button type="button" @click="panel = false" class="w-8 h-8 grid place-items-center rounded-full hover:bg-muted text-muted-foreground"><i class="bi bi-x-lg"></i></button>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <i class="bi bi-emoji-smile text-xl"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h2 class="text-lg font-black leading-tight">{{ __('personal.personal_schedule_show_enjoyed_class') }}</h2>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('personal.personal_schedule_show_rate_this_class') }}</p>
+                                </div>
+                                <button type="button" @click="panel = false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
                             </div>
                         </div>
 
@@ -813,14 +828,19 @@
                      x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                      class="fixed inset-x-0 bottom-0 z-[60] max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl">
-                    <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-border/70 rounded-t-3xl text-white" style="background: linear-gradient(160deg, {{ $s['color'] }}, {{ $s['color'] }}cc);">
-                        <div class="w-10 h-1.5 rounded-full bg-white/40 mx-auto"></div>
-                        <div class="flex items-center justify-between mt-3">
-                            <div class="min-w-0">
-                                <h2 class="text-base font-black leading-tight truncate">{{ __('personal.personal_schedule_show_manage_class') }}</h2>
-                                <p class="text-[11px] text-white/80 truncate">{{ $s['title'] ?? $clubName }}{{ !empty($occurrenceLabel) ? ' · '.$occurrenceLabel : '' }}</p>
+                    <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden" style="background: linear-gradient(150deg, {{ $s['color'] }}, {{ $s['color'] }}b0);">
+                        <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                        <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                        <div class="relative flex items-start gap-3">
+                            <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                <i class="bi bi-sliders text-xl"></i>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h2 class="text-lg font-black leading-tight truncate">{{ __('personal.personal_schedule_show_manage_class') }}</h2>
+                                <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $s['title'] ?? $clubName }}{{ !empty($occurrenceLabel) ? ' · '.$occurrenceLabel : '' }}</p>
                             </div>
-                            <button type="button" @click="menuOpen=false" class="m-press w-9 h-9 rounded-full bg-white/20 border border-white/30 grid place-items-center flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                            <button type="button" @click="menuOpen=false" aria-label="{{ __('shared.close') }}"
+                                    class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
                         </div>
                     </div>
                     <div class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -999,11 +1019,20 @@
                      x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                      class="fixed inset-x-0 bottom-0 z-[60] max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl">
-                    <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-border/70 rounded-t-3xl bg-destructive text-white">
-                        <div class="w-10 h-1.5 rounded-full bg-white/40 mx-auto"></div>
-                        <div class="flex items-center justify-between mt-3">
-                            <div class="min-w-0"><h2 class="text-base font-black leading-tight">{{ __('personal.personal_schedule_show_cancel_class') }}</h2><p class="text-[11px] text-white/80">{{ __('personal.personal_schedule_show_auto_makeup_credit') }}</p></div>
-                            <button type="button" @click="open=false" class="m-press w-9 h-9 rounded-full bg-white/20 border border-white/30 grid place-items-center flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                    <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                         style="background: linear-gradient(150deg, #b91c1c, #dc2626b0);">
+                        <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                        <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                        <div class="relative flex items-start gap-3">
+                            <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                <i class="bi bi-calendar-x text-xl"></i>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h2 class="text-lg font-black leading-tight">{{ __('personal.personal_schedule_show_cancel_class') }}</h2>
+                                <p class="text-[12px] text-white/85 mt-0.5">{{ __('personal.personal_schedule_show_auto_makeup_credit') }}</p>
+                            </div>
+                            <button type="button" @click="open=false" aria-label="{{ __('shared.close') }}"
+                                    class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
                         </div>
                     </div>
                     <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">

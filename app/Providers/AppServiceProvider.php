@@ -40,6 +40,9 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Membership::observe(\App\Observers\MembershipObserver::class);
         \App\Models\ClubEventRegistration::observe(\App\Observers\ClubEventRegistrationObserver::class);
 
+        // A new avatar joins the profile's own pictures, whichever path set it.
+        \App\Models\User::observe(\App\Observers\UserObserver::class);
+
         // Horizon dashboard — super-admin only
         Horizon::auth(function (Request $request) {
             return $request->user()?->hasRole('super-admin') ?? false;
@@ -163,30 +166,34 @@ class AppServiceProvider extends ServiceProvider
         // The artifact carries no secret — it is a kiosk browser pointed at one
         // host — so what a caller gains by fetching it is a copy of something we
         // hand out on purpose.
+        /*
+         * A camera pushing a bout's video up in 8MB chunks.
+         *
+         * Its own limiter because the shape is unlike every other camera call:
+         * one clip is hundreds of requests in a few minutes, where a telemetry
+         * beat is one every twenty seconds. Keyed on the device token, so four
+         * cameras on a mat each get their own budget and one uploading phone
+         * cannot throttle the fleet's heartbeats.
+         *
+         * 600/minute is ~80 MB/s of chunks — far beyond any hall's wifi, which
+         * is the point: the limiter is there to stop a loop, not to shape
+         * traffic the network already shapes.
+         */
+        RateLimiter::for('camera-upload', function (Request $request) {
+            return Limit::perMinute(600)->by((string) $request->route('token'));
+        });
+
         RateLimiter::for('screen-app', function (Request $request) {
             return Limit::perHour(20)->by($request->ip());
         });
 
-        // TAKEONE Play looking a person up while a match video is being filled
-        // in. A typeahead fires per keystroke, so it has to be generous — but it
-        // reads real people, so it is capped per TOKEN rather than per address:
-        // one connected account cannot spend another's allowance, and a token
-        // being used to sweep the member base runs out on its own.
-        RateLimiter::for('play-lookup', function (Request $request) {
-            return Limit::perMinute(90)->by(
-                optional($request->user()?->currentAccessToken())->id
-                    ?: ($request->user()?->id ?: $request->ip())
-            );
-        });
-
-        // Writing a headshot or a crest back from TAKEONE Play. Far tighter than
-        // the lookups: an upload is expensive, it replaces real profile data, and
-        // nobody legitimately does it in a burst.
-        RateLimiter::for('play-write', function (Request $request) {
-            return Limit::perMinute(12)->by(
-                optional($request->user()?->currentAccessToken())->id
-                    ?: ($request->user()?->id ?: $request->ip())
-            );
+        // Watching a bout. One minute of HLS is ten segment requests, and a
+        // person scrubbing through a five-minute fight legitimately fires
+        // hundreds — so this is generous by design. It exists to stop a script
+        // walking the library, not to ration playback, and it counts per VIEWER
+        // rather than per address so a hall behind one NAT is not one budget.
+        RateLimiter::for('media-read', function (Request $request) {
+            return Limit::perMinute(1200)->by((string) ($request->user()?->id ?: $request->ip()));
         });
 
         // File uploads (gallery, profile pictures, facility images, etc.):

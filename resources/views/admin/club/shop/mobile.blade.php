@@ -155,15 +155,30 @@
     <template x-teleport="body">
         <div x-show="editSheet" x-cloak class="fixed inset-0 z-[80] flex items-end" style="display:none;">
             <div class="absolute inset-0 bg-black/40" @click="editSheet = false"></div>
-            <div class="relative w-full bg-background rounded-t-3xl p-5 max-h-[90vh] overflow-y-auto"
+            <div class="relative w-full bg-background rounded-t-3xl max-h-[90vh] flex flex-col"
                  x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-                <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-4"></div>
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-base font-bold text-gray-900"><i class="bi bi-pencil-square text-primary mr-2"></i>{{ __('market.edit_product') }}</h3>
-                    <button @click="editSheet = false" class="w-8 h-8 rounded-full grid place-items-center text-gray-500 hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-pencil-square text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('market.edit_product') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ $club->club_name ?? __('admin.club') }}</p>
+                        </div>
+                        <button @click="editSheet = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
+                <div class="flex-1 overflow-y-auto p-5">
                 <x-market.product-form mode="edit" method="PUT" :categories="$categories" :show-fulfillment="true"
                     event-name="market-product-updated" edit-event="market-edit-open" />
+                </div>
             </div>
         </div>
     </template>
@@ -173,13 +188,27 @@
     <template x-teleport="body">
         <div x-show="categorySheet" x-cloak class="fixed inset-0 z-[80] flex items-end" style="display:none;">
             <div class="absolute inset-0 bg-black/40" @click="categorySheet = false"></div>
-            <div class="relative w-full bg-white rounded-t-3xl p-5 max-h-[88vh] overflow-y-auto"
+            <div class="relative w-full bg-white rounded-t-3xl max-h-[88vh] flex flex-col"
                  x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-                <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-4"></div>
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-base font-bold text-gray-900"><i class="bi bi-grid-1x2 text-primary mr-2"></i>{{ __('market.manage_categories') }}</h3>
-                    <button @click="categorySheet = false" class="w-8 h-8 rounded-full grid place-items-center text-gray-500 hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-grid-1x2 text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('market.manage_categories') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('market.your_categories') }}</p>
+                        </div>
+                        <button @click="categorySheet = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
+                <div class="flex-1 overflow-y-auto p-5">
 
                 {{-- Existing categories --}}
                 <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('market.your_categories') }}</p>
@@ -206,6 +235,7 @@
                         :action="route('admin.club.shop.categories.store', $club)"
                         :store-url="route('admin.club.shop.categories.store', $club)"
                         edit-event="market-category-edit-open" />
+                </div>
                 </div>
             </div>
         </div>

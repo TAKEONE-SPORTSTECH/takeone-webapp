@@ -84,16 +84,16 @@
          The page-header pattern (see CLAUDE.md → Page Headers): full-bleed
          m-hero band, event colour to colour+b0, two soft circles, a control row
          on top, then chips · title · owner beneath. --}}
-    <header class="m-hero -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-6 lg:px-8 pt-6 pb-20 text-white relative overflow-hidden"
+    <header class="m-hero -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-4 sm:px-6 lg:px-8 pt-6 pb-20 text-white relative overflow-hidden"
             style="background: linear-gradient(150deg, {{ $mgColor }}, {{ $mgColor }}b0);">
-        <div class="absolute -right-10 -top-10 w-56 h-56 rounded-full bg-white/10"></div>
-        <div class="absolute right-24 bottom-6 w-28 h-28 rounded-full bg-white/10"></div>
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
         <div class="flex items-center justify-between relative z-50">
+            {{-- Back is a LABELLED pill, never a bare arrow (Design Rule #6). --}}
             <a href="{{ route('me.events.show', $e['key']) }}"
-               class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors"
-               title="{{ __('personal.event_manage_back_to_page') }}">
-                <i class="bi bi-arrow-left text-lg rtl:rotate-180"></i>
+               class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors">
+                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
             </a>
             <a href="{{ route('me.events.show', $e['key']) }}"
                class="h-10 px-4 rounded-full bg-white/15 border border-white/25 backdrop-blur inline-flex items-center gap-2 text-xs font-bold hover:bg-white/25 transition-colors">
@@ -115,7 +115,7 @@
                     </span>
                 @endif
             </div>
-            <h1 class="text-3xl font-black mt-3 leading-tight">{{ $e['title'] }}</h1>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ $e['title'] }}</h1>
             <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
                 <i class="bi bi-calendar-event"></i>{{ trim(($e['wday'] ?? '').' '.($e['day'] ?? '').' '.($e['mon'] ?? '')) }}
             </p>
@@ -177,14 +177,18 @@
         </div>
     @endif
 
-    {{-- ===== Hall screens — only for a type that drives any ===== --}}
-    @if($canManage && ! empty($screens))
+    {{-- ===== The hall's wiring: this event's screens, and the cameras on its
+              mats. Screens exist only for a type that drives them; cameras work
+              for any event with mats, so the panel opens for either. ===== --}}
+    @if($canManage && (! empty($screens) || ! empty($cameras)))
         <div class="max-w-md">
             <x-court-screens :event="$e['key']"
-                             :mats="$screens['mats'] ?? []"
+                             :mats="$screens['mats'] ?? ($cameras['mats'] ?? [])"
                              :screens="$screens['screens'] ?? []"
                              :surfaces="$screenSurfaces ?? []"
                              :new-url="$screenNewUrl ?? null"
+                             :cameras="$cameras['cameras'] ?? []"
+                             :camera-max="$cameras['max'] ?? 4"
                              :color="$mgColor" />
 
             {{-- What those screens PLAY. Renders nothing on the page — only the
@@ -195,6 +199,7 @@
                                   :color="$mgColor" />
         </div>
     @endif
+
 
 
     @if($canManage)

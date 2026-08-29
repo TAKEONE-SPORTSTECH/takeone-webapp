@@ -123,8 +123,13 @@
             Object.entries(this.schema.sports).forEach(([key, sp]) => cards.push({ key, label: sp.label, icon: sp.icon || 'bi-trophy', family: sp.family }));
             return q ? cards.filter(c => c.label.toLowerCase().includes(q) || (c.family || '').toLowerCase().includes(q)) : cards;
         },
-        pickGeneric() { this.mode = 'generic'; this.picked = 'general'; },
-        pickSportMode() { this.mode = 'sport'; if (this.picked === 'general') this.picked = null; },
+        // A door is not a selection to confirm — clicking it goes through.
+        // Generic has nothing left to ask, so it lands on the form directly;
+        // Sport still needs the sport, so it opens the list and the sport card
+        // is what goes through.
+        pickGeneric() { this.mode = 'generic'; this.picked = 'general'; this.goNext(); },
+        pickSportMode() { this.mode = this.mode === 'sport' ? null : 'sport'; if (this.picked === 'general') this.picked = null; },
+        pickSport(key) { this.mode = 'sport'; this.picked = key; this.goNext(); },
         get canNext() {
             if (this.mode === 'generic') return true;
             if (this.mode === 'sport') return !!this.picked && this.picked !== 'general';
@@ -346,27 +351,38 @@
 
         {{-- ===== Step 1 · Generic vs Sport, then the sport filter ===== --}}
         <div x-show="step === 1" class="space-y-4">
-            <div class="m-card rounded-2xl p-4">
-                <p class="text-sm font-bold text-foreground mb-3">{{ __('personal.personal_event_create_what_creating') }}</p>
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" @click="pickGeneric()"
-                            class="m-press rounded-2xl py-6 px-3 border-2 flex flex-col items-center justify-center gap-1.5 text-center transition-colors"
-                            :class="mode === 'generic' ? 'border-primary bg-accent' : 'border-gray-100 bg-white'">
-                        <i class="bi bi-calendar-event text-2xl leading-none text-emerald-500"></i>
-                        <span class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_generic_event') }}</span>
-                        <span class="text-[10px] text-muted-foreground leading-tight">{{ __('personal.personal_event_create_generic_event_sub') }}</span>
-                    </button>
-                    <button type="button" @click="pickSportMode()"
-                            class="m-press rounded-2xl py-6 px-3 border-2 flex flex-col items-center justify-center gap-1.5 text-center transition-colors"
-                            :class="mode === 'sport' ? 'border-primary bg-accent' : 'border-gray-100 bg-white'">
-                        <i class="bi bi-trophy-fill text-2xl leading-none text-red-500"></i>
-                        <span class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_sport') }}</span>
-                        <span class="text-[10px] text-muted-foreground leading-tight">{{ __('personal.personal_event_create_sport_sub') }}</span>
-                    </button>
-                </div>
-
+            {{-- The three doors stand on the page itself, not inside a card:
+                 Generic, Sport and Open Mat are one list of things you can
+                 start, so they are one stack of rows with nothing boxing two of
+                 them off from the third. --}}
+            <p class="text-sm font-bold text-foreground px-1">{{ __('personal.personal_event_create_what_creating') }}</p>
+            <div class="space-y-2">
+                <button type="button" @click="pickGeneric()"
+                        class="m-press w-full rounded-2xl p-3.5 border-2 border-gray-100 bg-white shadow-sm flex items-center gap-3 text-start transition-colors hover:border-primary/40">
+                    <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 bg-emerald-100 text-emerald-600">
+                        <i class="bi bi-calendar-event text-lg"></i>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_event_create_generic_event') }}</span>
+                        <span class="block text-[11px] text-muted-foreground mt-0.5">{{ __('personal.personal_event_create_generic_event_sub') }}</span>
+                    </span>
+                    <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
+                </button>
+                <button type="button" @click="pickSportMode()"
+                        class="m-press w-full rounded-2xl p-3.5 border-2 shadow-sm flex items-center gap-3 text-start transition-colors"
+                        :class="mode === 'sport' ? 'border-primary bg-accent' : 'border-gray-100 bg-white hover:border-primary/40'">
+                    <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 bg-red-100 text-red-500">
+                        <i class="bi bi-trophy-fill text-lg"></i>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_event_create_sport') }}</span>
+                        <span class="block text-[11px] text-muted-foreground mt-0.5">{{ __('personal.personal_event_create_sport_sub') }}</span>
+                    </span>
+                    <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0 transition-transform"
+                       :class="mode === 'sport' && 'rotate-90'"></i>
+                </button>
                 {{-- Sport filter — only when "Sport" is chosen --}}
-                <div x-show="mode === 'sport'" x-cloak class="mt-4 pt-4 border-t border-gray-100">
+                <div x-show="mode === 'sport'" x-cloak class="m-card rounded-2xl p-4">
                     <p class="text-[11px] text-muted-foreground mb-2">{{ __('personal.personal_event_create_pick_sport_hint') }}</p>
                     <div class="relative mb-3">
                         <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -375,7 +391,7 @@
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 overflow-y-auto -mx-1 px-1" style="max-height:44vh">
                         <template x-for="c in sportCards()" :key="c.key">
-                            <button type="button" @click="picked = c.key"
+                            <button type="button" @click="pickSport(c.key)"
                                     class="m-press rounded-2xl p-3 border-2 flex flex-col items-center justify-center gap-1.5 text-center transition-colors min-h-[88px]"
                                     :class="picked === c.key ? 'border-primary bg-accent' : 'border-gray-100 bg-white'">
                                 <i class="bi text-2xl leading-none" :class="c.icon" :style="picked === c.key ? 'color: hsl(250 65% 65%)' : 'color:#9ca3af'"></i>
@@ -386,11 +402,24 @@
                         <p x-show="!sportCards().length" class="col-span-2 sm:col-span-3 text-center text-sm text-muted-foreground py-6">{{ __('personal.personal_event_create_no_sport_matches') }} “<span x-text="sportSearch2"></span>”.</p>
                     </div>
                 </div>
+                {{-- ===== Open a mat — the one thing here that is not a form =====
+                     An open mat has no dates, no fees and nothing to enrol in: it is
+                     two corners and a scoreboard, opened in the thirty seconds after
+                     two people agree to fight. So it belongs in the "what are you
+                     creating?" step rather than on the events list, but it skips the
+                     form entirely — /openmat resolves the club, sport and mat itself. --}}
+                <a href="{{ route('openmat') }}"
+                   class="m-card m-press rounded-2xl p-3.5 flex items-center gap-3 border border-orange-100">
+                    <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 bg-orange-100 text-orange-600">
+                        <i class="bi bi-fire text-lg"></i>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-foreground">{{ __('nav.open_mat') }}</span>
+                        <span class="block text-[11px] text-muted-foreground mt-0.5">{{ __('nav.open_mat_sub') }}</span>
+                    </span>
+                    <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
+                </a>
             </div>
-            <button type="button" @click="goNext()" :disabled="!canNext"
-                    class="m-press w-full py-3.5 rounded-2xl bg-primary text-white font-black text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50">
-                {{ __('personal.personal_event_create_next') }} <i class="bi bi-arrow-right"></i>
-            </button>
         </div>
 
         {{-- ===== Step 2 · The chosen sport's form ===== --}}
@@ -1152,17 +1181,23 @@
                          x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          class="absolute inset-x-0 bottom-0 flex flex-col bg-background rounded-t-3xl shadow-2xl" style="max-height:92vh">
 
-                        <div class="flex-shrink-0 px-5 pt-3 pb-2">
-                            <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full grid place-items-center bg-primary text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0 overflow-hidden text-xs font-bold">
                                     <template x-if="pick && pick.avatar"><img :src="pick.avatar" alt="" class="w-full h-full object-cover"></template>
                                     <template x-if="pick && !pick.avatar"><span x-text="initials(pick.name)"></span></template>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight truncate" x-text="pick ? pick.name : ''"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5" x-text="roleLabel(role)"></p>
                                 </div>
-                                <div class="min-w-0">
-                                    <p class="font-bold text-foreground truncate" x-text="pick ? pick.name : ''"></p>
-                                    <p class="text-[11px] text-muted-foreground" x-text="roleLabel(role)"></p>
-                                </div>
+                                <button type="button" @click="sheet = false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
                         </div>
 

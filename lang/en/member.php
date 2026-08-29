@@ -124,6 +124,8 @@ return [
     'time_ago_today' => 'today',
     'unit_yr' => 'yr',
     'unit_yrs' => 'yrs',
+    'unit_kg' => 'kg',
+    'representing' => 'Representing',
     'unit_mo' => 'mo',
     'unit_mos' => 'mos',
     'unit_day' => 'day',

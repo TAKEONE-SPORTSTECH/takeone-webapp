@@ -14,6 +14,8 @@ use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 class ClubPackageController extends Controller
 {
@@ -59,9 +61,9 @@ class ClubPackageController extends Controller
         ];
 
         if ($request->filled('image') && str_starts_with($request->input('image'), 'data:image')) {
-            $data['cover_image'] = $this->storeBase64Image($request->input('image'), 'packages', 'package_'.time());
+            $data['cover_image'] = $this->storeBase64Image($request->input('image'), StoragePath::club($club, 'packages'), 'package_'.Str::random(24));
         } elseif ($request->hasFile('image')) {
-            $data['cover_image'] = $request->file('image')->store('packages', 'public');
+            $data['cover_image'] = $request->file('image')->store(StoragePath::club($club, 'packages'), 'public');
         }
 
         $package = ClubPackage::create($data);
@@ -98,12 +100,12 @@ class ClubPackageController extends Controller
             if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
                 Storage::disk('public')->delete($package->cover_image);
             }
-            $data['cover_image'] = $this->storeBase64Image($request->input('image'), 'packages', 'package_'.$packageId.'_'.time());
+            $data['cover_image'] = $this->storeBase64Image($request->input('image'), StoragePath::club($club, 'packages'), 'package_'.Str::random(24));
         } elseif ($request->hasFile('image')) {
             if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
                 Storage::disk('public')->delete($package->cover_image);
             }
-            $data['cover_image'] = $request->file('image')->store('packages', 'public');
+            $data['cover_image'] = $request->file('image')->store(StoragePath::club($club, 'packages'), 'public');
         }
 
         $package->update($data);

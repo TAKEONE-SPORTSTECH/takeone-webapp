@@ -14,18 +14,38 @@
 <div x-data="nextUpDesktop(@js($mine), @js($squad), '{{ route('me.events.next-up', $e['key']) }}')"
      x-init="listen()" class="px-4 sm:px-6 lg:px-8 py-6">
 
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-            <a href="{{ route('me.events.show', $e['key']) }}"
-               class="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-                <i class="bi bi-chevron-left rtl:rotate-180"></i> {{ $e['title'] }}
-            </a>
-            <h1 class="text-3xl font-bold text-gray-900 mt-1">{{ __('event-taekwondo_tournament::messages.next_up_title') }}</h1>
+    {{-- Standard header band (Design Rule #6). Drill-down: the event's colour,
+         a labelled back pill, and refresh as a round action on the right. --}}
+    <div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative"
+         style="background: linear-gradient(150deg, {{ $e['color'] ?? '#7c3aed' }}, {{ $e['color'] ?? '#7c3aed' }}b0);">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center justify-between gap-2 mb-4">
+                <a href="{{ route('me.events.show', $e['key']) }}"
+                   class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors">
+                    <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
+                </a>
+
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="refresh()" :disabled="busy" title="{{ __('shared.refresh') }}"
+                            class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors disabled:opacity-60">
+                        <i class="bi bi-arrow-clockwise" :class="busy && 'animate-spin'"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-hourglass-split"></i> {{ __('event-taekwondo_tournament::messages.next_up_title') }}
+                </span>
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('event-taekwondo_tournament::messages.next_up_title') }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-calendar-event"></i>{{ $e['title'] }}
+            </p>
         </div>
-        <button type="button" @click="refresh()" :disabled="busy"
-                class="border border-primary text-primary bg-transparent px-4 py-2 rounded-md text-sm font-medium hover:bg-primary hover:text-white transition-colors">
-            <i class="bi bi-arrow-clockwise me-1" :class="busy && 'animate-spin'"></i> {{ __('shared.refresh') }}
-        </button>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

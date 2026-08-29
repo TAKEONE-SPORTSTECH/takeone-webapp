@@ -90,11 +90,23 @@
                          x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-95 opacity-0"
                          x-transition:enter-end="translate-y-0 sm:scale-100 opacity-100">
 
-                        <div class="flex-shrink-0 px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-                            <span class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-                                <i class="bi bi-exclamation-octagon-fill"></i>
-                            </span>
-                            <p class="font-bold text-gray-900">{{ __('platform.admin_platform_settings_reset_modal_title') }}</p>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #b91c1c, #dc2626b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <i class="bi bi-exclamation-octagon-fill text-xl"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight">{{ __('platform.admin_platform_settings_reset_modal_title') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('platform.admin_platform_settings_reset_modal_confirm_label') }}</p>
+                                </div>
+                                <button type="button" @click="cancel()" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="flex-1 overflow-y-auto px-5 py-4">

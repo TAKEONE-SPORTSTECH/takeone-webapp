@@ -65,6 +65,24 @@
     </div>
 </div>
 <script>
+    /**
+     * Is this hostname one of ours?
+     *
+     * takeone.bh and every subdomain of it (stage.takeone.bh, wa.takeone.bh),
+     * plus whatever host this page is already being served from — which covers
+     * local development and any future hostname without needing an edit here.
+     *
+     * Deliberately a suffix match on a dot boundary, never `includes()`:
+     * `nottakeone.bh` and `takeone.bh.evil.com` must both fail.
+     */
+    window.takeoneIsOwnHost = function (hostname) {
+        const h = String(hostname || '').toLowerCase();
+
+        return h === window.location.hostname.toLowerCase()
+            || h === 'takeone.bh'
+            || h.endsWith('.takeone.bh');
+    };
+
     window.qrScanner = function () {
         return {
             active: false,
@@ -145,7 +163,7 @@
                 this.raf = requestAnimationFrame(() => this.scan());
             },
 
-            // Scanned a URL → navigate (same pattern as notifications: http(s) only).
+            // Scanned a URL → navigate. Ours by path, anything else refused.
             handle(value) {
                 // First one through wins: the scanner is already gone by the time
                 // the caller hears about it, so nothing else can hand back again.
@@ -163,7 +181,26 @@
                 try {
                     const u = new URL(value, window.location.origin);
                     if (u.protocol === 'http:' || u.protocol === 'https:') {
-                        window.location.href = u.href;
+                        // A code printed on one TAKEONE host has to work when
+                        // scanned on the other. A club's poster is generated on
+                        // takeone.bh and then scanned on stage.takeone.bh during
+                        // a rehearsal, and the reverse while testing — the QR
+                        // bakes in whichever host generated it, so honouring it
+                        // literally would throw an operator onto production
+                        // mid-rehearsal, signed out and looking at live data.
+                        //
+                        // So for OUR hosts we keep the path and stay where the
+                        // scanner already is.
+                        if (window.takeoneIsOwnHost(u.hostname)) {
+                            window.location.href = u.pathname + u.search + u.hash;
+                            return;
+                        }
+
+                        // Anything else belongs to somebody else. A QR poster is
+                        // world-writable — anyone can print one and stick it on a
+                        // wall — so a scan must never be a redirect off the
+                        // platform. Show the value instead of following it.
+                        window.showToast && window.showToast('error', @js(__('header.scan_foreign_host')));
                         return;
                     }
                 } catch (_) { /* not a URL */ }

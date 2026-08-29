@@ -4,6 +4,25 @@
 
 @section('content')
 <div class="px-4 sm:px-6 lg:px-8 py-6" x-data="getAppHub()" x-init="init()">
+    {{-- Standard header band (Design Rule #6). Platform hub: the shared
+         m-hero mesh, no back pill. --}}
+    <div class="m-hero -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-android2"></i> Android
+                </span>
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('nav.get_app') }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-phone"></i>{{ __('personal.personal_get_app_tagline') }}
+            </p>
+        </div>
+    </div>
+
     <div class="max-w-2xl space-y-5">
 
         {{-- ===== App identity ===== --}}

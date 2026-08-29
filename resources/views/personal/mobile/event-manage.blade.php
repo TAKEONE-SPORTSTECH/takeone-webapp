@@ -169,14 +169,19 @@
         </div>
     @endif
 
-    {{-- ===== Hall screens — one row, opening the whole panel as a sheet. Only
-              for a type that drives any. ===== --}}
-    @if($canManage && ! empty($screens))
+    {{-- ===== The hall's wiring — one row, opening the whole panel as a sheet.
+              Screens for a type that drives any, and the cameras filming the
+              mats either way: an event with no wall boards can still be filmed,
+              so the panel opens for either fleet and simply omits the half that
+              is not there. ===== --}}
+    @if($canManage && (! empty($screens) || ! empty($cameras)))
         <x-court-screens :event="$e['key']"
-                         :mats="$screens['mats'] ?? []"
+                         :mats="$screens['mats'] ?? ($cameras['mats'] ?? [])"
                          :screens="$screens['screens'] ?? []"
                          :surfaces="$screenSurfaces ?? []"
                          :new-url="$screenNewUrl ?? null"
+                         :cameras="$cameras['cameras'] ?? []"
+                         :camera-max="$cameras['max'] ?? 4"
                          :color="$mgColor"
                          :sheet="true" />
 

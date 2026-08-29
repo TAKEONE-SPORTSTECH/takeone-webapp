@@ -531,7 +531,7 @@
                                 <p class="text-sm font-medium text-gray-700 truncate" x-text="doc.file_name || doc.file_path"></p>
                                 <p class="text-xs text-gray-400">{{ __('shared.profile_modal_fields_click_to_replace') }}</p>
                             </div>
-                            <a :href="doc.file_url || ('/storage/' + doc.file_path)" target="_blank" @click.stop class="flex-shrink-0 text-xs text-primary hover:underline">
+                            <a :href="doc.file_url" x-show="doc.file_url" target="_blank" @click.stop class="flex-shrink-0 text-xs text-primary hover:underline">
                                 {{ __('shared.profile_modal_fields_view') }} <i class="bi bi-box-arrow-up-right"></i>
                             </a>
                         </div>
@@ -640,12 +640,31 @@
             <template x-teleport="body">
             <div x-show="setOpen" x-cloak class="fixed inset-0 z-[80] flex items-end justify-center" @keydown.escape.window="setOpen=false">
                 <div class="absolute inset-0 bg-black/50" @click="setOpen=false" x-transition.opacity></div>
-                <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8"
+                <div class="relative w-full max-w-lg bg-white rounded-t-3xl overflow-hidden"
                      x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
-                    <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
-                    <h3 class="font-bold text-lg text-foreground flex items-center gap-2"><i class="bi bi-key-fill text-amber-500"></i> {{ __('member.set_password') }}</h3>
-                    <p class="text-sm text-muted-foreground mt-1 mb-4" x-text="@js(__('member.set_password_for')).replace(':name', name)"></p>
+                    {{-- Header --}}
+                    <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                         style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                        <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                        <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                        <div class="relative flex items-start gap-3">
+                            <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                <i class="bi bi-key-fill text-xl"></i>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-lg font-black leading-tight">{{ __('member.set_password') }}</h3>
+                                <p class="text-[12px] text-white/85 mt-0.5" x-text="@js(__('member.set_password_for')).replace(':name', name)"></p>
+                            </div>
+                            <button type="button" @click="setOpen=false" aria-label="{{ __('shared.close') }}"
+                                    class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-5 pb-8">
                     <div class="space-y-3">
                         <input type="password" x-model="pw1" placeholder="{{ __('member.new_password') }}" minlength="8" autocomplete="new-password"
                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
@@ -658,6 +677,7 @@
                             <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('member.set_password') }}
                         </button>
                     </div>
+                    </div>
                 </div>
             </div>
             </template>
@@ -666,18 +686,39 @@
             <template x-teleport="body">
             <div x-show="resultOpen" x-cloak class="fixed inset-0 z-[80] flex items-end justify-center" @keydown.escape.window="resultOpen=false">
                 <div class="absolute inset-0 bg-black/50" @click="resultOpen=false" x-transition.opacity></div>
-                <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8 text-center"
+                <div class="relative w-full max-w-lg bg-white rounded-t-3xl overflow-hidden"
                      x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-                    <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
-                    <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-600 grid place-items-center mx-auto"><i class="bi bi-check-circle-fill text-2xl"></i></div>
-                    <h3 class="font-bold text-lg text-foreground mt-3">{{ __('member.new_password_generated') }}</h3>
-                    <p class="text-sm text-muted-foreground mt-1" x-show="emailed">{{ __('member.password_emailed') }}</p>
-                    <p class="text-sm text-amber-600 mt-1" x-show="!emailed">{{ __('member.password_not_emailed') }}</p>
+                    {{-- Header --}}
+                    <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                         style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                        <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                        <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                        <div class="relative flex items-start gap-3">
+                            <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                <i class="bi bi-check-circle-fill text-xl"></i>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-lg font-black leading-tight">{{ __('member.new_password_generated') }}</h3>
+                                <p class="text-[12px] text-white/85 mt-0.5" x-show="emailed">{{ __('member.password_emailed') }}</p>
+                                <p class="text-[12px] text-white mt-0.5" x-show="!emailed">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ __('member.password_not_emailed') }}
+                                </p>
+                            </div>
+                            <button type="button" @click="resultOpen=false" aria-label="{{ __('shared.close') }}"
+                                    class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-5 pb-8 text-center">
                     <button type="button" @click="copy()" class="m-press w-full mt-4 flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-muted border border-dashed border-primary/40">
                         <span class="font-mono font-bold text-base text-foreground tracking-wider select-all" x-text="newPw"></span>
                         <i class="bi" :class="copied ? 'bi-clipboard-check text-green-600' : 'bi-clipboard text-primary'"></i>
                     </button>
                     <button type="button" @click="resultOpen=false" class="m-press w-full mt-4 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90">{{ __('shared.done') }}</button>
+                    </div>
                 </div>
             </div>
             </template>

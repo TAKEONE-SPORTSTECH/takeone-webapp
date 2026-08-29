@@ -23,32 +23,25 @@
 
     @include('partials.personal-desktop-subnav')
 
-    {{-- ===== Hero stat bar ===== --}}
-    <div class="rounded-2xl shadow-sm p-6 text-white relative overflow-hidden mb-6" style="background: linear-gradient(135deg, #7c3aed, #ef4444);">
-        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
-        <div class="relative flex items-center justify-between flex-wrap gap-4">
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-wider text-white/70">{{ __('challenge.title') }}</p>
-                <h1 class="text-2xl font-black mt-0.5">{{ __('challenge.subtitle') }}</h1>
+    {{-- Standard header band (Design Rule #6). Platform hub: the shared
+         m-hero mesh, no back pill. --}}
+    <div class="m-hero -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-star-fill"></i> {{ $totalPoints }} {{ __('challenge.personal_challenge_points') }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-trophy"></i> {{ $record }}
+                </span>
             </div>
-            <div class="flex items-center gap-3">
-                <div class="rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-4 py-2.5 text-center min-w-[84px]">
-                    <p class="text-lg font-black leading-none">{{ $totalPoints }}</p>
-                    <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('challenge.personal_challenge_points') }}</p>
-                </div>
-                <div class="rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-4 py-2.5 text-center min-w-[84px]">
-                    <p class="text-lg font-black leading-none">{{ $record }}</p>
-                    <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('challenge.personal_challenge_record') }}</p>
-                </div>
-                <div class="rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-4 py-2.5 text-center min-w-[84px]">
-                    <p class="text-lg font-black leading-none">{{ $activeDuels->count() }}</p>
-                    <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('challenge.personal_challenge_duels') }}</p>
-                </div>
-                <a href="{{ route('me.challenge.history') }}"
-                   class="px-4 h-[52px] rounded-2xl bg-white/15 border border-white/25 backdrop-blur flex items-center gap-1.5 text-xs font-semibold hover:bg-white/25 transition-colors">
-                    <i class="bi bi-clock-history"></i> {{ __('challenge.personal_challenge_history') }}
-                </a>
-            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('challenge.subtitle') }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-lightning-charge-fill"></i>{{ __('challenge.title') }}
+            </p>
         </div>
     </div>
 

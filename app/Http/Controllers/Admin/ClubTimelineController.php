@@ -8,6 +8,7 @@ use App\Models\ClubTimelinePost;
 use App\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
 use Illuminate\Support\Facades\Storage;
+use App\Support\StoragePath;
 
 class ClubTimelineController extends Controller
 {
@@ -30,7 +31,7 @@ class ClubTimelineController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('timeline/'.$club->slug, 'public');
+            $imagePath = $request->file('image')->store(StoragePath::club($club, 'timeline'), 'public');
         }
 
         $post = ClubTimelinePost::create([
@@ -60,7 +61,7 @@ class ClubTimelineController extends Controller
             if ($post->image_path) {
                 Storage::disk('public')->delete($post->image_path);
             }
-            $data['image_path'] = $request->file('image')->store('timeline/'.$club->slug, 'public');
+            $data['image_path'] = $request->file('image')->store(StoragePath::club($club, 'timeline'), 'public');
         }
 
         if ($request->boolean('remove_image') && $post->image_path) {

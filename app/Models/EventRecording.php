@@ -4,17 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * The link between one bout on takeone and its video on TAKEONE Play.
+ * The link between one bout and the footage of it.
  *
- * takeone owns this row, which makes it the join for the whole integration:
- * Play needs no reference of its own, because every message from Play can name
- * its video and let this table resolve the bout (Match Sync Contract).
+ * One row per bout per camera angle, pointing at the `media_files` row that
+ * knows where the bytes actually live. `anchor_at` — the wall clock of the
+ * recording's first frame — is what makes a highlights bar possible, since
+ * every marker is `occurred_at − anchor_at` (App\Media\BoutTimeline).
  *
- * A bout with no row here simply has no video, which is the ordinary case — and
- * the sync treats it as a silent no-op, never an error.
+ * A bout with no row here simply has no video, which is the ordinary case.
+ *
+ * The `play_*` columns are dormant. They belonged to a video-platform
+ * integration that has been removed; a few rows still carry a URL published
+ * there, kept so those links keep working, and nothing writes them any more.
  */
 class EventRecording extends Model
 {
@@ -22,6 +25,10 @@ class EventRecording extends Model
         'event_id', 'match_id', 'court', 'angle', 'anchor_at', 'started_at', 'ended_at',
         'play_video_id', 'play_video_key', 'play_url', 'status',
         'play_revision', 'pushed_at', 'timeline_pulled_at', 'sync_error',
+        // Media this platform holds itself. Its absence here was silent data
+        // loss: every mass-assigned write of a locally-recorded bout produced a
+        // row marked `linked` that pointed at no video at all.
+        'media_file_id',
     ];
 
     protected $casts = [
@@ -54,13 +61,15 @@ class EventRecording extends Model
         return $this->belongsTo(EventMatch::class, 'match_id');
     }
 
-    public function timelineRounds(): HasMany
+    /**
+     * The video this platform holds itself, when it holds one.
+     *
+     * A recording row now has two possible homes for its media: `play_url` on
+     * TAKEONE Play, or this. Either may be null; a row with neither is the
+     * record that a video once existed.
+     */
+    public function mediaFile(): BelongsTo
     {
-        return $this->hasMany(PlayTimelineRound::class, 'event_recording_id')->orderBy('round_number');
-    }
-
-    public function timelinePoints(): HasMany
-    {
-        return $this->hasMany(PlayTimelinePoint::class, 'event_recording_id')->orderBy('timestamp_seconds');
+        return $this->belongsTo(MediaFile::class, 'media_file_id');
     }
 }

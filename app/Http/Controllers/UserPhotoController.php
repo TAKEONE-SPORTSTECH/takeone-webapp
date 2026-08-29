@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Support\StoragePath;
 
 /**
  * The pictures on a member's profile.
@@ -49,7 +50,7 @@ class UserPhotoController extends Controller
 
         $path = $this->storeBase64Image(
             $request->input('image'),
-            'people/'.$member->uuid.'/photos',
+            StoragePath::memberPhotos($member),
             (string) Str::ulid(),
         );
 

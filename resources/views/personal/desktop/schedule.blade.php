@@ -7,6 +7,25 @@
 
     @include('partials.personal-desktop-subnav')
 
+    {{-- Standard header band (Design Rule #6). Platform hub: the shared
+         m-hero mesh, no back pill. --}}
+    <div class="m-hero -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-calendar-week"></i> {{ __('personal.personal_schedule_this_week') }}
+                </span>
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('personal.personal_schedule_heading') }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-calendar-week"></i>{{ __('personal.personal_schedule_this_week') }}
+            </p>
+        </div>
+    </div>
+
     <div class="flex flex-col lg:flex-row gap-6 items-start">
         {{-- ===== Left: week strip + sessions ===== --}}
         <div class="flex-1 min-w-0 space-y-4">
@@ -14,7 +33,6 @@
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{{ __('personal.personal_schedule_this_week') }}</p>
-                        <h1 class="text-2xl font-bold text-gray-900 mt-0.5">{{ __('personal.personal_schedule_heading') }}</h1>
                     </div>
                     <button type="button"
                             onclick="window.dispatchEvent(new CustomEvent('open-schedule-form'))"

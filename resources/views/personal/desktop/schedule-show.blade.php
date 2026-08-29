@@ -646,13 +646,18 @@
                              x-transition:enter="transition ease-out duration-250" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                              class="fixed inset-0 z-[60] flex items-center justify-center p-4">
                             <div class="w-full max-w-md max-h-[85vh] flex flex-col bg-white rounded-2xl shadow-2xl" @click.outside="menuOpen=false">
-                                <div class="flex-shrink-0 px-5 py-4 border-b border-border/70 rounded-t-2xl text-white" style="background: linear-gradient(160deg, {{ $s['color'] }}, {{ $s['color'] }}cc);">
-                                    <div class="flex items-center justify-between">
-                                        <div class="min-w-0">
-                                            <h2 class="text-base font-black leading-tight truncate">{{ __('personal.personal_schedule_show_manage_class') }}</h2>
-                                            <p class="text-xs text-white/80 truncate">{{ $s['title'] ?? $clubName }}{{ !empty($occurrenceLabel) ? ' · '.$occurrenceLabel : '' }}</p>
+                                <div class="flex-shrink-0 px-5 pt-4 pb-4 rounded-t-2xl text-white relative overflow-hidden" style="background: linear-gradient(150deg, {{ $s['color'] }}, {{ $s['color'] }}b0);">
+                                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                                    <div class="relative flex items-start gap-3">
+                                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                            <i class="bi bi-sliders text-xl"></i>
+                                        </span>
+                                        <div class="min-w-0 flex-1">
+                                            <h2 class="text-lg font-black leading-tight truncate">{{ __('personal.personal_schedule_show_manage_class') }}</h2>
+                                            <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $s['title'] ?? $clubName }}{{ !empty($occurrenceLabel) ? ' · '.$occurrenceLabel : '' }}</p>
                                         </div>
-                                        <button type="button" @click="menuOpen=false" class="w-9 h-9 rounded-full bg-white/20 border border-white/30 grid place-items-center flex-shrink-0 hover:bg-white/30 transition-colors"><i class="bi bi-x-lg"></i></button>
+                                        <button type="button" @click="menuOpen=false" aria-label="{{ __('shared.close') }}"
+                                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
                                     </div>
                                 </div>
                                 <div class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -821,10 +826,19 @@
                              x-transition:enter="transition ease-out duration-250" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                              class="fixed inset-0 z-[60] flex items-center justify-center p-4">
                             <div class="w-full max-w-md max-h-[85vh] flex flex-col bg-white rounded-2xl shadow-2xl" @click.outside="open=false">
-                                <div class="flex-shrink-0 px-5 py-4 border-b border-border/70 rounded-t-2xl bg-destructive text-white">
-                                    <div class="flex items-center justify-between">
-                                        <div class="min-w-0"><h2 class="text-base font-black leading-tight">{{ __('personal.personal_schedule_show_cancel_class') }}</h2><p class="text-xs text-white/80">{{ __('personal.personal_schedule_show_auto_makeup_credit') }}</p></div>
-                                        <button type="button" @click="open=false" class="w-9 h-9 rounded-full bg-white/20 border border-white/30 grid place-items-center flex-shrink-0 hover:bg-white/30 transition-colors"><i class="bi bi-x-lg"></i></button>
+                                <div class="flex-shrink-0 px-5 pt-4 pb-4 rounded-t-2xl text-white relative overflow-hidden"
+                                     style="background: linear-gradient(150deg, #b91c1c, #dc2626b0);">
+                                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                                    <div class="relative flex items-start gap-3">
+                                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                            <i class="bi bi-calendar-x text-xl"></i>
+                                        </span>
+                                        <div class="min-w-0 flex-1">
+                                            <h2 class="text-lg font-black leading-tight">{{ __('personal.personal_schedule_show_cancel_class') }}</h2>
+                                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('personal.personal_schedule_show_auto_makeup_credit') }}</p>
+                                        </div>
+                                        <button type="button" @click="open=false" aria-label="{{ __('shared.close') }}"
+                                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
                                     </div>
                                 </div>
                                 <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">

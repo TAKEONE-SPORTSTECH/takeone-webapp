@@ -23,15 +23,37 @@
         ev() { return this.events.find(e => e.uuid === this.picked) || null; },
         allows(key) { return (this.ev()?.surfaces || []).includes(key); },
         controlTaken() { return (this.ev()?.controls || []).includes(this.court); },
-        ok() { return this.picked && this.court && this.surface && ! (this.surface === 'control' && this.controlTaken()); },
+        // Four lenses per mat. Shown as 'two free' rather than refused after
+        // the fact, the same courtesy the scoring table gets.
+        camerasUsed() { return (this.ev()?.cameras || {})[this.court] || 0; },
+        camerasFull() { return this.camerasUsed() >= 4; },
+        unavailable(key) {
+            return (key === 'control' && this.controlTaken()) || (key === 'camera' && this.camerasFull());
+        },
+        // The hint becomes the REASON when a slot cannot be taken: a disabled
+        // row with no explanation reads as a bug.
+        reason(key, hint) {
+            if (key === 'control' && this.controlTaken()) return @js(__('events.screen_role_control_taken'));
+            if (key === 'camera') {
+                return this.camerasFull()
+                    ? @js(__('events.camera_role_full'))
+                    : @js(__('events.camera_role_free')).replace(':free', 4 - this.camerasUsed());
+            }
+            return hint;
+        },
+        ok() {
+            return this.picked && this.court && this.surface
+                && ! (this.surface === 'control' && this.controlTaken())
+                && ! (this.surface === 'camera' && this.camerasFull());
+        },
      }">
 
     <div class="flex items-center gap-3 mb-1">
         <span class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-            <i class="bi bi-display text-xl"></i>
+            <i class="bi {{ ($isCamera ?? false) ? 'bi-camera-video' : 'bi-display' }} text-xl"></i>
         </span>
         <div>
-            <h1 class="text-xl font-bold text-gray-900">{{ __('events.screen_claim_title') }}</h1>
+            <h1 class="text-xl font-bold text-gray-900">{{ ($isCamera ?? false) ? __('events.camera_claim_title') : __('events.screen_claim_title') }}</h1>
             <p class="text-sm text-muted-foreground">{{ __('events.screen_claim_sub', ['code' => $code]) }}</p>
         </div>
     </div>
@@ -103,16 +125,17 @@
                         ['bout', 'bi-trophy', 'screen_role_bout', 'screen_role_bout_hint'],
                         ['queue', 'bi-list-ol', 'screen_role_queue', 'screen_role_queue_hint'],
                         ['control', 'bi-sliders', 'screen_role_control', 'screen_role_control_hint'],
+                        ['camera', 'bi-camera-video', 'camera_role', 'camera_role_hint'],
                     ] as [$value, $icon, $label, $hint])
                         <template x-if="allows(@js($value))">
                             <label class="flex items-center gap-3 p-3 rounded-xl border transition-colors"
                                    :class="{
                                         'border-primary bg-primary/5': surface === @js($value),
-                                        'border-gray-200 bg-white hover:bg-muted/60 cursor-pointer': surface !== @js($value) && ! (@js($value) === 'control' && controlTaken()),
-                                        'border-gray-200 bg-muted/40 opacity-60 cursor-not-allowed': @js($value) === 'control' && controlTaken(),
+                                        'border-gray-200 bg-white hover:bg-muted/60 cursor-pointer': surface !== @js($value) && ! unavailable(@js($value)),
+                                        'border-gray-200 bg-muted/40 opacity-60 cursor-not-allowed': unavailable(@js($value)),
                                    }">
                                 <input type="radio" name="surface" value="{{ $value }}" class="sr-only"
-                                       x-model="surface" :disabled="@js($value) === 'control' && controlTaken()">
+                                       x-model="surface" :disabled="unavailable(@js($value))">
                                 <span class="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0"
                                       :class="surface === @js($value) ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
                                     <i class="bi {{ $icon }}"></i>
@@ -123,9 +146,7 @@
                                          is unavailable: a disabled control with no
                                          explanation reads as a bug. --}}
                                     <span class="block text-xs text-muted-foreground"
-                                          x-text="(@js($value) === 'control' && controlTaken())
-                                                  ? @js(__('events.screen_role_control_taken'))
-                                                  : @js(__('events.'.$hint))"></span>
+                                          x-text="reason(@js($value), @js(__('events.'.$hint)))"></span>
                                 </span>
                                 <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0"
                                       :class="surface === @js($value) ? 'border-primary' : 'border-gray-300'">

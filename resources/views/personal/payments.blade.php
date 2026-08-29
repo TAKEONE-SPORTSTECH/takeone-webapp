@@ -109,10 +109,24 @@
                  class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
 
                 {{-- Header --}}
-                <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
-                    <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                    <h3 class="text-lg font-bold text-gray-900">{{ __('Settle bill') }}</h3>
-                    <p class="text-sm text-muted-foreground truncate" x-text="current.name"></p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #047857, #059669b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-cash-coin text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('Settle bill') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5 truncate" x-text="current.name"></p>
+                        </div>
+                        <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 {{-- Scrollable body --}}

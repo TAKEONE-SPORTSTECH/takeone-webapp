@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 class ChallengeController extends Controller
 {
@@ -472,7 +474,7 @@ class ChallengeController extends Controller
                 'file' => array_merge(['required', 'file'], $fileRules),
                 'caption' => ['nullable', 'string', 'max:160'],
             ]);
-            $url = $request->file('file')->store("duel-media/{$duel->id}", 'public');
+            $url = $request->file('file')->store(StoragePath::duel($duel), 'public');
         }
 
         $media = $duel->media()->create([

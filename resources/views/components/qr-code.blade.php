@@ -8,6 +8,7 @@
     'size' => 220,               // on-screen QR size (px)
     'posterUrl' => null,         // optional printable-poster URL
     'buttonClass' => null,       // override the trigger button styling
+    'iconOnly' => false,         // trigger shows the icon alone (label becomes its accessible name)
     'targets' => null,           // optional: array of ['url','tab','title','caption','filename','poster']
                                  //           — renders ONE modal with a tab switcher between QRs
 ])
@@ -55,9 +56,18 @@
         ?: 'inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-primary text-primary bg-transparent text-sm font-medium hover:bg-primary hover:text-white transition-colors';
 @endphp
 
+{{-- The trigger.
+
+     `iconOnly` exists because a caller that wants a compact 40x40 control had no
+     way to say so: the label was printed unconditionally, so "Camera QR" was laid
+     out inside a `w-10 h-10` box and spilled straight out of it. The label is not
+     dropped when it is hidden — it becomes the button's ACCESSIBLE NAME, because
+     a bare icon says nothing to a screen reader, and "QR" is not a word a button
+     can be identified by out loud. --}}
 <div x-data="qrCode_{{ $uid }}()" class="inline-block">
-    <button type="button" @click="open = true" class="m-press {{ $btn }}">
-        <i class="bi {{ $icon }}"></i> {{ $label }}
+    <button type="button" @click="open = true" class="m-press {{ $btn }}"
+            @if($iconOnly && ($label || $title)) aria-label="{{ $label ?: $title }}" @endif>
+        <i class="bi {{ $icon }}"></i>@unless($iconOnly) {{ $label }}@endunless
     </button>
 
     <template x-teleport="body">
@@ -74,14 +84,21 @@
                  x-transition:leave="transition ease-in duration-200"
                  x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-4 opacity-0">
 
-                <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
-                    <div class="w-10 h-1.5 rounded-full bg-gray-300 mx-auto mb-3 sm:hidden"></div>
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0">
-                            <h2 class="text-base font-bold text-foreground truncate" x-text="cur.title"></h2>
-                            <p class="text-[11px] text-muted-foreground truncate" x-show="cur.caption" x-text="cur.caption"></p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-qr-code text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h2 class="text-lg font-black leading-tight truncate" x-text="cur.title"></h2>
+                            <p class="text-[12px] text-white/85 mt-0.5 truncate" x-show="cur.caption" x-text="cur.caption"></p>
                         </div>
-                        <button type="button" @click="open = false" class="m-press w-9 h-9 rounded-full bg-muted grid place-items-center text-muted-foreground flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                        <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
                     </div>
                 </div>
 

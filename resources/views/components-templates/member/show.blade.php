@@ -491,10 +491,13 @@
                                         @endif
                                     </div>
                                     @if(!empty($doc['file_path']))
-                                    <a href="{{ asset('storage/' . $doc['file_path']) }}" target="_blank"
-                                       class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors" title="{{ __('member.templates_member_show_view_document') }}">
+                                    {{-- Opens in the shared viewer (black tint, zoom + pan), not a bare tab. --}}
+                                    <button type="button" data-media-lightbox
+                                            data-src="{{ asset('storage/' . $doc['file_path']) }}"
+                                            data-label="{{ $doc['type'] ?? __('member.document') }}"
+                                            class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors" title="{{ __('member.templates_member_show_view_document') }}">
                                         <i class="bi bi-eye" style="font-size:0.85rem;"></i>
-                                    </a>
+                                    </button>
                                     @endif
                                 </div>
                                 @endforeach
@@ -1296,6 +1299,10 @@
                                         && ! $clubDecided
                                         && $event->verification_status !== 'verified';
 
+                                    // The platform's own record of this competition: the event to open
+                                    // and the bouts actually fought (App\Support\BoutHistory).
+                                    $platform = ($tournamentBouts ?? [])[$event->id] ?? null;
+
                                     // Raw values for the edit form — display copies above are formatted.
                                     $editPayload = [
                                         'uuid' => $event->uuid,
@@ -1365,6 +1372,13 @@
                                                 <div class="flex gap-1.5 mt-1.5 flex-wrap">
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $event->type == 'championship' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-700' }}">{{ ucfirst($event->type) }}</span>
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700">{{ $event->sport }}</span>
+                                                    {{-- The same competition on the platform, where the viewer may open it:
+                                                         the claim is free text, this is the event with the real draw. --}}
+                                                    @if($platform && $platform['event']['url'])
+                                                        <a href="{{ $platform['event']['url'] }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-accent text-primary hover:bg-primary hover:text-white transition-colors">
+                                                            <i class="bi bi-calendar2-event"></i>{{ $platform['event']['title'] }}<i class="bi bi-arrow-right rtl:rotate-180"></i>
+                                                        </a>
+                                                    @endif
                                                 </div>
 
                                                 <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
@@ -1427,16 +1441,54 @@
                                             </div>
 
                                             <div class="border-t border-gray-50 pt-2.5">
-                                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.templates_member_show_th_club_affiliation') }}</p>
+                                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.representing') }}</p>
                                                 @if($event->clubAffiliation)
-                                                    <p class="text-xs font-semibold text-gray-700 truncate">{{ $event->clubAffiliation->club_name }}</p>
-                                                    @if($event->clubAffiliation->location)
-                                                        <p class="text-[11px] text-gray-400 truncate">{{ $event->clubAffiliation->location }}</p>
-                                                    @endif
+                                                    @php $repLogo = $event->clubAffiliation->logo ?: $event->clubAffiliation->tenant?->logo; @endphp
+                                                    <div class="flex items-center gap-2">
+                                                        {{-- Bare mark on a sizing box, never a white tile (Design Rule #5). --}}
+                                                        @if($repLogo)
+                                                            <span class="w-8 h-8 flex-shrink-0">
+                                                                <img src="{{ asset('storage/'.$repLogo) }}" alt="{{ $event->clubAffiliation->club_name }}" class="w-full h-full object-contain">
+                                                            </span>
+                                                        @endif
+                                                        <div class="min-w-0 flex-1">
+                                                            <p class="text-xs font-semibold text-gray-700 truncate">{{ $event->clubAffiliation->club_name }}</p>
+                                                            @if($event->clubAffiliation->location)
+                                                                <p class="text-[11px] text-gray-400 truncate">{{ $event->clubAffiliation->location }}</p>
+                                                            @endif
+                                                        </div>
+                                                    </div>
                                                 @else
                                                     <p class="inline-flex items-center gap-1 text-xs text-gray-500"><i class="bi bi-person"></i>{{ __('member.templates_member_show_individual') }}</p>
                                                 @endif
                                             </div>
+
+                                            @if($platform && count($platform['bouts']))
+                                                {{-- Who they actually faced, from their own corner. Straight off the
+                                                     event's draw, so nobody re-types a result into the claim. --}}
+                                                <div class="border-t border-gray-50 pt-2.5">
+                                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{{ __('personal.competition_record') }}</p>
+                                                    <div class="flex flex-col gap-1.5">
+                                                        @foreach($platform['bouts'] as $bout)
+                                                            <div class="flex items-center gap-2 flex-wrap text-xs">
+                                                                <span class="font-semibold text-gray-700 truncate">{{ __('events.bout_vs') }} {{ $bout['opponent'] }}</span>
+                                                                @if($bout['my_score'] !== null || $bout['their_score'] !== null)
+                                                                    <span class="font-bold tabular-nums text-gray-900">{{ $bout['my_score'] ?? '—' }}–{{ $bout['their_score'] ?? '—' }}</span>
+                                                                @endif
+                                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ ! $bout['decided'] ? 'bg-gray-100 text-gray-600' : ($bout['won'] ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700') }}">
+                                                                    {{ ! $bout['decided'] ? __('personal.awaiting_result') : ($bout['won'] ? __('personal.challenge_win') : __('personal.challenge_loss')) }}
+                                                                </span>
+                                                                @if($bout['bout_url'])
+                                                                    <a href="{{ $bout['bout_url'] }}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-list-ul"></i>{{ __('personal.match_details') }}</a>
+                                                                @endif
+                                                                @if($bout['video_url'] && preg_match('#^https?://#i', $bout['video_url']))
+                                                                    <a href="{{ $bout['video_url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-play-fill"></i>{{ __('personal.watch') }}</a>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endif
 
                                             @if($event->notesMedia->count() > 0)
                                                 <div class="border-t border-gray-50 pt-2.5">
@@ -1445,8 +1497,10 @@
                                                         @if($note->note_text)
                                                             <p class="text-xs text-gray-600 leading-snug mb-1">{{ $note->note_text }}</p>
                                                         @endif
-                                                        @if($note->media_link)
-                                                            <a href="{{ $note->media_link }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
+                                                        {{-- Member-entered link: rendered only when it is plainly http(s), never a
+                                                             javascript: / data: URL (Security Coverage §3). --}}
+                                                        @if($note->media_link && preg_match('#^https?://#i', $note->media_link))
+                                                            <a href="{{ $note->media_link }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
                                                                 <i class="bi bi-image"></i>{{ __('member.templates_member_show_view_media') }}
                                                             </a>
                                                         @endif
@@ -2307,7 +2361,7 @@
                                 <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="participants_count" name="participants_count" min="1">
                             </div>
                             <div>
-                                <label for="club_affiliation_id" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_th_club_affiliation') }}</label>
+                                <label for="club_affiliation_id" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.representing') }}</label>
                                 <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="club_affiliation_id" name="club_affiliation_id">
                                     <option value="">{{ __('member.templates_member_show_select_club_optional') }}</option>
                                     @foreach($clubAffiliations ?? [] as $affiliation)
@@ -4117,7 +4171,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${perfHtml}
                     </div>
                     <div class="border-t border-gray-50 pt-2.5">
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.templates_member_show_th_club_affiliation') }}</p>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.representing') }}</p>
                         ${affHtml}
                     </div>
                     ${notesHtml}
@@ -4233,6 +4287,9 @@ document.addEventListener('DOMContentLoaded', function() {
     :showRelationshipFields="$relationship->relationship_type !== 'admin_view' && $relationship->relationship_type !== 'self'"
     :relationship="$relationship"
 />
+
+{{-- Document viewer — black tint, zoom + pan (opened by [data-media-lightbox]). --}}
+<x-media-lightbox />
 
 <!-- Quick Photo Edit Modal (opened from the pencil icon on the profile picture) -->
 <x-photo-edit-modal
@@ -4542,7 +4599,7 @@ window.addEventListener('member-profile-updated', function(e) {
                         <div class="text-xs text-gray-500 font-mono">${d.number || ''}</div>
                         ${d.uploaded_at ? `<div class="text-xs text-gray-400">{{ __("member.templates_member_show_uploaded") }} ${d.uploaded_at}</div>` : ''}
                     </div>
-                    ${d.file_path ? `<a href="/storage/${d.file_path}" target="_blank" class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors"><i class="bi bi-eye" style="font-size:0.85rem;"></i></a>` : ''}
+                    ${d.file_path ? `<button type="button" data-media-lightbox data-src="/storage/${d.file_path}" data-label="${d.type || ''}" class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors"><i class="bi bi-eye" style="font-size:0.85rem;"></i></button>` : ''}
                 </div>`
             ).join('') + '</div>';
         } else {

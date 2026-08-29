@@ -247,13 +247,23 @@
                  x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-4 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-4 sm:scale-95"
                  class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col" style="max-height: 92vh;" @click.stop>
-                <div class="pt-2.5 pb-1 flex justify-center sm:hidden flex-shrink-0"><span class="w-10 h-1.5 rounded-full bg-gray-300"></span></div>
-                <div class="flex items-center justify-between px-4 py-3 bg-primary text-white rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
-                    <div class="min-w-0">
-                        <h5 class="text-base font-semibold flex items-center"><i class="bi bi-person-plus mr-2"></i>{{ __('admin.role_pick_member') }}</h5>
-                        <p class="text-[11px] text-white/80">{{ __('admin.role_pick_member_sub') }}</p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-person-plus text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight truncate">{{ __('admin.role_pick_member') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ __('admin.role_pick_member_sub') }}</p>
+                        </div>
+                        <button type="button" @click="pickerOpen = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <button type="button" @click="pickerOpen = false" class="text-white/90 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
                 </div>
 
                 <div class="px-4 pt-3 flex-shrink-0">

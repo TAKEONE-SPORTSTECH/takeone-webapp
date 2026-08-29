@@ -287,10 +287,31 @@
         <div class="absolute inset-0 bg-black/40"
              x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
              x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
-        <div class="relative bg-white rounded-t-3xl p-2 pb-[calc(1rem+env(safe-area-inset-bottom))]" @click.stop
+        <div class="relative bg-white rounded-t-3xl overflow-hidden pb-[calc(1rem+env(safe-area-inset-bottom))]" @click.stop
              x-transition:enter="transition ease-out duration-250" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
              x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
-            <div class="w-11 h-1.5 rounded-full bg-gray-200 mx-auto my-2.5"></div>
+            {{-- Header --}}
+            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                 style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                <div class="relative flex items-start gap-3">
+                    <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                        <i class="bi bi-chat-dots-fill text-xl"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-lg font-black leading-tight">{{ __('messenger.messenger_index_message_actions') }}</h3>
+                        <p class="text-[12px] text-white/85 mt-0.5">{{ __('Choose an action') }}</p>
+                    </div>
+                    <button type="button" @click="actionMsg = null" aria-label="{{ __('shared.close') }}"
+                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-2">
             <button type="button" @click="copyMsg(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-start text-[15px] text-foreground"><i class="bi bi-clipboard text-lg"></i> {{ __('nav.partials_mobile_chat_copy') }}</button>
             <template x-if="actionMsg && actionMsg.can_edit">
                 <button type="button" @click="startEdit(actionHead, actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-start text-[15px] text-foreground"><i class="bi bi-pencil text-lg"></i> {{ __('shared.edit') }}</button>
@@ -300,6 +321,7 @@
                 <button type="button" @click="deleteMsg(actionHead, actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-start text-[15px] text-red-600"><i class="bi bi-trash text-lg"></i> {{ __('nav.partials_mobile_chat_delete_for_everyone') }}</button>
             </template>
             <button type="button" @click="actionMsg = null" class="w-full mt-1 px-4 py-3.5 rounded-2xl bg-muted/60 m-press text-[15px] font-medium text-foreground">{{ __('shared.cancel') }}</button>
+            </div>
         </div>
     </div>
 

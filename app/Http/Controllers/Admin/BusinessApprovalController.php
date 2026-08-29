@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 class BusinessApprovalController extends Controller
 {
@@ -86,7 +88,7 @@ class BusinessApprovalController extends Controller
             if ($business->logo && Storage::disk('public')->exists($business->logo)) {
                 Storage::disk('public')->delete($business->logo);
             }
-            $business->logo = $request->file('logo')->store('business-logos', 'public');
+            $business->logo = $request->file('logo')->store(StoragePath::business($business, 'branding'), 'public');
         }
 
         $business->name = $validated['name'];

@@ -517,14 +517,22 @@
                     @php $rowCount = count($m['rows']); @endphp
                     <div x-show="metric === '{{ $key }}'" class="flex flex-col min-h-0 flex-1">
                         {{-- Header --}}
-                        <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
-                            <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
-                            <div class="flex items-center justify-between">
-                                <h3 class="font-bold text-foreground flex items-center gap-2">
-                                    <i class="bi {{ $m['icon'] }} text-primary"></i>{{ $m['title'] }}
-                                </h3>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <i class="bi {{ $m['icon'] }} text-xl"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight">{{ $m['title'] }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ $m['caption'] }}</p>
+                                </div>
                                 <button type="button" @click="closeMetric()" aria-label="{{ __('shared.close') }}"
-                                        class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
                         </div>
 
@@ -533,7 +541,6 @@
                         <div class="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-4">
                             <div class="flex flex-col items-center">
                                 <div class="mp-ring is-lg" style="--p:{{ $m['percent'] }}"><b>{{ $m['percent'] }}%</b></div>
-                                <p class="text-[13px] text-muted-foreground text-center mt-3 max-w-xs">{{ $m['caption'] }}</p>
                             </div>
 
                             <div class="grid grid-cols-3 gap-2">
@@ -773,13 +780,23 @@
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-full"
                          class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col" style="max-height:88vh" @click.stop>
                         {{-- Header --}}
-                        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
-                            <h5 class="text-base font-bold text-foreground flex items-center gap-2 min-w-0">
-                                <span class="text-xl leading-none" x-text="filterEmoji"></span>
-                                <span class="truncate" x-text="filterLabel"></span>
-                                <span class="text-[11px] font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5 flex-shrink-0" x-text="filtered.length"></span>
-                            </h5>
-                            <button type="button" @click="sheetOpen=false" class="w-9 h-9 rounded-full bg-muted text-gray-500 grid place-items-center flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #b45309, #d97706b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <span class="text-xl leading-none" x-text="filterEmoji"></span>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight truncate" x-text="filterLabel"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5"><span x-text="filtered.length"></span> · {{ __('member.medals') }}</p>
+                                </div>
+                                <button type="button" @click="sheetOpen=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
                         </div>
                         {{-- List --}}
                         <div class="overflow-y-auto p-3 space-y-2.5" style="max-height:calc(88vh - 4rem)">
@@ -968,13 +985,22 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2">
                 <h3 class="font-bold text-foreground mb-1 flex items-center gap-2"><i class="bi bi-file-earmark-text text-primary"></i> {{ __('member.documents') }}</h3>
                 @foreach($user->documents as $doc)
-                    <a href="{{ !empty($doc['file_path']) ? asset('storage/'.$doc['file_path']) : '#' }}" target="_blank" rel="noopener" class="flex items-center gap-3 text-sm">
-                        <span class="w-9 h-9 rounded-lg bg-accent grid place-items-center text-primary flex-shrink-0"><i class="bi bi-file-earmark-arrow-down"></i></span>
+                    @php
+                        $docUrl = !empty($doc['file_path']) ? asset('storage/'.$doc['file_path']) : '';
+                        $docLabel = $doc['type'] ?? __('member.document');
+                    @endphp
+                    {{-- Tapping a document opens it in the shared viewer — the same black
+                         tint as the profile picture, with zoom and pan so a photographed
+                         ID is actually readable. --}}
+                    <button type="button" @class(['flex items-center gap-3 text-sm w-full text-start m-press', 'pointer-events-none opacity-60' => ! $docUrl])
+                            @if($docUrl) @click="$dispatch('open-media-lightbox', { src: @js($docUrl), label: @js($docLabel) })" @endif>
+                        <span class="w-9 h-9 rounded-lg bg-accent grid place-items-center text-primary flex-shrink-0"><i class="bi bi-zoom-in"></i></span>
                         <div class="min-w-0 flex-1">
-                            <p class="font-semibold truncate">{{ $doc['type'] ?? __('member.document') }}</p>
+                            <p class="font-semibold truncate">{{ $docLabel }}</p>
                             @if(!empty($doc['number']))<p class="text-[11px] text-muted-foreground truncate">{{ $doc['number'] }}</p>@endif
                         </div>
-                    </a>
+                        <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground flex-shrink-0"></i>
+                    </button>
                 @endforeach
             </div>
             @endif
@@ -1142,8 +1168,24 @@
                     <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8"
                          x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
-                        <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
-                        <h3 class="font-bold text-lg text-foreground flex items-center gap-2"><i class="bi bi-speedometer text-primary"></i> {{ __('member.log_weight') }}</h3>
+                        <div class="flex-shrink-0 -mx-5 -mt-5 mb-4 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #be123c, #e11d48b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <i class="bi bi-speedometer text-xl"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight">{{ __('member.log_weight') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.metric_weight') }} · {{ __('member.metric_height') }} · {{ __('member.metric_bmi') }}</p>
+                                </div>
+                                <button type="button" @click="addOpen=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="space-y-3 mt-4">
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
@@ -1296,9 +1338,23 @@
                          x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
-                        <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                            <h3 class="text-lg font-bold text-gray-900">{{ __('member.add_goal') }}</h3>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <i class="bi bi-flag-fill text-xl"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight">{{ __('member.add_goal') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.goal_target_value') }} · {{ __('member.goal_target_date') }}</p>
+                                </div>
+                                <button type="button" @click="addOpen=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                             <div>
@@ -1387,11 +1443,25 @@
                          x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
-                        <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-start justify-between gap-2">
-                                <h3 class="text-lg font-bold text-gray-900 min-w-0 truncate" x-text="activeGoal && activeGoal.title"></h3>
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0" :class="activeGoal && activeGoal.status==='completed' ? 'bg-green-100 text-green-700' : 'bg-accent text-primary'" x-text="activeGoal && (activeGoal.status==='completed' ? @js(__('member.goal_achieved')) : @js(__('member.goals_active')))"></span>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <i class="bi bi-flag-fill text-xl"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight truncate" x-text="activeGoal && activeGoal.title"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.goal_target_date') }} · <span x-text="activeGoal && activeGoal.target_date"></span></p>
+                                </div>
+                                <button type="button" @click="detailOpen=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="relative mt-3 flex flex-wrap gap-1.5">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold" x-text="activeGoal && (activeGoal.status==='completed' ? @js(__('member.goal_achieved')) : @js(__('member.goals_active')))"></span>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -1574,10 +1644,71 @@
                         'update_url' => route('member.tournament.update', [$t->user_id, $t->uuid]),
                         'delete_url' => route('member.tournament.destroy', [$t->user_id, $t->uuid]),
                     ];
+
+                    // What the card cannot fit — results, who they competed for, notes,
+                    // provenance — travels with the card and opens in the detail sheet.
+                    $medalLabels = ['1st' => __('member.templates_member_show_first_place'), '2nd' => __('member.templates_member_show_second_place'), '3rd' => __('member.templates_member_show_third_place'), 'special' => __('member.templates_member_show_special_award')];
+                    $detailPayload = [
+                        'title' => $t->title,
+                        'type' => ucfirst($t->type),
+                        'sport' => $t->sport,
+                        'date' => optional($t->date)->format('d M Y'),
+                        'time' => optional($t->time)->format('H:i'),
+                        'location' => $t->location,
+                        'participants' => $t->participants_count,
+                        'club' => $t->clubAffiliation?->club_name,
+                        'club_location' => $t->clubAffiliation?->location,
+                        // The club's mark: the affiliation's own, else the platform club's.
+                        'club_logo' => ($logo = $t->clubAffiliation?->logo ?: $t->clubAffiliation?->tenant?->logo)
+                            ? asset('storage/'.$logo)
+                            : null,
+                        'results' => $t->performanceResults->map(fn ($r) => [
+                            'medal' => $r->medal_type,
+                            'label' => $medalLabels[$r->medal_type] ?? ucfirst((string) $r->medal_type),
+                            'points' => $r->points,
+                            'description' => $r->description,
+                        ])->values()->all(),
+                        'notes' => $t->notesMedia->map(fn ($n) => [
+                            'text' => $n->note_text,
+                            'link' => $n->media_link,
+                        ])->values()->all(),
+                        'verification' => [
+                            'status' => $t->verification_status,
+                            'club' => $t->verifiedByTenant?->tr('club_name') ?? $t->verifiedByTenant?->club_name,
+                            'at' => optional($t->verified_at)->format('d M Y'),
+                            'note' => $t->verification_note,
+                        ],
+                        'evidence_url' => $t->evidence_path ? route('member.tournament.evidence', [$t->user_id, $t->uuid]) : null,
+                        // The platform's own record of this competition, when there is
+                        // one: the event to explore, and the bouts actually fought.
+                        'platform' => ($tournamentBouts ?? [])[$t->id] ?? null,
+                        // How old they were ON THE DAY, not today — a medal won at 12
+                        // must not read as one won at the age they are now. Silent when
+                        // no birthdate is on file (it is never demanded of anyone).
+                        // Carbon 3 returns a float here, hence the cast — and a date before
+                        // the birthdate (bad data) states no age rather than a negative one.
+                        'age' => ($user->birthdate && $t->date)
+                            ? max(0, (int) \Illuminate\Support\Carbon::parse($user->birthdate)->diffInYears($t->date)) ?: null
+                            : null,
+                        // What they weighed in at, else the division they were drawn in.
+                        'weight' => (function () use ($t, $tournamentBouts) {
+                            $entry = ($tournamentBouts ?? [])[$t->id]['entry'] ?? null;
+                            if ($entry && $entry['weight']) {
+                                return rtrim(rtrim(number_format((float) $entry['weight'], 1), '0'), '.').' '.__('member.unit_kg');
+                            }
+
+                            return $entry['division'] ?? null;
+                        })(),
+                    ];
                 @endphp
                 {{-- Payload goes through {{ }} so quotes/apostrophes in a title are HTML-escaped;
                      inlining raw JSON into an @click attribute would break on an apostrophe. --}}
-                <div data-tournament-card data-uuid="{{ $t->uuid }}" @if($isSelf) data-edit="{{ json_encode($editPayload) }}" @endif class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                {{-- The whole card opens its detail sheet; the actions inside it stop the
+                     click so editing or deleting never also opens the sheet. --}}
+                <div data-tournament-card data-uuid="{{ $t->uuid }}" @if($isSelf) data-edit="{{ json_encode($editPayload) }}" @endif
+                     data-detail="{{ json_encode($detailPayload) }}"
+                     role="button" tabindex="0" @click="openDetail($el)" @keydown.enter.space.prevent="openDetail($el)"
+                     class="m-press group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden cursor-pointer">
                     <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-amber-400/80"></span>
                     <div class="flex items-start gap-3">
                         <span class="w-12 h-12 rounded-xl bg-amber-50 grid place-items-center text-amber-600 flex-shrink-0 ring-1 ring-amber-100"><i class="bi bi-trophy-fill text-lg"></i></span>
@@ -1586,9 +1717,9 @@
                                 <p class="font-bold text-foreground text-[15px] leading-snug truncate flex-1">{{ $t->title }}</p>
                                 @if($isSelf)
                                     <div class="flex items-center gap-1 flex-shrink-0 -mt-1">
-                                        <button type="button" @click="openEdit($el)" aria-label="{{ __('shared.edit') }}"
+                                        <button type="button" @click.stop="openEdit($el)" aria-label="{{ __('shared.edit') }}"
                                                 class="m-press w-8 h-8 rounded-lg grid place-items-center text-muted-foreground active:bg-muted"><i class="bi bi-pencil text-[13px]"></i></button>
-                                        <button type="button" @click="remove($el)" aria-label="{{ __('shared.delete') }}"
+                                        <button type="button" @click.stop="remove($el)" aria-label="{{ __('shared.delete') }}"
                                                 class="m-press w-8 h-8 rounded-lg grid place-items-center text-red-500 active:bg-red-50"><i class="bi bi-trash text-[13px]"></i></button>
                                     </div>
                                 @endif
@@ -1605,14 +1736,14 @@
                                 <span class="inline-flex items-center gap-2 flex-wrap" data-verify-row="{{ $t->uuid }}">
                                     <x-verification-badge data-verify-badge :status="$t->verification_status" :club="$t->verifiedByTenant?->tr('club_name') ?? $t->verifiedByTenant?->club_name" />
                                     @if($t->evidence_path)
-                                        <a href="{{ route('member.tournament.evidence', [$t->user_id, $t->uuid]) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><i class="bi bi-paperclip"></i>{{ __('Evidence') }}</a>
+                                        <a href="{{ route('member.tournament.evidence', [$t->user_id, $t->uuid]) }}" target="_blank" rel="noopener" @click.stop class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><i class="bi bi-paperclip"></i>{{ __('Evidence') }}</a>
                                     @endif
                                     @if($isSelf && $canRequestVerify)
                                         {{-- While pending this is a rate-limited nudge, not a new request. --}}
-                                        <button type="button" data-verify-btn @click="requestVerify($el, '{{ route('member.tournament.request-verification', [$t->user_id, $t->uuid]) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>{{ $t->verification_status === 'pending' ? __('member.tournament_verify_resend') : __('Request verification') }}</button>
+                                        <button type="button" data-verify-btn @click.stop="requestVerify($el, '{{ route('member.tournament.request-verification', [$t->user_id, $t->uuid]) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>{{ $t->verification_status === 'pending' ? __('member.tournament_verify_resend') : __('Request verification') }}</button>
                                     @elseif($isSelf && ! $t->clubAffiliation?->tenant_id && $t->verification_status !== 'verified')
                                         {{-- No platform club to confirm → peers/coaches vouch on the public profile. --}}
-                                        <button type="button" @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary" title="{{ __('member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
+                                        <button type="button" @click.stop="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary" title="{{ __('member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
                                     @endif
                                 </span>
                             </div>
@@ -1628,6 +1759,9 @@
             @endforelse
             </div>
 
+            {{-- Read-only detail sheet for a tapped record --}}
+            @include('components-templates.member.mobile.partials.tournament-detail-sheet')
+
             {{-- Self-claim bottom-sheet (teleported to body to escape transformed ancestors) --}}
             <template x-teleport="body">
                 <div x-show="addOpen" x-cloak @keydown.escape.window="addOpen=false" class="fixed inset-0 z-[70]">
@@ -1637,11 +1771,22 @@
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl">
                         {{-- Header --}}
-                        <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
-                            <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
-                            <div class="flex items-center justify-between">
-                                <h3 class="font-bold text-foreground" x-text="editing ? '{{ __('member.tournament_edit_title') }}' : '{{ __('Add achievement') }}'"></h3>
-                                <button type="button" @click="addOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #b45309, #d97706b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <i class="bi bi-trophy-fill text-xl"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight" x-text="editing ? '{{ __('member.tournament_edit_title') }}' : '{{ __('Add achievement') }}'"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.medals_awards') }}</p>
+                                </div>
+                                <button type="button" @click="addOpen=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
                         </div>
                         {{-- Body --}}
@@ -1992,11 +2137,22 @@
                          x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
-                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center justify-between">
-                                <h3 class="font-bold text-foreground">{{ __('member.add_club') }}</h3>
-                                <button type="button" @click="addOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                    <i class="bi bi-building text-xl"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight">{{ __('member.add_club') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.club_source') }}</p>
+                                </div>
+                                <button type="button" @click="addOpen=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -2072,29 +2228,32 @@
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl overflow-hidden">
 
-                        {{-- Grab handle --}}
-                        <div class="flex-shrink-0 pt-2.5 pb-1 flex justify-center"><span class="w-10 h-1.5 rounded-full bg-gray-300"></span></div>
-
-                        {{-- Hero header — the club's own logo becomes a blurred identity wash --}}
-                        <div class="flex-shrink-0 relative overflow-hidden bg-primary/[0.04]">
+                        {{-- Header band — the club's own logo stays as a blurred identity wash --}}
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
                             {{-- club-identity backdrop (real content → per-club colour + depth) --}}
                             <template x-if="cur?.logo">
                                 <img :src="cur.logo" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-[1.6] blur-2xl opacity-30 pointer-events-none select-none"
                                      :class="cur && !cur.ongoing && 'grayscale'">
                             </template>
-                            {{-- legibility + blend into the body --}}
-                            <div class="absolute inset-0 bg-gradient-to-b from-white/55 via-background/80 to-background"></div>
-                            <div class="relative px-5 pt-3 pb-5 flex items-start gap-4">
-                                <span class="w-16 h-16 rounded-[1.15rem] bg-white grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-black/[0.06] shadow-[0_6px_20px_-6px_rgba(0,0,0,0.18)]"
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3 relative"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center overflow-hidden flex-shrink-0"
                                       :class="cur && !cur.ongoing && 'grayscale'">
-                                    <template x-if="cur && cur.logo"><img :src="cur.logo" alt="" class="w-16 h-16 object-cover"></template>
-                                    <template x-if="cur && !cur.logo"><i class="bi bi-buildings text-2xl text-primary/40"></i></template>
+                                    <template x-if="cur && cur.logo"><img :src="cur.logo" alt="" class="w-12 h-12 object-contain"></template>
+                                    <template x-if="cur && !cur.logo"><i class="bi bi-buildings text-xl"></i></template>
                                 </span>
-                                <div class="min-w-0 flex-1 pt-1">
-                                    <h3 class="font-extrabold text-foreground text-[18px] leading-tight tracking-tight line-clamp-2" x-text="cur?.club_name"></h3>
-                                    {{-- brand accent underline --}}
-                                    <div class="mt-1.5 h-[3px] w-10 rounded-full bg-gradient-to-r from-primary to-primary/20"></div>
-                                    <div class="mt-2 flex items-center gap-2 flex-wrap">
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight line-clamp-2" x-text="cur?.club_name"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5" x-text="cur?.dates"></p>
+                                </div>
+                                <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="relative mt-3 flex flex-wrap gap-1.5">
                                         {{-- Status — "Left" folds its "how long ago" inside the same pill --}}
                                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset backdrop-blur"
                                               :class="cur?.ongoing ? 'bg-green-100/90 text-green-700 ring-green-200' : 'bg-white/90 text-gray-500 ring-gray-200'">
@@ -2116,9 +2275,6 @@
                                             <button type="button" x-show="(cur?.verification === 'self_reported' || cur?.verification === 'rejected') && cur?.can_request" x-cloak @click="requestVerify()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-primary/10 text-primary ring-primary/15"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
                                             <button type="button" x-show="(cur?.verification === 'self_reported' || cur?.verification === 'rejected') && !cur?.can_request" x-cloak @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-primary/10 text-primary ring-primary/15"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
                                         @endif
-                                    </div>
-                                </div>
-                                <button type="button" @click="close()" class="m-press w-9 h-9 -mt-1 -me-1 rounded-full grid place-items-center bg-white/80 backdrop-blur text-muted-foreground hover:bg-white hover:text-foreground shadow-sm ring-1 ring-black/5 flex-shrink-0"><i class="bi bi-x-lg text-[13px]"></i></button>
                             </div>
                         </div>
 
@@ -2254,15 +2410,20 @@
                          x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
-                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center gap-3">
-                                <span class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 grid place-items-center flex-shrink-0"><i class="bi bi-star-fill"></i></span>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-star-fill text-xl"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="font-bold text-foreground leading-tight">{{ __('member.partials_affiliations_enhanced_add_skill') }}</h3>
-                                    <p class="text-[11px] text-muted-foreground truncate" x-text="cur?.club_name"></p>
+                                    <h3 class="text-lg font-black leading-tight">{{ __('member.partials_affiliations_enhanced_add_skill') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5 truncate" x-text="cur?.club_name"></p>
                                 </div>
-                                <button type="button" @click="skillOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                                <button type="button" @click="skillOpen=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -2362,15 +2523,20 @@
                          x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
-                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center gap-3">
-                                <span class="w-9 h-9 rounded-xl bg-green-100 text-green-600 grid place-items-center flex-shrink-0"><i class="bi bi-person-plus"></i></span>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-person-plus text-xl"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="font-bold text-foreground leading-tight">{{ __('Add Instructor') }}</h3>
-                                    <p class="text-[11px] text-muted-foreground truncate" x-text="cur?.club_name"></p>
+                                    <h3 class="text-lg font-black leading-tight">{{ __('Add Instructor') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5 truncate" x-text="cur?.club_name"></p>
                                 </div>
-                                <button type="button" @click="insOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                                <button type="button" @click="insOpen=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -2422,15 +2588,20 @@
                          x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
-                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center gap-3">
-                                <span class="w-9 h-9 rounded-xl bg-sky-100 text-sky-600 grid place-items-center flex-shrink-0"><i class="bi bi-paperclip"></i></span>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-paperclip text-xl"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="font-bold text-foreground leading-tight">{{ __('member.partials_affiliations_enhanced_add_media_certificate') }}</h3>
-                                    <p class="text-[11px] text-muted-foreground truncate" x-text="cur?.club_name"></p>
+                                    <h3 class="text-lg font-black leading-tight">{{ __('member.partials_affiliations_enhanced_add_media_certificate') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5 truncate" x-text="cur?.club_name"></p>
                                 </div>
-                                <button type="button" @click="mediaOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                                <button type="button" @click="mediaOpen=false" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -2601,11 +2772,20 @@
                          x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
-                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center justify-between">
-                                <h3 class="font-bold text-foreground" x-text="editing ? '{{ __('member.edit_certification') }}' : '{{ __('member.add_certification') }}'"></h3>
-                                <button type="button" @click="close()" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-patch-check-fill text-xl"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight" x-text="editing ? '{{ __('member.edit_certification') }}' : '{{ __('member.add_certification') }}'"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.cert_issuer') }} · {{ __('member.cert_issue_date') }}</p>
+                                </div>
+                                <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -2845,11 +3025,20 @@
                          x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
                          class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
-                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center justify-between">
-                                <h3 class="font-bold text-foreground" x-text="editing ? '{{ __('member.edit_work') }}' : '{{ __('member.add_work') }}'"></h3>
-                                <button type="button" @click="close()" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                            <div class="relative flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-briefcase-fill text-xl"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-lg font-black leading-tight" x-text="editing ? '{{ __('member.edit_work') }}' : '{{ __('member.add_work') }}'"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.work_role') }} · {{ __('member.work_organization') }}</p>
+                                </div>
+                                <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
+                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -3039,6 +3228,9 @@
 
     <x-profile-photo-sheet :user="$relationship->dependent" />
 @endif
+
+{{-- The document viewer — outside the @if, since reading a document is not editing it. --}}
+<x-media-lightbox />
 
 {{-- Scripts live INSIDE the content section (not @push) so they ship with #shell-content --}}
 {{-- and re-run on the mobile shell's AJAX swaps — @push('scripts') would be dropped there. --}}
@@ -3711,6 +3903,53 @@ window.tournamentSheet = function (cfg) {
         editing: false,
         wasVerified: false,
         updateUrl: '',
+
+        {{-- Reading a record: the card is a summary, this is everything on it. --}}
+        showDetail: false,
+        detail: null,
+        openDetail(el) {
+            const card = el.closest('[data-tournament-card]');
+            if (! card || ! card.dataset.detail) return;
+            try { this.detail = JSON.parse(card.dataset.detail); } catch (e) { return; }
+            this.showDetail = true;
+        },
+        medalChip(medal) {
+            return ({
+                '1st': 'bg-amber-100 text-amber-700',
+                '2nd': 'bg-slate-100 text-slate-600',
+                '3rd': 'bg-orange-100 text-orange-700',
+                'special': 'bg-accent text-primary',
+            })[medal] || 'bg-gray-100 text-gray-600';
+        },
+        {{-- Same vocabulary and colours as <x-verification-badge>; a self-reported
+             claim must never borrow the authority of a verified one. --}}
+        verifyLabel(status) {
+            return ({
+                verified: @js(__('Verified')),
+                pending: @js(__('Pending review')),
+                rejected: @js(__('Not verified')),
+                self_reported: @js(__('Self-reported')),
+            })[status] || @js(__('Self-reported'));
+        },
+        {{-- Initials for an opponent who has not opted into showing their face. --}}
+        initialsOf(name) {
+            return String(name ?? '').trim().split(/\s+/).slice(0, 2)
+                .map(w => w.charAt(0).toUpperCase()).join('') || '?';
+        },
+        {{-- Member-entered media links are untrusted: anything that is not plainly
+             http(s) is refused rather than bound into an href (javascript: URLs). --}}
+        safeLink(url) {
+            return /^https?:\/\//i.test(String(url ?? '')) ? url : null;
+        },
+        verifyChip(status) {
+            return ({
+                verified: 'bg-green-50 text-green-700',
+                pending: 'bg-amber-50 text-amber-700',
+                rejected: 'bg-red-50 text-red-700',
+                self_reported: 'bg-gray-100 text-gray-500',
+            })[status] || 'bg-gray-100 text-gray-500';
+        },
+
         blankForm() {
             return { title: '', sport: '', date: '', type: 'tournament', location: '', club_affiliation_id: null, medal_type: '' };
         },

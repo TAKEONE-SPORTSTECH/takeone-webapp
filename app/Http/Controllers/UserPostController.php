@@ -8,6 +8,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 /**
  * Member-authored posts on the personal ("/me") feed. All write endpoints
@@ -115,7 +117,7 @@ class UserPostController extends Controller
 
         $paths = [];
         foreach ($request->file('images', []) as $file) {
-            $paths[] = $file->store('user-posts/'.$user->id, 'public');
+            $paths[] = $file->store(StoragePath::memberPosts($user), 'public');
         }
 
         $post = UserPost::create([

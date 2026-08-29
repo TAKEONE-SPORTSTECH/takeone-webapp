@@ -11,11 +11,29 @@
         $subClubs   = $subscriptions->pluck('tenant_id')->filter()->unique()->count();
     @endphp
 
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900">{{ __('nav.my_packages') }}</h1>
-            <p class="text-sm text-muted-foreground mt-1">{{ __('personal.membership') }}</p>
+    {{-- Standard header band (Design Rule #6). Platform hub: the shared
+         m-hero mesh, no back pill. --}}
+    <div class="m-hero -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-box"></i> {{ $activeSubs }} {{ __('member.active') }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-building"></i> {{ $subClubs }} {{ __('member.clubs') }}
+                </span>
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('nav.my_packages') }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-box"></i>{{ __('personal.membership') }}
+            </p>
         </div>
+    </div>
+
+    <div class="flex justify-end mb-6">
         <a href="{{ route('clubs.explore') }}" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium">
             <i class="bi bi-plus-lg mr-2"></i>{{ __('nav.explore_clubs') }}
         </a>
