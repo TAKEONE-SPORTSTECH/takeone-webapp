@@ -643,13 +643,50 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Cam.ink,
-      body: _token == null
-          ? const _Boot(message: 'Setting this camera up')
-          : _permissionRefused
-              ? _permissionTakeover()
-              : _claimed
-                  ? _station()
-                  : _unpaired(),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: _token == null
+                ? const _Boot(message: 'Setting this camera up')
+                : _permissionRefused
+                    ? _permissionTakeover()
+                    : _claimed
+                        ? _station()
+                        : _unpaired(),
+          ),
+
+          // The clip drawer sits ABOVE every state, not inside the paired one.
+          //
+          // What is on this phone is the operator's to look at whenever they
+          // pick it up. Footage recorded at yesterday's event does not stop
+          // being reviewable because the camera has since been unpaired, and a
+          // volunteer holding an unclaimed phone should not have to find an
+          // organiser and a QR code to answer "is the final still on here?".
+          if (_drawerOpen) ...[
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _closeDrawer,
+                child: Container(color: Cam.ink.withValues(alpha: 0.38)),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              bottom: 0,
+              right: 0,
+              child: ClipDrawer(
+                clips: _clips,
+                startInSelect: _drawerSelecting,
+                saving: _publishing,
+                onClose: _closeDrawer,
+                onPlay: _play,
+                onSave: _publishClip,
+                onUpload: _uploadClip,
+                onDelete: _deleteClips,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -692,6 +729,40 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
                       style: Cam.body(14),
                     ),
                   ),
+                  // Recordings are reachable without pairing. The footage on
+                  // this phone belongs to whoever is holding it, and needing an
+                  // organiser and a QR code to check whether the final is still
+                  // on here is the wrong answer at the end of a long day.
+                  if (_clips.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        _drawerOpen = true;
+                        _drawerSelecting = false;
+                      }),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: Cam.paper.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Cam.paper.withValues(alpha: 0.16)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.video_library_outlined, size: 17, color: Cam.paper.withValues(alpha: 0.75)),
+                            const SizedBox(width: 9),
+                            Text(
+                              'RECORDINGS · ${_clips.length}',
+                              style: Cam.cap(13, color: Cam.paper.withValues(alpha: 0.85), tracking: 0.1),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 18),
                   Row(
                     children: [
@@ -781,30 +852,7 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
             ..._statusLayer(rolling),
             ..._controlLayer(pillar: pillar, inPillars: inPillars, rolling: rolling),
 
-            // E/F · the drawer, over a scrimmed but live preview.
-            if (_drawerOpen) ...[
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: _closeDrawer,
-                  child: Container(color: Cam.ink.withValues(alpha: 0.38)),
-                ),
-              ),
-              Positioned(
-                top: 0,
-                bottom: 0,
-                right: 0,
-                child: ClipDrawer(
-                  clips: _clips,
-                  startInSelect: _drawerSelecting,
-                  saving: _publishing,
-                  onClose: _closeDrawer,
-                  onPlay: _play,
-                  onSave: _publishClip,
-                  onUpload: _uploadClip,
-                  onDelete: _deleteClips,
-                ),
-              ),
-            ],
+            // E/F · the drawer is mounted at the top level — see build().
           ],
         );
       },
