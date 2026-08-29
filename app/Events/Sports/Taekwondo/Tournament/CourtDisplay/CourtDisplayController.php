@@ -85,16 +85,23 @@ class CourtDisplayController extends Controller
         // until an organiser claims it. Also the state a screen returns to if
         // its event is deleted out from under it.
         if (! $device->isClaimed() || ! $device->event) {
-            $device->ensurePairable();
-
-            return view('event-taekwondo_tournament::court-display.pairing', [
-                'code' => $device->pairing_code,
-                'token' => $token,
-                'claimUrl' => route('court-display.claim', $device->pairing_code),
-                // So a screen standing on its code jumps to the board the moment
-                // it is paired, instead of waiting out a throttled poll.
-                'screenLink' => ScreenChannel::credentials($device),
-            ]);
+            /*
+             * Back to the sport-neutral room, not this package's own code.
+             *
+             * A screen standing on a code from THIS fleet can only ever be
+             * claimed into an event of THIS sport — and unpairing returns a
+             * device to its fleet, so a screen used once for karate could never
+             * afterwards be paired to anything else. The organiser reads the code
+             * off the wall, types it into the event in front of them, and is told
+             * it does not match a screen waiting to be paired. It was waiting;
+             * just in a queue that event could not see.
+             *
+             * /screen issues a code any event of any sport can claim, which is
+             * what the fleet being decided by the EVENT at claim time actually
+             * requires. The per-package claim door still works for anyone holding
+             * one of its codes; nothing stands on one any more.
+             */
+            return redirect()->route('screen.new');
         }
 
         // Paired as the scoring table rather than a display. That page has its

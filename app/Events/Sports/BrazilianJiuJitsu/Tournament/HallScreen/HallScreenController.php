@@ -55,17 +55,23 @@ class HallScreenController extends Controller
         $device->touchSeen();
 
         if (! $device->isClaimed() || ! $device->event) {
-            $device->ensurePairable();
-
-            return view('event-bjj_tournament::screen.pairing', [
-                'code' => $device->pairing_code,
-                'token' => $token,
-                // What the QR on the screen encodes. Worthless on its own: the
-                // page behind it requires an organiser who can already manage
-                // the event they are about to point this screen at.
-                'claimUrl' => route('bjj-screen.claim', $device->pairing_code),
-                'screenLink' => ScreenChannel::credentials($device),
-            ]);
+            /*
+             * Back to the sport-neutral room, not this package's own code.
+             *
+             * A screen standing on a code from THIS fleet can only ever be
+             * claimed into an event of THIS sport — and unpairing returns a
+             * device to its fleet, so a screen used once for karate could never
+             * afterwards be paired to anything else. The organiser reads the code
+             * off the wall, types it into the event in front of them, and is told
+             * it does not match a screen waiting to be paired. It was waiting;
+             * just in a queue that event could not see.
+             *
+             * /screen issues a code any event of any sport can claim, which is
+             * what the fleet being decided by the EVENT at claim time actually
+             * requires. The per-package claim door still works for anyone holding
+             * one of its codes; nothing stands on one any more.
+             */
+            return redirect()->route('screen.new');
         }
 
         // A paired scoring table is a console, not a board. Sent there rather
