@@ -309,6 +309,7 @@ return [
     'bout_video_gallery' => 'معرض الحدث',
     'bout_video_angles_count' => ':n زوايا',
     'bout_gallery_title' => 'المعرض',
+    'bout_video_skip' => 'تخطٍ',
     'bout_gallery_sub' => 'كل نزال جرى تصويره',
     'bout_gallery_empty' => 'لا تسجيلات بعد',
     'bout_gallery_empty_sub' => 'تظهر النزالات هنا فور انتهاء كاميرا البساط من رفعها.',

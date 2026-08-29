@@ -316,6 +316,7 @@ return [
     'bout_video_gallery' => 'Event gallery',
     'bout_video_angles_count' => ':n angles',
     'bout_gallery_title' => 'Gallery',
+    'bout_video_skip' => 'Skip',
     'bout_gallery_sub' => 'Every bout that was filmed',
     'bout_gallery_empty' => 'Nothing filmed yet',
     'bout_gallery_empty_sub' => 'Bouts appear here as soon as a camera on the mat finishes uploading them.',

@@ -46,13 +46,41 @@
   .video-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 42%,#242424 0%,#050505 75%)}
   /* Real integration: put your <video> here, object-fit: contain */
 
-  .scorechip{position:absolute;top:14px;left:14px;display:flex;align-items:stretch;border-radius:8px;overflow:hidden;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.5)}
-  .scorechip .rnd{background:#141414;color:var(--ink-2);padding:7px 10px;font-family:'Archivo',sans-serif;font-size:10px;font-weight:800;letter-spacing:1.5px;display:flex;align-items:center}
-  .scorechip .aka{background:var(--red);color:#fff;padding:7px 12px}
-  .scorechip .ao{background:var(--blue);color:#fff;padding:7px 12px}
-  .scorechip .clk{background:#141414;color:var(--ink);padding:7px 10px;display:flex;align-items:center}
 
-  .play-btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;border:none;cursor:pointer;background:rgba(230,30,30,.92);color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 8px 32px rgba(230,30,30,.4);transition:.15s}
+  .play-btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;border:none;cursor:pointer;background:rgba(230,30,30,.92);color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 8px 32px rgba(230,30,30,.4);transition:opacity .18s ease,transform .18s ease}
+  /* Out of the way while it is playing. A red disc parked over the middle of a
+     bout hides the one thing the page exists to show; it comes back the moment
+     the video pauses, which is when somebody actually wants it. */
+  .player.playing .play-btn{opacity:0;transform:translate(-50%,-50%) scale(.85);pointer-events:none}
+
+  /* ── The walk-on ─────────────────────────────────────────────────────────
+     Five seconds of who is fighting, before the footage. Both corners come in
+     from their own side, the VS lands between them, and it gets out of the way
+     on its own — or sooner, from the skip. */
+  .vs{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;gap:34px;padding:0 40px;background:radial-gradient(ellipse at 50% 45%,#1c1c1c 0%,#050505 78%);opacity:1;transition:opacity .45s ease}
+  .vs.gone{opacity:0;pointer-events:none}
+  .vs-side{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+  .vs-side.a{animation:vsInA .62s cubic-bezier(.16,.84,.44,1) both}
+  .vs-side.b{animation:vsInB .62s cubic-bezier(.16,.84,.44,1) both}
+  .vs-photo{width:148px;height:148px;border-radius:50%;overflow:hidden;background:#141414;display:grid;place-items:center;font-family:'Archivo',sans-serif;font-weight:900;font-size:26px;color:#666;flex:0 0 auto}
+  .vs-photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .vs-photo.a{border:3px solid var(--red);box-shadow:0 0 48px rgba(230,30,30,.42)}
+  .vs-photo.b{border:3px solid var(--blue);box-shadow:0 0 48px rgba(40,110,240,.42)}
+  .vs-name{font-family:'Archivo',sans-serif;font-weight:800;font-size:23px;letter-spacing:.4px;color:var(--ink);line-height:1.15;text-transform:uppercase;max-width:100%}
+  .vs-team{font-size:13px;color:var(--ink-2);display:flex;align-items:center;justify-content:center;gap:7px;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .vs-mid{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:9px;animation:vsPop .5s .26s cubic-bezier(.2,1.5,.4,1) both}
+  .vs-word{font-family:'Archivo',sans-serif;font-weight:900;font-size:64px;line-height:1;color:#e9c46a;text-shadow:0 0 46px rgba(233,196,106,.45)}
+  .vs-meta{font-family:'Archivo',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;color:var(--ink-2);text-transform:uppercase;text-align:center;line-height:1.6}
+  .vs-skip{position:absolute;top:14px;right:14px;z-index:32;display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.55);color:var(--ink);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;backdrop-filter:blur(6px);letter-spacing:.3px}
+  /* The intro owns the top-right corner while it is up, so the two do not stack. */
+  .player.intro .back-btn{opacity:0;pointer-events:none}
+  @keyframes vsInA{from{opacity:0;transform:translateX(-48px)}to{opacity:1;transform:none}}
+  @keyframes vsInB{from{opacity:0;transform:translateX(48px)}to{opacity:1;transform:none}}
+  @keyframes vsPop{from{opacity:0;transform:scale(.72)}to{opacity:1;transform:scale(1)}}
+  @media (prefers-reduced-motion:reduce){
+    .vs-side.a,.vs-side.b,.vs-mid{animation:none}
+    .vs,.play-btn{transition:none}
+  }
   .play-btn:hover{background:#ff2e2e;transform:translate(-50%,-50%) scale(1.06)}
 
   .toast{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;backdrop-filter:blur(4px);white-space:nowrap;display:none}
@@ -206,8 +234,28 @@
           <video id="vid" class="video-el" playsinline preload="metadata"
                  @if ($angles[0]['poster']) poster="{{ $angles[0]['poster'] }}" @endif></video>
 @endif
-          <div class="scorechip"><span class="rnd">R1</span><span class="aka">0</span><span class="ao">0</span><span class="clk mono">00:00</span></div>
           <button class="play-btn" id="playBtn">&#9654;</button>
+@if ($angles)
+          {{-- Who is fighting, before the fight. Taken out of the DOM once it
+               has played, so it can never intercept a click later. --}}
+          <div class="vs" id="vsIntro">
+            <div class="vs-side a">
+              <div class="vs-photo a">@if ($bout['a']['photo'])<img src="{{ $bout['a']['photo'] }}" alt="">@else<span>{{ $bout['a']['corner_label'] }}</span>@endif</div>
+              <div class="vs-name">{{ $bout['a']['name'] ?: '—' }}</div>
+              <div class="vs-team">@if ($bout['a']['country'])<span class="fi fi-{{ strtolower($bout['a']['country']) }}"></span>@endif<span>{{ $bout['a']['club'] }}</span></div>
+            </div>
+            <div class="vs-mid">
+              <div class="vs-word">VS</div>
+              <div class="vs-meta">{{ $bout['division'] }}@if ($bout['round'])<br>{{ $bout['round'] }}@endif</div>
+            </div>
+            <div class="vs-side b">
+              <div class="vs-photo b">@if ($bout['b']['photo'])<img src="{{ $bout['b']['photo'] }}" alt="">@else<span>{{ $bout['b']['corner_label'] }}</span>@endif</div>
+              <div class="vs-name">{{ $bout['b']['name'] ?: '—' }}</div>
+              <div class="vs-team">@if ($bout['b']['country'])<span class="fi fi-{{ strtolower($bout['b']['country']) }}"></span>@endif<span>{{ $bout['b']['club'] }}</span></div>
+            </div>
+          </div>
+          <button class="vs-skip" id="vsSkip">{{ __('events.bout_video_skip') }} &#8250;</button>
+@endif
           <button class="fs-hl-btn" id="fsHlBtn">&#9776; Highlights</button>
           <div class="toast" id="toast"></div>
           <div class="ctrl">
@@ -361,7 +409,6 @@ function paint(){
   document.getElementById('fill').style.width = pct;
   document.getElementById('knob').style.left = pct;
   document.getElementById('clock').textContent = fmt(Math.floor(t)) + ' / ' + fmt(Math.floor(d));
-  scorechip(t);
 }
 
 function seek(secs, label){
@@ -371,13 +418,61 @@ function seek(secs, label){
   if(label){ toast.textContent = label; toast.classList.add('show'); clearTimeout(toast._h); toast._h = setTimeout(()=>toast.classList.remove('show'), 2500); }
 }
 
+/* ── The walk-on ───────────────────────────────────────────────────────────
+   Five seconds of the two competitors, then the bout. The skip is there
+   because somebody reviewing twenty bouts should never have to sit through it
+   twenty times.
+
+   Autoplay is ASKED FOR, not assumed: a browser may refuse to start a video
+   the viewer has not gestured at, and refusing silently would leave a black
+   frame where the intro used to be. If play() is rejected the centre button
+   comes back and the picture waits for a click — which is the same place the
+   page was before this existed. */
+(function(){
+  const intro = document.getElementById('vsIntro');
+  const skip  = document.getElementById('vsSkip');
+  const player = document.querySelector('.player');
+  if (!intro || !player) return;
+
+  player.classList.add('intro');
+
+  let done = false;
+
+  function start(){
+    if (done) return;
+    done = true;
+
+    clearTimeout(timer);
+    intro.classList.add('gone');
+    if (skip) skip.remove();
+    player.classList.remove('intro');
+
+    // Off the page once faded, so it can never sit invisibly over the picture.
+    setTimeout(() => intro.remove(), 500);
+
+    if (vid) vid.play().catch(() => {});
+  }
+
+  const timer = setTimeout(start, 5000);
+  if (skip) skip.addEventListener('click', start);
+})();
+
 document.getElementById('playBtn').onclick = function(){
   if (!vid) return;
   if (vid.paused) { vid.play().catch(()=>{}); } else { vid.pause(); }
 };
 if (vid) {
-  vid.addEventListener('play',  () => document.getElementById('playBtn').innerHTML = '&#10074;&#10074;');
-  vid.addEventListener('pause', () => document.getElementById('playBtn').innerHTML = '&#9654;');
+  // The class is what hides the disc; the glyph still flips, because the
+  // button is the pause control the moment the picture is clicked.
+  vid.addEventListener('play',  () => {
+    document.getElementById('playBtn').innerHTML = '&#10074;&#10074;';
+    document.querySelector('.player').classList.add('playing');
+  });
+  vid.addEventListener('pause', () => {
+    document.getElementById('playBtn').innerHTML = '&#9654;';
+    document.querySelector('.player').classList.remove('playing');
+  });
+  vid.addEventListener('ended', () => document.querySelector('.player').classList.remove('playing'));
   vid.addEventListener('timeupdate', paint);
   vid.addEventListener('loadedmetadata', paint);
   document.querySelector('.ctrl-track').addEventListener('click', e => {
@@ -386,17 +481,6 @@ if (vid) {
   });
 }
 
-/* The chip over the picture reads the same derived timeline the rail does. */
-function scorechip(t){
-  const chip = document.querySelector('.scorechip'); if (!chip) return;
-  let last = null, n = 0;
-  ROUNDS.forEach((r, i) => r.points.forEach(p => { if (p.secs <= t + 0.001) { last = p; n = i + 1; } }));
-  chip.querySelector('.rnd').textContent = 'R' + (n || 1);
-  const score = (last ? last.score : '0–0').split('–');
-  chip.querySelector('.aka').textContent = score[0] ?? '0';
-  chip.querySelector('.ao').textContent  = score[1] ?? '0';
-  chip.querySelector('.clk').textContent = fmt(Math.floor(t));
-}
 
 /* ══════════ Highlights panel (shared renderer) ══════════ */
 function renderPanel(mount, sticky){
