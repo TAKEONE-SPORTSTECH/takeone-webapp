@@ -97,6 +97,10 @@ class _AppShellState extends State<AppShell> {
             // scripts evaluate, because app-update.blade.php reads
             // window.Capacitor as soon as it is parsed.
             unawaited(_controller?.runJavaScript(_bridge) ?? Future.value());
+
+            // A shell is not a browser. Pinching the whole app leaves the
+            // member stranded at 2x with no address bar to escape it.
+            unawaited(_controller?.runJavaScript(_zoomLock) ?? Future.value());
           },
           onWebResourceError: (error) {
             // Only a failure of the PAGE itself is worth a screen. A dead image
@@ -274,6 +278,69 @@ class _AppShellState extends State<AppShell> {
 /// The `window.Capacitor` shape the mobile web already calls, backed by the
 /// Flutter channel instead of a Capacitor bridge. Injected before the page's own
 /// scripts run, so `app-update.blade.php` sees it on first evaluation.
+/// Pinch-to-zoom belongs to a browser, not to this shell.
+///
+/// The page itself must stay zoomable — a viewport carrying `user-scalable=no`
+/// fails WCAG 1.4.4 and the project forbids serving one, because on the web that
+/// is somebody's only way to read small text. Inside the app the reasoning
+/// inverts: there is no address bar, no tab strip and no reload button, so a
+/// stray two-finger drag zooms the interface and leaves the member with no
+/// obvious way back. The restriction therefore lives HERE, applied by the shell
+/// to the rendered document, and what the server sends stays zoomable everywhere
+/// else.
+///
+/// `viewport-fit=cover` is carried over deliberately: without it every
+/// `env(safe-area-inset-*)` resolves to zero and every sticky footer in the
+/// product loses its safe-area padding.
+///
+/// Elements that implement their OWN pinch — the bracket, the family tree, the
+/// media lightbox — are untouched. They set `touch-action` on themselves and
+/// drive pointer events directly; this removes only the browser's
+/// document-level gesture.
+const String _zoomLock = r"""
+(function () {
+  if (window.__takeoneZoomLock) return;
+  window.__takeoneZoomLock = true;
+
+  var WANT = 'width=device-width, initial-scale=1, maximum-scale=1, ' +
+             'user-scalable=no, viewport-fit=cover';
+
+  function lock() {
+    var head = document.head || document.documentElement;
+    if (!head) return;
+
+    var meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'viewport');
+      head.appendChild(meta);
+    }
+    if (meta.getAttribute('content') !== WANT) {
+      meta.setAttribute('content', WANT);
+    }
+  }
+
+  lock();
+  document.addEventListener('DOMContentLoaded', lock);
+
+  // The mobile shell swaps content over AJAX and can rewrite the head with it,
+  // so the tag is kept honest rather than set once. Scoped to childList on the
+  // head: this must not fire on every mutation in the body.
+  try {
+    new MutationObserver(lock).observe(document.documentElement, {childList: true});
+    if (document.head) {
+      new MutationObserver(lock).observe(document.head, {childList: true});
+    }
+  } catch (e) {}
+
+  // Double-tap is the other document-level zoom and the viewport tag does not
+  // cover it. A descendant setting its own touch-action still wins.
+  var style = document.createElement('style');
+  style.textContent = 'html{touch-action:manipulation}';
+  (document.head || document.documentElement).appendChild(style);
+})();
+""";
+
 const String _bridge = r'''
 (function () {
   if (window.Capacitor) return;
