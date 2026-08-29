@@ -100,7 +100,7 @@ class WizardRegistrationController extends Controller
         return response()->json([
             'success' => true,
             'path' => "{$dir}/{$filename}",
-            'url' => Storage::disk('public')->url("{$dir}/{$filename}"),
+            'url' => file_url("{$dir}/{$filename}"),
         ]);
     }
 

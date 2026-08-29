@@ -5,7 +5,7 @@
 @php $clubIcon = $club->logo ?: $club->favicon; @endphp
 @if($clubIcon)
 @section('favicon')
-@php $clubIconUrl = asset('storage/' . $clubIcon) . '?v=' . ($club->updated_at?->timestamp ?? '1'); @endphp
+@php $clubIconUrl = file_url($clubIcon) . '?v=' . ($club->updated_at?->timestamp ?? '1'); @endphp
 <link rel="icon" type="image/png" href="{{ $clubIconUrl }}">
 <link rel="shortcut icon" type="image/png" href="{{ $clubIconUrl }}">
 <link rel="apple-touch-icon" href="{{ $clubIconUrl }}">
@@ -35,10 +35,10 @@
     // --- Hero slides ---
     $heroSlides = collect();
     if ($club->cover_image) {
-        $heroSlides->push(asset('storage/' . $club->cover_image));
+        $heroSlides->push(file_url($club->cover_image));
     }
     foreach ($club->galleryImages as $img) {
-        $heroSlides->push(asset('storage/' . $img->image_path));
+        $heroSlides->push(file_url($img->image_path));
     }
     // Test fallback images (sports/martial arts themed)
     if ($heroSlides->isEmpty()) {
@@ -79,7 +79,7 @@
             <div>
                 @if($club->logo)
                 <div class="club-logo-wrapper">
-                    <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}" style="width:100%">
+                    <img src="{{ file_url($club->logo) }}" alt="{{ $club->club_name }}" style="width:100%">
                 </div>
                 @endif
             </div>
@@ -188,7 +188,7 @@
                              style="cursor:pointer;">
                             <span class="perk-badge">{{ $perk->tr('badge') }}</span>
                             @if($perk->image_path)
-                                <img src="{{ asset('storage/' . $perk->image_path) }}"
+                                <img src="{{ file_url($perk->image_path) }}"
                                      class="w-full h-full object-cover absolute inset-0" alt="{{ $perk->tr('title') }}">
                             @else
                                 <div class="w-full h-full flex items-center justify-center"
@@ -225,7 +225,7 @@
                         @php $trainerUser = $instructor->user; @endphp
                         <a href="{{ $trainerUser ? route('trainer.show.public', $instructor->user_id) : '#' }}" class="mini-trainer mb-3 block no-underline text-foreground">
                             @if($trainerUser && $trainerUser->profile_picture)
-                            <img src="{{ asset('storage/' . $trainerUser->profile_picture) }}" class="mini-pfp" alt="{{ $trainerUser->full_name ?? $trainerUser->name }}">
+                            <img src="{{ file_url($trainerUser->profile_picture) }}" class="mini-pfp" alt="{{ $trainerUser->full_name ?? $trainerUser->name }}">
                             @else
                             <div class="mini-pfp-placeholder">{{ mb_strtoupper(mb_substr($trainerUser->name ?? 'T', 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                             @endif
@@ -275,8 +275,8 @@
                         <div id="facilities-grid" class="grid grid-cols-2 gap-3">
                             @forelse($club->facilities->filter(fn($f) => $canManage || $f->is_available) as $facility)
                             @php
-                                $facImages = collect($facility->images ?? [])->map(fn($p) => asset('storage/'.$p))->values()->toArray();
-                                if (empty($facImages) && $facility->photo) $facImages = [asset('storage/'.$facility->photo)];
+                                $facImages = collect($facility->images ?? [])->map(fn($p) => file_url($p))->values()->toArray();
+                                if (empty($facImages) && $facility->photo) $facImages = [file_url($facility->photo)];
                             @endphp
                             <div data-owner-card id="facility-card-{{ $facility->id }}" @class(['owner-hidden' => $canManage && !$facility->is_available])>
                                 @if($canManage)
@@ -335,7 +335,7 @@
                         $a->image_path ? [$a->image_path] : [],
                         $a->images ?? []
                     )));
-                    $combinedUrls = collect($combined)->map(fn($p) => asset('storage/' . $p))->values()->toArray();
+                    $combinedUrls = collect($combined)->map(fn($p) => file_url($p))->values()->toArray();
                     $medals = [];
                     if ($a->medals_gold)   $medals[] = $a->medals_gold . ' ' . __('club.platform_show_gold');
                     if ($a->medals_silver) $medals[] = $a->medals_silver . ' ' . __('club.platform_show_silver');
@@ -378,8 +378,8 @@
                         @php
                             $achData   = $achievementsJson[$i];
                             $achImages = array_values(array_filter(array_merge(
-                                $achievement->image_path ? [asset('storage/'.$achievement->image_path)] : [],
-                                collect($achievement->images ?? [])->map(fn($p) => asset('storage/'.$p))->toArray()
+                                $achievement->image_path ? [file_url($achievement->image_path)] : [],
+                                collect($achievement->images ?? [])->map(fn($p) => file_url($p))->toArray()
                             )));
                         @endphp
                         @php
@@ -739,7 +739,7 @@
                          x-cloak>
                         <div class="class-thumb">
                             @if($slot['picture_url'])
-                            <img src="{{ asset('storage/' . $slot['picture_url']) }}" alt="{{ $slot['activity_name'] }}" class="w-full h-full object-cover">
+                            <img src="{{ file_url($slot['picture_url']) }}" alt="{{ $slot['activity_name'] }}" class="w-full h-full object-cover">
                             @else
                             <div class="w-full h-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center min-h-[80px]">
                                 <i class="bi bi-activity text-white text-xl"></i>
@@ -776,7 +776,7 @@
                                     @if($slot['instructor_name'])
                                     <div class="flex items-center gap-1.5">
                                         @if($slot['instructor_picture'])
-                                        <img src="{{ asset('storage/' . $slot['instructor_picture']) }}"
+                                        <img src="{{ file_url($slot['instructor_picture']) }}"
                                              class="w-7 h-7 rounded-full object-cover border border-gray-200"
                                              alt="{{ $slot['instructor_name'] }}">
                                         @else
@@ -874,7 +874,7 @@
                             'description' => $event->description ?? '',
                             'tags'        => $tagsArr,
                             'max_capacity'=> $event->max_capacity,
-                            'images'      => collect($event->images ?? [])->map(fn($p) => str_starts_with($p, 'http') ? $p : asset('storage/' . $p))->values()->toArray(),
+                            'images'      => collect($event->images ?? [])->map(fn($p) => str_starts_with($p, 'http') ? $p : file_url($p))->values()->toArray(),
                         ];
                     @endphp
                     <div class="event-node" style="top: {{ 10 + $i * 240 }}px;"></div>
@@ -1402,7 +1402,7 @@
                         <span class="news-dot"></span>
                         <div class="news-header flex items-center gap-3">
                             @if($club->logo)
-                            <img class="news-avatar" src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}">
+                            <img class="news-avatar" src="{{ file_url($club->logo) }}" alt="{{ $club->club_name }}">
                             @else
                             <div class="w-[42px] h-[42px] rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">
                                 {{ mb_strtoupper(mb_substr($club->club_name, 0, 1, 'UTF-8'), 'UTF-8') }}
@@ -1415,7 +1415,7 @@
                         </div>
                         <div class="news-content">
                             @if($post->image_path)
-                            <img class="news-img" src="{{ asset('storage/' . $post->image_path) }}" alt="{{ __('club.platform_show_post_image') }}">
+                            <img class="news-img" src="{{ file_url($post->image_path) }}" alt="{{ __('club.platform_show_post_image') }}">
                             @endif
                             <p class="mb-2 text-sm">{{ $post->body }}</p>
                             <div class="news-actions">
@@ -1463,7 +1463,7 @@
                                 <div class="comment-item" id="comment-{{ $comment->id }}">
                                     <div class="comment-avatar">
                                         @if($comment->user->profile_picture)
-                                        <img src="{{ asset('storage/' . $comment->user->profile_picture) }}" alt="">
+                                        <img src="{{ file_url($comment->user->profile_picture) }}" alt="">
                                         @else
                                         <div class="comment-avatar-placeholder">{{ mb_strtoupper(mb_substr($comment->user->full_name ?? $comment->user->name, 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                                         @endif
@@ -1487,7 +1487,7 @@
                             <div class="comment-input-row">
                                 <div class="comment-avatar">
                                     @if(Auth::user()->profile_picture)
-                                    <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="">
+                                    <img src="{{ file_url(Auth::user()->profile_picture) }}" alt="">
                                     @else
                                     <div class="comment-avatar-placeholder">{{ mb_strtoupper(mb_substr(Auth::user()->full_name ?? Auth::user()->name, 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                                     @endif
@@ -2217,7 +2217,7 @@ $packagesForJs = $club->packages->map(function ($p) {
             return [
                 'name'      => $pa->instructor->user->full_name ?? $pa->instructor->user->name,
                 'image_url' => $pa->instructor->user->profile_picture
-                    ? asset('storage/' . $pa->instructor->user->profile_picture)
+                    ? file_url($pa->instructor->user->profile_picture)
                     : null,
             ];
         })->filter()->unique('name')->values(),

@@ -307,7 +307,7 @@ class ClubMemberAdminController extends Controller
             'initial' => mb_strtoupper(mb_substr($user->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
             'has_picture' => (bool) $user->profile_picture,
             'picture_url' => $user->profile_picture
-                ? asset('storage/'.$user->profile_picture).'?v='.$user->updated_at->timestamp
+                ? file_url($user->profile_picture).'?v='.$user->updated_at->timestamp
                 : null,
             'gender' => $user->gender ?? 'Male',
             'phone' => $phone ?: 'N/A',
@@ -871,7 +871,7 @@ class ClubMemberAdminController extends Controller
                     return [
                         'id' => $dep->id,
                         'name' => $dep->full_name ?? $dep->name,
-                        'profile_picture' => $dep->profile_picture ? asset('storage/'.$dep->profile_picture) : null,
+                        'profile_picture' => $dep->profile_picture ? file_url($dep->profile_picture) : null,
                         'gender' => $dep->gender,
                         'age' => $dep->birthdate ? \Carbon\Carbon::parse($dep->birthdate)->age : null,
                         'is_member' => $isDepMember,
@@ -888,7 +888,7 @@ class ClubMemberAdminController extends Controller
                     'name' => $user->full_name ?? $user->name,
                     'email' => $user->email,
                     'mobile' => $user->mobile,
-                    'profile_picture' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
+                    'profile_picture' => $user->profile_picture ? file_url($user->profile_picture) : null,
                     'gender' => $user->gender,
                     'age' => $user->birthdate ? \Carbon\Carbon::parse($user->birthdate)->age : null,
                     'is_member' => $isMember,
@@ -939,7 +939,7 @@ class ClubMemberAdminController extends Controller
                 'id' => $user->id,
                 'name' => $user->full_name ?? $user->name,
                 'email' => $user->email,
-                'profile_picture' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
+                'profile_picture' => $user->profile_picture ? file_url($user->profile_picture) : null,
                 'gender' => $user->gender,
                 'age' => $user->birthdate ? \Carbon\Carbon::parse($user->birthdate)->age : null,
                 'is_member' => $isMember,

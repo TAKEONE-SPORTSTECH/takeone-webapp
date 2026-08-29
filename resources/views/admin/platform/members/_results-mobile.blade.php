@@ -71,7 +71,7 @@
                     {{-- avatar --}}
                     <span class="relative shrink-0 self-stretch w-[66px] overflow-hidden">
                         @if($member->profile_picture)
-                            <img src="{{ asset('storage/'.$member->profile_picture) }}?v={{ optional($member->updated_at)->timestamp }}" alt="" class="absolute inset-0 w-full h-full object-cover">
+                            <img src="{{ file_url($member->profile_picture) }}?v={{ optional($member->updated_at)->timestamp }}" alt="" class="absolute inset-0 w-full h-full object-cover">
                         @else
                             {{-- No picture (or one that was removed): the shared portrait
                                  placeholder, on a tile tinted to match this row's gender

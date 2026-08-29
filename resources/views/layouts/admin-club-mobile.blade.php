@@ -85,7 +85,7 @@
             <div class="flex items-center justify-between p-4 border-b border-border">
                 <div class="flex items-center gap-2 min-w-0">
                     @if(!empty($club->logo))
-                        <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">
+                        <img src="{{ file_url($club->logo) }}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">
                     @else
                         <span class="w-10 h-10 rounded-lg bg-accent flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">{{ mb_strtoupper(mb_substr($club->club_name ?? 'CL', 0, 2, 'UTF-8'), 'UTF-8') }}</span>
                     @endif

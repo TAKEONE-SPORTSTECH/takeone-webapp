@@ -196,7 +196,7 @@ class BoutHistory
                 $user = $r->user;
 
                 return [$r->id => ($user?->profile_picture && $user->profile_picture_is_public)
-                    ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                    ? file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
                     : null];
             });
     }

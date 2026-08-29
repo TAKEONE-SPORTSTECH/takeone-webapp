@@ -23,7 +23,7 @@
                 @if(session('club.context'))
                     @php $clubCtx = session('club.context'); @endphp
                     @if($clubCtx['logo'])
-                        <img src="{{ asset('storage/' . $clubCtx['logo']) }}" alt="{{ $clubCtx['name'] }}" class="h-16 mx-auto rounded-xl object-contain">
+                        <img src="{{ file_url($clubCtx['logo']) }}" alt="{{ $clubCtx['name'] }}" class="h-16 mx-auto rounded-xl object-contain">
                     @endif
                 @else
                     <a href="{{ url('/') }}">

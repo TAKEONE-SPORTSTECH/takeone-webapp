@@ -10,7 +10,7 @@
         <div class="flex items-center gap-3">
             <span class="w-12 h-12 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
                 @if($business->logo)
-                    <img src="{{ asset('storage/' . $business->logo) }}" alt="" class="w-12 h-12 rounded-xl object-cover">
+                    <img src="{{ file_url($business->logo) }}" alt="" class="w-12 h-12 rounded-xl object-cover">
                 @else
                     <i class="bi bi-buildings text-primary text-xl"></i>
                 @endif
@@ -87,7 +87,7 @@
                                     <div class="flex items-center gap-3">
                                         <span class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
                                             @if($club['logo'])
-                                                <img src="{{ asset('storage/' . $club['logo']) }}" alt="" class="w-9 h-9 object-cover">
+                                                <img src="{{ file_url($club['logo']) }}" alt="" class="w-9 h-9 object-cover">
                                             @else
                                                 <i class="bi bi-building text-muted-foreground"></i>
                                             @endif

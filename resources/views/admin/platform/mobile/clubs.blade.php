@@ -49,7 +49,7 @@
                             {{-- Cover --}}
                             <div class="relative h-28">
                                 @if($club->cover_image)
-                                    <img src="{{ asset('storage/' . $club->cover_image) }}" alt="" loading="lazy" class="club-cover-img w-full h-full object-cover">
+                                    <img src="{{ file_url($club->cover_image) }}" alt="" loading="lazy" class="club-cover-img w-full h-full object-cover">
                                 @else
                                     <div class="w-full h-full m-hero"></div>
                                 @endif
@@ -65,7 +65,7 @@
                                 </button>
                                 <span class="absolute -bottom-5 left-3 w-14 h-14 rounded-2xl bg-white p-0.5 shadow ring-1 ring-black/5 overflow-hidden flex items-center justify-center">
                                     @if($club->logo)
-                                        <img src="{{ asset('storage/' . $club->logo) }}" alt="" loading="lazy" class="club-logo-img w-full h-full rounded-xl object-contain">
+                                        <img src="{{ file_url($club->logo) }}" alt="" loading="lazy" class="club-logo-img w-full h-full rounded-xl object-contain">
                                     @else
                                         <span class="w-full h-full rounded-xl bg-primary text-white flex items-center justify-center font-bold text-lg">{{ substr($club->club_name, 0, 1) }}</span>
                                     @endif

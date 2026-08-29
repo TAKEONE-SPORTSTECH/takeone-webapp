@@ -7,7 +7,7 @@
 <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif
     class="group relative flex items-center gap-3 rounded-xl border border-gray-100 p-2.5 mb-2 last:mb-0 {{ $clubUrl ? 'm-press' : '' }}">
     <span class="w-11 h-11 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-gray-100 {{ $active ? '' : 'grayscale' }}">
-        @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-11 h-11 object-cover">@else<i class="bi bi-buildings text-muted-foreground"></i>@endif
+        @if($a->logo)<img src="{{ file_url($a->logo) }}" alt="" class="w-11 h-11 object-cover">@else<i class="bi bi-buildings text-muted-foreground"></i>@endif
     </span>
     <div class="min-w-0 flex-1">
         <p class="font-semibold text-foreground {{ $active ? '' : 'text-foreground/80' }} text-sm leading-snug truncate">{{ $a->club_name }}</p>

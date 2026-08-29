@@ -63,7 +63,7 @@
                     @else
                         <span class="w-10 h-10 flex-shrink-0">
                             @if ($row->logo)
-                                <img src="{{ asset('storage/'.$row->logo) }}" alt=""
+                                <img src="{{ file_url($row->logo) }}" alt=""
                                      class="w-full h-full object-contain">
                             @else
                                 <span class="w-full h-full rounded-lg bg-accent grid place-items-center">

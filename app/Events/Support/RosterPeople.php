@@ -90,7 +90,7 @@ class RosterPeople
             'has_entry_photo' => ! empty($row['registration_photo']),
             'club' => $club ? [
                 'name' => $club->club_name,
-                'logo' => $club->logo ? asset('storage/'.$club->logo) : null,
+                'logo' => $club->logo ? file_url($club->logo) : null,
                 'country' => $club->country,
                 'href' => $this->clubHref($club),
             ] : null,
@@ -133,14 +133,14 @@ class RosterPeople
         // paper-entered competitors have. It carries no privacy gate because
         // uploading it here WAS the decision to show it on this event's surfaces.
         if ($entryPhoto) {
-            return asset('storage/'.$entryPhoto);
+            return file_url($entryPhoto);
         }
 
         if (! $user?->profile_picture || ! $user->profile_picture_is_public) {
             return null;
         }
 
-        return asset('storage/'.$user->profile_picture);
+        return file_url($user->profile_picture);
     }
 
     /**

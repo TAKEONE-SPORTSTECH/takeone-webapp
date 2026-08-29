@@ -36,7 +36,17 @@ class ClubActivityController extends Controller
      */
     private function reusableSource(string $url, int $clubId): ?string
     {
-        $path = ltrim(str_replace(asset('storage').'/', '', $url), '/');
+        // The picker hands back whatever URL is on screen. Files are served
+        // through /file/{path} now, so that prefix is what comes back — the old
+        // /storage/ form is still accepted for any link a page cached earlier.
+        $path = $url;
+        foreach ([url('/file').'/', asset('storage').'/', '/file/', '/storage/'] as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                $path = substr($path, strlen($prefix));
+                break;
+            }
+        }
+        $path = ltrim(rawurldecode($path), '/');
 
         // A URL that did not resolve to a relative path on our own public disk —
         // a foreign host, or a traversal attempt — is not a source at all.
@@ -96,7 +106,7 @@ class ClubActivityController extends Controller
                 'variants' => $a->variants ?: [],       // suggested styles/federations
                 'icon' => $a->icon,
                 'picture_url' => $a->picture_url,
-                'picture_src' => $a->picture_url ? asset('storage/'.$a->picture_url) : null,
+                'picture_src' => $a->picture_url ? file_url($a->picture_url) : null,
             ])
             ->filter(fn ($a) => filled($a['name']))
             ->values();
@@ -245,7 +255,7 @@ class ClubActivityController extends Controller
             'notes' => $activity->notes,
             'duration_minutes' => $activity->duration_minutes,
             'picture_url' => $activity->picture_url,
-            'picture_src' => $activity->picture_url ? asset('storage/'.$activity->picture_url) : null,
+            'picture_src' => $activity->picture_url ? file_url($activity->picture_url) : null,
             'facility' => $activity->facility ? ['id' => $activity->facility->id, 'name' => $activity->facility->name] : null,
             'updated_at' => optional($activity->updated_at)->timestamp,
         ];
@@ -293,7 +303,7 @@ class ClubActivityController extends Controller
                 'id' => $p->id,
                 'name' => $p->name,
                 'price' => (float) $p->price,
-                'image' => $p->image_path ? asset('storage/'.$p->image_path) : null,
+                'image' => $p->image_path ? file_url($p->image_path) : null,
             ]);
 
         return response()->json([
@@ -390,7 +400,7 @@ class ClubActivityController extends Controller
             'product_id' => $e->club_product_id,
             'name' => $e->product?->name,
             'price' => (float) ($e->product?->price ?? 0),
-            'image' => $e->product?->image_path ? asset('storage/'.$e->product->image_path) : null,
+            'image' => $e->product?->image_path ? file_url($e->product->image_path) : null,
             'is_required' => (bool) $e->is_required,
             'is_active' => (bool) $e->is_active,
         ];

@@ -120,7 +120,7 @@
         'status'           => $b->status,
         'rejection_reason' => $b->rejection_reason,
         'logo'             => $b->logo,
-        'logo_url'         => $b->logo ? asset('storage/' . $b->logo) : null,
+        'logo_url'         => $b->logo ? file_url($b->logo) : null,
         'owner_name'       => $b->owner?->full_name,
         'owner_email'      => $b->owner?->email,
         'clubs_count'      => $b->clubs_count,

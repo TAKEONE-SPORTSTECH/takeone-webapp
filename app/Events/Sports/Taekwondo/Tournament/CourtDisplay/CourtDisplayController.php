@@ -180,7 +180,7 @@ class CourtDisplayController extends Controller
                 'pinned' => $surface === 'bout' ? 'bout' : false,
                 // The host club's crest fills the design's dashed logo box.
                 'eventLogo' => $device->event->tenant?->logo
-                    ? asset('storage/'.$device->event->tenant->logo) : null,
+                    ? file_url($device->event->tenant->logo) : null,
             ]);
         }
 

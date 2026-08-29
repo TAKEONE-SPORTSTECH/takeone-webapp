@@ -35,7 +35,7 @@
                 'id'     => $n->id,
                 'name'   => $member->full_name ?? $member->name ?? trim(explode(' registered', (string) $n->body)[0]) ?: __('members.member'),
                 'image'  => $member && $member->profile_picture
-                                ? asset('storage/'.$member->profile_picture).'?v='.optional($member->updated_at)->timestamp
+                                ? file_url($member->profile_picture).'?v='.optional($member->updated_at)->timestamp
                                 : null,
                 'gender' => $member->gender ?? null,
                 'club'   => $club->club_name ?? null,

@@ -64,7 +64,7 @@
         category: @json($t->category ?? ''),
         payment_method: @json($t->payment_method ?? ''),
         member_name: @json($t->subscription?->user?->full_name ?? $t->subscription?->user?->name ?? $t->user?->full_name ?? $t->user?->name ?? ''),
-        member_avatar: @json(($t->subscription?->user?->profile_picture ?? $t->user?->profile_picture) ? asset('storage/' . ($t->subscription?->user?->profile_picture ?? $t->user->profile_picture)) : ''),
+        member_avatar: @json(($t->subscription?->user?->profile_picture ?? $t->user?->profile_picture) ? file_url(($t->subscription?->user?->profile_picture ?? $t->user->profile_picture)) : ''),
     };
     @endforeach
 
@@ -79,7 +79,7 @@
         category: 'subscription',
         payment_method: '',
         member_name: @json($s->user?->full_name ?? $s->user?->name ?? ''),
-        member_avatar: @json($s->user?->profile_picture ? asset('storage/' . $s->user->profile_picture) : ''),
+        member_avatar: @json($s->user?->profile_picture ? file_url($s->user->profile_picture) : ''),
     };
     @endforeach
 

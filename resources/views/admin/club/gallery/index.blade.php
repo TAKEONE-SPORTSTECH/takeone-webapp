@@ -62,7 +62,7 @@
                 </div>
 
                 <!-- Thumbnail -->
-                <img src="{{ asset('storage/' . $image->image_path) }}"
+                <img src="{{ file_url($image->image_path) }}"
                      alt="{{ $image->caption ?? __('admin.club_gallery_index_gallery_alt') }}"
                      class="w-20 h-16 object-cover rounded flex-shrink-0">
 

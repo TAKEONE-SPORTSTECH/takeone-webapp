@@ -48,7 +48,7 @@
                                 {{-- Club crest --}}
                                 <div class="shrink-0">
                                     @if($club?->logo)
-                                        <img src="{{ asset('storage/'.$club->logo) }}" alt="{{ $club->club_name }}"
+                                        <img src="{{ file_url($club->logo) }}" alt="{{ $club->club_name }}"
                                              class="w-12 h-12 rounded-xl object-cover border border-gray-100 bg-white">
                                     @else
                                         <div class="w-12 h-12 rounded-xl bg-accent text-primary flex items-center justify-center font-bold text-lg">

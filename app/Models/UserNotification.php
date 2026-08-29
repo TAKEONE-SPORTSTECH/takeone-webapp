@@ -86,7 +86,7 @@ class UserNotification extends Model
             'icon' => $this->icon ?: 'bi-bell-fill',
             'context' => $actor?->full_name ?? $this->tenant?->club_name,
             'avatar' => $actor && $actor->profile_picture
-                ? asset('storage/'.$actor->profile_picture).'?v='.optional($actor->updated_at)->timestamp
+                ? file_url($actor->profile_picture).'?v='.optional($actor->updated_at)->timestamp
                 : null,
         ];
     }

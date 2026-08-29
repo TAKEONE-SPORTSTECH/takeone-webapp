@@ -22,7 +22,7 @@
         ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug])
         : null;
     $tag = $clubUrl ? 'a' : 'div';
-    $logo = $a->logo ? asset('storage/'.$a->logo) : null;
+    $logo = $a->logo ? file_url($a->logo) : null;
 @endphp
 
 <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif

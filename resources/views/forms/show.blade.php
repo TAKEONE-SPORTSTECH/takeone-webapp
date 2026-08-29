@@ -13,7 +13,7 @@
             @if($form->tenant)
                 <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
                     @if($form->tenant->logo)
-                        <img src="{{ asset('storage/' . $form->tenant->logo) }}" alt="" class="w-10 h-10 rounded-lg object-cover">
+                        <img src="{{ file_url($form->tenant->logo) }}" alt="" class="w-10 h-10 rounded-lg object-cover">
                     @endif
                     <span class="text-sm font-bold text-gray-700">{{ $form->tenant->club_name }}</span>
                 </div>

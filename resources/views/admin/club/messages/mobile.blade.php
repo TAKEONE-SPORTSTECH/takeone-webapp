@@ -14,10 +14,10 @@
                         class="w-full flex items-center gap-3 p-4 m-press text-left"
                         data-conv-id="{{ $c->user_id }}"
                         data-name="{{ $cu->full_name ?? 'Member' }}"
-                        data-avatar="{{ $cu && $cu->profile_picture ? asset('storage/'.$cu->profile_picture) : '' }}"
+                        data-avatar="{{ $cu && $cu->profile_picture ? file_url($cu->profile_picture) : '' }}"
                         @click="openThread({{ $c->user_id }})">
                     <span class="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                        @if($cu && $cu->profile_picture)<img src="{{ asset('storage/'.$cu->profile_picture) }}" alt="" class="w-[30px] h-10 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                        @if($cu && $cu->profile_picture)<img src="{{ file_url($cu->profile_picture) }}" alt="" class="w-[30px] h-10 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                     </span>
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-medium text-foreground truncate">{{ $cu->full_name ?? 'Member' }}</p>
@@ -46,10 +46,10 @@
                     <button type="button"
                             class="w-full flex items-center gap-3 p-2 rounded-lg m-press text-left hover:bg-muted/40"
                             data-name="{{ $u->full_name }}"
-                            data-avatar="{{ $u->profile_picture ? asset('storage/'.$u->profile_picture) : '' }}"
+                            data-avatar="{{ $u->profile_picture ? file_url($u->profile_picture) : '' }}"
                             @click="openThread({{ $u->id }}, $el.dataset.name, $el.dataset.avatar)">
                         <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                            @if($u->profile_picture)<img src="{{ asset('storage/'.$u->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                            @if($u->profile_picture)<img src="{{ file_url($u->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                         </span>
                         <div class="min-w-0 flex-1"><p class="text-sm font-medium text-foreground truncate">{{ $u->full_name }}</p><p class="text-xs text-muted-foreground truncate">{{ $u->email }}</p></div>
                         <i class="bi bi-chat-dots text-muted-foreground"></i>

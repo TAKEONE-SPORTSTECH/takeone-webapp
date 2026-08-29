@@ -6,7 +6,7 @@
 @php $clubIcon = $club->logo ?: $club->favicon; @endphp
 @if($clubIcon)
 @section('favicon')
-@php $clubIconUrl = asset('storage/' . $clubIcon) . '?v=' . ($club->updated_at?->timestamp ?? '1'); @endphp
+@php $clubIconUrl = file_url($clubIcon) . '?v=' . ($club->updated_at?->timestamp ?? '1'); @endphp
 <link rel="icon" type="image/png" href="{{ $clubIconUrl }}">
 <link rel="shortcut icon" type="image/png" href="{{ $clubIconUrl }}">
 <link rel="apple-touch-icon" href="{{ $clubIconUrl }}">
@@ -28,8 +28,8 @@
         $club->packages->flatMap(fn ($p) => $p->activities ?? [])->pluck('name')
     );
 
-    $cover = $club->cover_image ? asset('storage/'.$club->cover_image)
-           : ($club->galleryImages->first() ? asset('storage/'.$club->galleryImages->first()->image_path) : null);
+    $cover = $club->cover_image ? file_url($club->cover_image)
+           : ($club->galleryImages->first() ? file_url($club->galleryImages->first()->image_path) : null);
 
     // Weekly class slots from all packages.
     $slots = collect();
@@ -96,7 +96,7 @@
             <div class="flex items-end gap-3">
                 @if($club->logo)
                     <span class="w-16 h-16 flex-shrink-0">
-                        <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-full h-full object-contain">
+                        <img src="{{ file_url($club->logo) }}" alt="" class="w-full h-full object-contain">
                     </span>
                 @endif
                 <div class="min-w-0">
@@ -165,8 +165,8 @@
                     <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory">
                         @foreach($club->facilities as $f)
                             @php
-                                $facImages = collect($f->images ?? [])->map(fn($p) => asset('storage/'.$p))->values()->toArray();
-                                if (empty($facImages) && $f->photo) $facImages = [asset('storage/'.$f->photo)];
+                                $facImages = collect($f->images ?? [])->map(fn($p) => file_url($p))->values()->toArray();
+                                if (empty($facImages) && $f->photo) $facImages = [file_url($f->photo)];
                                 $facTag = $f->maps_url ? 'a' : 'div';
                             @endphp
                             <{{ $facTag }} @if($f->maps_url) href="{{ $f->maps_url }}" target="_blank" rel="noopener" @endif
@@ -233,7 +233,7 @@
                             <a href="{{ route('trainer.show', $ins->user_id) }}"
                                class="m-press snap-start flex-shrink-0 w-60 flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-2.5">
                                 <span class="w-14 h-14 flex-shrink-0 rounded-xl bg-muted overflow-hidden flex items-center justify-center">
-                                    @if($ins->user?->profile_picture)<img src="{{ asset('storage/'.$ins->user->profile_picture) }}" alt="" class="w-[42px] h-14 object-cover">@else<i class="bi bi-person text-2xl text-muted-foreground"></i>@endif
+                                    @if($ins->user?->profile_picture)<img src="{{ file_url($ins->user->profile_picture) }}" alt="" class="w-[42px] h-14 object-cover">@else<i class="bi bi-person text-2xl text-muted-foreground"></i>@endif
                                 </span>
                                 <span class="flex-1 min-w-0">
                                     <span class="block text-[13px] font-semibold text-foreground truncate">{{ $ins->user?->full_name ?? __('club.coach') }}</span>
@@ -258,7 +258,7 @@
                         : [];
                     $achievementsJson = $achievementsAll->map(function ($a) use ($athleteUuidMap) {
                         $combined = collect(array_filter(array_merge($a->image_path ? [$a->image_path] : [], $a->images ?? [])))
-                            ->map(fn ($p) => asset('storage/' . $p))->values()->toArray();
+                            ->map(fn ($p) => file_url($p))->values()->toArray();
                         $medals = [];
                         if ($a->medals_gold)   $medals[] = $a->medals_gold . ' Gold';
                         if ($a->medals_silver) $medals[] = $a->medals_silver . ' Silver';
@@ -538,7 +538,7 @@
                                     class="m-press m-card snap-start flex-shrink-0 w-[60%] max-w-[15rem] text-left rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 flex flex-col">
                                 <div class="relative h-24 flex-shrink-0">
                                     @if($perk->image_path)
-                                        <img src="{{ asset('storage/'.$perk->image_path) }}" alt="{{ $perk->tr('title') }}" class="w-full h-24 object-cover">
+                                        <img src="{{ file_url($perk->image_path) }}" alt="{{ $perk->tr('title') }}" class="w-full h-24 object-cover">
                                     @else
                                         <div class="w-full h-24 flex items-center justify-center" style="background:linear-gradient(135deg,{{ $perk->bg_from ?: '#6d5efc' }},{{ $perk->bg_to ?: '#9b8cff' }});">
                                             <i class="bi {{ $perk->icon ?: 'bi-gift' }} text-white text-4xl opacity-90"></i>
@@ -733,7 +733,7 @@
             @forelse($club->events->where('is_archived', false)->sortBy('date') as $event)
                 @php $isJoined = in_array($event->id, $joinedEventIds ?? []); @endphp
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    @if($event->cover_image)<img src="{{ asset('storage/'.$event->cover_image) }}" alt="" class="w-full h-32 object-cover">@endif
+                    @if($event->cover_image)<img src="{{ file_url($event->cover_image) }}" alt="" class="w-full h-32 object-cover">@endif
                     <div class="p-4">
                         <div class="flex items-start justify-between gap-2">
                             <p class="font-bold text-foreground">{{ $event->title }}</p>
@@ -780,7 +780,7 @@
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     <div class="flex items-center gap-2.5">
                         <span class="w-9 h-9 rounded-full bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
-                            @if($r->user?->profile_picture)<img src="{{ asset('storage/'.$r->user->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                            @if($r->user?->profile_picture)<img src="{{ file_url($r->user->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                         </span>
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-semibold text-foreground truncate">{{ $r->user?->full_name ?? __('club.member') }}</p>

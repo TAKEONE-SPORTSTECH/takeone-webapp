@@ -7,8 +7,8 @@
     <title>{{ session('club.context.name', 'Register') }} — TAKEONE</title>
     {{-- Use the club's logo as the browser tab favicon --}}
     @if(session('club.context.logo'))
-        <link rel="icon" href="{{ asset('storage/' . session('club.context.logo')) }}">
-        <link rel="apple-touch-icon" href="{{ asset('storage/' . session('club.context.logo')) }}">
+        <link rel="icon" href="{{ file_url(session('club.context.logo')) }}">
+        <link rel="apple-touch-icon" href="{{ file_url(session('club.context.logo')) }}">
     @endif
     @vite(['resources/css/app.css'])
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -1025,9 +1025,9 @@ function wizard() {
 
         clubSlug:  @json(session('club.context.slug', '')),
         clubName:  @json(session('club.context.name', '')),
-        clubLogo:  @json(session('club.context.logo') ? asset('storage/' . session('club.context.logo')) : ''),
-        clubCover: @json(session('club.context.cover_image') ? asset('storage/' . session('club.context.cover_image')) : ''),
-        clubSplash: @json(session('club.context.splash') ? asset('storage/' . session('club.context.splash')) : ''),
+        clubLogo:  @json(session('club.context.logo') ? file_url(session('club.context.logo')) : ''),
+        clubCover: @json(session('club.context.cover_image') ? file_url(session('club.context.cover_image')) : ''),
+        clubSplash: @json(session('club.context.splash') ? file_url(session('club.context.splash')) : ''),
 
         // Bilingual rich-HTML registration content (sanitised server-side).
         clubTermsEn: @js(session('club.context.terms')),

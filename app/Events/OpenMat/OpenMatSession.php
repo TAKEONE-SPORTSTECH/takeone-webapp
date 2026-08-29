@@ -687,7 +687,7 @@ class OpenMatSession
             'id' => $u->id,
             'name' => $u->full_name ?: $u->name,
             'photo' => ($u->profile_picture && $u->profile_picture_is_public)
-                ? asset('storage/'.$u->profile_picture)
+                ? file_url($u->profile_picture)
                 : null,
             'fallback' => \App\Support\Avatar::placeholder($u->gender),
             'club' => $u->memberClubs->first()?->club_name,

@@ -34,7 +34,7 @@ class ClubApiController extends Controller
                     'email' => $user->email,
                     'mobile' => $user->mobile_formatted,
                     'profile_picture' => $user->profile_picture
-                        ? asset('storage/'.$user->profile_picture)
+                        ? file_url($user->profile_picture)
                         : null,
                 ];
             });
@@ -81,7 +81,7 @@ class ClubApiController extends Controller
                 'email' => $club->owner->email,
                 'mobile' => $club->owner->mobile_formatted,
                 'profile_picture' => $club->owner->profile_picture
-                    ? asset('storage/'.$club->owner->profile_picture)
+                    ? file_url($club->owner->profile_picture)
                     : null,
             ] : null,
             'social_links' => $club->socialLinks->map(function ($link) {

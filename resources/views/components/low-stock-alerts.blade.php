@@ -33,7 +33,7 @@
             return [
                 'id'        => $n->id,
                 'name'      => $name,
-                'image'     => $product && $product->image_path ? asset('storage/'.$product->image_path) : null,
+                'image'     => $product && $product->image_path ? file_url($product->image_path) : null,
                 'remaining' => $remaining,
                 'url'       => $n->action_url,
                 'muteUrl'   => $product && $product->tenant ? route('admin.club.shop.products.stock-mute', [$product->tenant, $product]) : null,

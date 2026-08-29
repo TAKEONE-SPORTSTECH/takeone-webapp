@@ -819,7 +819,7 @@ class PlatformController extends Controller
 
                         return [
                             'name' => $pa->instructor->user->full_name ?? $pa->instructor->user->name,
-                            'image_url' => $pa->instructor->user->profile_picture ? asset('storage/'.$pa->instructor->user->profile_picture) : null,
+                            'image_url' => $pa->instructor->user->profile_picture ? file_url($pa->instructor->user->profile_picture) : null,
                         ];
                     })->filter()->unique('name')->values(),
                 ];
@@ -1096,7 +1096,7 @@ class PlatformController extends Controller
             'body' => $comment->body,
             'user_name' => $comment->user->full_name ?? $comment->user->name,
             'avatar' => $comment->user->profile_picture
-                                ? asset('storage/'.$comment->user->profile_picture)
+                                ? file_url($comment->user->profile_picture)
                                 : null,
             'time_ago' => $comment->created_at->diffForHumans(),
             'is_owner' => true,

@@ -45,7 +45,7 @@
                 if (!$pa->instructor?->user) return null;
                 return [
                     'name'      => $pa->instructor->user->full_name ?? $pa->instructor->user->name,
-                    'image_url' => $pa->instructor->user->profile_picture ? asset('storage/' . $pa->instructor->user->profile_picture) : null,
+                    'image_url' => $pa->instructor->user->profile_picture ? file_url($pa->instructor->user->profile_picture) : null,
                 ];
             })->filter()->unique('name')->values(),
         ];

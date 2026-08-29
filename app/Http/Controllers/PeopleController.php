@@ -80,7 +80,7 @@ class PeopleController extends Controller
                 'uuid' => $u->uuid,
                 'slug' => $u->slug,
                 'name' => $u->full_name ?: $u->name,
-                'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+                'avatar' => $u->profile_picture ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
                 'gender' => $u->gender,
                 'is_trainer' => (bool) $u->is_personal_trainer,
                 'is_following' => $followingIds->contains($u->id),
@@ -246,7 +246,7 @@ class PeopleController extends Controller
                 $user = $r->user;
 
                 return [$r->id => ($user?->profile_picture && $user->profile_picture_is_public)
-                    ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                    ? file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
                     : null];
             });
 

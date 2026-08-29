@@ -52,7 +52,7 @@
                         {{-- Avatar --}}
                         <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
                             @if($r->user && $r->user->profile_picture)
-                                <img src="{{ asset('storage/' . $r->user->profile_picture) }}" alt="" class="w-full h-full object-cover">
+                                <img src="{{ file_url($r->user->profile_picture) }}" alt="" class="w-full h-full object-cover">
                             @else
                                 <span class="text-lg font-bold text-muted-foreground">{{ mb_strtoupper(mb_substr($r->user->full_name ?? '?', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
                             @endif

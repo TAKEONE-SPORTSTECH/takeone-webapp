@@ -7,7 +7,7 @@
 <div class="-mx-4 -mt-4">
     <div class="bg-white px-5 py-6 text-center">
         <span class="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mx-auto overflow-hidden">
-            @if($user->profile_picture)<img src="{{ asset('storage/'.$user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}" alt="" class="w-[60px] h-20 object-cover">@else<i class="bi bi-person text-3xl text-muted-foreground"></i>@endif
+            @if($user->profile_picture)<img src="{{ file_url($user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}" alt="" class="w-[60px] h-20 object-cover">@else<i class="bi bi-person text-3xl text-muted-foreground"></i>@endif
         </span>
         <h2 class="font-bold text-foreground mt-3">{{ $user->full_name }}</h2>
         <p class="text-sm text-muted-foreground">{{ $user->email }}</p>

@@ -418,7 +418,7 @@ class Scoring
             // as their club, and that is what the hall is told.
             'country' => $club?->country ?: ($match->{$side.'_country'} ?: ''),
             'flag' => strtolower((string) ($match->{$side.'_country'} ?: $club?->country ?: '')) ?: null,
-            'logo' => $club?->logo ? asset('storage/'.$club->logo) : null,
+            'logo' => $club?->logo ? file_url($club->logo) : null,
             // The event's OWN photo wins, then the member's profile picture if
             // they published it. The first was uploaded by an organiser FOR this
             // competition — including for the many competitors who have no
@@ -426,9 +426,9 @@ class Scoring
             // beyond the one that put it there. The second is somebody's private
             // picture and keeps its gate: a hall screen is a publication.
             'photo' => $reg?->photo
-                ? asset('storage/'.$reg->photo)
+                ? file_url($reg->photo)
                 : (($user?->profile_picture && $user->profile_picture_is_public)
-                    ? asset('storage/'.$user->profile_picture)
+                    ? file_url($user->profile_picture)
                     : null),
             // The drawn stand-in, for a corner with no picture of their own.
             // Always present — see App\Support\Avatar for why an unknown

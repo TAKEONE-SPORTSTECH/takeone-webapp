@@ -50,17 +50,17 @@ class CompetitorPhoto
     public function url(?ClubEventRegistration $entry, ?User $user, ?int $eventId = null): ?string
     {
         if ($entry?->photo) {
-            return asset('storage/'.$entry->photo);
+            return file_url($entry->photo);
         }
 
         $eventId ??= $entry?->event_id;
 
         if ($user && $eventId && ($path = $this->sameEvent($eventId, $user->id))) {
-            return asset('storage/'.$path);
+            return file_url($path);
         }
 
         if ($user?->profile_picture && $user->profile_picture_is_public) {
-            return asset('storage/'.$user->profile_picture);
+            return file_url($user->profile_picture);
         }
 
         return null;
@@ -105,16 +105,16 @@ class CompetitorPhoto
     public function crestUrl(?ClubEventRegistration $entry, $club, ?int $eventId = null): ?string
     {
         if ($entry?->club_logo) {
-            return asset('storage/'.$entry->club_logo);
+            return file_url($entry->club_logo);
         }
 
         $eventId ??= $entry?->event_id;
 
         if ($club && $eventId && ($path = $this->sameClub($eventId, (int) $club->id))) {
-            return asset('storage/'.$path);
+            return file_url($path);
         }
 
-        return $club?->logo ? asset('storage/'.$club->logo) : null;
+        return $club?->logo ? file_url($club->logo) : null;
     }
 
     /**

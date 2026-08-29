@@ -57,14 +57,14 @@
         @endphp
         <div class="m-card bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             @if($sub->package && $sub->package->cover_image)
-                <img src="{{ asset('storage/'.$sub->package->cover_image) }}" alt="" class="w-full h-32 object-cover">
+                <img src="{{ file_url($sub->package->cover_image) }}" alt="" class="w-full h-32 object-cover">
             @endif
             <div class="p-4">
                 <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0">
                         <h3 class="font-bold text-foreground truncate">{{ $sub->package?->tr('name') ?? __('personal.membership') }}</h3>
                         <p class="text-xs text-muted-foreground truncate flex items-center gap-1">
-                            @if($sub->tenant?->logo)<img src="{{ asset('storage/'.$sub->tenant->logo) }}" class="w-4 h-4 object-contain flex-shrink-0" alt="">@endif
+                            @if($sub->tenant?->logo)<img src="{{ file_url($sub->tenant->logo) }}" class="w-4 h-4 object-contain flex-shrink-0" alt="">@endif
                             {{ $sub->tenant?->tr('club_name') ?? '' }}
                         </p>
                     </div>
@@ -100,7 +100,7 @@
                                     @if($coach)
                                         <a href="{{ route('trainer.show', $coach->id) }}" class="m-press flex items-center gap-1.5 bg-accent rounded-full pl-0.5 pr-2 py-0.5 flex-shrink-0">
                                             @if($coach->profile_picture)
-                                                <img src="{{ asset('storage/'.$coach->profile_picture) }}?v={{ optional($coach->updated_at)->timestamp }}" class="w-5 h-5 rounded-full object-cover" alt="">
+                                                <img src="{{ file_url($coach->profile_picture) }}?v={{ optional($coach->updated_at)->timestamp }}" class="w-5 h-5 rounded-full object-cover" alt="">
                                             @else
                                                 <span class="w-5 h-5 rounded-full bg-primary/20 text-primary text-[9px] font-bold grid place-items-center">{{ mb_strtoupper(mb_substr($coach->full_name, 0, 1)) }}</span>
                                             @endif

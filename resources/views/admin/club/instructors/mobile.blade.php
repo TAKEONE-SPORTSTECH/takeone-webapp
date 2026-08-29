@@ -109,7 +109,7 @@
                         <i class="bi bi-grip-vertical text-lg"></i>
                     </span>
                     <span class="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 {{ $isOwner ? 'ring-amber-300' : 'ring-transparent' }}">
-                        @if($u->profile_picture)<img src="{{ asset('storage/'.$u->profile_picture) }}" alt="" class="w-9 h-12 object-cover">@else<i class="bi bi-person text-muted-foreground text-lg"></i>@endif
+                        @if($u->profile_picture)<img src="{{ file_url($u->profile_picture) }}" alt="" class="w-9 h-12 object-cover">@else<i class="bi bi-person text-muted-foreground text-lg"></i>@endif
                     </span>
                     @php $expSuffix = $u->experience_years ? ' · '.$u->experience_years.' '.__('admin.yrs') : ''; @endphp
                     <div class="min-w-0 flex-1">

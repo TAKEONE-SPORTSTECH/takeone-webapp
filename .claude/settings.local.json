@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull *)",
+      "Bash(gh auth *)",
+      "Bash(php -r ' *)",
+      "WebFetch(domain:video.takeone.bh)",
+      "Read(//var/www/**)",
+      "Read(//etc/nginx/**)",
+      "Read(//etc/**)",
+      "Bash(timeout 5 ping -c 2 192.168.0.31)",
+      "Bash(timeout 5 bash -c 'cat < /dev/null > /dev/tcp/192.168.0.31/22')",
+      "Bash(export SSHPASS='Password-1')",
+      "Bash(sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 root@192.168.0.31 'echo \"=== HOST ===\"; hostname; uname -a; echo; echo \"=== PROJECT ROOT ===\"; ls -la /var/www/videoplatform | head -40; echo; echo \"=== STACK HINTS ===\"; for f in composer.json package.json artisan go.mod requirements.txt docker-compose.yml Dockerfile README.md; do [ -e /var/www/videoplatform/$f ] && echo \"--- $f present ---\"; done')",
+      "Bash(ssh videoplatform *)",
+      "Bash(flutter --version)",
+      "Bash(awk '{ if \\(length\\($0\\) > 300\\) printf \"%d: [LONG LINE %d chars] %s\\\\n\", NR, length\\($0\\), substr\\($0,1,200\\); else printf \"%d: %s\\\\n\", NR, $0 }' winner-red.html)"
+    ]
+  }
+}

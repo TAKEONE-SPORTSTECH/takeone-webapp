@@ -168,7 +168,7 @@
                     $scheme = strtolower((string) parse_url($path, PHP_URL_SCHEME));
                     $src = in_array($scheme, ['http', 'https'], true) ? $path : null;
                 } else {
-                    $src = asset('storage/'.$path);
+                    $src = file_url($path);
                 }
                 if ($src) {
                     $avatarGallery[] = ['src' => $src, 'label' => $label ?: ''];
@@ -703,7 +703,7 @@
             $dateLabel = $a->date_label ?: ($a->achievement_date ? $a->achievement_date->format('M Y') : '');
             $achLocation = $a->tr('location');
             $achImages = collect(array_filter(array_merge($a->image_path ? [$a->image_path] : [], $a->images ?? [])))
-                ->map(fn ($p) => asset('storage/' . $p))->values()->toArray();
+                ->map(fn ($p) => file_url($p))->values()->toArray();
             return [
                 'a'        => $a,
                 'emoji'    => $emoji,
@@ -986,7 +986,7 @@
                 <h3 class="font-bold text-foreground mb-1 flex items-center gap-2"><i class="bi bi-file-earmark-text text-primary"></i> {{ __('member.documents') }}</h3>
                 @foreach($user->documents as $doc)
                     @php
-                        $docUrl = !empty($doc['file_path']) ? asset('storage/'.$doc['file_path']) : '';
+                        $docUrl = !empty($doc['file_path']) ? file_url($doc['file_path']) : '';
                         $docLabel = $doc['type'] ?? __('member.document');
                     @endphp
                     {{-- Tapping a document opens it in the shared viewer — the same black
@@ -1234,8 +1234,8 @@
                 'current_progress_value' => (float) $g->current_progress_value,
                 'status' => $g->status,
                 'target_date' => optional($g->target_date)->format('M j, Y'),
-                'before_proof' => $g->before_proof ? asset('storage/'.$g->before_proof) : null,
-                'after_proof' => $g->after_proof ? asset('storage/'.$g->after_proof) : null,
+                'before_proof' => $g->before_proof ? file_url($g->before_proof) : null,
+                'after_proof' => $g->after_proof ? file_url($g->after_proof) : null,
                 'completed_at' => optional($g->completed_at)->format('M j, Y'),
                 'days_taken' => $g->days_taken,
             ])->values();
@@ -1660,7 +1660,7 @@
                         'club_location' => $t->clubAffiliation?->location,
                         // The club's mark: the affiliation's own, else the platform club's.
                         'club_logo' => ($logo = $t->clubAffiliation?->logo ?: $t->clubAffiliation?->tenant?->logo)
-                            ? asset('storage/'.$logo)
+                            ? file_url($logo)
                             : null,
                         'results' => $t->performanceResults->map(fn ($r) => [
                             'medal' => $r->medal_type,
@@ -1987,7 +1987,7 @@
                 return [$a->id => [
                     'id' => $a->id,
                     'club_name' => $a->club_name,
-                    'logo' => $a->logo ? asset('storage/'.$a->logo) : null,
+                    'logo' => $a->logo ? file_url($a->logo) : null,
                     'ongoing' => ! $a->end_date,
                     // Verification (club-confirm if on-platform; else peer vouch).
                     'verification' => $a->verification_status,
@@ -2016,7 +2016,7 @@
                             : $instrByName->get(mb_strtolower(trim((string) $ins['name'])));
                         return [
                             'name' => $u ? ($u->full_name ?: $u->name) : $ins['name'],
-                            'avatar' => $u && $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+                            'avatar' => $u && $u->profile_picture ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
                             // ?public=1 → always the minimal public profile, even for self.
                             'url' => $u ? route('people.show', ['uuid' => $u->uuid, 'public' => 1]) : null,
                         ];
@@ -2058,7 +2058,7 @@
                         <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-green-400/80"></span>
                         <div class="flex items-start gap-3">
                             <span class="w-12 h-12 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-gray-100">
-                                @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-lg text-muted-foreground"></i>@endif
+                                @if($a->logo)<img src="{{ file_url($a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-lg text-muted-foreground"></i>@endif
                             </span>
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-start justify-between gap-2">
@@ -2104,7 +2104,7 @@
                             <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-gray-300"></span>
                             <div class="flex items-start gap-3">
                                 <span class="w-12 h-12 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-gray-100 grayscale">
-                                    @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-lg text-muted-foreground"></i>@endif
+                                    @if($a->logo)<img src="{{ file_url($a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-lg text-muted-foreground"></i>@endif
                                 </span>
                                 <div class="min-w-0 flex-1">
                                     <div class="flex items-start justify-between gap-2">
@@ -2688,7 +2688,7 @@
                 'expired' => $c->isExpired(),
                 'credential_id' => $c->credential_id,
                 'credential_url' => $c->credential_url,
-                'image' => $c->image_path ? asset('storage/'.$c->image_path) : null,
+                'image' => $c->image_path ? file_url($c->image_path) : null,
                 'notes' => $c->notes,
             ])->values();
         @endphp
@@ -2905,7 +2905,7 @@
                         'current' => $active,
                         'description' => null,
                         'derived' => true,
-                        'logo' => optional($club)->logo ? asset('storage/'.$club->logo) : null,
+                        'logo' => optional($club)->logo ? file_url($club->logo) : null,
                         'skills' => $ci->activities->map(fn ($a) => [
                             'name' => $a->name,
                             'url' => ($u = optional($workCatalogByName->get(mb_strtolower(trim((string) $a->name))))->uuid)

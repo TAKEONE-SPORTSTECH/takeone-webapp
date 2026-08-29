@@ -21,7 +21,7 @@
         <div class="grid grid-cols-2 gap-2 mobile-stagger">
             @foreach($images as $img)
                 <div class="rounded-xl overflow-hidden bg-muted aspect-square">
-                    <img src="{{ asset('storage/'.$img->image_path) }}" alt="{{ $img->caption }}" class="w-full h-full object-cover">
+                    <img src="{{ file_url($img->image_path) }}" alt="{{ $img->caption }}" class="w-full h-full object-cover">
                 </div>
             @endforeach
         </div>

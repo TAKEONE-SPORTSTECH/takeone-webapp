@@ -298,7 +298,7 @@ class OpenMatController extends Controller
             ->map(fn (Tenant $c) => [
                 'id' => $c->id,
                 'name' => $c->club_name,
-                'logo' => $c->logo ? asset('storage/'.$c->logo) : null,
+                'logo' => $c->logo ? file_url($c->logo) : null,
                 'country' => $c->country,
             ])->values()->all();
     }

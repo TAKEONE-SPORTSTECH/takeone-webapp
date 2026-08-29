@@ -11,7 +11,7 @@
         'new' => ($lastSeen ?? null) ? $o->created_at->gt(\Illuminate\Support\Carbon::parse($lastSeen)) : true,
         'customer' => $o->user->full_name ?? __('admin.fin_member'), 'hasDropship' => (bool) $o->has_dropship,
         'proof' => $o->paymentProofUrl(),
-        'items' => $o->items->map(fn ($it) => ['name' => $it->name, 'qty' => $it->qty, 'image' => $it->image_path ? asset('storage/'.$it->image_path) : null])->values(),
+        'items' => $o->items->map(fn ($it) => ['name' => $it->name, 'qty' => $it->qty, 'image' => $it->image_path ? file_url($it->image_path) : null])->values(),
     ])->values();
     $cur = $club->currency ?: 'BHD';
     $currentMonth = date('Y-m');   // hero stats + list default to this month; the stepper changes it

@@ -71,7 +71,7 @@
                 <!-- Logo Preview -->
                 <div class="cropper-preview-container mb-2" id="logoPreviewContainer">
                     @if($isEdit && $club->logo)
-                    <img src="{{ asset('storage/' . $club->logo) }}"
+                    <img src="{{ file_url($club->logo) }}"
                          id="logoPreview"
                          class="cropper-preview-image"
                          style="width: 150px; height: 150px; border-radius: 8px; border: 2px solid #dee2e6;">
@@ -99,7 +99,7 @@
                 <!-- Cover Preview -->
                 <div class="cropper-preview-container mb-2" id="coverPreviewContainer">
                     @if($isEdit && $club->cover_image)
-                    <img src="{{ asset('storage/' . $club->cover_image) }}"
+                    <img src="{{ file_url($club->cover_image) }}"
                          id="coverPreview"
                          class="cropper-preview-image"
                          style="width: 250px; height: 83px; border-radius: 8px; border: 2px solid #dee2e6;">
@@ -175,7 +175,7 @@
             <div class="text-center">
                 <div class="cropper-preview-container mb-2" id="splashPreviewContainer">
                     @if($isEdit && $club->registration_splash_image)
-                    <img src="{{ asset('storage/' . $club->registration_splash_image) }}"
+                    <img src="{{ file_url($club->registration_splash_image) }}"
                          id="splashPreview"
                          class="cropper-preview-image"
                          style="width: 110px; height: 195px; border-radius: 12px; border: 2px solid #dee2e6; object-fit: cover; margin: 0 auto;">

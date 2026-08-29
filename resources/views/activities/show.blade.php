@@ -10,7 +10,7 @@
     {{-- Hero --}}
     <div class="relative h-64 sm:h-80 w-full overflow-hidden">
         @if($activity->picture_url)
-            <img src="{{ asset('storage/'.$activity->picture_url) }}" alt="{{ $name }}" class="absolute inset-0 w-full h-full object-cover">
+            <img src="{{ file_url($activity->picture_url) }}" alt="{{ $name }}" class="absolute inset-0 w-full h-full object-cover">
             <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10"></div>
         @else
             <div class="absolute inset-0" style="background: linear-gradient(135deg, hsl(250 65% 55%), hsl(250 65% 35%));"></div>

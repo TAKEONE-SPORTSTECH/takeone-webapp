@@ -64,7 +64,7 @@
             <div class="tr-ring inline-block">
                 <span class="block w-28 h-28 rounded-[27px] overflow-hidden bg-white/10">
                     @if($user->profile_picture)
-                        <img src="{{ asset('storage/'.$user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}" alt="" class="w-full h-full object-cover">
+                        <img src="{{ file_url($user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}" alt="" class="w-full h-full object-cover">
                     @else
                         <span class="w-full h-full flex items-center justify-center text-4xl font-black">{{ $initial }}</span>
                     @endif
@@ -171,7 +171,7 @@
                             <a href="{{ $ci->tenant->slug && $ci->tenant->country ? route('clubs.show', ['country'=>strtolower($ci->tenant->country), 'slug'=>$ci->tenant->slug]) : '#' }}"
                                class="m-press flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
                                 <span class="w-12 h-12 rounded-xl bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
-                                    @if($ci->tenant->logo)<img src="{{ asset('storage/'.$ci->tenant->logo) }}" alt="" class="w-12 h-12 object-contain p-1">@else<i class="bi bi-buildings text-muted-foreground text-lg"></i>@endif
+                                    @if($ci->tenant->logo)<img src="{{ file_url($ci->tenant->logo) }}" alt="" class="w-12 h-12 object-contain p-1">@else<i class="bi bi-buildings text-muted-foreground text-lg"></i>@endif
                                 </span>
                                 <div class="min-w-0 flex-1">
                                     <p class="font-semibold text-foreground truncate">{{ $ci->tenant->club_name }}</p>

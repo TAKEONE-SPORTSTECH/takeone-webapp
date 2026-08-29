@@ -154,14 +154,14 @@ class UserPost extends Model
                 'slug' => $author?->slug,
                 'name' => $author?->full_name ?? 'Member',
                 'avatar' => $author && $author->profile_picture
-                    ? asset('storage/'.$author->profile_picture).'?v='.optional($author->updated_at)->timestamp
+                    ? file_url($author->profile_picture).'?v='.optional($author->updated_at)->timestamp
                     : null,
                 'url' => $author ? route('wall.show', $author) : '#',
                 'isMe' => $this->user_id === $viewer->id,
             ],
             'body' => $this->body ?? '',
             'images' => collect($this->images ?? [])
-                ->map(fn ($path) => ['url' => asset('storage/'.$path)])
+                ->map(fn ($path) => ['url' => file_url($path)])
                 ->values()->all(),
             'liked' => $this->relationLoaded('likes')
                 ? $this->likes->contains('user_id', $viewer->id)

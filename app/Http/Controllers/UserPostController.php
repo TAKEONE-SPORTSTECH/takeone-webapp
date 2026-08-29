@@ -504,7 +504,7 @@ class UserPostController extends Controller
                 'id' => $row->user_id,
                 'name' => $row->user?->full_name ?? 'Member',
                 'avatar' => $row->user && $row->user->profile_picture
-                    ? asset('storage/'.$row->user->profile_picture).'?v='.optional($row->user->updated_at)->timestamp
+                    ? file_url($row->user->profile_picture).'?v='.optional($row->user->updated_at)->timestamp
                     : null,
                 'url' => $row->user ? route('wall.show', $row->user) : '#',
                 'time' => $row->created_at->diffForHumans(),

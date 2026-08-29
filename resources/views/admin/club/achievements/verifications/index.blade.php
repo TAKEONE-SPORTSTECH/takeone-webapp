@@ -34,7 +34,7 @@
         @foreach($claims as $claim)
             @php
                 $u = $claim['user'];
-                $pic = $u['profile_picture'] ? asset('storage/'.$u['profile_picture']) : null;
+                $pic = $u['profile_picture'] ? file_url($u['profile_picture']) : null;
                 $isSkill = $claim['type'] === 'skill';
                 $medalMap = ['1st' => ['🥇', __('member.templates_member_show_first_place')], '2nd' => ['🥈', __('member.templates_member_show_second_place')], '3rd' => ['🥉', __('member.templates_member_show_third_place')], 'special' => ['🏆', __('member.templates_member_show_special_award')]];
             @endphp

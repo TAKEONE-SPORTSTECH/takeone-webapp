@@ -36,6 +36,6 @@ class OrderItem extends Model
 
     public function imageUrl(): ?string
     {
-        return $this->image_path ? asset('storage/'.$this->image_path) : null;
+        return $this->image_path ? file_url($this->image_path) : null;
     }
 }

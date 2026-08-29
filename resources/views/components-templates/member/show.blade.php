@@ -41,7 +41,7 @@
                  so the shorthand pair silently squared off the top-start corner. --}}
             <div class="relative w-full sm:w-[180px] aspect-[3/4] overflow-hidden rounded-ss-xl rounded-se-xl sm:rounded-se-none sm:rounded-es-xl flex-shrink-0">
                 @if($relationship->dependent->profile_picture)
-                    <img id="member-profile-pic" src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover;">
+                    <img id="member-profile-pic" src="{{ file_url($relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover;">
                 @endif
                 <div id="member-profile-placeholder" class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender === 'Male' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); {{ $relationship->dependent->profile_picture ? 'display:none;' : '' }}">
                     {{ mb_strtoupper(mb_substr($relationship->dependent->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
@@ -493,7 +493,7 @@
                                     @if(!empty($doc['file_path']))
                                     {{-- Opens in the shared viewer (black tint, zoom + pan), not a bare tab. --}}
                                     <button type="button" data-media-lightbox
-                                            data-src="{{ asset('storage/' . $doc['file_path']) }}"
+                                            data-src="{{ file_url($doc['file_path']) }}"
                                             data-label="{{ $doc['type'] ?? __('member.document') }}"
                                             class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors" title="{{ __('member.templates_member_show_view_document') }}">
                                         <i class="bi bi-eye" style="font-size:0.85rem;"></i>
@@ -1106,13 +1106,13 @@
                                                 <div class="flex gap-2 mt-3">
                                                     @if($goal->before_proof)
                                                         <div class="flex-1 min-w-0">
-                                                            <img src="{{ asset('storage/'.$goal->before_proof) }}" class="w-full h-20 rounded-md object-cover border border-gray-200" alt="">
+                                                            <img src="{{ file_url($goal->before_proof) }}" class="w-full h-20 rounded-md object-cover border border-gray-200" alt="">
                                                             <small class="text-gray-500 block text-center mt-1">{{ __('member.before') }}</small>
                                                         </div>
                                                     @endif
                                                     @if($goal->after_proof)
                                                         <div class="flex-1 min-w-0">
-                                                            <img src="{{ asset('storage/'.$goal->after_proof) }}" class="w-full h-20 rounded-md object-cover border border-gray-200" alt="">
+                                                            <img src="{{ file_url($goal->after_proof) }}" class="w-full h-20 rounded-md object-cover border border-gray-200" alt="">
                                                             <small class="text-gray-500 block text-center mt-1">{{ __('member.after') }}</small>
                                                         </div>
                                                     @endif
@@ -1448,7 +1448,7 @@
                                                         {{-- Bare mark on a sizing box, never a white tile (Design Rule #5). --}}
                                                         @if($repLogo)
                                                             <span class="w-8 h-8 flex-shrink-0">
-                                                                <img src="{{ asset('storage/'.$repLogo) }}" alt="{{ $event->clubAffiliation->club_name }}" class="w-full h-full object-contain">
+                                                                <img src="{{ file_url($repLogo) }}" alt="{{ $event->clubAffiliation->club_name }}" class="w-full h-full object-contain">
                                                             </span>
                                                         @endif
                                                         <div class="min-w-0 flex-1">
@@ -1637,7 +1637,7 @@
                 'expiry_label' => optional($c->expiry_date)->format('M Y'),
                 'expired' => $c->isExpired(),
                 'credential_id' => $c->credential_id, 'credential_url' => $c->credential_url,
-                'image' => $c->image_path ? asset('storage/'.$c->image_path) : null, 'notes' => $c->notes,
+                'image' => $c->image_path ? file_url($c->image_path) : null, 'notes' => $c->notes,
             ])->values();
         @endphp
         <div x-show="activeTab === 'certifications'" x-transition id="certifications" role="tabpanel"
@@ -1803,7 +1803,7 @@
                         'end_label' => $end ? $end->format('M Y') : null,
                         'current' => $active, 'description' => null,
                         'derived' => true,
-                        'logo' => optional($club)->logo ? asset('storage/'.$club->logo) : null,
+                        'logo' => optional($club)->logo ? file_url($club->logo) : null,
                         'skills' => $ci->activities->map(fn ($a) => [
                             'name' => $a->name,
                             'url' => ($u = optional($workCatalogByNameD->get(mb_strtolower(trim((string) $a->name))))->uuid)

@@ -60,7 +60,7 @@
                 <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="block m-card {{ $clubUrl ? 'm-press' : '' }} bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5">
                     <div class="flex items-center gap-3">
                         <span class="w-12 h-12 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0">
-                            @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-muted-foreground text-lg"></i>@endif
+                            @if($a->logo)<img src="{{ file_url($a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-muted-foreground text-lg"></i>@endif
                         </span>
                         <div class="min-w-0 flex-1">
                             <p class="font-semibold text-foreground truncate">{{ $a->club_name }}</p>
@@ -102,7 +102,7 @@
                     <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="block m-card {{ $clubUrl ? 'm-press' : '' }} bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 opacity-75">
                         <div class="flex items-center gap-3">
                             <span class="w-12 h-12 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 grayscale">
-                                @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-muted-foreground text-lg"></i>@endif
+                                @if($a->logo)<img src="{{ file_url($a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-muted-foreground text-lg"></i>@endif
                             </span>
                             <div class="min-w-0 flex-1">
                                 <p class="font-semibold text-foreground truncate">{{ $a->club_name }}</p>

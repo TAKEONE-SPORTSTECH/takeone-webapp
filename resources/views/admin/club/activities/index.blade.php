@@ -100,7 +100,7 @@
             {{-- Activity Image --}}
             @if($activity->picture_url)
             <div class="h-44 overflow-hidden">
-                <img src="{{ asset('storage/' . $activity->picture_url) }}"
+                <img src="{{ file_url($activity->picture_url) }}"
                      alt="{{ $activity->name }}"
                      class="w-full h-full object-cover">
             </div>
@@ -149,7 +149,7 @@
                                 name: '{{ addslashes($activity->name) }}',
                                 description: '{{ addslashes($activity->description) }}',
                                 notes: '{{ addslashes($activity->notes) }}',
-                                pictureUrl: '{{ $activity->picture_url ? asset('storage/' . $activity->picture_url) : '' }}'
+                                pictureUrl: '{{ $activity->picture_url ? file_url($activity->picture_url) : '' }}'
                             }; showAddModal = true">
                         <i class="bi bi-copy"></i>
                     </button>
@@ -165,7 +165,7 @@
                                 description: '{{ addslashes($activity->description) }}',
                                 notes: '{{ addslashes($activity->notes) }}',
                                 translations: {{ Illuminate\Support\Js::from($activity->translations ?? []) }},
-                                pictureUrl: '{{ $activity->picture_url ? asset('storage/' . $activity->picture_url) : '' }}',
+                                pictureUrl: '{{ $activity->picture_url ? file_url($activity->picture_url) : '' }}',
                                 action: '{{ route('admin.club.activities.update', [$club->slug, $activity->id]) }}'
                             }; showEditModal = true">
                         <i class="bi bi-pencil"></i>

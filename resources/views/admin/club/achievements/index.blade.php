@@ -8,7 +8,7 @@ $achievementsJson = $achievements->map(function($a) {
         $a->image_path ? [$a->image_path] : [],
         $a->images ?? []
     ))));
-    $combinedUrls = collect($combined)->map(fn($p) => asset('storage/' . $p))->values()->toArray();
+    $combinedUrls = collect($combined)->map(fn($p) => file_url($p))->values()->toArray();
     return [
         'id'               => $a->id,
         'title'            => $a->title,
@@ -75,8 +75,8 @@ $achievementsJson = $achievements->map(function($a) {
             @foreach($achievements as $achievement)
             @php
                 $isInactive = $achievement->status === 'inactive';
-                $achCardImages = collect($achievement->images ?? [])->map(fn($p) => asset('storage/'.$p))->values()->toArray();
-                if (empty($achCardImages) && $achievement->image_path) $achCardImages = [asset('storage/'.$achievement->image_path)];
+                $achCardImages = collect($achievement->images ?? [])->map(fn($p) => file_url($p))->values()->toArray();
+                if (empty($achCardImages) && $achievement->image_path) $achCardImages = [file_url($achievement->image_path)];
             @endphp
             <div class="card border-0 shadow-sm overflow-hidden {{ $isInactive ? 'opacity-60' : '' }} cursor-pointer"
                  id="achievement-{{ $achievement->id }}"

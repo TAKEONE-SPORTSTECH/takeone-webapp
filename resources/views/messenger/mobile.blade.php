@@ -239,7 +239,7 @@
                     <template x-if="m.mine">
                         <span class="w-7 h-7 rounded-full overflow-hidden shrink-0 self-end mb-0.5">
                             @if(Auth::user()->profile_picture)
-                                <img src="{{ asset('storage/'.Auth::user()->profile_picture) }}?v={{ optional(Auth::user()->updated_at)->timestamp }}" class="w-7 h-7 rounded-full object-cover" alt="">
+                                <img src="{{ file_url(Auth::user()->profile_picture) }}?v={{ optional(Auth::user()->updated_at)->timestamp }}" class="w-7 h-7 rounded-full object-cover" alt="">
                             @else
                                 <span class="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-[11px] font-bold">{{ mb_strtoupper(mb_substr(Auth::user()->full_name ?? 'U', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
                             @endif

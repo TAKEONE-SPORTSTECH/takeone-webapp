@@ -332,7 +332,7 @@
                             :filename="'logo_' . time()"
                             :previewWidth="150"
                             :previewHeight="150"
-                            :currentImage="$club->logo ? asset('storage/' . $club->logo) : ''"
+                            :currentImage="$club->logo ? file_url($club->logo) : ''"
                             :buttonText="__('admin.club_details_index_change_logo')"
                             buttonClass="btn btn-outline-secondary"
                             :uploadAsIs="true"
@@ -358,7 +358,7 @@
                             :filename="'favicon_' . time()"
                             :previewWidth="64"
                             :previewHeight="64"
-                            :currentImage="$club->favicon ? asset('storage/' . $club->favicon) : ''"
+                            :currentImage="$club->favicon ? file_url($club->favicon) : ''"
                             :buttonText="__('admin.club_details_index_change_favicon')"
                             buttonClass="btn btn-outline-secondary"
                             :uploadAsIs="true"
@@ -384,7 +384,7 @@
                             :filename="'cover_' . time()"
                             :previewWidth="480"
                             :previewHeight="270"
-                            :currentImage="$club->cover_image ? asset('storage/' . $club->cover_image) : ''"
+                            :currentImage="$club->cover_image ? file_url($club->cover_image) : ''"
                             :buttonText="__('admin.club_details_index_change_cover')"
                             buttonClass="btn btn-outline-secondary"
                             :uploadAsIs="true"
@@ -443,7 +443,7 @@
                         }
                     </script>
                     @endonce
-                    <div x-data="splashFilePreview({ logo: @js($club->logo ? asset('storage/' . $club->logo) : ''), name: @js($club->club_name), current: @js($club->registration_splash_image ? asset('storage/' . $club->registration_splash_image) : '') })" x-init="init()">
+                    <div x-data="splashFilePreview({ logo: @js($club->logo ? file_url($club->logo) : ''), name: @js($club->club_name), current: @js($club->registration_splash_image ? file_url($club->registration_splash_image) : '') })" x-init="init()">
                         <label class="form-label font-medium">{{ __('admin.club_details_index_reg_bg_image_label') }}</label>
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_reg_bg_help_1') }}<strong>{{ __('admin.club_details_index_reg_bg_full_quality') }}</strong>{{ __('admin.club_details_index_reg_bg_help_2') }}<strong>{{ __('admin.club_details_index_reg_bg_not') }}</strong>{{ __('admin.club_details_index_reg_bg_help_3') }}</small>
                         <div class="flex flex-col sm:flex-row gap-6 items-center sm:items-start">

@@ -9,7 +9,7 @@
 @php
     $currentProfileImage = '';
     if ($user->profile_picture && file_exists(public_path('storage/' . $user->profile_picture))) {
-        $currentProfileImage = asset('storage/' . $user->profile_picture) . '?v=' . $user->updated_at->timestamp;
+        $currentProfileImage = file_url($user->profile_picture) . '?v=' . $user->updated_at->timestamp;
     }
     $profilePicturePublic = $user->profile_picture_is_public ?? true;
 @endphp

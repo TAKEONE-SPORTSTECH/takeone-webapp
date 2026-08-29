@@ -185,7 +185,7 @@ class BusinessApprovalController extends Controller
             ->map(fn ($c) => [
             'id' => $c->id,
             'name' => $c->club_name,
-            'logo_url' => $c->logo ? asset('storage/'.$c->logo) : null,
+            'logo_url' => $c->logo ? file_url($c->logo) : null,
             'owner' => $c->owner?->full_name,
             'business' => $c->business?->name,
         ])
@@ -249,7 +249,7 @@ class BusinessApprovalController extends Controller
             ->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->club_name,
-                'logo_url' => $c->logo ? asset('storage/'.$c->logo) : null,
+                'logo_url' => $c->logo ? file_url($c->logo) : null,
                 'owner' => $c->owner?->full_name,
             ])
             ->all();
@@ -312,7 +312,7 @@ class BusinessApprovalController extends Controller
             'status' => $business->status,
             'rejection_reason' => $business->rejection_reason,
             'logo' => $business->logo,
-            'logo_url' => $business->logo ? asset('storage/'.$business->logo) : null,
+            'logo_url' => $business->logo ? file_url($business->logo) : null,
             'owner_id' => $business->owner_user_id,
             'owner_name' => $business->owner?->full_name,
             'owner_email' => $business->owner?->email,

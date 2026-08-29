@@ -37,7 +37,7 @@
     <script>
         window.postPage = function () {
             return {
-                me: { name: @js(Auth::user()->full_name), avatar: @js(Auth::user()->profile_picture ? asset('storage/'.Auth::user()->profile_picture).'?v='.optional(Auth::user()->updated_at)->timestamp : null) },
+                me: { name: @js(Auth::user()->full_name), avatar: @js(Auth::user()->profile_picture ? file_url(Auth::user()->profile_picture).'?v='.optional(Auth::user()->updated_at)->timestamp : null) },
                 isSuperAdmin: @js((bool) (Auth::user()?->hasRole('super-admin'))),
                 csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
                 postBase: @js(url('/me/posts')),

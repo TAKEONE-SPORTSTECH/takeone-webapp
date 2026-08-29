@@ -95,7 +95,7 @@ class ClubProductVariant extends Model
             'fulfillment' => $this->fulfillment ?: 'stock',
             'supplier' => $this->supplier,
             'ships_in' => $this->ships_in,
-            'image' => $this->image_path ? asset('storage/'.$this->image_path) : null,
+            'image' => $this->image_path ? file_url($this->image_path) : null,
             'is_active' => (bool) $this->is_active,
             'in_stock' => ! $this->isOutOfStock(),
         ];

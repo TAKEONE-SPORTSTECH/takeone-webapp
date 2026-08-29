@@ -156,7 +156,7 @@ class CourtDisplay
             // this bout.
             $corner.'Flag' => strtolower((string) ($bout->{$side.'_country'} ?: $club?->country ?: '')) ?: null,
             $corner.'Photo' => $this->photo($user),
-            $corner.'Logo' => $club?->logo ? asset('storage/'.$club->logo) : null,
+            $corner.'Logo' => $club?->logo ? file_url($club->logo) : null,
         ];
     }
 
@@ -173,7 +173,7 @@ class CourtDisplay
             return null;
         }
 
-        return asset('storage/'.$user->profile_picture);
+        return file_url($user->profile_picture);
     }
 
     /**

@@ -88,7 +88,7 @@ class PersonalMobileController extends Controller
                 'slug' => $u->slug,
                 'name' => $u->full_name,
                 'avatar' => $u->profile_picture
-                    ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp
+                    ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp
                     : null,
                 'url' => route('people.show', $u->uuid),
                 'following' => $followingIdSet->has($u->id),
@@ -122,12 +122,12 @@ class PersonalMobileController extends Controller
             'ts' => optional($p->posted_at)->timestamp ?? 0,
             'club' => [
                 'name' => $p->tenant->club_name ?? __('personal.club'),
-                'logo' => $p->tenant && $p->tenant->logo ? asset('storage/'.$p->tenant->logo) : null,
+                'logo' => $p->tenant && $p->tenant->logo ? file_url($p->tenant->logo) : null,
             ],
             'category' => $p->category ?? __('personal.update'),
             'time' => optional($p->posted_at)->diffForHumans(),
             'body' => $p->body ?? '',
-            'image' => $p->image_path ? asset('storage/'.$p->image_path) : null,
+            'image' => $p->image_path ? file_url($p->image_path) : null,
             'cover' => $p->cover,
             'likes' => (int) $p->likes_count,
             'comments' => (int) $p->comments_count,
@@ -1455,7 +1455,7 @@ class PersonalMobileController extends Controller
                 ->unique('id')
                 ->map(fn ($u) => [
                     'name' => $u->full_name ?: $u->name,
-                    'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+                    'avatar' => $u->profile_picture ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
                     'initials' => $this->initialsFor($u->full_name ?: ($u->name ?: 'U')),
                 ])
                 ->sortBy('name')->values()
@@ -1551,7 +1551,7 @@ class PersonalMobileController extends Controller
                 'user_id' => $r->user_id,
                 'name' => $name,
                 'avatar' => $u && $u->profile_picture
-                    ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp
+                    ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp
                     : null,
                 'initials' => $this->initialsFor($name),
                 'rating' => (int) $r->rating,
@@ -2521,7 +2521,7 @@ class PersonalMobileController extends Controller
             return null;
         }
 
-        return asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp;
+        return file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp;
     }
 
     /** "18:00" → "6:00 PM"; passes already-formatted strings through. */
@@ -3182,7 +3182,7 @@ class PersonalMobileController extends Controller
         $now = \Carbon\Carbon::now();
         $myName = $me?->full_name ?? 'You';
         $myAvatar = $me && $me->profile_picture
-            ? asset('storage/'.$me->profile_picture).'?v='.optional($me->updated_at)->timestamp
+            ? file_url($me->profile_picture).'?v='.optional($me->updated_at)->timestamp
             : null;
 
         // Member-shaped post factory (matches UserPost::toFeedArray + post-card).
@@ -3327,7 +3327,7 @@ class PersonalMobileController extends Controller
                 'name' => $name,
                 'initials' => mb_strtoupper(mb_substr(strtok($name, ' '), 0, 1).mb_substr(strstr($name, ' ') ?: '', 1, 1)),
                 'avatar' => $u && $u->profile_picture
-                    ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+                    ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
                 'rating' => (int) $r->rating,
                 'comment' => optional($comments->get($r->order_id.'-'.$r->user_id))->comment,
                 'time' => $r->created_at->diffForHumans(),

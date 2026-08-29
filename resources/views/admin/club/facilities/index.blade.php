@@ -21,7 +21,7 @@
             <!-- Image Section -->
             <div class="relative w-full h-40 bg-gradient-to-br from-gray-100 to-gray-50 overflow-hidden">
                 @if($coverImage)
-                <img src="{{ asset('storage/' . $coverImage) }}"
+                <img src="{{ file_url($coverImage) }}"
                      alt="{{ $facility->name }}"
                      data-facility-cover
                      class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
@@ -282,7 +282,7 @@ function populateEditForm(facility) {
             const wrap = document.createElement('div');
             wrap.className = 'relative group';
             wrap.innerHTML = `
-                <img src="{{ asset('storage') }}/${path}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
+                <img src="{{ url('/file') }}/${path}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
                 <button type="button" class="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <i class="bi bi-x"></i>
                 </button>`;
@@ -472,7 +472,7 @@ function patchFacilityCard(facility) {
         ? facility.images[0]
         : (facility.photo || null);
     if (coverEl && cover) {
-        coverEl.src = `{{ asset('storage') }}/${cover}?t=${Date.now()}`;
+        coverEl.src = `{{ url('/file') }}/${cover}?t=${Date.now()}`;
         coverEl.alt = facility.name || '';
     }
 

@@ -119,7 +119,7 @@ class ClubProduct extends Model
             'featured' => (bool) $this->featured,
             'color' => $this->color,
             'icon' => $this->icon,
-            'image' => $this->image_path ? asset('storage/'.$this->image_path) : null,
+            'image' => $this->image_path ? file_url($this->image_path) : null,
             'stock' => $this->availability,   // display label for the market
             'rating' => $this->rating_count ? round($this->rating_sum / $this->rating_count, 1) : 0,
             'reviews' => (int) $this->rating_count,

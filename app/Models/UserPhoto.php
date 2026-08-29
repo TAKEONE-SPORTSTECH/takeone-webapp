@@ -53,7 +53,7 @@ class UserPhoto extends Model
 
     public function url(): string
     {
-        return asset('storage/'.$this->path).'?v='.optional($this->updated_at)->timestamp;
+        return file_url($this->path).'?v='.optional($this->updated_at)->timestamp;
     }
 
     /** True when this picture is the one the profile shows as its avatar. */

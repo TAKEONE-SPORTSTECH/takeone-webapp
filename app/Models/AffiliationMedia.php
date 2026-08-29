@@ -41,7 +41,7 @@ class AffiliationMedia extends Model
             return $this->media_url;
         }
 
-        return asset('storage/'.$this->media_url);
+        return file_url($this->media_url);
     }
 
     /**

@@ -263,7 +263,7 @@ class SparringSession
                 'gender' => $r->user?->gender,
                 'age' => $r->user?->birthdate ? $r->user->birthdate->age : null,
                 'photo' => ($r->user?->profile_picture && $r->user->profile_picture_is_public)
-                    ? asset('storage/'.$r->user->profile_picture)
+                    ? file_url($r->user->profile_picture)
                     : null,
                 'bouts' => $this->boutCount($event, $r->id),
             ])

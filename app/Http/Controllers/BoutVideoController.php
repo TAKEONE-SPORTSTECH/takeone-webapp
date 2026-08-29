@@ -526,7 +526,7 @@ class BoutVideoController extends Controller
             // Their face, only if they chose to show it — the same rule the
             // bracket and the bout page follow. Absence is silent.
             'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
-                ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                ? file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
                 : null,
             'gender' => $user?->gender,
         ];

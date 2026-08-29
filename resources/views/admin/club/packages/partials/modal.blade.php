@@ -689,7 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Cropper preview
         const preview = $('#previewContainer_packageImageCropper');
         if (pkg.cover_image) {
-            const imgUrl = '{{ asset("storage") }}/' + pkg.cover_image;
+            const imgUrl = '{{ url('/file') }}/' + pkg.cover_image;
             preview.html(`<img src="${imgUrl}" id="preview_packageImageCropper" class="cropper-preview-image" style="width:300px;height:169px;border-radius:8px;"><button type="button" class="cropper-remove-btn" id="removeBtn_packageImageCropper" onclick="removeImage_packageImageCropper()"><i class="bi bi-x"></i></button>`);
             preview.addClass('has-image');
         } else {

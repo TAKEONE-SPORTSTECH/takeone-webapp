@@ -124,7 +124,7 @@ class PeopleRecommendationService
             'uuid' => $u->uuid,
             'slug' => $u->slug,
             'name' => $u->full_name ?: $u->name,
-            'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+            'avatar' => $u->profile_picture ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
             'gender' => $u->gender,
             'is_trainer' => (bool) $u->is_personal_trainer,
             'is_following' => false, // suggestions exclude already-followed

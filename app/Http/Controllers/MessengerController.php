@@ -740,7 +740,7 @@ class MessengerController extends Controller
             'uuid' => $user->uuid,
             'slug' => $user->slug,
             'name' => $name,
-            'avatar' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
+            'avatar' => $user->profile_picture ? file_url($user->profile_picture) : null,
             'initial' => strtoupper(mb_substr($name, 0, 1)),
             'blocked' => $me && $me->id !== $user->id ? $me->hasBlocked($user->id) : false,
         ];

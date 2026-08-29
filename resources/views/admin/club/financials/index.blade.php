@@ -842,7 +842,7 @@ window.transactionData = {
         proof_of_payment: @json($t->subscription?->proof_of_payment ? route('admin.club.subscriptions.payment-proof', ['club'=>$club,'subscription'=>$t->subscription_id]) : ''),
         refund_proof: @json($t->subscription?->refund_proof ? route('admin.club.subscriptions.refund-proof', ['club'=>$club,'subscription'=>$t->subscription_id]) : ''),
         member_name: @json($t->subscription?->user?->full_name ?? $t->subscription?->user?->name ?? ''),
-        member_avatar: @json($t->subscription?->user?->profile_picture ? asset('storage/'.$t->subscription->user->profile_picture) : ''),
+        member_avatar: @json($t->subscription?->user?->profile_picture ? file_url($t->subscription->user->profile_picture) : ''),
     },
     @endforeach
 };

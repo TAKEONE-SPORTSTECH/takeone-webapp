@@ -115,11 +115,11 @@
                                                     @php
                                                         $logoUrl = null;
                                                         if ($affiliation->tenant?->logo) {
-                                                            $logoUrl = asset('storage/' . $affiliation->tenant->logo);
+                                                            $logoUrl = file_url($affiliation->tenant->logo);
                                                         } elseif ($affiliation->logo) {
                                                             $logoUrl = filter_var($affiliation->logo, FILTER_VALIDATE_URL)
                                                                 ? $affiliation->logo
-                                                                : asset('storage/' . $affiliation->logo);
+                                                                : file_url($affiliation->logo);
                                                         }
                                                     @endphp
                                                     @if($logoUrl)
@@ -283,7 +283,7 @@
                                                             @php
                                                                 $linkedUser = $ins['user_id'] ? \App\Models\User::find($ins['user_id']) : null;
                                                                 $insName = $linkedUser ? ($linkedUser->full_name ?? $linkedUser->name) : $ins['name'];
-                                                                $insAvatar = $linkedUser && $linkedUser->profile_picture ? asset('storage/'.$linkedUser->profile_picture) : null;
+                                                                $insAvatar = $linkedUser && $linkedUser->profile_picture ? file_url($linkedUser->profile_picture) : null;
                                                                 // Round avatar frame: real photo when we have one, else the classic
                                                                 // "unknown user" placeholder (grey silhouette on white).
                                                                 $insAvatarHtml = '<span class="inst-badge-avatar">'
@@ -379,7 +379,7 @@
                                                     <!-- Profile Picture -->
                                                     <div class="mb-3">
                                                         @if($instructor->user->profile_picture)
-                                                            <img src="{{ asset('storage/' . $instructor->user->profile_picture) }}"
+                                                            <img src="{{ file_url($instructor->user->profile_picture) }}"
                                                                  alt="{{ $instructor->user->full_name }}"
                                                                  class="rounded-full"
                                                                  style="width: 100px; height: 100px; object-fit: cover; border: 4px solid #11998e;">

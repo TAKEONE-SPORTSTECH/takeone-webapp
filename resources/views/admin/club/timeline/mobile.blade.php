@@ -31,7 +31,7 @@
     <div id="timelineList" class="space-y-4 mobile-stagger">
         @foreach($posts as $p)
             <div class="m-card overflow-hidden" id="post-{{ $p->id }}" x-data="{ openMenu: false }">
-                @if($p->image_path)<img src="{{ asset('storage/'.$p->image_path) }}" alt="" class="w-full h-40 object-cover">@endif
+                @if($p->image_path)<img src="{{ file_url($p->image_path) }}" alt="" class="w-full h-40 object-cover">@endif
                 <div class="p-4">
                     <div class="flex items-start justify-between gap-2 mb-2">
                         <div class="flex items-center gap-2 min-w-0">

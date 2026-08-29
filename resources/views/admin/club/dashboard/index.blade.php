@@ -322,7 +322,7 @@
             <div class="tr-item">
                 <div class="tr-photo">
                     @if($u?->profile_picture)
-                        <img src="{{ asset('storage/'.$u->profile_picture) }}" alt="{{ $u->full_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+                        <img src="{{ file_url($u->profile_picture) }}" alt="{{ $u->full_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
                     @else
                         {{ mb_strtoupper(mb_substr($u?->first_name ?? 'T', 0, 1, 'UTF-8'), 'UTF-8') }}
                     @endif
@@ -357,7 +357,7 @@
             <div class="hof-item">
                 <div class="hof-photo">
                     @if($member->profile_picture)
-                        <img src="{{ asset('storage/'.$member->profile_picture) }}" alt="{{ $member->full_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+                        <img src="{{ file_url($member->profile_picture) }}" alt="{{ $member->full_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
                     @else
                         {{ mb_strtoupper(mb_substr($member->first_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8') }}
                     @endif

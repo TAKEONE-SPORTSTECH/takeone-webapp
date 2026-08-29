@@ -511,7 +511,7 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-4">
                             @if($request->user->profile_picture)
-                            <img src="{{ asset('storage/' . $request->user->profile_picture) }}" alt="" class="w-12 h-12 rounded-full object-cover">
+                            <img src="{{ file_url($request->user->profile_picture) }}" alt="" class="w-12 h-12 rounded-full object-cover">
                             @else
                             <div class="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center">
                                 <span class="text-white font-bold">{{ mb_strtoupper(mb_substr($request->user->full_name ?? '?', 0, 1, 'UTF-8'), 'UTF-8') }}</span>

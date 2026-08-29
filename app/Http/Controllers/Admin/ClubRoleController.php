@@ -97,7 +97,7 @@ class ClubRoleController extends Controller
         $roleHolders = User::whereIn('id', $holderIds)->orderBy('name')->get()->map(fn (User $u) => [
             'id' => $u->id,
             'name' => $u->full_name,
-            'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+            'avatar' => $u->profile_picture ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
             'roles' => $u->getRolesForTenant($clubId)
                 ->reject(fn ($r) => $r->slug === 'member' || $r->slug === 'super-admin')
                 ->pluck('name')->values()->all(),

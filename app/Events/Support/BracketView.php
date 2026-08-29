@@ -174,6 +174,6 @@ class BracketView
             return null;
         }
 
-        return asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0);
+        return file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0);
     }
 }

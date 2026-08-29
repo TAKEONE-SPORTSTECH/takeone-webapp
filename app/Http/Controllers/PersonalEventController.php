@@ -612,7 +612,7 @@ class PersonalEventController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('personal.event_photo_saved'),
-            'photo' => asset('storage/'.$path),
+            'photo' => file_url($path),
             'registration' => $registration->id,
         ]);
     }
@@ -848,7 +848,7 @@ class PersonalEventController extends Controller
                     ? ($this->countryNames()[strtoupper($o->user->nationality)] ?? null)
                     : null,
                 'photo' => ($o->user->profile_picture && $o->user->profile_picture_is_public)
-                    ? asset('storage/'.$o->user->profile_picture).'?v='.($o->user->updated_at?->timestamp ?? 0)
+                    ? file_url($o->user->profile_picture).'?v='.($o->user->updated_at?->timestamp ?? 0)
                     : null,
             ]);
 
@@ -1082,7 +1082,7 @@ class PersonalEventController extends Controller
                     'role_label' => $this->officialRoleLabel((string) $o->role),
                     'country' => $country,
                     'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
-                        ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                        ? file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
                         : null,
                     'profile_url' => ($user !== null && $user->uuid !== null && (bool) $user->is_discoverable && ! $isMinor)
                         ? route('people.show', $user->uuid)
@@ -1149,7 +1149,7 @@ class PersonalEventController extends Controller
                     // Honours the athlete's own "show my picture" choice, like every
                     // other surface that draws a competitor's face.
                     'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
-                        ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                        ? file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
                         : null,
                     'club' => $r->competingClub()?->club_name,
                     'country' => $r->countryCode(),
@@ -1429,7 +1429,7 @@ class PersonalEventController extends Controller
              * who has not opted in gets the gendered silhouette instead.
              */
             'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
-                ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                ? file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
                 : null,
             'gender' => $user?->gender,
             /*
@@ -1890,7 +1890,7 @@ class PersonalEventController extends Controller
             'phone' => is_array($u->mobile) && ! empty($u->mobile['number'])
                 ? trim(($u->mobile['code'] ?? '').' '.$u->mobile['number'])
                 : null,
-            'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture) : null,
+            'avatar' => $u->profile_picture ? file_url($u->profile_picture) : null,
             // An official is listed by country on every officiating sheet, and it
             // is the one fact about them the bout page cannot derive from anything
             // else. Sent so the form can show what is on file and ask when it is

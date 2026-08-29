@@ -127,7 +127,7 @@ class RegistrationCostService
                         // With variants the price is "from" the cheapest option;
                         // the UI charges the price of whichever variant is chosen.
                         'price' => $hasVariants ? (float) $variants->min('price') : (float) $product->price,
-                        'image' => $product->image_path ? asset('storage/'.$product->image_path) : null,
+                        'image' => $product->image_path ? file_url($product->image_path) : null,
                         'is_required' => (bool) $e->is_required,
                         'has_variants' => $hasVariants,
                         'variants' => $variants->map(fn ($v) => [

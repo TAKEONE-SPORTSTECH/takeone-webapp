@@ -418,7 +418,7 @@ class Sparring extends AbstractEventType
                 'name' => $u->full_name ?: $u->name,
                 'gender' => $u->gender,
                 'photo' => ($u->profile_picture && $u->profile_picture_is_public)
-                    ? asset('storage/'.$u->profile_picture)
+                    ? file_url($u->profile_picture)
                     : null,
             ])->all();
     }

@@ -255,7 +255,7 @@
                        class="m-press flex-shrink-0 w-14 flex flex-col items-center gap-1 no-underline">
                         <span class="relative w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden ring-2 {{ $isOwner ? 'ring-amber-300' : 'ring-accent' }}">
                             @if($ins->user && $ins->user->profile_picture)
-                                <img src="{{ asset('storage/'.$ins->user->profile_picture) }}" alt="" class="absolute inset-0 w-full h-full object-cover">
+                                <img src="{{ file_url($ins->user->profile_picture) }}" alt="" class="absolute inset-0 w-full h-full object-cover">
                             @else
                                 <i class="bi bi-person text-muted-foreground"></i>
                             @endif

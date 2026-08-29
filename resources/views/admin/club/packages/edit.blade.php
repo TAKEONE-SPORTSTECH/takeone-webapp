@@ -673,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Image - update cropper preview
         const editPreviewContainer = $('#previewContainer_editPackageImageCropper');
         if (pkg.cover_image) {
-            const imgUrl = '{{ asset("storage") }}/' + pkg.cover_image;
+            const imgUrl = '{{ url('/file') }}/' + pkg.cover_image;
             editPreviewContainer.html(`
                 <img src="${imgUrl}" id="preview_editPackageImageCropper" class="cropper-preview-image" style="width: 300px; height: 169px; border-radius: 8px;">
                 <button type="button" class="cropper-remove-btn" id="removeBtn_editPackageImageCropper" onclick="removeImage_editPackageImageCropper()"><i class="bi bi-x"></i></button>

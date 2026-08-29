@@ -96,7 +96,7 @@
     $currentProfileImage = '';
     if (!$isCreate && $user) {
         if ($user->profile_picture && file_exists(public_path('storage/' . $user->profile_picture))) {
-            $currentProfileImage = asset('storage/' . $user->profile_picture) . '?v=' . $user->updated_at->timestamp;
+            $currentProfileImage = file_url($user->profile_picture) . '?v=' . $user->updated_at->timestamp;
         } else {
             $extensions = ['png', 'jpg', 'jpeg', 'webp'];
             foreach ($extensions as $ext) {

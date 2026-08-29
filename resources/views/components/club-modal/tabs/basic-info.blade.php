@@ -41,7 +41,7 @@
             @if($isEdit && $club->owner)
                 <div class="flex items-center gap-3">
                     @if($club->owner->profile_picture)
-                        <img src="{{ asset('storage/' . $club->owner->profile_picture) }}"
+                        <img src="{{ file_url($club->owner->profile_picture) }}"
                              alt="{{ $club->owner->full_name }}"
                              class="rounded-full w-12 h-12 object-cover">
                     @else

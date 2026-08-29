@@ -78,7 +78,7 @@ class OpenMatCorner extends Model
             'user_id' => $this->user_id,
             'member' => $this->user_id !== null,
             'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
-                ? asset('storage/'.$user->profile_picture)
+                ? file_url($user->profile_picture)
                 : null,
             'fallback' => \App\Support\Avatar::placeholder($user?->gender),
             // Their casual record — how they have done on open mats, and

@@ -18,7 +18,7 @@
         <div class="flex items-start gap-3 min-w-0">
             <div class="biz-logo w-11 h-11 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
                 @if($business->logo)
-                    <img src="{{ asset('storage/' . $business->logo) }}" alt="" class="w-11 h-11 rounded-lg object-cover">
+                    <img src="{{ file_url($business->logo) }}" alt="" class="w-11 h-11 rounded-lg object-cover">
                 @else
                     <i class="bi bi-buildings text-primary text-lg"></i>
                 @endif

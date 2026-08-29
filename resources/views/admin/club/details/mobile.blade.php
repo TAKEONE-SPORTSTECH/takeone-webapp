@@ -9,10 +9,10 @@
     $phoneNum   = old('phone_number', $club->phone['number'] ?? '');
     $reqAr      = data_get($club->translations, 'registration_requirements.ar', '');
     $termsAr    = data_get($club->translations, 'registration_terms.ar', '');
-    $logoUrl    = $club->logo        ? asset('storage/'.$club->logo)        : '';
-    $coverUrl   = $club->cover_image ? asset('storage/'.$club->cover_image) : '';
-    $faviconUrl = $club->favicon     ? asset('storage/'.$club->favicon)     : '';
-    $splashUrl  = $club->registration_splash_image ? asset('storage/'.$club->registration_splash_image) : '';
+    $logoUrl    = $club->logo        ? file_url($club->logo)        : '';
+    $coverUrl   = $club->cover_image ? file_url($club->cover_image) : '';
+    $faviconUrl = $club->favicon     ? file_url($club->favicon)     : '';
+    $splashUrl  = $club->registration_splash_image ? file_url($club->registration_splash_image) : '';
     $publicUrl  = ($club->slug && $club->country) ? route('clubs.show', [strtolower($club->country), $club->slug]) : '';
     $socialCount = $club->socialLinks->count();
 
@@ -691,7 +691,7 @@
                 <div class="flex items-center gap-3">
                     <span class="w-12 h-12 rounded-full bg-muted grid place-items-center overflow-hidden flex-shrink-0">
                         @if($club->owner->profile_picture)
-                            <img src="{{ asset('storage/'.$club->owner->profile_picture) }}" alt="" class="w-full h-full object-cover">
+                            <img src="{{ file_url($club->owner->profile_picture) }}" alt="" class="w-full h-full object-cover">
                         @else
                             <i class="bi bi-person text-muted-foreground text-lg"></i>
                         @endif

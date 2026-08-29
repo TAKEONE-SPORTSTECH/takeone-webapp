@@ -38,6 +38,6 @@ class DuelMedia extends Model
             return $this->url;
         }
 
-        return Storage::disk('public')->url($this->url);
+        return file_url($this->url);
     }
 }

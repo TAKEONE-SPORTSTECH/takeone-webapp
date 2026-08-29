@@ -204,7 +204,7 @@ class CourtDisplayController extends Controller
                 'pinned' => $surface === 'bout' ? 'bout' : false,
                 // The host club's crest fills the design's dashed logo box.
                 'eventLogo' => $device->event->tenant?->logo
-                    ? asset('storage/'.$device->event->tenant->logo) : null,
+                    ? file_url($device->event->tenant->logo) : null,
                 // Where this screen fetches what it plays: the PREFIX, with the
                 // page appending a slot the first time it needs one and
                 // remembering a 404 as "this event did not upload that".

@@ -447,7 +447,7 @@ class ScoreboardController extends Controller
         //    A competitor's picture touches one corner. A CREST can touch
         //    several: it is answered for the whole club, so every corner in the
         //    hall showing one of their athletes is now out of date.
-        $this->patchMats($event, $entry, $field, asset('storage/'.$path), $isCrest);
+        $this->patchMats($event, $entry, $field, file_url($path), $isCrest);
 
         // 2. EVERY upcoming board in the hall. This competitor may be queued on
         //    a mat other than the one the desk is working — a board is a list of
@@ -462,7 +462,7 @@ class ScoreboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'url' => asset('storage/'.$path),
+            'url' => file_url($path),
             'registration_id' => $entry->id,
             // Which of the two the console just changed, so it patches the
             // portrait or the crest and not whichever it asked for last.

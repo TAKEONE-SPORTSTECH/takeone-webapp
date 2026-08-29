@@ -65,7 +65,7 @@
                 'name'   => $u->full_name ?? 'Unknown',
                 'email'  => $u->email ?? '',
                 'gender' => strtolower((string) ($u->gender ?? '')),
-                'avatar' => $u->profile_picture ? asset('storage/' . $u->profile_picture) : null,
+                'avatar' => $u->profile_picture ? file_url($u->profile_picture) : null,
                 'url'    => $u->uuid ? route('member.show', $u->uuid) : null,
                 'roles'  => $rs->map(fn ($r) => $r->name)->values()->all(),
             ];

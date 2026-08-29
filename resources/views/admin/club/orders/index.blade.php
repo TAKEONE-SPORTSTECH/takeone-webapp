@@ -12,7 +12,7 @@
         'proof' => $o->paymentProofUrl(),
         'items' => $o->items->map(fn ($it) => [
             'name' => $it->name, 'qty' => $it->qty, 'price' => (float) $it->price, 'fulfillment' => $it->fulfillment,
-            'image' => $it->image_path ? asset('storage/'.$it->image_path) : null,
+            'image' => $it->image_path ? file_url($it->image_path) : null,
         ])->values(),
     ])->values();
     $cur = $club->currency ?: 'BHD';

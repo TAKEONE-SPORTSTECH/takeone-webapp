@@ -249,7 +249,7 @@ class FamilyController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -562,7 +562,7 @@ class FamilyController extends Controller
         return [
             'id' => $u->id,
             'name' => $u->full_name ?: $u->name,
-            'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+            'avatar' => $u->profile_picture ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
             'matched_via' => $matchedVia,
         ];
     }
@@ -912,7 +912,7 @@ class FamilyController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

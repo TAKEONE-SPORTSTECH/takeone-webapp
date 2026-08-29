@@ -11,7 +11,7 @@
         'style' => $a->style,
         'description' => $a->description,
         'notes' => $a->notes,
-        'picture_src' => $a->picture_url ? asset('storage/'.$a->picture_url) : null,
+        'picture_src' => $a->picture_url ? file_url($a->picture_url) : null,
         'facility' => $a->facility ? ['id' => $a->facility->id, 'name' => $a->facility->name] : null,
     ])->values();
 @endphp

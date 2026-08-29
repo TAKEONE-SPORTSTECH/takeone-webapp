@@ -296,7 +296,7 @@ html, body { overflow: hidden !important; height: 100% !important; }
         <div class="emp-brand">
             <span class="emp-brand-mark{{ $club->logo ? ' has-logo' : '' }}">
                 @if($club->logo)
-                    <img src="{{ asset('storage/'.$club->logo) }}" alt="{{ $club->club_name }}">
+                    <img src="{{ file_url($club->logo) }}" alt="{{ $club->club_name }}">
                 @else
                     {{ mb_strtoupper(mb_substr($club->club_name, 0, 2, 'UTF-8'), 'UTF-8') }}
                 @endif

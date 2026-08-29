@@ -20,7 +20,7 @@
 
 @php
     $avatar = $person->profile_picture
-        ? asset('storage/'.$person->profile_picture).'?v='.optional($person->updated_at)->timestamp
+        ? file_url($person->profile_picture).'?v='.optional($person->updated_at)->timestamp
         : null;
 
     $age = $person->birthdate ? \Illuminate\Support\Carbon::parse($person->birthdate)->age : null;

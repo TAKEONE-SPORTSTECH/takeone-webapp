@@ -80,6 +80,6 @@ class Order extends Model
 
     public function paymentProofUrl(): ?string
     {
-        return $this->payment_proof_path ? asset('storage/'.$this->payment_proof_path) : null;
+        return $this->payment_proof_path ? file_url($this->payment_proof_path) : null;
     }
 }

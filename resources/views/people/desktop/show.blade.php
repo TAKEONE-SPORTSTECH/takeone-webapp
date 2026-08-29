@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $avatar = $person->profile_picture ? asset('storage/'.$person->profile_picture).'?v='.optional($person->updated_at)->timestamp : null;
+    $avatar = $person->profile_picture ? file_url($person->profile_picture).'?v='.optional($person->updated_at)->timestamp : null;
 
     // Same country the mobile profile shows, from the same controller value:
     // the club's, falling back to the account's nationality only when this person

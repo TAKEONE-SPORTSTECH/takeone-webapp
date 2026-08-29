@@ -27,7 +27,7 @@ class UserPostComment extends Model
             'id' => $this->id,
             'name' => $u?->full_name ?? 'Member',
             'avatar' => $u && $u->profile_picture
-                ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp
+                ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp
                 : null,
             'body' => $this->body,
         ];

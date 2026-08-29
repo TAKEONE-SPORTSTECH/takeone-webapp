@@ -57,7 +57,7 @@ $perksJson = $perks->map(function($p) {
                 {{-- Card visual --}}
                 <div class="relative" style="height:120px;">
                     @if($perk->image_path)
-                        <img src="{{ asset('storage/' . $perk->image_path) }}"
+                        <img src="{{ file_url($perk->image_path) }}"
                              class="w-full h-full object-cover" alt="{{ $perk->title }}">
                     @else
                         <div class="w-full h-full flex items-center justify-center"

@@ -18,7 +18,7 @@
 
 @php
     $me = $user ?? Auth::user();
-    $myAvatar = $me->profile_picture ? asset('storage/'.$me->profile_picture).'?v='.optional($me->updated_at)->timestamp : null;
+    $myAvatar = $me->profile_picture ? file_url($me->profile_picture).'?v='.optional($me->updated_at)->timestamp : null;
     $storyClubs = $posts->pluck('tenant')->filter()->unique('id')->values();
 @endphp
 
@@ -320,7 +320,7 @@
                         <div class="flex items-center gap-3 min-w-0">
                             <span class="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                                 @if($p->tenant && $p->tenant->logo)
-                                    <img src="{{ asset('storage/'.$p->tenant->logo) }}" alt="" class="w-10 h-10 object-cover">
+                                    <img src="{{ file_url($p->tenant->logo) }}" alt="" class="w-10 h-10 object-cover">
                                 @else
                                     <i class="bi bi-buildings text-muted-foreground"></i>
                                 @endif
@@ -345,8 +345,8 @@
                     @endif
 
                     @if($p->image_path)
-                        <button type="button" @click="openLightbox([{ url: '{{ asset('storage/'.$p->image_path) }}' }], 0)" class="block w-full">
-                            <img src="{{ asset('storage/'.$p->image_path) }}" alt="" class="w-full max-h-96 object-cover">
+                        <button type="button" @click="openLightbox([{ url: '{{ file_url($p->image_path) }}' }], 0)" class="block w-full">
+                            <img src="{{ file_url($p->image_path) }}" alt="" class="w-full max-h-96 object-cover">
                         </button>
                     @elseif($p->cover)
                         {{-- Gradient cover banner (animated floating icon) --}}

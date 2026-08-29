@@ -489,7 +489,7 @@
                                 <span class="flex items-center gap-1 min-w-0">
                                     @if ($c['club']['logo'])
                                         <span class="w-4 h-4 flex-shrink-0">
-                                            <img src="{{ Storage::url($c['club']['logo']) }}" alt=""
+                                            <img src="{{ file_url($c['club']['logo']) }}" alt=""
                                                  class="w-full h-full object-contain">
                                         </span>
                                     @endif

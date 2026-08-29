@@ -150,7 +150,7 @@ class ClubMessageController extends Controller
         return [
             'id' => $user->id,
             'name' => $user->full_name ?? $user->name ?? 'Member',
-            'avatar' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
+            'avatar' => $user->profile_picture ? file_url($user->profile_picture) : null,
             'initial' => mb_strtoupper(mb_substr($user->full_name ?? $user->name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
         ];
     }
@@ -167,7 +167,7 @@ class ClubMessageController extends Controller
             'club_name' => $club->club_name ?? 'Club',
             'from_id' => (int) $message->sender_id,
             'from_name' => $sender->full_name ?? $sender->name ?? 'Club',
-            'from_avatar' => $sender->profile_picture ? asset('storage/'.$sender->profile_picture) : null,
+            'from_avatar' => $sender->profile_picture ? file_url($sender->profile_picture) : null,
             'body' => $message->message,
             'created_at_human' => 'just now',
         ]);

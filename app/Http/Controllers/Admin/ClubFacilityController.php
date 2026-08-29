@@ -177,7 +177,7 @@ class ClubFacilityController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

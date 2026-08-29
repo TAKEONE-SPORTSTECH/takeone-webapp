@@ -34,7 +34,7 @@
             @php $img = is_array($f->images ?? null) ? ($f->images[0] ?? null) : ($f->photo ?? null); @endphp
             <div class="m-card" id="facility-{{ $f->id }}" x-data="{ openMenu: false }">
                 <div class="relative">
-                    @if($img)<img src="{{ asset('storage/'.$img) }}" alt="" class="w-full h-32 object-cover rounded-t-2xl">@endif
+                    @if($img)<img src="{{ file_url($img) }}" alt="" class="w-full h-32 object-cover rounded-t-2xl">@endif
 
                     {{-- Actions menu --}}
                     <div class="absolute top-2 right-2 z-10" @click.stop>

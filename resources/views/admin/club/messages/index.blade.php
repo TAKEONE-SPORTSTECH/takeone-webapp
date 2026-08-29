@@ -27,11 +27,11 @@
                              data-conv-id="{{ $conversation->user_id }}"
                              data-name="{{ $cu->full_name ?? __('admin.club_messages_index_unknown') }}"
                              data-name-search="{{ Str::lower($cu->full_name ?? 'unknown') }}"
-                             data-avatar="{{ $cu && $cu->profile_picture ? asset('storage/'.$cu->profile_picture) : '' }}"
+                             data-avatar="{{ $cu && $cu->profile_picture ? file_url($cu->profile_picture) : '' }}"
                              @click="openConversation({{ $conversation->user_id }})"
                              :class="activeUserId === {{ $conversation->user_id }} ? 'bg-accent/40' : ''">
                             @if($cu && $cu->profile_picture)
-                                <img src="{{ asset('storage/'.$cu->profile_picture) }}" alt="" class="rounded-full w-11 h-11 object-cover shrink-0">
+                                <img src="{{ file_url($cu->profile_picture) }}" alt="" class="rounded-full w-11 h-11 object-cover shrink-0">
                             @else
                                 <div class="rounded-full bg-primary flex items-center justify-center w-11 h-11 shrink-0">
                                     <span class="text-white font-bold">{{ mb_strtoupper(mb_substr($cu->full_name ?? 'U', 0, 1, 'UTF-8'), 'UTF-8') }}</span>

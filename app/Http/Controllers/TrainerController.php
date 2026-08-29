@@ -137,7 +137,7 @@ class TrainerController extends Controller
                 'name' => $name,
                 'years' => \App\Support\SkillExperience::format($skillMonths[$key] ?? 0),
                 'uuid' => optional($cat)->uuid,
-                'image' => optional($cat)->picture_url ? asset('storage/'.$cat->picture_url) : null,
+                'image' => optional($cat)->picture_url ? file_url($cat->picture_url) : null,
             ];
         })->values();
 

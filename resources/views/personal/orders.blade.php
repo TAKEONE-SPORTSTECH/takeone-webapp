@@ -50,7 +50,7 @@
                         <div class="flex items-center gap-3">
                             <span class="w-10 h-10 rounded-xl grid place-items-center overflow-hidden flex-shrink-0 bg-muted">
                                 @if($it->image_path)
-                                    <img src="{{ asset('storage/'.$it->image_path) }}" alt="" class="w-10 h-10 object-cover">
+                                    <img src="{{ file_url($it->image_path) }}" alt="" class="w-10 h-10 object-cover">
                                 @else
                                     <i class="bi bi-bag text-muted-foreground"></i>
                                 @endif

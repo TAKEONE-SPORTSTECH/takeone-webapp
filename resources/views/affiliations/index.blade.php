@@ -137,7 +137,7 @@
                     <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                         <div class="d-flex align-items-center">
                             @if($affiliation->logo)
-                                <img src="{{ asset('storage/' . $affiliation->logo) }}" alt="{{ $affiliation->club_name }}" class="rounded-circle me-3" style="width: 60px; height: 60px; object-fit: cover; border: 3px solid white;">
+                                <img src="{{ file_url($affiliation->logo) }}" alt="{{ $affiliation->club_name }}" class="rounded-circle me-3" style="width: 60px; height: 60px; object-fit: cover; border: 3px solid white;">
                             @else
                                 <div class="rounded-circle bg-white d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
                                     <i class="bi bi-building" style="font-size: 1.5rem; color: #667eea;"></i>

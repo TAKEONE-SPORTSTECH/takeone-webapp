@@ -42,7 +42,7 @@
                     <!-- Club Cover Image -->
                     <div class="relative h-48 overflow-hidden">
                         @if($club->cover_image)
-                            <img src="{{ asset('storage/' . $club->cover_image) }}"
+                            <img src="{{ file_url($club->cover_image) }}"
                                  alt="{{ $club->club_name }}"
                                  class="w-full h-full object-cover club-cover-img"
                                  loading="lazy">
@@ -57,7 +57,7 @@
                         @if($club->logo)
                         <div class="absolute bottom-2 start-2">
                             <div class="rounded-full bg-white shadow-lg border p-1 w-20 h-20">
-                                <img src="{{ asset('storage/' . $club->logo) }}"
+                                <img src="{{ file_url($club->logo) }}"
                                      alt="{{ $club->club_name }} logo"
                                      class="w-full h-full object-contain rounded-full"
                                      loading="lazy">

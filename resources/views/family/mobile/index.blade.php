@@ -61,7 +61,7 @@
                 $relLabel = $rel === 'spouse' ? 'Spouse' : ucfirst(str_replace('_', ' ', (string) $rel));
                 $age = $dependent->age;
                 $avatar = $dependent->profile_picture
-                    ? asset('storage/'.$dependent->profile_picture).'?v='.optional($dependent->updated_at)->timestamp
+                    ? file_url($dependent->profile_picture).'?v='.optional($dependent->updated_at)->timestamp
                     : null;
             @endphp
             <div class="relative">

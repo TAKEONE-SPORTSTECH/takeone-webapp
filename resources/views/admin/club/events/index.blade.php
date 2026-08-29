@@ -24,7 +24,7 @@ $eventsJson = $events->map(function($e) {
         'participant_fee' => $e->participant_fee ?? '',
         'participant_fee_amount' => $e->participant_fee_amount,
         'is_archived'  => (bool) $e->is_archived,
-        'images'       => collect($e->images ?? [])->map(fn($p) => str_starts_with($p, 'http') ? $p : asset('storage/' . $p))->values()->toArray(),
+        'images'       => collect($e->images ?? [])->map(fn($p) => str_starts_with($p, 'http') ? $p : file_url($p))->values()->toArray(),
         'images_paths' => $e->images ?? [],
     ];
 });

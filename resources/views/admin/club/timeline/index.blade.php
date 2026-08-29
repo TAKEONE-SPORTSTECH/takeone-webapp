@@ -88,7 +88,7 @@
                     {{-- Image thumbnail if present --}}
                     @if($post->image_path)
                     <div class="mt-3 ps-[88px]">
-                        <img src="{{ asset('storage/' . $post->image_path) }}"
+                        <img src="{{ file_url($post->image_path) }}"
                              class="rounded-lg object-cover" style="max-height:120px;" alt="{{ __('admin.club_timeline_index_post_image_alt') }}">
                     </div>
                     @endif

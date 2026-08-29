@@ -62,7 +62,7 @@
             <div class="m-card overflow-hidden" id="package-{{ $pkg->id }}" x-data="{ openMenu: false }">
                 <div class="relative">
                     @if($pkg->cover_image)
-                        <img src="{{ asset('storage/'.$pkg->cover_image) }}" alt="" class="w-full h-32 object-cover">
+                        <img src="{{ file_url($pkg->cover_image) }}" alt="" class="w-full h-32 object-cover">
                     @endif
 
                     {{-- Actions menu --}}
@@ -148,7 +148,7 @@
                                             <a href="{{ route('trainer.show', $ins['user_id']) }}"
                                                class="m-press inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground flex-shrink-0 no-underline">
                                                 <span class="w-5 h-5 rounded-full bg-accent overflow-hidden flex items-center justify-center">
-                                                    @if(!empty($ins['image']))<img src="{{ asset('storage/'.$ins['image']) }}" alt="" class="w-5 h-5 object-cover">@else<i class="bi bi-person text-primary text-[10px]"></i>@endif
+                                                    @if(!empty($ins['image']))<img src="{{ file_url($ins['image']) }}" alt="" class="w-5 h-5 object-cover">@else<i class="bi bi-person text-primary text-[10px]"></i>@endif
                                                 </span>
                                                 <span class="truncate max-w-[7rem]">{{ $ins['name'] }}</span>
                                                 <i class="bi bi-chevron-right text-[8px] text-primary rtl:rotate-180"></i>
@@ -156,7 +156,7 @@
                                         @elseif($ins)
                                             <span class="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground flex-shrink-0">
                                                 <span class="w-5 h-5 rounded-full bg-accent overflow-hidden flex items-center justify-center">
-                                                    @if(!empty($ins['image']))<img src="{{ asset('storage/'.$ins['image']) }}" alt="" class="w-5 h-5 object-cover">@else<i class="bi bi-person text-primary text-[10px]"></i>@endif
+                                                    @if(!empty($ins['image']))<img src="{{ file_url($ins['image']) }}" alt="" class="w-5 h-5 object-cover">@else<i class="bi bi-person text-primary text-[10px]"></i>@endif
                                                 </span>
                                                 <span class="truncate max-w-[7rem]">{{ $ins['name'] }}</span>
                                             </span>

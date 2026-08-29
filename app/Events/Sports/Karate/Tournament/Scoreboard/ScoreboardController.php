@@ -409,7 +409,7 @@ class ScoreboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('personal.event_photo_saved'),
-            'photo' => asset('storage/'.$path),
+            'photo' => file_url($path),
             'side' => $side,
             'state' => $fresh->toArray(),
         ]);
@@ -712,9 +712,9 @@ class ScoreboardController extends Controller
                 // organiser who uploaded it, and a member's private profile
                 // picture keeps its gate — this list is on a screen at a mat.
                 'photo' => $reg?->photo
-                    ? asset('storage/'.$reg->photo)
+                    ? file_url($reg->photo)
                     : (($user?->profile_picture && $user->profile_picture_is_public)
-                        ? asset('storage/'.$user->profile_picture)
+                        ? file_url($user->profile_picture)
                         : null),
                 // The drawn stand-in, so a row reads as a person rather than
                 // as a missing image. Always present — the same rule the member

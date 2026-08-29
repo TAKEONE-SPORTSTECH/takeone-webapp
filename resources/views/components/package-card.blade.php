@@ -46,7 +46,7 @@
     {{-- Cover Image with overlaid name + badges --}}
     <div class="relative w-full aspect-video overflow-hidden {{ $package->cover_image ? 'bg-gray-200' : 'bg-gradient-to-br from-slate-600 to-slate-800' }}">
         @if($package->cover_image)
-            <img src="{{ asset('storage/' . $package->cover_image) }}"
+            <img src="{{ file_url($package->cover_image) }}"
                  alt="{{ $package->tr('name') }}"
                  class="w-full h-full object-cover object-top">
         @else
@@ -191,7 +191,7 @@
                                         <a href="{{ route('trainer.show', $instructor['user_id']) }}"
                                            class="flex items-center gap-1.5 bg-primary/10 rounded-full px-2 py-1 hover:bg-primary/20 transition-colors">
                                             @if($instructor['image'])
-                                                <img src="{{ asset('storage/' . $instructor['image']) }}" alt="{{ $instructor['name'] }}" class="w-5 h-5 rounded-full border border-primary/20 object-cover">
+                                                <img src="{{ file_url($instructor['image']) }}" alt="{{ $instructor['name'] }}" class="w-5 h-5 rounded-full border border-primary/20 object-cover">
                                             @else
                                                 <div class="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-medium text-primary border border-primary/20">
                                                     {{ mb_strtoupper(mb_substr($instructor['name'], 0, 1, 'UTF-8'), 'UTF-8') }}

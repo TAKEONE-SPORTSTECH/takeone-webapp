@@ -573,7 +573,7 @@
                             <button @click="open = !open" class="profile-chip" type="button">
                                 <div class="avatar-container">
                                     @if(Auth::user()->profile_picture)
-                                        <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
+                                        <img src="{{ file_url(Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
                                              alt="{{ Auth::user()->full_name }}"
                                              class="user-avatar"
                                              onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
@@ -834,7 +834,7 @@
                    class="flex items-center gap-3 p-3 mb-4 bg-white rounded-lg hover:bg-accent/40 transition-colors">
                     <div class="avatar-container">
                         @if(Auth::user()->profile_picture)
-                            <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
+                            <img src="{{ file_url(Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
                                  alt="{{ Auth::user()->full_name }}"
                                  class="user-avatar"
                                  onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">

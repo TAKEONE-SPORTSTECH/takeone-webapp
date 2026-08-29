@@ -113,7 +113,7 @@
                                             <div class="card-header border-0 p-3" style="background: linear-gradient(135deg, {{ $index % 4 == 0 ? '#667eea 0%, #764ba2' : ($index % 4 == 1 ? '#f093fb 0%, #f5576c' : ($index % 4 == 2 ? '#4facfe 0%, #00f2fe' : '#fa709a 0%, #fee140')) }} 100%);">
                                                 <div class="flex items-center">
                                                     @if($affiliation->logo)
-                                                        <img src="{{ asset('storage/' . $affiliation->logo) }}" alt="{{ $affiliation->club_name }}" class="rounded-full me-3" style="width: 50px; height: 50px; object-fit: cover; border: 3px solid white;">
+                                                        <img src="{{ file_url($affiliation->logo) }}" alt="{{ $affiliation->club_name }}" class="rounded-full me-3" style="width: 50px; height: 50px; object-fit: cover; border: 3px solid white;">
                                                     @else
                                                         <div class="rounded-full bg-white flex items-center justify-center me-3" style="width: 50px; height: 50px;">
                                                             <i class="bi bi-building" style="font-size: 1.5rem; color: #667eea;"></i>
@@ -260,7 +260,7 @@
                                                     <!-- Profile Picture -->
                                                     <div class="mb-3">
                                                         @if($instructor->user->profile_picture)
-                                                            <img src="{{ asset('storage/' . $instructor->user->profile_picture) }}"
+                                                            <img src="{{ file_url($instructor->user->profile_picture) }}"
                                                                  alt="{{ $instructor->user->full_name }}"
                                                                  class="rounded-full"
                                                                  style="width: 100px; height: 100px; object-fit: cover; border: 4px solid #11998e;">

@@ -98,10 +98,10 @@ class BoutArena
             // dropped rather than rendered as a broken tile.
             'country' => $this->iso($reg?->countryCode() ?: $match->{$side.'_country'}),
             'club' => $club?->club_name,
-            'club_logo' => $club?->logo ? asset('storage/'.$club->logo) : null,
+            'club_logo' => $club?->logo ? file_url($club->logo) : null,
             // Their face, only if they chose to show it.
             'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
-                ? asset('storage/'.$user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
+                ? file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
                 : null,
             'score' => $match->{$side.'_score'},
             'won' => $match->winner === $side,

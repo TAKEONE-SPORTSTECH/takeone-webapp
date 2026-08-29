@@ -1070,7 +1070,7 @@ class ChallengeController extends Controller
             return null;
         }
 
-        return asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp;
+        return file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp;
     }
 
     /** Best-effort realtime ping to a participant (DB stays source of truth). */

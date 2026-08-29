@@ -374,8 +374,8 @@ class FamilyTreeController extends Controller
     private function decorateNode(array $node): array
     {
         $node['avatar'] = match (true) {
-            ! empty($node['photo']) => asset('storage/'.$node['photo']),
-            ! empty($node['user_photo']) => asset('storage/'.$node['user_photo']).'?v='.($node['user_v'] ?? ''),
+            ! empty($node['photo']) => file_url($node['photo']),
+            ! empty($node['user_photo']) => file_url($node['user_photo']).'?v='.($node['user_v'] ?? ''),
             default => null,
         };
         unset($node['photo'], $node['user_photo'], $node['user_v']);

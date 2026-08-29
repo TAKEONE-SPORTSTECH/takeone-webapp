@@ -4,9 +4,9 @@
 
 @push('styles')
 @if($user->profile_picture)
-<link rel="icon" type="image/png" href="{{ asset('storage/' . $user->profile_picture) }}">
+<link rel="icon" type="image/png" href="{{ file_url($user->profile_picture) }}">
 @elseif($user->clubInstructors->first()?->tenant->logo)
-<link rel="icon" type="image/png" href="{{ asset('storage/' . $user->clubInstructors->first()->tenant->logo) }}">
+<link rel="icon" type="image/png" href="{{ file_url($user->clubInstructors->first()->tenant->logo) }}">
 @endif
 @if(request()->routeIs('trainer.show.public'))
 <style>@media (max-width: 768px) { nav { display: none !important; } }</style>
@@ -147,7 +147,7 @@
                         <div class="w-32 flex-shrink-0">
                             <div class="aspect-[3/4] rounded-xl overflow-hidden bg-accent ring-1 ring-gray-100">
                                 @if($user->profile_picture)
-                                    <img src="{{ asset('storage/' . $user->profile_picture) }}" alt="{{ $user->full_name }}" class="w-full h-full object-cover">
+                                    <img src="{{ file_url($user->profile_picture) }}" alt="{{ $user->full_name }}" class="w-full h-full object-cover">
                                 @else
                                     <div class="w-full h-full flex items-center justify-center">
                                         <span class="text-5xl font-black text-primary">{{ $initial }}</span>
@@ -157,7 +157,7 @@
                         </div>
                         @if($club?->logo)
                             <div class="flex-1 flex items-center justify-center min-w-0">
-                                <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}" class="max-h-24 max-w-full object-contain">
+                                <img src="{{ file_url($club->logo) }}" alt="{{ $club->club_name }}" class="max-h-24 max-w-full object-contain">
                             </div>
                         @endif
                     </div>
@@ -197,7 +197,7 @@
                             <a href="{{ $c->url ?? '#' }}" class="flex items-center gap-3 p-2 -mx-1 rounded-xl hover:bg-muted/60 transition-colors no-underline">
                                 <span class="w-9 h-9 flex-shrink-0 flex items-center justify-center">
                                     @if($c->logo)
-                                        <img src="{{ asset('storage/' . $c->logo) }}" class="w-full h-full object-contain" alt="{{ $c->club_name }}">
+                                        <img src="{{ file_url($c->logo) }}" class="w-full h-full object-contain" alt="{{ $c->club_name }}">
                                     @else
                                         <span class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-primary font-bold text-sm">{{ mb_substr($c->club_name,0,1) }}</span>
                                     @endif
@@ -341,7 +341,7 @@
                                          x-cloak>
                                         <div class="class-thumb">
                                             @if($slot['picture_url'])
-                                                <img src="{{ asset('storage/' . $slot['picture_url']) }}" alt="{{ $slot['activity_name'] }}" class="w-full h-full object-cover">
+                                                <img src="{{ file_url($slot['picture_url']) }}" alt="{{ $slot['activity_name'] }}" class="w-full h-full object-cover">
                                             @else
                                                 <div class="w-full h-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center min-h-[80px]"><i class="bi bi-activity text-white text-xl"></i></div>
                                             @endif

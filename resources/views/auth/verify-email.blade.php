@@ -16,7 +16,7 @@
             <div class="text-center mb-6">
                 @if(session('club.context'))
                     @if(session('club.context.logo'))
-                        <img src="{{ asset('storage/' . session('club.context.logo')) }}" alt="{{ session('club.context.name') }}" class="h-16 mx-auto rounded-xl object-contain">
+                        <img src="{{ file_url(session('club.context.logo')) }}" alt="{{ session('club.context.name') }}" class="h-16 mx-auto rounded-xl object-contain">
                     @endif
                     <p class="text-sm text-gray-400 mt-2">{{ __('auth.auth_verify_email_one_step_away') }} <span class="font-semibold text-foreground">{{ session('club.context.name') }}</span></p>
                 @else

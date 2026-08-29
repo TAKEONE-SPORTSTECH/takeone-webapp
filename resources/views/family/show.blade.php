@@ -34,7 +34,7 @@
             <!-- Profile Picture -->
             <div class="relative" style="width: 180px; aspect-ratio: 3 / 4; border-start-start-radius: 0.375rem; border-end-start-radius: 0.375rem;">
                 @if($relationship->dependent->profile_picture)
-                    <img id="member-profile-pic" src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover; border-start-start-radius: 0.375rem; border-end-start-radius: 0.375rem;">
+                    <img id="member-profile-pic" src="{{ file_url($relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover; border-start-start-radius: 0.375rem; border-end-start-radius: 0.375rem;">
                 @endif
                 <div id="member-profile-placeholder" class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender === 'Male' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); border-start-start-radius: 0.375rem; border-end-start-radius: 0.375rem; {{ $relationship->dependent->profile_picture ? 'display:none;' : '' }}">
                     {{ mb_strtoupper(mb_substr($relationship->dependent->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
@@ -922,13 +922,13 @@
                                                 <div class="flex gap-2 mt-3">
                                                     @if($goal->before_proof)
                                                         <div class="flex-1 min-w-0">
-                                                            <img src="{{ asset('storage/'.$goal->before_proof) }}" class="w-full h-20 rounded-md object-cover border" alt="">
+                                                            <img src="{{ file_url($goal->before_proof) }}" class="w-full h-20 rounded-md object-cover border" alt="">
                                                             <small class="text-muted block text-center mt-1">{{ __('member.before') }}</small>
                                                         </div>
                                                     @endif
                                                     @if($goal->after_proof)
                                                         <div class="flex-1 min-w-0">
-                                                            <img src="{{ asset('storage/'.$goal->after_proof) }}" class="w-full h-20 rounded-md object-cover border" alt="">
+                                                            <img src="{{ file_url($goal->after_proof) }}" class="w-full h-20 rounded-md object-cover border" alt="">
                                                             <small class="text-muted block text-center mt-1">{{ __('member.after') }}</small>
                                                         </div>
                                                     @endif

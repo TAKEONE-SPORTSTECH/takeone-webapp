@@ -9,7 +9,7 @@ $achievementsJson = $achievements->map(function ($a) {
         $a->image_path ? [$a->image_path] : [],
         $a->images ?? []
     ))));
-    $combinedUrls = collect($combined)->map(fn ($p) => asset('storage/' . $p))->values()->toArray();
+    $combinedUrls = collect($combined)->map(fn ($p) => file_url($p))->values()->toArray();
     return [
         'id'               => $a->id,
         'title'            => $a->title,
@@ -131,7 +131,7 @@ $achievementsJson = $achievements->map(function ($a) {
                 {{-- Media with the title overlaid --}}
                 <div class="relative h-40">
                     @if($img)
-                        <img src="{{ asset('storage/'.$img) }}" alt="" class="w-full h-40 object-cover">
+                        <img src="{{ file_url($img) }}" alt="" class="w-full h-40 object-cover">
                     @else
                         <div class="w-full h-40 flex items-center justify-center" style="background:linear-gradient(135deg,{{ $ach->bg_from ?: '#f59e0b' }},{{ $ach->bg_to ?: '#f97316' }});">
                             <span class="text-5xl opacity-40">{{ $ach->type_icon ?: '🏆' }}</span>

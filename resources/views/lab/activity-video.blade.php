@@ -14,7 +14,7 @@
 @section('hide-navbar', '1')
 
 @php
-    $hero = optional($activity)->picture_url ? asset('storage/'.$activity->picture_url) : null;
+    $hero = optional($activity)->picture_url ? file_url($activity->picture_url) : null;
 
     // ── REAL article content (verbatim from the directory entry) ──
     $chapters = [

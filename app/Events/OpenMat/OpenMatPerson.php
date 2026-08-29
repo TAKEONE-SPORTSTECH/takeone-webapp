@@ -61,7 +61,7 @@ class OpenMatPerson extends Model
             'member' => $this->user_id !== null,
             'bouts' => (int) $this->bouts,
             'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
-                ? asset('storage/'.$user->profile_picture)
+                ? file_url($user->profile_picture)
                 : null,
             'fallback' => \App\Support\Avatar::placeholder($user?->gender),
             // Their open-mat record, and only that — never a competitive one.

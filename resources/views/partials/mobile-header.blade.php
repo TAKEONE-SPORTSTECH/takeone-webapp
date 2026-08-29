@@ -26,7 +26,7 @@
     <div class="flex items-center gap-2 px-3 h-14">
         <button @click="drawer = true" class="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" aria-label="{{ __('header.menu') }}">
             @if($hu->profile_picture)
-                <img src="{{ asset('storage/'.$hu->profile_picture) }}?v={{ optional($hu->updated_at)->timestamp }}" alt="" class="w-[27px] h-9 rounded-lg object-cover">
+                <img src="{{ file_url($hu->profile_picture) }}?v={{ optional($hu->updated_at)->timestamp }}" alt="" class="w-[27px] h-9 rounded-lg object-cover">
             @else
                 <i class="bi bi-list text-xl text-foreground"></i>
             @endif

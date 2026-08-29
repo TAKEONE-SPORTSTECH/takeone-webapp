@@ -285,7 +285,7 @@
                                         @click="pickerOpen = false; open('team'); $dispatch('open-access-form', { id: {{ $pu->id }}, name: @js($pu->full_name) })"
                                         class="m-press w-full flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-muted/60 text-start">
                                     <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                                        @if($pu->profile_picture)<img src="{{ asset('storage/'.$pu->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                                        @if($pu->profile_picture)<img src="{{ file_url($pu->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                                     </span>
                                     <span class="min-w-0 flex-1">
                                         <span class="block text-sm font-medium text-foreground truncate">{{ $pu->full_name }}</span>

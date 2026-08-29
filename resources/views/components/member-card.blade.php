@@ -132,7 +132,7 @@
                     <div class="relative shrink-0">
                         <div class="rounded-full border-4 border-white shadow w-16 h-16 overflow-hidden" style="box-shadow: 0 0 0 2px {{ $isMale ? 'hsl(250 65% 65% / 0.35)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
                             @if($member->profile_picture)
-                                <img src="{{ asset('storage/' . $member->profile_picture) }}?v={{ $member->updated_at->timestamp }}" alt="{{ $member->full_name }}" class="w-full h-full object-cover" style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;">
+                                <img src="{{ file_url($member->profile_picture) }}?v={{ $member->updated_at->timestamp }}" alt="{{ $member->full_name }}" class="w-full h-full object-cover" style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;">
                             @else
                                 <div class="w-full h-full flex items-center justify-center text-white font-bold text-lg" style="background: linear-gradient(135deg, {{ $isMale ? 'hsl(250 65% 70%) 0%, hsl(250 60% 58%) 100%' : '#d63384 0%, #a61e4d 100%' }});">
                                     {{ mb_strtoupper(mb_substr($member->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8') }}

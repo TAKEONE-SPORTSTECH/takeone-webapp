@@ -361,7 +361,7 @@ class MemberController extends Controller
                     'rival_name' => $rivalName,
                     'rival_uuid' => $rival?->uuid,
                     'rival_avatar' => $rival && $rival->profile_picture
-                        ? asset('storage/'.$rival->profile_picture).'?v='.optional($rival->updated_at)->timestamp
+                        ? file_url($rival->profile_picture).'?v='.optional($rival->updated_at)->timestamp
                         : null,
                     'rival_gender' => $rival?->gender,
                     'result' => $result,
@@ -849,7 +849,7 @@ class MemberController extends Controller
             // Get the updated profile picture URL
             $profilePictureUrl = null;
             if ($member->profile_picture && file_exists(public_path('storage/'.$member->profile_picture))) {
-                $profilePictureUrl = asset('storage/'.$member->profile_picture);
+                $profilePictureUrl = file_url($member->profile_picture);
             } else {
                 $extensions = ['png', 'jpg', 'jpeg', 'webp'];
                 foreach ($extensions as $ext) {
@@ -942,7 +942,7 @@ class MemberController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -1759,8 +1759,8 @@ class MemberController extends Controller
                 'target_value' => $goal->target_value,
                 'progress_percentage' => $goal->progress_percentage,
                 'priority_level' => $goal->priority_level,
-                'before_proof' => $goal->before_proof ? asset('storage/'.$goal->before_proof) : null,
-                'after_proof' => $goal->after_proof ? asset('storage/'.$goal->after_proof) : null,
+                'before_proof' => $goal->before_proof ? file_url($goal->before_proof) : null,
+                'after_proof' => $goal->after_proof ? file_url($goal->after_proof) : null,
                 'completed_at' => optional($goal->completed_at)->format('M j, Y'),
                 'days_taken' => $goal->days_taken,
             ],
@@ -1822,7 +1822,7 @@ class MemberController extends Controller
                 'priority_level' => $goal->priority_level,
                 'icon_type' => $goal->icon_type,
                 'target_date' => optional($goal->target_date)->format('M j, Y'),
-                'before_proof' => asset('storage/'.$goal->before_proof),
+                'before_proof' => file_url($goal->before_proof),
             ],
         ]);
     }
@@ -2105,7 +2105,7 @@ class MemberController extends Controller
             'expired' => $cert->isExpired(),
             'credential_id' => $cert->credential_id,
             'credential_url' => $cert->credential_url,
-            'image' => $cert->image_path ? asset('storage/'.$cert->image_path) : null,
+            'image' => $cert->image_path ? file_url($cert->image_path) : null,
             'notes' => $cert->notes,
         ];
     }
@@ -2226,11 +2226,11 @@ class MemberController extends Controller
 
         $logoUrl = null;
         if ($tenant?->logo) {
-            $logoUrl = asset('storage/'.$tenant->logo);
+            $logoUrl = file_url($tenant->logo);
         } elseif ($affiliation->logo) {
             $logoUrl = filter_var($affiliation->logo, FILTER_VALIDATE_URL)
                 ? $affiliation->logo
-                : asset('storage/'.$affiliation->logo);
+                : file_url($affiliation->logo);
         }
 
         return response()->json([
@@ -2471,7 +2471,7 @@ class MemberController extends Controller
                 'name' => $u ? ($u->full_name ?: $u->name) : $ins['name'],
                 'linked' => (bool) $u,
                 'avatar' => $u && $u->profile_picture
-                    ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp
+                    ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp
                     : null,
                 'profile_url' => $u ? route('people.show', $u->uuid) : null,
             ];
@@ -2500,7 +2500,7 @@ class MemberController extends Controller
             ->map(fn ($u) => [
                 'uuid' => $u->uuid,
                 'name' => $u->full_name ?: $u->name,
-                'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+                'avatar' => $u->profile_picture ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
             ])->values();
 
         return response()->json(['results' => $results]);
@@ -2704,7 +2704,7 @@ class MemberController extends Controller
         return response()->json([
             'success' => true,
             'path' => $path,
-            'url' => asset('storage/'.$path),
+            'url' => file_url($path),
         ]);
     }
 

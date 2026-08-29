@@ -5,7 +5,7 @@
 
 @php
     $rtl = $locale === 'ar';
-    $img = $activity->picture_url ? asset('storage/'.$activity->picture_url).'?v='.optional($activity->updated_at)->timestamp : null;
+    $img = $activity->picture_url ? file_url($activity->picture_url).'?v='.optional($activity->updated_at)->timestamp : null;
     $variants = $activity->variants ?: [];
     $videos = $activity->sanitizedVideos();
 @endphp
