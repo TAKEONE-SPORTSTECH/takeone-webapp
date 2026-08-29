@@ -28,4 +28,12 @@ return [
     'official_court_supervisor_hint' => 'يشرف على الساحة وطاقم حكامها.',
     'official_table_recorder_hint' => 'يحفظ السجل الرسمي على الطاولة.',
     'official_timekeeper_hint' => 'يضبط الوقت: زمن الشوط والتوقفات والصافرة.',
+
+    'score_turning_head' => 'ركلة دورانية للرأس',
+    'score_turning_body' => 'ركلة دورانية للجسم',
+    'score_head_kick' => 'ركلة للرأس',
+    'score_body_kick' => 'ركلة للجسم',
+    'score_punch' => 'لكمة',
+    'corner_hong' => 'هونغ',
+    'corner_chung' => 'تشونغ',
 ];

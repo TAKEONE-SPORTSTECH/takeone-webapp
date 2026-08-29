@@ -58,10 +58,26 @@ class CourtDisplayController extends Controller
     {
         $device = CourtDisplayDevice::resolve($token);
 
-        // One response for a bad token and a revoked screen — a wall screen is
-        // scanned by whoever walks past it, and differing replies would tell
-        // them which tokens are real.
-        abort_unless($device, 404);
+        // A token that no longer resolves sends the screen back to the start
+        // rather than to a 404 — the same rule the pairing room already follows
+        // for its own dead tokens (see ScreenPairingController::show).
+        //
+        // This is the ONLY recovery a screen has. The board it was paired to is
+        // the address the machine remembers and reopens after a power cut, and
+        // that address dies the moment the screen is unpaired, revoked, or its
+        // event is deleted. A 404 then leaves a television — or a tablet with no
+        // BACK key — parked on an error page it cannot leave, and the only way
+        // out was to clear the app's data. Sent to /screen it stands there
+        // showing a fresh pairing code, which is a state somebody in the hall
+        // can act on.
+        //
+        // Still ONE response for a bad token and a revoked screen: a wall screen
+        // is scanned by whoever walks past it, and differing replies would tell
+        // them which tokens are real. The pairing room grants nothing — an
+        // unclaimed screen can render its own code and nothing else.
+        if (! $device) {
+            return redirect()->route('screen.new');
+        }
 
         $device->touchSeen();
 

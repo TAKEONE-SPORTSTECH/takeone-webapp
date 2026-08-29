@@ -9,6 +9,7 @@ use App\Events\Support\EventAccess;
 use App\Events\Support\ScreenMedia;
 use App\Http\Controllers\Controller;
 use App\Models\ClubEvent;
+use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,11 +58,32 @@ class ScoreboardController extends Controller
             'audioUploadBase' => \Illuminate\Support\Str::beforeLast(
                 route('me.events.screen-audio.store', [$event->uuid, 'x'], false), 'x'
             ),
-            // A face for a corner needs the entry behind it, which only the
-            // token door can resolve from the mat state. From a laptop the
-            // roster is the place for that, so this door offers no photo upload.
-            'photoUploadBase' => null,
-        ], $request->boolean('adjust'));
+            // A face for a corner, from the laptop as well as the tablet. The
+            // console appends the side; the mat travels in the body, and the
+            // endpoint refuses one this event does not run.
+            'photoUploadBase' => \Illuminate\Support\Str::beforeLast(
+                route('karate-scoreboard.photo', [$event->uuid, 'aka'], false), 'aka'
+            ),
+        ], $request->boolean('adjust'), $this->packagePanel($event, $court));
+    }
+
+    /**
+     * The panel the event's own package contributes to this console, if any.
+     *
+     * Signed-in operator only. A scoring table paired by DEVICE TOKEN has no
+     * user behind it, and the writes such a panel makes are member-authorised
+     * endpoints — so rather than open a token-authorised way to put arbitrary
+     * names on a mat, that door simply does not get a panel.
+     */
+    private function packagePanel(ClubEvent $event, string $court): ?array
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return null;
+        }
+
+        return app(\App\Events\EventTypeRegistry::class)->for($event)->matPanel($event, $court, $user);
     }
 
     /**
@@ -72,7 +94,7 @@ class ScoreboardController extends Controller
      * the two drift and a mat behaves differently depending on how somebody
      * opened it. Only the addresses it posts to differ.
      */
-    private function consoleView(ClubEvent $event, $mats, string $court, array $urls, bool $showTimeAdjust = false)
+    private function consoleView(ClubEvent $event, $mats, string $court, array $urls, bool $showTimeAdjust = false, ?array $matPanel = null)
     {
         return view('event-karate_tournament::scoreboard.control', [
             'event' => $event,
@@ -96,6 +118,12 @@ class ScoreboardController extends Controller
             // Which of this event's sounds are already uploaded, so the panel
             // says what is set without the console having to fetch anything.
             // Names only — the console never sees a path.
+            // A panel the event's own PACKAGE contributes to this console
+            // (AbstractEventType::matPanel). Null for every championship,
+            // which renders nothing and leaves this page as it was. An open
+            // mat uses it to set the next pair without the operator ever
+            // leaving the scoreboard.
+            'matPanel' => $matPanel,
             'audioSlots' => collect(ScreenMedia::forEvent($event))
                 ->map(fn ($m) => ['name' => $m->original_name, 'bytes' => $m->bytes])
                 ->all(),
@@ -261,11 +289,54 @@ class ScoreboardController extends Controller
 
         [$device, $event] = $this->controlDevice($token);
 
+        return $this->storeCornerPhoto($request, $event, $device->court, $side);
+    }
+
+    /**
+     * The same face, through the organiser's own door.
+     *
+     * The console is one page with two front doors, and the cropper on it has
+     * to work through both — a photo you can only add from the tablet is a
+     * feature that is missing exactly when the tablet is not the thing in the
+     * official's hands. Authorised by canScore(), the same check that guards
+     * every other write on this door, and scoped to the mat in the URL.
+     */
+    public function photo(Request $request, ClubEvent $event, string $side): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === 'karate', 404);
+        abort_unless(in_array($side, ['aka', 'ao'], true), 404);
+
+        $court = (string) $request->input('mat', '');
+
+        // The mat must be one this event actually runs — never a string of the
+        // caller's choosing, which would otherwise reach a cache key.
+        abort_unless($court !== '' && $this->matExists($event, $court), 404);
+
+        return $this->storeCornerPhoto($request, $event, $court, $side);
+    }
+
+    /**
+     * Store a face against the entry standing in one corner of one mat.
+     *
+     * Scoped to the bout on that mat, not to an arbitrary entry id: the only
+     * two competitors that can be photographed are the two the mat says are
+     * there. That is both the useful case — the athlete is right in front of
+     * whoever is holding the camera — and the narrow one.
+     */
+    private function storeCornerPhoto(Request $request, ClubEvent $event, string $court, string $side): JsonResponse
+    {
+        // Either a new face, or the instruction to take the one there away.
+        // `remove` is what the cropper's Remove button sends: a badly framed or
+        // simply wrong photo is on the wall until somebody can clear it, and
+        // "upload a better one" is not a way to clear anything.
+        $remove = $request->boolean('remove');
+
         $request->validate([
-            'image' => ['required', 'string', 'starts_with:data:image/'],
+            'image' => [$remove ? 'nullable' : 'required', 'string', 'starts_with:data:image/'],
         ]);
 
-        $state = MatState::load($event, $device->court);
+        $state = MatState::load($event, $court);
 
         abort_unless($state->matchId, 422);
 
@@ -288,6 +359,25 @@ class ScoreboardController extends Controller
         abort_unless($registration, 404);
 
         $previous = $registration->photo;
+
+        if ($remove) {
+            $registration->update(['photo' => null]);
+
+            if ($previous) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($previous);
+            }
+
+            $fresh = $this->scoring->apply($event, $court, 'resync');
+            ScreenChannel::notifyCourt($event, $court, ['action' => 'mat', 'state' => $fresh->toArray()]);
+
+            return response()->json([
+                'success' => true,
+                'message' => __('event-karate_tournament::messages.ctl_photo_removed'),
+                'photo' => null,
+                'side' => $side,
+                'state' => $fresh->toArray(),
+            ]);
+        }
 
         $path = $this->storeBase64Image(
             $request->input('image'),
@@ -313,8 +403,8 @@ class ScoreboardController extends Controller
         // 'resync' is the defined no-op: it changes nothing, saves the state as
         // it stands, and hands it back — which is exactly what is needed to push
         // a corner the registration behind it just changed.
-        $fresh = $this->scoring->apply($event, $device->court, 'resync');
-        ScreenChannel::notifyCourt($event, $device->court, ['action' => 'mat', 'state' => $fresh->toArray()]);
+        $fresh = $this->scoring->apply($event, $court, 'resync');
+        ScreenChannel::notifyCourt($event, $court, ['action' => 'mat', 'state' => $fresh->toArray()]);
 
         return response()->json([
             'success' => true,
@@ -397,6 +487,25 @@ class ScoreboardController extends Controller
             'minutes' => ['nullable', 'numeric', 'min:0.1', 'max:15'],
             'remaining' => ['nullable', 'numeric', 'min:0', 'max:900'],
             'dir' => ['nullable', 'integer', 'in:-1,1'],
+            // The console's five penalty cells ask for a LEVEL rather than a
+            // direction. 0 is "no penalty", which is what pressing the current
+            // top of the ladder asks for.
+            'level' => ['nullable', 'integer', 'min:0', 'max:'.count(MatState::PENALTIES)],
+            // The settings panel's clock: a bout in seconds, and how many are
+            // left when the warning starts.
+            'seconds' => ['nullable', 'numeric', 'min:10', 'max:900'],
+            'warning' => ['nullable', 'numeric', 'min:0', 'max:900'],
+            // The rules this mat runs. Validated here as well as inside Scoring
+            // because this endpoint is the contract and the console is only a
+            // convenience — anything else posting here is held to the same
+            // vocabulary.
+            'gap' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'senshuRule' => ['nullable', 'boolean'],
+            'autoSenshu' => ['nullable', 'boolean'],
+            'winByPenalties' => ['nullable', 'boolean'],
+            'atoshiWarn' => ['nullable', 'boolean'],
+            'timeUpBuzzer' => ['nullable', 'boolean'],
+            'gapOn' => ['nullable', 'boolean'],
             // Free text an official types at the table; it lands on a public
             // screen, so it is length-capped here and escaped there.
             'name' => ['nullable', 'string', 'max:60'],
@@ -571,6 +680,49 @@ class ScoreboardController extends Controller
         // weight class, so pull that column on the twelve that survive.
         $queue->load('category:id,name,weight_class');
 
+        // The Bouts list draws each competitor the way the wall does — club and
+        // its flag beside the name — so the official picking a bout off this
+        // list is reading the same two people the hall will see. One query for
+        // the whole page rather than one per row.
+        $entryIds = $queue->flatMap(fn (EventMatch $m) => [$m->a_competitor_id, $m->b_competitor_id])
+            ->filter()->unique()->values()->all();
+
+        $entries = $entryIds
+            ? ClubEventRegistration::where('event_id', $event->id)
+                ->whereIn('id', $entryIds)
+                ->with(['user:id,full_name,name,gender,profile_picture,profile_picture_is_public',
+                    'user.memberClubs:id,club_name,country',
+                    'representingTenant:id,club_name,country'])
+                ->get()->keyBy('id')
+            : collect();
+
+        // The club they COMPETE FOR, and its country — never the person's own
+        // nationality. Same rule as the corners on the board.
+        $clubOf = function (?int $id) use ($entries): array {
+            $reg = $id ? $entries->get($id) : null;
+            $club = $reg?->competingClub();
+            $user = $reg?->user;
+
+            return [
+                'club' => $club?->club_name ?: '',
+                'flag' => preg_match('/^[A-Za-z]{2}$/', (string) $club?->country)
+                    ? strtolower((string) $club->country) : null,
+                // The same rule the board draws a corner by, and for the same
+                // reason: the event's OWN photo needs no gate beyond the
+                // organiser who uploaded it, and a member's private profile
+                // picture keeps its gate — this list is on a screen at a mat.
+                'photo' => $reg?->photo
+                    ? asset('storage/'.$reg->photo)
+                    : (($user?->profile_picture && $user->profile_picture_is_public)
+                        ? asset('storage/'.$user->profile_picture)
+                        : null),
+                // The drawn stand-in, so a row reads as a person rather than
+                // as a missing image. Always present — the same rule the member
+                // lists have always used.
+                'fallback' => \App\Support\Avatar::placeholder($user?->gender),
+            ];
+        };
+
         return $queue
             ->map(fn (EventMatch $m) => [
                 'id' => $m->id,
@@ -587,6 +739,14 @@ class ScoreboardController extends Controller
                 'division' => $m->category?->weight_class ?: $m->category?->name,
                 'aka' => $m->a_name ?: null,
                 'ao' => $m->b_name ?: null,
+                'akaClub' => $clubOf($m->a_competitor_id)['club'],
+                'akaFlag' => $clubOf($m->a_competitor_id)['flag'],
+                'akaPhoto' => $clubOf($m->a_competitor_id)['photo'],
+                'akaFallback' => $clubOf($m->a_competitor_id)['fallback'],
+                'aoClub' => $clubOf($m->b_competitor_id)['club'],
+                'aoFlag' => $clubOf($m->b_competitor_id)['flag'],
+                'aoPhoto' => $clubOf($m->b_competitor_id)['photo'],
+                'aoFallback' => $clubOf($m->b_competitor_id)['fallback'],
                 'runnable' => $order->isRunnable($m),
             ])
             ->values()->all();

@@ -56,7 +56,26 @@ class ScoreboardController extends Controller
             // Nothing to beat for: this console is a signed-in browser, not a
             // paired screen, and must not mark anybody's device as alive.
             'heartbeatUrl' => null,
-        ], $request->boolean('adjust'));
+        ], $request->boolean('adjust'), $this->packagePanel($event, $court));
+    }
+
+    /**
+     * The panel the event's own package contributes to this console, if any.
+     *
+     * Signed-in operator only. A scoring table paired by DEVICE TOKEN has no
+     * user behind it, and the writes such a panel makes are member-authorised
+     * endpoints — so rather than open a token-authorised way to put arbitrary
+     * names on a mat, that door simply does not get a panel.
+     */
+    private function packagePanel(ClubEvent $event, string $court): ?array
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return null;
+        }
+
+        return app(\App\Events\EventTypeRegistry::class)->for($event)->matPanel($event, $court, $user);
     }
 
     /**
@@ -66,7 +85,7 @@ class ScoreboardController extends Controller
      * opens it by its own token. The PAGE is identical — what differs is the
      * two URLs it posts to, and therefore how each request is authorised.
      */
-    private function consoleView(ClubEvent $event, $mats, string $court, array $urls, bool $showTimeAdjust = false)
+    private function consoleView(ClubEvent $event, $mats, string $court, array $urls, bool $showTimeAdjust = false, ?array $matPanel = null)
     {
         return view('event-taekwondo_tournament::scoreboard.control', [
             'event' => $event,
@@ -83,6 +102,12 @@ class ScoreboardController extends Controller
             // picker searches it client-side because it is 200 rows, not 20,000.
             'countries' => $this->countries(),
             'showTimeAdjust' => $showTimeAdjust,
+            // A panel the event's own PACKAGE contributes to this console
+            // (AbstractEventType::matPanel). Null for every championship, which
+            // renders nothing and leaves this page exactly as it was. An open
+            // mat uses it to set the next pair without the operator ever
+            // leaving the scoreboard.
+            'matPanel' => $matPanel,
         ] + $urls);
     }
 

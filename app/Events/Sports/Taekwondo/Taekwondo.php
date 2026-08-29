@@ -60,4 +60,31 @@ class Taekwondo extends AbstractCombatSport
             ['key' => 'timekeeper',       'label' => __('sport-taekwondo::messages.official_timekeeper'), 'hint' => __('sport-taekwondo::messages.official_timekeeper_hint')],
         ];
     }
+
+    /**
+     * WT kyorugi scoring, by value: five for a turning head kick, four for a
+     * turning body kick, three to the head, two to the body, one for a punch.
+     * The technique is what the value MEANS, which is why the bar can name it
+     * from the number alone.
+     */
+    public function scoreLabel(int $points): ?string
+    {
+        return match ($points) {
+            5 => __('sport-taekwondo::messages.score_turning_head'),
+            4 => __('sport-taekwondo::messages.score_turning_body'),
+            3 => __('sport-taekwondo::messages.score_head_kick'),
+            2 => __('sport-taekwondo::messages.score_body_kick'),
+            1 => __('sport-taekwondo::messages.score_punch'),
+            default => null,
+        };
+    }
+
+    /** HONG is the red corner, CHUNG the blue. */
+    public function cornerLabels(): array
+    {
+        return [
+            'red' => __('sport-taekwondo::messages.corner_hong'),
+            'blue' => __('sport-taekwondo::messages.corner_chung'),
+        ];
+    }
 }

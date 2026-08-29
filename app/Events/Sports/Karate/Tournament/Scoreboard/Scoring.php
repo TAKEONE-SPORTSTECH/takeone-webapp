@@ -5,6 +5,7 @@ namespace App\Events\Sports\Karate\Tournament\Scoreboard;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\MatchEventLog;
 use App\Events\Sports\Karate\Tournament\RunningOrder;
+use App\Events\Support\Cameras\CameraFleet;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
@@ -50,7 +51,7 @@ class Scoring
         'pause',       // yame
         'point',       // {side, n}
         'undo_point',  // {side, n} — takes the same points back off
-        'penalty',     // {side, dir} — up or down the ladder
+        'penalty',     // {side, dir} up/down the ladder, or {side, level} straight to one
         'senshu',      // {side} — exclusive; awarding one clears the other
         'time',        // {remaining} — the official corrects the clock
         'reset',       // back to a fresh bout, same competitors
@@ -65,6 +66,7 @@ class Scoring
         'duration',    // {minutes} — the operator sets the bout length
         'corner',      // {side, name, club, country, flag} — fix what is announced
         'meta',        // {tournament, division, matchNo, courtLabel, stage} — header text
+        'rules',       // {senshuRule, autoSenshu, winByPenalties, atoshiWarn, timeUpBuzzer, gapOn, gap, warning}
     ];
 
     /**
@@ -118,7 +120,7 @@ class Scoring
             'senshu' => $this->senshu($state, $payload),
             'time' => $this->time($state, $payload),
             'reset' => $this->reset($state),
-            'finish' => $this->finish($state, $payload),
+            'finish' => $this->declareEnd($state, $payload),
             'clear' => $this->clear($state),
             'commit' => $this->commit($event, $court, $state),
             // Neither of these touches the bout: they decide whether the hall is
@@ -140,9 +142,10 @@ class Scoring
             // the bout.
             'board' => $state->mode = MatState::MODE_SCOREBOARD,
             'intro' => $this->intro($state),
-            'duration' => $this->duration($state, $payload),
+            'duration' => $this->durationCommand($state, $payload, $event),
             'corner' => $this->cornerEdit($state, $payload),
             'meta' => $this->meta($state, $payload),
+            'rules' => $this->rules($state, $payload, $event),
             default => null,
         };
 
@@ -173,6 +176,24 @@ class Scoring
             clockDuration: $state->matchId ? round($state->duration, 2) : null,
         );
 
+        // The cameras on this mat, if any, are told the same thing the hall is:
+        // a bout was loaded, started, or is over. Here for the same reason the
+        // audit log is — this is the one funnel every command passes through,
+        // so a camera cannot miss a bout because some other caller took a
+        // shortcut. It cannot throw; a mat must never stop because a phone did.
+        CameraFleet::observe(
+            event: $event,
+            court: $court,
+            command: $command,
+            matchId: $state->matchId,
+            bout: [
+                'number' => $state->matchNo,
+                'stage' => $state->stage,
+                'red' => $state->aka['name'] ?? null,
+                'blue' => $state->ao['name'] ?? null,
+            ],
+        );
+
         return $state->save($event, $court);
     }
 
@@ -190,8 +211,52 @@ class Scoring
 
         if ($state->remaining <= 0) {
             $state->running = false;
-            $state->finished = true;
+
+            // The bell is an automatic ending: it stops the bout, and then the
+            // table is asked how it ended. Guarded on `finished` so settling
+            // the clock twice does not re-ask a question already answered.
+            if (! $state->finished) {
+                $this->autoEnd($state);
+            }
         }
+    }
+
+    /**
+     * The bout ended on its own — the bell, the gap, or the top of the penalty
+     * ladder.
+     *
+     * It stops there. The result is not announced to the hall and the
+     * celebration does not run until an official at the table says how the bout
+     * ended, because the score is not always who won: a disqualification hands
+     * it the other way, and a level bout on the bell is not a result at all.
+     *
+     * The wall is held by `celebrationClosed` — the same flag an official uses
+     * to put a celebration away — so no screen needs to learn a new state to
+     * behave correctly here.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function autoEnd(MatState $state, array $payload = []): void
+    {
+        $this->finish($state, $payload);
+
+        $state->awaitingDecision = true;
+        $state->celebrationClosed = true;
+    }
+
+    /**
+     * An official said how the bout ended. THIS is what releases the
+     * celebration — on the table and, through the same flag, on every screen in
+     * the hall.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function declareEnd(MatState $state, array $payload = []): void
+    {
+        $this->finish($state, $payload);
+
+        $state->awaitingDecision = false;
+        $state->celebrationClosed = false;
     }
 
     /* ---------------- Commands ---------------- */
@@ -238,10 +303,22 @@ class Scoring
         $state->aka = $this->corner($match, 'a', $registrations);
         $state->ao = $this->corner($match, 'b', $registrations);
 
-        // A fresh bout: nothing carries over from whoever was on this mat before.
-        $minutes = (float) ($payload['minutes'] ?? 3);
-        $state->duration = max(30, $minutes * 60);
+        // A fresh bout: nothing carries over from whoever was on this mat
+        // before — except the CLOCK LENGTH, which is a setting rather than
+        // something the last bout did.
+        //
+        // It used to fall back to three minutes whenever the caller named no
+        // length, so an official who set 2:00 in the settings panel watched it
+        // become 3:00 again the moment they loaded the next bout off the queue.
+        // Now the payload wins if it names one, and otherwise the mat keeps
+        // what it was configured with.
+        $state->duration = match (true) {
+            array_key_exists('seconds', $payload) => max(30, round((float) $payload['seconds'])),
+            array_key_exists('minutes', $payload) => max(30, (float) $payload['minutes'] * 60),
+            default => max(30, $state->duration ?: 180),
+        };
         $state->remaining = $state->duration;
+        $state->warning = min($state->warning, $state->duration);
         $state->akaScore = $state->aoScore = 0;
         $state->akaPen = $state->aoPen = 0;
         $state->akaSenshu = $state->aoSenshu = false;
@@ -249,6 +326,7 @@ class Scoring
         $state->finished = false;
         // Nothing carries over, the last bout's dismissed celebration included.
         $state->celebrationClosed = false;
+        $state->awaitingDecision = false;
         $state->lastEvent = null;
     }
 
@@ -352,6 +430,10 @@ class Scoring
                 : (($user?->profile_picture && $user->profile_picture_is_public)
                     ? asset('storage/'.$user->profile_picture)
                     : null),
+            // The drawn stand-in, for a corner with no picture of their own.
+            // Always present — see App\Support\Avatar for why an unknown
+            // gender takes the male artwork rather than nothing.
+            'fallback' => \App\Support\Avatar::placeholder($user?->gender),
             'belt' => $belt['label'] ?? null,
             'record' => $this->record($user?->id),
             // The stat line. Each part is null when unknown, and the screen
@@ -411,10 +493,46 @@ class Scoring
         }
 
         $field = $side.'Score';
+        $before = $state->$field;
         $state->$field = max(0, $state->$field + ($subtract ? -$n : $n));
 
         // The callout is the point landing, so taking one back must not shout.
         $state->lastEvent = $subtract ? null : ['side' => $side, 'n' => $n, 'ts' => (int) (microtime(true) * 1000)];
+
+        // Senshu to whoever opened the scoring. Only on the FIRST point of the
+        // bout — both sides on nought and neither holding it — so a correction
+        // that takes the score back to 0–0 does not hand it out a second time.
+        if (! $subtract
+            && $state->$field > $before
+            && $state->senshuRule
+            && $state->autoSenshu
+            && ! $state->akaSenshu
+            && ! $state->aoSenshu
+            && ($state->akaScore + $state->aoScore) === $state->$field - $before) {
+            $state->akaSenshu = $side === 'aka';
+            $state->aoSenshu = $side === 'ao';
+        }
+
+        $this->checkGap($state);
+    }
+
+    /**
+     * WKF's point gap ends a bout early.
+     *
+     * Enforced HERE rather than on the console, because the console is not the
+     * only thing that can score a mat and a rule that lives in one browser is
+     * a rule the other console does not have. `finish` with no winner in the
+     * payload is the ordinary "the points decided it" ending.
+     */
+    private function checkGap(MatState $state): void
+    {
+        if (! $state->gapOn || $state->gap < 1 || $state->finished || ! $state->matchId) {
+            return;
+        }
+
+        if (abs($state->akaScore - $state->aoScore) >= $state->gap) {
+            $this->autoEnd($state);
+        }
     }
 
     /**
@@ -430,26 +548,104 @@ class Scoring
             return;
         }
 
-        $dir = ((int) ($payload['dir'] ?? 1)) >= 0 ? 1 : -1;
         $field = $side.'Pen';
         $before = $state->$field;
-        $state->$field = max(0, min(count(MatState::PENALTIES), $state->$field + $dir));
+        $top = count(MatState::PENALTIES);
+
+        // Two ways in, one ladder. `level` is the console's five cells — the
+        // official presses the penalty they are giving, rather than counting
+        // presses up to it. `dir` is the older step, kept: it is what the
+        // keyboard shortcuts send and what any other caller already uses.
+        if (array_key_exists('level', $payload)) {
+            $state->$field = max(0, min($top, (int) $payload['level']));
+        } else {
+            $dir = ((int) ($payload['dir'] ?? 1)) >= 0 ? 1 : -1;
+            $state->$field = max(0, min($top, $state->$field + $dir));
+        }
 
         // A penalty going UP is an event the hall should hear. Going down is a
         // correction and makes no noise — and neither does a press that changed
-        // nothing because the ladder was already at its end.
-        $state->lastEvent = ($dir === 1 && $state->$field !== $before)
+        // nothing because the ladder was already where it was asked for.
+        $state->lastEvent = ($state->$field > $before)
             ? ['side' => $side, 'n' => 0, 'penalty' => true, 'ts' => (int) (microtime(true) * 1000)]
             : null;
+
+        // The top of the ladder is a disqualification: hansoku hands the bout to
+        // the other corner however the points stand. Ended here, on the server,
+        // for the same reason the gap is — so both consoles and the wall agree,
+        // and so the reason is on the record rather than in somebody's memory.
+        if ($state->$field >= $top && $state->winByPenalties && ! $state->finished && $state->matchId) {
+            // The winner is not in doubt here — the ladder decided it — but the
+            // table still confirms, so one path ends a bout rather than two.
+            $this->autoEnd($state, [
+                'winner' => $side === 'aka' ? 'ao' : 'aka',
+                'reason' => 'hansoku',
+            ]);
+        }
+    }
+
+    /**
+     * The rules this mat is running.
+     *
+     * Every field is optional and absent means UNCHANGED — a console that only
+     * knows about some of these must not silently switch off the ones it has
+     * never heard of.
+     */
+    private function rules(MatState $state, array $payload, ?ClubEvent $event = null): void
+    {
+        foreach (['senshuRule', 'autoSenshu', 'winByPenalties', 'atoshiWarn', 'timeUpBuzzer', 'gapOn'] as $flag) {
+            if (array_key_exists($flag, $payload)) {
+                $state->$flag = (bool) $payload[$flag];
+            }
+        }
+
+        if (array_key_exists('gap', $payload)) {
+            $state->gap = max(1, min(20, (int) $payload['gap']));
+        }
+
+        // Never longer than the bout itself: a warning that starts before the
+        // clock does would flash from hajime to the bell.
+        if (array_key_exists('warning', $payload)) {
+            $state->warning = round(max(0, min($state->duration, (float) $payload['warning'])), 1);
+        }
+
+        // Turning senshu off cannot leave one standing — it decides bouts.
+        if (! $state->senshuRule) {
+            $state->akaSenshu = $state->aoSenshu = false;
+        }
+
+        // A gap that was just armed, or narrowed, applies to the score already
+        // on the board rather than waiting for the next point.
+        $this->checkGap($state);
+
+        // …and the whole set is written to the event, so it survives this cache
+        // entry, this mat, and this session.
+        $event?->exists && $state->persistSettings($event);
     }
 
     /** Bout length, in minutes and seconds. Resets the clock with it. */
     private function duration(MatState $state, array $payload): void
     {
-        $state->duration = max(10, round((float) ($payload['minutes'] ?? 3) * 60));
+        // `seconds` is what the settings panel sends (two mm:ss boxes);
+        // `minutes` is the older payload and still the one the queue uses when
+        // it loads a bout, so both are accepted.
+        $state->duration = array_key_exists('seconds', $payload)
+            ? max(10, round((float) $payload['seconds']))
+            : max(10, round((float) ($payload['minutes'] ?? 3) * 60));
+
         $state->remaining = $state->duration;
         $state->running = false;
         $state->finished = false;
+
+        // A warning that no longer fits inside the bout comes back to fit it.
+        $state->warning = min($state->warning, $state->duration);
+    }
+
+    /** The bout length is a setting too — it outlives the bout it was set on. */
+    private function durationCommand(MatState $state, array $payload, ClubEvent $event): void
+    {
+        $this->duration($state, $payload);
+        $state->persistSettings($event);
     }
 
     /**
@@ -497,7 +693,8 @@ class Scoring
     {
         $side = $this->side($payload);
 
-        if (! $side) {
+        // A mat running without the senshu rule has no senshu to award.
+        if (! $side || ! $state->senshuRule) {
             return;
         }
 
@@ -523,7 +720,16 @@ class Scoring
         // A bout that is no longer over has nothing to celebrate. clear() runs
         // through here too, so taking a bout off the mat clears it as well.
         $state->celebrationClosed = false;
+        $state->awaitingDecision = false;
         $state->lastEvent = null;
+        // …and nothing DECLARED, either. A declaration outlived the reset that
+        // was meant to undo it: an official who ended a bout on a disqualifica-
+        // tion, reset it, then ran it again and filed the result was filing the
+        // stale winner, because commit() reads this field and the score no
+        // longer had a say. Reset means a fresh bout, all of it.
+        $state->winner = null;
+        $state->winReason = null;
+        $state->winNote = null;
     }
 
     /**

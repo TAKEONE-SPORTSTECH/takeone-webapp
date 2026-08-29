@@ -432,6 +432,39 @@ abstract class AbstractEventType implements EventType
     }
 
     /**
+     * A panel this package contributes to the SPORT'S SCORING TABLE, or null.
+     *
+     * The scoring console belongs to the sport, not to the event type, and it
+     * is deliberately a fixed broadcast document rather than a page that grows
+     * features. But some types need one thing on it that only they can supply,
+     * and the alternative is worse: Open Mat's operator had to leave the
+     * scoreboard, go back to a console to change the two names, and come back —
+     * for every pair, all evening.
+     *
+     * So a package may hand the table one modal of its own. Returning null (the
+     * default, and what every championship returns) renders nothing at all and
+     * leaves that console byte-identical to what it is today.
+     *
+     *   ['view' => 'event-<key>::mat-panel', 'label' => 'Next pair', 'data' => [...]]
+     *
+     * The view is included INSIDE that console's document, so it must be written
+     * in the console's own idiom — vanilla JS, its dark broadcast styling, no
+     * design-system classes and no Alpine, none of which exist on that page.
+     *
+     * @return array{view: string, label: string, data: array<string, mixed>}|null
+     */
+    public function matPanel(ClubEvent $event, string $court, User $viewer): ?array
+    {
+        return null;
+    }
+
+    /** No wall screens by default, so nothing to reload. */
+    public function reloadHallScreens(ClubEvent $event): void
+    {
+        //
+    }
+
+    /**
      * Default run screen: each division with its entrants, its matches grouped
      * into rounds, and its podium. No day/mat scheduling — a type that schedules
      * its play across days and courts overrides this to add it.

@@ -5,6 +5,7 @@ namespace App\Events\Sports\Taekwondo\Tournament\Scoreboard;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\MatchEventLog;
 use App\Events\Sports\Taekwondo\Tournament\RunningOrder;
+use App\Events\Support\Cameras\CameraFleet;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
@@ -160,6 +161,24 @@ class Scoring
             matchId: $state->matchId,
             scoreA: $state->akaScore,
             scoreB: $state->aoScore,
+        );
+
+        // The cameras on this mat, if any, are told the same thing the hall is:
+        // a bout was loaded, started, or is over. Here for the same reason the
+        // audit log is — this is the one funnel every command passes through,
+        // so a camera cannot miss a bout because some other caller took a
+        // shortcut. It cannot throw; a mat must never stop because a phone did.
+        CameraFleet::observe(
+            event: $event,
+            court: $court,
+            command: $command,
+            matchId: $state->matchId,
+            bout: [
+                'number' => $state->matchNo,
+                'stage' => $state->stage,
+                'red' => $state->aka['name'] ?? null,
+                'blue' => $state->ao['name'] ?? null,
+            ],
         );
 
         return $state->save($event, $court);

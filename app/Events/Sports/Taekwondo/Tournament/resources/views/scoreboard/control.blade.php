@@ -36,7 +36,39 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{{-- A screen is not a document: it is authored at one size and scaled to fit
+     the glass, so there is nothing here to zoom INTO — magnifying it can only
+     push part of the surface off the edge, which on a wall nobody can undo and
+     on the scoring table hides the row of controls along the bottom. Pinch and
+     double-tap are therefore refused, and the system font-size setting is not
+     allowed to inflate text inside a stage that cannot grow with it.
+
+     This is the ONE place the house rule against `user-scalable=no` does not
+     apply (mobile web must always pinch-zoom, WCAG 1.4.4): these documents are
+     signage and a fixed console, not pages anybody reads. --}}
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+  /* `pan-x pan-y`, NOT `manipulation`: manipulation still permits pinch-zoom
+     (it only drops the double-tap delay), which is exactly the gesture being
+     refused here. Panning is left alone — the scoring console is taller than a
+     10" tablet and has to be scrollable. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; }
+  body { touch-action: pan-x pan-y; }
+</style>
+{{-- The same refusal for the two zoom gestures a browser will still offer even
+     with the viewport above: Safari's pinch (`gesture*`) and ctrl+wheel. Both
+     are cancelable, both are dead here, and neither is used by any screen. --}}
+<script>
+(function () {
+  'use strict';
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (e) {
+    document.addEventListener(e, function (ev) { ev.preventDefault(); }, { passive: false });
+  });
+  document.addEventListener('wheel', function (ev) {
+    if (ev.ctrlKey) ev.preventDefault();
+  }, { passive: false });
+})();
+</script>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>{{ __('event-taekwondo_tournament::messages.ctl_title') }} · {{ $court }} · {{ $event->title }}</title>
 
@@ -71,8 +103,26 @@
   /* The base font lives here as well as on #stage: anything appended to
      <body> rather than into the stage (the error bar) would otherwise inherit
      the browser's serif default. */
-  html, body { margin:0; padding:0; background:#0a0a0e; overflow:hidden;
-               font-family:'Barlow Condensed', sans-serif; color:#e8e6e0; }
+  /* The console's palette, named once. These are the SAME values the script
+     writes when it paints a live control, so a variable and a scripted value
+     cannot disagree — change one here and change its twin in the script. */
+  :root{
+    --ink:#0a0a0e;                    /* the stage behind everything      */
+    --card:rgba(8,8,12,0.9);          /* a panel                          */
+    --card-hi:rgba(30,30,42,0.92);    /* its lit top edge                 */
+    --sheet:#101016;                  /* a dialog                         */
+    --line:rgba(255,255,255,0.25);    /* a border                         */
+    --line-soft:rgba(255,255,255,0.12);
+    --gold:oklch(0.85 0.16 85);       /* the console's one accent         */
+    --hong:oklch(0.6 0.22 25);        /* red corner                       */
+    --chung:oklch(0.52 0.19 255);     /* blue corner                      */
+    --text:#e8e6e0;
+    --text-bright:#fffdf5;
+    --muted:rgba(232,230,224,0.5);
+  }
+
+  html, body { margin:0; padding:0; background:var(--ink); overflow:hidden;
+               font-family:'Barlow Condensed', sans-serif; color:var(--text); }
   * { box-sizing:border-box; }
   a { color:#e8e6e0; } a:hover { color:#fff; }
 
@@ -119,10 +169,44 @@
     display:flex; flex-direction:column; gap:14px; padding:18px; overflow:hidden;
   }
 
+  /* A panel. Flat rgba(8,8,12,.9) read as a sticker on the stage; the light on
+     this console comes from the top like everything else on it, and the
+     hairline inside the border is what separates a surface from a shape.
+     No radius, on purpose — this console is square-cornered throughout. */
+  .card { background:linear-gradient(180deg, var(--card-hi) 0%, var(--card) 40%, rgba(6,6,9,0.94) 100%);
+          box-shadow:0 20px 50px -24px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.07); }
+
   .btn { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:17px; letter-spacing:0.12em;
-         text-transform:uppercase; background:rgba(255,255,255,0.08); color:#e8e6e0;
-         border:1px solid rgba(255,255,255,0.3); padding:10px 18px; cursor:pointer; }
-  .btn:hover:not(:disabled) { background:rgba(255,255,255,0.16); }
+         text-transform:uppercase; background:rgba(255,255,255,0.08); color:var(--text);
+         border:1px solid rgba(255,255,255,0.3); padding:10px 18px; cursor:pointer;
+         min-height:44px; display:inline-flex; align-items:center; justify-content:center;
+         transition:background 0.15s, border-color 0.15s; }
+  .btn:hover:not(:disabled) { background:rgba(255,255,255,0.16); border-color:rgba(255,255,255,0.5); }
+
+  /* Keyboard focus was invisible on every control here. A scoring table is
+     mostly touched and clicked, but it is also tabbed through when a mouse is
+     not to hand — and a console where you cannot see what is focused is a
+     console that gets the wrong button pressed. */
+  button:focus-visible, a:focus-visible, input:focus-visible {
+    outline:3px solid var(--gold); outline-offset:2px; }
+  .cfg:focus { border-color:var(--gold); background:rgba(0,0,0,0.7); }
+
+  /* The three dialogs (queue, crop, undo) were three slightly different
+     panels — same intent, drifting borders, padding and heads. One scrim, one
+     sheet, one head, one close; what differs between them is their WIDTH and
+     their contents, which stay where they are declared. */
+  .scrim { position:fixed; inset:0; background:rgba(0,0,0,0.72); backdrop-filter:blur(4px);
+           -webkit-backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:40px; }
+  .sheet { background:linear-gradient(180deg,#171720 0%, var(--sheet) 45%, #0c0c11 100%);
+           border:2px solid oklch(0.85 0.16 85 / 0.7); padding:28px 30px;
+           display:flex; flex-direction:column; gap:18px;
+           animation:modalPop 0.35s cubic-bezier(0.22,1,0.36,1) both;
+           box-shadow:0 30px 90px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.07); }
+  .sheet-head { display:flex; align-items:center; gap:12px;
+                border-bottom:1px solid var(--line-soft); padding-bottom:14px; }
+  .sheet-title { font-family:'Anton',sans-serif; font-size:26px; letter-spacing:0.1em;
+                 text-transform:uppercase; color:var(--gold); }
+  .sheet-close { font-family:'Anton',sans-serif; font-size:22px; width:44px; height:44px; padding:0; flex:0 0 auto; }
   .btn-go { background:oklch(0.55 0.17 145); color:#fff; border:none; font-weight:800; }
   .btn-danger { background:transparent; color:#ff8b80; border:1px solid #a33; }
   .btn-danger:hover:not(:disabled) { background:rgba(180,50,40,0.25); }
@@ -141,10 +225,13 @@
            `aspect-ratio` with min-height:0 so a short stage shrinks them rather
            than pushing the gam-jeom row off the bottom. */
         aspect-ratio:1; min-height:0; width:100%;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,0.1), 0 6px 0 -3px rgba(0,0,0,0.5);
+        transition:background 0.12s, box-shadow 0.08s;
         /* Centre the label in that box — left at the top it read as a mis-sized
            button rather than a big target. */
         display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
   .pt span { font-family:'Anton',sans-serif; font-size:52px; display:block; line-height:1; }
+  .pt:active { box-shadow:inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 0 -1px rgba(0,0,0,0.5); }
 </style>
 
 {{-- The winner celebration — this package's own. The same scene the wall
@@ -156,8 +243,8 @@
 <div id="root"><div id="stage">
 
 {{-- ── Header ──────────────────────────────────────────────────────────── --}}
-<div style="background:rgba(8,8,12,0.9); border:1px solid oklch(0.85 0.16 85 / 0.5); animation:headerIn 0.5s cubic-bezier(0.22,1,0.36,1) both;">
-  <div style="display:flex; align-items:center; gap:18px; padding:14px 22px; border-bottom:1px solid rgba(255,255,255,0.12); flex-wrap:wrap;">
+<div class="card" style="border:1px solid oklch(0.85 0.16 85 / 0.5); animation:headerIn 0.5s cubic-bezier(0.22,1,0.36,1) both;">
+  <div style="display:flex; align-items:center; gap:18px; padding:14px 22px; border-bottom:1px solid var(--line-soft); flex-wrap:wrap;">
     <div style="flex:1 1 320px; min-width:260px; display:flex; flex-direction:column; gap:2px;">
       <div style="font-family:'Anton',sans-serif; font-size:26px; line-height:1; letter-spacing:0.1em; text-transform:uppercase; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $event->title }}</div>
       <div style="font-weight:700; font-size:16px; letter-spacing:0.24em; text-transform:uppercase; color:oklch(0.85 0.16 85);">
@@ -168,6 +255,13 @@
     <div style="display:flex; gap:10px; flex:0 1 auto; flex-wrap:wrap;">
       <button id="btnRefresh" class="btn">{{ __('event-taekwondo_tournament::messages.ctl_refresh_vs') }}</button>
       <button id="btnQueue" class="btn">{{ __('event-taekwondo_tournament::messages.ctl_queue') }}</button>
+      {{-- A panel the event's own PACKAGE contributes (AbstractEventType::matPanel).
+           Absent for every championship, so this row is unchanged for them. An
+           open mat puts "next pair" here so its operator never leaves the table.
+           The panel styles itself; only this button wears the console's own class. --}}
+      @isset($matPanel)
+        <button id="btnMatPanel" class="btn" style="border-color:rgba(249,115,22,.6); color:#F97316;">{{ $matPanel['label'] }}</button>
+      @endisset
       <button id="btnUndo" class="btn">{{ __('event-taekwondo_tournament::messages.ctl_undo') }}</button>
       <button id="btnCommit" class="btn btn-go">{{ __('event-taekwondo_tournament::messages.ctl_end_upload') }}</button>
       <button id="btnResetMatch" class="btn btn-danger">{{ __('event-taekwondo_tournament::messages.ctl_reset_match') }}</button>
@@ -198,17 +292,22 @@
      round panel and both corner grids down the screen, which is exactly
      backwards: the operator looks at the queue twice a match and at the
      scoring buttons a hundred times. --}}
-<div id="queueModal" hidden style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); z-index:50; display:flex; align-items:center; justify-content:center;">
-  <div style="width:820px; max-height:900px; overflow-y:auto; background:#101016; border:2px solid oklch(0.85 0.16 85 / 0.7); padding:28px 30px; animation:modalPop 0.35s cubic-bezier(0.22,1,0.36,1) both; display:flex; flex-direction:column; gap:18px; box-shadow:0 30px 90px rgba(0,0,0,0.8);">
-    <div style="display:flex; align-items:center; gap:12px;">
+{{-- ── A package's own panel, if this event type contributes one ────────── --}}
+@isset($matPanel)
+    @include($matPanel['view'], $matPanel['data'])
+@endisset
+
+<div id="queueModal" hidden class="scrim" style="z-index:50;">
+  <div class="sheet" style="width:820px; max-height:900px; overflow-y:auto;">
+    <div class="sheet-head">
       <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;">
-        <div style="font-family:'Anton',sans-serif; font-size:26px; letter-spacing:0.1em; text-transform:uppercase; color:oklch(0.85 0.16 85);">{{ __('event-taekwondo_tournament::messages.ctl_queue') }}</div>
-        <div style="font-weight:600; font-size:14px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,230,224,0.5);">{{ __('event-taekwondo_tournament::messages.ctl_queue_hint') }}</div>
+        <div class="sheet-title">{{ __('event-taekwondo_tournament::messages.ctl_queue') }}</div>
+        <div style="font-weight:600; font-size:14px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted);">{{ __('event-taekwondo_tournament::messages.ctl_queue_hint') }}</div>
       </div>
-      <button id="queueClose" class="btn" style="font-family:'Anton',sans-serif; font-size:22px; width:40px; height:40px; padding:0;">✕</button>
+      <button id="queueClose" class="btn sheet-close">✕</button>
     </div>
 
-    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; border-bottom:1px solid rgba(255,255,255,0.15); padding-bottom:16px;">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; border-bottom:1px solid var(--line-soft); padding-bottom:16px;">
       {{-- Not in the approved layout: the round length and count live in its
            Data tab, which is dropped. They have to be settable somewhere, and
            they belong beside the button that applies them. --}}
@@ -227,7 +326,7 @@
 
 {{-- ── Clock and round ─────────────────────────────────────────────────── --}}
 <div style="display:flex; gap:14px; flex-wrap:wrap;">
-  <div style="flex:1; min-width:340px; display:flex; align-items:center; justify-content:center; gap:26px; background:rgba(8,8,12,0.9); border:2px solid oklch(0.85 0.16 85 / 0.7); padding:14px 26px;">
+  <div class="card" style="flex:1; min-width:340px; display:flex; align-items:center; justify-content:center; gap:26px; border:2px solid oklch(0.85 0.16 85 / 0.7); padding:14px 26px;">
     <div style="display:flex; flex-direction:column; align-items:center;">
       <div id="phase" style="font-weight:600; font-size:16px; letter-spacing:0.3em; text-transform:uppercase; color:rgba(232,230,224,0.55);"></div>
       <div style="display:flex; align-items:center; gap:14px;">
@@ -236,7 +335,12 @@
       </div>
     </div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <button id="btnTimer" class="btn" style="background:oklch(0.85 0.16 85); color:#141210; border:none; font-weight:800; font-size:24px; letter-spacing:0.14em; padding:14px 30px; min-width:190px;"></button>
+      {{-- The clock is what this console is FOR, and its one button was the
+           same weight as the five beside it. It is the only control here that
+           is pressed with the eyes on the mat. --}}
+      <button id="btnTimer" class="btn" style="background:var(--gold); color:#141210; border:none; font-weight:800; font-size:28px; letter-spacing:0.14em; padding:16px 30px; min-width:210px; min-height:66px;
+              background-image:linear-gradient(180deg,rgba(255,255,255,0.3),rgba(255,255,255,0) 60%,rgba(0,0,0,0.12));
+              box-shadow:0 6px 0 -2px rgba(0,0,0,0.5), 0 16px 34px -18px oklch(0.85 0.16 85 / 0.9);"></button>
       <div style="display:flex; gap:8px;">
         <button id="btnRest" class="btn" style="flex:1; padding:9px 12px; font-size:17px;">{{ __('event-taekwondo_tournament::messages.ctl_rest') }} 1:00</button>
         <button id="btnResetRound" class="btn" style="flex:1; padding:9px 12px; font-size:17px;">{{ __('event-taekwondo_tournament::messages.ctl_reset_round') }}</button>
@@ -244,7 +348,7 @@
     </div>
   </div>
 
-  <div style="flex:1; min-width:340px; display:flex; align-items:center; justify-content:center; gap:22px; background:rgba(8,8,12,0.9); border:1px solid rgba(255,255,255,0.25); padding:14px 26px;">
+  <div class="card" style="flex:1; min-width:340px; display:flex; align-items:center; justify-content:center; gap:22px; border:1px solid var(--line); padding:14px 26px;">
     <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
       <div style="font-weight:600; font-size:16px; letter-spacing:0.3em; text-transform:uppercase; color:rgba(232,230,224,0.55);">{{ __('event-taekwondo_tournament::messages.ctl_round') }}</div>
       <div style="display:flex; align-items:center; gap:12px;">
@@ -286,14 +390,14 @@
 
      What comes out is always exactly 600x800 — the shape of the panel it will
      be drawn in — so no screen ever has to letterbox or squash it. --}}
-<div id="cropModal" hidden style="position:fixed; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(4px); z-index:55; display:flex; align-items:center; justify-content:center;">
-  <div style="background:#101016; border:2px solid oklch(0.85 0.16 85 / 0.7); padding:22px 26px 24px; animation:modalPop 0.35s cubic-bezier(0.22,1,0.36,1) both; display:flex; flex-direction:column; gap:16px; box-shadow:0 30px 90px rgba(0,0,0,0.8);">
+<div id="cropModal" hidden class="scrim" style="background:rgba(0,0,0,0.78); z-index:55;">
+  <div class="sheet" style="padding:22px 26px 24px; gap:16px;">
 
-    <div style="display:flex; align-items:center; gap:12px;">
+    <div class="sheet-head">
       <div id="cropTag" style="font-weight:800; font-size:17px; letter-spacing:0.22em; text-transform:uppercase; color:#fff; padding:3px 12px 3px 14px;"></div>
-      <div id="cropTitle" style="font-family:'Anton',sans-serif; font-size:26px; letter-spacing:0.1em; text-transform:uppercase; color:oklch(0.85 0.16 85);">{{ __('event-taekwondo_tournament::messages.ctl_crop_title') }}</div>
+      <div id="cropTitle" class="sheet-title">{{ __('event-taekwondo_tournament::messages.ctl_crop_title') }}</div>
       <div style="flex:1;"></div>
-      <button id="cropClose" class="btn" style="font-family:'Anton',sans-serif; font-size:22px; width:40px; height:40px; padding:0;">✕</button>
+      <button id="cropClose" class="btn sheet-close">✕</button>
     </div>
 
     {{-- The frame. Fixed 420x560 — the same 3:4 the corner panel and both wall
@@ -358,12 +462,12 @@
 </div>
 
 {{-- ── Undo ────────────────────────────────────────────────────────────── --}}
-<div id="undoModal" hidden style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); z-index:50; display:flex; align-items:center; justify-content:center;">
-  <div style="width:560px; max-height:900px; overflow-y:auto; background:#101016; border:2px solid oklch(0.85 0.16 85 / 0.7); padding:28px 30px; animation:modalPop 0.35s cubic-bezier(0.22,1,0.36,1) both; display:flex; flex-direction:column; gap:18px; box-shadow:0 30px 90px rgba(0,0,0,0.8);">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <div style="font-family:'Anton',sans-serif; font-size:26px; letter-spacing:0.1em; text-transform:uppercase; color:oklch(0.85 0.16 85);">{{ __('event-taekwondo_tournament::messages.ctl_undo_title') }}</div>
+<div id="undoModal" hidden class="scrim" style="z-index:50;">
+  <div class="sheet" style="width:560px; max-height:900px; overflow-y:auto;">
+    <div class="sheet-head">
+      <div class="sheet-title">{{ __('event-taekwondo_tournament::messages.ctl_undo_title') }}</div>
       <div style="flex:1;"></div>
-      <button id="undoClose" class="btn" style="font-family:'Anton',sans-serif; font-size:22px; width:40px; height:40px; padding:0;">✕</button>
+      <button id="undoClose" class="btn sheet-close">✕</button>
     </div>
     <div id="undoList" style="display:flex; flex-direction:column; gap:8px;"></div>
     <button id="undoDo" class="btn btn-go" style="padding:13px;">{{ __('event-taekwondo_tournament::messages.ctl_undo') }}</button>
@@ -605,7 +709,8 @@
         // the other.
         (side === 'aka' ? 'linear-gradient(160deg, oklch(0.3 0.11 25) 0%, rgba(10,10,14,0.95) 70%)'
                         : 'linear-gradient(200deg, oklch(0.28 0.1 255) 0%, rgba(10,10,14,0.95) 70%)') +
-        '; border-top:6px solid ' + accent + '; padding:16px 18px; min-width:0; animation:' + anim + ' 0.5s cubic-bezier(0.22,1,0.36,1) both;';
+        '; border-top:6px solid ' + accent + '; padding:16px 18px; min-width:0; animation:' + anim + ' 0.5s cubic-bezier(0.22,1,0.36,1) both;' +
+        'box-shadow:0 20px 50px -24px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.07);';
 
       // `flex:2` so the panel FILLS its cell — the stage is a fixed 1080 and
       // the grid row is tall, and without it the sections sat at their natural
@@ -727,7 +832,8 @@
       col.appendChild(meta);
 
       var scoreRow = document.createElement('div');
-      scoreRow.style.cssText = 'flex:1; display:flex; align-items:center; justify-content:center; gap:20px;' + rev;
+      scoreRow.style.cssText = 'flex:1; display:flex; align-items:center; justify-content:center; gap:20px;' +
+        'background:rgba(0,0,0,0.28); box-shadow:inset 0 2px 14px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.04);' + rev;
       var score = document.createElement('div');
       score.id = side + 'Score';
       // Sized to the box it actually sits in. The stage is a fixed 1920x1080,
@@ -783,7 +889,8 @@
       panel.appendChild(grid);
 
       var gam = document.createElement('div');
-      gam.style.cssText = 'display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.35); border:1px solid oklch(0.85 0.16 85 / 0.4); padding:10px 14px;' + rev;
+      gam.style.cssText = 'display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.35); border:1px solid oklch(0.85 0.16 85 / 0.4); padding:10px 14px;' +
+        'box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);' + rev;
       var gl = document.createElement('span');
       gl.style.cssText = 'font-weight:700; font-size:19px; letter-spacing:0.2em; text-transform:uppercase; color:oklch(0.85 0.16 85);';
       gl.textContent = T.gamjeom;
@@ -1280,13 +1387,40 @@
 @endif
 @endisset
 
+  /* ── The seam a contributed panel talks through ────────────────────────
+     A package may add one dialog of its own to this console
+     (AbstractEventType::matPanel) — Open Mat uses it to set the next pair
+     without the operator leaving the scoreboard. That panel is a separate
+     document fragment with its own script and its own styling, and it needs to
+     load a bout and raise a message exactly the way every control here does.
+     It must NOT reimplement either: two ways of talking to one mat is how two
+     consoles come to disagree. Nothing else is exposed, and when no package
+     contributes a panel nothing ever calls this. */
+  window.MatConsole = {
+    send: send,
+    alert: alertBar,
+    mat: MAT,
+    state: function () { return STATE; },
+  };
+
+  var btnPanel = el('btnMatPanel');
+  if (btnPanel) {
+    btnPanel.onclick = function () { el('omPanel').hidden = false; };
+  }
+
   paint();
 
   // Arriving at a clear mat, the queue IS the only useful thing on the page —
   // every scoring control is disabled until something is loaded. So it opens
   // itself, rather than leaving the operator to find the button. Only on
   // arrival: once they are working, what is on the mat is their business.
-  if (!STATE.matchId) el('queueModal').hidden = false;
+  //
+  // Unless the event's package brought its own panel, in which case THAT is the
+  // only useful thing: an open mat has no running order, so its queue is empty
+  // by definition and would open over the one control that can fill the mat.
+  if (!STATE.matchId) {
+    (btnPanel ? el('omPanel') : el('queueModal')).hidden = false;
+  }
 })();
 </script>
 </body>

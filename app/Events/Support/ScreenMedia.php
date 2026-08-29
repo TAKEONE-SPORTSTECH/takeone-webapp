@@ -37,6 +37,10 @@ class ScreenMedia extends Model
         'point_2',       // waza-ari
         'point_3',       // ippon
         'foul',          // a penalty went up the ladder
+        'match_start',   // hajime — the bout is under way
+        'match_end',     // the bout is decided, before the celebration
+        'time_up',       // the buzzer at 0:00
+        'atoshi',        // the last-seconds alarm (WKF atoshi baraku)
     ];
 
     /** What a browser on a wall screen can actually play. */

@@ -76,10 +76,26 @@ class CourtDisplayController extends Controller
     {
         $device = CourtDisplayDevice::resolve($token);
 
-        // One response for a bad token and a revoked screen — a wall screen is
-        // scanned by whoever walks past it, and differing replies would tell
-        // them which tokens are real.
-        abort_unless($device, 404);
+        // A token that no longer resolves sends the screen back to the start
+        // rather than to a 404 — the same rule the pairing room already follows
+        // for its own dead tokens (see ScreenPairingController::show).
+        //
+        // This is the ONLY recovery a screen has. The board it was paired to is
+        // the address the machine remembers and reopens after a power cut, and
+        // that address dies the moment the screen is unpaired, revoked, or its
+        // event is deleted. A 404 then leaves a television — or a tablet with no
+        // BACK key — parked on an error page it cannot leave, and the only way
+        // out was to clear the app's data. Sent to /screen it stands there
+        // showing a fresh pairing code, which is a state somebody in the hall
+        // can act on.
+        //
+        // Still ONE response for a bad token and a revoked screen: a wall screen
+        // is scanned by whoever walks past it, and differing replies would tell
+        // them which tokens are real. The pairing room grants nothing — an
+        // unclaimed screen can render its own code and nothing else.
+        if (! $device) {
+            return redirect()->route('screen.new');
+        }
 
         $device->touchSeen();
 
@@ -662,9 +678,22 @@ class CourtDisplayController extends Controller
 
         return Storage::disk($media->disk)->response($media->path, null, [
             'Content-Type' => $media->mime ?: 'audio/mpeg',
-            // A track does not change under a given path — the path is
-            // regenerated on every upload — so a screen may hold it all day.
-            'Cache-Control' => 'public, max-age=86400',
+            // ⚠️ This URL is /audio/{slot} — it is STABLE, and the file behind
+            // it is not. The stored path is regenerated on every upload, but a
+            // screen never sees that path: it asks for the slot. So a long
+            // max-age here meant an organiser replaced the music and every
+            // board in the hall went on playing yesterday's file until the
+            // cache expired — a whole competition, in practice. Reloading the
+            // screen did not help, because the reload was served from cache too.
+            //
+            // `no-cache` does not mean "do not store": the board keeps the file
+            // and REVALIDATES it, so an unchanged sound costs one 304 per page
+            // load and a changed one arrives immediately.
+            'Cache-Control' => 'private, no-cache, must-revalidate',
+            // What the revalidation compares. Keyed to the row rather than the
+            // bytes: a new upload writes a new path and a new timestamp, and
+            // hashing a few megabytes of audio on every request would not.
+            'ETag' => '"'.md5($media->path.'|'.$media->updated_at?->timestamp).'"',
         ]);
     }
 

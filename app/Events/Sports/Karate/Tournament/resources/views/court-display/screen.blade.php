@@ -23,7 +23,39 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{{-- A screen is not a document: it is authored at one size and scaled to fit
+     the glass, so there is nothing here to zoom INTO — magnifying it can only
+     push part of the surface off the edge, which on a wall nobody can undo and
+     on the scoring table hides the row of controls along the bottom. Pinch and
+     double-tap are therefore refused, and the system font-size setting is not
+     allowed to inflate text inside a stage that cannot grow with it.
+
+     This is the ONE place the house rule against `user-scalable=no` does not
+     apply (mobile web must always pinch-zoom, WCAG 1.4.4): these documents are
+     signage and a fixed console, not pages anybody reads. --}}
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+  /* `pan-x pan-y`, NOT `manipulation`: manipulation still permits pinch-zoom
+     (it only drops the double-tap delay), which is exactly the gesture being
+     refused here. Panning is left alone — the scoring console is taller than a
+     10" tablet and has to be scrollable. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; }
+  body { touch-action: pan-x pan-y; }
+</style>
+{{-- The same refusal for the two zoom gestures a browser will still offer even
+     with the viewport above: Safari's pinch (`gesture*`) and ctrl+wheel. Both
+     are cancelable, both are dead here, and neither is used by any screen. --}}
+<script>
+(function () {
+  'use strict';
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (e) {
+    document.addEventListener(e, function (ev) { ev.preventDefault(); }, { passive: false });
+  });
+  document.addEventListener('wheel', function (ev) {
+    if (ev.ctrlKey) ev.preventDefault();
+  }, { passive: false });
+})();
+</script>
 <title>{{ __('event-karate_tournament::messages.screen_new_title') }}</title>
 <style>
 @php

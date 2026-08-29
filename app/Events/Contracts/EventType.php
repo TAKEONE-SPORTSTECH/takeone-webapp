@@ -280,4 +280,18 @@ interface EventType
      * @return array<int, array<string, mixed>> one entry per division
      */
     public function bracketView(ClubEvent $event, User $viewer): array;
+
+    /**
+     * Tell this event's hall screens to reload themselves.
+     *
+     * For the things a screen holds that are NOT its live state: the sounds it
+     * plays, the fonts and artwork it fetched, anything it cached on load. The
+     * mat state travels on its own; this is the blunt instrument for everything
+     * else, and a type with no wall screens does nothing.
+     *
+     * It lives on the contract because shared code needs it — an organiser
+     * replacing this event's music is in `ScreenMediaController`, which must
+     * never know which sport it is looking at.
+     */
+    public function reloadHallScreens(ClubEvent $event): void;
 }

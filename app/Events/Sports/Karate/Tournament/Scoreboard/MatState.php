@@ -102,6 +102,52 @@ class MatState
         /** The last point scored, so the screen can shout it: ['side'=>, 'n'=>, 'ts'=>]. */
         public ?array $lastEvent = null,
         public ?string $at = null,
+
+        /* ---------------- The rules this mat is running ----------------
+         *
+         * They live in the MAT STATE, not in the console's inputs, because
+         * three things read them and they have to agree: the console that sets
+         * them, the engine that enforces them, and any second console on the
+         * same mat. A rule kept in a text box on one laptop is a rule the
+         * server never knew about — which is how a bout ends at eight points
+         * on one screen and runs on to the bell on the other.
+         *
+         * Defaults are WKF as it is normally run, so a mat nobody configures
+         * behaves exactly as it did before these existed.
+         */
+
+        /** Senshu counts at all — the first unopposed point breaks a tie. */
+        public bool $senshuRule = true,
+        /** …and it is awarded automatically to whoever scores first. */
+        public bool $autoSenshu = true,
+        /** The fifth penalty (H) ends the bout, the opponent wins. */
+        public bool $winByPenalties = true,
+        /** Atoshi baraku: the clock flashes and the alarm sounds near the end. */
+        public bool $atoshiWarn = true,
+        /** A buzzer at 0:00. */
+        public bool $timeUpBuzzer = true,
+        /** The point-gap rule is armed. */
+        public bool $gapOn = true,
+        /** How big the gap has to be. WKF: 8. */
+        public int $gap = 8,
+        /** Seconds left when the warning starts. WKF atoshi baraku: 15. */
+        public float $warning = 15.0,
+
+        /**
+         * The bout ended by itself and nobody has said how it ended yet.
+         *
+         * A gap, a hansoku or the bell stop the clock on their own, and the
+         * result they imply is almost always the right one — but "almost" is
+         * the problem: WKF ends bouts on things software cannot see, and a
+         * console that celebrates the moment the clock hits zero has announced
+         * a winner to the hall before any official agreed to one.
+         *
+         * So an automatic ending parks HERE instead: the bout is finished, the
+         * wall holds its celebration, and the scoring table is asked how it
+         * ended. Confirming on the score or declaring someone clears this and
+         * the celebration runs.
+         */
+        public bool $awaitingDecision = false,
     ) {}
 
     /* ---------------- Reading and writing ---------------- */
@@ -111,11 +157,58 @@ class MatState
         return 'karate.mat.'.$event->id.'.'.md5($court);
     }
 
+    /** The settings that belong to the EVENT rather than to one bout. */
+    public const SETTINGS = [
+        'senshuRule', 'autoSenshu', 'winByPenalties', 'atoshiWarn',
+        'timeUpBuzzer', 'gapOn', 'gap', 'warning', 'duration',
+    ];
+
     public static function load(ClubEvent $event, string $court): self
     {
         $raw = Cache::get(self::key($event, $court));
 
-        return $raw ? self::fromArray($raw) : new self;
+        // A live mat, mid-competition.
+        if ($raw) {
+            return self::fromArray($raw);
+        }
+
+        // A cold one — first bout of the day, or the cache entry aged out
+        // between sessions. The SCORE is rightly gone; the RULES are not, so
+        // they come back off the event. Without this an official set the gap
+        // and the bout length in the morning and found them at their defaults
+        // after a long lunch.
+        $state = new self;
+
+        foreach ((array) $event->scoreboard_settings as $k => $v) {
+            if (in_array($k, self::SETTINGS, true)) {
+                $state->$k = is_bool($state->$k) ? (bool) $v : $v;
+            }
+        }
+
+        // The clock starts where the bout length says it does.
+        $state->remaining = $state->duration;
+
+        return $state;
+    }
+
+    /**
+     * Write the rules back to the event, so they outlive this cache entry.
+     *
+     * Every mat on an event shares them: they are the competition's rules, not
+     * one table's preference, and two mats running different gap rules at the
+     * same championship is a bug rather than a feature.
+     */
+    public function persistSettings(ClubEvent $event): void
+    {
+        $settings = [];
+
+        foreach (self::SETTINGS as $k) {
+            $settings[$k] = $this->$k;
+        }
+
+        if (((array) $event->scoreboard_settings) !== $settings) {
+            $event->forceFill(['scoreboard_settings' => $settings])->saveQuietly();
+        }
     }
 
     public function save(ClubEvent $event, string $court): self
@@ -211,6 +304,17 @@ class MatState
             'akaLeads' => $this->akaLeads(),
             'aoLeads' => $this->aoLeads(),
             'boutStatus' => $this->boutStatus(),
+            // The rules, so every console on this mat draws the same switches
+            // and the wall can flash the clock at the same moment.
+            'senshuRule' => $this->senshuRule,
+            'autoSenshu' => $this->autoSenshu,
+            'winByPenalties' => $this->winByPenalties,
+            'atoshiWarn' => $this->atoshiWarn,
+            'timeUpBuzzer' => $this->timeUpBuzzer,
+            'gapOn' => $this->gapOn,
+            'gap' => $this->gap,
+            'warning' => $this->warning,
+            'awaitingDecision' => $this->awaitingDecision,
         ];
     }
 
@@ -258,6 +362,15 @@ class MatState
             winReason: isset($a['winReason']) ? (string) $a['winReason'] : null,
             winNote: isset($a['winNote']) ? (string) $a['winNote'] : null,
             lastEvent: $a['lastEvent'] ?? null,
+            senshuRule: (bool) ($a['senshuRule'] ?? true),
+            autoSenshu: (bool) ($a['autoSenshu'] ?? true),
+            winByPenalties: (bool) ($a['winByPenalties'] ?? true),
+            atoshiWarn: (bool) ($a['atoshiWarn'] ?? true),
+            timeUpBuzzer: (bool) ($a['timeUpBuzzer'] ?? true),
+            gapOn: (bool) ($a['gapOn'] ?? true),
+            awaitingDecision: (bool) ($a['awaitingDecision'] ?? false),
+            gap: (int) ($a['gap'] ?? 8),
+            warning: (float) ($a['warning'] ?? 15),
             at: $a['at'] ?? null,
         );
     }

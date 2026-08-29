@@ -64,7 +64,7 @@ class MatchEventLog
         ?float $clockDuration = null,
     ): void {
         try {
-            if (! config('play.event_log', true)) {
+            if (! config('events.match_log', true)) {
                 return;
             }
 

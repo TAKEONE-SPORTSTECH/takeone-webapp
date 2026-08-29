@@ -31,4 +31,13 @@ return [
     'official_court_supervisor_hint' => 'Oversees the court and its officials.',
     'official_table_recorder_hint' => 'Keeps the official record at the table.',
     'official_timekeeper_hint' => 'Keeps the clock: round time, stoppages and the bell.',
+
+    // Kyorugi scoring vocabulary — the technique each value stands for.
+    'score_turning_head' => 'Turning head kick',
+    'score_turning_body' => 'Turning body kick',
+    'score_head_kick' => 'Head kick',
+    'score_body_kick' => 'Body kick',
+    'score_punch' => 'Punch',
+    'corner_hong' => 'HONG',
+    'corner_chung' => 'CHUNG',
 ];

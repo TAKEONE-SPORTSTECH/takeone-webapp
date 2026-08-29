@@ -72,4 +72,28 @@ class Karate extends AbstractCombatSport
             ['key' => 'timekeeper',       'label' => __('sport-karate::messages.official_timekeeper'), 'hint' => __('sport-karate::messages.official_timekeeper_hint')],
         ];
     }
+
+    /**
+     * WKF kumite scoring, by value: three points is Ippon, two Waza-ari, one
+     * Yuko. These are the words a karate crowd uses and the words on the bout
+     * sheet, so a highlights bar should say them too.
+     */
+    public function scoreLabel(int $points): ?string
+    {
+        return match ($points) {
+            3 => __('sport-karate::messages.score_ippon'),
+            2 => __('sport-karate::messages.score_wazari'),
+            1 => __('sport-karate::messages.score_yuko'),
+            default => null,
+        };
+    }
+
+    /** AKA is the red corner, AO the blue — the WKF's own words. */
+    public function cornerLabels(): array
+    {
+        return [
+            'red' => __('sport-karate::messages.corner_aka'),
+            'blue' => __('sport-karate::messages.corner_ao'),
+        ];
+    }
 }

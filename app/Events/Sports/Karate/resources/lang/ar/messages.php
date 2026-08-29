@@ -28,4 +28,10 @@ return [
     'official_tatami_manager_hint' => 'ينظّم سير البساط ويستدعي اللاعبين.',
     'official_scorekeeper_hint' => 'يسجّل النقاط والعقوبات في الكشف.',
     'official_timekeeper_hint' => 'يضبط الوقت: زمن النزال والتوقفات وصافرة النهاية.',
+
+    'score_ippon' => 'إيبون',
+    'score_wazari' => 'وازا-آري',
+    'score_yuko' => 'يوكو',
+    'corner_aka' => 'أكا',
+    'corner_ao' => 'آو',
 ];

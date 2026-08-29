@@ -50,4 +50,29 @@ interface CombatSport
      * @return array<int, array{key: string, label: string}>
      */
     public function officialRoles(): array;
+
+    /**
+     * What a score of this size is CALLED in this sport.
+     *
+     * A highlights bar that reads "Point +3" tells a parent nothing; "Ippon"
+     * tells a karateka everything. The vocabulary belongs to the sport rather
+     * than to any screen, because the same three points mean Ippon on a karate
+     * mat and a head kick on a taekwondo one, and both a bout video, a court
+     * display and a printed sheet want the same word for it.
+     *
+     * Returns null when the sport has no name for that value, in which case the
+     * caller shows the plain count. Never invent a term to fill the gap.
+     */
+    public function scoreLabel(int $points): ?string;
+
+    /**
+     * The two corners, as this sport names them: ['red' => …, 'blue' => …].
+     *
+     * Karate fights AKA and AO, taekwondo HONG and CHUNG, and a boxing ring
+     * simply has a red and a blue corner. The colour is the constant; the word
+     * is the sport's.
+     *
+     * @return array{red: string, blue: string}
+     */
+    public function cornerLabels(): array;
 }

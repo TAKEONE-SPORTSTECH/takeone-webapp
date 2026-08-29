@@ -202,6 +202,14 @@ class ScreenPairingController extends Controller
     private const APPS = [
         'tv' => 'takeone-screen-tv.apk',
         'tab' => 'takeone-screen-tab.apk',
+        // The phone that films the mat. Same door, same whitelist, same
+        // limiter — it is another unattended device that needs its app before
+        // it can be anything.
+        // The camera IS boutcam now: one app that records the bout and carries
+        // the live feed from the same camera session, shipped under the camera's
+        // own application id so it upgrades the older build in place rather than
+        // sitting beside it. One camera icon on a phone, not two.
+        'cam' => 'takeone-screen-cam.apk',
     ];
 
     /** Resolves a variant to a file, or null if it is not one of ours. */
@@ -220,16 +228,26 @@ class ScreenPairingController extends Controller
         return $path !== null && is_file($path);
     }
 
-    /** The organiser's form, reached by scanning the screen. */
+    /**
+     * The organiser's form, reached by scanning the screen — or the camera.
+     *
+     * One door for both on purpose. Somebody standing in a hall with a phone
+     * has just scanned a QR off a device; making them know in advance whether
+     * that device was a television or a lens, and pick the right app screen
+     * accordingly, is a distinction that matters to this codebase and to nobody
+     * in the building.
+     */
     public function claim(Request $request, string $code)
     {
         $screen = PendingScreen::pairable($code);
+        $camera = $screen ? null : \App\Models\EventCamera::pairable($code);
 
-        abort_unless($screen, 404);
+        abort_unless($screen || $camera, 404);
 
         return view('events.screen.claim', [
             'code' => $code,
-            'events' => $this->manageableEvents($request->user()),
+            'isCamera' => (bool) $camera,
+            'events' => $this->manageableEvents($request->user(), forCamera: (bool) $camera),
         ]);
     }
 
@@ -239,14 +257,22 @@ class ScreenPairingController extends Controller
     public function storeClaim(Request $request, string $code)
     {
         $screen = PendingScreen::pairable($code);
+        $camera = $screen ? null : \App\Models\EventCamera::pairable($code);
 
-        abort_unless($screen, 404);
+        abort_unless($screen || $camera, 404);
 
         $data = $request->validate([
             'event' => ['required', 'string', 'size:36'],
             'court' => ['required', 'string', 'max:40'],
-            'surface' => ['required', 'string', 'in:bout,queue,control'],
+            'surface' => ['required', 'string', 'in:bout,queue,control,camera'],
         ]);
+
+        // A camera is adopted here and then leaves this flow entirely: it has no
+        // page to be sent to, so there is no destination to settle — the phone
+        // is polling its own config and will see itself claimed within seconds.
+        if ($camera) {
+            return $this->claimCamera($request, $camera, $data);
+        }
 
         $event = ClubEvent::where('uuid', $data['event'])->first();
 
@@ -287,6 +313,51 @@ class ScreenPairingController extends Controller
         ]));
     }
 
+    /**
+     * Put a scanned phone on a mat as one of its cameras.
+     *
+     * Authorisation is re-checked here and never taken from the form that
+     * offered the list, exactly as it is for a screen. Managing the event is
+     * the right that matters: a camera records the mat, it cannot score it, so
+     * it deliberately does NOT require the right to score the way a control
+     * screen does.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function claimCamera(Request $request, \App\Models\EventCamera $camera, array $data)
+    {
+        $event = ClubEvent::where('uuid', $data['event'])->first();
+
+        abort_unless($event && app(EventAccess::class)->canManage($event, $request->user()), 403);
+        abort_unless($data['surface'] === 'camera', 422);
+
+        $court = trim($data['court']);
+        abort_unless($court !== '', 422);
+
+        // Four lenses per mat, and the fifth is refused HERE rather than by a
+        // constraint — the cap is about live cameras, and unpairing one frees
+        // its angle immediately.
+        $angle = \App\Events\Support\Cameras\CameraFleet::nextAngle($event, $court);
+
+        if ($angle === null) {
+            return back()->withErrors([
+                'surface' => __('events.camera_claim_full', ['court' => $court]),
+            ])->withInput();
+        }
+
+        $camera->claim($event, $court, $angle, $request->user()->id);
+        \App\Events\Support\Cameras\CameraFleet::notify($camera, 'paired');
+        // Every other organiser's console picks the new camera up without a
+        // reload — the panel re-fetches on this nudge.
+        \App\Events\Support\Cameras\CameraFleet::consolesChanged($event);
+
+        return redirect()->route('screen.claimed')->with('status', __('events.camera_claim_done', [
+            'angle' => $angle,
+            'court' => $court,
+            'event' => $event->title,
+        ]));
+    }
+
     /** A plain "done" page for the organiser's phone. */
     public function claimed()
     {
@@ -297,7 +368,7 @@ class ScreenPairingController extends Controller
      * Events this person may put a screen on: the ones they manage that
      * actually drive screens, with the mats their draw really made.
      */
-    private function manageableEvents($user)
+    private function manageableEvents($user, bool $forCamera = false)
     {
         if (! $user) {
             return collect();
@@ -310,18 +381,42 @@ class ScreenPairingController extends Controller
             ->orderByDesc('date')
             ->limit(40)
             ->get()
-            ->filter(fn (ClubEvent $e) => $access->canManage($e, $user) && $this->router->surfaces($e))
+            // A screen is only offered events whose package can actually draw
+            // one. A camera has no such limit — pointing a lens at a mat needs
+            // nothing from the sport — so it is offered every event the person
+            // manages that runs bouts on named mats.
+            ->filter(fn (ClubEvent $e) => $access->canManage($e, $user) && ($forCamera || $this->router->surfaces($e)))
             ->map(fn (ClubEvent $e) => [
                 'uuid' => $e->uuid,
                 'title' => $e->title,
                 'courts' => \App\Models\EventMatch::where('event_id', $e->id)
                     ->whereNotNull('court')->distinct()->orderBy('court')->pluck('court')->all(),
-                'surfaces' => $this->router->surfaces($e),
+                'surfaces' => $forCamera ? ['camera'] : $this->router->surfaces($e),
                 // So the form can grey out a mat's control slot that is taken,
                 // rather than refusing after the fact.
-                'controls' => $this->takenControls($e),
+                'controls' => $forCamera ? [] : $this->takenControls($e),
+                // The same courtesy for cameras: how many of the four lenses on
+                // each mat are already spoken for.
+                'cameras' => $forCamera ? $this->cameraSlots($e) : [],
             ])
             ->values();
+    }
+
+    /**
+     * Cameras already live on each mat of this event, keyed by mat.
+     *
+     * @return array<string, int>
+     */
+    private function cameraSlots(ClubEvent $event): array
+    {
+        return \App\Models\EventCamera::query()
+            ->where('event_id', $event->id)
+            ->whereNull('revoked_at')
+            ->whereNotNull('claimed_at')
+            ->selectRaw('court, COUNT(*) as used')
+            ->groupBy('court')
+            ->pluck('used', 'court')
+            ->all();
     }
 
     /** Mats on this event that already have a scoring table. */

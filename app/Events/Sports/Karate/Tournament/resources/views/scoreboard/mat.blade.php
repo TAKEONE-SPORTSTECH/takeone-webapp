@@ -22,7 +22,39 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{{-- A screen is not a document: it is authored at one size and scaled to fit
+     the glass, so there is nothing here to zoom INTO — magnifying it can only
+     push part of the surface off the edge, which on a wall nobody can undo and
+     on the scoring table hides the row of controls along the bottom. Pinch and
+     double-tap are therefore refused, and the system font-size setting is not
+     allowed to inflate text inside a stage that cannot grow with it.
+
+     This is the ONE place the house rule against `user-scalable=no` does not
+     apply (mobile web must always pinch-zoom, WCAG 1.4.4): these documents are
+     signage and a fixed console, not pages anybody reads. --}}
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+  /* `pan-x pan-y`, NOT `manipulation`: manipulation still permits pinch-zoom
+     (it only drops the double-tap delay), which is exactly the gesture being
+     refused here. Panning is left alone — the scoring console is taller than a
+     10" tablet and has to be scrollable. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; }
+  body { touch-action: pan-x pan-y; }
+</style>
+{{-- The same refusal for the two zoom gestures a browser will still offer even
+     with the viewport above: Safari's pinch (`gesture*`) and ctrl+wheel. Both
+     are cancelable, both are dead here, and neither is used by any screen. --}}
+<script>
+(function () {
+  'use strict';
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (e) {
+    document.addEventListener(e, function (ev) { ev.preventDefault(); }, { passive: false });
+  });
+  document.addEventListener('wheel', function (ev) {
+    if (ev.ctrlKey) ev.preventDefault();
+  }, { passive: false });
+})();
+</script>
 <title>{{ __('event-karate_tournament::messages.court_title') }}</title>
 
 <style>
@@ -404,10 +436,31 @@
     return Math.max(0, S.remaining - (performance.now() - received) / 1000);
   }
 
+  // The three moments the CLOCK makes a noise, rather than the scoring table:
+  // the last seconds, the bell, and hajime. Each fires once per bout — the
+  // board redraws ten times a second and a sound per frame would be a siren.
+  var toldAtoshi = false, toldTimeUp = false, toldStart = false;
+
   function paintClock() {
     if (!S || S.mode !== 'scoreboard') return;
     var t = liveRemaining();
-    var low = t <= 15 && t > 0 && S.running;
+    // The warning point is the MAT's, set at the scoring table, so the hall and
+    // the table start worrying at the same second. An older state that has
+    // never heard of it falls back to the fifteen this board always used.
+    var warn = S.atoshiWarn === false ? 0 : (S.warning != null ? S.warning : 15);
+    var low = warn > 0 && t <= warn && t > 0 && S.running;
+
+    // Atoshi baraku: once, as the bout crosses into its last seconds.
+    if (low && !toldAtoshi) { toldAtoshi = true; ping('atoshi'); }
+    if (t > warn) toldAtoshi = false;
+
+    // The bell. `finished` is not required — the board reaches zero on its own
+    // clock and the hall should hear it then, not when the server says so.
+    if (t <= 0 && S.running && !toldTimeUp) {
+      toldTimeUp = true;
+      if (S.timeUpBuzzer !== false) ping('time_up');
+    }
+    if (t > 0) toldTimeUp = false;
 
     text('sbTimer', Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'));
     el('sbTimer').style.animation = low ? 'timerPulse 1s ease-in-out infinite' : 'none';
@@ -496,7 +549,15 @@
   /** A one-shot: rewound rather than layered, so rapid points never overlap. */
   function ping(slot) {
     var a = sound(slot);
-    if (!a) return;
+
+    // The two CLOCK sounds are the exception to "a missing slot is normal": a
+    // hall that uploaded nothing still has to hear the bell, because the bell
+    // is not decoration — it is what tells a mat the bout is over. Everything
+    // else stays silent when nobody uploaded it.
+    if (!a) {
+      if (slot === 'time_up' || slot === 'atoshi') beep(slot === 'time_up' ? 1.1 : 0.35);
+      return;
+    }
 
     try { a.pause(); a.currentTime = 0; } catch (e) {}
 
@@ -504,6 +565,32 @@
     // Swallowed deliberately: a point that could not be heard is over, and
     // playing it late would announce the wrong moment.
     if (p && p.catch) p.catch(function () {});
+  }
+
+  /**
+   * The built-in buzzer: a square wave that decays, synthesised rather than
+   * fetched.
+   *
+   * It exists so the clock is never silent. A file, when there is one, always
+   * wins — this is the floor, not the sound of the product.
+   */
+  var actx = null;
+  function beep(seconds) {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      // A wall screen is never touched, so the context can be born suspended
+      // and stay that way. Asking costs nothing when it is already running.
+      if (actx.state === 'suspended' && actx.resume) actx.resume();
+
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'square';
+      o.frequency.value = 740;
+      o.connect(g); g.connect(actx.destination);
+      g.gain.setValueAtTime(0.25, actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + seconds);
+      o.start();
+      o.stop(actx.currentTime + seconds);
+    } catch (e) { /* a screen with no audio device is not a fault */ }
   }
 
   /** Music: at most one track at a time, looping under the screen it belongs to. */
@@ -683,7 +770,16 @@
       setName('vs' + k + 'Country', c.country || '', 32.4, 18);
       bg('vs' + k + 'Flag', flagUrl(c.flag));
       bg('vs' + k + 'Logo', c.logo);
-      bg('vs' + k + 'Photo', c.photo);
+
+      // Their own face, and the drawn stand-in when there is none, so an
+      // introduction is never half a coloured panel with nobody in it. The
+      // stand-in sits well back — this panel is two metres of wall and a
+      // drawing at full strength would read as a photograph of the athlete
+      // standing on the mat. Their name and club carry the half either way.
+      var face = c.photo || c.fallback;
+      bg('vs' + k + 'Photo', face);
+      var pel = el('vs' + k + 'Photo');
+      if (pel) pel.style.opacity = (face && !c.photo) ? '.45' : '1';
       var host = el('vs' + k + 'Chips');
       host.textContent = '';
       chip(host, c.record, false);
@@ -745,6 +841,16 @@
     // official who has put the celebration away has put it away for the hall
     // too. The winner's border glow above stays either way — the bout IS won,
     // and the wall should still say by whom.
+    // Hajime, once per bout: the clock has started running on a bout that is
+    // not over. A pause and a restart mid-bout is the same bout, so this is
+    // rearmed by the bout ending or a new one walking on, not by yame.
+    if (s.running && !s.finished && !toldStart) { toldStart = true; ping('match_start'); }
+
+    // …and the moment it is decided, before the celebration's own music takes
+    // over. Guarded the same way, so a redraw of a finished bout is silent.
+    if (s.finished && !toldEnd) { toldEnd = true; ping('match_end'); }
+    if (!s.finished) toldEnd = false;
+
     if (s.finished && (s.akaLeads || s.aoLeads) && !s.celebrationClosed) {
       winner(s.akaLeads ? 'aka' : 'ao', s.akaLeads ? a : b, s.winReason);
       // Over the confetti, and looping until the celebration is put away or the
@@ -760,7 +866,7 @@
   }
 
   /* ── The contract ─────────────────────────────────────────────────────── */
-  var mode = null, primed = false;
+  var mode = null, primed = false, toldEnd = false, boutTold = null;
   function update(state) {
     if (!state || typeof state !== 'object') return;
     S = state;
@@ -777,6 +883,18 @@
     if (!primed) {
       primed = true;
       if (state.lastEvent && state.lastEvent.ts) lastCallout = state.lastEvent.ts;
+      // A board that wakes into a bout already under way has missed hajime and
+      // must not shout it now — the same reason the last point is adopted as
+      // already-seen above.
+      boutTold = state.matchId || null;
+      toldStart = !!state.running;
+      toldEnd = !!state.finished;
+    }
+
+    // A new bout on the mat rearms all of them.
+    if (state.matchId !== boutTold) {
+      boutTold = state.matchId || null;
+      toldStart = false; toldEnd = false; toldAtoshi = false; toldTimeUp = false;
     }
 
     if (state.mode === 'vs' || state.mode === 'scoreboard') {

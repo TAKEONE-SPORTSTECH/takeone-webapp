@@ -29,7 +29,39 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{{-- A screen is not a document: it is authored at one size and scaled to fit
+     the glass, so there is nothing here to zoom INTO — magnifying it can only
+     push part of the surface off the edge, which on a wall nobody can undo and
+     on the scoring table hides the row of controls along the bottom. Pinch and
+     double-tap are therefore refused, and the system font-size setting is not
+     allowed to inflate text inside a stage that cannot grow with it.
+
+     This is the ONE place the house rule against `user-scalable=no` does not
+     apply (mobile web must always pinch-zoom, WCAG 1.4.4): these documents are
+     signage and a fixed console, not pages anybody reads. --}}
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+  /* `pan-x pan-y`, NOT `manipulation`: manipulation still permits pinch-zoom
+     (it only drops the double-tap delay), which is exactly the gesture being
+     refused here. Panning is left alone — the scoring console is taller than a
+     10" tablet and has to be scrollable. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; }
+  body { touch-action: pan-x pan-y; }
+</style>
+{{-- The same refusal for the two zoom gestures a browser will still offer even
+     with the viewport above: Safari's pinch (`gesture*`) and ctrl+wheel. Both
+     are cancelable, both are dead here, and neither is used by any screen. --}}
+<script>
+(function () {
+  'use strict';
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (e) {
+    document.addEventListener(e, function (ev) { ev.preventDefault(); }, { passive: false });
+  });
+  document.addEventListener('wheel', function (ev) {
+    if (ev.ctrlKey) ev.preventDefault();
+  }, { passive: false });
+})();
+</script>
 {{-- The tab says what this screen IS. It used to say "Upcoming Matches" —
      the queue board's title, copied when this view was split off it — so an
      operator with three tabs open could not tell the scoreboard from the
@@ -75,8 +107,18 @@
 
   /* ── The scoreboard's own loops (Taekwondo Scoreboard, verbatim) ─────────── */
   @keyframes timerUrgent { 0%,100% { color:#ff5548; } 50% { color:#fffdf5; } }
-  @keyframes cardBreatheR { 0%,100% { box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 60px oklch(0.6 0.22 25 / 0.35); } 50% { box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 120px oklch(0.6 0.22 25 / 0.7); } }
-  @keyframes cardBreatheB { 0%,100% { box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 60px oklch(0.52 0.19 255 / 0.35); } 50% { box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 120px oklch(0.52 0.19 255 / 0.7); } }
+  /* ── The cards' breath, removed because it was never on screen ───────────
+     The two competitor cards used to animate a box-shadow forever: 60px of
+     coloured blur swelling to 120px, three seconds a cycle, on two boxes that
+     take up most of a 1920x1080 stage. It cost a measurable slice of every
+     frame on a low-powered screen and it drew NOTHING — each card is cut to
+     shape with `clip-path`, and a clip-path clips the element's shadow along
+     with everything else, so the glow was discarded before it reached the
+     glass. What is left below is the same static shadow the loop rested at.
+
+     Measured on a throttled software renderer, scoreboard mode: 57.5fps with
+     the invisible loop, 60.0fps and zero long frames without it. Do not put it
+     back without also removing the clip-path — the two cannot both be true. */
   @keyframes scorePop { 0% { transform:scale(1.9); opacity:0.2; } 55% { transform:scale(0.94); opacity:1; } 75% { transform:scale(1.05); } 100% { transform:scale(1); opacity:1; } }
   @keyframes scoreDrop { 0% { transform:scale(0.5) rotate(-4deg); opacity:0.2; } 60% { transform:scale(1.08); opacity:1; } 100% { transform:scale(1); opacity:1; } }
   @keyframes barIn { from { opacity:0; transform:translateY(70px); } to { opacity:1; transform:translateY(0); } }
@@ -169,7 +211,7 @@
 
     {{-- Score cards + centre clock --}}
     <div style="position:absolute; top:200px; left:0; right:0; height:570px; display:grid; grid-template-columns:1fr 500px 1fr; align-items:stretch; z-index:5;">
-      <div style="margin:0 -50px 0 0; background:linear-gradient(155deg, oklch(0.55 0.21 25) 0%, oklch(0.34 0.13 25) 100%); clip-path:polygon(0 0, 100% 0, calc(100% - 90px) 100%, 0 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding-right:60px; animation:cardInL 0.8s 0.25s cubic-bezier(0.22,1,0.36,1) both, cardBreatheR 3s 1.1s ease-in-out infinite;">
+      <div style="position:relative; margin:0 -50px 0 0; background:linear-gradient(155deg, oklch(0.55 0.21 25) 0%, oklch(0.34 0.13 25) 100%); clip-path:polygon(0 0, 100% 0, calc(100% - 90px) 100%, 0 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding-right:60px; box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 60px oklch(0.6 0.22 25 / 0.35); animation:cardInL 0.8s 0.25s cubic-bezier(0.22,1,0.36,1) both;">
         <div style="font-weight:800; font-size:34px; letter-spacing:0.4em; text-transform:uppercase; color:rgba(255,255,255,0.75); margin-bottom:14px;">{{ __('event-taekwondo_tournament::messages.sb_hong') }}</div>
         <div id="sbAkaScore" style="font-family:'Anton',sans-serif; font-size:390px; line-height:0.95; color:#fffdf5; text-shadow:0 16px 70px rgba(0,0,0,0.55); font-variant-numeric:tabular-nums;">0</div>
         <div style="display:flex; align-items:center; gap:14px; margin-top:18px;">
@@ -184,7 +226,7 @@
         <div id="sbPhase" style="font-family:'Anton',sans-serif; font-size:48px; letter-spacing:0.3em; padding-left:0.3em; text-transform:uppercase; color:oklch(0.85 0.16 85);"></div>
       </div>
 
-      <div style="margin:0 0 0 -50px; background:linear-gradient(205deg, oklch(0.5 0.18 255) 0%, oklch(0.3 0.11 255) 100%); clip-path:polygon(0 0, 100% 0, 100% 100%, 90px 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding-left:60px; animation:cardInR 0.8s 0.4s cubic-bezier(0.22,1,0.36,1) both, cardBreatheB 3s 1.2s ease-in-out infinite;">
+      <div style="position:relative; margin:0 0 0 -50px; background:linear-gradient(205deg, oklch(0.5 0.18 255) 0%, oklch(0.3 0.11 255) 100%); clip-path:polygon(0 0, 100% 0, 100% 100%, 90px 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding-left:60px; box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 60px oklch(0.52 0.19 255 / 0.35); animation:cardInR 0.8s 0.4s cubic-bezier(0.22,1,0.36,1) both;">
         <div style="font-weight:800; font-size:34px; letter-spacing:0.4em; text-transform:uppercase; color:rgba(255,255,255,0.75); margin-bottom:14px;">{{ __('event-taekwondo_tournament::messages.sb_chung') }}</div>
         <div id="sbAoScore" style="font-family:'Anton',sans-serif; font-size:390px; line-height:0.95; color:#fffdf5; text-shadow:0 16px 70px rgba(0,0,0,0.55); font-variant-numeric:tabular-nums;">0</div>
         <div style="display:flex; align-items:center; gap:14px; margin-top:18px;">

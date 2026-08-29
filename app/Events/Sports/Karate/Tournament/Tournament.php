@@ -741,6 +741,19 @@ class Tournament extends AbstractEventType
      * this prevents (a screen pointed at "Mat 3" when the draw only made two)
      * only shows itself on competition morning, in front of a hall.
      */
+    /**
+     * Every board on every mat, told to start again.
+     *
+     * A screen caches what it fetched on load — the event's sounds above all —
+     * and the live mat state it receives afterwards says nothing about those.
+     * So when the files behind them change, the only honest recovery is the one
+     * an official already has a button for: reload.
+     */
+    public function reloadHallScreens(ClubEvent $event): void
+    {
+        ScreenChannel::notifyCourt($event, null, ['action' => 'reload']);
+    }
+
     public function hallScreens(ClubEvent $event): ?array
     {
         return [

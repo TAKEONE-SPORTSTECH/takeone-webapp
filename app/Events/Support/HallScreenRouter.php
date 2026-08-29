@@ -43,6 +43,35 @@ class HallScreenRouter
 
     public function pair(Request $request, ClubEvent $event)
     {
+        // A CAMERA, scanned into the same panel. The hall's wiring is one
+        // question — "what is on Mat 2?" — and the answer includes the phones
+        // filming it, so the console pairs them through the same door rather
+        // than through a second one that happens to look the same.
+        //
+        // Which KIND of device this is comes from the code, not from the slot
+        // the organiser pressed: a code either belongs to a waiting screen or
+        // to a waiting camera, and no phone can be talked into being a
+        // scoreboard by pairing it into one.
+        if ($camera = \App\Models\EventCamera::pairable((string) $request->input('code'))) {
+            return $this->pairCamera($request, $event, $camera);
+        }
+
+        // A camera position was pressed and the code matched no waiting camera.
+        //
+        // The honest answer is "this code is not waiting for anything", not
+        // "this is a screen" — the code may belong to a screen, or to a camera
+        // whose identity no longer exists on this server, or to nothing at all,
+        // and this cannot tell those apart. Claiming the wrong one sent people
+        // looking for a problem they did not have.
+        if ($request->input('surface') === 'camera') {
+            return response()->json([
+                'success' => false,
+                'message' => PendingScreen::pairable((string) $request->input('code'))
+                    ? __('personal.event_cameras_not_a_camera')
+                    : __('personal.event_cameras_code_stale'),
+            ], 422);
+        }
+
         // A code from the sport-neutral waiting room (/screen) — the address a
         // television is opened at. The console must accept these as readily as
         // it accepts a screen's own code: an organiser holding a phone in a hall
@@ -119,6 +148,60 @@ class HallScreenRouter
             'success' => true,
             'message' => __('personal.event_screens_claimed', ['court' => $court, 'event' => $event->title]),
             'screen' => $device->present(),
+            'screens' => $this->screensList($request, $event),
+        ]);
+    }
+
+    /**
+     * Put a scanned phone on a mat as one of its cameras.
+     *
+     * Deliberately NOT dispatched to a sport: a camera fleet is sport-neutral,
+     * because pointing a lens at a mat needs nothing from the rules being
+     * fought under it. Managing the event is the right that matters — a camera
+     * records, it cannot score, so unlike a scoring table it does not also
+     * require the right to score.
+     */
+    private function pairCamera(Request $request, ClubEvent $event, \App\Models\EventCamera $camera)
+    {
+        abort_unless(app(EventAccess::class)->canManage($event, $request->user()), 403);
+
+        $data = $request->validate([
+            'court' => ['required', 'string', 'max:40'],
+            'surface' => ['nullable', 'string'],
+        ]);
+
+        $court = trim($data['court']);
+        abort_unless($court !== '', 422);
+
+        // Pressed a board's slot and scanned a camera: say so rather than
+        // quietly adopting it as something else. The mat is right, the row is
+        // not, and the organiser is standing there with the phone in hand.
+        if (($data['surface'] ?? 'camera') !== 'camera') {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.event_cameras_is_a_camera'),
+            ], 422);
+        }
+
+        $angle = \App\Events\Support\Cameras\CameraFleet::nextAngle($event, $court);
+
+        if ($angle === null) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.camera_claim_full', ['court' => $court]),
+            ], 422);
+        }
+
+        $camera->claim($event, $court, $angle, $request->user()->id);
+        \App\Events\Support\Cameras\CameraFleet::notify($camera, 'paired');
+        \App\Events\Support\Cameras\CameraFleet::consolesChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.camera_claim_done', [
+                'angle' => $angle, 'court' => $court, 'event' => $event->title,
+            ]),
+            'cameras' => \App\Events\Support\Cameras\CameraFleet::console($event)['cameras'] ?? [],
             'screens' => $this->screensList($request, $event),
         ]);
     }

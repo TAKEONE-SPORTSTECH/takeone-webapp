@@ -2,6 +2,7 @@
 
 namespace App\Events\Support;
 
+use App\Events\EventTypeRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\ClubEvent;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +44,12 @@ class ScreenMediaController extends Controller
                 'message' => __('events.screen_audio_rejected'),
             ], 422);
         }
+
+        // The screens are holding the OLD file. Nothing about the mat state
+        // says a sound changed, so they are told the one thing that recovers
+        // it: start again. Without this an organiser replaces the music and
+        // every board in the hall goes on playing what it fetched this morning.
+        app(EventTypeRegistry::class)->for($event)->reloadHallScreens($event);
 
         return response()->json([
             'success' => true,
@@ -87,6 +94,10 @@ class ScreenMediaController extends Controller
             // disk is an orphan nobody will ever find again.
             $media->purge();
         }
+
+        // Same on the way out: a screen that already has the file would keep
+        // playing a sound the organiser has just taken away.
+        app(EventTypeRegistry::class)->for($event)->reloadHallScreens($event);
 
         return response()->json([
             'success' => true,

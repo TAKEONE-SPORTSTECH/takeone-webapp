@@ -22,7 +22,39 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{{-- A screen is not a document: it is authored at one size and scaled to fit
+     the glass, so there is nothing here to zoom INTO — magnifying it can only
+     push part of the surface off the edge, which on a wall nobody can undo and
+     on the scoring table hides the row of controls along the bottom. Pinch and
+     double-tap are therefore refused, and the system font-size setting is not
+     allowed to inflate text inside a stage that cannot grow with it.
+
+     This is the ONE place the house rule against `user-scalable=no` does not
+     apply (mobile web must always pinch-zoom, WCAG 1.4.4): these documents are
+     signage and a fixed console, not pages anybody reads. --}}
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+  /* `pan-x pan-y`, NOT `manipulation`: manipulation still permits pinch-zoom
+     (it only drops the double-tap delay), which is exactly the gesture being
+     refused here. Panning is left alone — the scoring console is taller than a
+     10" tablet and has to be scrollable. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; }
+  body { touch-action: pan-x pan-y; }
+</style>
+{{-- The same refusal for the two zoom gestures a browser will still offer even
+     with the viewport above: Safari's pinch (`gesture*`) and ctrl+wheel. Both
+     are cancelable, both are dead here, and neither is used by any screen. --}}
+<script>
+(function () {
+  'use strict';
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (e) {
+    document.addEventListener(e, function (ev) { ev.preventDefault(); }, { passive: false });
+  });
+  document.addEventListener('wheel', function (ev) {
+    if (ev.ctrlKey) ev.preventDefault();
+  }, { passive: false });
+})();
+</script>
 <title>{{ __('event-karate_tournament::messages.court_title') }}</title>
 
 <style>
@@ -67,25 +99,38 @@
   @keyframes platePop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(0.4); } 70% { opacity: 1; transform: translate(-50%,-50%) scale(1.12); } 100% { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
   @keyframes headerIn { from { opacity: 0; transform: translateY(-40px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes rowSweep { 0% { transform: translateX(-140%) skewX(-22deg); } 45%, 100% { transform: translateX(320%) skewX(-22deg); } }
-  /* ── Restored to the approved layout, verbatim ───────────────────────────
-     These are the draft's own loops, back as authored: an animated box-shadow
-     for the glow, an animated background-position for the running gold border
-     and the title, and letter-spacing for the GET READY tracking. All four run
-     `infinite`.
+  /* ── The draft's loops, kept — but driven by the compositor ──────────────
+     The board animates exactly what the approved layout animates: a gold border
+     running round the next bout, a glow breathing under it, a shimmer across
+     the title, tracking on GET READY, a sweep along each row. What changed is
+     HOW they are driven.
 
-     Recorded so nobody has to rediscover it: this is a paint-and-layout load
-     that a low-powered screen cannot carry. It repaints each row every frame forever, and
-     measurably starved inbound socket messages in the renderer for minutes
-     (cog eventually took a SIGSEGV). The composited, settling equivalents that
-     used to be here are in git — `git log -p` this file, or the copies kept
-     beside it — and can be put back in one edit.
+     As authored, three of them animated box-shadow, background-position and
+     letter-spacing. Those are paint — and tracking is layout — on every frame,
+     forever, across a full-width row: free on a desktop browser, and the reason
+     the same board stuttered on a TV box and on the tablet, where the page is
+     also being composited into the app a second time. The same pictures are now
+     produced by animating `transform` and `opacity` only, each on its own
+     layer, which the compositor runs without the main thread: the glow is a
+     shadow rasterised once and faded, the running border is a wide gradient
+     slid sideways behind the same mask, and GET READY breathes by stretching an
+     inline span instead of re-laying-out its text.
 
-     Restored deliberately, with that trade-off understood: the target screen is
-     no longer necessarily a low-powered screen. On an Android TV box or a PC these are free. */
-  @keyframes goldRun { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
-  @keyframes nextBreathe { 0%,100% { box-shadow: 0 0 16px rgba(253,196,54,0.35), 0 0 44px rgba(253,196,54,0.15); box-shadow: 0 0 16px oklch(0.85 0.16 85 / 0.35), 0 0 44px oklch(0.85 0.16 85 / 0.15); } 50% { box-shadow: 0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35); box-shadow: 0 0 36px oklch(0.85 0.16 85 / 0.8), 0 0 110px oklch(0.85 0.16 85 / 0.35); } }
+     Anything added here follows the same rule — transform and opacity, or it
+     becomes the one thing that drops the whole board's frame rate. */
+  @keyframes goldSlide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes glowPulse { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+  @keyframes readyBreath { 0%, 100% { transform: scaleX(1); opacity: 1; } 50% { transform: scaleX(1.08); opacity: 0.75; } }
+  /* The one paint loop left, and deliberately: a gradient clipped to the glyphs
+     cannot be slid without re-rasterising the text either way, and at ~1000x70px
+     of a 1920x1080 stage it does not show up in a frame budget.
+
+     No `will-change` anywhere on this board, and that is measured, not taste:
+     Chromium already promotes an element with a running transform or opacity
+     animation, and hinting the rest cost ~3fps (and up to 10 on layers carrying
+     a blur) for nothing. Hint a layer here only with a before-and-after to
+     show for it. */
   @keyframes titleShimmer { 0% { background-position: -200% 50%; } 100% { background-position: 300% 50%; } }
-  @keyframes readyTrack { 0%,100% { letter-spacing: 0.2em; opacity: 1; } 50% { letter-spacing: 0.34em; opacity: 0.75; } }
   @keyframes numBeat { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
 
   #root { position: absolute; inset: 0; background: #050507; overflow: hidden; }
@@ -306,7 +351,16 @@
     var muted = isNext ? 'rgba(20,18,16,0.65)' : 'rgba(232,230,224,0.65)';
 
     if (isNext) {
-      p.appendChild(el('div', 'font-weight:800; font-size:26px; letter-spacing:0.2em; text-transform:uppercase; background:#141210;' + dual('color', GOLD_FB, GOLD) + 'padding:3px 18px 3px 20px; margin-bottom:2px; animation:readyTrack 1.6s ease-in-out infinite;', @json(__('event-karate_tournament::messages.court_get_ready'))));
+      // GET READY breathes by STRETCHING its word, not by animating
+      // letter-spacing — tracking is a layout property, and re-laying-out text
+      // sixty times a second is the one animation on this board that reached
+      // past paint into layout. The plate stays the size it was; the span
+      // inside it widens, which from ten metres is the same picture.
+      var ready = el('div', 'font-weight:800; font-size:26px; letter-spacing:0.2em; text-transform:uppercase; background:#141210;'
+        + dual('color', GOLD_FB, GOLD) + 'padding:3px 18px 3px 20px; margin-bottom:2px; overflow:hidden;');
+      ready.appendChild(el('span', 'display:inline-block; animation:readyBreath 1.6s ease-in-out infinite;',
+        @json(__('event-karate_tournament::messages.court_get_ready'))));
+      p.appendChild(ready);
     }
 
     // "MATCH 12" — the label is only meaningful next to a number, so the whole
@@ -339,11 +393,15 @@
   function row(m, i, isNext, enter) {
     var anim = [];
     if (enter) anim.push((i % 2 === 0 ? 'rowEnterL' : 'rowEnterR') + ' 0.7s ' + (0.2 + i * 0.15) + 's cubic-bezier(0.22,1,0.36,1) both');
-    if (isNext) anim.push('nextBreathe 2.2s 1.2s ease-in-out infinite');
 
     var r = el('div', 'flex:1; min-height:0; position:relative; display:flex; align-items:stretch;' +
       (isNext ? dual('border', '1px solid rgba(253,196,54,0.8)', '1px solid oklch(0.85 0.16 85 / 0.8)')
               : 'border:1px solid rgba(255,255,255,0.15);') + 'background:#101016;' +
+      // The quiet half of the breath, as a plain static shadow. The loud half
+      // is the layer below, faded over the top of it.
+      (isNext ? dual('box-shadow',
+                     '0 0 16px rgba(253,196,54,0.35), 0 0 44px rgba(253,196,54,0.15)',
+                     '0 0 16px oklch(0.85 0.16 85 / 0.35), 0 0 44px oklch(0.85 0.16 85 / 0.15)') : '') +
       (anim.length ? ' animation:' + anim.join(', ') + ';' : ''));
 
     var sweepWrap = el('div', 'position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2;');
@@ -351,13 +409,41 @@
     r.appendChild(sweepWrap);
 
     if (isNext) {
-      r.appendChild(el('div', 'position:absolute; inset:-2px; pointer-events:none; z-index:2; border:3px solid transparent;' +
-        dual('background',
-             'linear-gradient(90deg, ' + GOLD_FB + ', #fffdf0 25%, ' + GOLD_FB + ' 50%, #6b5310 75%, ' + GOLD_FB + ') border-box',
-             'linear-gradient(90deg, ' + GOLD + ', #fffdf0 25%, ' + GOLD + ' 50%, #6b5310 75%, ' + GOLD + ') border-box') +
-        'background-size:300% 100%;' +
-        '-webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor;' +
-        'mask:linear-gradient(#fff 0 0) padding-box exclude, linear-gradient(#fff 0 0); animation:goldRun 2.5s linear infinite;'));
+      // The breath: the strong shadow rasterised ONCE and faded in and out,
+      // rather than a 110px blur re-drawn around a full-width row every frame.
+      // Behind the row's own background (z-index:-1), so what is seen is the
+      // glow spilling out past its edges — exactly as before.
+      r.appendChild(el('div', 'position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:0;' +
+        dual('box-shadow',
+             '0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35)',
+             '0 0 36px oklch(0.85 0.16 85 / 0.8), 0 0 110px oklch(0.85 0.16 85 / 0.35)') +
+        'animation:glowPulse 2.2s 1.2s ease-in-out infinite;'));
+
+      // The running border, as four thin strips rather than one masked box.
+      //
+      // The obvious composited version — a gradient three rows wide, slid
+      // behind the border-ring mask — was measurably WORSE than the paint it
+      // replaced: a mask forces a render surface, so every frame re-rendered a
+      // group the size of three full rows. These strips are the same picture
+      // with none of that: the light runs along two bands 3px tall, and the
+      // ends are the flat gold the gradient shows there anyway.
+      var ring = el('div', 'position:absolute; inset:-2px; pointer-events:none; z-index:2;');
+      var GRAD = dual('background',
+        'linear-gradient(90deg, ' + GOLD_FB + ', #fffdf0 25%, ' + GOLD_FB + ' 50%, #6b5310 75%, ' + GOLD_FB + ')',
+        'linear-gradient(90deg, ' + GOLD + ', #fffdf0 25%, ' + GOLD + ' 50%, #6b5310 75%, ' + GOLD + ')');
+
+      ['top:0;', 'bottom:0;'].forEach(function (edge) {
+        var band = el('div', 'position:absolute; left:0; right:0; ' + edge + ' height:3px; overflow:hidden;');
+        // The gradient repeats every 50% of its own width (gold at 0, 50 and
+        // 100), so a -50% slide loops with no seam.
+        band.appendChild(el('div', 'position:absolute; top:0; bottom:0; left:0; width:300%;' + GRAD +
+          'animation:goldSlide 2.5s linear infinite;'));
+        ring.appendChild(band);
+      });
+      ['left:0;', 'right:0;'].forEach(function (edge) {
+        ring.appendChild(el('div', 'position:absolute; top:0; bottom:0; ' + edge + ' width:3px;' + dual('background', GOLD_FB, GOLD)));
+      });
+      r.appendChild(ring);
     }
 
     r.appendChild(half(m, 'red', true));
