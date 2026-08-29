@@ -1,0 +1,177 @@
+<?php
+/**
+ * Generates the TV/tablet launcher icon set from public/images/logo.png.
+ *
+ * The mark is a transparent PNG, so it is composited onto a white plate rather
+ * than left transparent: Android draws a launcher icon on whatever wallpaper the
+ * device has, and a red helmet on a red home screen disappears.
+ * The inset keeps it clear of the circular/squircle mask every launcher applies.
+ */
+$src = imagecreatefrompng($argv[1]);
+imagealphablending($src, true);
+imagesavealpha($src, true);
+$sw = imagesx($src);
+$sh = imagesy($src);
+
+$out = $argv[2];
+
+// Launcher densities, plus the adaptive-icon foreground (432) and the TV banner.
+$sizes = [
+    'mipmap-mdpi' => 48,
+    'mipmap-hdpi' => 72,
+    'mipmap-xhdpi' => 96,
+    'mipmap-xxhdpi' => 144,
+    'mipmap-xxxhdpi' => 192,
+];
+
+// White. The mark is drawn for paper — a red helmet with dark outlines — and on
+// the hall's near-black ink those outlines vanish and the icon reads as a red
+// smear at launcher size. White is also what every other icon on an Android home
+// screen assumes, so the tile stops looking like a hole in the row.
+[$r, $g, $b] = [255, 255, 255];
+
+foreach ($sizes as $dir => $size) {
+    @mkdir("$out/$dir", 0775, true);
+
+    $img = imagecreatetruecolor($size, $size);
+    imagefill($img, 0, 0, imagecolorallocate($img, $r, $g, $b));
+
+    // 74% of the tile: enough margin that a circular mask never clips the mark.
+    $inner = (int) round($size * 0.74);
+    $x = (int) round(($size - $inner) / 2);
+    imagecopyresampled($img, $src, $x, $x, 0, 0, $inner, $inner, $sw, $sh);
+
+    imagepng($img, "$out/$dir/ic_launcher.png", 9);
+    imagedestroy($img);
+    echo "$dir/ic_launcher.png {$size}x{$size}\n";
+}
+
+/*
+ * The ADAPTIVE icon (Android 8+), which is what a modern launcher actually
+ * draws. A legacy square PNG is not honoured: the launcher shrinks it, drops it
+ * on a white plate and masks that — so the mark ends up small, off-brand and
+ * ringed in white on every phone made in the last eight years. An adaptive icon
+ * hands the launcher the two layers it wants instead, and the mark fills the
+ * tile on our own ink whatever mask the device applies.
+ *
+ * Geometry is fixed by the platform: the layers are 108dp and only the centre
+ * 66dp is guaranteed visible — everything outside can be cropped by a circle, a
+ * squircle or a teardrop. So the mark is drawn at 52% of the canvas, comfortably
+ * inside that safe zone, and centred.
+ */
+$foreground = [
+    'mipmap-mdpi' => 108,
+    'mipmap-hdpi' => 162,
+    'mipmap-xhdpi' => 216,
+    'mipmap-xxhdpi' => 324,
+    'mipmap-xxxhdpi' => 432,
+];
+
+foreach ($foreground as $dir => $size) {
+    @mkdir("$out/$dir", 0775, true);
+
+    // Transparent, always: the BACKGROUND layer paints the ink, and a
+    // foreground with its own opaque square would defeat every mask.
+    $img = imagecreatetruecolor($size, $size);
+    imagealphablending($img, false);
+    imagesavealpha($img, true);
+    imagefill($img, 0, 0, imagecolorallocatealpha($img, 0, 0, 0, 127));
+    imagealphablending($img, true);
+
+    $inner = (int) round($size * 0.52);
+    $x = (int) round(($size - $inner) / 2);
+    imagecopyresampled($img, $src, $x, $x, 0, 0, $inner, $inner, $sw, $sh);
+
+    imagepng($img, "$out/$dir/ic_launcher_foreground.png", 9);
+    imagedestroy($img);
+    echo "$dir/ic_launcher_foreground.png {$size}x{$size}\n";
+
+    /*
+     * The MONOCHROME layer, for Android 13's themed icons. The launcher tints
+     * whatever it is given, so what matters is the SHAPE: the mark's own alpha,
+     * painted solid white. Without this a themed home screen falls back to a
+     * grey blob where the app should be.
+     */
+    $mono = imagecreatetruecolor($size, $size);
+    imagealphablending($mono, false);
+    imagesavealpha($mono, true);
+    imagefill($mono, 0, 0, imagecolorallocatealpha($mono, 0, 0, 0, 127));
+
+    $scaled = imagecreatetruecolor($inner, $inner);
+    imagealphablending($scaled, false);
+    imagesavealpha($scaled, true);
+    imagefill($scaled, 0, 0, imagecolorallocatealpha($scaled, 0, 0, 0, 127));
+    imagecopyresampled($scaled, $src, 0, 0, 0, 0, $inner, $inner, $sw, $sh);
+
+    for ($py = 0; $py < $inner; $py++) {
+        for ($px = 0; $px < $inner; $px++) {
+            $alpha = (imagecolorat($scaled, $px, $py) >> 24) & 0x7F;
+            if ($alpha < 127) {
+                imagesetpixel($mono, $x + $px, $x + $py, imagecolorallocatealpha($mono, 255, 255, 255, $alpha));
+            }
+        }
+    }
+
+    imagedestroy($scaled);
+    imagepng($mono, "$out/$dir/ic_launcher_monochrome.png", 9);
+    imagedestroy($mono);
+    echo "$dir/ic_launcher_monochrome.png {$size}x{$size}\n";
+}
+
+// The declaration that ties the layers together, and the ink behind them.
+@mkdir("$out/mipmap-anydpi-v26", 0775, true);
+file_put_contents("$out/mipmap-anydpi-v26/ic_launcher.xml", <<<XML
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated by tools-make-icons.php — edit that, not this. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
+</adaptive-icon>
+
+XML);
+echo "mipmap-anydpi-v26/ic_launcher.xml\n";
+
+@mkdir("$out/values", 0775, true);
+$ink = sprintf('#%02X%02X%02X', $r, $g, $b);
+file_put_contents("$out/values/ic_launcher_background.xml", <<<XML
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated by tools-make-icons.php — the plate the mark sits on. -->
+<resources>
+    <color name="ic_launcher_background">$ink</color>
+</resources>
+
+XML);
+echo "values/ic_launcher_background.xml $ink\n";
+
+// The Android TV home-row banner: 320x180, mark on the left, wordmark drawn as
+// the built-in font is far too small — so the mark alone, offset, reads better
+// than a cramped label.
+@mkdir("$out/drawable-xhdpi", 0775, true);
+$banner = imagecreatetruecolor(320, 180);
+imagefill($banner, 0, 0, imagecolorallocate($banner, $r, $g, $b));
+imagecopyresampled($banner, $src, 30, 45, 0, 0, 92, 92, $sw, $sh);
+$white = imagecolorallocate($banner, 240, 238, 233);
+
+// A real face at a real size. GD's built-in bitmap font tops out around 9px,
+// which on a 320x180 tile that a TV scales UP reads as a smudge next to the mark.
+$face = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf';
+if (is_file($face)) {
+    // Measured, not guessed: the label has to sit between the mark and the right
+    // edge, and a size that overflows silently clips the last letter.
+    $label = 'TAKEONE';
+    $pt = 26;
+    do {
+        $box = imagettfbbox($pt, 0, $face, $label);
+        $w = $box[2] - $box[0];
+        $h = $box[1] - $box[7];
+        if (136 + $w <= 300) break;
+        $pt -= 1;
+    } while ($pt > 12);
+
+    imagettftext($banner, $pt, 0, 136, (int) round((180 + $h) / 2), $white, $face, $label);
+} else {
+    imagestring($banner, 5, 146, 88, 'TAKEONE', $white);
+}
+imagepng($banner, "$out/drawable-xhdpi/tv_banner.png", 9);
+echo "drawable-xhdpi/tv_banner.png 320x180\n";

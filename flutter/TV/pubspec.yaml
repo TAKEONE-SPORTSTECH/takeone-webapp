@@ -1,0 +1,77 @@
+name: takeone_tv
+description: >-
+  TAKEONE hall screen for Android TV. Stands on a wall showing its pairing QR
+  until an organiser scans it, then becomes whatever board it was adopted as.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # FLAG_KEEP_SCREEN_ON. This is the whole point of a native app here: an
+  # Android TV browser cannot stop the launcher's daydream/screensaver.
+  wakelock_plus: ^1.2.5
+  # The board this screen was paired to, so a television switched off between
+  # sessions comes back as itself instead of needing to be paired again.
+  shared_preferences: ^2.2.3
+  # The screens ARE web surfaces owned by the event packages — the pairing room
+  # included. The app renders them rather than reimplementing any of them, which
+  # is what keeps a TV pixel-identical to a Pi on the same wall.
+  webview_flutter: ^4.14.0
+  # For the one thing only the Android embedder can grant: autoplaying a board's
+  # sound with no user gesture, because nobody ever touches a wall screen.
+  webview_flutter_android: ^4.14.0
+  # ── The camera build only ────────────────────────────────────────────────
+  # Unused by the TV and tablet APKs (Dart tree-shakes what a build does not
+  # reach), and load-bearing for the third: a phone beside the mat records
+  # natively because a WebView cannot be trusted to hold a video file for eight
+  # hours — MediaRecorder buffers in memory, dies with the page, and has no way
+  # to name a file after the bout it contains.
+  camera: ^0.11.0+2
+  # The instruction channel. The mat says hajime and four phones start within a
+  # frame of each other; polling would make each of them seconds late.
+  mqtt_client: ^10.4.0
+  # The pairing QR the organiser scans. Drawn on the phone, encoding the same
+  # claim URL a wall screen shows.
+  qr_flutter: ^4.1.0
+  # Where a clip is written before it is published to the phone's media
+  # library — see Recorder. The app's own directory is private storage: nothing
+  # outside this app can see it, which is why a finished clip does not stay
+  # there.
+  path_provider: ^2.1.4
+  # Play a bout back at the tripod. "Did that record?" is asked thirty seconds
+  # after a final, by somebody standing next to the mat, and the answer has to
+  # be watchable there and then rather than after somebody finds a cable.
+  video_player: ^2.9.2
+  file_picker: ^12.1.2
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  # Golden tests for the clip drawer — the one panel that cannot be checked on
+  # a device without a competition running.
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  # Bundled, never fetched. A camera in a hall may have no route to the
+  # internet at all — google_fonts downloads at first use, which would leave
+  # every label in a fallback face exactly where it matters. Barlow Condensed
+  # carries the labels (the same face the hall screens use, so the fleet reads
+  # as one product) and Archivo Black carries every numeral: elapsed time, bout
+  # number, pairing code — the things read at two metres.
+  fonts:
+    - family: Barlow Condensed
+      fonts:
+        - asset: assets/fonts/BarlowCondensed-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/BarlowCondensed-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BarlowCondensed-Bold.ttf
+          weight: 700
+    - family: Archivo Black
+      fonts:
+        - asset: assets/fonts/ArchivoBlack-Regular.ttf
