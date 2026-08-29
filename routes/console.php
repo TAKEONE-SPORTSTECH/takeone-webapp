@@ -41,3 +41,36 @@ Schedule::command('alerts:recheck-low-stock')->dailyAt('08:00');
 // nothing, so this is the other half of that trade — abandoned rows are swept
 // up instead of accumulating. Claimed screens are never touched.
 Schedule::command('court:pair --prune')->dailyAt('04:00');
+
+/*
+|--------------------------------------------------------------------------
+| Media storage
+|--------------------------------------------------------------------------
+|
+| Two jobs that keep "the video is on the NAS" true rather than aspirational.
+|
+| The migration is the important one, and it is about a specific, ordinary
+| failure: during a competition the share goes unreachable for twenty minutes,
+| clips fall back to local disk (losing a bout is not an option), and the share
+| comes back. Without this they stay here forever. It moves them up, verifies
+| each one, repoints the record, and only then deletes the local copy — so no
+| link is ever broken, and it is a no-op when there is nothing to move or no
+| storage attached.
+|
+| The verify pass is the audit: it says out loud if any record's bytes are not
+| where the record claims, instead of that being discovered by somebody pressing
+| play in front of a hall.
+|
+*/
+Schedule::command('media:migrate --auto')->hourly()->withoutOverlapping();
+Schedule::command('media:verify --quiet-when-clean --orphans')->dailyAt('04:30');
+
+/*
+| Live streams, reconciled against the media server.
+|
+| The lifecycle hooks handle the ordinary case — a phone that stops, a phone that
+| loses signal. This covers the one they cannot: the media server restarting
+| mid-broadcast, which would otherwise leave a mat showing as on air forever and,
+| worse, leave the recording of a fought bout sitting on disk unclaimed.
+*/
+Schedule::command('live:reap')->everyFiveMinutes()->withoutOverlapping();

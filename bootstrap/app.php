@@ -39,11 +39,44 @@ return Application::configure(basePath: dirname(__DIR__))
             // CSRF under phpunit, so it fails only against a real device.
             'court/enroll',
             'karate/court/enroll',
+            // The media server asking this application whether a broadcast may
+            // start, and telling it when one ended. Called by a process on
+            // loopback, not a browser: there is no session, no cookie and
+            // nothing to forge against, so CSRF here would only guarantee that
+            // a legitimate call can never succeed. What guards these instead is
+            // the ADDRESS — LiveAuthController refuses anything that is not
+            // 127.0.0.1 before it reads a single field, and deliberately does
+            // not consult proxy headers, which are attacker-controlled.
+            'api/live/auth',
+            'api/live/hook',
+            // The measurement harness on a phone: a native client with no
+            // session and no cookie. Guarded by a key it must present on every
+            // request, and non-existent unless that key is configured.
+            'api/lab/live',
+            'api/lab/telemetry',
             // The same, for the sport-neutral waiting room a browser screen
             // enrols into: a television opening one address, with no session and
             // no cookie to forge against. What it grants is a row that can
             // render its own pairing code and nothing else.
             'screen/enroll',
+            // The camera phones. Same reasoning again, and stronger: there is
+            // no browser at all here — a Flutter app on a tripod holding a
+            // device token, with no session and no cookie for anyone to ride.
+            // Each of these reaches exactly one camera's own row (its telemetry
+            // beat, or the clip index it just filed), is rate-limited per
+            // token, and grants no read of the competition.
+            'camera/enroll',
+            // The publish credential for a camera that also carries a live
+            // feed. Same client, same reasoning: no browser, no session, no
+            // cookie — the device token IS the authorisation, and it reaches
+            // one stream on the one mat this camera was claimed onto.
+            'camera/*/live',
+            'camera/*/telemetry',
+            'camera/*/clip',
+            // DELETE from the same device, for a clip it just removed from its
+            // own storage. Same reasoning: a token, no session, nothing to forge.
+            'camera/*/clip/*',
+            'camera/*/clip/*/upload',
         ]);
         $middleware->alias([
             'no-store'   => \App\Http\Middleware\NoStoreCache::class,

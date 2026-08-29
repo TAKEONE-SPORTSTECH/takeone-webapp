@@ -109,10 +109,170 @@ Route::get('/screen/app', [\App\Events\Support\ScreenPairingController::class, '
 // than `/screen/app`, and `?device=tab` is a punctuation lesson on a remote.
 Route::get('/screen/tab', [\App\Events\Support\ScreenPairingController::class, 'app'])
     ->name('screen.app.tab')->defaults('variant', 'tab')->middleware('throttle:screen-app');
+// And the camera. Typed on a phone rather than a remote, but kept in the same
+// shape as its siblings so the three addresses are learnable as a set.
+Route::get('/screen/cam', [\App\Events\Support\ScreenPairingController::class, 'app'])
+    ->name('screen.app.cam')->defaults('variant', 'cam')->middleware('throttle:screen-app');
 Route::get('/screen/{token}', [\App\Events\Support\ScreenPairingController::class, 'show'])
     ->name('screen.show')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 Route::get('/screen/{token}/status', [\App\Events\Support\ScreenPairingController::class, 'status'])
     ->name('screen.status')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+/*
+|--------------------------------------------------------------------------
+| Live — a mat, broadcasting
+|--------------------------------------------------------------------------
+|
+| A phone in the hall publishes over WHIP; viewers watch over WHEP (sub-second)
+| or LL-HLS (works anywhere, plain HTTPS). The media plane is MediaMTX on
+| loopback, proxied by Apache at /live-rtc and /live-hls — it owns no policy at
+| all: it asks this application about every publish and every read.
+|
+| Every broadcast is RECORDED, and when the phone stops the recording is ingested
+| as an ordinary media file under the bout it was of. A streamed fight and a
+| filmed one end up in the same place.
+|
+*/
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Organisers only — enforced per stream by EventAccess::canManage.
+    Route::get('/events/{event:uuid}/live', [\App\Events\Support\Live\LiveStreamController::class, 'index'])
+        ->name('live.index')->middleware('throttle:120,1');
+    Route::post('/events/{event:uuid}/live', [\App\Events\Support\Live\LiveStreamController::class, 'store'])
+        ->name('live.store')->middleware('throttle:member-write');
+    Route::get('/live/{stream}/broadcast', [\App\Events\Support\Live\LiveStreamController::class, 'broadcast'])
+        ->name('live.broadcast');
+    // The scan-to-become-the-camera code, shown in the console panel.
+    Route::get('/live/{stream}/qr', [\App\Events\Support\Live\LiveStreamController::class, 'qr'])
+        ->name('live.qr')->middleware('throttle:60,1');
+    Route::post('/live/{stream}/token', [\App\Events\Support\Live\LiveStreamController::class, 'token'])
+        ->name('live.token')->middleware('throttle:30,1');
+    Route::post('/live/{stream}/stop', [\App\Events\Support\Live\LiveStreamController::class, 'stop'])
+        ->name('live.stop')->middleware('throttle:30,1');
+    // Put a mat on air from the console — the phone on the tripod obeys on its
+    // next beat. The switch belongs at the scoring table, not at the camera.
+    Route::post('/live/{stream}/arm', [\App\Events\Support\Live\LiveStreamController::class, 'arm'])
+        ->name('live.arm')->middleware('throttle:30,1');
+    // The viewfinder's beat: what should I be doing, and I am still here.
+    // Polled every few seconds by an open camera page, hence the loose throttle.
+    Route::get('/live/{stream}/orders', [\App\Events\Support\Live\LiveStreamController::class, 'orders'])
+        ->name('live.orders')->middleware('throttle:120,1');
+    // Point a running stream at the bout now on its mat, as the draw advances.
+    Route::put('/live/{stream}/bout', [\App\Events\Support\Live\LiveStreamController::class, 'attachBout'])
+        ->name('live.bout')->middleware('throttle:60,1');
+});
+
+/*
+| Watching — OPEN, deliberately.
+|
+| A spectator link is handed out on a poster, in a WhatsApp message, or by
+| somebody holding up a phone across a hall. Making them make an account first
+| loses the audience, and there is nothing to protect: what is behind the link is
+| a camera pointed at a public mat, which anybody standing in the hall can watch
+| with their own eyes.
+|
+| The gate did not move, it is just no longer the session. `isWatchableBy` still
+| runs per request and still decides:
+|
+|   · UNLISTED — anyone with the link. The id is 24 random characters, which is
+|     what keeps it to the people who were given it. Every camera stream is
+|     created this way.
+|   · EVENT — the event's own visibility rule, which needs a signed-in user, so a
+|     guest gets the same 404 as somebody who may not see the event at all.
+|
+| A stream that is not live is not watchable either — the media server refuses
+| the read (LiveAuthController::authorizeRead), so the page can be open without
+| the pixels being.
+|
+| Throttled harder than a signed-in route precisely because it is open.
+*/
+Route::get('/live/{stream}', [\App\Events\Support\Live\LiveStreamController::class, 'watch'])
+    ->name('live.watch')->middleware('throttle:60,1');
+Route::get('/live/{stream}/status', [\App\Events\Support\Live\LiveStreamController::class, 'status'])
+    ->name('live.status')->middleware('throttle:120,1');
+
+/*
+| The measurement harness. Exists only while LAB_LIVE_KEY is set (see
+| App\Events\Support\Live\LabController) — 404 otherwise, including in
+| production. A native app on a phone has no browser session, so it cannot use
+| the session-authenticated token route; this hands it a token for ONE pinned lab
+| stream and accepts what it measured. Delete once the question is answered.
+*/
+Route::post('/api/lab/live', [\App\Events\Support\Live\LabController::class, 'token'])
+    ->name('lab.live')->middleware('throttle:30,1');
+Route::post('/api/lab/telemetry', [\App\Events\Support\Live\LabController::class, 'telemetry'])
+    ->name('lab.telemetry')->middleware('throttle:120,1');
+
+// The media server's callbacks. Loopback ONLY — checked in the controller before
+// a field is read — which is also why they sit outside the session and CSRF flow:
+// there is no browser here and nothing to forge against.
+Route::post('/api/live/auth', [\App\Events\Support\Live\LiveAuthController::class, 'authenticate'])
+    ->name('live.auth')->middleware('throttle:600,1');
+Route::post('/api/live/hook', [\App\Events\Support\Live\LiveAuthController::class, 'hook'])
+    ->name('live.hook')->middleware('throttle:600,1');
+
+/*
+|--------------------------------------------------------------------------
+| Media — the video this platform holds itself
+|--------------------------------------------------------------------------
+|
+| Bytes, authorised. Every URL here is bound by a media file's uuid and every
+| request re-checks the event's own visibility rule — the playlist AND each
+| segment, because a segment URL that outlives its check is a leaked video.
+|
+| Signed in, always: there is no public video surface yet, and adding one is a
+| deliberate decision about consent (VIDEO-INTEGRATION.md §5.4), not a default.
+|
+| Read-only. Media is created by the ingest path (a camera filing a clip), never
+| by a GET.
+|
+*/
+Route::middleware(['auth', 'verified', 'throttle:media-read'])->group(function () {
+    Route::get('/media/{file}/hls/{path?}', [\App\Media\Http\MediaStreamController::class, 'hls'])
+        ->name('media.hls')->where('path', '[A-Za-z0-9_\-/\.]+');
+    Route::get('/media/{file}/poster', [\App\Media\Http\MediaStreamController::class, 'poster'])
+        ->name('media.poster');
+    Route::get('/media/{file}/original', [\App\Media\Http\MediaStreamController::class, 'original'])
+        ->name('media.original');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Cameras — the phones filming a mat
+|--------------------------------------------------------------------------
+|
+| A camera is a screen's opposite: it renders nothing and it writes. So it does
+| not get a page, it gets four JSON endpoints — exist, ask what I am, say I am
+| alive, file a clip — and it is authorised the same way a screen is, by a
+| token that reaches its own row and nothing else. There is no session and no
+| CSRF here because there is no browser and no logged-in user to forge against.
+|
+| Claiming happens through the SHARED door (/screen/claim/{code}): an organiser
+| holding a phone should not have to know whether the thing in front of them is
+| a television or a lens.
+*/
+Route::post('/camera/enroll', [\App\Events\Support\Cameras\CameraController::class, 'enroll'])
+    ->name('camera.enroll')->middleware('throttle:court-enroll');
+Route::get('/camera/{token}/config', [\App\Events\Support\Cameras\CameraController::class, 'config'])
+    ->name('camera.config')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+Route::post('/camera/{token}/telemetry', [\App\Events\Support\Cameras\CameraController::class, 'telemetry'])
+    ->name('camera.telemetry')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+// The publish credential for a camera that also carries a live feed. Its own
+// token is the authorisation, so no shared key is ever compiled into the app,
+// and what it reaches is fixed by the camera's row: one stream, on the event and
+// court it was claimed onto. Limited like every other token route.
+Route::post('/camera/{token}/live', [\App\Events\Support\Cameras\CameraController::class, 'live'])
+    ->name('camera.live')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+Route::post('/camera/{token}/clip', [\App\Events\Support\Cameras\CameraController::class, 'clip'])
+    ->name('camera.clip')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+// A clip deleted at the mat. The phone holds the video, so it is the authority
+// on whether the video still exists — this only keeps the index honest.
+Route::delete('/camera/{token}/clip/{clip}', [\App\Events\Support\Cameras\CameraController::class, 'deleteClip'])
+    ->name('camera.clip.delete')->where('token', '[A-Za-z0-9]{40}')->whereNumber('clip')->middleware('throttle:screen-token');
+// The clip's bytes, on their way to TAKEONE Play. Chunked and resumable — the
+// far end is a phone on a hall's wifi. Its own limiter, because an upload is
+// hundreds of requests where every other camera call is one.
+Route::post('/camera/{token}/clip/{clip}/upload', [\App\Events\Support\Cameras\CameraController::class, 'upload'])
+    ->name('camera.clip.upload')->where('token', '[A-Za-z0-9]{40}')->whereNumber('clip')->middleware('throttle:camera-upload');
 
 Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::get('/screen/claim/{code}', [\App\Events\Support\ScreenPairingController::class, 'claim'])
@@ -283,6 +443,12 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     // write path an appointed official holds for the length of a competition.
     Route::post('/karate/control/{event:uuid}', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'command'])
         ->name('karate-scoreboard.command')->middleware('throttle:300,1');
+    // A face for a corner, from the organiser's own door — the same body the
+    // paired tablet posts to, behind the same canScore() check as the commands
+    // above. The mat travels in the payload and is checked against the event.
+    Route::post('/karate/control/{event:uuid}/photo/{side}', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'photo'])
+        ->name('karate-scoreboard.photo')->where('side', 'aka|ao')
+        ->middleware('throttle:uploads');
 });
 
 /*
@@ -312,6 +478,37 @@ Route::post('/karate/court/{token}/command', [\App\Events\Sports\Karate\Tourname
     ->name('karate-scoreboard.token-command')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 
 Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
+    /*
+    |--------------------------------------------------------------------------
+    | Open Mat — /openmat
+    |--------------------------------------------------------------------------
+    | Its own top-level address, NOT under /me, because this is the one screen
+    | in the product somebody is told out loud: "go to takeone.bh/openmat".
+    | It has to be short enough to say across a dojo and type on a phone with
+    | one hand, which /me/open-mat was not.
+    |
+    | ONE route to get on a mat: there is no launcher and no form. /openmat
+    | resolves the club, the sport and the mat by itself and redirects to the
+    | console, because every question asked before the two corner cards appear
+    | is a question asked at the worst possible moment. Everything afterwards is
+    | the mat's console under /me/events, because an open mat IS an event
+    | (App\Events\OpenMat).
+    |
+    | Any signed-in member, deliberately: not a coach, not an admin. The whole
+    | premise is that two people decided to fight thirty seconds ago.
+    |
+    | Taking a corner is reached by somebody who is NOT holding the console —
+    | they scanned the QR on the mat, or typed its six characters. Signed in,
+    | because taking a corner puts a name and a face on a wall screen and files
+    | a bout on a record; an anonymous join would be a way of standing in as
+    | somebody else. The code is public by design and short-lived, and the mat
+    | behind it is re-checked on every request.
+    */
+    Route::get('/openmat', [\App\Events\OpenMat\OpenMatController::class, 'index'])->name('openmat');
+    Route::get('/openmat/join/{code}', [\App\Events\OpenMat\OpenMatController::class, 'join'])
+        ->name('openmat.join')->where('code', '[A-Za-z0-9]{6}')->middleware('throttle:30,1');
+    Route::post('/openmat/join/{code}', [\App\Events\OpenMat\OpenMatController::class, 'take'])
+        ->name('openmat.take')->where('code', '[A-Za-z0-9]{6}')->middleware('throttle:member-write');
 });
 
 // Personal (member) mobile experience — shared mobile shell
@@ -373,6 +570,12 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::get('/packages', [App\Http\Controllers\PersonalMobileController::class, 'packages'])->name('packages');
     Route::get('/progress', [App\Http\Controllers\PersonalMobileController::class, 'progress'])->name('progress');
     Route::get('/payments', [App\Http\Controllers\PersonalMobileController::class, 'payments'])->name('payments');
+
+    // The member's own footage — bouts, duels, clips they shot. Self-only:
+    // there is no route to anybody else's, by design.
+    Route::get('/videos', [App\Http\Controllers\PersonalMobileController::class, 'videos'])->name('videos');
+    Route::get('/videos/data', [App\Http\Controllers\PersonalMobileController::class, 'videosData'])
+        ->name('videos.data')->middleware('throttle:media-read');
     // Settle an outstanding subscription bill by uploading proof of payment.
     Route::post('/payments/{subscription}/settle', [App\Http\Controllers\PersonalMobileController::class, 'settlePayment'])->name('payments.settle')->middleware('throttle:uploads');
     // Events — real, DB-backed (club_events).
@@ -398,6 +601,38 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     // the event uuid, which the viewer already holds.
     Route::get('/events/{event:uuid}/bout/{matchNo}', [App\Http\Controllers\PersonalEventController::class, 'bout'])
         ->whereNumber('matchNo')->name('events.bout');
+
+    /*
+     * Watching a bout back, and writing on it.
+     *
+     * The page and its notes live on their own controller because they are their
+     * own subject — the footage, its angles and the highlights bar derived from
+     * the officiating log. Access is NOT the event's alone: the two athletes who
+     * fought a bout reach their own footage whatever the event's scope and after
+     * it is archived, which BoutVideoController states and enforces, and which
+     * MediaStreamController enforces again on every byte.
+     */
+    Route::get('/events/{event:uuid}/bout/{matchNo}/video', [App\Http\Controllers\BoutVideoController::class, 'show'])
+        ->whereNumber('matchNo')->name('events.bout.video');
+    Route::post('/events/{event:uuid}/bout/{matchNo}/notes', [App\Http\Controllers\BoutVideoController::class, 'storeNote'])
+        ->whereNumber('matchNo')->name('events.bout.notes.store')->middleware('throttle:member-write');
+    Route::put('/events/{event:uuid}/bout/{matchNo}/notes/{note:uuid}', [App\Http\Controllers\BoutVideoController::class, 'updateNote'])
+        ->whereNumber('matchNo')->name('events.bout.notes.update')->middleware('throttle:member-write');
+    Route::delete('/events/{event:uuid}/bout/{matchNo}/notes/{note:uuid}', [App\Http\Controllers\BoutVideoController::class, 'destroyNote'])
+        ->whereNumber('matchNo')->name('events.bout.notes.destroy')->middleware('throttle:member-write');
+
+    // The conversation under a bout. Anyone who may watch may join it.
+    Route::post('/events/{event:uuid}/bout/{matchNo}/comments', [App\Http\Controllers\BoutVideoController::class, 'storeComment'])
+        ->whereNumber('matchNo')->name('events.bout.comments.store')->middleware('throttle:social');
+    Route::delete('/events/{event:uuid}/bout/{matchNo}/comments/{comment:uuid}', [App\Http\Controllers\BoutVideoController::class, 'destroyComment'])
+        ->whereNumber('matchNo')->name('events.bout.comments.destroy')->middleware('throttle:member-write');
+    Route::post('/events/{event:uuid}/bout/{matchNo}/comments/{comment:uuid}/like', [App\Http\Controllers\BoutVideoController::class, 'likeComment'])
+        ->whereNumber('matchNo')->name('events.bout.comments.like')->middleware('throttle:social');
+
+    // The event's own gallery: every filmed bout, grouped by division.
+    Route::get('/events/{event:uuid}/gallery', [App\Http\Controllers\PersonalEventController::class, 'gallery'])->name('events.gallery');
+    Route::get('/events/{event:uuid}/gallery/data', [App\Http\Controllers\PersonalEventController::class, 'galleryData'])
+        ->name('events.gallery.data')->middleware('throttle:media-read');
     // Organiser corrections to one bout: corners, scores, winner, the names on
     // the sheet, and the video link. The mat is authoritative while a bout is
     // being fought; this is authoritative once it is finished, and every change
@@ -501,10 +736,28 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::get('/events/{event:uuid}/screens', [\App\Events\Support\HallScreenRouter::class, 'screens'])->name('events.screens')->middleware('throttle:60,1');
     Route::post('/events/{event:uuid}/screens', [\App\Events\Support\HallScreenRouter::class, 'pair'])->name('events.screens.pair')->middleware('throttle:admin-write');
     Route::delete('/events/{event:uuid}/screens/{device}', [\App\Events\Support\HallScreenRouter::class, 'revoke'])->name('events.screens.revoke')->whereNumber('device')->middleware('throttle:admin-write');
+    // The cameras on this event's mats. Sport-neutral, so these go straight to
+    // the fleet rather than through the per-sport screen dispatcher: a lens
+    // pointed at a mat is the same device whatever is being fought on it.
+    Route::get('/events/{event:uuid}/cameras', [\App\Events\Support\Cameras\CameraConsoleController::class, 'index'])->name('events.cameras')->middleware('throttle:60,1');
+    Route::delete('/events/{event:uuid}/cameras/{camera}', [\App\Events\Support\Cameras\CameraConsoleController::class, 'unpair'])->name('events.cameras.unpair')->whereNumber('camera')->middleware('throttle:admin-write');
+    // Switch one camera's feed on or off. The phone obeys over its own channel,
+    // and is refused a publish credential either way while it is off.
+    Route::post('/events/{event:uuid}/cameras/{camera}/broadcast', [\App\Events\Support\Cameras\CameraConsoleController::class, 'broadcast'])->name('events.cameras.broadcast')->whereNumber('camera')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/next-up', [App\Http\Controllers\PersonalEventController::class, 'nextUp'])->name('events.next-up');
     // A sparring session as JSON, for its console to re-read after a nudge —
     // one coach queues a bout and every other console follows without a reload.
     Route::get('/events/{event:uuid}/sparring', [\App\Events\Sparring\SparringLauncherController::class, 'state'])->name('events.sparring')->middleware('throttle:120,1');
+    // An open mat as JSON, for its console to re-read after a realtime nudge —
+    // the opponent takes a corner on their own phone and the console follows
+    // without a reload.
+    Route::get('/events/{event:uuid}/openmat', [\App\Events\OpenMat\OpenMatController::class, 'state'])->name('events.openmat')->middleware('throttle:120,1');
+    // Finding somebody to put on the mat. Throttled hard: it takes a search
+    // term, and a searchable endpoint is one somebody will hammer. The pool it
+    // may return is narrow by design — see OpenMatSession::searchOpponents.
+    Route::get('/events/{event:uuid}/openmat/search', [\App\Events\OpenMat\OpenMatController::class, 'search'])->name('events.openmat.search')->middleware('throttle:60,1');
+    // The mat's join QR as an SVG. Takes a MAT, not a URL — see the controller.
+    Route::get('/events/{event:uuid}/openmat/qr', [\App\Events\OpenMat\OpenMatController::class, 'qr'])->name('events.openmat.qr')->middleware('throttle:60,1');
     // Throttled: it takes a search term, and a searchable endpoint is one
     // someone will try to hammer.
     Route::get('/events/{event:uuid}/entry-roster', [App\Http\Controllers\PersonalEventController::class, 'entryRoster'])->name('events.entry-roster')->middleware('throttle:60,1');
@@ -813,6 +1066,15 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::delete('/ai/providers/{provider}', [App\Http\Controllers\Admin\AiProviderController::class, 'destroy'])->name('ai.destroy')->middleware('throttle:admin-write');
     Route::post('/ai/providers/{provider}/test', [App\Http\Controllers\Admin\AiProviderController::class, 'test'])->name('ai.test')->middleware('throttle:admin-write');
 
+    // Storage — the media vaults video is kept on. None attached is the default
+    // and a complete configuration; attaching one moves new media onto it.
+    Route::get('/storage', [App\Http\Controllers\Admin\MediaVaultController::class, 'index'])->name('storage.index');
+    Route::post('/storage/vaults', [App\Http\Controllers\Admin\MediaVaultController::class, 'store'])->name('storage.store')->middleware('throttle:admin-write');
+    Route::put('/storage/vaults/{vault}', [App\Http\Controllers\Admin\MediaVaultController::class, 'update'])->name('storage.update')->middleware('throttle:admin-write');
+    Route::delete('/storage/vaults/{vault}', [App\Http\Controllers\Admin\MediaVaultController::class, 'destroy'])->name('storage.destroy')->middleware('throttle:admin-write');
+    Route::post('/storage/vaults/{vault}/test', [App\Http\Controllers\Admin\MediaVaultController::class, 'test'])->name('storage.test')->middleware('throttle:admin-write');
+    Route::post('/storage/vaults/{vault}/drain', [App\Http\Controllers\Admin\MediaVaultController::class, 'drain'])->name('storage.drain')->middleware('throttle:admin-write');
+
     // Copilot ("Coach") — page-aware AI assistant (thin slice: create a club)
     Route::post('/copilot/message', [App\Http\Controllers\Admin\CopilotController::class, 'message'])->name('copilot.message')->middleware('throttle:copilot');
     Route::post('/copilot/apply', [App\Http\Controllers\Admin\CopilotController::class, 'apply'])->name('copilot.apply')->middleware('throttle:copilot');
@@ -1109,6 +1371,10 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::put('/member/{id}/photos/{photo}/avatar', [App\Http\Controllers\UserPhotoController::class, 'setAvatar'])->name('member.photos.avatar')->middleware('throttle:member-write');
     Route::delete('/member/{id}/photos/{photo}', [App\Http\Controllers\UserPhotoController::class, 'destroy'])->name('member.photos.destroy')->middleware('throttle:member-write');
     Route::post('/member/{id}/upload-document', [MemberController::class, 'uploadDocument'])->name('member.upload-document')->middleware('throttle:uploads');
+    // Identity documents are on the PRIVATE disk, so reaching one goes through
+    // the controller, which re-checks who is asking. There is deliberately no
+    // /storage/ link for these any more.
+    Route::get('/member/{id}/document', [MemberController::class, 'downloadDocument'])->name('member.download-document')->middleware('throttle:60,1');
     Route::delete('/member/{id}/document', [MemberController::class, 'deleteDocument'])->name('member.delete-document')->middleware('throttle:member-write');
     Route::post('/member/{id}/reset-password', [MemberController::class, 'resetPassword'])->name('member.reset-password')->middleware('throttle:member-write');
     Route::post('/member/{id}/regenerate-password', [MemberController::class, 'regeneratePassword'])->name('member.regenerate-password')->middleware('throttle:member-write');
