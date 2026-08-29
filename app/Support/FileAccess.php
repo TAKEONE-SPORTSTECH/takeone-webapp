@@ -41,7 +41,7 @@ class FileAccess
             'clubs' => self::club($segments, $viewer),
             'members' => self::member($segments, $viewer),
             'events' => self::event($segments, $viewer),
-            default => false,   // deny by default
+            default => self::legacy($root, $segments, $viewer),
         };
     }
 
@@ -53,8 +53,11 @@ class FileAccess
      */
     private static function club(array $segments, ?User $viewer): bool
     {
-        // clubs/{ISO3}/{slug}/{purpose}/...
-        $purpose = $segments[3] ?? '';
+        // clubs/{ISO3}/{slug}/{purpose}/... is the shape everything new takes.
+        // clubs/{id}/{purpose}/... is what the old layout wrote, and files
+        // written before the move are still on disk under it.
+        $legacy = ctype_digit((string) ($segments[1] ?? ''));
+        $purpose = $legacy ? ($segments[2] ?? '') : ($segments[3] ?? '');
 
         if (in_array($purpose, ['branding', 'gallery', 'facilities', 'packages', 'products', 'activities', 'timeline', 'achievements'], true)) {
             return true;
@@ -62,7 +65,9 @@ class FileAccess
 
         // Anything else under a club — documents, and whatever is added later —
         // is for people who run that club.
-        $club = Tenant::where('slug', $segments[2] ?? '')->first();
+        $club = $legacy
+            ? Tenant::find((int) $segments[1])
+            : Tenant::where('slug', $segments[2] ?? '')->first();
 
         return $club !== null && $viewer !== null && self::runsClub($viewer, $club);
     }
@@ -110,6 +115,119 @@ class FileAccess
         }
 
         return app(\App\Events\Support\EventAccess::class)->visible($event, $viewer);
+    }
+
+    /**
+     * The folders that predate the owner-first layout.
+     *
+     * These were not organised by owner, so the path alone does not say whose
+     * file it is. What it did say, until the roots were merged, was which DISK
+     * it sat on — and that was the access decision: everything under the public
+     * disk was readable by anyone holding the URL, everything under the private
+     * one was not. That split is reproduced here deliberately, so collapsing the
+     * two roots changed where files live without changing who can read them.
+     *
+     * New uploads never land here; StoragePath writes the owner-first shape.
+     * When the last legacy file is migrated, this method goes.
+     */
+    private static function legacy(string $root, array $segments, ?User $viewer): bool
+    {
+        // Presentation assets: club and product imagery, catalogue art, avatars.
+        // Public before the merge, public now.
+        $public = [
+            'achievements', 'activity-catalog', 'avatars', 'business-logos',
+            'club-products', 'images', 'packages', 'people', 'perks',
+            'temp', 'timeline', 'user-posts', 'users',
+        ];
+
+        if (in_array($root, $public, true)) {
+            return true;
+        }
+
+        // Everything else that was on the private disk. Staff may read it; the
+        // member it belongs to may read it; nobody else may, and an anonymous
+        // visitor never gets this far.
+        if ($viewer === null) {
+            return false;
+        }
+
+        if ($viewer->hasRole('super-admin')) {
+            return true;
+        }
+
+        $path = implode('/', $segments);
+
+        return match ($root) {
+            'goal-proofs' => self::ownsRow($viewer, 'goals', ['before_proof', 'after_proof'], $path),
+            'order-proofs' => self::ownsRow($viewer, 'orders', ['payment_proof_path'], $path),
+            'payment-proofs', 'payment-screenshots', 'event-payment-proofs' => self::ownsRow(
+                $viewer, 'club_member_subscriptions', ['proof_of_payment', 'refund_proof'], $path
+            ),
+            'chat-attachments' => self::sentOrReceived($viewer, $path),
+            'documents' => self::ownsRow($viewer, 'users', ['documents'], $path),
+            default => false,   // deny by default, including backups and demo
+        };
+    }
+
+    /**
+     * Does a row this viewer owns point at this exact path?
+     *
+     * Matched against the stored value rather than parsed out of the path,
+     * because the legacy filenames carry no owner. LIKE is used only for the
+     * JSON columns that hold several paths in one field.
+     */
+    private static function ownsRow(User $viewer, string $table, array $columns, string $path): bool
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable($table)) {
+            return false;
+        }
+
+        $owner = $table === 'users' ? 'id' : 'user_id';
+
+        if (! \Illuminate\Support\Facades\Schema::hasColumn($table, $owner)) {
+            return false;
+        }
+
+        $query = \Illuminate\Support\Facades\DB::table($table)->where($owner, $viewer->id);
+
+        $query->where(function ($q) use ($columns, $path, $table) {
+            foreach ($columns as $column) {
+                if (! \Illuminate\Support\Facades\Schema::hasColumn($table, $column)) {
+                    continue;
+                }
+                $q->orWhere($column, $path)
+                  ->orWhere($column, '/'.$path)
+                  ->orWhere($column, 'like', '%"'.$path.'"%');
+            }
+        });
+
+        return $query->exists();
+    }
+
+    /** A chat attachment belongs to both ends of the conversation. */
+    private static function sentOrReceived(User $viewer, string $path): bool
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('messages')) {
+            return false;
+        }
+
+        $message = \Illuminate\Support\Facades\DB::table('messages')
+            ->where('attachment_path', $path)
+            ->orWhere('attachment_path', '/'.$path)
+            ->first();
+
+        if ($message === null) {
+            return false;
+        }
+
+        foreach (['sender_id', 'user_id', 'recipient_id', 'receiver_id'] as $column) {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('messages', $column)
+                && (int) ($message->{$column} ?? 0) === (int) $viewer->id) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** The member themselves, their guardian, or platform staff. */
