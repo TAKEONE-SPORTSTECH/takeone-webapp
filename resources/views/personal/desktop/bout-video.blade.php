@@ -23,7 +23,11 @@
   ::-webkit-scrollbar-thumb{background:#2e2e2e;border-radius:999px}
   ::-webkit-scrollbar-thumb:hover{background:var(--red)}
 
-  .wrap{max-width:1360px;margin:0 auto;padding:20px 24px 48px}
+  /* Edge to edge, like every other desktop page.
+     This screen kept a 1360px centred cap after that was removed from the rest
+     of the platform in July 2026, so on any wide monitor it sat in the middle
+     with gutters either side while the pages around it filled the glass. */
+  .wrap{margin:0;padding:20px 32px 48px}
   .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
 
   /* ── Event strip ── */
@@ -38,7 +42,12 @@
   /* ── Player row ── */
   .player-row{display:flex;gap:20px;flex-wrap:wrap;align-items:stretch}
   .player-col{flex:1 1 0;min-width:340px;display:flex;flex-direction:column;gap:16px}
-  .player{aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--line);display:flex;align-items:stretch}
+  /* Full width is not "as large as the monitor allows": 16:9 across an
+     ultrawide is taller than the viewport, so the controls fall off the bottom
+     and every bout starts with a scroll. Capped to what fits; the video is
+     object-fit:contain, so a container off the ratio letterboxes rather than
+     crops anybody out of frame. */
+  .player{aspect-ratio:16/9;max-height:calc(100vh - 240px);background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--line);display:flex;align-items:stretch}
   .player.fs{position:fixed;inset:0;z-index:9999;border-radius:0;aspect-ratio:auto}
   .video-area{position:relative;flex:1;min-width:0}
   .video-el{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent;z-index:1}
