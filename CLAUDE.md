@@ -31,8 +31,10 @@ This outranks every other rule in this file. If a change cannot be made without 
 - **Small reversible steps** over one large change. If something goes wrong it must be obvious which step did it.
 - **When in doubt, ask.** "I could do this, but it risks X" is always the right message. A blocked task is recoverable; a broken production system on an event day is not.
 
-### Applies to both systems
-This repo **and** TAKEONE Play (`/var/www/videoplatform` on `192.168.0.31`). The video platform is live at `video.takeone.bh` with real uploaded media and real match annotations — its existing manual match-annotation flow must keep working untouched through any integration work.
+### Applies to this system
+This repo. It is live, it holds real clubs, real members and real competition footage.
+
+> The sibling video platform (`video.takeone.bh`) was **disconnected on 2026-08-27** — the integration code, its API credentials and the SSH access were all removed at the user's request. It is somebody else's box now: no access, no calls, nothing to keep working. Do not re-add access or write anything that talks to it.
 
 ---
 
@@ -48,18 +50,12 @@ This is a precondition, not a precaution. No backup → no destructive operation
 - bulk `update()` / `delete()` / truncate / `forceDelete`
 - seeders, resets (`takeone:reset-baseline`), demo purge, data-repair scripts
 - anything touching the storage/upload folders destructively
-- **any of the above on either system** — takeone *and* TAKEONE Play
+- any of the above
 
 ### How
 **takeone:** `php artisan takeone:backup` — SQLite `VACUUM INTO` after a WAL checkpoint (consistent under load), plus the upload folders, verified by reading each artifact back, non-zero exit on failure. Scheduled nightly 03:30.
 
-**TAKEONE Play:** `ssh videoplatform 'cd /var/www/videoplatform && php artisan takeone:backup'` — same command name and same mechanism as this side, so both platforms back up and restore identically. Snapshots land in `data/backups/` (git-ignored), verified by integrity check + migration/video row counts, pruned on the same retention window. Runs nightly at 03:30 from **www-data's crontab**.
-
-⚠️ Two things to know about Play:
-- It runs **SQLite in production** (`database/database.sqlite`), despite its own CLAUDE.md saying MySQL. The command handles both drivers.
-- **The Laravel scheduler is not running there** — no cron, no timer, no supervisor — so `cleanup:orphaned-videos --force`, `nas:auto-sync` and `digest:weekly` have never fired on a schedule. The backup therefore has its **own dedicated cron entry**, not `schedule:run`. Do NOT "fix" this by enabling `schedule:run` without deciding about those three dormant jobs first — `cleanup:orphaned-videos --force` deletes media files, and switching it on after a long dormancy is exactly the kind of thing RULE #1 exists to prevent.
-
-**Media is not covered by default.** Play's uploaded video (`data/app/users`, ~2.6 GB) is the one thing that cannot be regenerated, and it is far too large to archive nightly. `takeone:backup --media` mirrors it incrementally with rsync, but only once `BACKUP_MEDIA_DEST` points at a NAS mount or remote path. **Until that is set, the video library has no backup at all.**
+**Media is not covered by default.** Competition footage is the one thing that cannot be regenerated, and it is far too large to archive nightly. `takeone:backup --media` mirrors it incrementally with rsync, but only once `BACKUP_MEDIA_DEST` points at a NAS mount or remote path. **Until that is set, the video library has no backup at all.**
 
 `VACUUM INTO` (not `cp`) — copying a live SQLite file mid-write yields a corrupt snapshot. Always verify the copy; an unverified backup is not a backup.
 
@@ -69,37 +65,6 @@ This is a precondition, not a precaution. No backup → no destructive operation
 - **Say so** — state that the backup was taken, where it is, and that it verified, before reporting the change done.
 - Keep at least one copy **off the box**. A backup on the same disk does not survive losing the disk. (Open item for both systems — see the Pre-Launch Runbook.)
 - The media files on Play (uploaded video) are the irreplaceable asset — the DB backup does not cover them.
-
----
-
-## RULE #3 — On TAKEONE Play, Only Touch `match` — STRICT
-
-**On the video platform, work only on the `match` video type. Never modify the `music` type or the `generic` type.** Not to improve them, not to refactor them, not "while I was in there".
-
-**Why it matters:** `videos.type` today is **54 music, 4 match**. The music library is that platform's live content — its audio player, track editor, lyrics/ML stack and playlists are what actually gets used. Match is the new work. A careless edit trades a working product for an unbuilt one.
-
-### Free to change (match-owned)
-- `resources/views/videos/types/match.blade.php` and `resources/views/videos/partials/match/`
-- `app/Http/Controllers/MatchEventController.php`, `SportsMatchController.php`
-- `app/Models/SportsMatch.php`, `MatchRound.php`, `MatchPoint.php`, `CoachReview.php`
-- match-only migrations, `RenderMatchOgImage`, match-only routes and assets
-
-### Never touch (off limits)
-- `resources/views/videos/types/music.blade.php`, `types/generic.blade.php`
-- `resources/views/videos/partials/audio-player.blade.php`, `components/track-editor-form.blade.php`
-- `ReorganizeAudioTracks`, `GenerateLyrics`, the `ml/` lyrics stack, audio/NAS commands
-- anything else whose only consumers are music or generic
-
-### The real danger — shared code
-The risk is not the music files; it is the code **all three types run through**: `VideoController`, `MediaController`, `PlaylistController`, `app/Models/Video.php`, `videos/show.blade.php`, `components/video-player`, `video-card`, `video-comments`, the layouts, and the routes file.
-
-When match work genuinely needs something there:
-- **Add a type-guarded branch; never change existing behaviour.** `if ($video->type === 'match')` around the new path, leaving every other type on exactly the code it runs today.
-- **Never change a shared signature, query, scope or accessor** in a way any other type observes. Add alongside instead.
-- **Never "generalise" shared code** to accommodate match. Duplication in the match branch beats a refactor that alters the music path.
-- After any shared-file edit, **verify a music video and a generic video still play, list, and edit** — not just the match page.
-
-> Note the asymmetry with this repo's Events-Are-Packages rule: there, type branching in shared code is forbidden. Here it is the *safe* option, because the goal is not architectural purity — it is that the music side runs the identical code tomorrow that it runs today. RULE #1 wins.
 
 ---
 
@@ -145,24 +110,27 @@ Laravel 12 SaaS platform for sports clubs (TAKEONE-SPORTSTECH). Multi-tenant arc
 
 ---
 
-## Sibling Platform — TAKEONE Play (`video.takeone.bh`)
+## Match video is ours — the sibling platform is disconnected
 
-**There are two platforms and they are meant to work together.** TAKEONE Play is the video side of TAKEONE: a Laravel 10 video-sharing platform with sports-match annotation, HLS adaptive streaming and GPU (NVENC) transcoding. It already models a match timeline — `sports_matches`, `match_rounds`, `match_points` (timestamp, action, competitor blue/red, running score) and `coach_reviews` — which is what powers the **Highlights** panel on a match video page.
+Competition video is recorded, stored, transcoded, authorised and played **entirely by
+this platform**. A mat camera uploads to `CameraController`, `IngestClipMedia` files it
+through `App\Media\MediaVaults`, `TranscodeMedia` builds the HLS ladder, and
+`App\Media\Http\MediaStreamController` serves it with authorisation re-checked on every
+segment. A bout is watched at `me.events.bout.video`, whose highlights bar is derived by
+`App\Media\BoutTimeline` from the officiating log — nobody types a timestamp.
 
-| | |
-|---|---|
-| **Host** | `192.168.0.31` (hostname `video`) |
-| **Project root** | `/var/www/videoplatform` (has its own `CLAUDE.md` — read it before touching that repo) |
-| **Public URL** | `https://video.takeone.bh` |
-| **Stack** | Laravel 10, PHP 8.1+, FFmpeg/FFProbe + NVIDIA NVENC, HLS, MySQL (prod), Sanctum |
-| **Access** | `ssh videoplatform` — key-based, passwordless (dedicated key `~/.ssh/videoplatform_ed25519`, alias in `~/.ssh/config`). **Never write credentials into this repo** — no passwords in CLAUDE.md, docs, code, or commit messages. |
+**The external video platform (`video.takeone.bh`) was disconnected on 2026-08-27** at the
+user's request: `app/Play/*`, the push/upload jobs, the inbound `/api/integration/play`
+surface, its console commands, `config/play.php`, the API token and the SSH key are all
+gone, and the Sanctum token it held was revoked. **Do not re-add any of it**, and do not
+write code that calls that host.
 
-### The relationship
-takeone owns the **competition truth** (competitors, category, bracket, official result); Play owns the **media** (recording, transcoding, playback, the timeline as rendered on the video). The intended integration is that a mat's scoring console produces the video timeline automatically instead of someone re-typing the points into Play by hand.
-
-Full design — time model, contract, endpoints, phasing, and the security prerequisites — is in **`Documentation/VIDEO-INTEGRATION.md`**. Read it before starting any video work.
-
-⚠️ **Known blocker:** Play's match-event routes (`routes/web.php:306` onward) are currently **unauthenticated** ("removed auth requirement for demo purposes") — anyone can rewrite or delete any match's timeline. That must be closed before any integration writes through them.
+Two dormant remnants, left deliberately rather than by omission:
+- `event_recordings.play_*` columns still hold URLs for a handful of bouts published there
+  before the split. Nothing writes them; they render as an outbound link so those videos
+  keep working. When they are gone, the columns can go too.
+- `play_timeline_rounds` / `play_timeline_points` are orphaned mirror tables. Their models
+  are deleted and nothing reads them. Dropping them is a migration nobody has needed yet.
 
 ---
 
@@ -696,22 +664,41 @@ If a resource is private, sensitive, tenant-scoped, or user-owned, assume attack
 
 ## Android App (APK) Mirrors the Mobile Web — STRICT
 
-**The mobile web experience IS the Android app.** There is a native Android app in `mobile/`
-(Capacitor shell, app ID `bh.takeone.app`) that loads the live site (`https://takeone.bh`)
-in a WebView. It is **not** a separate codebase — whatever renders in the mobile web views
-is exactly what users see inside the APK. Therefore, whenever working on the mobile app, the
-web and the APK must be treated as **one deliverable**.
+**The mobile web experience IS the Android app.** The member's app (app ID `bh.takeone.app`)
+loads the live site (`https://takeone.bh`) in a WebView. It is **not** a separate codebase —
+whatever renders in the mobile web views is exactly what users see inside the APK. Therefore,
+whenever working on the mobile app, the web and the APK must be treated as **one deliverable**.
+
+**It is a Flutter build, and it lives with the others.** The Capacitor shell that used to sit
+in `mobile/` was converted on 2026-08-29 and that folder is gone. There is now ONE Flutter
+project — `flutter/TV/` — producing four APKs from one codebase, differing only in application
+id, manifest and a single `--dart-define`:
+
+| Variant | Application id | What it is |
+|---|---|---|
+| `tv` | `bh.takeone.tv` | the wall screen (leanback) |
+| `tab` | `bh.takeone.tab` | the scoring table |
+| `cam` | `bh.takeone.cam` | a camera beside the mat |
+| `app` | `bh.takeone.app` | **the member's phone app** |
+
+Build any of them with `./flutter/TV/build.sh {tv|tab|cam|app} [base-url]`.
+`flutter/TV/lab-app/` is the separate boutcam project.
 
 ### Rules
 1. **Mobile web changes flow to the app automatically — no rebuild needed.** Any change to a mobile Blade view, controller, route, JS, CSS, or backend logic appears in the installed APK the moment it's deployed, because the app loads the live site. Do **not** tell the user to rebuild the APK for content/UI/logic changes.
 2. **Every mobile feature must actually work inside a WebView.** When building a mobile feature, verify it functions in the Android WebView, not just a desktop browser. In particular:
-   - Camera / QR scanning / photo capture use `getUserMedia` — the `CAMERA` permission is already declared in `mobile/android/app/src/main/AndroidManifest.xml`. If a new feature needs another device capability (mic, geolocation beyond what's declared, notifications), **add the matching Android permission there** as part of the same task.
+   - Camera / QR scanning / photo capture use `getUserMedia` — the `CAMERA` permission is already declared in `flutter/TV/android_app/AndroidManifest.xml`. If a new feature needs another device capability (mic, geolocation beyond what's declared, notifications), **add the matching Android permission there** as part of the same task. That file is the member app's manifest template; the hall variants have their own (`android_tv`, `android_tab`, `android_cam`) and must not be edited for a member-app need.
+   - **Uploads and permissions are granted by the shell, not the page.** A WebView opens no file picker and grants no camera unless the host app hands it one — `flutter/TV/lib/src/app/shell.dart` does both (`setOnShowFileSelector`, `setOnPlatformPermissionRequest`). If an upload silently does nothing in the app but works in a browser, that is where to look.
    - Avoid browser-only APIs that Android WebView blocks or handles differently (e.g. certain downloads, `window.open` popups, native file pickers) without a WebView-safe fallback.
-3. **Only rebuild/re-sign the APK when the NATIVE shell changes** — app icon, name, splash, colors, permissions, Capacitor plugins, or the `server.url`. In that case, do the full loop as one unit: edit config → `npx cap sync android` → rebuild (`npm run build:release`) → re-verify the signed artifact. See `mobile/README.md`.
-4. **Keep the shell config in sync with reality.** If the production URL, app name, or brand color changes on the web side, update `mobile/capacitor.config.json` (and re-sync) in the same change — never let the app point at a stale URL or show stale branding.
-5. **Never break a mobile view in a way that only shows up in the app.** Since the APK has no browser chrome (no address bar, no easy refresh), a mobile view that soft-locks or clips off-screen is worse in the app than on web. The existing mobile-forms/safe-area rules below apply doubly here.
+3. **Only rebuild/re-sign the APK when the NATIVE shell changes** — app icon, name, splash, colors, permissions, or the host it points at. Then do the full loop as one unit: edit the variant's manifest or `lib/src/`, rebuild with `./flutter/TV/build.sh app https://takeone.bh`, and re-verify the signed artifact.
+4. **The published app has a version series, and Play enforces it.** `build.sh` sets `VERSION_CODE`/`VERSION_NAME` for the `app` variant only (currently 11 / 1.10, continuing the Capacitor build's 10 / 1.9). **Raise the code on every store release** — Flutter's default of `1` is rejected as a downgrade.
+5. **⚠️ The web still calls a Capacitor-shaped bridge, and the Flutter shell answers to it.** `partials/app-update.blade.php`, `partials/push-register.blade.php` and `auth/mobile/login.blade.php` call `window.Capacitor.Plugins.{App,MqttPush}`. `shell.dart` injects a shim mapping those onto a Kotlin `MethodChannel` (`appInfo`, `mqttStart`, `mqttStop`, `batteryExemption`, `downloadAndInstall`). **Keep the two ends in step:** adding a native call means adding it to the shim, the channel handler in `MainActivity.kt`, and the web that calls it.
+6. **Notifications are native and outlive the WebView.** `MqttNotificationService.java` (carried over unchanged from the Capacitor build) holds one MQTT connection in a foreground service and posts what arrives, authenticating with the session cookie the WebView already holds. It runs with no Flutter engine, so it reads its host from manifest meta-data (`bh.takeone.baseUrl`), which `build.sh` stamps in from the same `BASE_URL` the Dart side is built with — do not let those two drift.
+7. **Never break a mobile view in a way that only shows up in the app.** Since the APK has no browser chrome (no address bar, no easy refresh), a mobile view that soft-locks or clips off-screen is worse in the app than on web. The existing mobile-forms/safe-area rules below apply doubly here.
 
-> Practical summary: **mobile web work = app work.** Build mobile features so they work in the WebView, add any needed native permission alongside, and only touch `mobile/` + rebuild when the native shell itself changes. Full setup, build, and signing details live in `mobile/README.md`.
+> Practical summary: **mobile web work = app work.** Build mobile features so they work in the
+> WebView, add any needed native permission alongside, and only touch `flutter/TV/` + rebuild
+> when the native shell itself changes.
 
 ---
 
@@ -1036,6 +1023,12 @@ Never use a native `<select>`/`<option>`, or a native `<input type="date">` / `t
 Club logos, brand logos, and business/chain logos are supplied as transparent PNGs and MUST be shown as the bare image on a transparent background. Never wrap a logo in a white/filled rounded card, tile, or "chip" (`bg-white`, `p-1`, `shadow`, `ring`, `rounded-2xl overflow-hidden`) — that white square looks broken against non-white/hero/photo backdrops. Use only a sizing container plus the image: `<span class="w-16 h-16 flex-shrink-0"><img class="w-full h-full object-contain" ...></span>`. No background fill, no padding box, no ring/shadow behind the mark. This applies to every logo placement (public club page hero, cards, headers, nav, feed avatars where a real logo is used).
 
 ### 6. Page headers are full-bleed hero bands — never a small rounded card
+
+**THE STYLE IS FIXED. The CONTENT is yours.** Change the title, the chips, the
+owner line, which actions sit on the right, the subject's colour — never the
+classes, the structure, the spacing or the order. Every page on the platform,
+mobile and desktop, opens with this same band, so a reader arriving from
+anywhere already knows where the back button is and what the page is about.
 Every page that introduces a subject (an event, a club, a member, a console) opens with the same **hero band**. It runs edge to edge, the content below rides up over its tail, and the page's identity — chips, title, owner — sits *under* the control row, not squeezed beside a back arrow.
 
 **The pattern** (reference: `personal/{mobile,desktop}/event-show.blade.php` cover, and both `event-manage` consoles):
@@ -1067,15 +1060,82 @@ Every page that introduces a subject (an event, a club, a member, a console) ope
 - **Gradient is `colour → colour+b0`**, not `colour → #1f2937`. The subject's own colour, lightened — not faded to charcoal.
 - **Two soft circles** (`bg-white/10`) for depth. They are part of the pattern, not decoration to drop.
 - **Bottom padding sized to what overlaps it** — `pb-16`/`pb-20` when a card rides up over the tail, less (≈`pb-10`) when the thing straddling the edge is a compact control like a filter tray. The band should end just under what overlaps it, never leave a strip of empty colour between the title and the first element.
-- **Title is `text-2xl font-black` (mobile) / `text-3xl` (desktop)** on its own line, with chips above and the owner line below.
+- **Title is `text-2xl font-black mt-3 leading-tight`** on its own line, with chips above and the owner line below. (Both breakpoints — the desktop band does NOT go bigger.)
 - **Round 40px controls**: `w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center`.
 - **Back is a LABELLED PILL, not a bare arrow** — `inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold`, holding `<i class="bi bi-arrow-left rtl:rotate-180"></i>` plus **the name of where it goes** ("Events", "Event", the club). A lone arrow does not say what you are going back TO, which on a deep screen (a draw inside an event inside a list) is the only thing the reader wants to know. Round 40px controls are for the ACTIONS on the right — console, QR, share — never for back.
 - **Actions cluster on the right**, in this order where they exist: console (`bi-sliders`, only when the viewer may manage) → `<x-qr-code>` (`button-class` set to the round-control classes) → share. Nothing else lives in that row.
 - **The subject's chips carry its identity**, not the control row: a screen's own label ("Draw", "Officials") is a chip in the identity block, not a badge floating opposite the back button.
 
-> **This band is the standard header for EVERY mobile page that introduces a subject** — event, draw, roster, officiating sheet, club, member, console. Reference implementations: `personal/mobile/event-show.blade.php` and `personal/mobile/event-bracket.blade.php` (and `personal/desktop/event-show.blade.php` for the desktop measurements). A new screen copies that band; it does not invent a header of its own.
+> **This band is the standard header for EVERY page that introduces a subject** — event, draw, roster, officiating sheet, club, member, console. Reference implementations: `personal/mobile/event-show.blade.php` and `personal/mobile/event-bracket.blade.php` (and `personal/desktop/event-show.blade.php` for the desktop measurements). A new screen copies that band; it does not invent a header of its own.
 
-**Never** open a page with a small `rounded-2xl p-4` gradient card holding a back arrow and a squeezed title, and never with a gradient stat card standing in for a header. Those are *cards* — fine inside the page, never as its header.
+**The DESKTOP band, verbatim.** Copy this; do not re-derive it. Reference
+implementation: `personal/desktop/event-show.blade.php`.
+
+```blade
+<div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative"
+     style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
+    <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+    <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+    {{-- Inner padding mirrors the page wrapper's, so the hero text stays on the
+         same vertical axis as the content below it at every breakpoint. --}}
+    <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        {{-- Control row: labelled back pill left, round actions right. --}}
+        <div class="flex items-center justify-between gap-2 mb-4">
+            <a href="{{ $backUrl }}"
+               class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors">
+                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ $backLabel }}
+            </a>
+
+            <div class="flex items-center gap-2">
+                {{-- console → QR → share, each: --}}
+                <a href="…" title="…"
+                   class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors">
+                    <i class="bi bi-sliders text-base"></i>
+                </a>
+            </div>
+        </div>
+
+        {{-- Optional state banner, above the identity block. --}}
+        <div x-show="cancelled" x-cloak
+             class="mb-4 rounded-xl bg-white/20 backdrop-blur px-3 py-2 text-xs font-bold flex items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill"></i> {{ __('…') }}
+        </div>
+
+        {{-- Identity: chips, the title, then who it belongs to. --}}
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                <i class="bi {{ $icon }}"></i> {{ $label }}
+            </span>
+        </div>
+        <h1 class="text-2xl font-black mt-3 leading-tight">{{ $title }}</h1>
+        <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+            <i class="bi bi-building"></i>{{ $owner }}
+        </p>
+    </div>
+</div>
+```
+
+**Desktop specifics that differ from the mobile band**, and are not negotiable
+either: the wrapper carries `mb-6` and `shadow-sm` instead of a deep `pb-*` tail
+(nothing rides up over the desktop band); the inner padding is
+`px-4 sm:px-6 lg:px-8 py-6 sm:py-8` so the title sits on the same vertical axis
+as the content beneath; controls use `hover:bg-white/25 transition-colors` where
+mobile uses `m-press`.
+
+**A page with no subject colour** — a platform hub like `/me/videos` rather than
+one club's event — uses the shared `m-hero` mesh instead of an inline gradient,
+and has no back pill, because it is a top-level destination rather than a
+drill-down. Everything else about the band is identical.
+
+**Never** open a page with a small `rounded-2xl p-4` gradient card holding a back arrow and a squeezed title, and never with a gradient stat card standing in for a header. Those are *cards* — fine inside the page, never as its header. Never open one with a bare `<h1>` over the page background either.
+
+**The one standing exception**, because the user asked for it explicitly: the bout
+review screens (`personal/{mobile,desktop}/bout-video.blade.php`) are the
+standalone designs in `drafts/`, used verbatim with their own dark shell and their
+own header. They are outside the app shell entirely. Do not "fix" them to this
+band, and do not treat them as licence to invent a header anywhere else.
 
 ### 7. The bracket icon is always rotated 90° clockwise
 `bi-diagram-3` (and `bi-diagram-3-fill`) is drawn as a **top-down org chart**, but a
@@ -1107,6 +1167,72 @@ and appends `bracket-icon` itself when the name is a `bi-diagram-3*` one.
 **Only for brackets.** The same glyph is used for the family tree, the business/chain
 hierarchy, club affiliations, roles and hall screens — those stay **upright**. Rotating
 them would be a regression, not consistency.
+
+---
+
+### 8. Every bottom sheet opens with a gradient header band
+
+**A sheet is not a white box with a title in it.** Every bottom sheet, modal sheet and
+drawer opens with the same **gradient header band** — a coloured, full-bleed top on the
+sheet itself, carrying the drag handle, an icon tile, the title, its sub-line, and the ✕.
+Reference implementation: `resources/views/components-templates/member/mobile/partials/tournament-detail-sheet.blade.php`.
+
+```blade
+{{-- Header: the subject is the headline, the classification beneath it --}}
+<div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+     style="background: linear-gradient(150deg, #b45309, #d97706b0);">
+    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+    <div class="relative flex items-start gap-3">
+        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+            <i class="bi bi-trophy-fill text-xl"></i>
+        </span>
+        <div class="min-w-0 flex-1">
+            <h3 class="text-lg font-black leading-tight">{{ $title }}</h3>
+            <p class="text-[12px] text-white/85 mt-0.5">{{ $subtitle }}</p>
+        </div>
+        <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
+                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    {{-- Optional chip row: the few facts that belong beside the title --}}
+    <div class="relative mt-3 flex flex-wrap gap-1.5">
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold">…</span>
+    </div>
+</div>
+```
+
+**Non-negotiables**
+- **⚠️ The gradient is `#hex → #hex + b0`.** The `b0` alpha suffix is **hex-only** — writing
+  `hsl(38 92% 50%)b0` produces an INVALID gradient, the whole declaration is dropped, and
+  you get white text on the sheet's grey. This is not theoretical; it shipped once.
+- **The band is inside the sheet's own rounded top** (`rounded-t-3xl` on the band, matching
+  the sheet) and `flex-shrink-0`, so the body below it scrolls and the band never does.
+- **One soft circle** (`bg-white/10`, `-right-8 -top-10 w-36 h-36`) for depth, and the
+  content rows carry `relative` so they sit above it.
+- **Drag handle** (`mx-auto w-10 h-1 rounded-full bg-white/40 mb-3`) on every sheet that
+  rises from the bottom edge — it is what says "this is a sheet".
+- **Title is `text-lg font-black leading-tight`**, its sub-line `text-[12px] text-white/85`.
+  Icon tile is `w-12 h-12 rounded-2xl bg-white/20`; the ✕ is the round 36px control.
+- **Colour comes from the subject**: a club/event colour where one exists, otherwise the
+  section's accent (amber for trophies, `hsl(250 65% 65%)`/`#7c6bf5` for platform actions).
+  Stay on palette — never a one-off colour.
+- **Body and footer keep the mobile-form rules**: `flex-1 overflow-y-auto` body, sticky
+  footer padded with `calc(0.75rem + env(safe-area-inset-bottom))`, sheet teleported to
+  `<body>` (Mobile Forms Must Be Mobile-Friendly).
+- **The band's ✕ is the close control — never repeat it in a footer.** A read-only sheet
+  therefore has NO footer at all: its body is the last element and carries the safe-area
+  padding itself. A footer belongs to a sheet that has something to SUBMIT (Save / Confirm
+  / Pay); a second "Close" button under a scroll is wasted reach, not reassurance.
+
+> This applies to **every** sheet — detail sheets, form sheets, pickers, confirmations —
+> mobile and desktop-modal-as-sheet alike. A new sheet copies this band; it does not invent
+> a header of its own. Editing an existing sheet's header is the one time Design Rule #1's
+> "don't redesign existing UI" yields: bringing a sheet onto this band is a correction, not
+> a redesign.
 
 ---
 
@@ -1374,24 +1500,56 @@ Intentionally **deferred indefinitely** — additional cost not wanted at this s
 
 **Rule:** Every uploaded file must be stored in a clear, organized, entity-based folder structure, and every stored filename must be generated by the application. Never store uploads using their original client filename.
 
-### Folder structure
-Uploads must be grouped by:
-1. owner type
-2. owner identifier
-3. feature area
-4. optional child record identifier where applicable
+### Folder structure — build every path with `App\Support\StoragePath`
 
-Examples:
-- `people/{person_public_id}/profile/`
-- `people/{person_public_id}/attachments/`
-- `people/{person_public_id}/posts/{post_public_id}/`
-- `people/{person_public_id}/documents/`
-- `clubs/{club_public_id}/logo/`
-- `clubs/{club_public_id}/documents/`
-- `clubs/{club_public_id}/posts/{post_public_id}/`
-- `clubs/{club_public_id}/gallery/`
+**Never hand-write a storage path again.** `App\Support\StoragePath` is the single
+source of truth for the layout, and the media layer already goes through it. Every
+path it produces has the same shape:
+
+```
+{owner}/{owner-public-id}/{purpose}/[{child}/{child-id}/]{generated-name}
+```
+
+```
+members/{user-uuid}/profile|documents|payments/{subscription}|posts/{post}
+clubs/{club-slug}/branding|gallery|documents|packages/{id}|products/{id}|posts/{id}
+businesses/{business-slug}/…
+events/{event-uuid}/branding|documents
+events/{event-uuid}/matches/{match-id}/clips/{media-uuid}.mp4     ← a bout's video
+events/{event-uuid}/unassigned/clips/…                            ← filmed with no bout loaded
+challenges/{id}/…      duels/{id}/media/…      platform/{purpose}/…
+cache/hls/{media-uuid}/…        cache/fetched/{media-uuid}/…      ← DERIVED, disposable
+```
+
+Four rules the shape encodes — keep them:
+
+1. **Owner first.** Everything for one member, club or event is one subtree: one
+   place to browse on a NAS, total up, move to another vault, or delete when they
+   leave.
+2. **Public ids, never auto-increment ids**, wherever the entity has one (member =
+   uuid, club = slug, event = uuid). A numeric id is used only where there is no
+   public id yet (a bout, a package) and is safe there because **these paths are
+   never URLs** — media is served by the media file's own uuid through a
+   controller that authorises first.
+3. **Generated names.** A uuid plus a server-decided extension. The uploaded
+   filename is untrusted metadata: keep it in the DB if it is wanted, never on disk.
+4. **Derived files live under `cache/`.** HLS ladders, fetched copies, generated
+   posters. One root, so "delete this to reclaim disk" is always safe and the vault
+   sync knows what never needs to leave this server.
+
+A folder that a human will browse gets a small `meta.json` beside the files
+(`MediaVaults::putMeta()`) — labels only, never a copy of the record. An event
+folder named by a uuid tells somebody standing at a file browser nothing.
 
 Do not dump unrelated uploads into shared flat folders.
+
+> **Legacy folders still exist and are NOT to be moved casually.** `avatars/`,
+> `documents/`, `payment-screenshots/`, `order-proofs/{id}/`, `perks/{slug}/`,
+> `timeline/{slug}/`, `club-products/{id}/`, `packages/`, `achievements/`,
+> `goal-proofs/`, `business-logos/`, `user-posts/`, `images/`, `temp/` predate this
+> and are still read by the code that wrote them. `StoragePath` is the shape
+> everything NEW takes; migrating an old folder is a separate, deliberate change
+> with a verified backup behind it (RULE #1, RULE #2).
 
 ### File naming
 - Never store the original uploaded filename.
@@ -1517,7 +1675,7 @@ These are launch gates that live in the **environment/ops**, not the repo — a 
 
 - **Production env flags (BLOCKER).** The live `.env` must be `APP_ENV=production` + `APP_DEBUG=false` (it was `local`/`true` on `https://takeone.bh`, which leaks a full stack trace + secrets on every error). Also set `LOG_LEVEL=warning` and `LOG_STACK=single,sentry` (so `Log::error()` reaches Sentry). **Re-run `php artisan config:cache` after ANY `.env` change** — caching freezes `env()`.
 - **Warm prod caches on deploy:** `config:cache` + `route:cache` + `event:cache` + `view:cache` — all four now succeed. `view:cache` used to die with `DirectoryNotFoundException` for `vendor/takeone/cropper/src/resources/views`: takeone/cropper's provider registers `__DIR__.'/resources/views'` from `src/`, but ships its views one level up at `resources/views`. `AppServiceProvider::pruneMissingViewPaths()` now drops non-existent paths from every view namespace on `booted()`, so the bad hint is gone before `view:cache` walks it. The published copy at `resources/views/vendor/takeone/` is what resolves at runtime, and still does. **This is a workaround for an upstream package bug** — fix the path in `laravel-image-cropper` and the guard becomes a no-op (keep it; it protects against any package doing the same).
-- **Backups / DR (PARTLY DONE — off-server still a BLOCKER).** `php artisan takeone:backup` snapshots the DB (SQLite `VACUUM INTO` after a WAL checkpoint, so it is consistent under load) plus the upload folders, **verifies each artifact by reading it back**, prunes on a retention window (`BACKUP_RETAIN_DAYS`, never below `BACKUP_KEEP_MINIMUM`) and exits non-zero on any failure. Scheduled nightly at 03:30 in `routes/console.php`; config in `config/backup.php`. ⚠️ **Still required: set `BACKUP_DISK`** to a remote filesystem — until then every copy sits on the same disk as the data and does not survive losing the box (the command warns on every run). Also copy the Android release keystore (`mobile/android/app/takeone-release.jks`, git-ignored) to secure external storage — losing it means the Play Store app can never be updated. Copy the Android release keystore (`mobile/android/app/takeone-release.jks`, git-ignored) to secure external storage — losing it means the Play Store app can never be updated. (`/database/*.sqlite*` is now in `.gitignore` — the DB, its `-wal`/`-shm` sidecars, and `.bak-*` snapshots can never be committed. Nothing sqlite was ever tracked, so no history scrub was needed.)
+- **Backups / DR (PARTLY DONE — off-server still a BLOCKER).** `php artisan takeone:backup` snapshots the DB (SQLite `VACUUM INTO` after a WAL checkpoint, so it is consistent under load) plus the upload folders, **verifies each artifact by reading it back**, prunes on a retention window (`BACKUP_RETAIN_DAYS`, never below `BACKUP_KEEP_MINIMUM`) and exits non-zero on any failure. Scheduled nightly at 03:30 in `routes/console.php`; config in `config/backup.php`. ⚠️ **Still required: set `BACKUP_DISK`** to a remote filesystem — until then every copy sits on the same disk as the data and does not survive losing the box (the command warns on every run). Also **the Android release keystore is a blocker of its own**: it is not in this repository, and the Flutter build reads it from `flutter/TV/android/keystore.properties` (git-ignored, absent here — the build falls back to the debug key and cannot produce a store-acceptable artefact). Put the real keystore and that properties file on the release machine, and copy the keystore to secure external storage — losing it means the Play Store app can never be updated. (`/database/*.sqlite*` is now in `.gitignore` — the DB, its `-wal`/`-shm` sidecars, and `.bak-*` snapshots can never be committed. Nothing sqlite was ever tracked, so no history scrub was needed.)
 - **Mail (MAJOR).** Queued mail had failing jobs (`SendQueuedMailable`) — verification emails silently not sending. Diagnose the Gmail SMTP creds, send a real end-to-end verification, then clear `queue:failed`. Mail is real Gmail SMTP (`smtp.gmail.com:465 ssl`), queued — see the no-Mailpit rule.
 - **Datastore at scale (MAJOR).** Production is SQLite (WAL). Fine for a soft launch, but SQLite is single-writer — under concurrent multi-club writes it throws "database is locked". A ready `mysql` connection already sits in `config/database.php`; migrate before real concurrency. Keep WAL checkpoints healthy (the `-wal` file should not dwarf the DB).
 - **Workers as least-privilege.** Supervisor `queue:work` should run as `www-data`, not `root`.
@@ -1783,6 +1941,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-event-documents>` | Download list for an event's attached files, plus an uploader when the viewer may manage the event. Owns its own Alpine state, upload/delete requests and in-place list patching (No-Reload); dispatches `event-documents-changed` (`{action:'created'\|'deleted', document\|uuid}`). Files are served only via `me.events.documents.download`, which re-checks `EventAccess::visible` per request — the list never holds a storage path, and every server value is rendered with `x-text`/`:href`, never `innerHTML`. Byte-level validation + server-assigned filenames live in `App\Support\DocumentUpload`. | `event` (uuid), `documents`, `canManage`, `color` |
 | `<x-event-section-band>` | Full-bleed dark gradient band that announces a section of the event detail card (About / How the event runs / Divisions / Requirements / Location) and doubles as the divider between them. Two modes: **heading** (icon + title) or **value** (icon + eyebrow + a big value line — pass `value`; this is what the prize band is). Render it as a direct child of the card, **outside** the padded content wrapper, so it meets both edges. `color`/`icon` are whitelisted inside the component (hex + `bi-*`) since they are organiser-supplied and land in a `style` attribute / class name. Used by both `personal/{mobile,desktop}/event-show`. | `color`, `icon` (bi-*), `title`, `value` |
 | `<x-court-screens>` | **Hall screens panel for the event console** — the wall displays showing an event's mats. Lists each paired screen (mat plate, live/last-seen, unpair) and owns the whole pairing flow in a teleported bottom sheet: **scan the QR** (opens the shared `partials/qr-scanner` in hand-back mode via `qr-scan:open` with `{emit:'court-screens:scanned'}` — it returns the value instead of navigating) **or type the 6-character code** printed under it, then pick a mat from selection cards (the mats come from the draw; "Another mat" is the escape hatch). Writes patch in place and other organisers are nudged over `realtime:events` `{action:'screens'}` — a refresh signal, so each console re-fetches what it may see. Rendered only when `EventType::hallScreens()` returns non-null, so a type with no wall boards has no section. **Unpair ≠ revoke:** it unclaims the device so the screen returns to a fresh pairing code (revoking would kill the token and strand a screen the agent can never re-enrol). | `event` (uuid), `mats`, `screens`, `color` |
+| `<x-media-lightbox>` | **Full-screen single-file viewer — black tint, zoom + pan.** Include once per page; open it from any element by adding `data-media-lightbox data-src="…" data-label="…"` (delegated off `document`, so innerHTML-rebuilt rows work), or dispatch `open-media-lightbox` with `{src, label, kind}`. Images get pinch / wheel / double-tap zoom and drag-to-pan and are fitted to the stage on load; a PDF is handed to the browser's own viewer inside the same dark surface. `src` is refused unless it resolves to an http(s) URL. Teleported to `<body>`, safe-area padded, Escape/+/-/0 keys. Used by the member profile's identity documents (mobile + desktop). | `eventName` |
 | `<x-client-paginator>` | Client-side pagination for any list filtered via JS. Renders the container div and injects the `ClientPaginator` JS class (once per page). Instantiate in JS: `new ClientPaginator({ itemsSelector, containerId, perPage, countBadgeId, scrollTargetId, labelSingular, labelPlural, filterFn })` then call `.refresh()` when filters change. Registered in `window._pagers[id]` for inline `onclick` access. | `id` (required), `perPage` (default `20`) |
 
 > **`<x-stat-card>` sparkline alignment rule:** Always pass `:spark-data` from the same domain as the card's value (e.g. revenue card → monthly revenue array, not monthly member counts). When no real time-series exists yet, pass `array_fill(0, 12, 0)` as a flat baseline — never reuse another card's unrelated data array. The component is `flex flex-col` with `mt-auto` on the sparkline, so it always pins to the bottom of the card in equal-height grid rows. Do not remove these classes from the component.
