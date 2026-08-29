@@ -54,7 +54,7 @@
              and the notification service runs with no Flutter engine at all.
              build.sh stamps the URL in. -->
         <meta-data android:name="bh.takeone.variant" android:value="app" />
-        <meta-data android:name="bh.takeone.baseUrl" android:value="https://stage.takeone.bh" />
+        <meta-data android:name="bh.takeone.baseUrl" android:value="https://takeone.bh" />
 
         <activity
             android:name=".MainActivity"

@@ -45,9 +45,40 @@ class Config {
     final parsed = Uri.tryParse(raw);
     if (parsed == null) return null;
 
-    final absolute = parsed.hasScheme ? parsed : base.resolveUri(parsed);
+    var absolute = parsed.hasScheme ? parsed : base.resolveUri(parsed);
+
+    // A code printed on one TAKEONE host has to work when scanned on the other.
+    //
+    // QR codes bake in whichever host generated them: a claim code produced on
+    // takeone.bh is scanned by a screen flashed for stage during a rehearsal,
+    // and the reverse while testing. Honouring the host literally would send a
+    // stage screen to production mid-rehearsal — so for OUR hosts the PATH is
+    // kept and the host is replaced with the one this build serves.
+    if (!trusts(absolute) && _sibling(absolute)) {
+      absolute = base.replace(
+        path: absolute.path,
+        query: absolute.hasQuery ? absolute.query : null,
+        fragment: absolute.hasFragment ? absolute.fragment : null,
+      );
+    }
 
     return trusts(absolute) ? absolute : null;
+  }
+
+  /// Another address for the same product — takeone.bh and stage.takeone.bh.
+  ///
+  /// Compared on the registrable domain, on a dot boundary, so `nottakeone.bh`
+  /// and `takeone.bh.evil.com` are both refused.
+  static bool _sibling(Uri url) {
+    if (!(url.scheme == 'http' || url.scheme == 'https')) return false;
+
+    String root(String host) {
+      final parts = host.toLowerCase().split('.');
+
+      return parts.length <= 2 ? host.toLowerCase() : parts.sublist(parts.length - 2).join('.');
+    }
+
+    return root(url.host) == root(base.host);
   }
 
   /// A wall screen that can be walked to an arbitrary origin is a billboard, so
