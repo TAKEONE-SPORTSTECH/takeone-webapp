@@ -65,12 +65,3 @@ Schedule::command('court:pair --prune')->dailyAt('04:00');
 Schedule::command('media:migrate --auto')->hourly()->withoutOverlapping();
 Schedule::command('media:verify --quiet-when-clean --orphans')->dailyAt('04:30');
 
-/*
-| Live streams, reconciled against the media server.
-|
-| The lifecycle hooks handle the ordinary case — a phone that stops, a phone that
-| loses signal. This covers the one they cannot: the media server restarting
-| mid-broadcast, which would otherwise leave a mat showing as on air forever and,
-| worse, leave the recording of a fought bout sitting on disk unclaimed.
-*/
-Schedule::command('live:reap')->everyFiveMinutes()->withoutOverlapping();

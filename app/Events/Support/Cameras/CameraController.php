@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\EventCamera;
 use App\Models\EventCameraClip;
 use App\Models\EventMatch;
-use App\Models\LiveStream;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -229,52 +228,11 @@ class CameraController extends Controller
         // credential rather than publishing anyway. The word is the same one the
         // config beat carries, so a phone that reads either learns the same
         // thing.
-        if (! $camera->broadcasting) {
-            return response()->json(['error' => 'not_broadcasting'], 409);
-        }
-
-        // One stream per camera, not per mat: two angles on the same court are
-        // two feeds, and firstOrCreate on (event, court, title) keeps a phone
-        // that restarts on the stream it was already using rather than
-        // littering the event with a new one on every launch.
-        $stream = LiveStream::firstOrCreate(
-            [
-                'event_id' => $camera->event_id,
-                'court' => $camera->court,
-                'title' => trim(($camera->label ?: $camera->court).' · angle '.$camera->angle),
-            ],
-            [
-                // Unlisted, never public: a camera pointed at a mat should not
-                // put itself on a public listing without an organiser saying so.
-                'visibility' => 'unlisted',
-                'created_by' => $camera->created_by,
-            ],
-        );
-
-        $stream->reArm();
-
-        // The console asks "what is Mat 1 angle 2 showing?" and must not have to
-        // answer it by matching stream titles back to devices.
-        if ((int) $camera->live_stream_id !== (int) $stream->id) {
-            $camera->forceFill(['live_stream_id' => $stream->id])->saveQuietly();
-        }
-
-        return response()->json([
-            'stream' => $stream->public_id,
-            'token' => $stream->issuePublishToken(),
-            'expires_in' => LiveStream::PUBLISH_TOKEN_TTL_SECONDS,
-            'whip_url' => url('/live-rtc/'.$stream->mediaPath().'/whip'),
-            'whep_url' => url('/live-rtc/'.$stream->mediaPath().'/whep'),
-            'hls_url' => url('/live-hls/'.$stream->mediaPath().'/index.m3u8'),
-            'ice_servers' => array_values(array_filter([
-                config('live.stun_url') ? ['urls' => config('live.stun_url')] : null,
-                config('live.turn_url') ? array_filter([
-                    'urls' => config('live.turn_url'),
-                    'username' => config('live.turn_username'),
-                    'credential' => config('live.turn_credential'),
-                ]) : null,
-            ])),
-        ]);
+        // Live broadcasting was removed from this server: there is no media
+        // plane to publish to, so a credential cannot be issued and a camera
+        // must not be told to start. Recording is unaffected — a camera still
+        // films the bout and files the clip through IngestClipMedia.
+        return response()->json(['error' => 'live_disabled'], 410);
     }
 
     /**

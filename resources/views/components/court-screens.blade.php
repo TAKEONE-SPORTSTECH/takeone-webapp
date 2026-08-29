@@ -79,9 +79,11 @@
         cameraMax: @js((int) $cameraMax),
         camerasUrl: @js(route('me.events.cameras', $event)),
         camerasBase: @js(url('/me/events/'.$event.'/cameras')),
-        liveUrl: @js(route('live.index', $event)),
-        liveBase: @js(url('/live')),
-        liveStoreUrl: @js(route('live.store', $event)),
+        {{-- Live broadcasting was removed from this server. The panel keeps
+             its camera controls, which are about RECORDING. --}}
+        liveUrl: null,
+        liveBase: null,
+        liveStoreUrl: null,
         allowed: @js(array_values($surfaces)),
         eventKey: @js($event),
      })"

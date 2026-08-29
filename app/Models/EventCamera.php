@@ -244,7 +244,9 @@ class EventCamera extends Model
             'on_air' => (bool) $stream?->isLive(),
             'viewers' => $stream?->isLive() ? (int) $stream->current_viewers : null,
             'air_seconds' => $stream?->isLive() ? $stream->duration_seconds : null,
-            'watch_url' => $stream ? route('live.watch', $stream) : null,
+            // Live broadcasting was removed from this server; there is nothing
+            // to watch and no route to name.
+            'watch_url' => null,
             // So the console can tell this camera's own feed apart from a
             // browser one filming the same mat.
             'stream_id' => $stream?->public_id,
