@@ -76,6 +76,7 @@ class _ClipDrawerState extends State<ClipDrawer> {
         child: Column(
           children: [
             _header(total),
+            if (!_selecting) _retentionOffer(),
             Expanded(
               child: widget.clips.isEmpty
                   ? Center(child: Text('NOTHING RECORDED YET', style: Cam.cap(13, color: Cam.paper.withValues(alpha: 0.35))))
@@ -87,6 +88,51 @@ class _ClipDrawerState extends State<ClipDrawer> {
                     ),
             ),
             if (_selecting) _deleteBar(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Offers to clear footage that is already safely on the server.
+  ///
+  /// An OFFER, never a sweep. The operator decides: this pre-selects the
+  /// eligible clips and hands them the normal delete bar, so nothing is removed
+  /// without the same confirmation any other deletion gets.
+  ///
+  /// Clips that were never uploaded are not counted and cannot be selected this
+  /// way — see CameraClip.isExpendable. The footage of a bout that was fought
+  /// once exists in one place until somebody sends it.
+  Widget _retentionOffer() {
+    final stale = widget.clips.where((c) => c.isExpendable).toList();
+
+    if (stale.isEmpty) return const SizedBox.shrink();
+
+    final bytes = stale.fold<int>(0, (sum, c) => sum + (c.bytes ?? 0));
+    final days = CameraClip.keepFor.inDays;
+
+    return InkWell(
+      onTap: () => setState(() {
+        _selecting = true;
+        _selected
+          ..clear()
+          ..addAll(stale.map((c) => c.file));
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        color: Cam.paper.withValues(alpha: 0.06),
+        child: Row(
+          children: [
+            Icon(Icons.auto_delete_outlined, size: 16, color: Cam.paper.withValues(alpha: 0.55)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${stale.length} CLIP${stale.length == 1 ? '' : 'S'} UPLOADED OVER $days DAYS AGO'
+                '${bytes > 0 ? ' · ${_gb(bytes)}' : ''}',
+                style: Cam.cap(11, color: Cam.paper.withValues(alpha: 0.55)),
+              ),
+            ),
+            Text('FREE UP', style: Cam.cap(11, color: Cam.live)),
           ],
         ),
       ),
@@ -412,7 +458,11 @@ class _ClipDrawerState extends State<ClipDrawer> {
     final ok = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
-      builder: (_) => _DeleteDialog(count: clips.length, freed: _gb(bytes)),
+      builder: (_) => _DeleteDialog(
+          count: clips.length,
+          freed: _gb(bytes),
+          notUploaded: clips.where((c) => !c.isSafelyUploaded).length,
+        ),
     );
 
     if (ok != true || !mounted) return;
@@ -437,10 +487,15 @@ class _ClipDrawerState extends State<ClipDrawer> {
 /// deliberate contact, with the fill showing how far through they are, and
 /// releasing early cancels.
 class _DeleteDialog extends StatefulWidget {
-  const _DeleteDialog({required this.count, required this.freed});
+  const _DeleteDialog({required this.count, required this.freed, this.notUploaded = 0});
 
   final int count;
   final String freed;
+
+  /// How many of these have never reached the server. Called out on its own
+  /// line, because for those clips this phone holds the only copy of a bout
+  /// that was fought once.
+  final int notUploaded;
 
   @override
   State<_DeleteDialog> createState() => _DeleteDialogState();
@@ -483,6 +538,14 @@ class _DeleteDialogState extends State<_DeleteDialog> with SingleTickerProviderS
               'clips from the organiser’s console. This cannot be undone.',
               style: Cam.body(14),
             ),
+            if (widget.notUploaded > 0) ...[
+              const SizedBox(height: 10),
+              Text(
+                '${widget.notUploaded} of these ${widget.notUploaded == 1 ? 'has' : 'have'} '
+                'not been uploaded. This phone holds the only copy.',
+                style: Cam.body(14).copyWith(color: Cam.gold),
+              ),
+            ],
             const SizedBox(height: 18),
             Row(
               children: [

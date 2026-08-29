@@ -64,6 +64,34 @@ class CameraClip {
   /// openable at video.takeone.bh.
   String? playVideoKey;
 
+  /// How long an already-uploaded clip is kept on the phone before the drawer
+  /// offers to clear it.
+  ///
+  /// A volunteer's phone fills up over a multi-day championship, and the person
+  /// holding it is the least equipped to work out which files are safe to lose.
+  static const Duration keepFor = Duration(days: 7);
+
+  /// Is this clip's footage definitely on the server?
+  ///
+  /// `playVideoKey` is set from the server's own answer once the bytes have
+  /// landed and been accepted — not when the upload starts, and not by anything
+  /// the phone decides on its own. A clip still `uploading`, one that `failed`,
+  /// and one nobody ever sent are all false here.
+  bool get isSafelyUploaded => playVideoKey != null;
+
+  /// May the drawer offer to delete this to free space?
+  ///
+  /// Two conditions, and the first is not negotiable: the footage exists
+  /// somewhere else. An un-uploaded clip is the ONLY copy of a bout that was
+  /// fought once, so it is never offered, whatever its age or the state of the
+  /// disk. The age is only there so a clip uploaded this morning is still on the
+  /// phone this afternoon, when somebody asks to see it again at the mat.
+  bool get isExpendable {
+    if (!isSafelyUploaded) return false;
+
+    return DateTime.now().difference(endedAt ?? startedAt) > keepFor;
+  }
+
   /// 0..1 while bytes are moving. Not persisted: an upload that was interrupted
   /// resumes from the server's offset, not from a number remembered here.
   double uploadProgress;
