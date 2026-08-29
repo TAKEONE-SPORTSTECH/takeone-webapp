@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config.dart';
 import 'clips.dart';
 import 'kit.dart';
 
@@ -32,7 +33,7 @@ class ClipDrawer extends StatefulWidget {
   final void Function(CameraClip clip) onPlay;
   final void Function(CameraClip clip) onSave;
 
-  /// Send this clip to TAKEONE Play. The server attaches the bout.
+  /// Upload this clip to TAKEONE. The server attaches the bout.
   final void Function(CameraClip clip) onUpload;
 
   /// Given every clip the volunteer chose. One call, so the app can delete a
@@ -285,10 +286,10 @@ class _ClipDrawerState extends State<ClipDrawer> {
                           text: saved ? 'IN GALLERY' : 'NOT SAVED',
                           style: Cam.cap(11, color: saved ? Cam.live : Cam.gold, tracking: 0.06),
                         ),
-                        // …and where it is on its way to Play, if it is going.
+                        // …and whether the footage has reached the platform.
                         if (clip.playVideoKey != null)
                           TextSpan(
-                            text: ' · ON PLAY',
+                            text: ' · UPLOADED',
                             style: Cam.cap(11, color: Cam.live, tracking: 0.06),
                           )
                         else if (clip.playStatus == 'uploading')
@@ -392,13 +393,15 @@ class _ClipDrawerState extends State<ClipDrawer> {
                   color: Cam.live,
                 ),
                 title: Text(
-                  clip.playStatus == 'uploading' ? 'UPLOADING…' : 'UPLOAD TO TAKEONE PLAY',
+                  clip.playStatus == 'uploading' ? 'UPLOADING…' : 'UPLOAD TO TAKEONE',
                   style: Cam.cap(14, color: Cam.live),
                 ),
                 subtitle: Text(
                   clip.matchNumber != null
-                      ? 'Sends the video and the bout: competitors, clubs, result and the timeline.'
-                      : 'This clip is not attached to a bout — it uploads as footage only.',
+                      ? 'Sends the video and the bout — competitors, clubs, result and '
+                          'the timeline — to ${Config.base.host}.'
+                      : 'Not attached to a bout: uploads as footage only, to '
+                          '${Config.base.host}.',
                   style: Cam.body(11),
                 ),
                 onTap: clip.playStatus == 'uploading'
@@ -411,8 +414,12 @@ class _ClipDrawerState extends State<ClipDrawer> {
             else
               ListTile(
                 leading: const Icon(Icons.cloud_done_outlined, color: Cam.live),
-                title: Text('ON TAKEONE PLAY', style: Cam.cap(14, color: Cam.live)),
-                subtitle: Text('video.takeone.bh/videos/${clip.playVideoKey}', style: Cam.body(11)),
+                title: Text('ON TAKEONE', style: Cam.cap(14, color: Cam.live)),
+                // The host this camera is paired to, which is where the footage
+                // actually went. This used to print a video.takeone.bh address —
+                // that platform was disconnected, so the line named somebody
+                // else's box and sent an operator to a page that is not ours.
+                subtitle: Text('Filed on ${Config.base.host}.', style: Cam.body(11)),
               ),
             ListTile(
               leading: const Icon(Icons.delete_outline, color: Cam.rec),

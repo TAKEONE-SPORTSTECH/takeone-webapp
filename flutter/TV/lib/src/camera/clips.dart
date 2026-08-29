@@ -56,12 +56,17 @@ class CameraClip {
   /// bout that was deleted at the mat an hour earlier.
   int? serverId;
 
-  /// Where this clip is on its way to TAKEONE Play: null (never sent),
+  /// Where this clip is on its way to TAKEONE: null (never sent),
   /// `uploading`, `processing` (there, transcoding), `ready`, or `failed`.
+  ///
+  /// The `play` in this field's name is historical — footage used to be handed
+  /// to a separate video platform, which was disconnected. It goes to the host
+  /// this camera is paired to now. Kept as-is because the name is written into
+  /// every clip already stored on every phone in the field.
   String? playStatus;
 
-  /// Play's key for the video, once it exists — this is what makes a row
-  /// openable at video.takeone.bh.
+  /// The platform's key for the video, once it exists — this is what makes a
+  /// row openable on the site the camera uploaded to.
   String? playVideoKey;
 
   /// How long an already-uploaded clip is kept on the phone before the drawer

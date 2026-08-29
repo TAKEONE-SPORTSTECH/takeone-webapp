@@ -5,7 +5,7 @@ import '../config.dart';
 import 'clips.dart';
 import 'recorder.dart';
 
-/// Sending one finished bout to TAKEONE Play, from a phone on hall wifi.
+/// Sending one finished bout to TAKEONE, from a phone on hall wifi.
 ///
 /// It uploads to takeone rather than to the video platform directly, and that is
 /// deliberate: a camera stands unattended in a public hall all day, and it must

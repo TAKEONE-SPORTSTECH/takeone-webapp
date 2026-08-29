@@ -323,8 +323,8 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
     );
 
     // What became of the uploads. The phone's part ends when the last chunk is
-    // accepted; the forward to Play and the transcode happen after that, so the
-    // beat is how a row learns it is on Play and gets its link.
+    // accepted; the transcode happens after that, so the beat is how a row
+    // learns the footage is filed and gets its link.
     final states = beat?['clips'];
 
     if (states is List && mounted) {
@@ -494,7 +494,7 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
     setState(() => _publishing = null);
   }
 
-  /// Send one clip to TAKEONE Play.
+  /// Upload one clip to TAKEONE.
   ///
   /// The phone sends bytes and nothing else: the server it uploads to already
   /// knows which bout this camera was filming, and attaches the competitors,
@@ -531,7 +531,7 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
     await ClipLog.save(_clips);
 
     // The video key arrives on the next config beat, once the server has
-    // forwarded the file and Play has created the video.
+    // stored the file and the platform has created the video.
     if (fault == null) await _sync();
   }
 
