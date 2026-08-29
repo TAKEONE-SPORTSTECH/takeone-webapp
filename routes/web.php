@@ -546,6 +546,12 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
      */
     Route::get('/events/{event:uuid}/bout/{matchNo}/video', [App\Http\Controllers\BoutVideoController::class, 'show'])
         ->whereNumber('matchNo')->name('events.bout.video');
+    // Deleting the footage itself — platform staff only, enforced in the
+    // controller. Throttled like any other destructive write: competition video
+    // cannot be filmed again, so this is the one button on the page with no
+    // undo behind it.
+    Route::delete('/events/{event:uuid}/bout/{matchNo}/video', [App\Http\Controllers\BoutVideoController::class, 'destroyVideo'])
+        ->whereNumber('matchNo')->name('events.bout.video.destroy')->middleware('throttle:admin-write');
     Route::post('/events/{event:uuid}/bout/{matchNo}/notes', [App\Http\Controllers\BoutVideoController::class, 'storeNote'])
         ->whereNumber('matchNo')->name('events.bout.notes.store')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/bout/{matchNo}/notes/{note:uuid}', [App\Http\Controllers\BoutVideoController::class, 'updateNote'])

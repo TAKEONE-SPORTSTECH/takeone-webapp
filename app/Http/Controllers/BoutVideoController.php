@@ -268,6 +268,59 @@ class BoutVideoController extends Controller
         ]);
     }
 
+    /**
+     * Delete a bout's footage. Platform staff only.
+     *
+     * Not an organiser's button and not a coach's: a club admin can already
+     * remove a bout's video from view by other means, and competition footage
+     * is the one thing on this platform that cannot be regenerated — the fight
+     * happened once. So the control belongs to the person who answers for the
+     * platform, and nobody else sees it.
+     *
+     * Bytes first, row second, through MediaVaults: the source file, the HLS
+     * ladder built from it, the cached local copy and the folders they leave
+     * behind, and only then the media row. A row deleted before its bytes is
+     * how a vault fills with footage nothing points at any more.
+     *
+     * The recording row is kept when it still carries an outbound `play_url` —
+     * a handful of bouts were published to the old video platform before the
+     * split, and those links are all that is left of them. A husk with neither
+     * media nor link is removed, because a gallery entry that plays nothing is
+     * worse than no entry.
+     */
+    public function destroyVideo(Request $request, ClubEvent $event, int $matchNo): JsonResponse
+    {
+        $me = Auth::user();
+        $match = $this->boutOr404($event, $matchNo);
+
+        // Deliberately not mayWatch/mayAnnotate. This is the one action on the
+        // page that destroys something nobody can film again.
+        abort_unless($me && $me->hasRole('super-admin'), 403);
+
+        $vaults = app(\App\Media\MediaVaults::class);
+        $deleted = 0;
+
+        foreach (\App\Models\EventRecording::where('match_id', $match->id)->with('mediaFile')->get() as $recording) {
+            if ($recording->mediaFile) {
+                $vaults->delete($recording->mediaFile);
+                $deleted++;
+            }
+
+            $recording->refresh();
+
+            if (blank($recording->play_url)) {
+                $recording->delete();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'deleted' => $deleted,
+            'message' => __('events.bout_video_deleted'),
+            'redirect' => route('me.events.gallery', ['event' => $event->uuid]),
+        ]);
+    }
+
     public function destroyNote(Request $request, ClubEvent $event, int $matchNo, BoutCoachNote $note): JsonResponse
     {
         $me = Auth::user();
@@ -502,6 +555,10 @@ class BoutVideoController extends Controller
              * bounce off the event's own guard and land on the home page. They
              * go back to their own videos instead, which is where they came from.
              */
+            // Only when there is footage to remove AND the viewer answers for the
+            // platform. The view never decides this for itself.
+            'may_delete_video' => (bool) (Auth::user()?->hasRole('super-admin')) && $recording !== null,
+            'delete_video_url' => route('me.events.bout.video.destroy', ['event' => $event->uuid, 'matchNo' => $matchNo]),
             'gallery_url' => $this->access->visible($event, Auth::user())
                 ? route('me.events.gallery', ['event' => $event->uuid])
                 : route('me.videos'),

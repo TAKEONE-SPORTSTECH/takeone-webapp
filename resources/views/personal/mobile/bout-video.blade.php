@@ -43,7 +43,98 @@
      the video pauses, which is when somebody actually wants it. */
   .player.playing .play-btn{opacity:0;transform:translate(-50%,-50%) scale(.85);pointer-events:none}
 
-  /* ── The walk-on ─────────────────────────────────────────────────────────
+  /* Deleting the footage. Platform staff only — the button is not rendered for
+   anyone else, and the endpoint refuses them regardless of what is rendered.
+
+   This screen is one of the standalone review designs: it has its own shell and
+   does NOT load the app's Alpine, its toast container or the shared confirm
+   dialog component. So
+   the confirmation is built here, in this page's own language — what it must not be is
+   a native confirm(), which the project bans outright and which would look like
+   somebody else's browser sitting on top of the bout.
+
+   Two steps on purpose: this is the one control on the page with nothing behind
+   it. A bout is filmed once. */
+(function(){
+  const btn = document.getElementById('delVideo');
+  if (!btn) return;
+
+  function ask(){
+    return new Promise(resolve => {
+      const wrap = document.createElement('div');
+      wrap.className = 'confirm-wrap';
+      wrap.innerHTML =
+        '<div class="confirm-box" role="dialog" aria-modal="true">' +
+          '<div class="confirm-title">' + @js(__('events.bout_video_delete_title')) + '</div>' +
+          '<div class="confirm-msg">' + @js(__('events.bout_video_delete_warning')) + '</div>' +
+          '<div class="confirm-row">' +
+            '<button class="confirm-no">' + @js(__('shared.cancel')) + '</button>' +
+            '<button class="confirm-yes">' + @js(__('events.bout_video_delete_confirm')) + '</button>' +
+          '</div>' +
+        '</div>';
+
+      function close(answer){
+        document.removeEventListener('keydown', onKey);
+        wrap.remove();
+        resolve(answer);
+      }
+      function onKey(e){ if (e.key === 'Escape') close(false); }
+
+      wrap.querySelector('.confirm-no').onclick = () => close(false);
+      wrap.querySelector('.confirm-yes').onclick = () => close(true);
+      wrap.addEventListener('click', e => { if (e.target === wrap) close(false); });
+      document.addEventListener('keydown', onKey);
+
+      document.body.appendChild(wrap);
+      wrap.querySelector('.confirm-yes').focus();
+    });
+  }
+
+  function say(msg){
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._h);
+    t._h = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  btn.addEventListener('click', async function(){
+    if (!await ask()) return;
+
+    btn.disabled = true;
+
+    try {
+      const res = await fetch(btn.dataset.url, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.success) {
+        say(data.message || @js(__('events.bout_video_delete_failed')));
+        btn.disabled = false;
+        return;
+      }
+
+      say(data.message);
+
+      // The thing this page exists to show is gone, so staying on it would be a
+      // page about nothing. Back to the gallery it came from.
+      setTimeout(() => { window.location.href = data.redirect; }, 800);
+    } catch (e) {
+      say(@js(__('events.bout_video_delete_failed')));
+      btn.disabled = false;
+    }
+  });
+})();
+
+/* ── The walk-on ─────────────────────────────────────────────────────────
      Five seconds of who is fighting, before the footage. Both corners come in
      from their own side, the VS lands between them, and it gets out of the way
      on its own — or sooner, from the skip. */
@@ -62,6 +153,21 @@
   .vs-word{font-family:'Archivo',sans-serif;font-weight:900;font-size:31px;line-height:1;color:#e9c46a;text-shadow:0 0 26px rgba(233,196,106,.45)}
   .vs-meta{font-family:'Archivo',sans-serif;font-size:8.5px;font-weight:800;letter-spacing:1.5px;color:var(--ink-2);text-transform:uppercase;text-align:center;line-height:1.5}
   .vs-skip{position:absolute;top:10px;right:10px;z-index:32;display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.55);color:var(--ink);font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;backdrop-filter:blur(6px);letter-spacing:.3px}
+  .del-btn{position:absolute;top:10px;right:10px;z-index:21;display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;border:1px solid rgba(230,30,30,.45);background:rgba(30,0,0,.6);color:#ff8080;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;backdrop-filter:blur(6px);letter-spacing:.3px}
+  /* Shares the corner with the back button, so it steps aside for the
+     intro and for fullscreen exactly as that one does. */
+  .player.intro .del-btn{opacity:0;pointer-events:none}
+  .player.fs .del-btn,.player.fs-rot .del-btn{display:none}
+  /* The confirmation this page builds for itself — it has no app shell to
+     borrow one from, and a native confirm() is banned and would look like
+     somebody else's browser sitting on the bout. */
+  .confirm-wrap{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.72);backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px}
+  .confirm-box{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line-2);border-radius:14px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .confirm-title{font-family:'Archivo',sans-serif;font-weight:900;font-size:15px;color:var(--ink);margin-bottom:8px}
+  .confirm-msg{font-size:12.5px;line-height:1.55;color:var(--ink-2);margin-bottom:18px}
+  .confirm-row{display:flex;gap:9px;justify-content:flex-end}
+  .confirm-row button{font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
+  .confirm-row .confirm-yes{background:var(--red);border-color:var(--red);color:#fff}
   /* The intro owns the top-right corner while it is up, so the two do not stack. */
   .player.intro .back-btn{opacity:0;pointer-events:none}
   @keyframes vsInA{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
@@ -249,6 +355,11 @@
         </div>
       </div>
       <button class="vs-skip" id="vsSkip">{{ __('events.bout_video_skip') }} &#8250;</button>
+@endif
+@if ($may_delete_video)
+        {{-- Platform staff only. The controller re-checks; this just decides
+             whether anyone is shown a button that destroys footage. --}}
+        <button class="del-btn" id="delVideo" data-url="{{ $delete_video_url }}">&#128465; {{ __('events.bout_video_delete') }}</button>
 @endif
       <button class="fs-hl-btn" id="fsHlBtn">&#9776; Highlights</button>
       <div class="toast" id="toast"></div>
