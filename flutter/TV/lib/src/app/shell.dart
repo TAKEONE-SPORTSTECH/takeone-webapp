@@ -267,7 +267,20 @@ class _AppShellState extends State<AppShell> {
                       setState(() => _offline = false);
                       controller.loadRequest(Config.appHome);
                     })
-                  : WebViewWidget(controller: controller),
+                  : WebViewWidget.fromPlatformCreationParams(
+                      // Hybrid composition: the real Android WebView is placed in the
+                      // view hierarchy instead of being rendered into a Flutter texture.
+                      //
+                      // The texture path composites every scrolled frame through Flutter,
+                      // so a fling arrives a frame late and the page stutters — the same
+                      // page that scrolls perfectly in the phone's own browser. Under
+                      // hybrid composition the WebView scrolls itself, on the Android UI
+                      // thread, with its own fling physics.
+                      params: AndroidWebViewWidgetCreationParams(
+                        controller: controller.platform,
+                        displayWithHybridComposition: true,
+                      ),
+                    ),
         ),
       ),
     );
