@@ -90,6 +90,14 @@ class BoutVideoController extends Controller
          * only the values change.
          */
         return view($isMobile ? 'personal.mobile.bout-video' : 'personal.desktop.bout-video', [
+            // Only when there is footage to remove AND the viewer answers for
+            // the platform. The view never decides this for itself, and the
+            // endpoint re-checks regardless of what was rendered.
+            'may_delete_video' => (bool) Auth::user()?->hasRole('super-admin') && $recording !== null,
+            'delete_video_url' => route('me.events.bout.video.destroy', [
+                'event' => $event->uuid,
+                'matchNo' => $matchNo,
+            ]),
             'rounds' => $this->roundsPayload($timeline),
             'reviews' => $this->reviewsPayload($notes),
             'officials' => $this->officialsPayload($event),
@@ -555,10 +563,6 @@ class BoutVideoController extends Controller
              * bounce off the event's own guard and land on the home page. They
              * go back to their own videos instead, which is where they came from.
              */
-            // Only when there is footage to remove AND the viewer answers for the
-            // platform. The view never decides this for itself.
-            'may_delete_video' => (bool) (Auth::user()?->hasRole('super-admin')) && $recording !== null,
-            'delete_video_url' => route('me.events.bout.video.destroy', ['event' => $event->uuid, 'matchNo' => $matchNo]),
             'gallery_url' => $this->access->visible($event, Auth::user())
                 ? route('me.events.gallery', ['event' => $event->uuid])
                 : route('me.videos'),
