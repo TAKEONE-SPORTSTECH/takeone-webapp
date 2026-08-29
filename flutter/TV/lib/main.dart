@@ -32,7 +32,14 @@ import 'src/theme.dart';
 /// Plus one thing worth keeping from the native build: it remembers the board
 /// it was paired to, so a power cut brings the screen back as itself instead of
 /// asking an organiser to pair it again mid-competition.
-void main() {
+void main() async {
+  // The host this device works against is remembered, because the token a
+  // camera enrolled with belongs to the server that issued it. Restored before
+  // anything reads Config.base, or a box that was walked to the other host comes
+  // back authenticating against the wrong one.
+  WidgetsFlutterBinding.ensureInitialized();
+  await Config.restore();
+
   runApp(const TakeOneScreen());
 }
 

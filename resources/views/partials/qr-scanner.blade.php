@@ -182,17 +182,22 @@
                     const u = new URL(value, window.location.origin);
                     if (u.protocol === 'http:' || u.protocol === 'https:') {
                         // A code printed on one TAKEONE host has to work when
-                        // scanned on the other. A club's poster is generated on
-                        // takeone.bh and then scanned on stage.takeone.bh during
-                        // a rehearsal, and the reverse while testing — the QR
-                        // bakes in whichever host generated it, so honouring it
-                        // literally would throw an operator onto production
-                        // mid-rehearsal, signed out and looking at live data.
+                        // scanned on the other, and it is FOLLOWED to the host
+                        // that printed it.
                         //
-                        // So for OUR hosts we keep the path and stay where the
-                        // scanner already is.
+                        // This used to keep the path and stay on the current
+                        // host. That reads as the safer choice and is not: a
+                        // pairing code is six characters in ONE host's database,
+                        // a club slug and an event uuid likewise, so re-pointing
+                        // the path at the other server produces a confident 404
+                        // — the scan appears to work and then finds nothing.
+                        //
+                        // The QR is the authority on which environment it
+                        // belongs to. `takeoneIsOwnHost` still bounds this to
+                        // our own hostnames, so a scan can no more leave the
+                        // platform than it could before.
                         if (window.takeoneIsOwnHost(u.hostname)) {
-                            window.location.href = u.pathname + u.search + u.hash;
+                            window.location.href = u.href;
                             return;
                         }
 

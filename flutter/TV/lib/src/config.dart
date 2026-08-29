@@ -1,12 +1,15 @@
 /// Where this television is pointed, and what it is allowed to render.
 ///
-/// Both are compile-time, not runtime: a screen bolted to a wall has no
-/// keyboard, so there is no settings screen to get wrong — you flash the box
-/// with the URL it should live at.
+/// The host it is FLASHED with is compile-time: a screen bolted to a wall has no
+/// keyboard, so there is no settings screen to get wrong.
 ///
 ///   flutter build apk --release \
 ///     --dart-define=TAKEONE_BASE_URL=https://takeone.bh
+///
+/// The host it is WORKING against can move, once, to a sibling — see [adopt].
 library;
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Config {
   const Config._();
@@ -18,7 +21,76 @@ class Config {
     defaultValue: 'https://stage.takeone.bh',
   );
 
-  static Uri get base => Uri.parse(baseUrlRaw);
+  /// The host this build was flashed with. Never changes, and is the anchor
+  /// every adoption is checked against.
+  static final Uri built = Uri.parse(baseUrlRaw);
+
+  static Uri? _adopted;
+
+  /// The host this device is actually working against right now.
+  static Uri get base => _adopted ?? built;
+
+  static const String _hostKey = 'takeone.host';
+
+  /// Work against the host a scanned code came from.
+  ///
+  /// A pairing code is six characters in ONE host's database. Re-pointing it at
+  /// the host this box was flashed with — which is what this used to do — meant
+  /// the code was accepted and then never found, because the row lives on the
+  /// other server. So the code decides the environment: scan production's QR on
+  /// a stage-flashed camera and the camera works against production.
+  ///
+  /// The move is only ever between OUR OWN hosts. It is checked against [built],
+  /// not against the current base, so no chain of adoptions can walk this device
+  /// off the registrable domain it was flashed with.
+  ///
+  /// Remembered, because the token a camera enrols with belongs to the host that
+  /// issued it: after a power cut the device has to come back to the same server
+  /// or it authenticates against the wrong one.
+  static void adopt(Uri url) {
+    if (!adoptable(url)) return;
+
+    final origin = _origin(url);
+    if (origin == base) return;
+
+    _adopted = origin;
+
+    // Fire-and-forget: the switch has to be visible to the very next call, and
+    // a failed write costs a re-scan rather than a wrong host.
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setString(_hostKey, origin.toString()))
+        .catchError((_) => false);
+  }
+
+  /// Restores the adopted host. Call once at startup, before anything reads
+  /// [base] — a camera that comes back on the wrong host has a token the server
+  /// will refuse.
+  static Future<void> restore() async {
+    try {
+      final saved = (await SharedPreferences.getInstance()).getString(_hostKey);
+      if (saved == null) return;
+
+      final url = Uri.tryParse(saved);
+      if (url != null && adoptable(url)) _adopted = _origin(url);
+    } catch (_) {
+      // No stored preference is the normal first-run case, and an unreadable one
+      // is not worth failing to start over: the build's own host still works.
+    }
+  }
+
+  /// Back to the host this box was flashed with.
+  static Future<void> forget() async {
+    _adopted = null;
+
+    try {
+      await (await SharedPreferences.getInstance()).remove(_hostKey);
+    } catch (_) {}
+  }
+
+  /// Scheme, host and port — never a path. What is remembered is an ORIGIN, so
+  /// a scanned path can never become part of where this device lives.
+  static Uri _origin(Uri url) =>
+      Uri(scheme: url.scheme, host: url.host, port: url.hasPort ? url.port : null);
 
   /// The one address a screen is pointed at. Everything else — enrolling, the
   /// pairing code, the QR, noticing it has been claimed, and going to the board
@@ -45,21 +117,15 @@ class Config {
     final parsed = Uri.tryParse(raw);
     if (parsed == null) return null;
 
-    var absolute = parsed.hasScheme ? parsed : base.resolveUri(parsed);
+    final absolute = parsed.hasScheme ? parsed : base.resolveUri(parsed);
 
     // A code printed on one TAKEONE host has to work when scanned on the other.
     //
-    // QR codes bake in whichever host generated them: a claim code produced on
-    // takeone.bh is scanned by a screen flashed for stage during a rehearsal,
-    // and the reverse while testing. Honouring the host literally would send a
-    // stage screen to production mid-rehearsal — so for OUR hosts the PATH is
-    // kept and the host is replaced with the one this build serves.
-    if (!trusts(absolute) && _sibling(absolute)) {
-      absolute = base.replace(
-        path: absolute.path,
-        query: absolute.hasQuery ? absolute.query : null,
-        fragment: absolute.hasFragment ? absolute.fragment : null,
-      );
+    // QR codes bake in whichever host generated them, and the pairing code they
+    // carry exists in that host's database and nowhere else. So the code is
+    // followed to the host that issued it, and this device moves with it.
+    if (!trusts(absolute) && adoptable(absolute)) {
+      adopt(absolute);
     }
 
     return trusts(absolute) ? absolute : null;
@@ -68,8 +134,10 @@ class Config {
   /// Another address for the same product — takeone.bh and stage.takeone.bh.
   ///
   /// Compared on the registrable domain, on a dot boundary, so `nottakeone.bh`
-  /// and `takeone.bh.evil.com` are both refused.
-  static bool _sibling(Uri url) {
+  /// and `takeone.bh.evil.com` are both refused. Anchored on [built]: what this
+  /// device may be walked to is fixed when it is flashed, not by where it has
+  /// already been walked.
+  static bool adoptable(Uri url) {
     if (!(url.scheme == 'http' || url.scheme == 'https')) return false;
 
     String root(String host) {
@@ -78,7 +146,7 @@ class Config {
       return parts.length <= 2 ? host.toLowerCase() : parts.sublist(parts.length - 2).join('.');
     }
 
-    return root(url.host) == root(base.host);
+    return root(url.host) == root(built.host);
   }
 
   /// A wall screen that can be walked to an arbitrary origin is a billboard, so
