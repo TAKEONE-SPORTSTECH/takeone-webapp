@@ -39,7 +39,7 @@ class AffiliationMediaUploadTest extends TestCase
 
         $this->assertTrue($res['success']);
         $path = $res['path'];
-        $this->assertStringContainsString("people/{$member->uuid}/affiliations/{$aff->id}/media/", $path);
+        $this->assertStringContainsString("members/{$member->uuid}/affiliations/{$aff->id}/media/", $path);
         Storage::disk('public')->assertExists($path);
 
         // Re-encoded (webp when the GD build supports it, else jpg) — never the raw png.

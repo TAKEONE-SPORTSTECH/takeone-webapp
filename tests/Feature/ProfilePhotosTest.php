@@ -45,7 +45,7 @@ class ProfilePhotosTest extends TestCase
         $this->assertSame($newest->path, $user->fresh()->profile_picture);
 
         // Stored under the member's own folder, with a server-generated name.
-        $this->assertStringStartsWith("people/{$user->uuid}/photos/", $newest->path);
+        $this->assertStringStartsWith("members/{$user->uuid}/photos/", $newest->path);
         Storage::disk('public')->assertExists($newest->path);
     }
 

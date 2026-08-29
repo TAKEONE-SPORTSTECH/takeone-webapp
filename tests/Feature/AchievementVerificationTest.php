@@ -267,7 +267,10 @@ class AchievementVerificationTest extends TestCase
 
         $t = TournamentEvent::where('user_id', $member->id)->first();
         $this->assertNotNull($t->evidence_path);
-        $this->assertStringStartsWith('people/', $t->evidence_path);
+        // One root for everything a member owns: `members/{uuid}/…`. This used
+        // to assert `people/`, the second name the same folder went by before
+        // the two were consolidated.
+        $this->assertStringStartsWith('members/', $t->evidence_path);
     }
 
     // ---- hero tally split ---------------------------------------------------

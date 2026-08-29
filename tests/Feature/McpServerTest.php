@@ -527,6 +527,144 @@ class McpServerTest extends TestCase
         return [$event, $organiser->fresh(), $category->fresh()];
     }
 
+    /* ──────────────────────────────────────────────────────────────────
+     | Video: the event gallery and one bout's footage
+     ────────────────────────────────────────────────────────────────── */
+
+    /**
+     * Attach a real-looking recording to the first bout of a drawn championship,
+     * plus an officiating log the timeline is derived from.
+     */
+    private function filmFirstBout(\App\Models\ClubEvent $event): \App\Models\EventMatch
+    {
+        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match->forceFill(['a_corner' => 'red', 'b_corner' => 'blue', 'court' => '1'])->save();
+
+        $file = \App\Models\MediaFile::create([
+            'kind' => 'clip', 'rel_path' => 'events/x/matches/1/clips/a.mp4',
+            'hls_rel_path' => 'cache/hls/a', 'original_name' => 'bout.mp4',
+            'mime' => 'video/mp4', 'bytes' => 1024, 'duration_seconds' => 180,
+            'width' => 1920, 'height' => 1080, 'status' => \App\Models\MediaFile::STATUS_READY,
+            'meta' => ['event_id' => $event->id], 'created_by' => $event->created_by,
+        ]);
+
+        $anchor = now()->startOfMinute();
+
+        \App\Models\EventRecording::create([
+            'event_id' => $event->id, 'match_id' => $match->id, 'court' => '1', 'angle' => 'main',
+            'anchor_at' => $anchor, 'started_at' => $anchor, 'ended_at' => $anchor->copy()->addSeconds(180),
+            'media_file_id' => $file->id, 'status' => \App\Models\EventRecording::STATUS_LINKED,
+        ]);
+
+        // Two points at the SAME instant — a simultaneous exchange, which the
+        // timeline must collapse into one moment carrying the score after both.
+        foreach ([
+            ['s' => 1, 'off' => 10, 'side' => 'a', 'p' => 1, 'a' => 1, 'b' => 0],
+            ['s' => 2, 'off' => 10, 'side' => 'b', 'p' => 1, 'a' => 1, 'b' => 1],
+            ['s' => 3, 'off' => 40, 'side' => 'b', 'p' => 3, 'a' => 1, 'b' => 4],
+        ] as $row) {
+            \Illuminate\Support\Facades\DB::table('event_match_events')->insert([
+                'event_id' => $event->id, 'match_id' => $match->id, 'court' => '1',
+                'sport' => $event->sport, 'command' => 'point',
+                'payload' => json_encode(['round' => 1]), 'side' => $row['side'], 'points' => $row['p'],
+                'score_a' => $row['a'], 'score_b' => $row['b'],
+                'occurred_at' => $anchor->copy()->addSeconds($row['off'])->toDateTimeString(),
+                'sequence' => $row['s'], 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        return $match->fresh();
+    }
+
+    public function test_list_event_videos_groups_filmed_bouts_by_division(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+        $this->filmFirstBout($event);
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventVideosTool::class, ['event' => $event->uuid]);
+
+        $this->assertSame(1, $result['filmed_bouts']);
+        $this->assertSame('Senior Men -58 kg', $result['divisions'][0]['division']);
+        $this->assertSame(1, $result['divisions'][0]['bouts'][0]['angles']);
+    }
+
+    public function test_list_event_videos_hides_an_event_the_user_cannot_see(): void
+    {
+        [$event] = $this->drawnChampionship();
+        $this->filmFirstBout($event);
+
+        $outsider = $this->createUser();
+        $otherClub = $this->createClub($outsider, ['country' => 'BH']);
+        $outsider->memberClubs()->syncWithoutDetaching([$otherClub->id => ['status' => 'active']]);
+        $this->actingAs($outsider->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventVideosTool::class, ['event' => $event->uuid]);
+
+        $this->assertStringContainsString('Event not found', $result['error']);
+    }
+
+    public function test_get_bout_video_derives_the_timeline_from_the_officiating_log(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+        $match = $this->filmFirstBout($event);
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\GetBoutVideoTool::class, [
+            'event' => $event->uuid, 'match_no' => $match->match_no,
+        ]);
+
+        $this->assertTrue($result['timeline']['anchored']);
+        // Three log rows, but the two at the same instant are ONE moment.
+        $this->assertCount(2, $result['timeline']['moments']);
+
+        $exchange = $result['timeline']['moments'][0];
+        $this->assertSame('both', $exchange['side']);
+        // The score AFTER the whole exchange, not after half of it.
+        $this->assertSame(1, $exchange['score_red']);
+        $this->assertSame(1, $exchange['score_blue']);
+
+        $this->assertSame(1, $result['timeline']['moments'][1]['score_red']);
+        $this->assertSame(4, $result['timeline']['moments'][1]['score_blue']);
+    }
+
+    public function test_get_bout_video_lets_an_athlete_reach_their_own_archived_bout(): void
+    {
+        [$event] = $this->drawnChampionship();
+        $match = $this->filmFirstBout($event);
+
+        // The hardest case: internal scope AND archived, so EventAccess::visible
+        // says no — but the fighter still reaches their own bout.
+        $event->forceFill(['scope' => 'internal', 'is_archived' => true])->save();
+
+        $athlete = \App\Models\ClubEventRegistration::find($match->a_competitor_id)->user;
+        $this->actingAs($athlete->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\GetBoutVideoTool::class, [
+            'event' => $event->uuid, 'match_no' => $match->match_no,
+        ]);
+
+        $this->assertSame($match->match_no, $result['bout']['match_no']);
+    }
+
+    public function test_get_bout_video_refuses_someone_who_neither_fought_nor_can_see_the_event(): void
+    {
+        [$event] = $this->drawnChampionship();
+        $match = $this->filmFirstBout($event);
+        $event->forceFill(['scope' => 'internal'])->save();
+
+        $outsider = $this->createUser();
+        $otherClub = $this->createClub($outsider, ['country' => 'BH']);
+        $outsider->memberClubs()->syncWithoutDetaching([$otherClub->id => ['status' => 'active']]);
+        $this->actingAs($outsider->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\GetBoutVideoTool::class, [
+            'event' => $event->uuid, 'match_no' => $match->match_no,
+        ]);
+
+        $this->assertStringContainsString('Bout not found', $result['error']);
+    }
+
     public function test_list_events_returns_open_events_and_hands_out_the_uuid(): void
     {
         [$event, $organiser] = $this->drawnChampionship();
