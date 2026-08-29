@@ -1163,6 +1163,7 @@ return [
     'event_screens_unpair_confirm' => 'إلغاء إقران هذه الشاشة؟',
     'event_screens_unpair_body' => 'ستتوقف عن عرض هذه الفعالية وتعود إلى رمز الإقران، جاهزة لبساط آخر.',
     'event_screens_code_spent' => 'تم استخدام هذا الرمز بالفعل — الشاشة مقترنة.',
+    'event_screens_other_fleet' => 'هذه الشاشة مُهيّأة لرياضة أخرى، ولا يمكن توجيهها إلى لوحة هذه البطولة. افتح على الشاشة نفسها takeone.bh/screen ثم اقرن الرمز الجديد الذي تعرضه.',
     'event_screens_code_needed' => 'امسح شاشة، أو اكتب الرمز الظاهر عليها.',
     'event_screens_mat_needed' => 'اختر البساط الذي تعرضه هذه الشاشة.',
     'event_manage_documents' => 'المستندات',

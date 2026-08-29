@@ -1165,6 +1165,7 @@ return [
     'event_screens_unpair_confirm' => 'Unpair this screen?',
     'event_screens_unpair_body' => 'It stops showing this event and goes back to its pairing code, ready for another mat.',
     'event_screens_code_spent' => 'That code has already been used — the screen is paired.',
+    'event_screens_other_fleet' => 'That screen is set up for a different sport, so it cannot be sent to this event\'s board. On the screen itself, open takeone.bh/screen and pair the new code it shows.',
     'event_screens_code_needed' => 'Scan a screen, or type the code shown on it.',
     'event_screens_mat_needed' => 'Choose which mat this screen shows.',
     'event_manage_documents' => 'Documents',

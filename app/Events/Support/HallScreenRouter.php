@@ -34,6 +34,7 @@ class HallScreenRouter
     private const OWNERS = [
         'taekwondo' => \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class,
         'karate' => \App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class,
+        'bjj' => \App\Events\Sports\BrazilianJiuJitsu\Tournament\HallScreen\HallScreenController::class,
     ];
 
     public function screens(Request $request, ClubEvent $event)
@@ -85,7 +86,43 @@ class HallScreenRouter
 
         // A device already in this event's own fleet — a screen that enrolled with
         // the package directly.
-        return $this->to($event)->pair($request, $event);
+        $own = $this->to($event)->pair($request, $event);
+
+        if ($own->getStatusCode() < 400) {
+            return $own;
+        }
+
+        /*
+         * Not this sport's screen — but is it ANOTHER sport's?
+         *
+         * A screen that enrolled through a package's own door lives in that
+         * package's table and polls that package's status endpoint, which
+         * answers `{claimed}` and nothing else. There is nowhere to tell it "go
+         * to a different sport's board", so it genuinely cannot be adopted here
+         * — but "that code does not match a screen waiting to be paired" is a
+         * lie about why, and it sent somebody hunting a spent code that was
+         * sitting on the wall in front of them, unspent.
+         *
+         * So say the actual thing: this screen belongs to another fleet, and the
+         * way out is to open it at the sport-neutral address, where the EVENT
+         * decides which board it becomes.
+         */
+        $code = (string) $request->input('code');
+
+        foreach (self::DEVICES as $sport => $model) {
+            if ($sport === (string) $event->sport || ! class_exists($model)) {
+                continue;
+            }
+
+            if ($model::pairable($code)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('personal.event_screens_other_fleet'),
+                ], 422);
+            }
+        }
+
+        return $own;
     }
 
     /**
@@ -233,6 +270,7 @@ class HallScreenRouter
     private const SURFACES = [
         'taekwondo' => ['bout', 'queue', 'control'],
         'karate' => ['bout', 'queue', 'control'],
+        'bjj' => ['bout', 'queue', 'control'],
     ];
 
     public function surfaces(ClubEvent $event): array
@@ -272,6 +310,21 @@ class HallScreenRouter
     private const DEVICES = [
         'taekwondo' => \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice::class,
         'karate' => \App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayDevice::class,
+        'bjj' => \App\Events\Sports\BrazilianJiuJitsu\Tournament\HallScreen\ScreenDevice::class,
+    ];
+
+    /**
+     * The board address to send a newly adopted screen to, by sport.
+     *
+     * A map rather than the conditional this used to be: with two fleets a
+     * ternary was readable, with three it stops being — and the failure it
+     * would hide is a television pointed at another sport's board, which only
+     * shows itself on competition morning. Absent = the Taekwondo fleet, which
+     * is the historical default this replaces.
+     */
+    private const BOARD_ROUTES = [
+        'karate' => 'karate-court-display.board',
+        'bjj' => 'bjj-screen.board',
     ];
 
     /**
@@ -300,9 +353,11 @@ class HallScreenRouter
             // own origin, so a claim made from a phone on a different host — or
             // from a console command, where there is no host at all — can never
             // send a television to the wrong one.
-            'url' => $event->sport === 'karate'
-                ? route('karate-court-display.board', $token, false)
-                : route('court-display.board', $token, false),
+            'url' => route(
+                self::BOARD_ROUTES[(string) $event->sport] ?? 'court-display.board',
+                $token,
+                false,
+            ),
         ];
     }
 
