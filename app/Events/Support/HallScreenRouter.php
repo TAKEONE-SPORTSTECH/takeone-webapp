@@ -44,6 +44,23 @@ class HallScreenRouter
 
     public function pair(Request $request, ClubEvent $event)
     {
+        // TEMPORARY DIAGNOSTIC — remove once the pairing report is closed.
+        // Records what the console actually sent and which fleet holds the code,
+        // because every reading of this from the outside has been a guess.
+        \Illuminate\Support\Facades\Log::info('screen-pair attempt', [
+            'event' => $event->uuid,
+            'sport' => $event->sport,
+            'code' => (string) $request->input('code'),
+            'court' => $request->input('court'),
+            'surface' => $request->input('surface'),
+            'in_pending' => PendingScreen::pairable((string) $request->input('code')) !== null,
+            'in_camera' => \App\Models\EventCamera::pairable((string) $request->input('code')) !== null,
+            'in_own_fleet' => (function () use ($request, $event) {
+                $m = self::DEVICES[(string) $event->sport] ?? null;
+                return $m && class_exists($m) && $m::pairable((string) $request->input('code')) !== null;
+            })(),
+        ]);
+
         // A CAMERA, scanned into the same panel. The hall's wiring is one
         // question — "what is on Mat 2?" — and the answer includes the phones
         // filming it, so the console pairs them through the same door rather
@@ -155,15 +172,31 @@ class HallScreenRouter
             ], 422);
         }
 
+        /*
+         * The same surfaces the packages' own pair endpoints accept.
+         *
+         * This path demanded one of bout/queue/control and rejected everything
+         * else with a validation error, while a package's own door accepted
+         * `follow` and treated a missing surface as `follow`. So the identical
+         * code, entered from a slot that had not settled on a surface, paired
+         * through one door and 422'd through the other — and a validation error
+         * is the one failure the console cannot explain, because it has no
+         * message of its own to show.
+         *
+         * `follow` means "whatever this mat is showing"; adopt() stores it as no
+         * surface at all, which is exactly that.
+         */
         $data = $request->validate([
             'court' => ['required', 'string', 'max:40'],
-            'surface' => ['required', 'string', 'in:bout,queue,control'],
+            'surface' => ['nullable', 'string', 'in:bout,queue,control,follow'],
         ]);
+
+        $data['surface'] = $data['surface'] ?: 'follow';
 
         $court = trim($data['court']);
         abort_unless($court !== '', 422);
 
-        if (! in_array($data['surface'], $this->surfaces($event), true)) {
+        if ($data['surface'] !== 'follow' && ! in_array($data['surface'], $this->surfaces($event), true)) {
             return response()->json([
                 'success' => false,
                 'message' => __('personal.event_screens_surface_unavailable'),
