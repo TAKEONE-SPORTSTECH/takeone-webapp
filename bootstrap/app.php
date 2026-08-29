@@ -39,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // CSRF under phpunit, so it fails only against a real device.
             'court/enroll',
             'karate/court/enroll',
+            'bjj/screen/enroll',
             // The media server asking this application whether a broadcast may
             // start, and telling it when one ended. Called by a process on
             // loopback, not a browser: there is no session, no cookie and
