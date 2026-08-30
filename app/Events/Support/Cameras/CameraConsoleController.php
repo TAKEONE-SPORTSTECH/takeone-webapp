@@ -41,6 +41,57 @@ class CameraConsoleController extends Controller
      * missed the message reads it on its next beat, and a phone on an old build
      * that asks to publish anyway is refused the credential (CameraController).
      */
+    /**
+     * Ask a camera to do something with footage it is already holding.
+     *
+     * Three asks, and the phone is the one that answers them:
+     *
+     *   upload  send a bout now — the manual counterpart to the automatic
+     *           upload a camera already performs on hall wifi, and the way to
+     *           retry one that failed.
+     *   purge   free space. The phone refuses anything it cannot prove the
+     *           server holds, because an un-uploaded bout is the only copy of
+     *           a fight that happened once. This endpoint cannot override that
+     *           and is not meant to: the console asks, the files decide.
+     *   play    put a clip on the phone's own screen, for somebody standing at
+     *           the mat. Useless while the handset is asleep, which is why the
+     *           video is better watched where it has been uploaded to.
+     *
+     * `clip` names one recording by its local ref, or `all`. Omitted means the
+     * most recent, which is what "that bout" means to somebody at the mat.
+     *
+     * Best-effort by nature — this is a message to a phone on a hall's wifi,
+     * not a transaction. The answer says what was ASKED, never what happened;
+     * what happened arrives on the camera's next beat.
+     */
+    public function footage(Request $request, ClubEvent $event, int $camera): JsonResponse
+    {
+        abort_unless(app(EventAccess::class)->canManage($event, $request->user()), 403);
+
+        $data = $request->validate([
+            'action' => ['required', 'string', 'in:upload,purge,play'],
+            'clip' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $device = EventCamera::where('event_id', $event->id)
+            ->whereNull('revoked_at')
+            ->find($camera);
+
+        abort_unless($device, 404);
+
+        CameraChannel::send($device, [
+            'action' => $data['action'],
+            'clip' => $data['clip'],
+            'at' => now()->toIso8601String(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'asked' => $data['action'],
+            'message' => __('personal.event_cameras_footage_'.$data['action']),
+        ]);
+    }
+
     public function broadcast(Request $request, ClubEvent $event, int $camera): JsonResponse
     {
         abort_unless(app(EventAccess::class)->canManage($event, $request->user()), 403);

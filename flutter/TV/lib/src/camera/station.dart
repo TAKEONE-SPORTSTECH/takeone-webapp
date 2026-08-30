@@ -371,7 +371,92 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
       case 'unpaired':
         _sync();
         break;
+
+      // ── Commands about footage already on this phone ───────────────────
+      //
+      // The console can ASK; the phone decides. That order matters most for
+      // `purge`: the operator at the scoring table is not the one who knows
+      // whether the server has the bytes, and the rule that matters — never
+      // destroy the only copy of a bout — can only be enforced where the
+      // files actually are.
+      case 'upload':
+        _commandUpload(command['clip'] as String?);
+        break;
+      case 'purge':
+        unawaited(_commandPurge(command['clip'] as String?));
+        break;
+      case 'play':
+        _commandPlay(command['clip'] as String?);
+        break;
     }
+  }
+
+  /// The clip a command names, or the most recent one when it names none.
+  CameraClip? _clipRef(String? ref) {
+    if (_clips.isEmpty) return null;
+    if (ref == null || ref.isEmpty) return _clips.first;
+
+    for (final c in _clips) {
+      if (c.ref == ref) return c;
+    }
+
+    return null;
+  }
+
+  /// Send one clip now, or every clip that has never been sent.
+  void _commandUpload(String? ref) {
+    if (ref == 'all') {
+      for (final c in _clips) {
+        if (c.playVideoKey == null && c.playStatus != 'uploading') {
+          unawaited(_uploadClip(c));
+        }
+      }
+
+      return;
+    }
+
+    final clip = _clipRef(ref);
+    if (clip != null) unawaited(_uploadClip(clip));
+  }
+
+  /// Free space — but only footage the server has confirmed it holds.
+  ///
+  /// The guard is `isSafelyUploaded`, NOT `isExpendable`. They are different
+  /// rules for different questions: `isExpendable` also requires the clip to be
+  /// a week old, because that one governs what the drawer offers to clear
+  /// UNPROMPTED, and a bout uploaded this morning should still be on the phone
+  /// this afternoon when somebody asks to see it at the mat. An explicit "free
+  /// space now" from the console is not that question, and answering it with
+  /// the week-old rule would have made this command silently do nothing.
+  ///
+  /// What does not move is the part that matters: the bytes must be on the
+  /// server. A bout nobody has uploaded is the ONLY copy of a fight that
+  /// happened once, so this refuses it however the command was phrased and
+  /// whoever sent it. That check lives here, on the phone, because the console
+  /// is not where the files are.
+  Future<void> _commandPurge(String? ref) async {
+    final targets = <CameraClip>[];
+
+    if (ref == 'all') {
+      targets.addAll(_clips.where((c) => c.isSafelyUploaded));
+    } else {
+      final one = _clipRef(ref);
+      if (one != null && one.isSafelyUploaded) targets.add(one);
+    }
+
+    if (targets.isEmpty) return;
+
+    await _deleteClips(targets);
+  }
+
+  /// Put a clip on this phone's own screen, from the scoring table.
+  ///
+  /// Only useful while somebody is looking at the phone — a handset asleep in a
+  /// pocket will not wake for this, and it deliberately does not try to.
+  void _commandPlay(String? ref) {
+    final clip = _clipRef(ref);
+
+    if (clip != null && mounted) _play(clip);
   }
 
   Future<void> _startRolling(Map<String, dynamic>? bout) async {
@@ -456,6 +541,21 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
         clip.serverId = ack['id'] as int?;
         setState(() {});
         await ClipLog.save(_clips);
+
+        /*
+         * On hall wifi, the bout goes up by itself.
+         *
+         * "On hall wifi" is not a network name — a phone cannot usefully tell
+         * one SSID from another, and the thing that actually matters is whether
+         * the SERVER can be reached. The clip was just filed with it and came
+         * back with an id, so it can. That ack IS the signal.
+         *
+         * Uploading here rather than on a timer means the bytes move while the
+         * mat is between bouts and the camera is idle, instead of during the
+         * next one. A failure is not retried at the operator: the clip stays on
+         * the phone, says `failed` in the drawer, and the console can ask again.
+         */
+        unawaited(_uploadClip(clip));
       }
     }
 

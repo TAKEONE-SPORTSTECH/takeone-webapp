@@ -681,6 +681,9 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::delete('/events/{event:uuid}/cameras/{camera}', [\App\Events\Support\Cameras\CameraConsoleController::class, 'unpair'])->name('events.cameras.unpair')->whereNumber('camera')->middleware('throttle:admin-write');
     // Switch one camera's feed on or off. The phone obeys over its own channel,
     // and is refused a publish credential either way while it is off.
+    // Upload, purge or play footage the camera is already holding. The phone
+    // enforces what may actually be deleted; this only carries the ask.
+    Route::post('/events/{event:uuid}/cameras/{camera}/footage', [\App\Events\Support\Cameras\CameraConsoleController::class, 'footage'])->name('events.cameras.footage')->whereNumber('camera')->middleware('throttle:admin-write');
     Route::post('/events/{event:uuid}/cameras/{camera}/broadcast', [\App\Events\Support\Cameras\CameraConsoleController::class, 'broadcast'])->name('events.cameras.broadcast')->whereNumber('camera')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/next-up', [App\Http\Controllers\PersonalEventController::class, 'nextUp'])->name('events.next-up');
     // A sparring session as JSON, for its console to re-read after a nudge —
