@@ -317,7 +317,8 @@
                     </div>
 
                     <template x-for="cam in camerasFor(m)" :key="cam.id">
-                        <div class="flex items-center gap-3 px-3 py-2.5 border-t border-gray-100 bg-white">
+                        <div class="border-t border-gray-100 bg-white">
+                        <div class="flex items-center gap-3 px-3 py-2.5">
                             <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 text-xs font-black"
                                   :class="cam.recording ? 'bg-red-100 text-red-600' : 'bg-primary/10 text-primary'"
                                   x-text="cam.angle ?? '?'"></span>
@@ -398,6 +399,43 @@
                                     :aria-label="@js(__('personal.event_cameras_unpair'))">
                                 <i class="bi" :class="busy === 'cam-' + cam.id ? 'bi-arrow-repeat animate-spin' : 'bi-x-circle'"></i>
                             </button>
+                        </div>
+
+                        {{-- Footage this phone is holding.
+                             Its own line rather than three more icons in the row
+                             above: that row is about the LIVE feed — rolling, on
+                             air, paired — and these are about files already
+                             recorded. Shown only when there is something to act
+                             on, so a camera that has filmed nothing stays quiet.
+
+                             "Free space" asks; it does not command. The phone
+                             refuses anything the server has not confirmed it
+                             holds, because an un-uploaded bout is the only copy
+                             of a fight that happened once. --}}
+                        <div x-show="cam.clips" x-cloak
+                             class="flex items-center gap-1.5 px-3 pb-2.5 flex-wrap">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-muted-foreground/70 me-auto"
+                                  x-text="cam.clips + ' ' + @js(__('personal.event_cameras_clips'))"></span>
+
+                            <button type="button" @click="footage(cam, 'upload', 'all')"
+                                    :disabled="busy === 'foot-' + cam.id"
+                                    class="m-press inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-muted text-[11px] font-bold text-foreground hover:bg-accent transition-colors disabled:opacity-40">
+                                <i class="bi" :class="busy === 'foot-' + cam.id ? 'bi-arrow-repeat animate-spin' : 'bi-cloud-upload'"></i>
+                                {{ __('personal.event_cameras_send_all') }}
+                            </button>
+
+                            <button type="button" @click="footage(cam, 'play')"
+                                    :disabled="busy === 'foot-' + cam.id"
+                                    class="m-press inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-muted text-[11px] font-bold text-foreground hover:bg-accent transition-colors disabled:opacity-40">
+                                <i class="bi bi-play-btn"></i>{{ __('personal.event_cameras_play_last') }}
+                            </button>
+
+                            <button type="button" @click="footage(cam, 'purge', 'all')"
+                                    :disabled="busy === 'foot-' + cam.id"
+                                    class="m-press inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-white border border-gray-200 text-[11px] font-bold text-muted-foreground hover:border-red-200 hover:text-red-600 transition-colors disabled:opacity-40">
+                                <i class="bi bi-eraser"></i>{{ __('personal.event_cameras_free_space') }}
+                            </button>
+                        </div>
                         </div>
                     </template>
 
@@ -1163,6 +1201,60 @@
                  * wants. A rolling camera is stopped by the server first, so it
                  * cannot keep filling its disk with a bout it has left.
                  */
+                /**
+                 * Ask a camera to do something with footage it already holds.
+                 *
+                 * Deliberately thin: the phone is the authority on what may
+                 * actually happen to a file, so this reports what was ASKED and
+                 * lets the camera's own beat report what was done. Pretending
+                 * otherwise would have the console claim a bout was deleted
+                 * while the phone was still refusing to delete it.
+                 */
+                async footage(cam, action, clip = null) {
+                    if (this.busy) return;
+
+                    // Clearing footage is the one that cannot be taken back, so
+                    // it is the one that asks first.
+                    if (action === 'purge') {
+                        const ok = await window.confirmAction({
+                            title: @js(__('personal.event_cameras_free_space')),
+                            message: @js(__('personal.event_cameras_free_space_body')),
+                            type: 'warning',
+                            confirmText: @js(__('personal.event_cameras_free_space_go')),
+                        });
+
+                        if (! ok) return;
+                    }
+
+                    this.busy = 'foot-' + cam.id;
+
+                    try {
+                        const res = await fetch(this.camerasBase + '/' + cam.id + '/footage', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ action: action, clip: clip }),
+                        });
+
+                        const data = await res.json().catch(() => ({}));
+
+                        if (! res.ok || ! data.success) {
+                            window.showToast && window.showToast('error', data.message || @js(__('personal.event_verify_failed')));
+                            return;
+                        }
+
+                        window.showToast && window.showToast('success', data.message);
+                    } catch (e) {
+                        window.showToast && window.showToast('error', @js(__('personal.event_verify_failed')));
+                    } finally {
+                        this.busy = null;
+                    }
+                },
+
                 async unpairCamera(cam) {
                     const ok = await window.confirmAction({
                         title: @js(__('personal.event_cameras_unpair')),
