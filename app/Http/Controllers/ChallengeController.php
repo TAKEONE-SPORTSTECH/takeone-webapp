@@ -1084,7 +1084,7 @@ class ChallengeController extends Controller
         try {
             \App\Models\UserNotification::notifyUser($userId, $action, ($actor->full_name ?? $actor->name).' '.$text, [
                 'actor_id' => $actor->id,
-                'subject_type' => Duel::class,
+                'subject_type' => (new Duel)->getMorphClass(),
                 'subject_id' => $duel->id,
                 'action_url' => route('me.challenge.duel', $duel->id),
                 'icon' => 'bi-lightning-charge-fill',

@@ -97,7 +97,7 @@ abstract class CallNotifier
                 'icon' => $kind === 'call_room' ? 'bi-megaphone-fill' : 'bi-stopwatch',
                 'action_url' => route('me.events.next-up', $event->uuid),
                 'tenant_id' => $event->tenant_id,
-                'subject_type' => ClubEvent::class,
+                'subject_type' => (new ClubEvent)->getMorphClass(),
                 'subject_id' => $event->id,
                 'context' => $kind,
                 // The summons has to ring through a locked, idle phone in a
@@ -150,7 +150,7 @@ abstract class CallNotifier
                         'icon' => $won ? 'bi-trophy' : 'bi-flag',
                         'action_url' => route('me.events.next-up', $event->uuid),
                         'tenant_id' => $event->tenant_id,
-                        'subject_type' => ClubEvent::class,
+                        'subject_type' => (new ClubEvent)->getMorphClass(),
                         'subject_id' => $event->id,
                         'context' => 'result',
                     ]), null, false);

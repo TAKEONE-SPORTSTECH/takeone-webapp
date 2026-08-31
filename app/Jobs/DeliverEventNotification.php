@@ -58,7 +58,7 @@ class DeliverEventNotification implements ShouldQueue
                 'icon' => $this->message['icon'],
                 'action_url' => $url,
                 'tenant_id' => $event->tenant_id,
-                'subject_type' => ClubEvent::class,
+                'subject_type' => (new ClubEvent)->getMorphClass(),
                 'subject_id' => $event->id,
                 'context' => $this->milestone,
             ]);

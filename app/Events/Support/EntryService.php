@@ -534,7 +534,7 @@ class EntryService
             'action_url' => route('me.events.show', $event->uuid),
             'actor_id' => $actor->id,
             'tenant_id' => $registration->representing_tenant_id,
-            'subject_type' => ClubEvent::class,
+            'subject_type' => (new ClubEvent)->getMorphClass(),
             'subject_id' => $event->id,
         ]), null, false);
 
@@ -562,7 +562,7 @@ class EntryService
                 'action_url' => route('me.events.show', $event->uuid),
                 'actor_id' => $athlete->id,
                 'tenant_id' => $tenantId,
-                'subject_type' => ClubEvent::class,
+                'subject_type' => (new ClubEvent)->getMorphClass(),
                 'subject_id' => $event->id,
             ]), null, false);
         }
@@ -625,7 +625,7 @@ class EntryService
             'action_url' => route('me.events.show', $event->uuid),
             'actor_id' => $actor->id,
             'tenant_id' => $event->tenant_id,
-            'subject_type' => ClubEvent::class,
+            'subject_type' => (new ClubEvent)->getMorphClass(),
             'subject_id' => $event->id,
         ]), null, false);
     }

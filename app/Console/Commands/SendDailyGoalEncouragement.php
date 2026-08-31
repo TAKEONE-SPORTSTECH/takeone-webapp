@@ -48,7 +48,7 @@ class SendDailyGoalEncouragement extends Command
 
             try {
                 UserNotification::notifyUser((int) $userId, 'goal:encouragement', $message, [
-                    'subject_type' => Goal::class,
+                    'subject_type' => (new Goal)->getMorphClass(),
                     'subject_id' => $nearest->id,
                     'icon' => 'bi-bullseye',
                     'body' => __(':title — :current/:target :progress', [

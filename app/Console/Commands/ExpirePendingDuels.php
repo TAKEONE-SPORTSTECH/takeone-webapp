@@ -28,7 +28,7 @@ class ExpirePendingDuels extends Command
 
             try {
                 UserNotification::notifyUser($duel->challenger_id, 'duel:cancelled', 'Your challenge expired', [
-                    'subject_type' => Duel::class,
+                    'subject_type' => (new Duel)->getMorphClass(),
                     'subject_id' => $duel->id,
                     'action_url' => route('me.challenge.duel', $duel->id),
                     'icon' => 'bi-lightning-charge-fill',
