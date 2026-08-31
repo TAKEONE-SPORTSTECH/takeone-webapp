@@ -15,6 +15,69 @@
 --}}
 
 @section('personal-content')
+
+{{-- ===== Phase M1: React island (feature-flagged, default OFF) =====
+     When config('features.react_schedule') is ON the whole board below is
+     rendered instead by resources/js/islands/schedule.jsx, mounted by the
+     shell-aware helper in resources/js/island.js. When the flag is OFF (the
+     default) nothing changes and the legacy partials/schedule-board-script
+     renderer runs exactly as before. The two paths are mutually exclusive —
+     never both, never neither. --}}
+@php
+    // The config flag is the default for everyone. `?react=1` / `?react=0`
+    // overrides it for THIS request only, so the legacy board stays what other
+    // people see while the two implementations are compared on the same URL.
+    // Strictly parsed: anything that isn't a recognised boolean is ignored.
+    $reactSchedule = (bool) config('features.react_schedule', false);
+    $reactOverride = filter_var(request()->query('react'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    if ($reactOverride !== null) {
+        $reactSchedule = $reactOverride;
+    }
+    $islandProps = [
+        'sessions' => $sessions,
+        'members' => $members,
+        'weekDays' => $weekDays,
+        'todayKey' => $todayKey,
+        'showUrl' => url('/me/schedule'),
+        'dataUrl' => route('me.schedule.data'),
+        'gridLayout' => false,
+        'weekdayShort' => [
+            __('personal.personal_schedule_day_sun'), __('personal.personal_schedule_day_mon'),
+            __('personal.personal_schedule_day_tue'), __('personal.personal_schedule_day_wed'),
+            __('personal.personal_schedule_day_thu'), __('personal.personal_schedule_day_fri'),
+            __('personal.personal_schedule_day_sat'),
+        ],
+        'i18n' => [
+            'this_week' => __('personal.personal_schedule_this_week'),
+            'heading' => __('personal.personal_schedule_heading'),
+            'add_session' => __('personal.personal_schedule_add_session'),
+            'stat_sessions' => __('personal.personal_schedule_stat_sessions'),
+            'stat_volume' => __('personal.personal_schedule_stat_volume'),
+            'done' => __('shared.done'),
+            'family' => __('personal.personal_schedule_family'),
+            'just_me' => __('personal.personal_schedule_just_me'),
+            'today' => __('personal.personal_schedule_today'),
+            'live_now' => __('personal.personal_schedule_live_now'),
+            'cancelled' => __('personal.personal_schedule_cancelled'),
+            'covering' => __('personal.personal_schedule_covering'),
+            'teaching' => __('personal.personal_schedule_teaching'),
+            'synced' => __('personal.personal_schedule_synced'),
+            'personal' => __('personal.personal_schedule_personal'),
+            'rest_day' => __('personal.personal_schedule_rest_day'),
+            'no_training' => __('personal.personal_schedule_no_training'),
+            'no_personal' => __('personal.personal_schedule_no_personal'),
+        ],
+    ];
+@endphp
+
+@if ($reactSchedule)
+
+{{-- React island mount point. Props travel as a JSON attribute (Blade-escaped),
+     so the island gets its first paint data without a round trip and picks up
+     fresh data automatically on every shell navigation. --}}
+<div id="schedule-island" data-island-props="{{ json_encode($islandProps) }}"></div>
+
+@else
 <div class="-mx-4 -mt-4 pb-4">
 
     {{-- ===== Hero ===== --}}
@@ -78,7 +141,13 @@
 
 </div>
 
+@endif
+
 <x-schedule-session-modal :subjects="$subjectsList" />
 
-@include('partials.schedule-board-script')
+@if ($reactSchedule)
+    @vite(['resources/js/islands/schedule.jsx'])
+@else
+    @include('partials.schedule-board-script')
+@endif
 @endsection
