@@ -1,0 +1,13 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 0
+
+    # See phpstan-bootstrap.php - keeps cold runs deterministic.
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+
+    paths:
+        - app
