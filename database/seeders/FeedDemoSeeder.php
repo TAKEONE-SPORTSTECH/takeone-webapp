@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\ClubTimelinePost;
+use App\Clubs\Models\ClubTimelinePost;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubTimelinePostLike;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Models\UserPost;
 use App\Models\UserPostComment;

@@ -2,7 +2,7 @@
 
 namespace App\Mcp\Tools;
 
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;

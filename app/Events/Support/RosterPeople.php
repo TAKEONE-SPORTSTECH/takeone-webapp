@@ -4,7 +4,7 @@ namespace App\Events\Support;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Collection;
 

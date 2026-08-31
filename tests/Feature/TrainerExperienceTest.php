@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\ClubInstructor;
+use App\Clubs\Models\ClubInstructor;
 use App\Models\MemberWorkHistory;
 use App\Support\TrainerExperience;
 use Tests\TestCase;

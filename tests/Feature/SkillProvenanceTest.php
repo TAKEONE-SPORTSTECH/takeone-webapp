@@ -3,11 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityCatalog;
-use App\Models\ClubActivity;
-use App\Models\ClubInstructor;
-use App\Models\ClubAffiliation;
+use App\Clubs\Models\ClubActivity;
+use App\Clubs\Models\ClubInstructor;
+use App\Clubs\Models\ClubAffiliation;
 use App\Models\SkillAcquisition;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Services\AchievementVerificationService;
 use Tests\TestCase;

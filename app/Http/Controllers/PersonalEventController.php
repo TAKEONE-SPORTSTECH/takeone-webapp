@@ -16,7 +16,7 @@ use App\Models\EventChecklistItem;
 use App\Models\EventExpense;
 use App\Models\EventOfficial;
 use App\Models\EventParticipantBan;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -76,7 +76,7 @@ class PersonalEventController extends Controller
             ->merge(app(EntryService::class)->administeredClubIds($me))
             ->unique();
 
-        return \App\Models\Tenant::whereIn('id', $ids)
+        return \App\Clubs\Models\Tenant::whereIn('id', $ids)
             ->orderBy('club_name')
             ->get(['id', 'club_name', 'currency'])
             ->map(fn ($c) => ['id' => $c->id, 'name' => $c->club_name, 'currency' => $c->currency ?: 'BHD'])
@@ -95,7 +95,7 @@ class PersonalEventController extends Controller
             return;
         }
 
-        $owns = \App\Models\Tenant::whereKey($tenantId)->where('owner_user_id', $me->id)->exists();
+        $owns = \App\Clubs\Models\Tenant::whereKey($tenantId)->where('owner_user_id', $me->id)->exists();
 
         abort_unless($owns || $me->isClubAdmin($tenantId) || $me->isSuperAdmin(), 403);
     }

@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\ClubEvent;
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubPackageActivity;
-use App\Models\ClubTimelinePost;
+use App\Clubs\Models\ClubPackageActivity;
+use App\Clubs\Models\ClubTimelinePost;
 use App\Models\Goal;
 use App\Models\UserNotification;
 use App\Models\UserScheduleSession;
@@ -252,6 +252,20 @@ class PersonalMobileController extends Controller
         $whoKey = $subjectKeys[$model->subject_user_id] ?? 'me';
         $s = $model->toCardArray($whoKey);
 
+        // The detail Blade renders each main-workout item as a structured
+        // exercise (name / sets / reps / note). A row whose `main` holds plain
+        // strings is served fine by scheduleData(), so normalise to the same
+        // shape the write paths store rather than 500 on the very same row.
+        $s['workout']['main'] = collect($s['workout']['main'] ?? [])
+            ->map(fn ($ex) => is_array($ex) ? [
+                'name' => trim((string) ($ex['name'] ?? '')),
+                'sets' => trim((string) ($ex['sets'] ?? '')),
+                'reps' => trim((string) ($ex['reps'] ?? '')),
+                'note' => trim((string) ($ex['note'] ?? '')),
+            ] : ['name' => trim((string) $ex), 'sets' => '', 'reps' => '', 'note' => ''])
+            ->filter(fn ($ex) => $ex['name'] !== '')
+            ->values()->all();
+
         // Status relative to today so the detail's "complete" state matches.
         $order = ['sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3, 'thursday' => 4, 'friday' => 5, 'saturday' => 6];
         $cmp = ($order[$s['day']] ?? 0) <=> $order[strtolower(\Carbon\Carbon::now()->format('l'))];
@@ -389,7 +403,7 @@ class PersonalMobileController extends Controller
     {
         $weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-        $instructorIds = \App\Models\ClubInstructor::where('user_id', Auth::id())->pluck('id');
+        $instructorIds = \App\Clubs\Models\ClubInstructor::where('user_id', Auth::id())->pluck('id');
         if ($instructorIds->isEmpty()) {
             return collect();
         }
@@ -560,7 +574,7 @@ class PersonalMobileController extends Controller
         $type = $type ?: 'text';
 
         if ($type === 'facility' && ! empty($opts['facility_id'])) {
-            $f = \App\Models\ClubFacility::find($opts['facility_id']);
+            $f = \App\Clubs\Models\ClubFacility::find($opts['facility_id']);
             if ($f) {
                 $lat = $f->gps_lat !== null ? (float) $f->gps_lat : null;
                 $lng = $f->gps_long !== null ? (float) $f->gps_long : null;
@@ -666,7 +680,7 @@ class PersonalMobileController extends Controller
         }
 
         // 2) Classes they coach.
-        $instrIds = \App\Models\ClubInstructor::where('user_id', $userId)->pluck('id');
+        $instrIds = \App\Clubs\Models\ClubInstructor::where('user_id', $userId)->pluck('id');
         if ($instrIds->isNotEmpty()) {
             foreach (ClubPackageActivity::whereIn('instructor_id', $instrIds)->where('id', '!=', $excludePaId)->get() as $pa) {
                 foreach ($this->slotsForDay($pa, $day) as $sl) {
@@ -1209,7 +1223,7 @@ class PersonalMobileController extends Controller
             if ($iu && ($iu->full_name ?: $iu->name) === $s['coach']) {
                 $coachUser = $iu;
             } else {
-                $ci = \App\Models\ClubInstructor::where('tenant_id', $tenant?->id)
+                $ci = \App\Clubs\Models\ClubInstructor::where('tenant_id', $tenant?->id)
                     ->with('user:id,name,full_name,profile_picture,updated_at')->get()
                     ->first(fn ($i) => $i->user && ($i->user->full_name ?: $i->user->name) === $s['coach']);
                 $coachUser = $ci?->user;
@@ -1442,14 +1456,14 @@ class PersonalMobileController extends Controller
 
         // Facilities for the edit form's dropdown (club classes only).
         $clubFacilities = $tenant
-            ? \App\Models\ClubFacility::where('tenant_id', $tenant->id)
+            ? \App\Clubs\Models\ClubFacility::where('tenant_id', $tenant->id)
                 ->orderBy('name')->get(['id', 'name'])
                 ->map(fn ($f) => ['id' => $f->id, 'name' => $f->name])->values()
             : collect();
 
         // Instructors of the club for the Coach dropdown (club classes only).
         $clubInstructors = $tenant
-            ? \App\Models\ClubInstructor::where('tenant_id', $tenant->id)
+            ? \App\Clubs\Models\ClubInstructor::where('tenant_id', $tenant->id)
                 ->with('user:id,name,full_name,profile_picture,updated_at')->get()
                 ->map(fn ($i) => $i->user)->filter()
                 ->unique('id')
@@ -1762,7 +1776,7 @@ class PersonalMobileController extends Controller
      * substitute it's their instructor record in the club — created on demand
      * ($create) so a covering substitute becomes a rateable trainer there.
      */
-    private function trainerInstructor(?ClubPackageActivity $pa, ?int $userId, bool $create = false): ?\App\Models\ClubInstructor
+    private function trainerInstructor(?ClubPackageActivity $pa, ?int $userId, bool $create = false): ?\App\Clubs\Models\ClubInstructor
     {
         if (! $pa || ! $userId) {
             return null;
@@ -1771,9 +1785,9 @@ class PersonalMobileController extends Controller
             return $pa->instructor;                       // regular coach — use the exact record
         }
         $tenantId = $pa->package?->tenant_id;
-        $ci = \App\Models\ClubInstructor::where('tenant_id', $tenantId)->where('user_id', $userId)->first();
+        $ci = \App\Clubs\Models\ClubInstructor::where('tenant_id', $tenantId)->where('user_id', $userId)->first();
         if (! $ci && $create) {
-            $ci = \App\Models\ClubInstructor::create([
+            $ci = \App\Clubs\Models\ClubInstructor::create([
                 'tenant_id' => $tenantId, 'user_id' => $userId, 'role' => 'Substitute', 'rating' => 0,
             ]);
         }
@@ -2183,7 +2197,7 @@ class PersonalMobileController extends Controller
         $slot['location_address'] = null;
         $slot['location_text'] = null;
         if ($locType === 'facility' && ! empty($data['facility_id'])) {
-            $f = \App\Models\ClubFacility::where('tenant_id', $tenant?->id)->find($data['facility_id']);
+            $f = \App\Clubs\Models\ClubFacility::where('tenant_id', $tenant?->id)->find($data['facility_id']);
             if ($f) {
                 $slot['facility_id'] = $f->id;
                 $slot['facility_name'] = $f->name;
@@ -2637,7 +2651,7 @@ class PersonalMobileController extends Controller
         $memberClubIds = $user->memberClubs()->pluck('tenants.id');
         $awardedAchievements = $memberClubIds->isEmpty()
             ? collect()
-            : \App\Models\ClubAchievement::whereIn('tenant_id', $memberClubIds)
+            : \App\Clubs\Models\ClubAchievement::whereIn('tenant_id', $memberClubIds)
                 ->where('status', 'active')
                 ->orderByDesc('achievement_date')
                 ->with('tenant:id,club_name,slug,translations')
@@ -2715,7 +2729,7 @@ class PersonalMobileController extends Controller
             'allSkills' => $allSkills,
             'totalInstructors' => $totalInstructors,
             'joinedEventRegistrations' => $joinedEventRegistrations,
-            'allClubs' => \App\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
+            'allClubs' => \App\Clubs\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
             'canResetPassword' => true,
         ]);
     }
@@ -2830,7 +2844,9 @@ class PersonalMobileController extends Controller
         ]);
 
         $path = $this->storeBase64Image(
-            $validated['payment_proof_base64'], 'payment-proofs', 'sub_'.$subscription->id.'_'.time(), 'local'
+            // Server-generated, non-guessable name: a clock-derived one collides
+            // within the same second and overwrites the previous proof in place.
+            $validated['payment_proof_base64'], 'payment-proofs', (string) \Illuminate\Support\Str::uuid(), 'local'
         );
         if (! $path) {
             return response()->json(['success' => false, 'message' => __('Please upload a valid image (JPG or PNG).')], 422);
@@ -3275,7 +3291,7 @@ class PersonalMobileController extends Controller
         // Real products from the clubs this member belongs to.
         $clubIds = $this->clubIds();
 
-        $items = \App\Models\ClubProduct::whereIn('tenant_id', $clubIds)
+        $items = \App\Shop\Models\ClubProduct::whereIn('tenant_id', $clubIds)
             ->where('status', 'published')
             ->orderByDesc('featured')->latest()
             ->get();
@@ -3285,7 +3301,7 @@ class PersonalMobileController extends Controller
         // Categories: 'All' + the categories the club(s) defined, limited to those
         // that actually have products.
         $usedCats = $items->pluck('category')->unique();
-        $defined = \App\Models\ClubProductCategory::whereIn('tenant_id', $clubIds)
+        $defined = \App\Shop\Models\ClubProductCategory::whereIn('tenant_id', $clubIds)
             ->whereIn('key', $usedCats)
             ->orderBy('sort')->get()->unique('key');
 
@@ -3300,10 +3316,10 @@ class PersonalMobileController extends Controller
 
     public function marketShow(int $product, Request $request): View
     {
-        $model = \App\Models\ClubProduct::where('status', 'published')->findOrFail($product);
+        $model = \App\Shop\Models\ClubProduct::where('status', 'published')->findOrFail($product);
         $p = $model->toCardArray();
 
-        $related = \App\Models\ClubProduct::where('tenant_id', $model->tenant_id)
+        $related = \App\Shop\Models\ClubProduct::where('tenant_id', $model->tenant_id)
             ->where('status', 'published')
             ->where('category', $model->category)
             ->where('id', '!=', $model->id)
@@ -3312,11 +3328,11 @@ class PersonalMobileController extends Controller
 
         // Real reviews: each product rating, with the buyer's name + their order
         // comment (the comment lives on the order's seller review).
-        $rows = \App\Models\ProductReview::where('club_product_id', $model->id)
+        $rows = \App\Shop\Models\ProductReview::where('club_product_id', $model->id)
             ->with('user:id,full_name,profile_picture,updated_at')
             ->latest()->limit(30)->get();
 
-        $comments = \App\Models\OrderReview::whereIn('order_id', $rows->pluck('order_id')->filter()->unique())
+        $comments = \App\Shop\Models\OrderReview::whereIn('order_id', $rows->pluck('order_id')->filter()->unique())
             ->get()->keyBy(fn ($r) => $r->order_id.'-'.$r->user_id);
 
         $reviews = $rows->map(function ($r) use ($comments) {
@@ -3335,7 +3351,7 @@ class PersonalMobileController extends Controller
         })->values()->all();
 
         // Star distribution (5→1) as percentages of total ratings.
-        $dist = \App\Models\ProductReview::where('club_product_id', $model->id)
+        $dist = \App\Shop\Models\ProductReview::where('club_product_id', $model->id)
             ->selectRaw('rating, COUNT(*) as c')->groupBy('rating')->pluck('c', 'rating');
         $total = max(1, (int) $model->rating_count);
         $breakdown = [];
@@ -3667,7 +3683,11 @@ class PersonalMobileController extends Controller
     /** Mark an app section / feed-tab as seen (clears its unseen indicator). */
     public function markSectionSeen(Request $request, \App\Support\SectionActivity $activity): JsonResponse
     {
-        $activity->markSeen(Auth::user(), (string) $request->input('section', ''));
+        $validated = $request->validate([
+            'section' => ['required', 'string', \Illuminate\Validation\Rule::in(\App\Support\SectionActivity::SECTIONS)],
+        ]);
+
+        $activity->markSeen(Auth::user(), $validated['section']);
 
         return response()->json(['success' => true]);
     }

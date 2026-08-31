@@ -7,7 +7,7 @@ use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventParticipantBan;
 use App\Models\HealthRecord;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Models\UserNotification;
 use Tests\TestCase;

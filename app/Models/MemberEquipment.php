@@ -6,6 +6,11 @@ use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Shop\Models\ClubProduct;
+use App\Shop\Models\ClubProductVariant;
+use App\Clubs\Models\Tenant;
+use App\Clubs\Models\ClubActivity;
+use App\Clubs\Models\ClubActivityEquipment;
 
 /**
  * Equipment a member owns (or is acquiring). Serves as both the frozen

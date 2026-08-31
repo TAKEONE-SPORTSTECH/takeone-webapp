@@ -6,7 +6,7 @@ use App\Events\Support\EntryService;
 use App\Events\Support\EventAccess;
 use App\Http\Controllers\Controller;
 use App\Models\ClubEvent;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

@@ -36,4 +36,4 @@ foreach ($users->take(5) as $user) {
 echo "\n=== Summary ===\n";
 echo "Total skill records: " . \App\Models\SkillAcquisition::count() . "\n";
 echo "Unique skill names: " . \App\Models\SkillAcquisition::distinct('skill_name')->count('skill_name') . "\n";
-echo "Total affiliations: " . \App\Models\ClubAffiliation::count() . "\n";
+echo "Total affiliations: " . \App\Clubs\Models\ClubAffiliation::count() . "\n";

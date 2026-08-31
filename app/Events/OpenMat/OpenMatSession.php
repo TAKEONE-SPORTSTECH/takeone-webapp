@@ -7,7 +7,7 @@ use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Models\EventOfficial;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Models\UserBlock;
 use Illuminate\Support\Collection;

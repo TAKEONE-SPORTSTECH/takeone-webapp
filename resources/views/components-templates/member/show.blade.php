@@ -1779,7 +1779,7 @@
                 ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
 
             // Platform trainer/staff roles are real work history — surfaced here live + read-only.
-            $derivedWorkD = \App\Models\ClubInstructor::where('user_id', $user->id)
+            $derivedWorkD = \App\Clubs\Models\ClubInstructor::where('user_id', $user->id)
                 ->with(['tenant:id,club_name,logo,slug,country', 'activities:id,name'])
                 ->get()
                 ->map(function ($ci) use ($workCatalogByNameD) {

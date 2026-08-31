@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEvent;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 

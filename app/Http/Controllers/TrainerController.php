@@ -26,12 +26,12 @@ class TrainerController extends Controller
         $instructorIds = $user->clubInstructors->pluck('id');
 
         // Activities this person teaches across all their club positions
-        $activities = \App\Models\ClubActivity::whereHas('packages', function ($q) use ($instructorIds) {
+        $activities = \App\Clubs\Models\ClubActivity::whereHas('packages', function ($q) use ($instructorIds) {
             $q->whereIn('club_package_activities.instructor_id', $instructorIds);
         })->get();
 
         // Build rich schedule slots (same structure as club public page)
-        $packageActivities = \App\Models\ClubPackageActivity::with(['package.tenant', 'activity'])
+        $packageActivities = \App\Clubs\Models\ClubPackageActivity::with(['package.tenant', 'activity'])
             ->whereIn('instructor_id', $instructorIds)
             ->whereNotNull('schedule')
             ->get();
@@ -96,7 +96,7 @@ class TrainerController extends Controller
 
         // Emoji reactions on classes this person actually taught — their own
         // classes (minus dates substituted away) plus sessions they covered.
-        $myPaIds = \App\Models\ClubPackageActivity::whereIn('instructor_id', $instructorIds)->pluck('id');
+        $myPaIds = \App\Clubs\Models\ClubPackageActivity::whereIn('instructor_id', $instructorIds)->pluck('id');
         $subRows = \App\Models\ClassSubstitution::where('substitute_user_id', $user->id)->get();
         $coveredKeys = $subRows->map(fn ($r) => $r->package_activity_id.'|'.$r->slot_day.'|'.(string) $r->slot_start.'|'.$r->date->toDateString())->flip();
         $awayKeys = \App\Models\ClassSubstitution::whereIn('package_activity_id', $myPaIds)

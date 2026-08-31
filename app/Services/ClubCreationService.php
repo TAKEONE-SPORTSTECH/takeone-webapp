@@ -3,14 +3,21 @@
 namespace App\Services;
 
 use App\Http\Requests\Admin\StoreClubRequest;
-use App\Models\ClubBankAccount;
-use App\Models\ClubSocialLink;
-use App\Models\Tenant;
+use App\Clubs\Models\ClubBankAccount;
+use App\Clubs\Models\ClubSocialLink;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Traits\StoresBase64Images;
 use Illuminate\Support\Facades\DB;
 use App\Support\StoragePath;
 use Illuminate\Support\Str;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Clubs (ClubApiController), App\Http (BusinessClubController,
+ * Admin\CopilotController) and the seeders. More than one vertical creates clubs,
+ * so it stays shared rather than becoming a club-private internal.
+ */
 
 /**
  * Creates a Tenant (club) + its social links / bank accounts + owner club-admin

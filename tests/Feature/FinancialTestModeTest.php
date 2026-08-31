@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\ClubTransaction;
-use App\Models\Tenant;
+use App\Clubs\Models\ClubTransaction;
+use App\Clubs\Models\Tenant;
 use Tests\TestCase;
 
 class FinancialTestModeTest extends TestCase

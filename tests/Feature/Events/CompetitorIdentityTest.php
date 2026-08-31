@@ -8,7 +8,7 @@ use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Models\HealthRecord;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Sports\Combat\Engine\DrawEngine;
 use Tests\TestCase;

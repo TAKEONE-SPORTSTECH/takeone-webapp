@@ -44,14 +44,14 @@ class CheckRole
     {
         $param = $request->route('tenant') ?? $request->route('club');
 
-        if ($param instanceof \App\Models\Tenant) {
+        if ($param instanceof \App\Clubs\Models\Tenant) {
             return $param->id;
         }
         if (is_numeric($param)) {
             return (int) $param;
         }
         if ($slug = $request->route('slug')) {
-            return \App\Models\Tenant::where('slug', $slug)->value('id');
+            return \App\Clubs\Models\Tenant::where('slug', $slug)->value('id');
         }
 
         return null;

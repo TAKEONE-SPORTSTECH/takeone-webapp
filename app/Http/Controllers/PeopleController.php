@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ClubAchievement;
+use App\Clubs\Models\ClubAchievement;
 use App\Models\ClubEventRegistration;
 use App\Models\ClubMemberSubscription;
 use App\Models\Duel;

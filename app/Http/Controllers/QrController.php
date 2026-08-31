@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClubEvent;
 use App\Models\Membership;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Support\Qr;
 use App\Traits\HandlesClubAuthorization;

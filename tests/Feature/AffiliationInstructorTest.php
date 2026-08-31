@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\ClubAffiliation;
+use App\Clubs\Models\ClubAffiliation;
 use App\Models\User;
 use Tests\TestCase;
 

@@ -2880,7 +2880,7 @@
 
             // Platform trainer/staff roles are real work history — surface them here,
             // live and read-only (managed from the club, not this list).
-            $derivedWork = \App\Models\ClubInstructor::where('user_id', $user->id)
+            $derivedWork = \App\Clubs\Models\ClubInstructor::where('user_id', $user->id)
                 ->with(['tenant:id,club_name,logo,slug,country', 'activities:id,name'])
                 ->get()
                 ->map(function ($ci) use ($workCatalogByName) {

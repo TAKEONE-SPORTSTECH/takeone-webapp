@@ -271,7 +271,7 @@ class MemberController extends Controller
         $memberClubIds = $member->memberClubs()->pluck('tenants.id');
         $awardedAchievements = $memberClubIds->isEmpty()
             ? collect()
-            : \App\Models\ClubAchievement::whereIn('tenant_id', $memberClubIds)
+            : \App\Clubs\Models\ClubAchievement::whereIn('tenant_id', $memberClubIds)
                 ->where('status', 'active')
                 ->orderByDesc('achievement_date')
                 ->with('tenant:id,club_name,slug,translations')
@@ -569,7 +569,7 @@ class MemberController extends Controller
             'memberEventLog' => $memberEventLog,
             'certifications' => $certifications,
             'workHistory' => $workHistory,
-            'allClubs' => \App\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
+            'allClubs' => \App\Clubs\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
             'canResetPassword' => $canResetPassword,
             'canRegeneratePassword' => $canRegeneratePassword,
             'canEditBasic' => $canEditBasic,
@@ -1542,7 +1542,7 @@ class MemberController extends Controller
     {
         $this->authorizeMemberWrite(Auth::user(), (int) $id);
 
-        $affiliation = \App\Models\ClubAffiliation::where('uuid', $uuid)
+        $affiliation = \App\Clubs\Models\ClubAffiliation::where('uuid', $uuid)
             ->where('member_id', $id)->with('tenant')->firstOrFail();
 
         if (! $affiliation->tenant_id) {
@@ -2209,7 +2209,7 @@ class MemberController extends Controller
         // If a platform club is selected, pull its data
         $tenant = null;
         if (! empty($validated['tenant_id'])) {
-            $tenant = \App\Models\Tenant::findOrFail($validated['tenant_id']);
+            $tenant = \App\Clubs\Models\Tenant::findOrFail($validated['tenant_id']);
         }
 
         $member = User::findOrFail($id);
@@ -2332,7 +2332,7 @@ class MemberController extends Controller
             ->values();
 
         if ($affiliation->tenant_id) {
-            $activities = \App\Models\ClubActivity::where('tenant_id', $affiliation->tenant_id)
+            $activities = \App\Clubs\Models\ClubActivity::where('tenant_id', $affiliation->tenant_id)
                 ->get(['id', 'name', 'translations'])
                 ->map(fn ($a) => ['id' => $a->id, 'name' => $a->tr('name') ?? $a->name])
                 ->values();
@@ -2344,7 +2344,7 @@ class MemberController extends Controller
 
             // The club's instructors, so the member can attribute who taught the skill.
             // instructor_id is validated against THIS club in storeAffiliationSkill.
-            $instructors = \App\Models\ClubInstructor::where('tenant_id', $affiliation->tenant_id)
+            $instructors = \App\Clubs\Models\ClubInstructor::where('tenant_id', $affiliation->tenant_id)
                 ->with('user:id,full_name,name')
                 ->get()
                 ->map(fn ($i) => ['id' => $i->id, 'name' => $i->user?->full_name ?? $i->user?->name])
@@ -2455,7 +2455,7 @@ class MemberController extends Controller
      * JSON shape for an affiliation's instructors, resolving member links to a safe
      * avatar + public profile URL. Never exposes anything beyond name/photo/profile.
      */
-    private function instructorPayload(\App\Models\ClubAffiliation $affiliation): array
+    private function instructorPayload(\App\Clubs\Models\ClubAffiliation $affiliation): array
     {
         $list = $affiliation->instructorList();
         $userIds = collect($list)->pluck('user_id')->filter()->unique()->all();
@@ -2578,7 +2578,7 @@ class MemberController extends Controller
         ]);
     }
 
-    private function affiliationBounds(\App\Models\ClubAffiliation $affiliation): array
+    private function affiliationBounds(\App\Clubs\Models\ClubAffiliation $affiliation): array
     {
         $end = $affiliation->end_date?->toDateString();
 
@@ -2675,7 +2675,7 @@ class MemberController extends Controller
     }
 
     /** Folder an affiliation's uploaded media images live in (app-generated path). */
-    private function affiliationMediaFolder(User $member, \App\Models\ClubAffiliation $affiliation): string
+    private function affiliationMediaFolder(User $member, \App\Clubs\Models\ClubAffiliation $affiliation): string
     {
         return StoragePath::memberAffiliationMedia($member, $affiliation->id);
     }
@@ -2802,7 +2802,7 @@ class MemberController extends Controller
 
         $member = User::findOrFail($id);
 
-        $ownedClubs = \App\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
+        $ownedClubs = \App\Clubs\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
         if ($ownedClubs->isNotEmpty()) {
             return redirect()->back()
                 ->with('error', 'Cannot delete this account. They are the owner of the following club(s): '.$ownedClubs->join(', ').'. Transfer ownership first.');

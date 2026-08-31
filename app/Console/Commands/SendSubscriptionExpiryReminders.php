@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\SubscriptionExpiryEmail;
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubNotification;
+use App\Clubs\Models\ClubNotification;
 use App\Models\UserNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;

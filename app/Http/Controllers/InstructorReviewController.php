@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\InstructorReviewRequest;
-use App\Models\ClubInstructor;
+use App\Clubs\Models\ClubInstructor;
 use App\Models\InstructorReview;
 use Illuminate\Support\Facades\Auth;
 

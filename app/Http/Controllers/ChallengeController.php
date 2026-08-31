@@ -85,7 +85,7 @@ class ChallengeController extends Controller
         $myAvatar = $this->avatarUrl($me);
 
         // Facilities of clubs the user belongs to — for the location "facility" picker.
-        $facilities = \App\Models\ClubFacility::whereIn('tenant_id', $clubIds)
+        $facilities = \App\Clubs\Models\ClubFacility::whereIn('tenant_id', $clubIds)
             ->with('tenant:id,club_name')
             ->get(['id', 'tenant_id', 'name', 'address', 'gps_lat', 'gps_long', 'maps_url'])
             ->map(fn ($f) => [

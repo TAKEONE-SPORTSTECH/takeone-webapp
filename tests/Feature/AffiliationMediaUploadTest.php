@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AffiliationMedia;
-use App\Models\ClubAffiliation;
+use App\Clubs\Models\ClubAffiliation;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;

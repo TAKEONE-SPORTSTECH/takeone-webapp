@@ -5,7 +5,7 @@
     // Equipment catalog per package (computed on a separate collection so the
     // schedule/instructor mapping below keeps its own relations intact).
     $joinCostSvc = app(\App\Services\RegistrationCostService::class);
-    $eqPackages  = \App\Models\ClubPackage::where('tenant_id', $club->id)->get();
+    $eqPackages  = \App\Clubs\Models\ClubPackage::where('tenant_id', $club->id)->get();
     $joinCostSvc->attachEquipmentToPackages($eqPackages, $club->id, null);
     $equipmentByPkg = $eqPackages->pluck('equipment', 'id');
 

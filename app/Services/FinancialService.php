@@ -3,11 +3,20 @@
 namespace App\Services;
 
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubTransaction;
-use App\Models\Tenant;
+use App\Clubs\Models\ClubTransaction;
+use App\Clubs\Models\Tenant;
 use App\Support\ClubCache;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Clubs (ClubAdminController, ClubFinancialController,
+ * ClubMemberAdminController) AND App\Shop (ClubShopController, ClubOrderController).
+ * The club's books are written by more than one vertical, so this is deliberately
+ * shared rather than club-private — moving it into App\Clubs would force a hole in
+ * the module boundary the shop would have to reach through.
+ */
 
 class FinancialService
 {

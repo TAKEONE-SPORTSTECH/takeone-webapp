@@ -15,6 +15,16 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\HasApiTokens;
+use App\Shop\Models\Order;
+use App\Shop\Models\PerkCollection;
+use App\Clubs\Models\Tenant;
+use App\Clubs\Models\ClubAffiliation;
+use App\Clubs\Models\ClubGalleryImage;
+use App\Clubs\Models\ClubInstructor;
+use App\Clubs\Models\ClubMessage;
+use App\Clubs\Models\ClubNotification;
+use App\Clubs\Models\ClubReview;
+use App\Clubs\Models\ClubTransaction;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -107,8 +117,11 @@ class User extends Authenticatable implements MustVerifyEmail
 
             // Sessions & tokens
             \DB::table('sessions')->where('user_id', $id)->delete();
+            // getMorphClass(), not self::class — Sanctum stores the morph alias
+            // (see App\Support\MorphMap), so matching on the class name would
+            // leave a deleted user's API tokens behind as orphaned rows.
             \DB::table('personal_access_tokens')
-                ->where('tokenable_type', self::class)
+                ->where('tokenable_type', (new self)->getMorphClass())
                 ->where('tokenable_id', $id)
                 ->delete();
         });

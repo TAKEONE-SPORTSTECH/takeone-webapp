@@ -7,7 +7,7 @@ use App\Models\Challenge;
 use App\Models\ClubEvent;
 use App\Models\Duel;
 use App\Models\EventMatch;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 
 /**

@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\ClubInstructor;
+use App\Clubs\Models\ClubInstructor;
 use App\Models\SkillAcquisition;
 use App\Models\User;
 use Illuminate\Database\Migrations\Migration;

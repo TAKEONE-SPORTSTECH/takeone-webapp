@@ -5,6 +5,11 @@ namespace App\Models;
 use App\Traits\HasVerificationState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Clubs\Models\Tenant;
+use App\Clubs\Models\ClubActivity;
+use App\Clubs\Models\ClubAffiliation;
+use App\Clubs\Models\ClubInstructor;
+use App\Clubs\Models\ClubPackage;
 
 class SkillAcquisition extends Model
 {

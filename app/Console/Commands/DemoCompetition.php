@@ -3,14 +3,14 @@
 namespace App\Console\Commands;
 
 use App\Events\EventTypeRegistry;
-use App\Models\ClubAffiliation;
+use App\Clubs\Models\ClubAffiliation;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\HealthRecord;
 use App\Models\MemberCertification;
 use App\Models\SkillAcquisition;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Sports\Combat\SportRegistry;
 use App\Support\DemoManifest;
@@ -343,7 +343,7 @@ class DemoCompetition extends Command
     private function makeEvent(string $sportKey, array $bp): ClubEvent
     {
         $event = ClubEvent::create([
-            'tenant_id' => $this->admin->memberClubs()->value('tenants.id') ?? \App\Models\Tenant::value('id'),
+            'tenant_id' => $this->admin->memberClubs()->value('tenants.id') ?? \App\Clubs\Models\Tenant::value('id'),
             'title' => $bp['title'],
             'description' => 'Demo competition seeded by demo:competition — safe to delete.',
             'date' => now()->startOfDay(),

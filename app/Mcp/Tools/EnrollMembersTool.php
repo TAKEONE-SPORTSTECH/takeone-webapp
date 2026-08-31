@@ -2,7 +2,7 @@
 
 namespace App\Mcp\Tools;
 
-use App\Models\ClubPackage;
+use App\Clubs\Models\ClubPackage;
 use App\Models\Membership;
 use App\Models\User;
 use App\Services\SubscriptionService;

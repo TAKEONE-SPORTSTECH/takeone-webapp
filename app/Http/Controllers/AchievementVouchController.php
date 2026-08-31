@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\VouchRequest;
 use App\Models\AchievementVouch;
-use App\Models\ClubAffiliation;
+use App\Clubs\Models\ClubAffiliation;
 use App\Models\MemberWorkHistory;
 use App\Models\SkillAcquisition;
 use App\Models\TournamentEvent;

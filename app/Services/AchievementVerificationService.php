@@ -12,6 +12,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Clubs (ClubAchievementController), App\Http (MemberController,
+ * AchievementVouchController), App\Mcp (VerifyAchievementTool), App\Models and
+ * App\Traits\HasVerificationState. It attests records owned by several verticals,
+ * so it stays in the shared app/Services/ rather than inside any one of them.
+ */
+
 /**
  * Single source of truth for the verification status of any member-authored,
  * club-attestable record — a self-claimed tournament medal OR an acquired skill.
@@ -182,7 +190,13 @@ class AchievementVerificationService
         $weight = $this->credibilityWeight($voucher, $model);
 
         $vouch = AchievementVouch::updateOrCreate(
-            ['vouchable_type' => $model::class, 'vouchable_id' => $model->getKey(), 'voucher_user_id' => $voucher->id],
+            // getMorphClass(), not ::class — the polymorphic column stores the
+            // alias from App\Support\MorphMap, and the morphMany relation that
+            // reads these vouches back queries by that alias. Writing the raw
+            // class name here inserts a row the relation can never find, so the
+            // vouch threshold is never reached and the record silently stays
+            // unverified.
+            ['vouchable_type' => $model->getMorphClass(), 'vouchable_id' => $model->getKey(), 'voucher_user_id' => $voucher->id],
             [
                 'stance' => $stance === AchievementVouch::STANCE_DISPUTE ? AchievementVouch::STANCE_DISPUTE : AchievementVouch::STANCE_VOUCH,
                 'relationship' => in_array($relationship, ['coach', 'official', 'teammate', 'other'], true) ? $relationship : 'other',
@@ -391,7 +405,7 @@ class AchievementVerificationService
                 'skill' => $model->skill_name,
             ]);
         }
-        if ($model instanceof \App\Models\ClubAffiliation) {
+        if ($model instanceof \App\Clubs\Models\ClubAffiliation) {
             return '🏛 '.__('Verified membership at :club', ['club' => $model->club_name]);
         }
         if ($model instanceof \App\Models\MemberWorkHistory) {

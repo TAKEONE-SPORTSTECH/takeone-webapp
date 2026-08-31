@@ -7,7 +7,7 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventParticipantBan;
 use App\Models\SkillAcquisition;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Models\UserNotification;
 use Illuminate\Support\Facades\DB;

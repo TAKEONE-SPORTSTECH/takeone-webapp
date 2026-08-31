@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Clubs\Models\ClubAffiliation;
 
 class AffiliationMedia extends Model
 {

@@ -1,0 +1,408 @@
+<?php
+
+namespace App\Clubs\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreActivityRequest;
+use App\Http\Requests\Admin\UpdateActivityRequest;
+use App\Clubs\Models\ClubActivity;
+use App\Clubs\Models\ClubActivityEquipment;
+use App\Clubs\Models\ClubFacility;
+use App\Clubs\Models\Tenant;
+use App\Traits\HandlesClubAuthorization;
+use App\Traits\PersistsTranslations;
+use App\Traits\StoresBase64Images;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+class ClubActivityController extends Controller
+{
+    use HandlesClubAuthorization, PersistsTranslations, StoresBase64Images;
+
+    /**
+     * Resolve a "reuse this picture" URL to a path we are willing to copy FROM.
+     *
+     * The picker hands back the URL of a picture already on screen — either one
+     * of this club's own activity images or a row from the shared catalogue.
+     * That URL is a request field, so it decides what gets copied, and the copy
+     * lands in this club's folder under a URL the club then owns.
+     *
+     * Previously the only check was `exists()`, which meant any club admin could
+     * name any file on the public disk — another club's logo, a member's
+     * profile picture, an order proof — and obtain their own copy of it.
+     *
+     * Returns null when the source is not one of ours, which the caller treats
+     * exactly like "no picture supplied".
+     */
+    private function reusableSource(string $url, int $clubId): ?string
+    {
+        // The picker hands back whatever URL is on screen. Files are served
+        // through /file/{path} now, so that prefix is what comes back — the old
+        // /storage/ form is still accepted for any link a page cached earlier.
+        $path = $url;
+        foreach ([url('/file').'/', asset('storage').'/', '/file/', '/storage/'] as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                $path = substr($path, strlen($prefix));
+                break;
+            }
+        }
+        $path = ltrim(rawurldecode($path), '/');
+
+        // A URL that did not resolve to a relative path on our own public disk —
+        // a foreign host, or a traversal attempt — is not a source at all.
+        if ($path === '' || $path === $url && str_contains($url, '://')) {
+            return null;
+        }
+
+        if (str_contains($path, '..')) {
+            return null;
+        }
+
+        // The two places a reusable activity picture legitimately comes from.
+        $allowed = str_starts_with($path, 'clubs/'.$clubId.'/activities/')
+            || str_starts_with($path, 'activity-catalog/');
+
+        if (! $allowed) {
+            return null;
+        }
+
+        return Storage::disk('public')->exists($path) ? $path : null;
+    }
+
+    public function activities(Tenant $club)
+    {
+        $this->authorizeClub($club);
+        $clubId = $club->id;
+        $activities = ClubActivity::where('tenant_id', $clubId)->with('facility')->get();
+        $facilities = ClubFacility::where('tenant_id', $clubId)->get();
+
+        return view(\App\Support\ClubView::pick('activities', 'clubs'), compact('club', 'activities', 'facilities'));
+    }
+
+    /**
+     * The global activity directory — a canonical, platform-wide catalog of
+     * activities any club can reuse instead of re-typing the same activity for
+     * every club. Backed by the tenant-agnostic `activity_catalog` table (see
+     * ActivityCatalog), so it is NOT limited to the current club's own rows.
+     * Only safe, shareable fields are exposed (name/description/picture/icon).
+     */
+    public function activityLibrary(Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $locale = app()->getLocale();
+
+        $items = \App\Models\ActivityCatalog::query()
+            ->where('is_active', true)
+            ->orderByDesc('usage_count')
+            ->orderBy('name')
+            ->get(['name', 'description', 'translations', 'variants', 'picture_url', 'icon'])
+            ->map(fn ($a) => [
+                'name' => $a->tr('name', $locale),      // localized — for display in the picker
+                'name_en' => $a->name,                  // base — what gets stored as the club activity name
+                'description' => $a->description,       // base/English — stored + preview
+                'description_local' => $a->tr('description', $locale),
+                'translations' => $a->translations,     // AR name + description, carried onto the new activity
+                'variants' => $a->variants ?: [],       // suggested styles/federations
+                'icon' => $a->icon,
+                'picture_url' => $a->picture_url,
+                'picture_src' => $a->picture_url ? file_url($a->picture_url) : null,
+            ])
+            ->filter(fn ($a) => filled($a['name']))
+            ->values();
+
+        return response()->json(['activities' => $items]);
+    }
+
+    public function storeActivity(StoreActivityRequest $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+        $clubId = $club->id;
+
+        $data = $request->only(['name', 'style', 'description', 'notes', 'duration_minutes']);
+        $data['tenant_id'] = $clubId;
+        $this->sanitizeActivityDescription($request, $data);
+
+        if ($request->filled('picture') && str_starts_with($request->input('picture'), 'data:image')) {
+            $data['picture_url'] = $this->storeBase64Image($request->input('picture'), 'clubs/'.$clubId.'/activities', 'activity_'.time());
+        } elseif ($request->hasFile('picture')) {
+            $data['picture_url'] = $request->file('picture')->store('clubs/'.$clubId.'/activities', 'public');
+        } elseif ($request->filled('existing_picture_url')) {
+            $storagePath = $this->reusableSource($request->existing_picture_url, $clubId);
+
+            if ($storagePath !== null) {
+                $extension = pathinfo($storagePath, PATHINFO_EXTENSION);
+                $newPath = 'clubs/'.$clubId.'/activities/activity_'.Str::random(24).'.'.$extension;
+                Storage::disk('public')->copy($storagePath, $newPath);
+                $data['picture_url'] = $newPath;
+            }
+        }
+
+        $activity = ClubActivity::create($data);
+
+        $this->applyTranslations($activity, $request);
+
+        // Contribute this activity to the global directory (deduped by slug) so
+        // it becomes reusable by other clubs — the whole point of the catalog.
+        $this->contributeToCatalog($activity, $clubId);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Activity added successfully.',
+                'activity' => $this->activityPayload($activity),
+            ]);
+        }
+
+        return back()->with('success', 'Activity added successfully.');
+    }
+
+    public function updateActivity(UpdateActivityRequest $request, Tenant $club, $activityId)
+    {
+        $this->authorizeClub($club);
+        $clubId = $club->id;
+        $activity = ClubActivity::where('tenant_id', $clubId)->findOrFail($activityId);
+
+        $data = $request->only(['name', 'style', 'description', 'notes', 'duration_minutes']);
+        $this->sanitizeActivityDescription($request, $data);
+
+        if ($request->filled('picture') && str_starts_with($request->input('picture'), 'data:image')) {
+            if ($activity->picture_url && Storage::disk('public')->exists($activity->picture_url)) {
+                Storage::disk('public')->delete($activity->picture_url);
+            }
+            $data['picture_url'] = $this->storeBase64Image($request->input('picture'), 'clubs/'.$clubId.'/activities', 'activity_'.$activityId.'_'.time());
+        } elseif ($request->hasFile('picture')) {
+            if ($activity->picture_url && Storage::disk('public')->exists($activity->picture_url)) {
+                Storage::disk('public')->delete($activity->picture_url);
+            }
+            $data['picture_url'] = $request->file('picture')->store('clubs/'.$clubId.'/activities', 'public');
+        }
+
+        $activity->update($data);
+
+        $this->applyTranslations($activity, $request);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Activity updated successfully.',
+                'activity' => $this->activityPayload($activity),
+            ]);
+        }
+
+        return back()->with('success', 'Activity updated successfully.');
+    }
+
+    /**
+     * The activity description is now rich HTML (rich-text editor + AI wand), so
+     * sanitize it — and its Arabic translation — before persisting.
+     */
+    private function sanitizeActivityDescription($request, array &$data): void
+    {
+        if (! empty($data['description'])) {
+            $data['description'] = \App\Support\HtmlSanitizer::clean($data['description']);
+        }
+
+        // Style/federation is short plain text — strip any markup defensively.
+        if (array_key_exists('style', $data)) {
+            $style = trim(strip_tags((string) $data['style']));
+            $data['style'] = $style !== '' ? $style : null;
+        }
+
+        $ar = $request->input('translations.description.ar');
+        if (filled($ar)) {
+            $translations = $request->input('translations', []);
+            $translations['description']['ar'] = \App\Support\HtmlSanitizer::clean($ar);
+            $request->merge(['translations' => $translations]);
+        }
+    }
+
+    /**
+     * Upsert this club activity into the global directory (keyed by canonical
+     * slug) and bump its usage counter. Best-effort — never blocks the save.
+     */
+    private function contributeToCatalog(ClubActivity $activity, int $tenantId): void
+    {
+        try {
+            $entry = \App\Models\ActivityCatalog::contribute([
+                'name' => $activity->name,
+                'description' => $activity->description,
+                'translations' => $activity->translations,
+                'picture_url' => $activity->picture_url,
+                'style' => $activity->style,
+                'style_ar' => $activity->tr('style', 'ar') === $activity->style ? null : $activity->tr('style', 'ar'),
+            ], $tenantId);
+
+            $entry->increment('usage_count');
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
+     * Build the JSON payload used by the activities page to update a card in place.
+     */
+    private function activityPayload(ClubActivity $activity): array
+    {
+        $activity->loadMissing('facility');
+
+        return [
+            'id' => $activity->id,
+            'name' => $activity->name,
+            'style' => $activity->style,
+            'description' => $activity->description,
+            'translations' => $activity->translations,
+            'notes' => $activity->notes,
+            'duration_minutes' => $activity->duration_minutes,
+            'picture_url' => $activity->picture_url,
+            'picture_src' => $activity->picture_url ? file_url($activity->picture_url) : null,
+            'facility' => $activity->facility ? ['id' => $activity->facility->id, 'name' => $activity->facility->name] : null,
+            'updated_at' => optional($activity->updated_at)->timestamp,
+        ];
+    }
+
+    public function destroyActivity(\Illuminate\Http\Request $request, Tenant $club, $activityId)
+    {
+        $this->authorizeClub($club);
+        $activity = ClubActivity::where('tenant_id', $club->id)->findOrFail($activityId);
+
+        if ($activity->picture_url && Storage::disk('public')->exists($activity->picture_url)) {
+            Storage::disk('public')->delete($activity->picture_url);
+        }
+
+        $activity->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Activity deleted successfully.']);
+        }
+
+        return back()->with('success', 'Activity deleted successfully.');
+    }
+
+    /* -----------------------------------------------------------------
+     |  Equipment catalog (gear required to practice the activity)
+     | ----------------------------------------------------------------- */
+
+    public function equipment(Tenant $club, $activityId)
+    {
+        $this->authorizeClub($club);
+        $activity = ClubActivity::where('tenant_id', $club->id)->findOrFail($activityId);
+
+        $items = ClubActivityEquipment::where('activity_id', $activity->id)
+            ->with('product')
+            ->orderBy('sort_order')->orderBy('id')
+            ->get()
+            ->map(fn ($e) => $this->equipmentPayload($e));
+
+        // Shop products the admin can link as gear (published items).
+        $products = \App\Shop\Models\ClubProduct::where('tenant_id', $club->id)
+            ->where('status', 'published')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'price' => (float) $p->price,
+                'image' => $p->image_path ? file_url($p->image_path) : null,
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'equipment' => $items,
+            'products' => $products,
+        ]);
+    }
+
+    public function storeEquipment(\Illuminate\Http\Request $request, Tenant $club, $activityId)
+    {
+        $this->authorizeClub($club);
+        $activity = ClubActivity::where('tenant_id', $club->id)->findOrFail($activityId);
+
+        $data = $this->validateEquipment($request, $club);
+
+        // One activity links a given product once.
+        $equipment = ClubActivityEquipment::firstOrNew([
+            'activity_id' => $activity->id,
+            'club_product_id' => $data['club_product_id'],
+        ]);
+        $equipment->fill([
+            'tenant_id' => $club->id,
+            'is_required' => $data['is_required'],
+            'is_active' => $data['is_active'],
+        ]);
+        if (! $equipment->exists) {
+            $equipment->sort_order = ClubActivityEquipment::where('activity_id', $activity->id)->max('sort_order') + 1;
+        }
+        $equipment->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Equipment added.',
+            'equipment' => $this->equipmentPayload($equipment->load('product')),
+        ]);
+    }
+
+    public function updateEquipment(\Illuminate\Http\Request $request, Tenant $club, $activityId, $equipmentId)
+    {
+        $this->authorizeClub($club);
+        $equipment = ClubActivityEquipment::where('tenant_id', $club->id)
+            ->where('activity_id', $activityId)
+            ->findOrFail($equipmentId);
+
+        // Editing only toggles the registration-specific flags; the product
+        // (name/price/image) is managed in the shop.
+        $equipment->update([
+            'is_required' => $request->boolean('is_required'),
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Equipment updated.',
+            'equipment' => $this->equipmentPayload($equipment->load('product')),
+        ]);
+    }
+
+    public function destroyEquipment(Tenant $club, $activityId, $equipmentId)
+    {
+        $this->authorizeClub($club);
+        $equipment = ClubActivityEquipment::where('tenant_id', $club->id)
+            ->where('activity_id', $activityId)
+            ->findOrFail($equipmentId);
+
+        $equipment->delete();
+
+        return response()->json(['success' => true, 'message' => 'Equipment removed.']);
+    }
+
+    private function validateEquipment(\Illuminate\Http\Request $request, Tenant $club): array
+    {
+        $request->validate([
+            'club_product_id' => [
+                'required', 'integer',
+                \Illuminate\Validation\Rule::exists('club_products', 'id')->where('tenant_id', $club->id),
+            ],
+            'is_required' => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        return [
+            'club_product_id' => (int) $request->input('club_product_id'),
+            'is_required' => $request->boolean('is_required'),
+            'is_active' => $request->boolean('is_active', true),
+        ];
+    }
+
+    private function equipmentPayload(ClubActivityEquipment $e): array
+    {
+        return [
+            'id' => $e->id,
+            'product_id' => $e->club_product_id,
+            'name' => $e->product?->name,
+            'price' => (float) ($e->product?->price ?? 0),
+            'image' => $e->product?->image_path ? file_url($e->product->image_path) : null,
+            'is_required' => (bool) $e->is_required,
+            'is_active' => (bool) $e->is_active,
+        ];
+    }
+}

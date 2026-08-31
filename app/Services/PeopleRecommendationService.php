@@ -2,11 +2,17 @@
 
 namespace App\Services;
 
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Models\UserBlock;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http (PeopleController). Discovery spans clubs and members,
+ * so it stays shared rather than being owned by either vertical.
+ */
 
 /**
  * "Suggested for you" people recommendations (the default Find-People state,

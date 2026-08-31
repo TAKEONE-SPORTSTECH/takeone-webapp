@@ -100,7 +100,7 @@ class CompetitorPhoto
      *  3. The club's own logo from its account, which is the normal case and
      *     needs no help from anybody at the desk.
      *
-     * @param  \App\Models\Tenant|null  $club
+     * @param  \App\Clubs\Models\Tenant|null  $club
      */
     public function crestUrl(?ClubEventRegistration $entry, $club, ?int $eventId = null): ?string
     {

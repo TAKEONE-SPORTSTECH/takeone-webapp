@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\ClubInstructor;
-use App\Models\ClubRecurringExpense;
-use App\Models\ClubTransaction;
+use App\Clubs\Models\ClubInstructor;
+use App\Clubs\Models\ClubRecurringExpense;
+use App\Clubs\Models\ClubTransaction;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;

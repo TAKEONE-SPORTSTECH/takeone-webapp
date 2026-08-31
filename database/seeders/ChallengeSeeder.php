@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Challenge;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use Illuminate\Database\Seeder;
 
 class ChallengeSeeder extends Seeder

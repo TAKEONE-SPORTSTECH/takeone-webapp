@@ -37,6 +37,7 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
+@source '../../app/**/resources/views/**/*.blade.php';
 @source '../**/*.js';
 
 @theme {

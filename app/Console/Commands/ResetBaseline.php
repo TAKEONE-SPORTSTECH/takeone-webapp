@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;

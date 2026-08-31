@@ -3,7 +3,7 @@
 namespace Tests\Feature\ClubAdmin;
 
 use App\Models\ActivityCatalog;
-use App\Models\ClubActivity;
+use App\Clubs\Models\ClubActivity;
 use Tests\TestCase;
 
 class ActivityTest extends TestCase

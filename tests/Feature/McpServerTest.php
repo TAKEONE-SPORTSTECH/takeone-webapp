@@ -14,9 +14,9 @@ use App\Mcp\Tools\ManageMemberPhotoTool;
 use App\Mcp\Tools\RecordTransactionTool;
 use App\Mcp\Tools\SearchPeopleTool;
 use App\Mcp\Tools\WhoAmITool;
-use App\Models\ClubInstructor;
-use App\Models\ClubPackage;
-use App\Models\ClubTransaction;
+use App\Clubs\Models\ClubInstructor;
+use App\Clubs\Models\ClubPackage;
+use App\Clubs\Models\ClubTransaction;
 use App\Models\Membership;
 use Laravel\Mcp\Request;
 use Tests\TestCase;
@@ -908,4 +908,115 @@ class McpServerTest extends TestCase
         $this->assertStringContainsString('not authorized', $result['error']);
         $this->assertSame(1, $owner->photos()->count());
     }
+
+    /* ---------------------------------------------------------------------
+     | Brazilian jiu-jitsu scoreboard
+     |---------------------------------------------------------------------*/
+
+    /** An event with one mat, one loaded bout, and a few scoring entries. */
+    private function bjjMat(): array
+    {
+        $organiser = $this->createUser(['full_name' => 'Professor Silva']);
+        $club = $this->createClub($organiser, ['country' => 'BH']);
+        $organiser->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+
+        $event = \App\Models\ClubEvent::create([
+            'tenant_id' => $club->id, 'created_by' => $organiser->id, 'title' => 'Gulf Open',
+            'event_type' => 'championship', 'sport' => 'bjj', 'scope' => 'internal',
+            'date' => now()->addWeek()->toDateString(), 'end_date' => now()->addWeek()->toDateString(),
+            'start_time' => '09:00', 'end_time' => '17:00', 'status' => 'active', 'is_archived' => false,
+        ]);
+
+        $mat = \App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\MatState::create([
+            'event_id' => $event->id, 'court' => '1', 'mode' => 'match', 'status' => 'live',
+            'match_id' => 4242, 'division' => 'Adult Male Light',
+            'blue' => ['name' => 'Ana Costa', 'club' => 'Alliance'],
+            'white' => ['name' => 'Bia Souza', 'club' => 'Atos'],
+            'remaining' => 300, 'duration' => 300, 'running' => true,
+        ]);
+
+        $ledger = app(\App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\Ledger::class);
+        // Mount is worth four. Called with the value the package's own table
+        // gives it, so the test cannot drift from the rule it is checking.
+        $mount = \App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\Ledger::POINT_SOURCES['mount'];
+
+        $ledger->append($event, '1', 'point', 4242, 'blue', $mount, 'mount', null, null, $organiser->id);
+        $ledger->append($event, '1', 'advantage', 4242, 'white', 0, null, null, null, $organiser->id);
+        $ledger->append($event, '1', 'penalty', 4242, 'white', 0, null, null, null, $organiser->id);
+
+        return [$event, $organiser, $mat];
+    }
+
+    public function test_bjj_scoreboard_reports_three_counters_separately(): void
+    {
+        [$event, $organiser] = $this->bjjMat();
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\GetBjjScoreboardTool::class, ['event' => $event->uuid]);
+
+        $mat = $result['mats'][0];
+
+        $this->assertSame('Ana Costa', $mat['blue']['name']);
+        $this->assertSame('Bia Souza', $mat['white']['name']);
+
+        // Mount is four, and an advantage is never folded into the points.
+        $this->assertSame(4, $mat['score']['bluePoints']);
+        $this->assertSame(0, $mat['score']['whitePoints']);
+        $this->assertSame(1, $mat['score']['whiteAdvantages']);
+        $this->assertSame(1, $mat['score']['whitePenalties']);
+        $this->assertSame('blue', $mat['score']['leader']);
+    }
+
+    public function test_bjj_scoreboard_is_refused_to_an_outsider(): void
+    {
+        [$event] = $this->bjjMat();
+
+        $outsider = $this->createUser();
+        $otherClub = $this->createClub($outsider, ['country' => 'BH']);
+        $outsider->memberClubs()->syncWithoutDetaching([$otherClub->id => ['status' => 'active']]);
+        $this->actingAs($outsider->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\GetBjjScoreboardTool::class, ['event' => $event->uuid]);
+
+        // The same answer a missing uuid gets, so this cannot enumerate events.
+        $this->assertStringContainsString('Event not found', $result['error']);
+    }
+
+    public function test_bjj_match_log_replays_to_the_same_score(): void
+    {
+        [$event, $organiser] = $this->bjjMat();
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListBjjMatchEventsTool::class, [
+            'event' => $event->uuid, 'court' => '1',
+        ]);
+
+        $this->assertSame(4242, $result['match_id']);
+        $this->assertCount(3, $result['entries']);
+
+        // The log and the score must never tell two different stories.
+        $this->assertSame(4, $result['score']['bluePoints']);
+
+        // Newest first, and the corners are named rather than the neutral a/b
+        // the column stores.
+        $this->assertSame(['white', 'white', 'blue'], array_column($result['entries'], 'side'));
+    }
+
+    public function test_bjj_match_log_is_refused_to_someone_who_may_only_watch(): void
+    {
+        [$event, $organiser] = $this->bjjMat();
+
+        // A member of the SAME club: they may see the event, and may not read an
+        // officiating log, because every entry names the official who made it.
+        $spectator = $this->createUser();
+        $spectator->memberClubs()->syncWithoutDetaching([$event->tenant_id => ['status' => 'active']]);
+        $this->actingAs($spectator->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\ListBjjMatchEventsTool::class, [
+            'event' => $event->uuid, 'court' => '1',
+        ]);
+
+        $this->assertStringContainsString('Match log not found', $result['error']);
+    }
+
 }

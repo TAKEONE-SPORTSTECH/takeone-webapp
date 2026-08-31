@@ -7,6 +7,8 @@ use App\Traits\HasVerificationState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Clubs\Models\Tenant;
+use App\Clubs\Models\ClubAffiliation;
 
 class TournamentEvent extends Model
 {

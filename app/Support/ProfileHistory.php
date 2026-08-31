@@ -2,9 +2,9 @@
 
 namespace App\Support;
 
-use App\Models\ClubAffiliation;
+use App\Clubs\Models\ClubAffiliation;
 use App\Models\ClubEventRegistration;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\TournamentEvent;
 use App\Models\User;
 use Illuminate\Support\Collection;

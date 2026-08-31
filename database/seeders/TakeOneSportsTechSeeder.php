@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\ActivityCatalog;
-use App\Models\ClubActivity;
-use App\Models\ClubPackage;
-use App\Models\Tenant;
+use App\Clubs\Models\ClubActivity;
+use App\Clubs\Models\ClubPackage;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Services\ClubCreationService;
 use Illuminate\Database\Seeder;

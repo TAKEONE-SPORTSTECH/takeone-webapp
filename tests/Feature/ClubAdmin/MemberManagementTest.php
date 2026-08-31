@@ -3,7 +3,7 @@
 namespace Tests\Feature\ClubAdmin;
 
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubPackage;
+use App\Clubs\Models\ClubPackage;
 use App\Models\Membership;
 use Tests\TestCase;
 

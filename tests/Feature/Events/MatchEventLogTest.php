@@ -8,7 +8,7 @@ use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Models\EventMatchEvent;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;

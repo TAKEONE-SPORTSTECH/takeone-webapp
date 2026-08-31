@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\ClubProduct;
-use App\Models\ClubProductCategory;
-use App\Models\Tenant;
+use App\Shop\Models\ClubProduct;
+use App\Shop\Models\ClubProductCategory;
+use App\Clubs\Models\Tenant;
 use Illuminate\Database\Seeder;
 
 /**

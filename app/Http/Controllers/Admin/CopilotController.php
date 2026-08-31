@@ -135,7 +135,7 @@ class CopilotController extends Controller
         $data = $validator->validated();
         // Keep the slug the user reviewed if it's still free; otherwise regenerate.
         $reviewedSlug = is_string($proposal['slug'] ?? null) ? $proposal['slug'] : null;
-        $data['slug'] = ($reviewedSlug && ! \App\Models\Tenant::where('slug', $reviewedSlug)->exists())
+        $data['slug'] = ($reviewedSlug && ! \App\Clubs\Models\Tenant::where('slug', $reviewedSlug)->exists())
             ? $reviewedSlug
             : $this->uniqueSlug($data['club_name']);
         $data['country'] = strtoupper($data['country'] ?? 'BH');
@@ -174,7 +174,7 @@ class CopilotController extends Controller
         $slug = $base;
         $i = 2;
 
-        while (\App\Models\Tenant::where('slug', $slug)->exists()) {
+        while (\App\Clubs\Models\Tenant::where('slug', $slug)->exists()) {
             $slug = $base.'-'.$i;
             $i++;
         }

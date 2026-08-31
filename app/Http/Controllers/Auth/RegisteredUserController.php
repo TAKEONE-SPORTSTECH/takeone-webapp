@@ -45,7 +45,7 @@ class RegisteredUserController extends Controller
      */
     public function createForClub(Request $request, string $country, string $slug)
     {
-        $club = \App\Models\Tenant::where('slug', $slug)->first([
+        $club = \App\Clubs\Models\Tenant::where('slug', $slug)->first([
             'club_name', 'slug', 'country_code', 'logo', 'cover_image', 'currency',
             'enrollment_fee', 'registration_fee',
             'registration_splash_image', 'registration_terms', 'registration_requirements', 'translations',
@@ -64,7 +64,7 @@ class RegisteredUserController extends Controller
         return view('auth.register-wizard');
     }
 
-    private function setClubContext(\App\Models\Tenant $club): void
+    private function setClubContext(\App\Clubs\Models\Tenant $club): void
     {
         session(['club.context' => [
             'name' => $club->club_name,
@@ -129,7 +129,7 @@ class RegisteredUserController extends Controller
             // verification (mail-service escape hatch), verify them on creation and
             // skip the verification email — they get straight in.
             $clubSlug = data_get(session('club.context'), 'slug');
-            $club = $clubSlug ? \App\Models\Tenant::where('slug', $clubSlug)->first() : null;
+            $club = $clubSlug ? \App\Clubs\Models\Tenant::where('slug', $clubSlug)->first() : null;
             $skipVerification = $club && ! $club->require_email_verification;
 
             if ($skipVerification) {

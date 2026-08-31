@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use App\Models\ClubEvent;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Models\UserRelationship;
 

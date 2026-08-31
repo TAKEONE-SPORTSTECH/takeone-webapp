@@ -43,14 +43,14 @@ class MemberWorkHistory extends Model
      * The club that may confirm this role — matched from the free-text organization
      * to an active platform club by name. Null (→ peer/colleague vouch) otherwise.
      */
-    public function attestingTenant(): ?\App\Models\Tenant
+    public function attestingTenant(): ?\App\Clubs\Models\Tenant
     {
         $org = trim((string) $this->organization);
         if ($org === '') {
             return null;
         }
 
-        return \App\Models\Tenant::whereRaw('LOWER(club_name) = ?', [mb_strtolower($org)])
+        return \App\Clubs\Models\Tenant::whereRaw('LOWER(club_name) = ?', [mb_strtolower($org)])
             ->where('status', 'active')->first();
     }
 

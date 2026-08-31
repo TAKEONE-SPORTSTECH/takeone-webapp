@@ -2,10 +2,11 @@
 
 namespace App\Providers;
 
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Horizon\Horizon;
@@ -26,6 +27,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /*
+         * Aliases for polymorphic types, so a `*_type` column never holds a PHP
+         * namespace. See App\Support\MorphMap for why this matters before any
+         * model is moved between folders.
+         */
+        Relation::morphMap(\App\Support\MorphMap::map());
+
         /*
          * Keep the profile's Affiliations and Tournaments tabs in step with what
          * the club actually did. Those tabs read the member's self-reported log;
@@ -144,7 +152,29 @@ class AppServiceProvider extends ServiceProvider
         // that can render its own pairing code and nothing else, useless until
         // an authenticated organiser adopts it. Bulk creation remains pointless.
         RateLimiter::for('court-enroll', function (Request $request) {
-            return Limit::perHour(120)->by($request->ip());
+            /*
+             * 600/hour per IP, not 120.
+             *
+             * A COMPETITION VENUE IS ONE IP. Every television, tablet and phone
+             * in the hall shares the venue's NAT address, and setting up is not
+             * one visit each: a screen is opened, carried to a wall, reopened
+             * because somebody power-cycled it, the camera page is opened on
+             * three phones, an organiser reloads to get a fresh code. Eight
+             * screens and a bad morning reaches 120 easily — and what a screen
+             * gets at 121 is a 429 HTML page with NO CODE ON IT, which on a wall
+             * display with no keyboard is indistinguishable from the platform
+             * being down.
+             *
+             * What this protects is cheap: a `pending_screens` row is a few
+             * dozen bytes and holds nothing until an authenticated organiser
+             * claims it. 600/hour still bounds a scripted flood to something
+             * trivial, while putting the limit far above anything a real hall
+             * can produce. The abuse this guards against was never volume; it
+             * was somebody minting codes hoping to collide with one an organiser
+             * is about to type, and THAT is bounded by the 29^6 code space and
+             * by the claim requiring a session, not by this number.
+             */
+            return Limit::perHour(600)->by($request->ip());
         });
 
         // Handing a bare television its own app. Unauthenticated by necessity,

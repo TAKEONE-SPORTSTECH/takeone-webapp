@@ -182,6 +182,20 @@ Route::middleware(['auth', 'verified', 'throttle:media-read'])->group(function (
 | holding a phone should not have to know whether the thing in front of them is
 | a television or a lens.
 */
+// Filming a mat with the phone already in your hand — no app, no install.
+//
+// Open like /screen and for the same reason: what it yields is an UNCLAIMED
+// camera that can read nothing and film nothing until an authenticated organiser
+// puts it on a mat. It speaks the same four token endpoints below, so the server
+// cannot tell it from the APK and neither can the console.
+//
+// This is the address a camera QR points at. A phone with the app installed is
+// offered the app by Android; a phone without one lands here and works anyway,
+// which is the whole point — there is no arrangement of devices in a hall that
+// leaves somebody unable to film.
+Route::get('/camera', [\App\Events\Support\Cameras\BrowserCameraController::class, 'show'])
+    ->name('camera.web')->middleware('throttle:screen-app');
+
 Route::post('/camera/enroll', [\App\Events\Support\Cameras\CameraController::class, 'enroll'])
     ->name('camera.enroll')->middleware('throttle:court-enroll');
 Route::get('/camera/{token}/config', [\App\Events\Support\Cameras\CameraController::class, 'config'])
@@ -335,7 +349,16 @@ Route::withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken
     Route::get('/court/{token}/control', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'tokenControl'])
         ->name('taekwondo-scoreboard.token-control')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
     Route::post('/court/{token}/command', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'tokenCommand'])
-        ->name('taekwondo-scoreboard.token-command')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+        ->name('taekwondo-scoreboard.token-command')->where('token', '[A-Za-z0-9]{40}')
+        // NOT `screen-token`. That limiter is 60/min and was written for a
+        // PASSIVE wall screen — "a screen may only starve itself". A scoring
+        // TABLE is a write path: every point, penalty and clock nudge is one
+        // POST, and it shares the bucket with its own page load and its status
+        // heartbeat. A busy mat exhausted 60 in under a minute and the tablet
+        // went dead mid-bout with a 429 no official could act on. 300/min is
+        // what the signed-in consoles already use, and what BJJ's equivalent
+        // route has always used.
+        ->middleware('throttle:300,1');
     Route::post('/court/{token}/photo', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'tokenPhoto'])
         ->name('taekwondo-scoreboard.token-photo')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:uploads');
 });
@@ -407,7 +430,16 @@ Route::post('/karate/court/{token}/photo/{side}', [\App\Events\Sports\Karate\Tou
     ->where('token', '[A-Za-z0-9]{40}')->where('side', 'aka|ao')
     ->middleware('throttle:uploads');
 Route::post('/karate/court/{token}/command', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'tokenCommand'])
-    ->name('karate-scoreboard.token-command')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+    ->name('karate-scoreboard.token-command')->where('token', '[A-Za-z0-9]{40}')
+        // NOT `screen-token`. That limiter is 60/min and was written for a
+        // PASSIVE wall screen — "a screen may only starve itself". A scoring
+        // TABLE is a write path: every point, penalty and clock nudge is one
+        // POST, and it shares the bucket with its own page load and its status
+        // heartbeat. A busy mat exhausted 60 in under a minute and the tablet
+        // went dead mid-bout with a 429 no official could act on. 300/min is
+        // what the signed-in consoles already use, and what BJJ's equivalent
+        // route has always used.
+        ->middleware('throttle:300,1');
 
 Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     /*
@@ -546,6 +578,10 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
      */
     Route::get('/events/{event:uuid}/bout/{matchNo}/video', [App\Http\Controllers\BoutVideoController::class, 'show'])
         ->whereNumber('matchNo')->name('events.bout.video');
+    // The highlights lists as JSON, so the watch page can re-read them after a
+    // coach note is written without reloading the whole bout.
+    Route::get('/events/{event:uuid}/bout/{matchNo}/video/data', [App\Http\Controllers\BoutVideoController::class, 'matchData'])
+        ->whereNumber('matchNo')->name('events.bout.video.data');
     // Deleting the footage itself — platform staff only, enforced in the
     // controller. Throttled like any other destructive write: competition video
     // cannot be filmed again, so this is the one button on the page with no
@@ -715,10 +751,6 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::delete('/events/{event:uuid}/bans/{user}', [App\Http\Controllers\PersonalEventController::class, 'liftBan'])->name('events.ban.lift')->whereNumber('user')->middleware('throttle:member-write');
     Route::get('/market', [App\Http\Controllers\PersonalMobileController::class, 'market'])->name('market');
     Route::get('/market/{product}', [App\Http\Controllers\PersonalMobileController::class, 'marketShow'])->name('market.show')->whereNumber('product');
-    // Shop orders (member side): place an order + see my orders.
-    Route::get('/orders', [App\Http\Controllers\OrderController::class, 'index'])->name('orders');
-    Route::post('/orders', [App\Http\Controllers\OrderController::class, 'store'])->name('orders.store')->middleware('throttle:member-write');
-    Route::post('/orders/{order}/receive', [App\Http\Controllers\OrderController::class, 'receive'])->name('orders.receive')->middleware('throttle:member-write');
     // Challenges & 1v1 duels (real, DB-backed).
     Route::get('/challenge', [App\Http\Controllers\ChallengeController::class, 'index'])->name('challenge');
     Route::get('/challenge/create', [App\Http\Controllers\ChallengeController::class, 'create'])->name('challenge.create');
@@ -982,9 +1014,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     // All Clubs Management
     Route::get('/clubs', [App\Http\Controllers\Admin\PlatformController::class, 'clubs'])->name('platform.clubs');
     Route::get('/clubs/create', [App\Http\Controllers\Admin\PlatformController::class, 'createClub'])->name('platform.clubs.create');
-    Route::post('/clubs', [App\Http\Controllers\Admin\ClubApiController::class, 'store'])->name('platform.clubs.store')->middleware('throttle:admin-write');
     Route::get('/clubs/{club}/edit', [App\Http\Controllers\Admin\PlatformController::class, 'editClub'])->name('platform.clubs.edit');
-    Route::put('/clubs/{club}', [App\Http\Controllers\Admin\ClubApiController::class, 'update'])->name('platform.clubs.update')->middleware('throttle:admin-write');
     Route::delete('/clubs/{club}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyClub'])->name('platform.clubs.destroy')->middleware('throttle:admin-write');
     Route::post('/clubs/{club}/upload-logo', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubLogo'])->name('platform.clubs.upload-logo')->middleware('throttle:uploads');
     Route::post('/clubs/{club}/upload-cover', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubCover'])->name('platform.clubs.upload-cover')->middleware('throttle:uploads');
@@ -1022,10 +1052,8 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::post('/copilot/stt', [App\Http\Controllers\Admin\CopilotController::class, 'stt'])->name('copilot.stt')->middleware('throttle:copilot');
     Route::post('/copilot/tts', [App\Http\Controllers\Admin\CopilotController::class, 'tts'])->name('copilot.tts')->middleware('throttle:copilot');
 
-    // Club API endpoints for modal
-    Route::get('/api/users', [App\Http\Controllers\Admin\ClubApiController::class, 'getUsers']);
-    Route::get('/api/clubs/{id}', [App\Http\Controllers\Admin\ClubApiController::class, 'getClub']);
-    Route::post('/api/clubs/check-slug', [App\Http\Controllers\Admin\ClubApiController::class, 'checkSlug'])->middleware('throttle:admin-write');
+    // Club create/update and the club-modal lookup endpoints now live in the
+    // Clubs module: app/Clubs/routes.php (same prefix, names and middleware).
 
     // All Members Management
     Route::get('/members', [App\Http\Controllers\Admin\PlatformController::class, 'members'])->name('platform.members');
@@ -1079,181 +1107,12 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::delete('/businesses/{business}', [App\Http\Controllers\Admin\BusinessApprovalController::class, 'destroy'])->name('platform.businesses.destroy')->middleware('throttle:admin-write');
 });
 
-// Club Admin routes (Club owners and admins)
-Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-write'])->prefix('admin/club/{club}')->name('admin.club.')->group(function () {
-    // Dashboard & club details
-    // Bare club-admin root → dashboard, so /admin/club/{club} never dead-ends on a 405
-    // (only PUT/DELETE live at `/`). Auth/tenant scope still enforced by the group middleware.
-    Route::get('/', fn ($club) => redirect()->route('admin.club.dashboard', $club))->name('home');
-    Route::get('/dashboard', [App\Http\Controllers\Admin\ClubAdminController::class, 'dashboard'])->name('dashboard');
-    // Shop — club store: products held in stock or dropshipped.
-    Route::get('/shop', [App\Http\Controllers\Admin\ClubShopController::class, 'shop'])->name('shop');
-    Route::post('/shop/products', [App\Http\Controllers\Admin\ClubShopController::class, 'storeProduct'])->name('shop.products.store');
-    Route::put('/shop/products/{product}', [App\Http\Controllers\Admin\ClubShopController::class, 'updateProduct'])->name('shop.products.update');
-    Route::delete('/shop/products/{product}', [App\Http\Controllers\Admin\ClubShopController::class, 'destroyProduct'])->name('shop.products.destroy');
-    Route::post('/shop/products/{product}/stock-mute', [App\Http\Controllers\Admin\ClubShopController::class, 'muteStockAlert'])->name('shop.products.stock-mute');
-    Route::post('/shop/categories', [App\Http\Controllers\Admin\ClubShopController::class, 'storeCategory'])->name('shop.categories.store');
-    Route::put('/shop/categories/{category}', [App\Http\Controllers\Admin\ClubShopController::class, 'updateCategory'])->name('shop.categories.update');
-    Route::delete('/shop/categories/{category}', [App\Http\Controllers\Admin\ClubShopController::class, 'destroyCategory'])->name('shop.categories.destroy');
-    // Incoming shop orders the club fulfils.
-    Route::get('/orders', [App\Http\Controllers\Admin\ClubOrderController::class, 'index'])->name('orders');
-    Route::patch('/orders/{order}/status', [App\Http\Controllers\Admin\ClubOrderController::class, 'updateStatus'])->name('orders.status');
-    Route::get('/details', [App\Http\Controllers\Admin\ClubAdminController::class, 'details'])->name('details');
-    Route::put('/', [App\Http\Controllers\Admin\ClubAdminController::class, 'update'])->name('update');
-    Route::put('/settings/whatsapp', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateWhatsAppSettings'])->name('settings.whatsapp.update');
-    Route::post('/settings/whatsapp/test', [App\Http\Controllers\Admin\ClubAdminController::class, 'testWhatsAppConnection'])->name('settings.whatsapp.test');
-    Route::post('/settings/whatsapp/send-test', [App\Http\Controllers\Admin\ClubAdminController::class, 'sendTestWhatsAppMessage'])->name('settings.whatsapp.send-test');
-    Route::delete('/', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroy'])->name('destroy');
-    Route::post('/social-links', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeSocialLink'])->name('social-links.store');
-    Route::delete('/social-links/{link}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroySocialLink'])->name('social-links.destroy');
-    Route::post('/transfer-ownership', [App\Http\Controllers\Admin\ClubAdminController::class, 'transferOwnership'])->name('transfer-ownership')->middleware('throttle:admin-write');
-    Route::post('/create-owner', [App\Http\Controllers\Admin\ClubAdminController::class, 'createOwner'])->name('create-owner')->middleware('throttle:admin-write');
+// Club Admin routes (Club owners and admins) now live in the Clubs module:
+// app/Clubs/routes-club-admin.php, registered by ModuleServiceProvider under
+// admin/club/{club} with the `admin.club.` prefix and the same middleware stack.
 
-    // Gallery
-    Route::get('/gallery', [App\Http\Controllers\Admin\ClubGalleryController::class, 'gallery'])->name('gallery');
-    Route::post('/gallery/upload', [App\Http\Controllers\Admin\ClubGalleryController::class, 'uploadGallery'])->name('gallery.upload')->middleware('throttle:uploads');
-    Route::post('/gallery/reorder', [App\Http\Controllers\Admin\ClubGalleryController::class, 'reorderGallery'])->name('gallery.reorder');
-    Route::post('/gallery/youtube', [App\Http\Controllers\Admin\ClubGalleryController::class, 'saveYoutubeUrl'])->name('gallery.youtube');
-    Route::delete('/gallery/{image}', [App\Http\Controllers\Admin\ClubGalleryController::class, 'destroyGalleryImage'])->name('gallery.destroy');
-
-    // Facilities
-    Route::get('/facilities', [App\Http\Controllers\Admin\ClubFacilityController::class, 'facilities'])->name('facilities');
-    Route::post('/facilities', [App\Http\Controllers\Admin\ClubFacilityController::class, 'storeFacility'])->name('facilities.store');
-    Route::get('/facilities/{facility}', [App\Http\Controllers\Admin\ClubFacilityController::class, 'getFacility'])->name('facilities.show');
-    Route::put('/facilities/{facility}', [App\Http\Controllers\Admin\ClubFacilityController::class, 'updateFacility'])->name('facilities.update');
-    Route::delete('/facilities/{facility}', [App\Http\Controllers\Admin\ClubFacilityController::class, 'destroyFacility'])->name('facilities.destroy');
-    Route::post('/facilities/{facility}/toggle', [App\Http\Controllers\Admin\ClubFacilityController::class, 'toggleFacility'])->name('facilities.toggle');
-    Route::post('/facilities/{facility}/upload-image', [App\Http\Controllers\Admin\ClubFacilityController::class, 'uploadFacilityImage'])->name('facilities.upload-image')->middleware('throttle:uploads');
-
-    // Instructors
-    Route::get('/instructors', [App\Http\Controllers\Admin\ClubInstructorController::class, 'instructors'])->name('instructors');
-    Route::post('/instructors/reorder', [App\Http\Controllers\Admin\ClubInstructorController::class, 'reorderInstructors'])->name('instructors.reorder')->middleware('throttle:admin-write');
-    Route::post('/instructors', [App\Http\Controllers\Admin\ClubInstructorController::class, 'storeInstructor'])->name('instructors.store');
-    Route::post('/instructors/{instructor}/upload-photo', [App\Http\Controllers\Admin\ClubInstructorController::class, 'uploadInstructorPhoto'])->name('instructors.upload-photo')->middleware('throttle:uploads');
-    Route::put('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'updateInstructor'])->name('instructors.update');
-    Route::delete('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'destroyInstructor'])->name('instructors.destroy');
-    Route::get('/instructors/{instructor}/termination-preview', [App\Http\Controllers\Admin\ClubInstructorController::class, 'terminationPreview'])->name('instructors.termination-preview');
-    Route::get('/instructors-prefill/{user}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'instructorPrefill'])->name('instructors.prefill')->middleware('throttle:60,1');
-
-    // Activities
-    Route::get('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'activities'])->name('activities');
-    Route::get('/activities/library', [App\Http\Controllers\Admin\ClubActivityController::class, 'activityLibrary'])->name('activities.library');
-    Route::post('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'storeActivity'])->name('activities.store');
-    Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubActivityController::class, 'updateActivity'])->name('activities.update');
-    Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubActivityController::class, 'destroyActivity'])->name('activities.destroy');
-
-    // Activity equipment catalog (gear required to practice the activity)
-    Route::get('/activities/{activity}/equipment', [App\Http\Controllers\Admin\ClubActivityController::class, 'equipment'])->name('activities.equipment');
-    Route::post('/activities/{activity}/equipment', [App\Http\Controllers\Admin\ClubActivityController::class, 'storeEquipment'])->name('activities.equipment.store')->middleware('throttle:admin-write');
-    Route::put('/activities/{activity}/equipment/{equipment}', [App\Http\Controllers\Admin\ClubActivityController::class, 'updateEquipment'])->name('activities.equipment.update')->middleware('throttle:admin-write');
-    Route::delete('/activities/{activity}/equipment/{equipment}', [App\Http\Controllers\Admin\ClubActivityController::class, 'destroyEquipment'])->name('activities.equipment.destroy')->middleware('throttle:admin-write');
-
-    // Events
-    Route::get('/events', [App\Http\Controllers\Admin\ClubEventController::class, 'events'])->name('events');
-    // Sparring — the club's own scoreboard for training. Two routes and no
-    // more: the launcher, and the one tap that opens a session. Everything
-    // afterwards is the session's console under /me/events, because a session
-    // IS an event (see App\Events\Sparring\Sparring).
-    Route::get('/sparring', [\App\Events\Sparring\SparringLauncherController::class, 'index'])->name('sparring');
-    Route::post('/sparring', [\App\Events\Sparring\SparringLauncherController::class, 'store'])->name('sparring.store')->middleware('throttle:admin-write');
-    Route::post('/events', [App\Http\Controllers\Admin\ClubEventController::class, 'storeEvent'])->name('events.store');
-    Route::put('/events/{event}', [App\Http\Controllers\Admin\ClubEventController::class, 'updateEvent'])->name('events.update');
-    Route::delete('/events/{event}', [App\Http\Controllers\Admin\ClubEventController::class, 'destroyEvent'])->name('events.destroy');
-    Route::patch('/events/{event}/archive', [App\Http\Controllers\Admin\ClubEventController::class, 'archiveEvent'])->name('events.archive');
-    Route::get('/events/{event}/participants', [App\Http\Controllers\Admin\ClubEventController::class, 'participants'])->name('events.participants');
-    Route::get('/events/{event}/participants/{registration}/proof', [App\Http\Controllers\Admin\ClubEventController::class, 'participantProof'])->name('events.participants.proof');
-    Route::post('/events/{event}/participants/{registration}/paid', [App\Http\Controllers\Admin\ClubEventController::class, 'markParticipantPaid'])->name('events.participants.paid')->middleware('throttle:admin-write');
-    Route::delete('/events/{event}/participants/{registration}', [App\Http\Controllers\Admin\ClubEventController::class, 'removeParticipant'])->name('events.participants.remove')->middleware('throttle:admin-write');
-
-    // Timeline
-    Route::get('/timeline', [App\Http\Controllers\Admin\ClubTimelineController::class, 'timeline'])->name('timeline');
-    Route::post('/timeline', [App\Http\Controllers\Admin\ClubTimelineController::class, 'storeTimelinePost'])->name('timeline.store');
-    Route::put('/timeline/{post}', [App\Http\Controllers\Admin\ClubTimelineController::class, 'updateTimelinePost'])->name('timeline.update');
-    Route::delete('/timeline/{post}', [App\Http\Controllers\Admin\ClubTimelineController::class, 'destroyTimelinePost'])->name('timeline.destroy');
-
-    // Perks
-    Route::get('/perks', [App\Http\Controllers\Admin\ClubPerkController::class, 'perks'])->name('perks');
-    Route::post('/perks', [App\Http\Controllers\Admin\ClubPerkController::class, 'storePerk'])->name('perks.store');
-    Route::put('/perks/{perk}', [App\Http\Controllers\Admin\ClubPerkController::class, 'updatePerk'])->name('perks.update');
-    Route::delete('/perks/{perk}', [App\Http\Controllers\Admin\ClubPerkController::class, 'destroyPerk'])->name('perks.destroy');
-
-    // Achievements
-    Route::get('/achievements', [App\Http\Controllers\Admin\ClubAchievementController::class, 'achievements'])->name('achievements');
-    Route::post('/achievements', [App\Http\Controllers\Admin\ClubAchievementController::class, 'storeAchievement'])->name('achievements.store');
-    Route::put('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAchievementController::class, 'updateAchievement'])->name('achievements.update');
-    Route::delete('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAchievementController::class, 'destroyAchievement'])->name('achievements.destroy');
-    // Member self-claimed achievement verification queue (club attests claims naming this club).
-    Route::get('/achievements/verifications', [App\Http\Controllers\Admin\ClubAchievementController::class, 'verifications'])->name('achievements.verifications');
-    Route::post('/achievements/verifications/{type}/{uuid}/confirm', [App\Http\Controllers\Admin\ClubAchievementController::class, 'confirmVerification'])->whereIn('type', ['achievement', 'skill', 'affiliation', 'work'])->name('achievements.verifications.confirm')->middleware('throttle:admin-write');
-    Route::post('/achievements/verifications/{type}/{uuid}/reject', [App\Http\Controllers\Admin\ClubAchievementController::class, 'rejectVerification'])->whereIn('type', ['achievement', 'skill', 'affiliation', 'work'])->name('achievements.verifications.reject')->middleware('throttle:admin-write');
-
-    // Packages
-    Route::get('/packages', [App\Http\Controllers\Admin\ClubPackageController::class, 'packages'])->name('packages');
-    Route::post('/packages', [App\Http\Controllers\Admin\ClubPackageController::class, 'storePackage'])->name('packages.store');
-    Route::put('/packages/{package}', [App\Http\Controllers\Admin\ClubPackageController::class, 'updatePackage'])->name('packages.update');
-    Route::delete('/packages/{package}', [App\Http\Controllers\Admin\ClubPackageController::class, 'destroyPackage'])->name('packages.destroy');
-
-    // Members
-    Route::get('/members', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'members'])->name('members');
-    Route::post('/members', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'storeMember'])->name('members.store');
-    Route::post('/members/walk-in', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'walkInRegistration'])->name('members.walk-in')->middleware('throttle:walk-in');
-    Route::get('/members/search', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'searchUsers'])->name('members.search');
-    Route::post('/members/resolve-qr', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'resolveQr'])->name('members.resolve-qr');
-    Route::get('/members/cards', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'membersCards'])->name('members.cards');
-    Route::get('/members/{user}/popup', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'memberPopup'])->name('members.popup');
-    Route::get('/members/popup-demo', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'memberPopupDemo'])->name('members.popup-demo');
-    Route::get('/members/{user}/enroll-packages', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'enrollPackages'])->name('members.enroll-packages');
-    Route::post('/members/{user}/enroll', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'enrollMember'])->name('members.enroll');
-    Route::post('/members/enroll-batch', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'enrollBatch'])->name('members.enroll-batch')->middleware('throttle:admin-write');
-    Route::delete('/members/{user}/remove', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'removeMember'])->name('members.remove')->middleware('throttle:admin-write');
-    Route::post('/members/{user}/verify-email', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'verifyMemberEmail'])->name('members.verify-email')->middleware('throttle:admin-write');
-    Route::get('/members/import-template', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'importTemplate'])->name('members.import-template');
-    Route::post('/members/import', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'importMembers'])->name('members.import')->middleware('throttle:admin-write');
-    Route::post('/subscriptions/{subscription}/approve-payment', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'approvePayment'])->name('subscriptions.approve-payment');
-    Route::get('/subscriptions/{subscription}/payment-proof', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'servePaymentProof'])->name('subscriptions.payment-proof');
-    Route::post('/subscriptions/{subscription}/refund', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'refundPayment'])->name('subscriptions.refund');
-    Route::get('/subscriptions/{subscription}/refund-proof', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'serveRefundProof'])->name('subscriptions.refund-proof');
-
-    // Roles
-    Route::get('/roles', [App\Http\Controllers\Admin\ClubRoleController::class, 'roles'])->name('roles');
-    Route::post('/roles', [App\Http\Controllers\Admin\ClubRoleController::class, 'storeRole'])->name('roles.store');
-    Route::delete('/roles', [App\Http\Controllers\Admin\ClubRoleController::class, 'destroyRole'])->name('roles.destroy');
-    // Per-member access: read current effective permissions + save a standard role or custom permission set.
-    Route::get('/roles/member/{user}/permissions', [App\Http\Controllers\Admin\ClubRoleController::class, 'memberPermissions'])->name('roles.member.permissions');
-    Route::post('/roles/member/permissions', [App\Http\Controllers\Admin\ClubRoleController::class, 'storeMemberPermissions'])->name('roles.member.permissions.store')->middleware('throttle:admin-write');
-    Route::post('/roles/definitions', [App\Http\Controllers\Admin\ClubRoleController::class, 'createRole'])->name('roles.def.store');
-    Route::put('/roles/definitions/{role}', [App\Http\Controllers\Admin\ClubRoleController::class, 'updateRole'])->name('roles.def.update');
-    Route::delete('/roles/definitions/{role}', [App\Http\Controllers\Admin\ClubRoleController::class, 'deleteRole'])->name('roles.def.destroy');
-
-    // Financials
-    Route::get('/financials', [App\Http\Controllers\Admin\ClubFinancialController::class, 'financials'])->name('financials');
-    Route::post('/financials/income', [App\Http\Controllers\Admin\ClubFinancialController::class, 'storeIncome'])->name('financials.income');
-    Route::post('/financials/expense', [App\Http\Controllers\Admin\ClubFinancialController::class, 'storeExpense'])->name('financials.expense');
-    Route::put('/financials/{transaction}', [App\Http\Controllers\Admin\ClubFinancialController::class, 'updateTransaction'])->name('financials.update');
-    Route::delete('/financials/{transaction}', [App\Http\Controllers\Admin\ClubFinancialController::class, 'destroyTransaction'])->name('financials.destroy');
-    Route::post('/financials/recurring', [App\Http\Controllers\Admin\ClubFinancialController::class, 'storeRecurringExpense'])->name('financials.recurring.store');
-    Route::put('/financials/recurring/{recurringExpense}', [App\Http\Controllers\Admin\ClubFinancialController::class, 'updateRecurringExpense'])->name('financials.recurring.update');
-    Route::delete('/financials/recurring/{recurringExpense}', [App\Http\Controllers\Admin\ClubFinancialController::class, 'destroyRecurringExpense'])->name('financials.recurring.destroy');
-    Route::patch('/financials/recurring/{recurringExpense}/toggle', [App\Http\Controllers\Admin\ClubFinancialController::class, 'toggleRecurringExpense'])->name('financials.recurring.toggle');
-    Route::get('/financials/test-data', [App\Http\Controllers\Admin\ClubFinancialController::class, 'testData'])->name('financials.test-data');
-    Route::post('/financials/mode', [App\Http\Controllers\Admin\ClubFinancialController::class, 'switchMode'])->name('financials.mode')->middleware('throttle:admin-write');
-
-    // Messages
-    Route::get('/messages', [App\Http\Controllers\Admin\ClubMessageController::class, 'messages'])->name('messages');
-    Route::get('/messages/thread/{user}', [App\Http\Controllers\Admin\ClubMessageController::class, 'conversation'])->name('messages.thread');
-    Route::post('/messages/send', [App\Http\Controllers\Admin\ClubMessageController::class, 'sendMessage'])->name('messages.send')->middleware('throttle:admin-write');
-
-    // Analytics
-    Route::get('/analytics', [App\Http\Controllers\Admin\ClubAnalyticsController::class, 'analytics'])->name('analytics');
-
-    // Notifications
-    Route::get('/notifications', [App\Http\Controllers\Admin\ClubNotificationController::class, 'index'])->name('notifications');
-    Route::post('/notifications', [App\Http\Controllers\Admin\ClubNotificationController::class, 'store'])->name('notifications.store')->middleware('throttle:admin-write');
-});
-
-// Mark notification as read (global — not club-scoped)
-Route::middleware(['auth', 'verified', 'two-factor'])->post('/notifications/mark-read', [App\Http\Controllers\Admin\ClubNotificationController::class, 'markRead'])->name('notifications.mark-read');
-Route::middleware(['auth', 'verified', 'two-factor'])->delete('/notifications', [App\Http\Controllers\Admin\ClubNotificationController::class, 'clearAll'])->name('notifications.clear');
+// The global notification routes (mark-read / clear) live in the Clubs module:
+// app/Clubs/routes.php.
 
 // Messenger — platform-wide direct messages (Facebook-style). Specific paths
 // are registered before the {conversation} binding so they aren't swallowed.

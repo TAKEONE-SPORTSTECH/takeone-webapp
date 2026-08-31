@@ -2,7 +2,7 @@
 
 namespace App\Mcp\Concerns;
 
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use App\Models\UserRelationship;
 use Illuminate\Database\Eloquent\Builder;

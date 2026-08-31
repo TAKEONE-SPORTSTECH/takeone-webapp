@@ -6,7 +6,7 @@ use App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice;
 use App\Models\ClubEvent;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\User;
 use Tests\TestCase;
 

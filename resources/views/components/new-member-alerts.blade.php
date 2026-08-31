@@ -29,7 +29,7 @@
         ->get()
         ->map(function ($n) {
             $member = $n->subject_id ? \App\Models\User::find($n->subject_id) : null;
-            $club   = $n->tenant_id ? \App\Models\Tenant::find($n->tenant_id) : null;
+            $club   = $n->tenant_id ? \App\Clubs\Models\Tenant::find($n->tenant_id) : null;
 
             return [
                 'id'     => $n->id,

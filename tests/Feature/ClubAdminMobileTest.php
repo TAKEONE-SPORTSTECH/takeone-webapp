@@ -22,7 +22,7 @@ class ClubAdminMobileTest extends TestCase
         $owner = $this->createUser();
         $club = $this->createClub($owner);
 
-        \App\Models\ClubTransaction::create([
+        \App\Clubs\Models\ClubTransaction::create([
             'tenant_id' => $club->id,
             'type' => 'income',
             'amount' => 120,
@@ -86,7 +86,7 @@ class ClubAdminMobileTest extends TestCase
         $club = $this->createClub($owner);
         $coach = $this->createUser(['full_name' => 'Coach Nedhal']);
 
-        $instructor = \App\Models\ClubInstructor::create([
+        $instructor = \App\Clubs\Models\ClubInstructor::create([
             'tenant_id' => $club->id, 'user_id' => $coach->id, 'role' => 'Head coach',
         ]);
         $packageId = \Illuminate\Support\Facades\DB::table('club_packages')->insertGetId([
@@ -232,7 +232,7 @@ class ClubAdminMobileTest extends TestCase
         // ...and the view itself no longer reloads after a write.
         $this->assertStringNotContainsString(
             'window.location.reload',
-            file_get_contents(resource_path('views/admin/club/financials/mobile.blade.php'))
+            file_get_contents(app_path('Clubs/resources/views/financials/mobile.blade.php'))
         );
         // Recurring management is reachable from mobile now.
         $res->assertSee('toggleRecurring(', false);
@@ -248,7 +248,7 @@ class ClubAdminMobileTest extends TestCase
         $owner = $this->createUser();
         $club = $this->createClub($owner);
 
-        $markup = file_get_contents(resource_path('views/admin/club/financials/mobile.blade.php'));
+        $markup = file_get_contents(app_path('Clubs/resources/views/financials/mobile.blade.php'));
         $this->assertStringNotContainsString('<select', $markup);
         $this->assertStringNotContainsString('type="date"', $markup);
         $this->assertStringContainsString('<x-date-picker', $markup);
@@ -267,7 +267,7 @@ class ClubAdminMobileTest extends TestCase
         $owner = $this->createUser();
         $club  = $this->createClub($owner);
 
-        $expense = \App\Models\ClubRecurringExpense::create([
+        $expense = \App\Clubs\Models\ClubRecurringExpense::create([
             'tenant_id' => $club->id, 'description' => 'Rent', 'amount' => 100,
             'category' => 'rent', 'payment_method' => 'cash', 'day_of_month' => 1, 'is_active' => true,
         ]);
@@ -292,7 +292,7 @@ class ClubAdminMobileTest extends TestCase
 
         // A staff wage lives as a RULE until the daily job posts it — so it is not in
         // the expense totals, but it must not be invisible either.
-        \App\Models\ClubRecurringExpense::create([
+        \App\Clubs\Models\ClubRecurringExpense::create([
             'tenant_id' => $club->id, 'description' => 'Instructor wage — Sam', 'amount' => 250,
             'category' => 'salaries', 'payment_method' => 'bank_transfer',
             'day_of_month' => 28, 'is_active' => true, 'last_run_at' => null,

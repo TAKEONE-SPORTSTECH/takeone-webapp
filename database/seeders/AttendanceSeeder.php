@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Attendance;
 use App\Models\User;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 

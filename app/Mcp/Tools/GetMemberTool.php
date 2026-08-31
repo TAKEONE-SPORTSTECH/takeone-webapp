@@ -2,7 +2,7 @@
 
 namespace App\Mcp\Tools;
 
-use App\Models\ClubAchievement;
+use App\Clubs\Models\ClubAchievement;
 use App\Models\TournamentEvent;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;

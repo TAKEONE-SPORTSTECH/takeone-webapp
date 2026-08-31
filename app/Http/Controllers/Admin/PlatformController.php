@@ -13,7 +13,7 @@ use App\Models\Business;
 use App\Models\ClubMemberSubscription;
 use App\Models\Invoice;
 use App\Models\Membership;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use App\Models\TournamentEvent;
 use App\Models\User;
 use App\Traits\StoresBase64Images;
@@ -99,8 +99,8 @@ class PlatformController extends Controller
             'members' => User::count(),
             'businesses' => Business::count(),
             'businessesPending' => Business::where('status', Business::STATUS_PENDING)->count(),
-            'trainers' => \App\Models\ClubInstructor::count(),
-            'packages' => \App\Models\ClubPackage::count(),
+            'trainers' => \App\Clubs\Models\ClubInstructor::count(),
+            'packages' => \App\Clubs\Models\ClubPackage::count(),
             'clubsThisMonth' => Tenant::where('created_at', '>=', $startOfThisMonth)->count(),
             'membersThisMonth' => User::where('created_at', '>=', $startOfThisMonth)->count(),
             'membersLastMonth' => User::whereBetween('created_at', [$startOfLastMonth, $startOfThisMonth])->count(),
@@ -1423,7 +1423,7 @@ class PlatformController extends Controller
 
         $member = User::findOrFail($id);
 
-        $ownedClubs = \App\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
+        $ownedClubs = \App\Clubs\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
         if ($ownedClubs->isNotEmpty()) {
             $msg = 'Cannot delete this account. They own the club(s): '.$ownedClubs->join(', ').'. Transfer ownership first.';
 
