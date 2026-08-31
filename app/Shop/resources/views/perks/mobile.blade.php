@@ -93,7 +93,7 @@
     </div>
     </template>
 
-    @include('admin.club.perks.mobile-form')
+    @include('shop::perks.mobile-form')
 
     {{-- Edit payloads + delete handler. Inline (inside #shell-content) so it re-runs
          after an in-shell AJAX swap. --}}

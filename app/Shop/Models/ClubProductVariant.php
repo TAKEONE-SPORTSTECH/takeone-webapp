@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Shop\Models;
 
 use App\Traits\BelongsToTenant;
 use App\Traits\DeletesUploadedFiles;
@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Clubs\Models\Tenant;
 
 /**
  * A single sellable variant of a ClubProduct — one size/colour/brand combination

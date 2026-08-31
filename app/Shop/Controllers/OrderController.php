@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Shop\Controllers;
 
-use App\Models\ClubProduct;
-use App\Models\Order;
-use App\Models\Tenant;
+use App\Shop\Models\ClubProduct;
+use App\Shop\Models\Order;
+use App\Clubs\Models\Tenant;
 use App\Models\UserNotification;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use App\Http\Controllers\Controller;
 
 /**
  * Member shop orders. Checkout creates one order per club (tenant). No payment
@@ -54,7 +55,7 @@ class OrderController extends Controller
 
             // Seller rating (one per order).
             if (! empty($data['seller_rating'])) {
-                \App\Models\OrderReview::updateOrCreate(
+                \App\Shop\Models\OrderReview::updateOrCreate(
                     ['order_id' => $order->id],
                     ['tenant_id' => $order->tenant_id, 'user_id' => $order->user_id, 'rating' => $data['seller_rating'], 'comment' => $data['comment'] ?? null],
                 );
@@ -67,12 +68,12 @@ class OrderController extends Controller
                 if (! $orderedIds->contains((int) $row['id'])) {
                     continue;
                 }
-                $review = \App\Models\ProductReview::updateOrCreate(
+                $review = \App\Shop\Models\ProductReview::updateOrCreate(
                     ['order_id' => $order->id, 'club_product_id' => $row['id']],
                     ['user_id' => $order->user_id, 'rating' => $row['rating']],
                 );
                 // Only fold into the aggregate the first time this review is created.
-                if ($review->wasRecentlyCreated && ($product = \App\Models\ClubProduct::find($row['id']))) {
+                if ($review->wasRecentlyCreated && ($product = \App\Shop\Models\ClubProduct::find($row['id']))) {
                     $product->increment('rating_count');
                     $product->increment('rating_sum', $row['rating']);
                 }
@@ -96,7 +97,7 @@ class OrderController extends Controller
         return response()->json(['success' => true, 'message' => __('market.received_confirmed'), 'status' => 'received']);
     }
 
-    public function store(Request $request, \App\Services\StockAlertService $stockAlerts): JsonResponse
+    public function store(Request $request, \App\Shop\Services\StockAlertService $stockAlerts): JsonResponse
     {
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1', 'max:50'],
@@ -127,7 +128,7 @@ class OrderController extends Controller
         // Resolve chosen variants (price + stock come from the variant, not the product).
         $variantIds = collect($data['items'])->pluck('variant_id')->filter()->unique()->all();
         $variants = $variantIds
-            ? \App\Models\ClubProductVariant::whereIn('id', $variantIds)->get()->keyBy('id')
+            ? \App\Shop\Models\ClubProductVariant::whereIn('id', $variantIds)->get()->keyBy('id')
             : collect();
 
         // Group requested lines by club.

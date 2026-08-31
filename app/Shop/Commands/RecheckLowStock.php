@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Shop\Commands;
 
-use App\Models\ClubProduct;
-use App\Services\StockAlertService;
+use App\Shop\Models\ClubProduct;
+use \App\Shop\Services\StockAlertService;
 use Illuminate\Console\Command;
 
 /**

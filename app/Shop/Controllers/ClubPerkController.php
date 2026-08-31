@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Shop\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PerkRequest;
-use App\Models\ClubPerk;
-use App\Models\Tenant;
+use App\Shop\Models\ClubPerk;
+use App\Clubs\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use Illuminate\Support\Facades\Storage;
@@ -22,7 +22,7 @@ class ClubPerkController extends Controller
         $this->authorizeClub($club);
         $perks = ClubPerk::where('tenant_id', $club->id)->orderBy('sort_order')->orderBy('id')->get();
 
-        return view(\App\Support\ClubView::pick('perks'), compact('club', 'perks'));
+        return view(\App\Support\ClubView::pick('perks', 'shop'), compact('club', 'perks'));
     }
 
     /**

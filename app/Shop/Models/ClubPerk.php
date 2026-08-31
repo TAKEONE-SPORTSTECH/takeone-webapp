@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Models;
+namespace App\Shop\Models;
 
 use App\Traits\BelongsToTenant;
 use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Clubs\Models\Tenant;
 
 class ClubPerk extends Model
 {

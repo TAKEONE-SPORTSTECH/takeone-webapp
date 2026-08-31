@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Shop\Models;
 
 use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Model;
@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Clubs\Models\Tenant;
+use App\Models\User;
 
 /**
  * A shop order — one per club (tenant) per checkout. Manual fulfilment:

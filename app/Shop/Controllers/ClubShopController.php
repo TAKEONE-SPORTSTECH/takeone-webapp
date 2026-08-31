@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Shop\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClubProduct;
-use App\Models\ClubProductCategory;
-use App\Models\ClubProductVariant;
-use App\Models\Tenant;
+use App\Shop\Models\ClubProduct;
+use App\Shop\Models\ClubProductCategory;
+use App\Shop\Models\ClubProductVariant;
+use App\Clubs\Models\Tenant;
 use App\Models\UserNotification;
 use App\Services\FinancialService;
-use App\Services\StockAlertService;
+use \App\Shop\Services\StockAlertService;
 use App\Support\ClubView;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\StoresBase64Images;
@@ -64,7 +64,7 @@ class ClubShopController extends Controller
             'id' => $c->id, 'key' => $c->key, 'label' => $c->label, 'icon' => $c->icon,
         ])->all();
 
-        return view(ClubView::pick('shop'), compact('club', 'products', 'categories', 'manageCategories'));
+        return view(ClubView::pick('shop', 'shop'), compact('club', 'products', 'categories', 'manageCategories'));
     }
 
     public function storeProduct(Request $request, Tenant $club): JsonResponse

@@ -131,7 +131,7 @@ $perksJson = $perks->map(function($p) {
                     @csrf
                     <input type="hidden" name="_method" :value="isEdit ? 'PUT' : 'POST'">
                     <div class="modal-body px-6 py-4 max-h-[70vh] overflow-y-auto">
-                        @include('admin.club.perks.partials.form-fields')
+                        @include('shop::perks.partials.form-fields')
                     </div>
                     <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
                         <button type="button" class="btn btn-outline-secondary" @click="showModal = false">{{ __('shared.cancel') }}</button>

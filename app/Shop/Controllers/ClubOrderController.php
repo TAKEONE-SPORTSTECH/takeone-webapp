@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Shop\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Models\Tenant;
+use App\Shop\Models\Order;
+use App\Clubs\Models\Tenant;
 use App\Services\FinancialService;
 use App\Support\ClubView;
 use App\Traits\HandlesClubAuthorization;
@@ -52,7 +52,7 @@ class ClubOrderController extends Controller
             'revenue' => $orders->whereIn('status', ['confirmed', 'fulfilled', 'received'])->sum('total'),
         ];
 
-        return view(ClubView::pick('orders'), compact('club', 'orders', 'stats', 'lastSeen'));
+        return view(ClubView::pick('orders', 'shop'), compact('club', 'orders', 'stats', 'lastSeen'));
     }
 
     public function updateStatus(Request $request, Tenant $club, Order $order): JsonResponse
@@ -114,7 +114,7 @@ class ClubOrderController extends Controller
             ]);
             $order->update(['income_transaction_id' => $transaction->id]);
         } elseif (! $isPaid && $order->income_transaction_id) {
-            \App\Models\ClubTransaction::where('id', $order->income_transaction_id)->delete();
+            \App\Clubs\Models\ClubTransaction::where('id', $order->income_transaction_id)->delete();
             $order->update(['income_transaction_id' => null]);
             \App\Support\ClubCache::flushFinancials($club->id);
         }

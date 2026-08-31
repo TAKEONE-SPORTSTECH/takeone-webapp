@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services;
+namespace App\Shop\Services;
 
-use App\Models\ClubProduct;
-use App\Models\StockAlertState;
+use App\Shop\Models\ClubProduct;
+use App\Shop\Models\StockAlertState;
 use App\Models\UserNotification;
 
 /**
