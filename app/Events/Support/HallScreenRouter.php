@@ -44,22 +44,25 @@ class HallScreenRouter
 
     public function pair(Request $request, ClubEvent $event)
     {
-        // TEMPORARY DIAGNOSTIC — remove once the pairing report is closed.
-        // Records what the console actually sent and which fleet holds the code,
-        // because every reading of this from the outside has been a guess.
-        \Illuminate\Support\Facades\Log::info('screen-pair attempt', [
-            'event' => $event->uuid,
-            'sport' => $event->sport,
-            'code' => (string) $request->input('code'),
-            'court' => $request->input('court'),
-            'surface' => $request->input('surface'),
-            'in_pending' => PendingScreen::pairable((string) $request->input('code')) !== null,
-            'in_camera' => \App\Models\EventCamera::pairable((string) $request->input('code')) !== null,
-            'in_own_fleet' => (function () use ($request, $event) {
-                $m = self::DEVICES[(string) $event->sport] ?? null;
-                return $m && class_exists($m) && $m::pairable((string) $request->input('code')) !== null;
-            })(),
-        ]);
+        /*
+         * Scanned from the OTHER TAKEONE host.
+         *
+         * The console spots this before it submits — it holds the URL, this
+         * server only ever sees six characters — but it reports it here rather
+         * than refusing quietly, because a refusal nobody records is a failure
+         * nobody can help with. This is answered first: the code is guaranteed
+         * to resolve to nothing here, and "nothing on this server" is a true but
+         * useless thing to tell somebody who is plainly reading it off a screen.
+         */
+        $from = strtolower(trim((string) $request->input('from_host')));
+
+        if ($from !== '' && $from !== strtolower($request->getHost()) && preg_match('/^[a-z0-9.-]{1,253}$/', $from)) {
+            $told = __('personal.event_screens_other_host', ['there' => $from, 'here' => $request->getHost()]);
+
+            PairingLog::refused($request, $event, 'code_from_the_other_server', $told);
+
+            return response()->json(['success' => false, 'message' => $told], 422);
+        }
 
         // A CAMERA, scanned into the same panel. The hall's wiring is one
         // question — "what is on Mat 2?" — and the answer includes the phones
@@ -82,10 +85,23 @@ class HallScreenRouter
         // and this cannot tell those apart. Claiming the wrong one sent people
         // looking for a problem they did not have.
         if ($request->input('surface') === 'camera') {
+            $isScreen = PendingScreen::pairable((string) $request->input('code')) !== null;
+            $told = $isScreen
+                ? __('personal.event_cameras_not_a_camera', ['host' => $request->getSchemeAndHttpHost()])
+                : __('personal.event_cameras_code_stale');
+
+            PairingLog::refused($request, $event, $isScreen ? 'camera_slot_got_a_screen' : 'camera_code_unknown', $told);
+
             return response()->json([
                 'success' => false,
                 'message' => PendingScreen::pairable((string) $request->input('code'))
-                    ? __('personal.event_cameras_not_a_camera')
+                    // A code from the neutral waiting room, offered for a camera
+                    // slot. It is not a mistake worth scolding: /screen is the
+                    // one address a person is told to open, and nothing on it
+                    // says that filming the mat needs a different app. So the
+                    // message carries the answer, with this host in it — the
+                    // code is only ever valid on the server that issued it.
+                    ? __('personal.event_cameras_not_a_camera', ['host' => $request->getSchemeAndHttpHost()])
                     : __('personal.event_cameras_code_stale'),
             ], 422);
         }
@@ -132,6 +148,9 @@ class HallScreenRouter
             }
 
             if ($model::pairable($code)) {
+                PairingLog::refused($request, $event, 'code_in_another_sports_fleet',
+                    __('personal.event_screens_other_fleet'));
+
                 return response()->json([
                     'success' => false,
                     'message' => __('personal.event_screens_other_fleet'),
@@ -166,6 +185,9 @@ class HallScreenRouter
          * that was never the issue.
          */
         if (app(\App\Events\EventTypeRegistry::class)->for($event)->hallScreens($event) === null) {
+            PairingLog::refused($request, $event, 'event_has_no_wall_screens',
+                __('personal.event_screens_unsupported', ['event' => $event->title]));
+
             return response()->json([
                 'success' => false,
                 'message' => __('personal.event_screens_unsupported', ['event' => $event->title]),
@@ -197,6 +219,8 @@ class HallScreenRouter
         abort_unless($court !== '', 422);
 
         if ($data['surface'] !== 'follow' && ! in_array($data['surface'], $this->surfaces($event), true)) {
+            PairingLog::refused($request, $event, 'surface_not_offered_by_this_event', __('personal.event_screens_surface_unavailable'));
+
             return response()->json([
                 'success' => false,
                 'message' => __('personal.event_screens_surface_unavailable'),
@@ -207,6 +231,8 @@ class HallScreenRouter
             abort_unless(app(EventAccess::class)->canScore($event, $request->user()), 403);
 
             if ($this->existingControl($event, $court)) {
+                PairingLog::refused($request, $event, 'mat_already_has_a_scoring_table', __('personal.event_screens_control_taken'));
+
                 return response()->json([
                     'success' => false,
                     'message' => __('personal.event_screens_control_taken', ['court' => $court]),
@@ -220,6 +246,8 @@ class HallScreenRouter
         // both created a screen — one live board and one orphan device that no
         // panel could show and nobody could unpair.
         if (! $pending->spend()) {
+            PairingLog::refused($request, $event, 'code_already_used', __('personal.event_screens_code_spent'));
+
             return response()->json([
                 'success' => false,
                 'message' => __('personal.event_screens_code_spent'),
@@ -227,6 +255,8 @@ class HallScreenRouter
         }
 
         ['device' => $device, 'url' => $url] = $this->adopt($event, $court, $data['surface'], $request->user()->id);
+
+        PairingLog::paired($request, $event, 'screen', $court, ['surface' => $data['surface']]);
 
         // The waiting row now knows where to send the screen; it polls and moves
         // on by itself.
@@ -363,6 +393,21 @@ class HallScreenRouter
         'karate' => \App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayDevice::class,
         'bjj' => \App\Events\Sports\BrazilianJiuJitsu\Tournament\HallScreen\ScreenDevice::class,
     ];
+
+    /**
+     * The fleets, for anything that must ask every one of them a question.
+     *
+     * Exposed because PairingLog has to resolve a code against EVERY place a
+     * code can live before it can honestly say "this code is nothing on this
+     * server" — and that answer is worthless if it silently skips a fleet
+     * somebody added later. One map, asked in full.
+     *
+     * @return array<string, class-string>
+     */
+    public static function fleets(): array
+    {
+        return self::DEVICES;
+    }
 
     /**
      * The board address to send a newly adopted screen to, by sport.

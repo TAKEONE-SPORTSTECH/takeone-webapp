@@ -11,6 +11,23 @@
          knows what a code MEANS (the event console pairing a hall screen) reads
          it itself rather than being navigated somewhere.
      ===== --}}
+{{--
+    ⚠️ ONCE PER PAGE, ALWAYS.
+
+    This partial is included by BOTH layouts/app.blade.php and
+    partials/mobile-header.blade.php, and personal-mobile extends app — so every
+    authenticated mobile page used to render TWO scanners. Both answered
+    `qr-scan:open`, both called getUserMedia() for the same rear camera, and on
+    Android the second grab commonly steals or fails the track: the overlay on
+    top showed a black, frozen viewfinder that never decoded anything. The
+    organiser then typed the code by hand and blamed the scanner, which was the
+    correct diagnosis of the wrong problem.
+
+    @once is keyed by this block, so whichever include renders first wins and the
+    other is a no-op. Do not remove it, and do not "fix" a missing scanner by
+    adding a third include.
+--}}
+@once
 <div x-data="qrScanner()" x-cloak @qr-scan:open.window="open($event.detail)" @keydown.escape.window="close()">
     <div x-show="active" class="fixed inset-0 z-[80] bg-black flex flex-col"
          x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
@@ -28,14 +45,14 @@
                 <div class="w-64 h-64 max-w-[70vw] max-h-[70vw] rounded-3xl border-2 border-white/90"
                      style="box-shadow: 0 0 0 100vmax rgba(0,0,0,.45);"></div>
             </div>
-            <p x-show="! manualOnly" class="absolute bottom-10 inset-x-0 text-center text-white/90 text-sm px-8">{{ __('header.scan_hint') }}</p>
+            <p x-show="! manualOnly && ! stalled" class="absolute bottom-10 inset-x-0 text-center text-white/90 text-sm px-8">{{ __('header.scan_hint') }}</p>
 
             {{-- Camera missing or refusing: say so where the picture would be,
                  rather than closing the overlay and leaving a toast behind. --}}
-            <div x-show="manualOnly" class="absolute inset-0 grid place-items-center px-8 text-center">
+            <div x-show="manualOnly || stalled" class="absolute inset-0 grid place-items-center px-8 text-center">
                 <div>
                     <i class="bi bi-camera-video-off text-4xl text-white/40"></i>
-                    <p class="text-white/80 text-sm mt-3" x-text="manualOnlyNote"></p>
+                    <p class="text-white/80 text-sm mt-3" x-text="manualOnly ? manualOnlyNote : @js(__('header.scan_no_camera'))"></p>
                 </div>
             </div>
         </div>
@@ -98,6 +115,8 @@
             manualPlaceholder: '',
             manualLength: 0,
             manualCode: '',
+            stalled: false,
+            stallTimer: null,
 
             async open(detail) {
                 // Reset every time: a previous hand-back caller must never keep
@@ -111,6 +130,7 @@
                 this.manualCode = '';
                 this.manualOnly = false;
                 this.manualOnlyNote = '';
+                this.stalled = false;
 
                 if (!('BarcodeDetector' in window)) {
                     // With a typed code on offer there is still a way through, so
@@ -134,6 +154,7 @@
                     const v = this.$refs.qrVideo;
                     v.srcObject = this.stream;
                     await v.play();
+                    this.watchFrames(v);
                     this.scan();
                 } catch (e) {
                     if (this.manual) {
@@ -145,6 +166,33 @@
                     window.showToast && window.showToast('error', @js(__('header.scan_no_camera')));
                     this.close();
                 }
+            },
+
+            /**
+             * A camera can be granted and still send nothing.
+             *
+             * getUserMedia resolves, the track reads as live, and not one frame
+             * arrives — an Android WebView whose host app was never given the
+             * OS camera permission does exactly this. The viewfinder is then a
+             * black rectangle that decodes forever and reports no error, and
+             * the reader is left to guess whether the code, the light or the
+             * phone is at fault. If nothing has been decoded into a picture by
+             * now, say so over the black rather than leaving it silent.
+             *
+             * Only ever ADDS a message: scanning continues, so a slow camera
+             * that wakes up late still works and clears the note itself.
+             */
+            watchFrames(v) {
+                if (this.stallTimer) clearTimeout(this.stallTimer);
+                this.stallTimer = setTimeout(() => {
+                    this.stallTimer = null;
+                    if (! this.active) return;
+                    this.stalled = ! v.videoWidth;
+                }, 3500);
+
+                v.addEventListener('loadeddata', () => {
+                    if (v.videoWidth) this.stalled = false;
+                }, { once: true });
             },
 
             async scan() {
@@ -223,6 +271,8 @@
             close() {
                 this.active = false;
                 if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
+                if (this.stallTimer) { clearTimeout(this.stallTimer); this.stallTimer = null; }
+                this.stalled = false;
                 if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null; }
                 this.detector = null;
                 this.emit = null;
@@ -235,3 +285,4 @@
         };
     };
 </script>
+@endonce

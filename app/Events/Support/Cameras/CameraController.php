@@ -57,6 +57,12 @@ class CameraController extends Controller
             $data['app_version'] ?? null,
         );
 
+        // The one line that answers "did the phone ever reach this server?".
+        // Three separate mornings were lost to a camera that was talking to the
+        // OTHER TAKEONE host: nothing appeared here, and an absence is invisible
+        // unless something writes down the presences.
+        \App\Events\Support\PairingLog::cameraEnrolled($request, $camera);
+
         return response()->json([
             'token' => $token,
             'code' => $camera->pairing_code,

@@ -24,6 +24,7 @@ return [
         // Combat championships — bracketed, weight-classed, medal-awarding.
         \App\Events\Sports\Taekwondo\Tournament\Tournament::class,
         \App\Events\Sports\Karate\Tournament\Tournament::class,
+        \App\Events\Sports\BrazilianJiuJitsu\Tournament\Tournament::class,
 
         // The club's own scoreboard for training: sparring, a friendly, an
         // exhibition. No draw, no medal, opened in one tap on a Tuesday — but

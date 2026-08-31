@@ -39,7 +39,7 @@ case "$VARIANT" in
        # versionName 1.9. Play accepts an update only if the code goes UP, so
        # this build continues that series rather than restarting at Flutter's
        # default of 1 — which would be rejected as a downgrade.
-       VERSION_CODE="11"; VERSION_NAME="1.10" ;;
+       VERSION_CODE="12"; VERSION_NAME="1.11" ;;
   *)   echo "usage: $0 {tv|tab|cam|app} [base-url]" >&2; exit 1 ;;
 esac
 

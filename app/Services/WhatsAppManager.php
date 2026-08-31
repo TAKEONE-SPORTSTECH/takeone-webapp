@@ -5,6 +5,14 @@ namespace App\Services;
 use App\Models\PlatformSetting;
 use Illuminate\Support\Facades\Http;
 
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http\Controllers\Admin\PlatformController (the platform-wide
+ * gateway settings) and wrapped by the clubs module's own ClubWhatsAppManager. The
+ * gateway connection is platform-owned; only the per-club session choice is
+ * club-private, and that half moved into App\Clubs.
+ */
+
 /**
  * Connection layer for a self-hosted OpenWA (github.com/rmyndharis/OpenWA) instance.
  * Settings are persisted via PlatformSetting so a super-admin can point the app at a

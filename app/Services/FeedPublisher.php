@@ -9,6 +9,12 @@ use App\Models\UserNotification;
 use App\Models\UserPost;
 use Illuminate\Support\Facades\DB;
 
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http (UserPostController) and by AchievementVerificationService.
+ * Feed fan-out serves every vertical that publishes, so it stays shared.
+ */
+
 /**
  * Live-delivers a freshly created feed post: MQTT push (posts channel) to the author's
  * followers (Following + All feeds) and club-mates (All feed), plus a notification to

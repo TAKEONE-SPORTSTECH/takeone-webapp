@@ -118,6 +118,66 @@ class MediaVaultController extends Controller
     }
 
     /**
+     * Attach a new place to keep media.
+     *
+     * The probe runs before we answer so the page can say whether the storage
+     * an operator just described is actually reachable — "saved" on its own is
+     * not useful when the whole point is that a NAS is on the other end.
+     */
+    public function store(Request $request)
+    {
+        $data = $this->validated($request);
+
+        $vault = MediaVault::create($data);
+
+        $result = $this->refreshStatus($vault);
+        $migrating = $this->beginMigration($vault, $result['ok']);
+
+        return response()->json([
+            'success' => true,
+            'message' => ($result['ok']
+                ? "Attached {$vault->name}."
+                : "Attached {$vault->name}, but it could not be reached: {$result['message']}")
+                .($migrating ? ' Moving existing video onto it now.' : ''),
+            'vault' => $this->payload($vault->fresh()),
+        ], 201);
+    }
+
+    /**
+     * Edit an attached vault.
+     *
+     * A vault that was not a usable destination and now is gets the same
+     * migration a fresh attach would — re-enabling storage, or clearing its
+     * read-only flag, is the same act as attaching it as far as pending media
+     * is concerned. One that was already usable is left alone, so saving a
+     * rename does not queue the library again.
+     */
+    public function update(Request $request, MediaVault $vault)
+    {
+        $wasDestination = $vault->enabled && ! $vault->read_only && $vault->last_status === 'online';
+
+        $data = $this->validated($request, $vault);
+
+        $vault->fill($data)->save();
+
+        // The connection details may have changed under us; the cached verdict
+        // for the old ones must not decide anything about the new ones.
+        $this->vaults->forgetReachability($vault);
+
+        $result = $this->refreshStatus($vault);
+        $migrating = ! $wasDestination && $this->beginMigration($vault, $result['ok']);
+
+        return response()->json([
+            'success' => true,
+            'message' => ($result['ok']
+                ? "Saved {$vault->name}."
+                : "Saved {$vault->name}, but it could not be reached: {$result['message']}")
+                .($migrating ? ' Moving existing video onto it now.' : ''),
+            'vault' => $this->payload($vault->fresh()),
+        ]);
+    }
+
+    /**
      * Detach.
      *
      * A vault holding files is refused unless it is explicitly forced, because
@@ -305,6 +365,15 @@ class MediaVaultController extends Controller
         $data['priority'] = (int) ($data['priority'] ?? 0);
         $data['enabled'] = (bool) ($data['enabled'] ?? true);
         $data['read_only'] = (bool) ($data['read_only'] ?? false);
+
+        // Write-only credential. On an EDIT a blank or absent password means
+        // "leave the one on file alone" — the form never receives the stored
+        // value, so it cannot resend it, and writing null here would silently
+        // wipe the credential of a working vault every time somebody renamed
+        // it. On a CREATE there is nothing to preserve, so a blank stays blank.
+        if ($existing !== null && blank($data['password'] ?? null)) {
+            unset($data['password']);
+        }
 
         if ($driver === MediaVault::DRIVER_MOUNT) {
             $data['mount_path'] = rtrim($data['mount_path'], '/');

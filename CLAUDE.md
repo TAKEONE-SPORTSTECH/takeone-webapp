@@ -1,140 +1,134 @@
 # TAKEONE Project — Claude Instructions
 
+**How to read this file.** Part 1 outranks everything else; within it, RULE #1 outranks
+RULE #0 and RULE #2. Everything after Part 1 is equal-weight unless a section names its
+own boundaries. A rule marked **STRICT** is not advice.
+
+| Part | Contents |
+|---|---|
+| 1 | Prime directives — answers, regressions, backups |
+| 2 | The project — stack, architecture, routes, ownership |
+| 3 | Security |
+| 4 | Architecture rules — components, event packages, sharing, device recovery |
+| 5 | Design |
+| 6 | Mobile & the Android app |
+| 7 | Behaviour — no-reload, realtime, MCP, navigation |
+| 8 | Data, uploads & people |
+| 9 | Conventions, testing, ops, status |
+
+---
+
+# PART 1 — PRIME DIRECTIVES
+
 ## RULE #0 — Answer Questions Short and Simple — STRICT
 
 **When the user asks a question, answer it briefly. Direct answer first, a few lines at most.**
 
-The user does not have time to read long analyses. Detail is opt-in, not the default.
-
 - **Lead with the answer**, not the reasoning that produced it.
-- **A few sentences, or a short list.** No multi-section write-ups, no big tables, no exhaustive walkthroughs unless explicitly asked.
-- **Offer depth instead of delivering it** — "want the detail?" costs one line and lets them choose.
-- **Say what matters, drop the rest.** If something is genuinely important (a risk, a blocker, data loss), say it in one line — do not bury it in an essay, and do not omit it either.
+- **A few sentences, or a short list.** No multi-section write-ups, no big tables, no
+  exhaustive walkthroughs unless explicitly asked.
+- **Offer depth instead of delivering it** — "want the detail?" costs one line.
+- **Say what matters, drop the rest.** A real risk, blocker or data-loss danger gets one
+  line — never buried in an essay, never omitted either.
 
-**This governs ANSWERS, not workmanship.** When asked to build, investigate or fix, do the work as thoroughly as ever — then report it briefly. Short answers never mean cutting corners on the task, skipping verification, or staying silent about a real problem.
+**This governs ANSWERS, not workmanship.** When asked to build, investigate or fix, do the
+work as thoroughly as ever — then report it briefly. Short answers never mean cutting
+corners, skipping verification, or staying silent about a real problem.
 
 ## RULE #1 — Never Break What Works — STRICT, OVERRIDES EVERYTHING
 
-**Both TAKEONE systems are live, working, and represent years of accumulated work. No change may break an existing working feature. Ever. There is no improvement worth a regression.**
+**This system is live, working, and represents years of accumulated work. It holds real
+clubs, real members and real competition footage. No change may break an existing working
+feature. Ever. There is no improvement worth a regression.**
 
-This outranks every other rule in this file. If a change cannot be made without risking something that currently works, **stop and ask** — do not proceed and hope.
+If a change cannot be made without risking something that currently works, **stop and ask**
+— do not proceed and hope.
 
-### What this means in practice
+- **Additive, never destructive.** New tables and columns, not altered or dropped ones.
+  New endpoints alongside old ones. New code paths beside working ones, not rewrites.
+- **Never touch working code you were not asked to touch.** No opportunistic refactors,
+  cleanup, renames, or "while I was in there". (Reinforces Design Rule #3.)
+- **The database holds real data.** No `migrate:fresh`, no destructive migration, no bulk
+  delete without an explicit request and a fresh backup.
+- **Migrate in parallel, then cut over.** Build the new path, run both, verify, switch, and
+  only then retire the old one — as a separate, deliberate step.
+- **Feature-flag anything new and risky**, defaulted OFF.
+- **Security fixes are not exempt.** Add the guarded path, verify the callers, then close
+  the old one.
+- **Verify before and after.** State plainly what you verified and what you did not.
+- **Small reversible steps** over one large change.
+- **When in doubt, ask.** A blocked task is recoverable; a broken production system on an
+  event day is not.
 
-- **Additive, never destructive.** New tables and new columns, not altered or dropped ones. New endpoints alongside old ones, not replacements. New code paths beside working ones, not rewrites of them.
-- **Never touch working code you were not asked to touch.** No opportunistic refactors, no cleanup, no renames, no "while I was in there". (Reinforces Design Rule #3.)
-- **Both databases hold real data.** No `migrate:fresh`, no destructive migration, no bulk delete without an explicit request and a fresh backup. See the never-migrate-fresh rule.
-- **Migrate in parallel, then cut over.** When something must change shape: build the new path, run both, verify the new one, switch, and only then retire the old one — as a separate, deliberate step.
-- **Feature-flag anything new and risky**, defaulted OFF, so the blast radius of a mistake is a disabled flag rather than a broken event day.
-- **Security fixes are not exempt.** Closing a hole must not take a working screen down with it — add the guarded path, verify the callers, then close the old one.
-- **Verify before and after.** Know what worked before you started, and check it still works when you finish. State plainly what you verified and what you did not.
-- **Small reversible steps** over one large change. If something goes wrong it must be obvious which step did it.
-- **When in doubt, ask.** "I could do this, but it risks X" is always the right message. A blocked task is recoverable; a broken production system on an event day is not.
-
-### Applies to this system
-This repo. It is live, it holds real clubs, real members and real competition footage.
-
-> The sibling video platform (`video.takeone.bh`) was **disconnected on 2026-08-27** — the integration code, its API credentials and the SSH access were all removed at the user's request. It is somebody else's box now: no access, no calls, nothing to keep working. Do not re-add access or write anything that talks to it.
-
----
+> The sibling video platform (`video.takeone.bh`) was **disconnected on 2026-08-27** — the
+> integration code, its API credentials and the SSH access were all removed at the user's
+> request. It is somebody else's box now. Do not re-add access or write anything that talks
+> to it. (See *Match video is ours*, Part 2.)
 
 ## RULE #2 — Back Up Before Anything That Could Lose Data — STRICT
 
-**Before any migration, schema change, bulk update/delete, data repair, seeder, reset, or any operation that could erase or corrupt data — take a database backup FIRST, verify it, and only then proceed.** If it goes wrong, the data comes back.
+**Before any migration, schema change, bulk update/delete, data repair, seeder, reset, or
+any operation that could erase or corrupt data — take a database backup FIRST, verify it,
+and only then proceed.** No backup → no destructive operation. "It's only additive" is
+exactly how data gets lost.
 
-This is a precondition, not a precaution. No backup → no destructive operation. Not "probably fine", not "it's only additive so it can't hurt" — a migration that was meant to be additive is exactly how data gets lost.
+**Triggers:** any `php artisan migrate` (yes, including additive ones); any schema, index or
+column-type change; bulk `update()`/`delete()`/truncate/`forceDelete`; seeders; resets
+(`takeone:reset-baseline`); demo purge; data-repair scripts; anything touching the storage
+or upload folders destructively.
 
-### What triggers it
-- any `php artisan migrate` (yes, including additive ones)
-- any schema change, index change, or column type change
-- bulk `update()` / `delete()` / truncate / `forceDelete`
-- seeders, resets (`takeone:reset-baseline`), demo purge, data-repair scripts
-- anything touching the storage/upload folders destructively
-- any of the above
+**How:** `php artisan takeone:backup` — SQLite `VACUUM INTO` after a WAL checkpoint
+(consistent under load), plus the upload folders, verified by reading each artifact back,
+non-zero exit on failure. Scheduled nightly 03:30. Use `VACUUM INTO`, never `cp` — copying
+a live SQLite file mid-write yields a corrupt snapshot.
 
-### How
-**takeone:** `php artisan takeone:backup` — SQLite `VACUUM INTO` after a WAL checkpoint (consistent under load), plus the upload folders, verified by reading each artifact back, non-zero exit on failure. Scheduled nightly 03:30.
+**Media is not covered by default.** Competition footage cannot be regenerated and is too
+large to archive nightly. `takeone:backup --media` mirrors it with rsync, but only once
+`BACKUP_MEDIA_DEST` points at a NAS mount or remote path. **Until that is set, the video
+library has no backup at all.**
 
-**Media is not covered by default.** Competition footage is the one thing that cannot be regenerated, and it is far too large to archive nightly. `takeone:backup --media` mirrors it incrementally with rsync, but only once `BACKUP_MEDIA_DEST` points at a NAS mount or remote path. **Until that is set, the video library has no backup at all.**
-
-`VACUUM INTO` (not `cp`) — copying a live SQLite file mid-write yields a corrupt snapshot. Always verify the copy; an unverified backup is not a backup.
-
-### Rules about the backups themselves
-- **Verify every backup** by reading it back before proceeding. Untested backups fail exactly when needed.
+**Rules about the backups themselves**
+- **Verify every backup** by reading it back before proceeding.
 - **Timestamp** them; never overwrite the previous one.
-- **Say so** — state that the backup was taken, where it is, and that it verified, before reporting the change done.
-- Keep at least one copy **off the box**. A backup on the same disk does not survive losing the disk. (Open item for both systems — see the Pre-Launch Runbook.)
-- The media files on Play (uploaded video) are the irreplaceable asset — the DB backup does not cover them.
+- **Say so** — state that the backup was taken, where it is, and that it verified, before
+  reporting the change done.
+- Keep at least one copy **off the box** (open item — see the Pre-Launch Runbook).
 
 ---
 
-## TOP PRIORITY — Design-First: Creative, Innovative, Artistic, Modern — STRICT
+# PART 2 — THE PROJECT
 
-**Rule:** Always focus on design. Every piece of UI built in this project must be creative, innovative, artistic, and modern. Never ship plain, default-looking, or "good enough" UI.
+## Overview
 
-- **Design is a requirement, not a polish step.** Any new page, component, modal, sheet, card, list, empty state, or loading state must look intentionally designed — considered composition, rhythm, hierarchy, motion, and detail.
-- **No generic AI/template aesthetics.** No stock boxy card grids, no unstyled form stacks, no bare tables. Bring art direction: layered depth, purposeful whitespace, expressive typography scale, meaningful iconography, tasteful micro-interactions and transitions.
-- **Use the `frontend-design` skill for any new UI work** (see the Skills section) and follow the Design System tokens exactly.
-- **Modern means:** fluid responsive layouts, smooth Alpine/CSS transitions, thoughtful states (hover / focus / active / empty / loading / error), and a mobile experience that is animated and creative (see [[feedback_mobile_creative_design]]), never a stripped-down desktop.
-- **Boundaries this rule does NOT override:**
-  - Design Rule #1 — never redesign existing UI unless explicitly asked. Creativity applies to what you are *building*, not to unrequested makeovers.
-  - The Design System palette/typography/tokens — be creative *within* the system, never with off-palette one-off styles.
-  - Security, Component-First reuse, and the No-Reload / Realtime rules. If a visual flourish weakens security or performance, it loses.
+Laravel 12 SaaS platform for sports clubs (TAKEONE-SPORTSTECH). Multi-tenant: each club is
+a tenant with its own admin panel.
 
-> Ask on every UI task: *would a great product designer be proud to ship this screen?* If not, it is not done.
-
----
-
-## Project Overview
-
-Laravel 12 SaaS platform for sports clubs (TAKEONE-SPORTSTECH). Multi-tenant architecture.
-
-- **Stack:** PHP 8.2+, Laravel 12, Tailwind CSS 4, Vite 7, jQuery 3.7, Chart.js 4, Select2 4, Alpine.js 3
+- **Stack:** PHP 8.2+, Laravel 12, Tailwind CSS 4, Vite 7, jQuery 3.7, Chart.js 4,
+  Select2 4, Alpine.js 3
 - **Custom package:** `takeone/cropper` (GitHub: TAKEONE-SPORTSTECH/laravel-image-cropper)
 - **Auth:** Laravel Sanctum + email verification + optional 2FA
-
----
-
-## Architecture
-
-- **Multi-tenant:** Each sports club is a "tenant" with its own admin panel
 - **Roles:** super-admin (platform), club owners/admins, regular members
-- **Key directories:**
-  - `app/Http/Controllers/Admin/` — ClubAdminController, PlatformController, ClubApiController, ClubMemberAdminController, etc.
-  - `app/Http/Controllers/` — MemberController, FamilyController, InvoiceController, TrainerController, InstructorReviewController
-  - `app/Models/` — Tenant, User, ClubInstructor, ClubPackage, ClubGalleryImage, ClubFacility, ClubActivity, ClubTransaction, ClubMemberSubscription, ClubReview, ClubSocialLink, ClubMessage, ClubAffiliation, Role, Permission, Membership, Invoice, Attendance, Goal, HealthRecord, TournamentEvent, PerformanceResult, SkillAcquisition, AffiliationMedia, NotesMedia, UserRelationship
-  - `app/Services/` — FamilyService
-  - `resources/views/` — admin/club/*, admin/platform/*, platform/, auth/, family/, trainer/
 
-- **Trainer/Instructor data model:** `bio`, `skills`, `experience_years`, `is_personal_trainer` live on `User`. `ClubInstructor` holds only club-specific data: `tenant_id`, `user_id`, `role`, `rating`. Routes `/trainer/{user}` and `/t/{user}` use User model binding (User ID, not ClubInstructor ID).
+## Key directories
 
----
+- `app/Http/Controllers/Admin/` — ClubAdminController, PlatformController, ClubApiController,
+  ClubMemberAdminController
+- `app/Http/Controllers/` — MemberController, FamilyController, InvoiceController,
+  TrainerController, InstructorReviewController
+- `app/Models/` — Tenant, User, ClubInstructor, ClubPackage, ClubGalleryImage, ClubFacility,
+  ClubActivity, ClubTransaction, ClubMemberSubscription, ClubReview, ClubSocialLink,
+  ClubMessage, ClubAffiliation, Role, Permission, Membership, Invoice, Attendance, Goal,
+  HealthRecord, TournamentEvent, PerformanceResult, SkillAcquisition, AffiliationMedia,
+  NotesMedia, UserRelationship
+- `app/Services/` — FamilyService
+- `resources/views/` — admin/club/*, admin/platform/*, platform/, auth/, family/, trainer/
 
-## Match video is ours — the sibling platform is disconnected
+**Trainer/Instructor data model:** `bio`, `skills`, `experience_years`,
+`is_personal_trainer` live on `User`. `ClubInstructor` holds only club-specific data:
+`tenant_id`, `user_id`, `role`, `rating`. Routes `/trainer/{user}` and `/t/{user}` use User
+model binding (User ID, not ClubInstructor ID).
 
-Competition video is recorded, stored, transcoded, authorised and played **entirely by
-this platform**. A mat camera uploads to `CameraController`, `IngestClipMedia` files it
-through `App\Media\MediaVaults`, `TranscodeMedia` builds the HLS ladder, and
-`App\Media\Http\MediaStreamController` serves it with authorisation re-checked on every
-segment. A bout is watched at `me.events.bout.video`, whose highlights bar is derived by
-`App\Media\BoutTimeline` from the officiating log — nobody types a timestamp.
-
-**The external video platform (`video.takeone.bh`) was disconnected on 2026-08-27** at the
-user's request: `app/Play/*`, the push/upload jobs, the inbound `/api/integration/play`
-surface, its console commands, `config/play.php`, the API token and the SSH key are all
-gone, and the Sanctum token it held was revoked. **Do not re-add any of it**, and do not
-write code that calls that host.
-
-Two dormant remnants, left deliberately rather than by omission:
-- `event_recordings.play_*` columns still hold URLs for a handful of bouts published there
-  before the split. Nothing writes them; they render as an outbound link so those videos
-  keep working. When they are gone, the columns can go too.
-- `play_timeline_rounds` / `play_timeline_points` are orphaned mirror tables. Their models
-  are deleted and nothing reads them. Dropping them is a migration nobody has needed yet.
-
----
-
-## Route Structure
+## Route structure
 
 | Prefix | Description |
 |--------|-------------|
@@ -148,684 +142,385 @@ Two dormant remnants, left deliberately rather than by omission:
 | `/bills/*` | Invoice/billing |
 | `/instructor/{instructorId}/reviews` | Instructor reviews |
 
-> New/refactored routes must follow the **Unpredictable Resource Identifiers** and **Route Binding and Object Access Security** rules below — public keys are non-predictable (uuid/public_id), never the auto-increment `id` or a name-derived slug.
+> New/refactored routes must follow **Unpredictable Resource Identifiers** (Part 3) — public
+> keys are non-predictable (uuid/public_id), never the auto-increment `id` or a name slug.
+
+## Match video is ours — the sibling platform is disconnected
+
+Competition video is recorded, stored, transcoded, authorised and played **entirely by this
+platform**. A mat camera uploads to `CameraController`, `IngestClipMedia` files it through
+`App\Media\MediaVaults`, `TranscodeMedia` builds the HLS ladder, and
+`App\Media\Http\MediaStreamController` serves it with authorisation re-checked on every
+segment. A bout is watched at `me.events.bout.video`, whose highlights bar is derived by
+`App\Media\BoutTimeline` from the officiating log — nobody types a timestamp.
+
+**`video.takeone.bh` was disconnected on 2026-08-27**: `app/Play/*`, the push/upload jobs,
+the inbound `/api/integration/play` surface, its console commands, `config/play.php`, the
+API token and the SSH key are all gone, and its Sanctum token was revoked. **Do not re-add
+any of it**, and do not write code that calls that host.
+
+Two dormant remnants, left deliberately:
+- `event_recordings.play_*` columns still hold URLs for a handful of bouts published there
+  before the split. Nothing writes them; they render as an outbound link. When they are
+  gone, the columns can go too.
+- `play_timeline_rounds` / `play_timeline_points` are orphaned mirror tables. Their models
+  are deleted and nothing reads them. Dropping them is a migration nobody has needed yet.
 
 ---
+
+# PART 3 — SECURITY
 
 ## Security First — STRICT
 
-**Rule:** Security must be prioritized in every build, change, action, experiment, prototype, refactor, trial feature, admin tool, automation, and integration — even if the work is temporary, internal-only, test-only, or "just for now".
+**Security is prioritized in every build, change, action, experiment, prototype, refactor,
+trial feature, admin tool, automation and integration — even if the work is temporary,
+internal-only, test-only, or "just for now".** There is no "unsafe because it is only a
+trial" exception; temporary code becomes permanent code.
 
-There is no "unsafe because it is only a trial" exception.
+**Non-negotiable principles:** secure by default · least privilege · deny by default ·
+validate all inputs · authorize every sensitive action · escape output · protect uploads
+and file handling · no secret leakage · never trust client-side claims · no "we will secure
+it later".
 
-### Default mindset
-Every task must be approached as if it could eventually reach production or be reused later. Temporary code often becomes permanent code, so trial implementations must still follow secure-by-default practices.
+**Applies to all work:** UI features, backend logic, AJAX endpoints, admin tools, MCP
+tools, mobile/WebView features, imports/exports, uploads, notifications, realtime events,
+internal scripts, demo/trial utilities, and test helpers that touch real environments or
+real data.
 
-### Non-negotiable principles
-- Prefer **secure by default** behavior
-- Prefer **least privilege**
-- Prefer **deny by default** over open by default
-- Validate all inputs
-- Authorize every sensitive action
-- Escape/output safely
-- Protect uploads and file handling
-- Avoid secret leakage
-- Avoid trust in client-side claims
-- Avoid "we will secure it later" shortcuts
+**These are not acceptable reasons to weaken security:** "it is only a prototype" · "just
+for testing" · "only admins will use it" · "this is internal" · "we will harden it later" ·
+"it is only temporary".
 
-### Applies to all work
-This includes:
-- UI features
-- backend logic
-- AJAX endpoints
-- admin tools
-- MCP tools
-- mobile/WebView features
-- imports/exports
-- file uploads
-- notifications
-- realtime events
-- internal scripts
-- demo/trial utilities
-- test helpers when they affect real environments or real data
-
-### Forbidden thinking
-Do NOT justify insecure choices with:
-- "it is only a prototype"
-- "it is just for testing"
-- "only admins will use it"
-- "this is internal"
-- "we will harden it later"
-- "it is only temporary"
-
-These are not acceptable reasons to weaken security.
-
-### Security priority rule
-If a feature improves speed, convenience, or visual polish but weakens security, security wins.
-
-### Security is always required
-Security is a release requirement, a trial requirement, and a development requirement — not a final polishing step.
-
----
+**If a feature improves speed, convenience, or visual polish but weakens security, security
+wins.** Security is a release requirement, a trial requirement, and a development
+requirement — never a final polishing step.
 
 ## Threat-Driven Security — STRICT
 
-**Rule:** Every build, feature, refactor, script, integration, API endpoint, mobile capability, admin tool, trial implementation, and UI action must be designed with active defense against real-world attack classes — both classic and modern.
-
-Do not build as if the system will only be used by honest users. Assume attackers may try to:
-- gain unauthorized access
-- extract data
-- escalate privileges
-- abuse APIs
-- automate attacks
-- inject malicious input
-- upload dangerous files
-- exploit weak defaults
-- flood the system with traffic or expensive requests
-- abuse mobile/browser capabilities
-- exploit realtime channels
-- exploit third-party packages or integrations
-- chain small weaknesses into a larger compromise
-
-The system must be designed **secure by default**, **deny by default**, and with **defense in depth**.
-
-### Current threat reality
-Claude must account for both classic and modern attack patterns.
-
-This includes:
-- OWASP Top 10 web risks
-- OWASP API risks
-- credential stuffing
-- bot-driven abuse
-- scraping and mass extraction
-- supply chain compromise
-- application-layer DDoS
-- short-burst high-intensity attacks
-- abuse of unrestricted resource consumption
-- insecure business flow exposure
-
-Build with awareness that attackers increasingly automate and scale attacks rather than relying only on one-off manual exploits.
-
----
-
-## Security Coverage Requirements — STRICT
-
-Claude must actively design and review every change against at least the following attack classes and failure modes.
-
-### 1. Access control and privilege escalation
-Protect against:
-- broken access control
-- insecure direct object references
-- broken object-level authorization
-- broken function-level authorization
-- tenant boundary bypass
-- role / permission bypass
-- privilege escalation
-- forced browsing to admin/member/private routes
-
-Required defenses:
-- enforce authorization server-side on every sensitive action
-- never trust hidden inputs, client-side role flags, or UI visibility as security
-- always scope queries by tenant / club / user as appropriate
-- deny access by default unless explicitly allowed
-
-### 2. Injection attacks
-Protect against:
-- SQL injection
-- command injection
-- template injection
-- NoSQL-style injection patterns where relevant
-- log injection
-- header injection
-
-Required defenses:
-- use parameterized queries / Eloquent / query builder safely
-- never concatenate raw untrusted input into SQL, shell commands, headers, or HTML
-- validate and normalize all input server-side
-- review any raw expressions, raw queries, shell calls, and dynamic filters carefully
-
-### 3. Cross-site scripting and content injection
-Protect against:
-- stored XSS
-- reflected XSS
-- DOM XSS
-- HTML/script injection through rich fields, uploads, URLs, or profile data
-
-Required defenses:
-- escape output by default
-- do not render untrusted HTML unless explicitly sanitized
-- treat file names, captions, notes, bios, links, and metadata as untrusted
-- validate URLs and unsafe schemes
-- reject dangerous upload types where appropriate
-
-### 4. Authentication, sessions, and account abuse
-Protect against:
-- weak authentication flows
-- session fixation
-- insecure remember-me patterns
-- brute force
-- credential stuffing
-- account takeover
-- password reset abuse
-- enumeration via login/forgot-password behavior
-
-Required defenses:
-- use Laravel's secure auth features properly
-- throttle auth-sensitive routes
-- support strong verification and optional MFA where applicable
-- avoid leaking whether an account exists through messages or timing where practical
-- enforce secure session and token handling
-
-### 5. CSRF and unsafe state changes
-Protect against:
-- CSRF on web routes
-- unsafe GET requests changing state
-- AJAX actions missing proper protection
-
-Required defenses:
-- keep CSRF protections intact on state-changing web requests
-- never move write behavior onto unsafe methods
-- ensure AJAX write flows still use proper Laravel protections
-
-### 6. File upload and media attacks
-Protect against:
-- malicious file uploads
-- fake MIME / fake extension uploads
-- SVG/script payloads
-- path traversal
-- oversized file abuse
-- storage poisoning
-- orphaned sensitive files
-- public exposure of private uploads
-
-Required defenses:
-- validate real file bytes, not only client-declared types
-- reject dangerous formats when not explicitly needed
-- generate safe server-side file names and paths
-- never trust user-provided paths or extensions
-- delete/replace files safely
-- keep sensitive files on the correct disk and visibility level
-
-> See **Image Uploads Must Validate Real Bytes**, **Upload Storage Structure and File Naming**, and **Delete Files Before Records** for the enforced implementation.
-
-### 7. API abuse and data extraction
-Protect against:
-- broken API authorization
-- mass assignment style mistakes
-- overexposed JSON responses
-- excessive data disclosure
-- object enumeration
-- unrestricted resource consumption
-- business-flow abuse
-- shadow / forgotten endpoints
-
-Required defenses:
-- return only required fields
-- scope every API query tightly
-- rate-limit and paginate expensive endpoints
-- protect object lookup routes carefully
-- document and audit API surfaces
-- treat internal/admin APIs as attack surfaces too
-
-### 8. Business logic abuse
-Protect against:
-- abusing workflows in unintended order
-- replaying actions
-- duplicate submissions
-- bypassing approvals
-- price / amount / status tampering
-- abusing invitations, registrations, subscriptions, notifications, or scheduling logic
-
-Required defenses:
-- validate state transitions server-side
-- do not trust client-calculated amounts, statuses, or permissions
-- enforce invariants in services/controllers/models
-- protect important actions with idempotency or duplicate-submission handling where relevant
-
-### 9. Security misconfiguration
-Protect against:
-- unsafe debug settings
-- permissive storage exposure
-- weak CORS / cookie / session config
-- verbose errors
-- stale permissions
-- unprotected admin surfaces
-- insecure defaults in trial code
-
-Required defenses:
-- prefer secure defaults everywhere
-- fail safely when configuration is missing
-- do not expose stack traces, secrets, internal paths, or sensitive config in responses
-- keep trial and demo features behind proper protections too
-
-### 10. Cryptographic and secret-handling failures
-Protect against:
-- plaintext secrets
-- weak hashing/storage of credentials
-- insecure token exposure
-- insecure reset / verification flows
-- leaking keys in logs, JS, responses, or repositories
-
-Required defenses:
-- use framework-approved secure primitives
-- never invent custom crypto
-- never hardcode secrets in code or client-side output
-- minimize secret exposure in logs and debugging
-
-### 11. Realtime, websocket, and event abuse
-Protect against:
-- publishing data to wrong users
-- insecure channel fanout
-- event spoofing assumptions
-- leaking private payloads in notifications or realtime updates
-
-Required defenses:
-- scope every push payload to the intended audience
-- send the minimum necessary data
-- never assume the client should see data just because it can receive events
-- use refresh signals instead of oversharing payloads when views differ per user
-
-### 12. Mobile / WebView / device capability abuse
-Protect against:
-- unsafe camera/mic/geolocation usage
-- permission misuse
-- insecure file selection flows
-- leaking sensitive data via mobile-only behaviors
-- WebView-specific attack surface
-
-Required defenses:
-- request only necessary permissions
-- feature-detect support first
-- provide safe fallbacks
-- avoid browser/WebView behaviors that expose unsafe download or popup paths
-- treat mobile capability access as security-sensitive, not only UX-sensitive
-
-### 13. Bot abuse, scraping, and automated attacks
-Protect against:
-- scraping
-- credential stuffing
-- fake account creation
-- abusive form submissions
-- endpoint hammering
-- inventory / seat / availability abuse
-- API probing
-
-Required defenses:
-- throttle sensitive routes
-- rate-limit expensive reads and writes
-- monitor repeated suspicious patterns
-- make enumeration and bulk extraction harder
-- design endpoints and pagination with abuse resistance in mind
-
-### 14. DDoS and resource exhaustion resilience
-Protect against:
-- volumetric DDoS
-- application-layer DDoS
-- burst traffic floods
-- expensive query abuse
-- oversized upload abuse
-- queue flooding
-- notification storming
-- high-cost search/filter abuse
-
-Required defenses:
-- keep endpoints efficient
-- rate-limit and cap expensive operations
-- paginate large responses
-- debounce live search on the client when appropriate
-- avoid N+1 and unbounded queries
-- reject abusive payload sizes
-- design with graceful degradation in mind
-- never create endpoints that are cheap to call but expensive to execute without protection
-
-### 15. Supply chain and dependency risks
-Protect against:
-- vulnerable packages
-- unreviewed libraries
-- unsafe third-party scripts
-- stale dependencies
-- compromised update paths
-- package drift between builds
-
-Required defenses:
-- avoid unnecessary dependencies
-- prefer trusted, maintained libraries only when truly needed
-- do not add libraries for trivial features
-- review security implications before introducing any package or CDN dependency
-
-### 16. Logging, monitoring, and incident visibility failures
-Protect against:
-- silent failures
-- undetected abuse
-- missing audit trails
-- logs leaking secrets or personal data
-
-Required defenses:
-- log security-relevant actions appropriately
-- avoid logging secrets, tokens, raw sensitive payloads, or private files
-- preserve useful audit trails for sensitive admin/member actions
-- make suspicious failure patterns observable without leaking internals to users
-
----
-
-## Security Checklist for Every Change — STRICT
-
-For every build or action, Claude must actively check:
-
-1. **Input validation**
-   - Are request fields validated server-side?
-   - Are enums, IDs, and uploaded values constrained?
-   - Are untrusted values normalized before use?
-
-2. **Authorization**
-   - Is the user allowed to perform this action?
-   - Is tenant / club scope enforced?
-   - Is sensitive data limited to only authorized viewers?
-
-3. **Output safety**
-   - Is rendered output escaped correctly?
-   - Is any HTML injection possible?
-   - Are JSON responses safe and minimal?
-
-4. **File / upload safety**
-   - Are uploaded files validated by real bytes / MIME, not only extension?
-   - Are dangerous file types rejected?
-   - Are old files deleted safely when replaced or removed?
-
-5. **Secrets / sensitive data**
-   - Are secrets kept out of source, responses, logs, and client-side code?
-   - Are tokens, keys, internal paths, and private implementation details protected?
-
-6. **Client trust**
-   - Is the server avoiding trust in client-side claims, hidden inputs, JS flags, or user-supplied roles/prices/statuses?
-
-7. **Dependency safety**
-   - Is a new dependency truly necessary?
-   - Does the feature avoid unnecessary external libraries or unsafe packages?
-
-8. **Safe defaults**
-   - If configuration is missing or ambiguous, does the feature fail safely?
-   - Are dangerous actions protected by explicit checks?
-
-9. **Realtime / background effects**
-   - Are MQTT events scoped correctly?
-   - Are notifications or broadcasts leaking data to the wrong users?
-
-10. **Trial / internal tools**
-   - Even if temporary, could this code expose data, permissions, files, or attack surface later?
-
----
-
-## Unpredictable Resource Identifiers — STRICT
-
-**Rule:** Never use predictable, enumerable, guessable, or easily-derived public links for user profiles, records, files, resources, or private application objects.
-
-Do NOT expose routes like:
-- `/me/ghassanyusuf`
-- `/me/profile/25`
-- `/member/26`
-- `/invoice/1001`
-- `/order/501`
-- or any other route where changing a name, slug, username, sequence number, or nearby value could reveal another resource
-
-### Why
-Predictable identifiers make enumeration easier and increase the risk of:
-- insecure direct object reference (IDOR)
-- unauthorized profile access
-- private data extraction
-- tenant boundary probing
-- account discovery
-- scraping and automated enumeration
-- leaking object count, creation order, or naming patterns
-
-### Required rule
-Use non-predictable public identifiers for any user-facing or externally reachable resource that refers to sensitive, user-owned, tenant-owned, or permission-protected data.
-
-Preferred options:
-- UUIDv4
-- strong random tokens
-- other high-entropy non-guessable identifiers approved by the project
-
-Avoid for sensitive/public resource URLs:
-- incremental numeric IDs
-- usernames as primary object keys
-- slugs derived only from human-readable names
-- email-like identifiers
-- any identifier that reveals business structure, ordering, or identity unnecessarily
-
-### Important
-Unpredictable identifiers are **defense in depth**, not the main defense.
-Every request must still enforce full server-side authorization and tenant/user ownership checks.
-A random identifier does NOT replace authorization.
-
----
-
-## Route Binding and Object Access Security — STRICT
-
-When exposing records through routes, APIs, AJAX endpoints, or realtime-related fetches:
-
-### Required rules
-1. Never use the auto-increment database `id` as the public route key for sensitive resources.
-2. Never rely on usernames, display names, or simple slugs as the only access key for protected resources.
-3. Use a dedicated public identifier column such as:
-   - `uuid`
-   - `public_id`
-   - `external_id`
-4. Route model binding for protected resources should use the non-predictable public identifier, not the numeric primary key.
-5. Server-side queries must still be scoped by the authenticated user's permissions, ownership, club, tenant, family relationship, or admin scope as appropriate.
-6. If the current user should only access their own resource, prefer resolving from the authenticated session/user context instead of trusting a URL parameter at all.
-7. Do not leak whether another valid object exists through different error messages, timing, or response details where avoidable.
-
-### Preferred mindset
-- internal DB identity may remain numeric if desired
-- public-facing identity must be non-predictable where exposure would be sensitive
-- authorization is mandatory even when the identifier is random
-
----
+Do not build as if the system will only be used by honest users. Assume attackers will try
+to gain unauthorized access, extract data, escalate privileges, abuse APIs, automate
+attacks, inject malicious input, upload dangerous files, exploit weak defaults, flood the
+system with expensive requests, abuse mobile/browser capabilities, exploit realtime
+channels or third-party packages, and chain small weaknesses into a larger compromise.
+
+Account for both classic and modern patterns: OWASP Top 10 and OWASP API risks, credential
+stuffing, bot-driven abuse, scraping and mass extraction, supply-chain compromise,
+application-layer DDoS, short-burst high-intensity attacks, unrestricted resource
+consumption, and insecure business-flow exposure. Attackers automate and scale.
+
+## Attack classes every change is designed against — STRICT
+
+1. **Access control / privilege escalation** — broken access control, IDOR, broken
+   object- and function-level authorization, tenant-boundary bypass, role bypass, forced
+   browsing. → Enforce authorization server-side on every sensitive action; never trust
+   hidden inputs, client-side role flags, or UI visibility; scope every query by
+   tenant/club/user; deny by default.
+2. **Injection** — SQL, command, template, log, header. → Parameterized queries / Eloquent;
+   never concatenate untrusted input into SQL, shell commands, headers or HTML; validate and
+   normalize server-side; review every raw expression, shell call and dynamic filter.
+3. **XSS / content injection** — stored, reflected, DOM, via rich fields, uploads, URLs or
+   profile data. → Escape by default; never render untrusted HTML unsanitized; treat file
+   names, captions, notes, bios, links and metadata as untrusted; validate URL schemes;
+   reject dangerous upload types.
+4. **Auth, sessions, account abuse** — weak flows, session fixation, insecure remember-me,
+   brute force, credential stuffing, takeover, reset abuse, enumeration. → Use Laravel's
+   auth features properly; throttle auth-sensitive routes; support strong verification and
+   optional MFA; avoid leaking account existence through messages or timing; secure session
+   and token handling.
+5. **CSRF / unsafe state changes** — keep CSRF protection intact on state-changing web
+   requests; never move writes onto GET; AJAX write flows keep Laravel's protections.
+6. **File upload & media** — malicious files, fake MIME/extension, SVG payloads, path
+   traversal, oversized files, storage poisoning, orphaned or publicly-exposed private
+   uploads. → Validate real file bytes; reject dangerous formats; generate server-side names
+   and paths; never trust user paths or extensions; delete/replace safely; correct disk and
+   visibility. See Part 8: *Image Uploads Must Validate Real Bytes*, *Upload Storage
+   Structure*, *Delete Files Before Records*.
+7. **API abuse & data extraction** — broken API authz, mass assignment, overexposed JSON,
+   excessive disclosure, object enumeration, unrestricted resource consumption,
+   business-flow abuse, forgotten endpoints. → Return only required fields; scope every
+   query tightly; rate-limit and paginate expensive endpoints; treat internal/admin APIs as
+   attack surface too.
+8. **Business logic abuse** — out-of-order workflows, replay, duplicate submission, bypassed
+   approvals, price/amount/status tampering, abuse of invitations, registrations,
+   subscriptions, notifications or scheduling. → Validate state transitions server-side;
+   never trust client-calculated amounts, statuses or permissions; enforce invariants in
+   services/controllers/models; add idempotency or duplicate-submission handling where it
+   matters.
+9. **Misconfiguration** — unsafe debug settings, permissive storage exposure, weak
+   CORS/cookie/session config, verbose errors, stale permissions, unprotected admin
+   surfaces, insecure defaults in trial code. → Secure defaults; fail safely when config is
+   missing; never expose stack traces, secrets, internal paths or config in responses.
+10. **Crypto & secrets** — plaintext secrets, weak credential hashing, token exposure,
+    insecure reset/verification flows, keys leaking into logs, JS, responses or the repo. →
+    Framework-approved primitives only; never invent crypto; never hardcode secrets;
+    minimize secret exposure in logs.
+11. **Realtime / websocket / event abuse** — publishing to the wrong users, insecure
+    fanout, leaking private payloads. → Scope every push payload to its intended audience;
+    send the minimum necessary data; never assume a client should see data just because it
+    can receive events; prefer a refresh signal over oversharing when views differ per user.
+12. **Mobile / WebView / device capability** — unsafe camera/mic/geolocation use, permission
+    misuse, insecure file selection, WebView-specific surface. → Request only necessary
+    permissions; feature-detect first; provide safe fallbacks; avoid WebView behaviours that
+    expose unsafe download or popup paths.
+13. **Bots, scraping, automated attacks** — credential stuffing, fake accounts, abusive form
+    submissions, endpoint hammering, availability abuse, API probing. → Throttle sensitive
+    routes; rate-limit expensive reads and writes; make enumeration and bulk extraction
+    harder; design pagination with abuse resistance in mind.
+14. **DDoS & resource exhaustion** — volumetric and application-layer floods, expensive
+    query abuse, oversized uploads, queue flooding, notification storming. → Keep endpoints
+    efficient; cap and rate-limit expensive operations; paginate; debounce live search;
+    avoid N+1 and unbounded queries; reject abusive payload sizes; degrade gracefully.
+    **Never create an endpoint that is cheap to call but expensive to execute without
+    protection.**
+15. **Supply chain** — vulnerable, unreviewed or stale packages, unsafe third-party scripts,
+    compromised update paths. → Avoid unnecessary dependencies; never add a library for a
+    trivial feature; review security implications before adding any package or CDN.
+16. **Logging & incident visibility** — silent failures, undetected abuse, missing audit
+    trails, logs leaking secrets or personal data. → Log security-relevant actions; never
+    log secrets, tokens, raw sensitive payloads or private files; keep audit trails for
+    sensitive admin/member actions.
+
+## Security checklist for every change — STRICT
+
+1. **Input** — validated server-side? enums, IDs and uploads constrained? untrusted values
+   normalized?
+2. **Authorization** — allowed to perform this action? tenant/club scope enforced? sensitive
+   data limited to authorized viewers?
+3. **Output** — escaped correctly? any HTML injection possible? JSON minimal?
+4. **Uploads** — validated by real bytes/MIME, not extension? dangerous types rejected? old
+   files deleted safely on replace/remove?
+5. **Secrets** — out of source, responses, logs and client-side code?
+6. **Client trust** — server avoids trusting hidden inputs, JS flags, user-supplied
+   roles/prices/statuses?
+7. **Dependencies** — is a new one truly necessary?
+8. **Safe defaults** — does it fail safely when config is missing or ambiguous?
+9. **Realtime / background** — MQTT events scoped correctly? nothing leaking to the wrong
+   users?
+10. **Trial / internal tools** — even if temporary, could this expose data, permissions,
+    files or attack surface later?
+
+## Unpredictable Resource Identifiers & Object Access — STRICT
+
+**Never use predictable, enumerable or easily-derived public links** for profiles, records,
+files or private objects. Not `/me/ghassanyusuf`, `/member/26`, `/invoice/1001` — nor any
+route where changing a name, username, sequence number or nearby value could reveal another
+resource.
+
+**Why:** predictable identifiers enable IDOR, unauthorized profile access, private data
+extraction, tenant probing, account discovery, scraping, and leak object count, creation
+order and naming patterns.
+
+**Required**
+- Public keys are high-entropy: `uuid`, `public_id`, `external_id`, or a strong random
+  token. Never the auto-increment `id`, a username, a name-derived slug, or an email-like
+  identifier for a sensitive resource.
+- Route model binding for protected resources uses that non-predictable key. Internal DB
+  identity may stay numeric.
+- Server-side queries are still scoped by the viewer's permissions, ownership, club, tenant,
+  family relationship or admin scope.
+- When the user should only reach their own resource, resolve it from the authenticated
+  session rather than trusting a URL parameter at all.
+- Do not leak whether another valid object exists through differing error messages, timing
+  or response details.
+
+> **Unpredictable identifiers are defence in depth, not the defence.** A random identifier
+> never replaces authorization. `/people/{uuid}` is the reference implementation.
 
 ## Anti-Enumeration and Anti-Extraction — STRICT
 
-Claude must build routes, lookups, and APIs to resist enumeration and data extraction attempts.
+- Avoid sequential public identifiers for sensitive records.
+- Throttle repeated lookups; log suspicious repeated failures or scanning patterns.
+- Return safe, generic not-found / unauthorized behaviour; never reveal whether nearby
+  identifiers exist.
+- Paginate and scope list endpoints tightly.
+- Never let a user switch a parameter and browse another user's data.
 
-### Required protections
-- avoid sequential public identifiers for sensitive records
-- throttle repeated lookup attempts where appropriate
-- log suspicious repeated lookup failures or scanning patterns
-- return safe generic not-found / unauthorized behavior where appropriate
-- do not expose whether nearby identifiers exist
-- paginate and scope list endpoints tightly
-- never allow a user to switch a parameter and browse other users' data
-
-### Test requirement
-Whenever a route or endpoint references an object, test at least this scenario:
-- User A tries to access User B's object by changing the identifier
-- access must be denied even if the identifier is valid
-- access must also be denied whether the identifier is predictable or random
-
-If a resource is private, sensitive, tenant-scoped, or user-owned, assume attackers will try to guess, iterate, scrape, or fuzz its identifier. Design the route and authorization model accordingly.
+**Test requirement:** whenever a route references an object, test that User A cannot access
+User B's object by changing the identifier — denied even when the identifier is valid, and
+denied whether it is predictable or random.
 
 ---
 
-## Mobile / Desktop Separation — STRICT
+# PART 4 — ARCHITECTURE RULES
 
-**Rule:** Any view that has both a mobile and a desktop experience MUST be implemented as **two separate Blade files**, never a single file branching with responsive classes for fundamentally different layouts.
+## Component-First, and Components Are Standalone — STRICT
 
-- Keep desktop and mobile markup in distinct files so editing one can never break the other.
-- Convention: place them under device-named subfolders, e.g.
-  - `resources/views/<feature>/desktop/<view>.blade.php`
-  - `resources/views/<feature>/mobile/<view>.blade.php`
-  - and, when needed, separate layouts `layouts/<name>-desktop.blade.php` / `layouts/<name>-mobile.blade.php`.
-- The controller (or layout) selects the file using the shared `$isMobile` flag provided by the `DetectDevice` middleware: `view($isMobile ? '<feature>.mobile.<view>' : '<feature>.desktop.<view>')`.
-- This rule applies to **new** views going forward (e.g. the Business/Chain experience). Existing CSS-responsive pages are not required to be split unless explicitly requested.
+**Before building any UI block, script, interaction pattern or layout fragment, check
+whether an existing component, partial, helper, widget or view pattern already covers it.**
+Start at the **Blade Component Library** (Part 5).
 
-> Note: ordinary minor responsive tweaks (a header that stacks via `flex-col sm:flex-row`) do NOT require a separate file — only views whose mobile and desktop layouts genuinely diverge.
+**Decision order:** reuse as-is → reuse with props/slots → extend without breaking current
+usage → compose several existing components → create a new reusable component only if none
+of those solves it cleanly.
 
----
+- Never duplicate markup, JS behaviours or visual patterns that already exist.
+- Prefer shared Blade components, Alpine widgets, partials and reusable JS helpers over
+  page-local one-offs.
+- New components are generic enough for reuse unless the requirement is truly one-off, and
+  are added to the component library table immediately.
+- Keep business logic outside presentational components.
 
-## Android App (APK) Mirrors the Mobile Web — STRICT
+### Standalone means it works anywhere
 
-**The mobile web experience IS the Android app.** The member's app (app ID `bh.takeone.app`)
-loads the live site (`https://takeone.bh`) in a WebView. It is **not** a separate codebase —
-whatever renders in the mobile web views is exactly what users see inside the APK. Therefore,
-whenever working on the mobile app, the web and the APK must be treated as **one deliverable**.
+A component owns its markup, local behaviour, internal state, event binding, guards and
+render/update logic, and must work when dropped into another compatible view with no
+rewrites. It must **never** depend on hidden page-specific glue: another page's init
+script, a random global, a sibling element elsewhere on the page, an inline script in
+another file doing the real work, an assumed DOM structure, or undocumented manual setup.
+If setup is needed, it is part of the component or an explicit, documented input.
 
-**It is a Flutter build, and it lives with the others.** The Capacitor shell that used to sit
-in `mobile/` was converted on 2026-08-29 and that folder is gone. There is now ONE Flutter
-project — `flutter/TV/` — producing four APKs from one codebase, differing only in application
-id, manifest and a single `--dart-define`:
+**Allowed shared foundations** (standalone ≠ duplicating the stack): Laravel/Blade, the
+Tailwind design tokens, Alpine, jQuery, and the approved shared helpers and shell
+behaviours already established in the project.
 
-| Variant | Application id | What it is |
-|---|---|---|
-| `tv` | `bh.takeone.tv` | the wall screen (leanback) |
-| `tab` | `bh.takeone.tab` | the scoring table |
-| `cam` | `bh.takeone.cam` | a camera beside the mat |
-| `app` | `bh.takeone.app` | **the member's phone app** |
+**Implementation style:** keep a component's JS inside the component file or a clearly named
+companion module; use clear, documented event names; require or generate stable IDs; own the
+AJAX request flow and DOM patching (or expose a defined API for it); keep animation inside
+the component.
 
-Build any of them with `./flutter/TV/build.sh {tv|tab|cam|app} [base-url]`.
-`flutter/TV/lab-app/` is the separate boutcam project.
+**Reuse test:** can it be used on another page without rewriting internals? does it depend on
+hidden external script or page-only structure? are its inputs and outputs clear? can it
+initialize itself safely? will it behave consistently everywhere? If any answer is no, it is
+not standalone yet.
 
-### Rules
-1. **Mobile web changes flow to the app automatically — no rebuild needed.** Any change to a mobile Blade view, controller, route, JS, CSS, or backend logic appears in the installed APK the moment it's deployed, because the app loads the live site. Do **not** tell the user to rebuild the APK for content/UI/logic changes.
-2. **Every mobile feature must actually work inside a WebView.** When building a mobile feature, verify it functions in the Android WebView, not just a desktop browser. In particular:
-   - Camera / QR scanning / photo capture use `getUserMedia` — the `CAMERA` permission is already declared in `flutter/TV/android_app/AndroidManifest.xml`. If a new feature needs another device capability (mic, geolocation beyond what's declared, notifications), **add the matching Android permission there** as part of the same task. That file is the member app's manifest template; the hall variants have their own (`android_tv`, `android_tab`, `android_cam`) and must not be edited for a member-app need.
-   - **Uploads and permissions are granted by the shell, not the page.** A WebView opens no file picker and grants no camera unless the host app hands it one — `flutter/TV/lib/src/app/shell.dart` does both (`setOnShowFileSelector`, `setOnPlatformPermissionRequest`). If an upload silently does nothing in the app but works in a browser, that is where to look.
-   - Avoid browser-only APIs that Android WebView blocks or handles differently (e.g. certain downloads, `window.open` popups, native file pickers) without a WebView-safe fallback.
-3. **Only rebuild/re-sign the APK when the NATIVE shell changes** — app icon, name, splash, colors, permissions, or the host it points at. Then do the full loop as one unit: edit the variant's manifest or `lib/src/`, rebuild with `./flutter/TV/build.sh app https://takeone.bh`, and re-verify the signed artifact.
-4. **The published app has a version series, and Play enforces it.** `build.sh` sets `VERSION_CODE`/`VERSION_NAME` for the `app` variant only (currently 11 / 1.10, continuing the Capacitor build's 10 / 1.9). **Raise the code on every store release** — Flutter's default of `1` is rejected as a downgrade.
-5. **⚠️ The web still calls a Capacitor-shaped bridge, and the Flutter shell answers to it.** `partials/app-update.blade.php`, `partials/push-register.blade.php` and `auth/mobile/login.blade.php` call `window.Capacitor.Plugins.{App,MqttPush}`. `shell.dart` injects a shim mapping those onto a Kotlin `MethodChannel` (`appInfo`, `mqttStart`, `mqttStop`, `batteryExemption`, `downloadAndInstall`). **Keep the two ends in step:** adding a native call means adding it to the shim, the channel handler in `MainActivity.kt`, and the web that calls it.
-6. **Notifications are native and outlive the WebView.** `MqttNotificationService.java` (carried over unchanged from the Capacitor build) holds one MQTT connection in a foreground service and posts what arrives, authenticating with the session cookie the WebView already holds. It runs with no Flutter engine, so it reads its host from manifest meta-data (`bh.takeone.baseUrl`), which `build.sh` stamps in from the same `BASE_URL` the Dart side is built with — do not let those two drift.
-7. **Never break a mobile view in a way that only shows up in the app.** Since the APK has no browser chrome (no address bar, no easy refresh), a mobile view that soft-locks or clips off-screen is worse in the app than on web. The existing mobile-forms/safe-area rules below apply doubly here.
+## The Platform Is a Set of Modules — STRICT
 
-> Practical summary: **mobile web work = app work.** Build mobile features so they work in the
-> WebView, add any needed native permission alongside, and only touch `flutter/TV/` + rebuild
-> when the native shell itself changes.
+**Every vertical owns a top-level folder under `app/` and everything it needs lives
+inside it.** Not one folder of models, one of controllers and one of services with
+the shop, the roster and the books sitting side by side as neighbours that have
+nothing to do with each other.
 
----
+```
+app/
+├── Clubs/        the tenant: identity, presence, programme, books, comms
+├── Members/      the person: profile, family, health, membership, roles
+├── Events/       competition (itself made of sport/event-type PACKAGES)
+├── Shop/         commerce: products, variants, stock, orders, perks
+├── Challenges/   member-vs-member: challenges, duels, witnesses
+├── Trainers/     personal training: profiles, rates, reviews, sessions
+├── Media/        footage: ingest, vaults, transcode, streaming
+└── Support/Modules/   the module system itself
+```
 
-## Component-First Architecture — STRICT
+**Why:** at ~106k lines, organising by TECHNICAL KIND means reading or changing one
+vertical requires opening files belonging to five others, and nothing tells you where
+a vertical stops. A module boundary answers that: everything about the shop is
+`app/Shop/`, and a change there cannot reach the club's books without crossing a line
+you can see.
 
-**Rule:** Everything built in this project must follow a reusable component-first architecture. Before creating any new UI block, script, interaction pattern, or layout fragment, first check whether the same need is already covered by an existing component, partial, helper, widget, or view pattern.
+### A module is a boundary, not a plugin
 
-### Decision order
-Before creating anything new, always evaluate in this order:
-1. **Reuse existing component as-is**
-2. **Reuse existing component with props / slots / options**
-3. **Extend an existing component without breaking current usage**
-4. **Compose multiple existing components together**
-5. **Create a new reusable component only if none of the above solves the need cleanly**
+This is the one thing not to confuse with the events rule below. An event **type** is a
+*substitutable variant behind one contract* — nothing depends on Taekwondo, everything
+depends on `EventType`. A module is **not** substitutable: there is no second kind of
+club. It exists to be **bounded** — read, reviewed, changed or deleted as a unit.
 
-### Rules
-- Do not duplicate markup, JS behaviors, or visual patterns if an equivalent already exists.
-- Prefer shared Blade components, Alpine widgets, partials, and reusable JS helpers over page-local one-off implementations.
-- New components must be generic enough for future reuse unless the requirement is truly one-off.
-- If a new reusable component is created, add it to the **Blade Component Library — REUSE FIRST** section immediately.
-- Keep business logic outside presentational components whenever possible.
-- Prefer consistency and reuse over cleverness.
+Consequence: modules nest. `app/Events/` is a module; the sport and event-type packages
+inside it are a level below, bound by `EventPackageServiceProvider`. Do not flatten one
+into the other.
 
-### Required mindset
-Claude must continuously ask:
-- Do we already have this?
-- Can an existing component handle this with props?
-- Can I extend the existing component safely?
-- Should this become a shared component instead of page-only code?
+### The structure
 
-The default answer should be reuse first, extension second, creation last.
+```
+app/Shop/
+├── Shop.php                    implements App\Support\Modules\Module
+├── Models/  Controllers/  Services/  Commands/
+├── routes.php                  plain `web`
+├── routes-member.php           → /me prefix, `me.` names, auth stack
+├── routes-club-admin.php       → admin/club/{club}, `admin.club.` names
+└── resources/views|lang/       → shop::<view>, shop::messages.…
+```
 
----
+All of it discovered from `config/modules.php` and bound by
+`App\Support\Modules\ModuleServiceProvider`. **Never wire a module path by hand.**
+Route files are registered inside `web` with the exact middleware stack the shared
+block applies — a module must never quietly opt out of session, CSRF or auth.
 
-## Standalone Self-Contained Components — STRICT
+### Contributing to a shell
 
-**Rule:** Every reusable component must be as standalone and self-contained as possible so it can be moved, reused, or rendered in another place with minimal or no extra wiring.
+A module puts entries in a shell's navigation by implementing that shell's **surface
+interface** (`App\Support\Modules\Surfaces\`), not by being edited into a layout.
+`ContributesClubAdminNav` is the first; the club admin sidebar is composed from it on
+both desktop and mobile.
 
-A component must not depend on hidden page-specific code, fragile global assumptions, or unrelated surrounding markup in order to work.
+- **A module with nothing to say to a shell does not implement the interface.** That is
+  the honest version of "this vertical has no club settings".
+- **`group` is separate from ownership.** Instructors are club programme code that reads
+  under "People"; the shop's perks read under "Content" on mobile. A module says where
+  its entry belongs **to the reader** and keeps its code where it belongs to the
+  **codebase**. Groups themselves are shell property, declared in `config/modules.php`.
+- **Desktop and mobile are separate navigations**, not one at two widths.
 
-### What "standalone" means in this project
-Each component should include or clearly own:
-- its own markup structure
-- its own local behavior
-- its own internal state handling when applicable
-- its own event binding logic
-- its own validation or guard logic when applicable
-- its own render/update logic when applicable
+### Public vs private — enforced by test
 
-A component should work when dropped into another compatible view without needing custom rewrites.
+- **`Models/` is PUBLIC.** Verticals legitimately relate to each other's records.
+- **`Controllers/`, `Commands/`, `Services/` are PRIVATE.** Nothing outside the module
+  may reference them. `tests/Feature/Modules/ModuleBoundaryTest.php` fails the build if
+  anything does. **The fix is never to add an exception** — move the caller in, or give
+  the module a named public entry point and call that.
 
-### What a component must NOT rely on
-Do not create components that only work because:
-- another page script happens to initialize them
-- a random global variable exists
-- a sibling element elsewhere in the page is required
-- a hidden inline script in another file does the real work
-- a page-specific DOM structure is silently assumed
-- undocumented manual setup is required every time
+### ⚠️ Moving a class between modules
 
-If a component needs setup, that setup must be part of the component itself or explicitly documented as a formal input/API of the component.
+Two hazards, both of which have already bitten during this migration:
 
-### Allowed shared foundations
-Standalone does **not** mean duplicating the entire framework stack inside every component.
+1. **The database stores class names.** A polymorphic `*_type` column held literal
+   `App\Models\Tenant`, welding the audit trail to the namespace — move the class and
+   every historical row resolves to nothing, silently. **`App\Support\MorphMap` is the
+   fix and must be updated BEFORE a model with a morph column moves.** Never hand-write
+   `X::class` into a morph column; use `$model->getMorphClass()`. Guarded by
+   `tests/Feature/Modules/MorphMapTest.php`.
+2. **Implicit same-namespace references.** `Tenant.php` says `hasMany(ClubProduct::class)`
+   with no import, because they were siblings. Move `ClubProduct` and that resolves to a
+   namespace it no longer lives in — no error until the relation is used. Every moved
+   class must be re-checked for bare references and given explicit imports.
+   Related: a leading backslash on `use \App\Traits\X;` is load-bearing **inside a
+   class body** (it is a trait use, not an import) — stripping it kills the class at
+   autoload.
 
-Components may rely on the project's approved shared foundations only:
-- Laravel / Blade
-- Tailwind design tokens and utility classes
-- Alpine.js
-- jQuery
-- approved shared helper utilities already established in the project
-- approved shell behaviors already part of the application
+**After any move:** `composer dump-autoload`, `config:clear`, `view:clear`, then verify
+the route table count is unchanged and the moved pages still render.
 
-But they must not rely on hidden page-specific glue code outside their contract.
+### Adding a module
 
-### Required design standard
-A reusable component should ideally be:
-- plug-and-play
-- self-initializing or explicitly initializable
-- configurable through props / data attributes / slots / options
-- isolated in behavior
-- safe to reuse in multiple places
-- predictable in required inputs and outputs
+Create `app/<Name>/`, implement `Module`, add one line to `config/modules.php`, ship its
+routes, views, migrations, MCP tools and tests. Removing one is the same three things in
+reverse.
 
-### Preferred implementation style
-- If a component needs JavaScript, keep that behavior inside the component file or in a clearly named dedicated companion script/module.
-- If a component dispatches or listens to events, use clear event names and document them in the component library section.
-- If a component needs IDs, generate or require stable IDs explicitly.
-- If a component needs AJAX, it should own its request flow and DOM patch behavior, or expose a clearly defined API for it.
-- If a component needs animation, the animation must belong to that component and not depend on unrelated page code.
-
-### Reuse test
-Before considering a component complete, ask:
-1. Can this be used in another page without rewriting its internals?
-2. Does it depend on any hidden external script or page-only structure?
-3. Are its inputs and outputs clear?
-4. Can it initialize itself safely?
-5. Will it behave consistently wherever it is reused?
-
-If the answer is no, the component is not yet standalone enough.
-
-A component must never require mystery code from elsewhere to function. If it depends on something, that dependency must be part of the approved shared foundation or explicitly declared in the component's contract.
+> Test: *could this vertical be deleted by removing its directory, its tables and its one
+> registry line — with the rest of the platform still working?*
 
 ---
 
 ## Events Are Self-Contained Packages — STRICT
 
-**Rule:** Every event type is its own **code package** — a self-contained vertical that owns its data, its rules, its lifecycle, its inputs, its outputs, and its screens. An event type is NEVER a set of `if`/`match` branches inside a shared controller, a shared form, or a shared view.
+**Every event type is its own code package** — a self-contained vertical owning its data,
+rules, lifecycle, inputs, outputs and screens. An event type is NEVER a set of `if`/`match`
+branches inside a shared controller, form or view. A Taekwondo Tournament, a Belt Test and
+a Football League are three products that happen to share a calendar entry.
 
-A Taekwondo Tournament, a Belt Test, and a Football League are three different products that happen to share a calendar entry. They must be three packages.
+### What a package owns (all of it, or it isn't done)
 
-### What a package owns (the full vertical)
-
-Each event-type package is responsible for **all** of the following. If any one of these lives outside the package, the package is not done:
-
-1. **Schema** — the type-specific fields it stores, and their validation rules.
-2. **Creation input** — the fields its create/edit form asks for (and nothing another type needs).
-3. **Enrolment rules** — who may register, in what role (participant / spectator / team / examinee), what gates apply (weight class, belt rank, age, squad size), and what a registration record means for this type.
-4. **Lifecycle / state machine** — the legal states and the legal transitions between them (e.g. `draft → enrolling → weigh-in → draw locked → running → completed`). Transitions are validated **server-side, inside the package**.
-5. **Processing / engine** — the domain logic. Building a draw per weight class, advancing a winner into the next slot when a bout ends, computing bronze from both semi-finals, scoring test items into pass/fail, computing a league table from fixtures.
-6. **Outputs** — results, podium/medals, grades, standings, and whatever the type awards (belt rank, medal, ranking points), including how that result is written back to the member's profile.
-7. **Financials** — how revenue is derived for this type (entry fees, per-division fees, ticket tiers, exam fees) so the event P&L is correct per type.
-8. **Display** — its own create form, detail page, and run-day screens, **mobile and desktop** (per Mobile / Desktop Separation).
+1. **Schema** — its type-specific fields and validation rules.
+2. **Creation input** — the fields its own create/edit form asks for.
+3. **Enrolment rules** — who may register, in what role, what gates apply (weight class,
+   belt rank, age, squad size), and what a registration means for this type.
+4. **Lifecycle / state machine** — legal states and transitions
+   (`draft → enrolling → weigh-in → draw locked → running → completed`), validated
+   server-side inside the package.
+5. **Processing / engine** — the domain logic: building a draw per weight class, advancing a
+   winner, computing bronze from both semi-finals, scoring test items, computing a league
+   table.
+6. **Outputs** — results, podium/medals, grades, standings, and how they are written back to
+   the member's profile.
+7. **Financials** — how revenue is derived for this type, so the event P&L is correct.
+8. **Display** — its own create form, detail page and run-day screens, **mobile and
+   desktop** (per Mobile / Desktop Separation).
 
 ### Required structure — sport folder, event types inside it
 
-**A sport owns a folder; each kind of event that sport runs is a sub-folder of it.** One sport has many event types (a Taekwondo club runs tournaments, belt tests, poomsae competitions and gradings) and they share the sport's weight tables, belt ladder and vocabulary — so the sport, not the event type, is the top level.
+A sport owns a folder; each kind of event that sport runs is a sub-folder. One sport has
+many event types, and they share the sport's weight tables, belt ladder and vocabulary — so
+the sport, not the event type, is the top level.
 
 ```
 app/Events/Sports/<Sport>/
@@ -842,185 +537,287 @@ app/Events/Sports/<Sport>/
 └── <OtherType>/                           another event type, same sport
 ```
 
-- Both levels are bound automatically by `App\Events\EventPackageServiceProvider`, which discovers the folders from the registry. **Never wire a package path by hand.** Use `view('event-<key>::mobile.show')`, `__('event-<key>::messages.…')` and `__('sport-<sport>::messages.…')`.
-- **Put a string at the level that owns it:** shared by every event of the sport → the sport folder; used by one event type → that type's folder; shared by the event SYSTEM across all sports → `lang/{en,ar}/events.php`.
-- Cross-sport types that aren't tied to a sport (the generic fallback) live at `app/Events/<Name>/`, outside `Sports/`.
-- Only **migrations** may live outside the folder (Laravel loads them from `database/migrations`) — name them for the package so ownership stays obvious.
-- **Adding, moving or deleting a type must be adding, moving or deleting one directory** (plus its one line in `config/event_types.php`); the same is true of a whole sport.
-- Every package implements a shared **`EventType` contract** and is registered in a single **event-type registry**, exactly as `app/Sports/Combat/SportRegistry.php` already does for combat sports (`CombatSport` / `AbstractCombatSport` / `Taekwondo`). That registry is the precedent — generalise it, do not invent a second mechanism.
-- Shared engines that genuinely serve several types (draw building, scheduling, results) stay in a common namespace and are **called by** packages; they are never called directly from a controller.
+- Both levels are bound automatically by `App\Events\EventPackageServiceProvider`, which
+  discovers folders from the registry. **Never wire a package path by hand.** Use
+  `view('event-<key>::mobile.show')`, `__('event-<key>::messages.…')` and
+  `__('sport-<sport>::messages.…')`.
+- **Put a string at the level that owns it:** shared by every event of the sport → the sport
+  folder; used by one type → that type's folder; shared by the event SYSTEM across sports →
+  `lang/{en,ar}/events.php`.
+- Cross-sport types not tied to a sport (the generic fallback) live at `app/Events/<Name>/`.
+- Only **migrations** may live outside the folder — name them for the package.
+- **Adding, moving or deleting a type is adding, moving or deleting one directory** plus its
+  one line in `config/event_types.php`; the same for a whole sport.
+- Every package implements the shared **`EventType`** contract and is registered in the
+  event-type registry — `app/Sports/Combat/SportRegistry.php` (`CombatSport` /
+  `AbstractCombatSport` / `Taekwondo`) is the precedent. Generalise it; do not invent a
+  second mechanism.
+- Shared engines that genuinely serve several types stay in a common namespace and are
+  **called by** packages, never called directly from a controller.
 
 ### Storage model
 
-- **Core columns stay shared** on `club_events` (title, dates, times, location, host club, scope, status, capacity, fees) so listing, search, calendar, permissions, and financial roll-ups stay uniform across all types.
-- **Type-specific data lives in package-owned tables** (e.g. `event_matches` / `event_categories` for brackets, a dedicated table for belt-test scores, another for league fixtures). Do NOT keep bolting type-specific columns onto `club_events`, and do NOT dump structured type data into a generic JSON blob when it needs to be queried, joined, or validated.
+**Core columns stay shared** on `club_events` (title, dates, times, location, host club,
+scope, status, capacity, fees) so listing, search, calendar, permissions and financial
+roll-ups stay uniform. **Type-specific data lives in package-owned tables** (e.g.
+`event_matches` / `event_categories`, a belt-test scores table, a league fixtures table). Do
+not keep bolting type-specific columns onto `club_events`, and do not dump structured type
+data into a generic JSON blob when it needs to be queried, joined or validated.
 
 ### Controllers are thin dispatchers
 
-Controllers resolve the event's type from the registry and delegate. A controller must never contain type-specific logic. These are **forbidden**:
-
-- `if ($event->sport === 'taekwondo')` (or any `sport`/`event_type` string comparison) in a controller, service, or view outside that type's own package.
-- A single create form with `x-show` branches per type; each package supplies its own form.
-- A shared detail/run-day view with per-type sections toggled inline.
-- Domain logic (standings tables, bracket maths, scoring) written inline in a controller method.
+Controllers resolve the event's type from the registry and delegate. **Forbidden:**
+`if ($event->sport === 'taekwondo')` (or any sport/event_type string comparison) in a
+controller, service or view outside that type's package; a single create form with `x-show`
+branches per type; a shared detail/run-day view with per-type sections toggled inline;
+domain logic (standings, bracket maths, scoring) inline in a controller method.
 
 ### Adding a new event type
 
-Adding a type must require **only**: create the package directory, implement the contract, register it, add its views, add its migration(s) for any package-owned tables, add its MCP tool coverage, add its tests. **No edits to a shared controller, shared form, or shared view.** If adding a type forces you to edit shared code, the abstraction is wrong — fix the abstraction, don't add the branch.
+Only: create the directory, implement the contract, register it, add views, add migrations
+for package-owned tables, add MCP tool coverage, add tests. **No edits to a shared
+controller, form or view.** If adding a type forces you to edit shared code, the abstraction
+is wrong — fix the abstraction, don't add the branch.
 
 ### Applies to existing types too
 
-This is not future-only. The current events code violates it: `PersonalEventController` hardcodes Taekwondo by name in several places, computes football league standings inline, and has no belt-test implementation at all despite `belt_test` being a declared type. **Taekwondo is the reference migration** — extract it into the first package and prove the contract, then port the remaining types. Any change to an existing event type must move that logic toward its package, never deepen the branching.
+Not future-only. `PersonalEventController` still hardcodes Taekwondo by name in places,
+computes football league standings inline, and has no belt-test implementation despite
+`belt_test` being a declared type. **Taekwondo is the reference migration.** Any change to
+an existing type moves logic toward its package, never deepens the branching.
 
 ### Boundaries this rule does NOT override
 
-- **Security** — each package independently satisfies every Security section: authorization and tenant scoping on every action, server-side validation of its own inputs, safe uploads, no client-trusted state transitions. A package is a full attack surface.
-- **MCP sync** — a new event type is a new readable/actionable surface; it ships with its MCP tool coverage in the same change.
-- **Design-First / Mobile rules** — a package's screens follow the Design System, the Mobile Pattern Language, and the mobile/desktop split like any other UI.
-- **Component-First** — packages reuse the shared Blade component library for their forms and cards; "self-contained" means owning its *domain*, not duplicating the design system.
+Security (a package is a full attack surface and satisfies every Part 3 rule
+independently) · MCP sync (a new type ships with its MCP coverage in the same change) ·
+Design-First, the Mobile Pattern Language and the mobile/desktop split · Component-First
+(packages reuse the shared component library — "self-contained" means owning its *domain*,
+not duplicating the design system).
 
-> Test for whether a package is really a package: *could this event type be deleted from the app by removing its one directory, its tables, and its registry line — with nothing else breaking?* If not, it isn't self-contained yet.
+> Test: *could this event type be deleted by removing its one directory, its tables and its
+> registry line — with nothing else breaking?* If not, it isn't self-contained yet.
 
----
+## Shared Stays Shared, Private Stays Private — STRICT
+
+**Anything COMMON across sports, event types or systems exists in exactly ONE place and is
+used identically everywhere. Anything genuinely SPECIFIC to one sport stays inside that
+package.** Copy-pasting a shared mechanism into a second package is a defect — even when
+the copy is made "so the package stays self-contained".
+
+This is the counterweight to the packages rule: a package owns its *domain*, not its
+*plumbing*. It is self-contained because it can be deleted cleanly, not because it carries
+its own copy of everything.
+
+### The test — two questions, in this order
+
+1. **Would this behave the same for a different sport?** → COMMON: it belongs in
+   `app/Events/Support/` (or `app/Sports/Combat/Engine/`, or the shared component library)
+   and every package calls the one copy.
+2. **Does a rule book, a governing body, or a mat design decide it?** → PRIVATE: it stays in
+   the package.
+
+If a class differs between two packages only by its namespace and its lang prefix, it was
+never private. Two packages differing by a handful of constants means ONE shared class
+taking those constants from the `EventType`.
+
+**COMMON (call it, never re-implement it):** bout camera / footage
+(`app/Events/Support/Cameras/*`) · brackets and the draw (`App\Events\Support\BracketView`
+feeding `<x-tournament-bracket>`; `app/Sports/Combat/Engine/{DrawEngine,Scheduler,Results}`)
+· participation and entry (`EntryService`, `EnrolmentDecision`, `EventFee`, `EventAccess`,
+`RosterPeople`) · management surfaces (the console, milestones, documents, `EventNotifier`,
+`MatchEventLog`, `AudienceResolver`) · hall screens and pairing (`HallScreenRouter`,
+`PendingScreen`, `ScreenPairingController`, `ScreenMedia`) · run-day flow (running order,
+arrangement of the draw, advancement, calling competitors, reading the entrant list).
+
+**PRIVATE (stays in the package):** `Scoring` (what counts as a point, how a bout is won) ·
+divisions (weight bands, belt/rank ladders, age groups) · medal convention (one bronze or
+two, third-place match or not) · the board's design, vocabulary and language files.
+
+### Non-negotiables
+
+- **Never fork a shared class to change it for one sport.** Add the seam — a parameter, an
+  abstract method, a value from the `EventType` — and let every package pass its own value.
+- **Never name the same thing differently per package.** `CourtDisplay` in one sport and
+  `HallScreen` in another guarantees drift and guarantees the next person copies.
+- **Divergence is the real cost.** A fix lands in one copy and the other becomes a bug
+  nobody knows about. This has already happened here.
+- **Cross-sport is the default assumption** for anything built for a bracketed,
+  medal-awarding competition, unless a rule book says otherwise.
+- Applies beyond sports: any two systems needing the same behaviour get one implementation,
+  parameterised.
+
+### Known debt (audited 2026-08-30 — do not add to it)
+
+`Advancement`, `Arrangement`, `CallNotifier`, `Enrolment`, `Roster` and `RunningOrder`
+(~1,160 lines) are triplicated across Taekwondo, Karate and Brazilian Jiu-Jitsu,
+byte-identical apart from namespace and lang prefix. The hall-screen layer is duplicated
+under two names (Karate/Taekwondo `CourtDisplay/`, BJJ `HallScreen/`) and has **already
+diverged** (490 vs 721 lines). The fix is a shared `app/Events/Support/Tournament/` base
+taking the package's lang namespace and `Scoring` from its `EventType`, plus one shared
+hall-screen controller/device/channel with the board view supplied per sport. **Agreed
+approach: extract the base and point BJJ at it first** (not in the field yet, so Karate and
+Taekwondo carry no risk), then port those two as separate deliberate steps. Not started — it
+needs an explicit go-ahead under RULE #1.
+
+## Unattended Devices Must Always Recover — STRICT
+
+**A device with no keyboard — a wall screen, a scoring tablet, a camera on a tripod — must
+never reach a state it cannot leave by itself.** Every page such a device can land on either
+draws something useful or sends it back to the pairing room. **A page-rendering route may
+not `abort(404)` on a token, a pairing, or an event.** Ever.
+
+**Why this keeps happening:** the identity a device holds is a row on the server, and that
+row goes away for ordinary reasons — unpaired, revoked, event deleted, database re-seeded,
+enrolled against a different host. The device reopens the one address it remembers after a
+power cut at 8am on an event day, and whatever answers is the whole of its world. A 404
+there is not an error message, it is a **brick**: no back button on a television, no address
+bar in a kiosk WebView. This has cost real time twice.
+
+**The three shapes, and the answer each takes**
+
+1. **A page a device renders** (board, overlay, console, waiting room) →
+   `return redirect()->route('screen.new')`. Never `abort`. The waiting room issues a fresh
+   code, which is a state somebody in the hall can act on.
+2. **A JSON endpoint a device polls** (`status`, `config`, `payload`, `link`) → `404` is
+   correct and required: it is the ONLY way the client can tell "this identity is gone" from
+   "the wifi dropped". The client owes a matching response — **404 → discard the stored
+   token and re-enrol**; a timeout, a 500 or a captive portal leaves the identity alone. See
+   `CameraApi::configResult()` / `_CameraStationState._sync()` and the `<x-screen-pairing>`
+   poll.
+3. **A hand-off between two device pages** — the sender must ask whether the destination
+   will actually open before redirecting. `tokenControl()` sends a console it cannot open
+   back to the board, so the board must NOT send it straight back: guard with
+   `canServeControl($device)`. Two pages each redirecting to the other is an infinite loop
+   on a screen nobody can stop. This shipped once in the BJJ package because the guard was
+   dropped when the file was copied from Karate.
+
+**Non-negotiables**
+- **One answer for every failure.** A bad token, a revoked device and an unpaired one get
+  the SAME response — differing replies tell a stranger which tokens are real.
+- **Recovery goes to `/screen`**, the sport-neutral room — never a package's own pairing
+  code, which only that sport's events can claim.
+- **Every redirect chain must terminate.** Prove it: follow it to a page that renders.
+- **A stale code gets an honest message** — "No camera is waiting with that code", never
+  "that code belongs to a screen" when the code belongs to nothing.
+- **The client half is part of the fix.** A server answering 404 correctly and an app that
+  ignores it is still a bricked device.
+
+**Verify with** `/tmp/takeone-smoke.php` (source in the session scratchpad): boots the app
+and asserts all of the above for every sport — dead-token recovery on every page route, 404
+on every JSON door, and a full camera pair. Extend it when a package adds a device surface;
+run it as `www-data`. It opens a transaction it always rolls back, so it writes nothing.
+
+> This rule and *Shared Stays Shared* are the same lesson from two directions: the recovery
+> logic is COMMON, and every time it was copy-pasted into a new sport, a guard went missing.
 
 ## Frontend Technology Decision Rules — STRICT
 
-This project uses multiple frontend patterns intentionally:
-- Laravel Blade
-- Tailwind CSS
-- Alpine.js
-- jQuery
-- AJAX / fetch
-- Chart.js
-- Select2
-- React (when explicitly justified)
+The project uses Blade, Tailwind, Alpine, jQuery, AJAX/fetch, Chart.js, Select2 — and React
+only when explicitly justified. **Prefer the simplest technology that fits, while preserving
+performance, maintainability and harmony with the existing codebase.**
 
-### Default rule
-Prefer the simplest technology that fits the task while preserving performance, maintainability, and harmony with the existing codebase.
+- **Blade** — server-driven page structure, reusable layout/view components, initial page
+  state, mostly static or form-based features.
+- **Alpine** — dropdowns, modals, tabs, sheets, accordions, inline UI state local to one
+  rendered region.
+- **jQuery + AJAX** — updating existing Laravel views in place, submitting forms without
+  reload, patching DOM regions after API responses, and anything inside admin/member views
+  that already uses this pattern.
+- **React only when** the feature is truly state-heavy or component-driven, would be brittle
+  in Blade + Alpine + jQuery, benefits from isolated client-side state, and can be
+  introduced without fragmenting the product. **Do not** reach for React for simple
+  CRUD/forms/modals, and never create a parallel frontend architecture unless explicitly
+  requested. Any React usage still follows the same design system, routes, API contracts and
+  no-reload rules.
 
-### Use Blade when
-- rendering server-driven page structure
-- building reusable layout/view components
-- rendering initial page state
-- the feature is mostly static or form-based
-- the UI belongs naturally in the server-rendered flow
-
-### Use Alpine when
-- toggling dropdowns, modals, tabs, sheets, accordions, or inline UI state
-- the interaction is local to one rendered region
-- a lightweight declarative behavior is enough
-
-### Use jQuery + AJAX when
-- updating existing Laravel views in place
-- submitting forms without reload
-- patching DOM regions after API responses
-- integrating with existing project scripts and legacy patterns
-- working inside admin/member views that already use this pattern
-
-### Use React only when
-- the feature is truly state-heavy, highly interactive, or component-driven
-- the interaction complexity would be awkward or brittle in Blade + Alpine + jQuery
-- the feature benefits from isolated client-side state management
-- it can be introduced without fragmenting the product experience
-
-### React constraints
-- Do not introduce React casually for simple CRUD/forms/modals that fit the existing stack
-- Do not create a parallel frontend architecture unless explicitly requested
-- Any React usage must still match the same design system, routes, API contracts, and no-reload rules
-
-### Universal rule
-Regardless of technology:
-- no unnecessary page refreshes
-- in-place updates after writes
-- reusable components first
-- same product feel across all views
-
----
+**Universal:** no unnecessary page refreshes · in-place updates after writes · reusable
+components first · the same product feel across every view.
 
 ## Optimization, Speed, and Harmony — STRICT
 
-**Rule:** Claude must optimize for speed, harmony, and maintainability from the start, not as a later cleanup step.
+Optimize from the start, not as cleanup. **Priorities: speed → harmony → reuse →
+maintainability → clarity → scalability.**
 
-### Priorities
-1. Speed
-2. Harmony
-3. Reuse
-4. Maintainability
-5. Clarity
-6. Scalability
+**Speed:** in-place updates over reloads · minimal DOM work · reuse components instead of
+duplicating heavy markup · partial rendering for complex sections · debounce live search ·
+throttle expensive listeners · lightweight animations · small reusable modules over
+page-specific monoliths.
 
-### Speed rules
-- Prefer in-place updates over reloads
-- Minimize unnecessary DOM work
-- Reuse existing components instead of duplicating heavy markup
-- Use partial rendering for complex sections when needed
-- Debounce live search inputs when appropriate
-- Throttle expensive listeners when appropriate
-- Keep animations lightweight and performant
-- Avoid large page-specific monolithic scripts when smaller reusable modules will do
+**Harmony:** the platform must feel like one product — same visual language, spacing rhythm,
+interaction logic, component behaviours, naming conventions and UX expectations everywhere.
 
-### Harmony rules
-The platform must feel like one unified product.
-That means:
-- same visual language
-- same spacing rhythm
-- same interaction logic
-- same component behaviors
-- same naming conventions
-- same UX expectations across pages
-
-### Avoid
-- duplicate components solving the same problem
-- duplicate JS behaviors with slightly different naming
-- inconsistent UI patterns for the same action
-- unnecessary framework mixing
-- animations that reduce responsiveness
-- refactors that reduce consistency with established project patterns
+**Avoid:** duplicate components solving the same problem · duplicate JS behaviours with
+slightly different names · inconsistent UI patterns for the same action · unnecessary
+framework mixing · animations that reduce responsiveness · refactors that reduce consistency
+with established patterns.
 
 ---
 
-## Mobile Device Capabilities and Animation — STRICT
+# PART 5 — DESIGN
 
-Claude must be comfortable building mobile-web features that use supported browser / WebView device capabilities when required, such as:
-- camera
-- microphone
-- geolocation
-- file picking / image capture
-- share actions
-- vibration / haptic-like feedback where supported
+## Design-First: Creative, Innovative, Artistic, Modern — TOP PRIORITY, STRICT
 
-### Rules
-- always detect capability support first
-- always request permission correctly
-- always provide fallback behavior if unsupported
-- always ensure the feature still works inside the Android WebView shell
+**Every piece of UI built in this project must be creative, innovative, artistic and modern.
+Never ship plain, default-looking or "good enough" UI.**
 
-Claude must also be comfortable building polished UI animation using:
-- Tailwind transitions
-- Alpine transitions
-- CSS transitions / keyframes
-- lightweight JS-driven animation when necessary
+- **Design is a requirement, not a polish step.** Any new page, component, modal, sheet,
+  card, list, empty state or loading state must look intentionally designed — considered
+  composition, rhythm, hierarchy, motion and detail.
+- **No generic AI/template aesthetics.** No stock boxy card grids, no unstyled form stacks,
+  no bare tables. Bring art direction: layered depth, purposeful whitespace, expressive
+  typography scale, meaningful iconography, tasteful micro-interactions.
+- **Use the `frontend-design` skill for any new UI work** and follow the Design System
+  tokens below exactly.
+- **Modern means:** fluid responsive layouts, smooth Alpine/CSS transitions, thoughtful
+  states (hover / focus / active / empty / loading / error), and a mobile experience that is
+  animated and creative — never a stripped-down desktop.
 
-Animations must improve clarity and feel, never reduce speed or usability. Respect `prefers-reduced-motion` where appropriate.
+**Boundaries this does NOT override:** Design Rule #1 (never redesign existing UI unless
+asked — creativity applies to what you are *building*) · the Design System palette,
+typography and tokens (be creative *within* the system) · Security, Component-First reuse,
+and the No-Reload / Realtime rules. If a visual flourish weakens security or performance, it
+loses.
 
----
+> Ask on every UI task: *would a great product designer be proud to ship this screen?*
 
 ## Design Rules — STRICT
 
 ### 1. Never modify existing UI design
-Do not change existing layout, styling, colors, or visual structure unless **explicitly instructed** to do so. When adding features, reuse existing HTML structure and class patterns exactly. Do not introduce new visual elements, color changes, or layout shifts as a side effect of logic changes.
+Do not change existing layout, styling, colors or visual structure unless **explicitly
+instructed**. When adding features, reuse the existing HTML structure and class patterns
+exactly. No new visual elements, color changes or layout shifts as a side effect of logic
+changes.
 
 ### 2. Reuse existing patterns
-When adding new UI, match the exact patterns already used in the same view — same button styles, same card structure, same spacing classes. No speculative improvements.
+Match the exact patterns already used in the same view — same button styles, same card
+structure, same spacing classes. No speculative improvements.
 
 ### 3. No unsolicited refactors
-Do not clean up surrounding code, add docstrings, rename variables, or reorganize logic unless specifically asked.
+Do not clean up surrounding code, add docstrings, rename variables or reorganize logic
+unless asked.
 
-### 4. No native OS-rendered form popups (`<select>`, `<input type="date|time">`) for styled UI
-Never use a native `<select>`/`<option>`, or a native `<input type="date">` / `type="time"` / `type="datetime-local"`, when the control is part of the styled UI. The OS renders these popups (the option list, the calendar/clock) with sharp corners and its own colors — they cannot be themed and look inconsistent with the design system. Build a custom **Alpine** control instead: a `rounded-xl` bordered trigger button (chevron that rotates on open, purple focus ring) plus an absolutely-positioned `rounded-xl` panel (`bg-white border border-gray-100 shadow-lg overflow-hidden`) with a fade/slide `x-transition`, `hover:bg-muted/60` rows, and a `text-primary` highlight (check / selected state). Close on `@click.outside` and `@keydown.escape`. Keep the panel as smooth/rounded as the trigger. Reuse an existing `<x-*-dropdown>` component when one fits (see the Blade Component Library); otherwise match the reference implementations in `resources/views/personal/challenge-create.blade.php` — the **Win condition / Stake** dropdowns and the **Deadline** calendar popover (stores an ISO `YYYY-MM-DD` string, disables past days, has Clear / Today actions).
+### 4. No native OS-rendered form popups (`<select>`, `<input type="date|time">`)
+Never use a native `<select>`/`<option>`, or a native `<input type="date">` / `type="time"` /
+`type="datetime-local"`, when the control is part of the styled UI — the OS renders those
+popups with its own sharp-cornered chrome and they cannot be themed. Build a custom
+**Alpine** control instead: a `rounded-xl` bordered trigger button (chevron that rotates on
+open, purple focus ring) plus an absolutely-positioned `rounded-xl` panel
+(`bg-white border border-gray-100 shadow-lg overflow-hidden`) with a fade/slide
+`x-transition`, `hover:bg-muted/60` rows and a `text-primary` highlight. Close on
+`@click.outside` and `@keydown.escape`. Keep the panel as smooth/rounded as the trigger.
+Reuse an existing `<x-*-dropdown>` / `<x-select-menu>` / `<x-date-picker>` when one fits;
+otherwise match the reference implementations in
+`resources/views/personal/challenge-create.blade.php` (Win condition / Stake dropdowns, and
+the Deadline calendar popover — stores an ISO `YYYY-MM-DD`, disables past days, has Clear /
+Today actions).
 
 ### 5. Logos render on transparent backgrounds — never on a white tile
-Club logos, brand logos, and business/chain logos are supplied as transparent PNGs and MUST be shown as the bare image on a transparent background. Never wrap a logo in a white/filled rounded card, tile, or "chip" (`bg-white`, `p-1`, `shadow`, `ring`, `rounded-2xl overflow-hidden`) — that white square looks broken against non-white/hero/photo backdrops. Use only a sizing container plus the image: `<span class="w-16 h-16 flex-shrink-0"><img class="w-full h-full object-contain" ...></span>`. No background fill, no padding box, no ring/shadow behind the mark. This applies to every logo placement (public club page hero, cards, headers, nav, feed avatars where a real logo is used).
+Club, brand and business/chain logos are transparent PNGs and MUST be shown as the bare
+image on a transparent background. Never wrap a logo in a white/filled rounded card, tile or
+chip (`bg-white`, `p-1`, `shadow`, `ring`, `rounded-2xl overflow-hidden`) — that white square
+looks broken against non-white/hero/photo backdrops. Use only a sizing container plus the
+image: `<span class="w-16 h-16 flex-shrink-0"><img class="w-full h-full object-contain" …></span>`.
+No background fill, no padding box, no ring/shadow. Applies to every logo placement.
 
 ### 6. Page headers are full-bleed hero bands — never a small rounded card
 
@@ -1236,583 +1033,7 @@ Reference implementation: `resources/views/components-templates/member/mobile/pa
 
 ---
 
-## No Page Reload Rule — STRICT
-
-**All write operations (create, update, delete) in this project must update the UI in place. Never require the user to manually refresh the page to see the result of their action.**
-
-### How to implement:
-
-1. **Every AJAX write endpoint** must return the updated data in its JSON response alongside `success` and `message`:
-   ```json
-   { "success": true, "message": "...", "<entity>": { ...updated fields... } }
-   ```
-
-2. **Every modal / form that submits via AJAX** must, on success, dispatch a `CustomEvent` carrying the returned data so any listening component on the page can update itself:
-   ```js
-   window.dispatchEvent(new CustomEvent('entity-updated', { detail: data.entity }));
-   ```
-
-3. **The page/view** that displays the data must listen for the event and patch the relevant DOM elements **in place** — no `window.location.reload()`, no `location.href =` redirect unless the action itself requires navigation (e.g. creation that navigates to a new record).
-
-4. **Add stable target IDs** (`id="..."`) to every element whose content can change after a write so the JS listener can find and update it reliably.
-
-5. For **complex re-rendered sections** (lists, cards with conditional content), regenerate the innerHTML from the returned JSON rather than patching individual text nodes.
-
-> Returned payloads are subject to the security rules above — return only fields the viewer is authorized to see, never internal ids/paths/flags they shouldn't have.
-
-### Established pattern (member profile page):
-- Server returns `member` object in update response
-- `submitForm()` in profile modal dispatches `member-profile-updated` with the member data
-- `show.blade.php` has a `window.addEventListener('member-profile-updated', ...)` listener that patches: name, motto, age, blood type, marital status, social links, emergency contacts, documents, health conditions — all without reload
-
-Apply this same pattern to every other feature: health records, goals, affiliations, tournaments, club details, packages, instructors, etc.
-
----
-
-## Realtime / MQTT — Always Instant — STRICT
-
-**Every action must reflect instantly for *all* affected users — never make anyone refresh.** The actor's own device updates in place (see No Page Reload Rule); everyone *else* affected must be updated live over MQTT. Notifications must arrive the same way.
-
-### Rules
-1. **On every write that affects other users, push over MQTT in the same request.** Use `Realtime()->publishToUser($id, $channel, $payload)` (one user) or `Realtime()->publishMany([...])` (many). It's best-effort — the DB stays the source of truth — but it must always be attempted. Realtime is enabled (`REALTIME_ENABLED=true`).
-2. **Notifications go through `UserNotification::notifyUser()`**, which already writes the row *and* pushes MQTT (`notifications` channel) with an `action_url` deep-link. Never create notification rows without it.
-3. **Client patches in place.** `realtime.js` re-emits each inbound message as a DOM event `realtime:<channel>` (e.g. `realtime:notification`, `realtime:message`, `realtime:schedule`). Feature views add a listener that updates the DOM — no reload.
-4. **Use an `{action: '...'}` discriminator per channel.** Two reliable shapes:
-   - **Targeted patch** — send the changed entity (`{action:'created'|'updated'|'deleted', <entity>:{...}}`); the listener upserts/removes that one item. Best when the payload is identical for every recipient.
-   - **Refresh signal** — send `{action:'refresh'}` and have the view silently re-fetch its data from a JSON endpoint and re-render. **Use this when the same change renders differently per user** (different ids/content/permissions), e.g. a club class where each user sees their own card variant. Don't try to hand-craft per-user card payloads.
-5. **Fan out to the whole audience**, not just the obvious user. A class change touches enrolled members + the coach + substitute(s) + the actor — push to all of them.
-6. **Dedup client listeners** that live inside shell-swapped content: the mobile shell re-runs inline scripts on every AJAX nav, so store the handler on `window.__xxx` and `removeEventListener` the previous one before re-adding, or listeners stack up.
-7. **Scope every payload to its audience** (see Security Coverage §11). Send the minimum necessary data; a recipient must never receive fields they aren't authorized to see. When the same change renders differently per user, use the refresh signal rather than oversharing.
-
-### Reference implementation
-`/me/schedule`: `scheduleData()` returns the schedule as JSON; `pushScheduleRefresh($userIds)` publishes `{action:'refresh'}` on the `schedule` channel to every affected user; the list view's `realtime:schedule` handler calls `reloadData()` on `refresh` (and patches individual cards on `created/updated/deleted`). Personal-session edits use the targeted-patch shape; club-class/substitute changes use the refresh shape.
-
----
-
-## Keep the MCP Server in Sync — STRICT
-
-**Rule:** The general-purpose MCP server (`app/Mcp/*`, exposed at `POST /mcp` and via `php artisan mcp:start takeone`) is a first-class interface to the platform, just like the web UI. **It must never fall behind the data model or feature set.** Whenever a change alters what the app can read or do, the MCP must be updated in the **same** change — treat a stale MCP as a broken build. Full subsystem docs: `Documentation/MCP.md`. See [[project_mcp_server]].
-
-### When a change REQUIRES an MCP update
-Update or add a tool (in `app/Mcp/Tools/`, registered in `app/Mcp/Servers/TakeOneServer.php`) whenever you:
-- **Add a new entity / feature** that a user or integration would reasonably want to read or act on (new model, new admin action, new member self-service flow) → add a read tool, and a write tool if the app can mutate it.
-- **Add or rename a field** that an existing tool returns (e.g. a new member/club attribute) → surface it in that tool's JSON so consumers see it.
-- **Change a relationship or query** a tool relies on (e.g. the club↔member relation, a status enum, a slug/uuid binding) → fix the tool's query so it still returns correct, scoped data. (The existing tools already hit real gotchas: `memberClubs()` not `memberships`, `birthdate` not `date_of_birth`, `ClubTransaction.payment_method` is a NOT-NULL enum — keep these correct.)
-- **Change an authorization rule** (who can see/do what) → mirror it in `app/Mcp/Concerns/AuthorizesClubAccess.php` (`canAdminClub`, `canViewMember`, `accessibleClubIds`) so the MCP enforces the *same* scope. The MCP must never expose more than the acting user could do in the UI.
-- **Add a validation rule / enum vocabulary** to a write path → apply the identical rule in the corresponding write tool (e.g. gender `Male`/`Female`, payment methods).
-
-### How to do it (non-negotiable steps)
-1. Add/adjust the tool; extend `App\Mcp\Tools\BaseTool` (gives `guard()`, the write kill-switch, and scoping helpers). Guard first: `$user = $this->guard($request); if ($user instanceof \Laravel\Mcp\Response) return $user;`
-2. Set `protected bool $isWrite = true;` on any tool that mutates data.
-3. Register the class in `TakeOneServer::$tools`.
-4. Enforce tenant scope with the `AuthorizesClubAccess` helpers — never query models unscoped.
-5. Add/extend a case in `tests/Feature/McpServerTest.php` covering both the happy path **and** an authorization denial.
-6. Update the tool table in `Documentation/MCP.md`.
-
-### What does NOT need an MCP change
-Pure UI/styling/copy edits, internal refactors, and changes with no new readable/actionable surface. When unsure, err toward adding the tool — an integration that can't see a feature is worse than one extra tool.
-
-> Rationale: external systems (n8n, Claude, other services) consume the platform through this one server. If a feature ships to the web but not the MCP, every integration silently drifts out of date. The MCP is part of the deliverable, not an afterthought. MCP tools are a full attack surface — the Security sections above apply to them exactly as they do to web routes.
-
----
-
-## Admin Sidebar SPA Navigation — STRICT
-
-**Rule:** Clicking any link in a desktop admin sidebar (club admin `/admin/club/{club}/*` **and** super-admin platform `/admin/*`) must load the page **in place — no full browser reload**, like a React SPA. The sidebar, top bar, and scroll shell stay mounted; only the main content area swaps.
-
-### How it works
-- **Navigator:** `resources/views/partials/admin-shell-nav.blade.php` — included by both desktop admin layouts (`layouts/admin-club.blade.php`, `layouts/admin.blade.php`). It intercepts clicks on `a[data-shell-link]`, `fetch()`es the destination (sends `X-Requested-With`), parses the response, and swaps it in. Shows a slim top progress bar, updates `document.title`, the active nav state, and `history.pushState`/`popstate`. Modeled on the proven mobile shell navigator (`partials/mobile-shell-nav.blade.php`).
-- **Swap target:** the layout's `<main>` carries `data-shell-main="club"` (or `"platform"`) plus `data-route`. The navigator replaces its `innerHTML` from the destination's matching `<main>`. **If the destination has a different `data-shell-main` value (or none), it hard-loads** — so club↔platform and admin→non-admin links fall back to a real navigation (their sidebars differ).
-- **Page scripts & modals:** pages put JS/modals in `@push('scripts')`/`@push('modals')` (rendered *outside* `<main>`), so `app.blade.php` wraps those stacks in `<div id="shell-scripts">` / `<div id="shell-modals">`. On nav the navigator swaps those regions and runs each **unique** `<script>` **once per session** (deduped by content/`src`, seeded with the first-paint scripts). This is deliberate: desktop admin pages declare top-level `const`/`let`/`function` at global scope (for inline `onclick=`), so re-running the same script would throw "already declared". Globals therefore run once; their functions persist.
-- **Re-init bridge:** after each swap the navigator **dispatches a synthetic `DOMContentLoaded`** and a `shell:navigated` window event. Existing pages gate their init on `DOMContentLoaded`, so this re-runs that init against the freshly-swapped DOM — on first visit AND revisit (the listener registered on first visit persists and re-fires). Alpine re-inits swapped `x-data` via its own mutation observer (the navigator does **not** call `Alpine.initTree`, which would double-initialize).
-- **Speed:** links are **prefetched on hover / touchstart** (15s cache) so the click is usually instant; a top progress bar covers any remaining latency.
-- **Page styles:** `@push('styles')` blocks are injected from the destination's `<head>` on first visit (content-deduped, so globals aren't re-added).
-- **Marking links:** add `data-shell-link data-route="{{ $routeName }}"` to a sidebar `<a>` **only when it stays within the same shell**. Never mark cross-shell links (platform↔club, Back to Explore, external/`target="_blank"`) — leave them as plain links so they hard-load.
-- **In-content links navigate in place automatically.** Beyond the sidebar, the navigator also intercepts any same-origin `<a>` whose path is under the shell's base (`data-shell-base` on `<main>` — `/admin/club/{slug}` or `/admin`), e.g. status-filter and pagination links. Links to *other* sections (member profiles `/member/*`, etc.) fall through to a normal full load. A non-HTML response (file download, redirect, JSON) auto-falls-back to full navigation via a Content-Type + redirect check.
-- **Opt a content link OUT** of in-place nav with `data-no-shell` (e.g. file-download links like the member import template), or `download` / `target="_blank"` / an `onclick` / `data-bs-toggle` (those are skipped automatically).
-
-### What page authors should know
-1. **`DOMContentLoaded` works** — the navigator re-fires it on every swap, so existing `document.addEventListener('DOMContentLoaded', …)` init runs on each visit. New init code can use it, or listen for the `shell:navigated` window event. Put DOM-binding init *inside* that handler (not bare top-level) so it re-runs per visit and binds to the new DOM.
-2. **Top-level declarations run once** — `const`/`let`/`function`/`class` at script top level execute only on the first visit (dedupe). Don't rely on them re-executing; keep per-visit work inside the `DOMContentLoaded`/`shell:navigated` handler.
-3. **Dedup persistent listeners.** A `DOMContentLoaded` handler re-fires every nav, and re-bound `document`/`window` listeners can stack. Prefer delegated listeners, or store the handler on `window.__xxx` and `removeEventListener` the previous one before re-adding (see the mobile-shell dedup note). The navigator itself is guarded with `window.__adminShellNavInit`.
-
-### Mobile shells: cross-shell guard
-All mobile shells reuse `id="shell-content"`, so the mobile navigator can't tell them apart by id alone. Each shell's `<main id="shell-content">` carries a **`data-shell-id`** (`personal` / `admin-club` / `business`); the navigator hard-loads when the destination's `data-shell-id` differs (mirrors the desktop `data-shell-main` guard). **When you add a new mobile shell layout, give its `#shell-content` a unique `data-shell-id`.** Cross-shell links must still be plain `<a>` (no `data-shell-link`).
-
----
-
-## Navigation Integrity — no dead ends — STRICT
-
-**Rule:** Every clickable control must go to a real, reachable destination. A link/button that 404s, opens a modal that isn't on the page, or is a bare `href="#"` with no handler is a defect — treat it like a broken build.
-
-- **`route('name', …)` must name a real route** with the **correct binding key** — `member.show` binds `{uuid}`, but `member.update`/`edit`/`destroy`/`upload-picture` bind `{id}`; club-admin routes bind `{club}` (id-or-slug via `Route::bind('club')`); many public routes need a `{country}` prefix (`/{country}/clubs/{slug}`). Passing an id to a `{uuid}` route (or omitting `{country}`) is a runtime 404, not a compile error — audit these when linking.
-- **A modal trigger requires the modal on the page.** `data-bs-toggle="modal" data-bs-target="#x"` needs an element `id="x"` in the rendered output; if the real editor is an Alpine component (e.g. `<x-profile-modal>` opening on the `open-profile-modal` window event), dispatch that event instead — `onclick="window.dispatchEvent(new CustomEvent('open-profile-modal'))"`. Don't point at a `#modalId` that doesn't exist.
-- **`data-bs-*` goes through the bridge** (`app.blade.php`), which fires on `data-bs-toggle`. `data-bs-target` **without** `data-bs-toggle` does nothing. `window.bootstrap.Modal` / `bsModal.show()` are shimmed and work.
-- **No placeholder `href="#"`** on a control that implies navigation. Wire it to the real route/tab, or don't render it. Prefer omitting an unbuilt action over shipping a dead button.
-- **JS-built URLs** (`fetch`/`location.href`/template literals) must match a real route pattern — verify against `php artisan route:list` before committing. Dead/orphaned handler clusters that point at removed routes should be deleted, not left dormant.
-- **To verify:** dump the route table (`php artisan route:list --json`) and cross-reference `route('…')` names, then click-test the primary actions on any page you touch.
-
----
-
-## Never Run Tests With a Cached Config — STRICT
-
-**Rule:** `php artisan config:clear` **before** running the test suite, every time. Only re-run `config:cache` afterwards.
-
-`RefreshDatabase` runs `migrate:fresh`, which **drops every table**. `phpunit.xml` points the suite at `DB_DATABASE=:memory:`, but `config:cache` freezes `env()` into `bootstrap/cache/config.php`, and a cached config silently overrides those phpunit env vars — so the suite runs `migrate:fresh` against the **real database**.
-
-This destroyed the stage database once (2026-08-02). `tests/TestCase.php` now refuses to run while a config cache exists, and refuses any sqlite connection that is not `:memory:`, aborting before a single table is touched. **Do not weaken or bypass that guard.** If it fires, the fix is `php artisan config:clear` — never deleting the check.
-
-Correct order: `config:clear` → `vendor/bin/phpunit` → `config:cache`.
-
----
-
-## LOCKED — Do Not Modify: Profile Picture Cropper Config
-
-These values are final and must never be changed:
-
-**`resources/views/components/profile-modal.blade.php`** (`<x-takeone-cropper>` call):
-- `width="300"` — viewport crop width
-- `height="400"` — viewport crop height
-- `shape="rectangle"`
-- `:canvasHeight="500"` — canvas work area height (must stay 500, NOT 400)
-
-**`resources/views/vendor/takeone/components/widget.blade.php`** (modal-dialog div):
-- Must use: `class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: {{ $modalMaxWidth }}; width: {{ $modalWidth }}px;"`
-- Do NOT replace with `.modal-lg` or any class-only approach
-- Default params: `$modalMaxWidth = '75%'`, `$modalWidth = 1000`
-
----
-
-## Profile Pictures Are Portrait 3:4 — STRICT
-
-**Every profile picture on this platform is portrait: 3 wide by 4 tall.** Stored at
-**600×800**, cropped through the locked `<x-takeone-cropper>` viewport at `300×400`.
-Verified against the real library — 53 of 54 stored pictures are exactly 600×800, and the
-one exception (1194×1579) is the same ratio uploaded at full resolution.
-
-**Never assume square.** Any container that shows a person's face must be 3:4, so the
-crop the member chose is what the reader sees. A `w-10 h-10` avatar silently centre-crops
-a portrait into a square and cuts the top of the head — it does not fail, it just looks
-wrong, which is why this needs stating once rather than being caught per screen.
-
-### How to size one
-Pick the height, then take three-quarters of it for the width:
-
-| Height | Width | Tailwind |
-|---|---|---|
-| 32px | 24px | `w-6 h-8` |
-| 48px | 36px | `w-9 h-12` |
-| 56px | 42px | `w-[42px] h-14` |
-| 64px | 48px | `w-12 h-16` |
-| 128px | 96px | `w-24 h-32` |
-
-Always pair with `object-cover` on the `<img>` and `overflow-hidden` on the container.
-
-### Two rules that travel with it
-- **Fall back to `<x-gender-avatar>`**, not an icon or initials, wherever a real person's
-  face is expected and missing — it is drawn for this ratio.
-- **Honour `users.profile_picture_is_public`** on any surface wider than the member's own
-  profile (bout pages, brackets, court displays, public profiles). It is the member's own
-  choice about their face; `BracketView::photo()` is the reference implementation. No
-  picture is not a bug, and the absence must be silent — never a "hidden" label.
-
-> Applies to club logos too, in the opposite direction: logos are transparent PNGs of
-> arbitrary shape and use `object-contain` on a bare sizing box (Design Rule #5), never a
-> 3:4 crop.
-
----
-
-## Who Fills The Form Decides What It Demands — STRICT
-
-**A person form's required fields depend on WHO is filling it in, never on whether
-it is a create or an edit.** Two cases, and they pull in opposite directions:
-
-- **Staff entering someone else** — super-admin, club owner, club admin, event
-  organiser, appointed event official — must be asked for **a name and nothing
-  else**. They routinely do not have the rest: a referee arrives on a federation
-  list with only a name, an athlete is entered at a weigh-in off a paper sheet, a
-  walk-in is registered at the door mid-session. Forcing a value there does not
-  produce data, it produces an **invented** birthdate — which is worse than a
-  blank, because it looks authoritative and nobody revisits it.
-- **The member on their own profile** — the only person who actually knows these
-  answers. Their form stays strict, and their first visit to the edit screen is
-  the moment worth asking. Anyone else editing a person they know (a guardian and
-  their dependent) stays strict too.
-
-### How it is enforced
-- `User::entersPeopleOnBehalfOfOthers()` is the predicate: super-admin, owns a
-  tenant, holds `club-admin`, or has any `event_officials` row. It decides
-  **strictness only** — never what anyone may DO. Every authorisation check stays
-  exactly where it is; widening this grants no access.
-- `App\Http\Requests\Concerns\PersonFieldRules` supplies the presence rule.
-  Use `$this->personRule('date')` rather than writing `required|date`, and pass
-  the subject's user id on an edit so a member's own profile resolves as strict:
-  `$this->personRule('in:Male,Female', (int) $this->route('id'))`.
-- Applied to `StoreMemberRequest`, `StoreFamilyMemberRequest`,
-  `Admin\StorePlatformMemberRequest`, `UpdateMemberRequest`,
-  `UpdateFamilyMemberRequest`, `UpdateProfileRequest`. **A new person form joins
-  them** — do not hand-write `required` on these fields again.
-
-### Non-negotiables
-- **`full_name` is always required.** A member without a name breaks every
-  listing, card and search result on the platform.
-- **`birthdate` is NEVER required — of anyone, on any form, including a member
-  editing their own profile.** It is the field people least often have to hand,
-  and an invented one is the worst kind of bad data: it drives age groups, weight
-  categories and the minor safeguards, so a guess there is not a cosmetic
-  blemish. The format is still enforced when a value is given (`date`, and
-  `before:today` where it already applied). ⚠️ Consequence to keep in mind: code
-  that asks "is this a minor?" reads a NULL birthdate as an ADULT
-  (`$user->birthdate ? age < 18 : false`), so a missing birthdate silently
-  removes the minor protections — see `PersonalEventController::boutSide()`. If
-  that default is ever wrong for a surface, fix it at that surface; do not fix it
-  by demanding a birthdate.
-- **Format rules are never relaxed.** A gender is still `Male`/`Female`
-  (Canonical Enum Vocabularies), a birthdate is still a date, an email is still
-  an email. Only the demand that a value be *present* is lifted.
-- **The client must agree with the server.** `<x-profile-modal>` computes
-  `$demandPersonFields` from the same predicate and gates its own checks on it. A
-  browser that refuses what the endpoint would accept is a worse bug than no
-  validation, because the user cannot get past it.
-- **Absent is not the same as blank.** On an update, a field the request never
-  sent must be left ALONE; a field sent empty is a deliberate clear. Reading
-  `$validated['gender']` unconditionally lets a partial request wipe a value that
-  was already on file — see the `$optional` block in `MemberController::update()`
-  and `FamilyController::update()` for the shape to copy.
-
-> Rationale: the platform's job is to record what is known, not to extract what
-> is not. A blank field an organiser can fill in later beats a fabricated one
-> nobody knows is fabricated.
-
----
-
-## Payment Gateway
-
-Intentionally **deferred indefinitely** — additional cost not wanted at this stage.
-
-- Do not suggest payment gateway integration (Stripe, Tap, Benefit Pay, etc.)
-- The intended workflow is manual: member uploads proof-of-payment → club admin approves
-- Do not design features that depend on a payment gateway
-
----
-
-## Upload Storage Structure and File Naming — STRICT
-
-**Rule:** Every uploaded file must be stored in a clear, organized, entity-based folder structure, and every stored filename must be generated by the application. Never store uploads using their original client filename.
-
-### Folder structure — build every path with `App\Support\StoragePath`
-
-**Never hand-write a storage path again.** `App\Support\StoragePath` is the single
-source of truth for the layout, and the media layer already goes through it. Every
-path it produces has the same shape:
-
-```
-{owner}/{owner-public-id}/{purpose}/[{child}/{child-id}/]{generated-name}
-```
-
-```
-members/{user-uuid}/profile|documents|payments/{subscription}|posts/{post}
-clubs/{club-slug}/branding|gallery|documents|packages/{id}|products/{id}|posts/{id}
-businesses/{business-slug}/…
-events/{event-uuid}/branding|documents
-events/{event-uuid}/matches/{match-id}/clips/{media-uuid}.mp4     ← a bout's video
-events/{event-uuid}/unassigned/clips/…                            ← filmed with no bout loaded
-challenges/{id}/…      duels/{id}/media/…      platform/{purpose}/…
-cache/hls/{media-uuid}/…        cache/fetched/{media-uuid}/…      ← DERIVED, disposable
-```
-
-Four rules the shape encodes — keep them:
-
-1. **Owner first.** Everything for one member, club or event is one subtree: one
-   place to browse on a NAS, total up, move to another vault, or delete when they
-   leave.
-2. **Public ids, never auto-increment ids**, wherever the entity has one (member =
-   uuid, club = slug, event = uuid). A numeric id is used only where there is no
-   public id yet (a bout, a package) and is safe there because **these paths are
-   never URLs** — media is served by the media file's own uuid through a
-   controller that authorises first.
-3. **Generated names.** A uuid plus a server-decided extension. The uploaded
-   filename is untrusted metadata: keep it in the DB if it is wanted, never on disk.
-4. **Derived files live under `cache/`.** HLS ladders, fetched copies, generated
-   posters. One root, so "delete this to reclaim disk" is always safe and the vault
-   sync knows what never needs to leave this server.
-
-A folder that a human will browse gets a small `meta.json` beside the files
-(`MediaVaults::putMeta()`) — labels only, never a copy of the record. An event
-folder named by a uuid tells somebody standing at a file browser nothing.
-
-Do not dump unrelated uploads into shared flat folders.
-
-> **Legacy folders still exist and are NOT to be moved casually.** `avatars/`,
-> `documents/`, `payment-screenshots/`, `order-proofs/{id}/`, `perks/{slug}/`,
-> `timeline/{slug}/`, `club-products/{id}/`, `packages/`, `achievements/`,
-> `goal-proofs/`, `business-logos/`, `user-posts/`, `images/`, `temp/` predate this
-> and are still read by the code that wrote them. `StoragePath` is the shape
-> everything NEW takes; migrating an old folder is a separate, deliberate change
-> with a verified backup behind it (RULE #1, RULE #2).
-
-### File naming
-- Never store the original uploaded filename.
-- Never store a filename derived from the original name by adding a suffix, prefix, timestamp, or slug.
-- Always generate the stored filename on the server.
-- Use a random, UUID, ULID, hash-like, or timestamp-plus-random generated filename.
-- The extension must be assigned safely by the server based on validated file type rules.
-- The original filename may be discarded entirely or stored only as untrusted metadata when explicitly needed, but never used as the storage filename.
-
-### Display title
-- The human-readable file title must come from a separate form input and be stored separately in the database.
-- The display title is for UI only.
-- The physical stored filename is for storage only.
-- Never treat the original uploaded filename as the display title automatically unless explicitly required and safely sanitized.
-
-### Security requirements
-- Folder paths must be application-generated, never user-controlled.
-- Do not allow path traversal or nested user-provided paths.
-- Files must be validated by authorization, type, size, and real content rules before storage.
-- Sensitive uploads should be stored in private/non-public storage and served through controlled access.
-- Publicly accessible files must still follow generated naming and proper access design.
-
-### Required mindset
-Storage structure must be readable to developers, but filenames must be non-meaningful to attackers.
-Organized folders, random filenames, and separate display titles are mandatory.
-
----
-
-## Delete Files Before Records — STRICT
-
-**Rule:** Whenever a record owns uploaded files (proof images, photos, documents, attachments, media), the **files MUST be deleted FIRST, then the record**. Never delete a row and leave its uploaded files orphaned in storage. This applies to every delete path — admin actions, cleanup scripts, manual DB maintenance, and bulk wipes.
-
-### How it's enforced in code
-
-- Trait **`App\Traits\DeletesUploadedFiles`** hooks the model's `deleting` event and purges the declared files *before* the row is removed (while the paths are still available). Best-effort: a missing file never blocks the deletion.
-- Each file-bearing model declares its uploads + disk:
-  ```php
-  use App\Traits\DeletesUploadedFiles;
-
-  protected array $fileUploads = [
-      'proof_of_payment' => 'local',   // attribute => disk
-      'refund_proof'     => 'local',
-      'cover_image',                    // bare entry → 'public' disk
-  ];
-  ```
-- On `SoftDeletes` models the trait only purges on a real **force-delete** (a soft-deleted row may be restored).
-- Already applied to: `ClubMemberSubscription` (`proof_of_payment`, `refund_proof` on `local`), `Order` (`payment_proof_path` on `public`). **Apply this trait to any new model that stores file paths.**
-
-### Caveats
-
-- **Eloquent events do NOT fire on mass/bulk deletes** (`Model::query()->delete()` / `->forceDelete()`). For bulk cleanups, either iterate (`->cursor()->each(fn ($m) => $m->forceDelete())`) so the trait runs, or delete the files explicitly alongside the rows.
-- When clearing financial records by hand, also wipe the proof folders: `storage/app/private/payment-proofs/`, `storage/app/public/order-proofs/`, `storage/app/public/payment-screenshots/` (keep the dirs + `.gitignore`).
-
----
-
-## Image Uploads Must Validate Real Bytes — STRICT
-
-**Rule:** NEVER derive a stored file's extension from the client-supplied data-URI header, and never write request bytes to disk with `file_put_contents`/raw paths. Every base64 image upload MUST go through the **`App\Traits\StoresBase64Images`** trait, which sniffs the real MIME from the decoded bytes, assigns the extension server-side from a whitelist (jpg/png/gif/webp — **SVG rejected**, it can carry script), and returns the stored path (or `null` to reject).
-
-### Why
-The old pattern `$ext = explode('image/', $parts[0])[1]` let a logged-in user upload `shell.php`/`.svg` by lying in the data-URI header → stored XSS, and RCE under the common nginx/php-fpm docroot config. Fixed across all upload endpoints on the `harden/launch-readiness` branch.
-
-### How to add an upload endpoint
-```php
-use App\Traits\StoresBase64Images;   // add to the controller class
-
-$path = $this->storeBase64Image($request->image, $folder, $filenameBase);
-if ($path === null) {
-    return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
-}
-// delete the OLD file only after a successful store, and only if the path changed
-```
-- Validate the request with **`UploadImageRequest`** (or the same rules): `image` = `starts_with:data:image/`; `folder` = `regex:/^[A-Za-z0-9_\-\/]+$/`; `filename` = `regex:/^[A-Za-z0-9_\-]+$/` (blocks traversal + stray extensions).
-- The extension is assigned by the trait — do **not** append `.$ext` yourself, and don't trust `$request->filename` to already carry one.
-- The `$folder` must be built by the app from the owning entity's public id per **Upload Storage Structure and File Naming** — never passed through from raw client input.
-- Endpoint-level regression coverage lives in `tests/Feature/UploadSecurityTest.php`; the trait's unit coverage is `tests/Feature/StoresBase64ImagesTest.php`. Add a case when you add an endpoint.
-
----
-
-## Canonical Enum Vocabularies — STRICT
-
-**Gender is stored and validated as `Male` / `Female`** everywhere — never `m`/`f`. This was normalized by migration `2026_06_05_000001_normalize_gender_enum_on_users_table` and is the value the `<x-gender-dropdown>` submits. Every FormRequest/controller uses `in:Male,Female`. When writing tests or new forms, send `Male`/`Female`; sending `m`/`f` will fail validation silently (redirect-back with errors, no row created).
-
----
-
-## 403s Redirect on Web, Return JSON on API — expected behavior
-
-The global handler in `bootstrap/app.php` intentionally converts a 403:
-- **Browser navigation** (non-JSON) for a logged-in user → `redirect('/')` with an error flash (so a stale higher-privilege page never dead-ends on a raw 403). Access is still denied.
-- **JSON/AJAX** (`expectsJson`) → real `403`.
-
-So authorization tests must assert `assertRedirect('/')` for a `get()` and `assertForbidden()` for a `getJson()` — a browser GET to a forbidden page is a `302`, not a `403`. Don't "fix" the controller to emit 403 on web; that reroute is deliberate.
-
-### Tenant resolution in `role:`/`permission:` middleware
-`CheckRole`/`CheckPermission` resolve the tenant via `resolveTenantId()` (bound `{club}` model → numeric id → `slug` lookup). Do not reintroduce the old inline `$a ?? $b ? c : d` expression — `??` binds tighter than `?:`, so it always resolved by slug and returned `null` under a `{club}` binding, silently defeating any club-scoped role/permission check.
-
----
-
-## Financials Feature Status
-
-- Step 1 ✅ `PlatformController@joinClub` auto-creates a `ClubTransaction` on package registration
-- Step 2 ✅ `getMonthlyFinancials()` uses real DB query — dashboard chart works
-- Step 3 ✅ "Cash to Collect" sums `amount_due` from unpaid subscriptions
-- Step 4 🔜 Mark subscription as paid from members admin page — **not started**
-
----
-
-## Demo Data — Super-Admin Showcase (REMOVABLE before go-live)
-
-A large, cohesive demo dataset wired to the super admin (`superadmin@takeone.bh`) so every surface looks full for demos. **It is fully removable** — built specifically so it can be wiped before going live.
-
-- **Seed:** `php artisan demo:seed` (options: `--clubs=6 --members=40 --admin=<email> --fresh`). Creates a business/chain, N mixed-sport clubs (Taekwondo/Boxing/Fitness/Swimming/Padel/Yoga), trainers, packages+activities with weekly class schedules, members + active subscriptions, club feeds, challenges, events, and shop products. Wires the super admin as owner of every club + business, enrolled in 2 (synced `/me/schedule` classes), coaching 1 (teaching classes), plus personal sessions, feed posts/stories/follows, challenge participations, event registrations and a duel.
-- **Purge:** `php artisan demo:purge` (`--force` to skip prompt). Removes **exactly** what was seeded.
-- **How removal stays exact & safe:** `demo:seed` records every created row id (and any uploaded file) to a **manifest** at `storage/app/private/demo/manifest.json` (`App\Support\DemoManifest`). `demo:purge` reads it, deletes files first (defensively scanning file-bearing columns in case images were uploaded to demo records via the UI), then deletes rows in reverse-FK order inside a transaction. It can never touch real imported members or the super-admin account. Second safety net: demo clubs use slug `demo-*` and demo users `@demo.takeone.bh`.
-- Commands: `app/Console/Commands/DemoSeed.php`, `app/Console/Commands/DemoPurge.php`. Only one manifest at a time (re-seed requires purge or `--fresh`).
-- Demo/trial utilities are **not** exempt from the Security First rules — they run against the real environment and real storage.
-
----
-
-## Pre-Launch Runbook — operational, NOT code
-
-These are launch gates that live in the **environment/ops**, not the repo — a green test suite does not clear them. Verify before any production go-live. (Surfaced by the launch-readiness audit; code-level findings from that audit are already fixed and codified in the STRICT sections above.)
-
-- **Production env flags (BLOCKER).** The live `.env` must be `APP_ENV=production` + `APP_DEBUG=false` (it was `local`/`true` on `https://takeone.bh`, which leaks a full stack trace + secrets on every error). Also set `LOG_LEVEL=warning` and `LOG_STACK=single,sentry` (so `Log::error()` reaches Sentry). **Re-run `php artisan config:cache` after ANY `.env` change** — caching freezes `env()`.
-- **Warm prod caches on deploy:** `config:cache` + `route:cache` + `event:cache` + `view:cache` — all four now succeed. `view:cache` used to die with `DirectoryNotFoundException` for `vendor/takeone/cropper/src/resources/views`: takeone/cropper's provider registers `__DIR__.'/resources/views'` from `src/`, but ships its views one level up at `resources/views`. `AppServiceProvider::pruneMissingViewPaths()` now drops non-existent paths from every view namespace on `booted()`, so the bad hint is gone before `view:cache` walks it. The published copy at `resources/views/vendor/takeone/` is what resolves at runtime, and still does. **This is a workaround for an upstream package bug** — fix the path in `laravel-image-cropper` and the guard becomes a no-op (keep it; it protects against any package doing the same).
-- **Backups / DR (PARTLY DONE — off-server still a BLOCKER).** `php artisan takeone:backup` snapshots the DB (SQLite `VACUUM INTO` after a WAL checkpoint, so it is consistent under load) plus the upload folders, **verifies each artifact by reading it back**, prunes on a retention window (`BACKUP_RETAIN_DAYS`, never below `BACKUP_KEEP_MINIMUM`) and exits non-zero on any failure. Scheduled nightly at 03:30 in `routes/console.php`; config in `config/backup.php`. ⚠️ **Still required: set `BACKUP_DISK`** to a remote filesystem — until then every copy sits on the same disk as the data and does not survive losing the box (the command warns on every run). Also **the Android release keystore is a blocker of its own**: it is not in this repository, and the Flutter build reads it from `flutter/TV/android/keystore.properties` (git-ignored, absent here — the build falls back to the debug key and cannot produce a store-acceptable artefact). Put the real keystore and that properties file on the release machine, and copy the keystore to secure external storage — losing it means the Play Store app can never be updated. (`/database/*.sqlite*` is now in `.gitignore` — the DB, its `-wal`/`-shm` sidecars, and `.bak-*` snapshots can never be committed. Nothing sqlite was ever tracked, so no history scrub was needed.)
-- **Mail (MAJOR).** Queued mail had failing jobs (`SendQueuedMailable`) — verification emails silently not sending. Diagnose the Gmail SMTP creds, send a real end-to-end verification, then clear `queue:failed`. Mail is real Gmail SMTP (`smtp.gmail.com:465 ssl`), queued — see the no-Mailpit rule.
-- **Datastore at scale (MAJOR).** Production is SQLite (WAL). Fine for a soft launch, but SQLite is single-writer — under concurrent multi-club writes it throws "database is locked". A ready `mysql` connection already sits in `config/database.php`; migrate before real concurrency. Keep WAL checkpoints healthy (the `-wal` file should not dwarf the DB).
-- **Workers as least-privilege.** Supervisor `queue:work` should run as `www-data`, not `root`.
-
----
-
-## Technical Notes
-
-- **Storage permissions:** `umask(0002)` set in artisan for group-writable storage
-- **Primary color:** 65% lightness (HSL)
-- **Bootstrap replacement:** The project uses a custom JS bridge (`app.blade.php`) that handles `data-bs-*` attributes without Bootstrap CSS/JS. Do not add Bootstrap JS or assume Bootstrap modal/tab APIs work natively — they go through this bridge.
-- **No npm test framework** — verify UI features manually or via dev server
-- **No native browser dialogs** — never use `alert()`, `confirm()`, `prompt()`, or any native browser dialog. Always use `window.showToast(...)` for notifications and custom modals for confirmations.
-
----
-
-## Mobile Responsiveness
-
-Status: Complete. Key patterns:
-- `overflow-x-auto` for tables and tab containers
-- `flex-col sm:flex-row` for responsive headers
-- `z-40` on sidebar when open (overlay was blocking clicks — resolved in commit `f314f2e`)
-
----
-
-## Mobile Forms Must Be Mobile-Friendly — STRICT
-
-**Rule:** Any form, modal, or sheet shown in a mobile view MUST be fully usable on a phone — the entire form (including every field AND the submit/cancel actions) must be reachable and visible. Never ship a mobile form where content is clipped off-screen or the submit button can't be reached. This is a default requirement whenever the user is talking about a mobile view — they should not have to ask for it.
-
-**Required patterns:**
-- **Use a bottom-sheet (or full-screen) layout** for non-trivial mobile forms: `fixed inset-x-0 bottom-0 max-h-[92vh] flex flex-col`, with a `flex-shrink-0` header, a `flex-1 overflow-y-auto` scrollable body, and a `flex-shrink-0` sticky footer holding the actions. The body scrolls; the actions stay reachable.
-- **Respect the safe area** on the sticky footer: `padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));`. ⚠️ This only works because the base layouts (`layouts/app.blade.php`, `layouts/tailwind.blade.php`) set `<meta name="viewport" content="… viewport-fit=cover">` — without `viewport-fit=cover` every `env(safe-area-inset-*)` resolves to `0` and the padding silently does nothing. Never drop `viewport-fit=cover` from a base layout's viewport meta, and never ship a mobile viewport with `maximum-scale=1`/`user-scalable=no` (breaks pinch-zoom / WCAG 1.4.4).
-- **⚠️ Teleport fixed overlays to `<body>`.** The mobile shell's `#shell-content` carries `.mobile-stagger`, whose `m-rise` animation leaves a `transform` on every direct child. A CSS `transform` makes that element the containing block for any `position: fixed` descendant — so a bottom-sheet's `bottom-0` / `max-h-[92vh]` resolve against the tiny wrapper instead of the viewport and the form gets clipped. Wrap any fixed sheet/FAB/overlay in `<template x-teleport="body">…</template>` (inside an Alpine `x-data` scope) so it escapes the transformed ancestor. Use `z-[60]+` for teleported sheets so they sit above the bottom tab bar (`z-40`).
-- Inputs full-width (`w-full`), comfortable tap targets, and the design-system input/button tokens. Keep [[Mobile = Creative + Animated]] in mind — animated, on-palette, not a stripped-down desktop form.
-
-> Reference implementation: `resources/views/components/schedule-session-modal.blade.php` (teleported bottom-sheet with scrollable body + sticky footer).
-
----
-
-## One Cropper Everywhere — Mobile Uses `<x-takeone-cropper :inline>` — STRICT
-
-**Rule:** Every image crop/upload in a **mobile** view MUST use the shared `<x-takeone-cropper>` widget in **inline mode** (`:inline="true"`) — the mobile-first bottom-sheet crop editor. Never render the cropper's default **modal mode** on mobile, and never build a one-off/alternate cropper. There is exactly one cropper in this project; on phones it always appears as the same bottom sheet.
-
-### Why
-The default modal mode opens through the Bootstrap bridge with the LOCKED desktop dialog size (`max-width:75%; width:1000px`), which collapses to a cramped, clipped box on a phone. Inline mode is the purpose-built mobile bottom sheet: teleported to `<body>` (escapes the mobile-shell transform trap), scrollable body, safe-area sticky footer, delegated handlers, and an auto-fit crop viewport. It is already used by the profile-picture and photo-edit croppers.
-
-### How (canonical mobile invocation)
-```blade
-<x-takeone-cropper
-    id="…Mobile" mode="ajax" :inline="true"
-    :width="1600" :height="900" shape="rectangle" :canvasHeight="300"
-    folder="…" filename="…" :uploadUrl="route('…')"
-    sheetMaxWidth="100%"                                   {{-- match the host form's full-width sheet --}}
-    sheetClass="rounded-t-3xl shadow-2xl bg-background"    {{-- match the host sheet's shape/size --}}
-    :showControls="false"                                  {{-- drop sliders; pinch/twist gestures drive it --}}
-    :showCancel="false"                                    {{-- the header ✕ closes; no redundant Cancel --}}
-    saveText="Crop" :uploadAsIs="true" uploadAsIsText="Upload" />
-```
-- **Match the host sheet.** Set `sheetMaxWidth` / `sheetClass` so the crop sheet looks the same (shape + size) as the form it opens from. Defaults keep the old centered-card look for non-mobile callers, so overriding is opt-in and never touches the profile/photo croppers.
-- **Sliders vs gestures.** `:showControls="false"` hides the zoom/rotation sliders; the widget then enables **pinch-to-zoom + two-finger twist-to-rotate** (Cropme has no native pinch — the widget adds it). Single-finger pan is Cropme's. Leave `showControls` default (`true`) only where sliders are actually wanted.
-- **Labels / actions.** Customize with `saveText`, `uploadAsIsText`; hide the footer Cancel with `:showCancel="false"` (there is always a header ✕).
-
-### Non-negotiable gotchas (already handled inside the widget — do not regress)
-- **All handlers are delegated off `document`** (namespaced `.tk{id}`, guarded by `off()`), because in mobile the cropper renders inside a `<template x-teleport="body">` and `$(ready)` fires before Alpine teleports — direct `$('#id').on()` / `getElementById(...).addEventListener` silently bind to nothing and the picked image never loads. Never convert these back to direct binds.
-- **The crop element is resolved lazily inside `initCropper`** (not cached at `$(ready)`), for the same teleport reason.
-- **The viewport auto-fits the canvas.** Cropme throws *"Viewport height cannot be greater that container height"* if `width`/`height` exceed the `canvasHeight` box — the widget scales the viewport down (preserving aspect) only when it overflows. So a wide `:width`/`:height` (e.g. 1600×900 hero) is fine.
-- **⚠️ Crop at full resolution — never upscale a viewport-sized crop.** Because the on-screen viewport is auto-fit small, the crop MUST be taken from the SOURCE image via Cropme's `crop({ width: <output px> })` option (it re-renders from the original pixels), then normalized to exactly `width`×`height` on a canvas and JPEG-encoded (~0.92). The old handler cropped at the viewport size and *stretched that tiny image up* to `width`×`height` → severe blur. Do not reintroduce that upscale. The **Upload** (`uploadAsIs`) path already sends the original full-resolution bytes untouched. (Regression-tested with a high-frequency source: full-res crop preserved ~331 stripe edges vs **0** for the upscale path.)
-
-### Boundaries
-- Does **not** override the LOCKED profile-picture cropper config — the profile cropper keeps its desktop modal + fixed dims.
-- Desktop callers may keep modal mode (fine on a large screen); this rule is about the **mobile** experience.
-
-> Reference implementation: `resources/views/admin/platform/mobile/activities.blade.php` (activity hero uploader). The widget lives at `resources/views/vendor/takeone/components/widget.blade.php` + `widget-crop-body.blade.php`.
-
----
-
-## Mobile Pattern Language — the BASE for every mobile view — STRICT
-
-**Rule:** Every mobile view — new or edited — is built from the named patterns below. This is the default vocabulary; do not invent a new structure when one of these fits, and never port a desktop layout to mobile unchanged. When a desktop screen is dense (many tabs, many fields, long tables), the mobile answer is **restructure**, not shrink.
-
-> Canonical reference implementations: `resources/views/admin/club/details/mobile.blade.php` (hub + drill-down, completion ring, live preview), `resources/views/admin/club/roles/mobile.blade.php` (hub + drill-down, coverage meter, search + filter chips, live upsert into a panel list) and `resources/views/admin/club/roles/mobile-access-form.blade.php` (bottom sheet, selection cards, progressive disclosure).
-
-### The core principle
-**One screen, one job.** The reason the pattern works is not the styling — it is that each screen asks the user for one thing. The same tokens applied to 40 fields on a single scroll still feel bad. If a mobile screen is doing more than one job, split it before styling it.
-
-### 1. Structure — Hub-and-spoke drill-down
-*(a.k.a. list-detail / master-detail; iOS "hierarchical navigation")*
-
-The replacement for desktop tabs. A **hub** lists the sections; tapping one opens a focused **detail panel** with a back affordance.
-
-- Hub rows are a **grouped inset list**: rounded card, leading icon tile (colored per section), title, one-line summary, trailing `bi-chevron-right` (add `rtl:rotate-180`).
-- Panels are **in-page `x-show` sections, not `position: fixed`** — a sticky panel header (`sticky top-0`, back · title · Save) avoids the transform/teleport trap entirely.
-- Keep the submit reachable twice: in the sticky header AND as a full-width button at the end of the panel.
-- Support deep links (`#section`) and, on validation failure, reopen the offending panel.
-- **One form wrapping all panels** when the backend expects one submit — hidden `x-show` fields still post. Never split into per-panel partial saves unless the endpoint genuinely supports it (check for "absent key wipes data" behavior first).
-
-### 2. Progressive disclosure
-Long lists collapse into groups that are **closed by default**, each showing a live count badge so the state is readable without expanding. Add per-group and global **Select all / Clear** actions when the items are checkboxes. Use `x-show` + `x-transition` — **`x-collapse` is NOT available** (the Alpine collapse plugin is not registered in this project).
-
-### 3. Controls
-- **Selection cards** replace any dropdown with a short, known option set (≈2–7 items): full-width tappable rows acting as a radio group — icon tile, label, radio-style check circle, `border-primary bg-primary/5` when selected. Never a pop-over inside a scroll container: an `absolute` panel is clipped by any `overflow-y-auto` ancestor.
-- Keep a styled Alpine dropdown (`<x-select-menu>` / `<x-*-dropdown>`) only for long or searchable vocabularies (country, currency, timezone).
-- Native `<select>` / native date-time pickers remain banned (Design Rule #4).
-- Tap targets ≥44px; checkboxes ≥18px.
-
-### 4. Feedback & motivation
-- **Completion meter** — a progress ring / "profile strength" scored from real signals, plus a **status dot** per hub row (green = done, amber = missing). Makes "is my setup finished?" answerable without opening anything.
-- **Live preview / direct manipulation** — edit the thing, not a form describing it. Bind the hero (name, logo, cover) or a phone mockup to the inputs so changes are visible as they are typed or picked.
-- **Bottom sheet** for focused sub-tasks, with a drag handle; teleported to `<body>` per the rule above.
-
-### 5. Motion & surface
-Reuse the shared motion system in `app.css` — `m-hero` (mesh-gradient band + sheen), `m-card`, `m-press`, `m-float`, `m-bar-fill`, `mobile-stagger`, `m-in*`, and **`m-panel-in`** (the drill-down panel entrance). Do not invent parallel animation classes. Respect `prefers-reduced-motion` (the shared classes already do).
-
-### Anti-patterns — do not ship
-- Desktop tabs rendered as a horizontal scroll strip on mobile.
-- A read-only mobile page for a screen that is editable on desktop, plus a "edit this from desktop" note. Mobile must reach feature parity (see **Mobile / Desktop Separation** + the APK rule — mobile web *is* the Android app).
-- An absolutely-positioned dropdown inside a scrolling sheet body.
-- One endless scroll of every field, or a checkbox wall with no grouping.
-- Native browser dialogs, native selects, off-palette one-off styling.
-
-### Naming
-When describing this work, the phrase is: **"a mobile-first settings hub with drill-down detail panels and progressive disclosure."**
-
----
-
-## Skills
-
-### `frontend-design`
-Use the `frontend-design` skill whenever the user asks to build or design new UI — pages, components, modals, cards, sections, or any visual interface work. It generates production-grade, polished frontend code that avoids generic AI aesthetics.
-
-**Trigger on:** "build a page", "create a component", "design a section", "add a new view", "make a modal/card/form", or any request that involves writing new Blade/HTML/CSS.
-
-**Do not trigger on:** pure backend changes, bug fixes to existing UI, or minor copy/label edits.
-
-The skill must still respect all Design Rules above — it enhances quality but does not override the rule against modifying existing UI without instruction, the Component-First / Standalone Component rules, or any Security rule.
-
-#### Design System — the skill MUST follow these patterns exactly
+## Design System — follow these patterns exactly
 
 **Color palette (defined in `resources/css/app.css` `@theme`):**
 - Primary: `hsl(250 65% 65%)` — purple. Use `bg-primary`, `text-primary`, `border-primary`
@@ -1965,6 +1186,594 @@ All components live in `resources/views/components/` and are called as `<x-{name
 
 ---
 
+# PART 6 — MOBILE & THE ANDROID APP
+
+## Mobile / Desktop Separation — STRICT
+
+**Any view that has both a mobile and a desktop experience MUST be two separate Blade
+files**, never one file branching with responsive classes for fundamentally different
+layouts. Keep the markup distinct so editing one can never break the other.
+
+- Convention: `resources/views/<feature>/desktop/<view>.blade.php` and
+  `resources/views/<feature>/mobile/<view>.blade.php`, and where needed separate layouts
+  `layouts/<name>-desktop.blade.php` / `layouts/<name>-mobile.blade.php`.
+- The controller (or layout) picks the file with the `$isMobile` flag from the
+  `DetectDevice` middleware: `view($isMobile ? '<feature>.mobile.<view>' : '<feature>.desktop.<view>')`.
+- **Parity:** a change to a desktop view lands in its mobile counterpart too.
+- Applies to **new** views; existing CSS-responsive pages need not be split unless asked.
+- Ordinary responsive tweaks (a header stacking via `flex-col sm:flex-row`) do NOT require a
+  separate file — only views whose layouts genuinely diverge.
+
+Baseline responsiveness patterns already in place everywhere: `overflow-x-auto` for tables
+and tab containers, `flex-col sm:flex-row` for headers, `z-40` on an open sidebar.
+
+## Android App (APK) Mirrors the Mobile Web — STRICT
+
+**The mobile web experience IS the Android app.** The member's app (`bh.takeone.app`) loads
+the live site (`https://takeone.bh`) in a WebView — not a separate codebase. Mobile web work
+and the APK are **one deliverable**.
+
+**It is a Flutter build.** The Capacitor shell in `mobile/` was converted on 2026-08-29 and
+that folder is gone. One Flutter project — `flutter/TV/` — produces four APKs from one
+codebase, differing only in application id, manifest and a single `--dart-define`:
+
+| Variant | Application id | What it is |
+|---|---|---|
+| `tv` | `bh.takeone.tv` | the wall screen (leanback) |
+| `tab` | `bh.takeone.tab` | the scoring table |
+| `cam` | `bh.takeone.cam` | a camera beside the mat |
+| `app` | `bh.takeone.app` | **the member's phone app** |
+
+Build with `./flutter/TV/build.sh {tv|tab|cam|app} [base-url]`. `flutter/TV/lab-app/` is the
+separate boutcam project.
+
+### Rules
+
+1. **Mobile web changes flow to the app automatically — no rebuild needed.** Any change to a
+   mobile Blade view, controller, route, JS, CSS or backend logic appears in the installed
+   APK the moment it is deployed. Do **not** tell the user to rebuild the APK for
+   content/UI/logic changes.
+2. **Every mobile feature must actually work inside a WebView.** Verify it there, not just in
+   a desktop browser.
+   - Camera / QR scanning / photo capture use `getUserMedia`; the `CAMERA` permission is
+     declared in `flutter/TV/android_app/AndroidManifest.xml`. A new device capability (mic,
+     geolocation, notifications) means **adding the matching Android permission there** in
+     the same task. That file is the member app's manifest; the hall variants
+     (`android_tv`, `android_tab`, `android_cam`) have their own and must not be edited for a
+     member-app need.
+   - **Uploads and permissions are granted by the shell, not the page.** A WebView opens no
+     file picker and grants no camera unless the host app hands it one —
+     `flutter/TV/lib/src/app/shell.dart` does both (`setOnShowFileSelector`,
+     `setOnPlatformPermissionRequest`). If an upload silently does nothing in the app but
+     works in a browser, that is where to look.
+   - Avoid browser-only APIs that Android WebView blocks or handles differently (certain
+     downloads, `window.open` popups, native file pickers) without a WebView-safe fallback.
+3. **Only rebuild/re-sign the APK when the NATIVE shell changes** — icon, name, splash,
+   colors, permissions, or the host it points at. Then do the whole loop as one unit: edit
+   the variant's manifest or `lib/src/`, rebuild with
+   `./flutter/TV/build.sh app https://takeone.bh`, and re-verify the signed artifact.
+4. **The published app has a version series, and Play enforces it.** `build.sh` sets
+   `VERSION_CODE`/`VERSION_NAME` for the `app` variant only (currently 11 / 1.10, continuing
+   the Capacitor build's 10 / 1.9). **Raise the code on every store release** — Flutter's
+   default of `1` is rejected as a downgrade.
+5. **⚠️ The web still calls a Capacitor-shaped bridge, and the Flutter shell answers to
+   it.** `partials/app-update.blade.php`, `partials/push-register.blade.php` and
+   `auth/mobile/login.blade.php` call `window.Capacitor.Plugins.{App,MqttPush}`.
+   `shell.dart` injects a shim mapping those onto a Kotlin `MethodChannel` (`appInfo`,
+   `mqttStart`, `mqttStop`, `batteryExemption`, `downloadAndInstall`). **Keep both ends in
+   step:** a new native call means adding it to the shim, the channel handler in
+   `MainActivity.kt`, and the web that calls it.
+6. **Notifications are native and outlive the WebView.** `MqttNotificationService.java`
+   (carried over unchanged) holds one MQTT connection in a foreground service and posts what
+   arrives, authenticating with the session cookie the WebView already holds. It runs with no
+   Flutter engine, so it reads its host from manifest meta-data (`bh.takeone.baseUrl`), which
+   `build.sh` stamps in from the same `BASE_URL` the Dart side is built with — do not let
+   those drift.
+7. **Never break a mobile view in a way that only shows up in the app.** The APK has no
+   address bar and no easy refresh, so a mobile view that soft-locks or clips off-screen is
+   worse there than on the web.
+
+## Mobile Device Capabilities and Animation — STRICT
+
+Build mobile-web features that use supported browser/WebView capabilities when required —
+camera, microphone, geolocation, file picking / image capture, share actions, vibration —
+and always: **detect capability support first, request permission correctly, provide a
+fallback, and ensure it still works inside the Android WebView shell.**
+
+Polished animation is expected too, via Tailwind transitions, Alpine transitions, CSS
+transitions/keyframes, or lightweight JS. Animations must improve clarity and feel, never
+reduce speed or usability. Respect `prefers-reduced-motion`.
+
+## Mobile Forms Must Be Mobile-Friendly — STRICT
+
+**Rule:** Any form, modal, or sheet shown in a mobile view MUST be fully usable on a phone — the entire form (including every field AND the submit/cancel actions) must be reachable and visible. Never ship a mobile form where content is clipped off-screen or the submit button can't be reached. This is a default requirement whenever the user is talking about a mobile view — they should not have to ask for it.
+
+**Required patterns:**
+- **Use a bottom-sheet (or full-screen) layout** for non-trivial mobile forms: `fixed inset-x-0 bottom-0 max-h-[92vh] flex flex-col`, with a `flex-shrink-0` header, a `flex-1 overflow-y-auto` scrollable body, and a `flex-shrink-0` sticky footer holding the actions. The body scrolls; the actions stay reachable.
+- **Respect the safe area** on the sticky footer: `padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));`. ⚠️ This only works because the base layouts (`layouts/app.blade.php`, `layouts/tailwind.blade.php`) set `<meta name="viewport" content="… viewport-fit=cover">` — without `viewport-fit=cover` every `env(safe-area-inset-*)` resolves to `0` and the padding silently does nothing. Never drop `viewport-fit=cover` from a base layout's viewport meta, and never ship a mobile viewport with `maximum-scale=1`/`user-scalable=no` (breaks pinch-zoom / WCAG 1.4.4).
+- **⚠️ Teleport fixed overlays to `<body>`.** The mobile shell's `#shell-content` carries `.mobile-stagger`, whose `m-rise` animation leaves a `transform` on every direct child. A CSS `transform` makes that element the containing block for any `position: fixed` descendant — so a bottom-sheet's `bottom-0` / `max-h-[92vh]` resolve against the tiny wrapper instead of the viewport and the form gets clipped. Wrap any fixed sheet/FAB/overlay in `<template x-teleport="body">…</template>` (inside an Alpine `x-data` scope) so it escapes the transformed ancestor. Use `z-[60]+` for teleported sheets so they sit above the bottom tab bar (`z-40`).
+- Inputs full-width (`w-full`), comfortable tap targets, and the design-system input/button tokens. Keep [[Mobile = Creative + Animated]] in mind — animated, on-palette, not a stripped-down desktop form.
+
+> Reference implementation: `resources/views/components/schedule-session-modal.blade.php` (teleported bottom-sheet with scrollable body + sticky footer).
+
+---
+
+## One Cropper Everywhere — Mobile Uses `<x-takeone-cropper :inline>` — STRICT
+
+**Rule:** Every image crop/upload in a **mobile** view MUST use the shared `<x-takeone-cropper>` widget in **inline mode** (`:inline="true"`) — the mobile-first bottom-sheet crop editor. Never render the cropper's default **modal mode** on mobile, and never build a one-off/alternate cropper. There is exactly one cropper in this project; on phones it always appears as the same bottom sheet.
+
+### Why
+The default modal mode opens through the Bootstrap bridge with the LOCKED desktop dialog size (`max-width:75%; width:1000px`), which collapses to a cramped, clipped box on a phone. Inline mode is the purpose-built mobile bottom sheet: teleported to `<body>` (escapes the mobile-shell transform trap), scrollable body, safe-area sticky footer, delegated handlers, and an auto-fit crop viewport. It is already used by the profile-picture and photo-edit croppers.
+
+### How (canonical mobile invocation)
+```blade
+<x-takeone-cropper
+    id="…Mobile" mode="ajax" :inline="true"
+    :width="1600" :height="900" shape="rectangle" :canvasHeight="300"
+    folder="…" filename="…" :uploadUrl="route('…')"
+    sheetMaxWidth="100%"                                   {{-- match the host form's full-width sheet --}}
+    sheetClass="rounded-t-3xl shadow-2xl bg-background"    {{-- match the host sheet's shape/size --}}
+    :showControls="false"                                  {{-- drop sliders; pinch/twist gestures drive it --}}
+    :showCancel="false"                                    {{-- the header ✕ closes; no redundant Cancel --}}
+    saveText="Crop" :uploadAsIs="true" uploadAsIsText="Upload" />
+```
+- **Match the host sheet.** Set `sheetMaxWidth` / `sheetClass` so the crop sheet looks the same (shape + size) as the form it opens from. Defaults keep the old centered-card look for non-mobile callers, so overriding is opt-in and never touches the profile/photo croppers.
+- **Sliders vs gestures.** `:showControls="false"` hides the zoom/rotation sliders; the widget then enables **pinch-to-zoom + two-finger twist-to-rotate** (Cropme has no native pinch — the widget adds it). Single-finger pan is Cropme's. Leave `showControls` default (`true`) only where sliders are actually wanted.
+- **Labels / actions.** Customize with `saveText`, `uploadAsIsText`; hide the footer Cancel with `:showCancel="false"` (there is always a header ✕).
+
+### Non-negotiable gotchas (already handled inside the widget — do not regress)
+- **All handlers are delegated off `document`** (namespaced `.tk{id}`, guarded by `off()`), because in mobile the cropper renders inside a `<template x-teleport="body">` and `$(ready)` fires before Alpine teleports — direct `$('#id').on()` / `getElementById(...).addEventListener` silently bind to nothing and the picked image never loads. Never convert these back to direct binds.
+- **The crop element is resolved lazily inside `initCropper`** (not cached at `$(ready)`), for the same teleport reason.
+- **The viewport auto-fits the canvas.** Cropme throws *"Viewport height cannot be greater that container height"* if `width`/`height` exceed the `canvasHeight` box — the widget scales the viewport down (preserving aspect) only when it overflows. So a wide `:width`/`:height` (e.g. 1600×900 hero) is fine.
+- **⚠️ Crop at full resolution — never upscale a viewport-sized crop.** Because the on-screen viewport is auto-fit small, the crop MUST be taken from the SOURCE image via Cropme's `crop({ width: <output px> })` option (it re-renders from the original pixels), then normalized to exactly `width`×`height` on a canvas and JPEG-encoded (~0.92). The old handler cropped at the viewport size and *stretched that tiny image up* to `width`×`height` → severe blur. Do not reintroduce that upscale. The **Upload** (`uploadAsIs`) path already sends the original full-resolution bytes untouched. (Regression-tested with a high-frequency source: full-res crop preserved ~331 stripe edges vs **0** for the upscale path.)
+
+### Boundaries
+- Does **not** override the LOCKED profile-picture cropper config — the profile cropper keeps its desktop modal + fixed dims.
+- Desktop callers may keep modal mode (fine on a large screen); this rule is about the **mobile** experience.
+
+> Reference implementation: `resources/views/admin/platform/mobile/activities.blade.php` (activity hero uploader). The widget lives at `resources/views/vendor/takeone/components/widget.blade.php` + `widget-crop-body.blade.php`.
+
+---
+
+## Mobile Pattern Language — the BASE for every mobile view — STRICT
+
+**Rule:** Every mobile view — new or edited — is built from the named patterns below. This is the default vocabulary; do not invent a new structure when one of these fits, and never port a desktop layout to mobile unchanged. When a desktop screen is dense (many tabs, many fields, long tables), the mobile answer is **restructure**, not shrink.
+
+> Canonical reference implementations: `resources/views/admin/club/details/mobile.blade.php` (hub + drill-down, completion ring, live preview), `resources/views/admin/club/roles/mobile.blade.php` (hub + drill-down, coverage meter, search + filter chips, live upsert into a panel list) and `resources/views/admin/club/roles/mobile-access-form.blade.php` (bottom sheet, selection cards, progressive disclosure).
+
+### The core principle
+**One screen, one job.** The reason the pattern works is not the styling — it is that each screen asks the user for one thing. The same tokens applied to 40 fields on a single scroll still feel bad. If a mobile screen is doing more than one job, split it before styling it.
+
+### 1. Structure — Hub-and-spoke drill-down
+*(a.k.a. list-detail / master-detail; iOS "hierarchical navigation")*
+
+The replacement for desktop tabs. A **hub** lists the sections; tapping one opens a focused **detail panel** with a back affordance.
+
+- Hub rows are a **grouped inset list**: rounded card, leading icon tile (colored per section), title, one-line summary, trailing `bi-chevron-right` (add `rtl:rotate-180`).
+- Panels are **in-page `x-show` sections, not `position: fixed`** — a sticky panel header (`sticky top-0`, back · title · Save) avoids the transform/teleport trap entirely.
+- Keep the submit reachable twice: in the sticky header AND as a full-width button at the end of the panel.
+- Support deep links (`#section`) and, on validation failure, reopen the offending panel.
+- **One form wrapping all panels** when the backend expects one submit — hidden `x-show` fields still post. Never split into per-panel partial saves unless the endpoint genuinely supports it (check for "absent key wipes data" behavior first).
+
+### 2. Progressive disclosure
+Long lists collapse into groups that are **closed by default**, each showing a live count badge so the state is readable without expanding. Add per-group and global **Select all / Clear** actions when the items are checkboxes. Use `x-show` + `x-transition` — **`x-collapse` is NOT available** (the Alpine collapse plugin is not registered in this project).
+
+### 3. Controls
+- **Selection cards** replace any dropdown with a short, known option set (≈2–7 items): full-width tappable rows acting as a radio group — icon tile, label, radio-style check circle, `border-primary bg-primary/5` when selected. Never a pop-over inside a scroll container: an `absolute` panel is clipped by any `overflow-y-auto` ancestor.
+- Keep a styled Alpine dropdown (`<x-select-menu>` / `<x-*-dropdown>`) only for long or searchable vocabularies (country, currency, timezone).
+- Native `<select>` / native date-time pickers remain banned (Design Rule #4).
+- Tap targets ≥44px; checkboxes ≥18px.
+
+### 4. Feedback & motivation
+- **Completion meter** — a progress ring / "profile strength" scored from real signals, plus a **status dot** per hub row (green = done, amber = missing). Makes "is my setup finished?" answerable without opening anything.
+- **Live preview / direct manipulation** — edit the thing, not a form describing it. Bind the hero (name, logo, cover) or a phone mockup to the inputs so changes are visible as they are typed or picked.
+- **Bottom sheet** for focused sub-tasks, with a drag handle; teleported to `<body>` per the rule above.
+
+### 5. Motion & surface
+Reuse the shared motion system in `app.css` — `m-hero` (mesh-gradient band + sheen), `m-card`, `m-press`, `m-float`, `m-bar-fill`, `mobile-stagger`, `m-in*`, and **`m-panel-in`** (the drill-down panel entrance). Do not invent parallel animation classes. Respect `prefers-reduced-motion` (the shared classes already do).
+
+### Anti-patterns — do not ship
+- Desktop tabs rendered as a horizontal scroll strip on mobile.
+- A read-only mobile page for a screen that is editable on desktop, plus a "edit this from desktop" note. Mobile must reach feature parity (see **Mobile / Desktop Separation** + the APK rule — mobile web *is* the Android app).
+- An absolutely-positioned dropdown inside a scrolling sheet body.
+- One endless scroll of every field, or a checkbox wall with no grouping.
+- Native browser dialogs, native selects, off-palette one-off styling.
+
+### Naming
+When describing this work, the phrase is: **"a mobile-first settings hub with drill-down detail panels and progressive disclosure."**
+
+---
+
+# PART 7 — BEHAVIOUR: NO-RELOAD, REALTIME, MCP, NAVIGATION
+## No Page Reload Rule — STRICT
+
+**All write operations (create, update, delete) in this project must update the UI in place. Never require the user to manually refresh the page to see the result of their action.**
+
+### How to implement:
+
+1. **Every AJAX write endpoint** must return the updated data in its JSON response alongside `success` and `message`:
+   ```json
+   { "success": true, "message": "...", "<entity>": { ...updated fields... } }
+   ```
+
+2. **Every modal / form that submits via AJAX** must, on success, dispatch a `CustomEvent` carrying the returned data so any listening component on the page can update itself:
+   ```js
+   window.dispatchEvent(new CustomEvent('entity-updated', { detail: data.entity }));
+   ```
+
+3. **The page/view** that displays the data must listen for the event and patch the relevant DOM elements **in place** — no `window.location.reload()`, no `location.href =` redirect unless the action itself requires navigation (e.g. creation that navigates to a new record).
+
+4. **Add stable target IDs** (`id="..."`) to every element whose content can change after a write so the JS listener can find and update it reliably.
+
+5. For **complex re-rendered sections** (lists, cards with conditional content), regenerate the innerHTML from the returned JSON rather than patching individual text nodes.
+
+> Returned payloads are subject to the security rules above — return only fields the viewer is authorized to see, never internal ids/paths/flags they shouldn't have.
+
+### Established pattern (member profile page):
+- Server returns `member` object in update response
+- `submitForm()` in profile modal dispatches `member-profile-updated` with the member data
+- `show.blade.php` has a `window.addEventListener('member-profile-updated', ...)` listener that patches: name, motto, age, blood type, marital status, social links, emergency contacts, documents, health conditions — all without reload
+
+Apply this same pattern to every other feature: health records, goals, affiliations, tournaments, club details, packages, instructors, etc.
+
+---
+
+## Realtime / MQTT — Always Instant — STRICT
+
+**Every action must reflect instantly for *all* affected users — never make anyone refresh.** The actor's own device updates in place (see No Page Reload Rule); everyone *else* affected must be updated live over MQTT. Notifications must arrive the same way.
+
+### Rules
+1. **On every write that affects other users, push over MQTT in the same request.** Use `Realtime()->publishToUser($id, $channel, $payload)` (one user) or `Realtime()->publishMany([...])` (many). It's best-effort — the DB stays the source of truth — but it must always be attempted. Realtime is enabled (`REALTIME_ENABLED=true`).
+2. **Notifications go through `UserNotification::notifyUser()`**, which already writes the row *and* pushes MQTT (`notifications` channel) with an `action_url` deep-link. Never create notification rows without it.
+3. **Client patches in place.** `realtime.js` re-emits each inbound message as a DOM event `realtime:<channel>` (e.g. `realtime:notification`, `realtime:message`, `realtime:schedule`). Feature views add a listener that updates the DOM — no reload.
+4. **Use an `{action: '...'}` discriminator per channel.** Two reliable shapes:
+   - **Targeted patch** — send the changed entity (`{action:'created'|'updated'|'deleted', <entity>:{...}}`); the listener upserts/removes that one item. Best when the payload is identical for every recipient.
+   - **Refresh signal** — send `{action:'refresh'}` and have the view silently re-fetch its data from a JSON endpoint and re-render. **Use this when the same change renders differently per user** (different ids/content/permissions), e.g. a club class where each user sees their own card variant. Don't try to hand-craft per-user card payloads.
+5. **Fan out to the whole audience**, not just the obvious user. A class change touches enrolled members + the coach + substitute(s) + the actor — push to all of them.
+6. **Dedup client listeners** that live inside shell-swapped content: the mobile shell re-runs inline scripts on every AJAX nav, so store the handler on `window.__xxx` and `removeEventListener` the previous one before re-adding, or listeners stack up.
+7. **Scope every payload to its audience** (see Security Coverage §11). Send the minimum necessary data; a recipient must never receive fields they aren't authorized to see. When the same change renders differently per user, use the refresh signal rather than oversharing.
+
+### Reference implementation
+`/me/schedule`: `scheduleData()` returns the schedule as JSON; `pushScheduleRefresh($userIds)` publishes `{action:'refresh'}` on the `schedule` channel to every affected user; the list view's `realtime:schedule` handler calls `reloadData()` on `refresh` (and patches individual cards on `created/updated/deleted`). Personal-session edits use the targeted-patch shape; club-class/substitute changes use the refresh shape.
+
+---
+
+## Keep the MCP Server in Sync — STRICT
+
+**Rule:** The general-purpose MCP server (`app/Mcp/*`, exposed at `POST /mcp` and via `php artisan mcp:start takeone`) is a first-class interface to the platform, just like the web UI. **It must never fall behind the data model or feature set.** Whenever a change alters what the app can read or do, the MCP must be updated in the **same** change — treat a stale MCP as a broken build. Full subsystem docs: `Documentation/MCP.md`. See [[project_mcp_server]].
+
+### When a change REQUIRES an MCP update
+Update or add a tool (in `app/Mcp/Tools/`, registered in `app/Mcp/Servers/TakeOneServer.php`) whenever you:
+- **Add a new entity / feature** that a user or integration would reasonably want to read or act on (new model, new admin action, new member self-service flow) → add a read tool, and a write tool if the app can mutate it.
+- **Add or rename a field** that an existing tool returns (e.g. a new member/club attribute) → surface it in that tool's JSON so consumers see it.
+- **Change a relationship or query** a tool relies on (e.g. the club↔member relation, a status enum, a slug/uuid binding) → fix the tool's query so it still returns correct, scoped data. (The existing tools already hit real gotchas: `memberClubs()` not `memberships`, `birthdate` not `date_of_birth`, `ClubTransaction.payment_method` is a NOT-NULL enum — keep these correct.)
+- **Change an authorization rule** (who can see/do what) → mirror it in `app/Mcp/Concerns/AuthorizesClubAccess.php` (`canAdminClub`, `canViewMember`, `accessibleClubIds`) so the MCP enforces the *same* scope. The MCP must never expose more than the acting user could do in the UI.
+- **Add a validation rule / enum vocabulary** to a write path → apply the identical rule in the corresponding write tool (e.g. gender `Male`/`Female`, payment methods).
+
+### How to do it (non-negotiable steps)
+1. Add/adjust the tool; extend `App\Mcp\Tools\BaseTool` (gives `guard()`, the write kill-switch, and scoping helpers). Guard first: `$user = $this->guard($request); if ($user instanceof \Laravel\Mcp\Response) return $user;`
+2. Set `protected bool $isWrite = true;` on any tool that mutates data.
+3. Register the class in `TakeOneServer::$tools`.
+4. Enforce tenant scope with the `AuthorizesClubAccess` helpers — never query models unscoped.
+5. Add/extend a case in `tests/Feature/McpServerTest.php` covering both the happy path **and** an authorization denial.
+6. Update the tool table in `Documentation/MCP.md`.
+
+### What does NOT need an MCP change
+Pure UI/styling/copy edits, internal refactors, and changes with no new readable/actionable surface. When unsure, err toward adding the tool — an integration that can't see a feature is worse than one extra tool.
+
+> Rationale: external systems (n8n, Claude, other services) consume the platform through this one server. If a feature ships to the web but not the MCP, every integration silently drifts out of date. The MCP is part of the deliverable, not an afterthought. MCP tools are a full attack surface — the Security sections above apply to them exactly as they do to web routes.
+
+---
+
+## Admin Sidebar SPA Navigation — STRICT
+
+**Rule:** Clicking any link in a desktop admin sidebar (club admin `/admin/club/{club}/*` **and** super-admin platform `/admin/*`) must load the page **in place — no full browser reload**, like a React SPA. The sidebar, top bar, and scroll shell stay mounted; only the main content area swaps.
+
+### How it works
+- **Navigator:** `resources/views/partials/admin-shell-nav.blade.php` — included by both desktop admin layouts (`layouts/admin-club.blade.php`, `layouts/admin.blade.php`). It intercepts clicks on `a[data-shell-link]`, `fetch()`es the destination (sends `X-Requested-With`), parses the response, and swaps it in. Shows a slim top progress bar, updates `document.title`, the active nav state, and `history.pushState`/`popstate`. Modeled on the proven mobile shell navigator (`partials/mobile-shell-nav.blade.php`).
+- **Swap target:** the layout's `<main>` carries `data-shell-main="club"` (or `"platform"`) plus `data-route`. The navigator replaces its `innerHTML` from the destination's matching `<main>`. **If the destination has a different `data-shell-main` value (or none), it hard-loads** — so club↔platform and admin→non-admin links fall back to a real navigation (their sidebars differ).
+- **Page scripts & modals:** pages put JS/modals in `@push('scripts')`/`@push('modals')` (rendered *outside* `<main>`), so `app.blade.php` wraps those stacks in `<div id="shell-scripts">` / `<div id="shell-modals">`. On nav the navigator swaps those regions and runs each **unique** `<script>` **once per session** (deduped by content/`src`, seeded with the first-paint scripts). This is deliberate: desktop admin pages declare top-level `const`/`let`/`function` at global scope (for inline `onclick=`), so re-running the same script would throw "already declared". Globals therefore run once; their functions persist.
+- **Re-init bridge:** after each swap the navigator **dispatches a synthetic `DOMContentLoaded`** and a `shell:navigated` window event. Existing pages gate their init on `DOMContentLoaded`, so this re-runs that init against the freshly-swapped DOM — on first visit AND revisit (the listener registered on first visit persists and re-fires). Alpine re-inits swapped `x-data` via its own mutation observer (the navigator does **not** call `Alpine.initTree`, which would double-initialize).
+- **Speed:** links are **prefetched on hover / touchstart** (15s cache) so the click is usually instant; a top progress bar covers any remaining latency.
+- **Page styles:** `@push('styles')` blocks are injected from the destination's `<head>` on first visit (content-deduped, so globals aren't re-added).
+- **Marking links:** add `data-shell-link data-route="{{ $routeName }}"` to a sidebar `<a>` **only when it stays within the same shell**. Never mark cross-shell links (platform↔club, Back to Explore, external/`target="_blank"`) — leave them as plain links so they hard-load.
+- **In-content links navigate in place automatically.** Beyond the sidebar, the navigator also intercepts any same-origin `<a>` whose path is under the shell's base (`data-shell-base` on `<main>` — `/admin/club/{slug}` or `/admin`), e.g. status-filter and pagination links. Links to *other* sections (member profiles `/member/*`, etc.) fall through to a normal full load. A non-HTML response (file download, redirect, JSON) auto-falls-back to full navigation via a Content-Type + redirect check.
+- **Opt a content link OUT** of in-place nav with `data-no-shell` (e.g. file-download links like the member import template), or `download` / `target="_blank"` / an `onclick` / `data-bs-toggle` (those are skipped automatically).
+
+### What page authors should know
+1. **`DOMContentLoaded` works** — the navigator re-fires it on every swap, so existing `document.addEventListener('DOMContentLoaded', …)` init runs on each visit. New init code can use it, or listen for the `shell:navigated` window event. Put DOM-binding init *inside* that handler (not bare top-level) so it re-runs per visit and binds to the new DOM.
+2. **Top-level declarations run once** — `const`/`let`/`function`/`class` at script top level execute only on the first visit (dedupe). Don't rely on them re-executing; keep per-visit work inside the `DOMContentLoaded`/`shell:navigated` handler.
+3. **Dedup persistent listeners.** A `DOMContentLoaded` handler re-fires every nav, and re-bound `document`/`window` listeners can stack. Prefer delegated listeners, or store the handler on `window.__xxx` and `removeEventListener` the previous one before re-adding (see the mobile-shell dedup note). The navigator itself is guarded with `window.__adminShellNavInit`.
+
+### Mobile shells: cross-shell guard
+All mobile shells reuse `id="shell-content"`, so the mobile navigator can't tell them apart by id alone. Each shell's `<main id="shell-content">` carries a **`data-shell-id`** (`personal` / `admin-club` / `business`); the navigator hard-loads when the destination's `data-shell-id` differs (mirrors the desktop `data-shell-main` guard). **When you add a new mobile shell layout, give its `#shell-content` a unique `data-shell-id`.** Cross-shell links must still be plain `<a>` (no `data-shell-link`).
+
+---
+
+## Navigation Integrity — no dead ends — STRICT
+
+**Rule:** Every clickable control must go to a real, reachable destination. A link/button that 404s, opens a modal that isn't on the page, or is a bare `href="#"` with no handler is a defect — treat it like a broken build.
+
+- **`route('name', …)` must name a real route** with the **correct binding key** — `member.show` binds `{uuid}`, but `member.update`/`edit`/`destroy`/`upload-picture` bind `{id}`; club-admin routes bind `{club}` (id-or-slug via `Route::bind('club')`); many public routes need a `{country}` prefix (`/{country}/clubs/{slug}`). Passing an id to a `{uuid}` route (or omitting `{country}`) is a runtime 404, not a compile error — audit these when linking.
+- **A modal trigger requires the modal on the page.** `data-bs-toggle="modal" data-bs-target="#x"` needs an element `id="x"` in the rendered output; if the real editor is an Alpine component (e.g. `<x-profile-modal>` opening on the `open-profile-modal` window event), dispatch that event instead — `onclick="window.dispatchEvent(new CustomEvent('open-profile-modal'))"`. Don't point at a `#modalId` that doesn't exist.
+- **`data-bs-*` goes through the bridge** (`app.blade.php`), which fires on `data-bs-toggle`. `data-bs-target` **without** `data-bs-toggle` does nothing. `window.bootstrap.Modal` / `bsModal.show()` are shimmed and work.
+- **No placeholder `href="#"`** on a control that implies navigation. Wire it to the real route/tab, or don't render it. Prefer omitting an unbuilt action over shipping a dead button.
+- **JS-built URLs** (`fetch`/`location.href`/template literals) must match a real route pattern — verify against `php artisan route:list` before committing. Dead/orphaned handler clusters that point at removed routes should be deleted, not left dormant.
+- **To verify:** dump the route table (`php artisan route:list --json`) and cross-reference `route('…')` names, then click-test the primary actions on any page you touch.
+
+---
+
+# PART 8 — DATA, UPLOADS & PEOPLE
+## Upload Storage Structure and File Naming — STRICT
+
+**Rule:** Every uploaded file must be stored in a clear, organized, entity-based folder structure, and every stored filename must be generated by the application. Never store uploads using their original client filename.
+
+### Folder structure — build every path with `App\Support\StoragePath`
+
+**Never hand-write a storage path again.** `App\Support\StoragePath` is the single
+source of truth for the layout, and the media layer already goes through it. Every
+path it produces has the same shape:
+
+```
+{owner}/{owner-public-id}/{purpose}/[{child}/{child-id}/]{generated-name}
+```
+
+```
+members/{user-uuid}/profile|documents|payments/{subscription}|posts/{post}
+clubs/{club-slug}/branding|gallery|documents|packages/{id}|products/{id}|posts/{id}
+businesses/{business-slug}/…
+events/{event-uuid}/branding|documents
+events/{event-uuid}/matches/{match-id}/clips/{media-uuid}.mp4     ← a bout's video
+events/{event-uuid}/unassigned/clips/…                            ← filmed with no bout loaded
+challenges/{id}/…      duels/{id}/media/…      platform/{purpose}/…
+cache/hls/{media-uuid}/…        cache/fetched/{media-uuid}/…      ← DERIVED, disposable
+```
+
+Four rules the shape encodes — keep them:
+
+1. **Owner first.** Everything for one member, club or event is one subtree: one
+   place to browse on a NAS, total up, move to another vault, or delete when they
+   leave.
+2. **Public ids, never auto-increment ids**, wherever the entity has one (member =
+   uuid, club = slug, event = uuid). A numeric id is used only where there is no
+   public id yet (a bout, a package) and is safe there because **these paths are
+   never URLs** — media is served by the media file's own uuid through a
+   controller that authorises first.
+3. **Generated names.** A uuid plus a server-decided extension. The uploaded
+   filename is untrusted metadata: keep it in the DB if it is wanted, never on disk.
+4. **Derived files live under `cache/`.** HLS ladders, fetched copies, generated
+   posters. One root, so "delete this to reclaim disk" is always safe and the vault
+   sync knows what never needs to leave this server.
+
+A folder that a human will browse gets a small `meta.json` beside the files
+(`MediaVaults::putMeta()`) — labels only, never a copy of the record. An event
+folder named by a uuid tells somebody standing at a file browser nothing.
+
+Do not dump unrelated uploads into shared flat folders.
+
+> **Legacy folders still exist and are NOT to be moved casually.** `avatars/`,
+> `documents/`, `payment-screenshots/`, `order-proofs/{id}/`, `perks/{slug}/`,
+> `timeline/{slug}/`, `club-products/{id}/`, `packages/`, `achievements/`,
+> `goal-proofs/`, `business-logos/`, `user-posts/`, `images/`, `temp/` predate this
+> and are still read by the code that wrote them. `StoragePath` is the shape
+> everything NEW takes; migrating an old folder is a separate, deliberate change
+> with a verified backup behind it (RULE #1, RULE #2).
+
+### File naming
+- Never store the original uploaded filename.
+- Never store a filename derived from the original name by adding a suffix, prefix, timestamp, or slug.
+- Always generate the stored filename on the server.
+- Use a random, UUID, ULID, hash-like, or timestamp-plus-random generated filename.
+- The extension must be assigned safely by the server based on validated file type rules.
+- The original filename may be discarded entirely or stored only as untrusted metadata when explicitly needed, but never used as the storage filename.
+
+### Display title
+- The human-readable file title must come from a separate form input and be stored separately in the database.
+- The display title is for UI only.
+- The physical stored filename is for storage only.
+- Never treat the original uploaded filename as the display title automatically unless explicitly required and safely sanitized.
+
+### Security requirements
+- Folder paths must be application-generated, never user-controlled.
+- Do not allow path traversal or nested user-provided paths.
+- Files must be validated by authorization, type, size, and real content rules before storage.
+- Sensitive uploads should be stored in private/non-public storage and served through controlled access.
+- Publicly accessible files must still follow generated naming and proper access design.
+
+### Required mindset
+Storage structure must be readable to developers, but filenames must be non-meaningful to attackers.
+Organized folders, random filenames, and separate display titles are mandatory.
+
+---
+
+## Delete Files Before Records — STRICT
+
+**Rule:** Whenever a record owns uploaded files (proof images, photos, documents, attachments, media), the **files MUST be deleted FIRST, then the record**. Never delete a row and leave its uploaded files orphaned in storage. This applies to every delete path — admin actions, cleanup scripts, manual DB maintenance, and bulk wipes.
+
+### How it's enforced in code
+
+- Trait **`App\Traits\DeletesUploadedFiles`** hooks the model's `deleting` event and purges the declared files *before* the row is removed (while the paths are still available). Best-effort: a missing file never blocks the deletion.
+- Each file-bearing model declares its uploads + disk:
+  ```php
+  use App\Traits\DeletesUploadedFiles;
+
+  protected array $fileUploads = [
+      'proof_of_payment' => 'local',   // attribute => disk
+      'refund_proof'     => 'local',
+      'cover_image',                    // bare entry → 'public' disk
+  ];
+  ```
+- On `SoftDeletes` models the trait only purges on a real **force-delete** (a soft-deleted row may be restored).
+- Already applied to: `ClubMemberSubscription` (`proof_of_payment`, `refund_proof` on `local`), `Order` (`payment_proof_path` on `public`). **Apply this trait to any new model that stores file paths.**
+
+### Caveats
+
+- **Eloquent events do NOT fire on mass/bulk deletes** (`Model::query()->delete()` / `->forceDelete()`). For bulk cleanups, either iterate (`->cursor()->each(fn ($m) => $m->forceDelete())`) so the trait runs, or delete the files explicitly alongside the rows.
+- When clearing financial records by hand, also wipe the proof folders: `storage/app/private/payment-proofs/`, `storage/app/public/order-proofs/`, `storage/app/public/payment-screenshots/` (keep the dirs + `.gitignore`).
+
+---
+
+## Image Uploads Must Validate Real Bytes — STRICT
+
+**Rule:** NEVER derive a stored file's extension from the client-supplied data-URI header, and never write request bytes to disk with `file_put_contents`/raw paths. Every base64 image upload MUST go through the **`App\Traits\StoresBase64Images`** trait, which sniffs the real MIME from the decoded bytes, assigns the extension server-side from a whitelist (jpg/png/gif/webp — **SVG rejected**, it can carry script), and returns the stored path (or `null` to reject).
+
+### Why
+The old pattern `$ext = explode('image/', $parts[0])[1]` let a logged-in user upload `shell.php`/`.svg` by lying in the data-URI header → stored XSS, and RCE under the common nginx/php-fpm docroot config. Fixed across all upload endpoints on the `harden/launch-readiness` branch.
+
+### How to add an upload endpoint
+```php
+use App\Traits\StoresBase64Images;   // add to the controller class
+
+$path = $this->storeBase64Image($request->image, $folder, $filenameBase);
+if ($path === null) {
+    return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
+}
+// delete the OLD file only after a successful store, and only if the path changed
+```
+- Validate the request with **`UploadImageRequest`** (or the same rules): `image` = `starts_with:data:image/`; `folder` = `regex:/^[A-Za-z0-9_\-\/]+$/`; `filename` = `regex:/^[A-Za-z0-9_\-]+$/` (blocks traversal + stray extensions).
+- The extension is assigned by the trait — do **not** append `.$ext` yourself, and don't trust `$request->filename` to already carry one.
+- The `$folder` must be built by the app from the owning entity's public id per **Upload Storage Structure and File Naming** — never passed through from raw client input.
+- Endpoint-level regression coverage lives in `tests/Feature/UploadSecurityTest.php`; the trait's unit coverage is `tests/Feature/StoresBase64ImagesTest.php`. Add a case when you add an endpoint.
+
+---
+
+## Canonical Enum Vocabularies — STRICT
+
+**Gender is stored and validated as `Male` / `Female`** everywhere — never `m`/`f`. This was normalized by migration `2026_06_05_000001_normalize_gender_enum_on_users_table` and is the value the `<x-gender-dropdown>` submits. Every FormRequest/controller uses `in:Male,Female`. When writing tests or new forms, send `Male`/`Female`; sending `m`/`f` will fail validation silently (redirect-back with errors, no row created).
+
+---
+
+## Who Fills The Form Decides What It Demands — STRICT
+
+**A person form's required fields depend on WHO is filling it in, never on whether
+it is a create or an edit.** Two cases, and they pull in opposite directions:
+
+- **Staff entering someone else** — super-admin, club owner, club admin, event
+  organiser, appointed event official — must be asked for **a name and nothing
+  else**. They routinely do not have the rest: a referee arrives on a federation
+  list with only a name, an athlete is entered at a weigh-in off a paper sheet, a
+  walk-in is registered at the door mid-session. Forcing a value there does not
+  produce data, it produces an **invented** birthdate — which is worse than a
+  blank, because it looks authoritative and nobody revisits it.
+- **The member on their own profile** — the only person who actually knows these
+  answers. Their form stays strict, and their first visit to the edit screen is
+  the moment worth asking. Anyone else editing a person they know (a guardian and
+  their dependent) stays strict too.
+
+### How it is enforced
+- `User::entersPeopleOnBehalfOfOthers()` is the predicate: super-admin, owns a
+  tenant, holds `club-admin`, or has any `event_officials` row. It decides
+  **strictness only** — never what anyone may DO. Every authorisation check stays
+  exactly where it is; widening this grants no access.
+- `App\Http\Requests\Concerns\PersonFieldRules` supplies the presence rule.
+  Use `$this->personRule('date')` rather than writing `required|date`, and pass
+  the subject's user id on an edit so a member's own profile resolves as strict:
+  `$this->personRule('in:Male,Female', (int) $this->route('id'))`.
+- Applied to `StoreMemberRequest`, `StoreFamilyMemberRequest`,
+  `Admin\StorePlatformMemberRequest`, `UpdateMemberRequest`,
+  `UpdateFamilyMemberRequest`, `UpdateProfileRequest`. **A new person form joins
+  them** — do not hand-write `required` on these fields again.
+
+### Non-negotiables
+- **`full_name` is always required.** A member without a name breaks every
+  listing, card and search result on the platform.
+- **`birthdate` is NEVER required — of anyone, on any form, including a member
+  editing their own profile.** It is the field people least often have to hand,
+  and an invented one is the worst kind of bad data: it drives age groups, weight
+  categories and the minor safeguards, so a guess there is not a cosmetic
+  blemish. The format is still enforced when a value is given (`date`, and
+  `before:today` where it already applied). ⚠️ Consequence to keep in mind: code
+  that asks "is this a minor?" reads a NULL birthdate as an ADULT
+  (`$user->birthdate ? age < 18 : false`), so a missing birthdate silently
+  removes the minor protections — see `PersonalEventController::boutSide()`. If
+  that default is ever wrong for a surface, fix it at that surface; do not fix it
+  by demanding a birthdate.
+- **Format rules are never relaxed.** A gender is still `Male`/`Female`
+  (Canonical Enum Vocabularies), a birthdate is still a date, an email is still
+  an email. Only the demand that a value be *present* is lifted.
+- **The client must agree with the server.** `<x-profile-modal>` computes
+  `$demandPersonFields` from the same predicate and gates its own checks on it. A
+  browser that refuses what the endpoint would accept is a worse bug than no
+  validation, because the user cannot get past it.
+- **Absent is not the same as blank.** On an update, a field the request never
+  sent must be left ALONE; a field sent empty is a deliberate clear. Reading
+  `$validated['gender']` unconditionally lets a partial request wipe a value that
+  was already on file — see the `$optional` block in `MemberController::update()`
+  and `FamilyController::update()` for the shape to copy.
+
+> Rationale: the platform's job is to record what is known, not to extract what
+> is not. A blank field an organiser can fill in later beats a fabricated one
+> nobody knows is fabricated.
+
+---
+
+## Profile Pictures Are Portrait 3:4 — STRICT
+
+**Every profile picture on this platform is portrait: 3 wide by 4 tall.** Stored at
+**600×800**, cropped through the locked `<x-takeone-cropper>` viewport at `300×400`.
+Verified against the real library — 53 of 54 stored pictures are exactly 600×800, and the
+one exception (1194×1579) is the same ratio uploaded at full resolution.
+
+**Never assume square.** Any container that shows a person's face must be 3:4, so the
+crop the member chose is what the reader sees. A `w-10 h-10` avatar silently centre-crops
+a portrait into a square and cuts the top of the head — it does not fail, it just looks
+wrong, which is why this needs stating once rather than being caught per screen.
+
+### How to size one
+Pick the height, then take three-quarters of it for the width:
+
+| Height | Width | Tailwind |
+|---|---|---|
+| 32px | 24px | `w-6 h-8` |
+| 48px | 36px | `w-9 h-12` |
+| 56px | 42px | `w-[42px] h-14` |
+| 64px | 48px | `w-12 h-16` |
+| 128px | 96px | `w-24 h-32` |
+
+Always pair with `object-cover` on the `<img>` and `overflow-hidden` on the container.
+
+### Two rules that travel with it
+- **Fall back to `<x-gender-avatar>`**, not an icon or initials, wherever a real person's
+  face is expected and missing — it is drawn for this ratio.
+- **Honour `users.profile_picture_is_public`** on any surface wider than the member's own
+  profile (bout pages, brackets, court displays, public profiles). It is the member's own
+  choice about their face; `BracketView::photo()` is the reference implementation. No
+  picture is not a bug, and the absence must be silent — never a "hidden" label.
+
+> Applies to club logos too, in the opposite direction: logos are transparent PNGs of
+> arbitrary shape and use `object-contain` on a bare sizing box (Design Rule #5), never a
+> 3:4 crop.
+
+---
+
+## LOCKED — Do Not Modify: Profile Picture Cropper Config
+
+These values are final and must never be changed:
+
+**`resources/views/components/profile-modal.blade.php`** (`<x-takeone-cropper>` call):
+- `width="300"` — viewport crop width
+- `height="400"` — viewport crop height
+- `shape="rectangle"`
+- `:canvasHeight="500"` — canvas work area height (must stay 500, NOT 400)
+
+**`resources/views/vendor/takeone/components/widget.blade.php`** (modal-dialog div):
+- Must use: `class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: {{ $modalMaxWidth }}; width: {{ $modalWidth }}px;"`
+- Do NOT replace with `.modal-lg` or any class-only approach
+- Default params: `$modalMaxWidth = '75%'`, `$modalWidth = 1000`
+
+---
+
+## Payment Gateway
+
+Intentionally **deferred indefinitely** — additional cost not wanted at this stage.
+
+- Do not suggest payment gateway integration (Stripe, Tap, Benefit Pay, etc.)
+- The intended workflow is manual: member uploads proof-of-payment → club admin approves
+- Do not design features that depend on a payment gateway
+
+---
+
+# PART 9 — CONVENTIONS, TESTING, OPS & STATUS
 ## Coding Conventions
 
 - PHP 8.2 — use named arguments, match expressions, null-safe operator where appropriate
@@ -1990,3 +1799,87 @@ The member/family profile "Actions" menu creates records via shared endpoints on
 - **The old `/u/{slug}` wall + follow notifications now redirect to `people.show`** (was `member.show`, which 404'd for non-family). New "view another member" links should target `people.show`, not `member.show`.
 - Follow routes are `wall.follow` (POST) / `wall.unfollow` (DELETE) bound by `{user:slug}` — use the slug, and DELETE to unfollow. Tests: `PeopleDiscoveryTest`.
 - The `/people/{uuid}` binding is the reference for the **Unpredictable Resource Identifiers** rule: public key = uuid, and authorization still runs on every request.
+
+---
+## Never Run Tests With a Cached Config — STRICT
+
+**Rule:** `php artisan config:clear` **before** running the test suite, every time. Only re-run `config:cache` afterwards.
+
+`RefreshDatabase` runs `migrate:fresh`, which **drops every table**. `phpunit.xml` points the suite at `DB_DATABASE=:memory:`, but `config:cache` freezes `env()` into `bootstrap/cache/config.php`, and a cached config silently overrides those phpunit env vars — so the suite runs `migrate:fresh` against the **real database**.
+
+This destroyed the stage database once (2026-08-02). `tests/TestCase.php` now refuses to run while a config cache exists, and refuses any sqlite connection that is not `:memory:`, aborting before a single table is touched. **Do not weaken or bypass that guard.** If it fires, the fix is `php artisan config:clear` — never deleting the check.
+
+Correct order: `config:clear` → `vendor/bin/phpunit` → `config:cache`.
+
+---
+
+## 403s Redirect on Web, Return JSON on API — expected behavior
+
+The global handler in `bootstrap/app.php` intentionally converts a 403:
+- **Browser navigation** (non-JSON) for a logged-in user → `redirect('/')` with an error flash (so a stale higher-privilege page never dead-ends on a raw 403). Access is still denied.
+- **JSON/AJAX** (`expectsJson`) → real `403`.
+
+So authorization tests must assert `assertRedirect('/')` for a `get()` and `assertForbidden()` for a `getJson()` — a browser GET to a forbidden page is a `302`, not a `403`. Don't "fix" the controller to emit 403 on web; that reroute is deliberate.
+
+### Tenant resolution in `role:`/`permission:` middleware
+`CheckRole`/`CheckPermission` resolve the tenant via `resolveTenantId()` (bound `{club}` model → numeric id → `slug` lookup). Do not reintroduce the old inline `$a ?? $b ? c : d` expression — `??` binds tighter than `?:`, so it always resolved by slug and returned `null` under a `{club}` binding, silently defeating any club-scoped role/permission check.
+
+---
+
+## Technical Notes
+
+- **Storage permissions:** `umask(0002)` set in artisan for group-writable storage
+- **Primary color:** 65% lightness (HSL)
+- **Bootstrap replacement:** The project uses a custom JS bridge (`app.blade.php`) that handles `data-bs-*` attributes without Bootstrap CSS/JS. Do not add Bootstrap JS or assume Bootstrap modal/tab APIs work natively — they go through this bridge.
+- **No npm test framework** — verify UI features manually or via dev server
+- **No native browser dialogs** — never use `alert()`, `confirm()`, `prompt()`, or any native browser dialog. Always use `window.showToast(...)` for notifications and custom modals for confirmations.
+
+---
+
+## Skills
+
+### `frontend-design`
+Use the `frontend-design` skill whenever the user asks to build or design new UI — pages, components, modals, cards, sections, or any visual interface work. It generates production-grade, polished frontend code that avoids generic AI aesthetics.
+
+**Trigger on:** "build a page", "create a component", "design a section", "add a new view", "make a modal/card/form", or any request that involves writing new Blade/HTML/CSS.
+
+**Do not trigger on:** pure backend changes, bug fixes to existing UI, or minor copy/label edits.
+
+The skill must still respect every rule in Part 5 — it enhances quality but does not override Design Rule #1 (no unrequested redesigns), the Design System tokens, the Component-First / Standalone rules, or any Security rule.
+
+---
+
+## Financials Feature Status
+
+- Step 1 ✅ `PlatformController@joinClub` auto-creates a `ClubTransaction` on package registration
+- Step 2 ✅ `getMonthlyFinancials()` uses real DB query — dashboard chart works
+- Step 3 ✅ "Cash to Collect" sums `amount_due` from unpaid subscriptions
+- Step 4 🔜 Mark subscription as paid from members admin page — **not started**
+
+---
+
+## Demo Data — Super-Admin Showcase (REMOVABLE before go-live)
+
+A large, cohesive demo dataset wired to the super admin (`superadmin@takeone.bh`) so every surface looks full for demos. **It is fully removable** — built specifically so it can be wiped before going live.
+
+- **Seed:** `php artisan demo:seed` (options: `--clubs=6 --members=40 --admin=<email> --fresh`). Creates a business/chain, N mixed-sport clubs (Taekwondo/Boxing/Fitness/Swimming/Padel/Yoga), trainers, packages+activities with weekly class schedules, members + active subscriptions, club feeds, challenges, events, and shop products. Wires the super admin as owner of every club + business, enrolled in 2 (synced `/me/schedule` classes), coaching 1 (teaching classes), plus personal sessions, feed posts/stories/follows, challenge participations, event registrations and a duel.
+- **Purge:** `php artisan demo:purge` (`--force` to skip prompt). Removes **exactly** what was seeded.
+- **How removal stays exact & safe:** `demo:seed` records every created row id (and any uploaded file) to a **manifest** at `storage/app/private/demo/manifest.json` (`App\Support\DemoManifest`). `demo:purge` reads it, deletes files first (defensively scanning file-bearing columns in case images were uploaded to demo records via the UI), then deletes rows in reverse-FK order inside a transaction. It can never touch real imported members or the super-admin account. Second safety net: demo clubs use slug `demo-*` and demo users `@demo.takeone.bh`.
+- Commands: `app/Console/Commands/DemoSeed.php`, `app/Console/Commands/DemoPurge.php`. Only one manifest at a time (re-seed requires purge or `--fresh`).
+- Demo/trial utilities are **not** exempt from the Security First rules — they run against the real environment and real storage.
+
+---
+
+## Pre-Launch Runbook — operational, NOT code
+
+These are launch gates that live in the **environment/ops**, not the repo — a green test suite does not clear them. Verify before any production go-live. (Surfaced by the launch-readiness audit; code-level findings from that audit are already fixed and codified in the STRICT sections above.)
+
+- **Production env flags (BLOCKER).** The live `.env` must be `APP_ENV=production` + `APP_DEBUG=false` (it was `local`/`true` on `https://takeone.bh`, which leaks a full stack trace + secrets on every error). Also set `LOG_LEVEL=warning` and `LOG_STACK=single,sentry` (so `Log::error()` reaches Sentry). **Re-run `php artisan config:cache` after ANY `.env` change** — caching freezes `env()`.
+- **Warm prod caches on deploy:** `config:cache` + `route:cache` + `event:cache` + `view:cache` — all four now succeed. `view:cache` used to die with `DirectoryNotFoundException` for `vendor/takeone/cropper/src/resources/views`: takeone/cropper's provider registers `__DIR__.'/resources/views'` from `src/`, but ships its views one level up at `resources/views`. `AppServiceProvider::pruneMissingViewPaths()` now drops non-existent paths from every view namespace on `booted()`, so the bad hint is gone before `view:cache` walks it. The published copy at `resources/views/vendor/takeone/` is what resolves at runtime, and still does. **This is a workaround for an upstream package bug** — fix the path in `laravel-image-cropper` and the guard becomes a no-op (keep it; it protects against any package doing the same).
+- **Backups / DR (PARTLY DONE — off-server still a BLOCKER).** `php artisan takeone:backup` snapshots the DB (SQLite `VACUUM INTO` after a WAL checkpoint, so it is consistent under load) plus the upload folders, **verifies each artifact by reading it back**, prunes on a retention window (`BACKUP_RETAIN_DAYS`, never below `BACKUP_KEEP_MINIMUM`) and exits non-zero on any failure. Scheduled nightly at 03:30 in `routes/console.php`; config in `config/backup.php`. ⚠️ **Still required: set `BACKUP_DISK`** to a remote filesystem — until then every copy sits on the same disk as the data and does not survive losing the box (the command warns on every run). Also **the Android release keystore is a blocker of its own**: it is not in this repository, and the Flutter build reads it from `flutter/TV/android/keystore.properties` (git-ignored, absent here — the build falls back to the debug key and cannot produce a store-acceptable artefact). Put the real keystore and that properties file on the release machine, and copy the keystore to secure external storage — losing it means the Play Store app can never be updated. (`/database/*.sqlite*` is now in `.gitignore` — the DB, its `-wal`/`-shm` sidecars, and `.bak-*` snapshots can never be committed. Nothing sqlite was ever tracked, so no history scrub was needed.)
+- **Mail (MAJOR).** Queued mail had failing jobs (`SendQueuedMailable`) — verification emails silently not sending. Diagnose the Gmail SMTP creds, send a real end-to-end verification, then clear `queue:failed`. Mail is real Gmail SMTP (`smtp.gmail.com:465 ssl`), queued — see the no-Mailpit rule.
+- **Datastore at scale (MAJOR).** Production is SQLite (WAL). Fine for a soft launch, but SQLite is single-writer — under concurrent multi-club writes it throws "database is locked". A ready `mysql` connection already sits in `config/database.php`; migrate before real concurrency. Keep WAL checkpoints healthy (the `-wal` file should not dwarf the DB).
+- **Workers as least-privilege.** Supervisor `queue:work` should run as `www-data`, not `root`.
+
+---
+

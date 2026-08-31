@@ -20,6 +20,32 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class EventCameraClip extends Model
 {
+
+    /**
+     * A half-uploaded clip leaves bytes on disk. They go with the row.
+     *
+     * The scratch file is keyed by the clip's id (`camera-uploads/clip-{id}.mp4`)
+     * and an id is REUSED after a delete, so an orphan is not merely wasted disk:
+     * the next clip to be handed that id resumes its upload on top of somebody
+     * else's bytes, and the server — which is the authority on the offset —
+     * cheerfully reports the stale length and produces a spliced, unplayable
+     * file. Nobody would ever look for that.
+     *
+     * Files before records, per the project rule; best-effort, so a missing file
+     * never blocks the delete.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $clip) {
+            rescue(function () use ($clip) {
+                $scratch = storage_path('app/camera-uploads/clip-'.$clip->id.'.mp4');
+
+                if (is_file($scratch)) {
+                    unlink($scratch);
+                }
+            }, null, false);
+        });
+    }
     protected $fillable = [
         'camera_id', 'event_id', 'match_id', 'court', 'angle',
         'started_at', 'ended_at', 'duration_seconds', 'bytes', 'local_ref',

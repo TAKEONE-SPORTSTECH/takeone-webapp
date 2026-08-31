@@ -123,7 +123,7 @@ return [
     'claimed_note' => 'The screen updates itself as results are entered. You can reassign or revoke it at any time.',
 
     // Pairing from inside the event console
-    'pair_unknown' => 'That code does not match a screen waiting to be paired. Check the code on the screen — a code is spent once it has been used.',
+    'pair_unknown' => 'No screen is waiting with that code on this server. Two things produce this: the code was already used (a code is spent once), or the screen is pointed at a different TAKEONE address — a code from takeone.bh is never valid on stage.takeone.bh, or the other way round. Check the address on the screen itself.',
     // Rehearsal only — never offered in production (Tournament::availableActions)
     'action_end_next_bout' => 'End the next bout (test)',
     'end_next_bout_none' => 'No bout is ready to be ended — every queued bout is still waiting on a feeder.',

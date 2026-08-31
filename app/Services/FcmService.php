@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Jobs\SendPushNotification. Push delivery is platform
+ * infrastructure serving every vertical, so it stays shared.
+ */
+
 /**
  * Sends native push notifications to a user's registered devices via
  * Firebase Cloud Messaging (FCM HTTP v1). Zero external SDK: the service-account

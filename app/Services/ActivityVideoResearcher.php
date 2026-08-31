@@ -6,6 +6,12 @@ use App\Models\ActivityCatalog;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by the platform layer (App\Http\Controllers\Admin\PlatformActivityController).
+ * The activity catalog is platform-wide, owned by no club, so this stays shared.
+ */
+
 /**
  * Finds REAL, embeddable YouTube videos for an activity — no YouTube Data API
  * key required. It mirrors the manual research flow: run a search query, take

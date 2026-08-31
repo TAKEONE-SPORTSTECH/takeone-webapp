@@ -1,69 +1,59 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!--
-      TAKEONE — the member's app.
-
-      The one variant that is NOT hall furniture. It keeps its status bar, its
-      rotation and its back button, because it lives in somebody's pocket rather
-      than bolted to a wall, and it is the only build that asks for
-      notifications: a member has to hear about a message after closing the app.
-
-      Permissions are the set the mobile web actually uses — camera for the QR
-      scanner, microphone and location for the features that ask, notifications
-      for the MQTT service. Every hardware feature is required="false" so the
-      app still installs on a phone that lacks one.
-    -->
-
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- The QR scanner, and photo capture in the cropper. -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-feature android:name="android.hardware.microphone" android:required="false" />
-
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
-    <!-- The notification service, and the notifications it posts. -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- The phone must not sleep between bouts. A locked screen is a camera
+         that misses the next hajime. See MainActivity + Kiosk. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- What this build is for. Audio too: a coach reviewing a bout wants the
+         referee's calls, and a silent clip is half a record. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Only for Android 9 and older, where publishing a clip to the phone's
+         media library means writing into the public Movies directory. On 10+
+         MediaStore takes the insert with no permission at all, which is why
+         this is capped rather than requested of every device. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <!--
+        Reading back a clip this app published earlier.
 
-    <!-- A background MQTT connection that Doze is allowed to sever is a member
-         who stops being told things overnight. Asked for, never assumed. -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+        Its OWN clips it can always reach — MediaStore grants the creator access.
+        But ownership is lost when the app is uninstalled, so after a reinstall
+        every clip from the previous install becomes another app's media: on
+        Android 13+ it will not play and it will not delete, and the drawer shows
+        a row that does nothing when pressed. That is not a hypothetical; it is
+        what a phone in the hall was stuck on.
 
-    <!-- The app updates itself: MobileAppController serves /app/manifest.json,
-         the installed app polls it and side-loads the new APK. Without this the
-         download completes and the install silently never happens. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+        READ_MEDIA_VIDEO is the 13+ replacement for READ_EXTERNAL_STORAGE, which
+        is silently ignored there. Video only — this app has no business reading
+        anybody's photos.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- Required, not optional: a device with no camera cannot be one. -->
+    <uses-feature android:name="android.hardware.camera" android:required="true" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="true" />
 
     <application
-        android:label="TAKEONE"
+        android:label="Camera"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false">
 
-        <!-- Which build this is, and where it points. Read natively by
-             MainActivity: the Dart build-time define is invisible to the platform,
-             and the notification service runs with no Flutter engine at all.
-             build.sh stamps the URL in. -->
-        <meta-data android:name="bh.takeone.variant" android:value="app" />
-        <meta-data android:name="bh.takeone.baseUrl" android:value="https://takeone.bh" />
-
+        <!-- Landscape, either way up: the mat is filmed in 16:9, and a phone
+             clamped to a tripod gets turned around as often as not. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="adjustResize"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true">
 
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
@@ -73,32 +63,40 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!--
+                The camera address, claimed by this app.
+
+                One QR for every phone in the hall. Scan it with the camera app
+                installed and Android brings you here; scan it without, and the
+                browser opens the same address and films anyway. Nobody has to
+                know in advance which phone has what on it, which is the whole
+                point — the previous arrangement had one QR that only worked if
+                you had already installed the right APK from the right host, and
+                gave no clue when you hadn't.
+
+                Both hosts are declared because a device is sideloaded from one
+                and may be used against the other; the page itself refuses a code
+                from the wrong server, loudly, by name.
+
+                Without an assetlinks.json served over HTTPS, Android shows a
+                chooser rather than opening this app silently. That is acceptable
+                and still non-blocking — the browser is always one tap away. It
+                becomes a silent open once the release keystore exists and its
+                SHA-256 is published at /.well-known/assetlinks.json.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="takeone.bh" android:path="/camera" />
+                <data android:scheme="https" android:host="stage.takeone.bh" android:path="/camera" />
+            </intent-filter>
         </activity>
-
-        <!-- Carried over from the Capacitor shell this build replaces, verbatim:
-             a proven foreground service that holds one MQTT connection and posts
-             what arrives. It authenticates with the session cookie the WebView
-             already holds. -->
-        <service
-            android:name=".MqttNotificationService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
-
-        <!-- Hands the downloaded APK to the system installer. A file:// URI is
-             refused outright since Android 7, so the update must be offered
-             through a provider the installer is granted read access to. -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
 
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
 </manifest>

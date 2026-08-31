@@ -76,6 +76,28 @@ class Recorder {
         // Asked for, not assumed: 60 is smoother for reviewing a kick frame by
         // frame and costs twice the disk, so the operator chooses per mat.
         fps: fps,
+        // ── THE BIT RATE IS THE UPLOAD TIME ────────────────────────────────
+        //
+        // Left unset, Android picks its own default and picks it high: measured
+        // across three real clips this was 15–18 Mbit/s, which makes a six
+        // minute bout about 775 MB. On a hall's wifi that is roughly twenty
+        // minutes to send — per bout, per lens — and a mat with four cameras
+        // produces three gigabytes a bout. The upload was never slow; the file
+        // was enormous.
+        //
+        // What the footage is FOR decides the number. Nobody grades a bout on
+        // grain: it is watched once by a coach, scrubbed to a moment, and paused
+        // on a kick. 1080p at 8 Mbit/s is visually indistinguishable from 18 at
+        // that job and less than half the bytes; at 60fps it is given half again,
+        // because twice the frames need the headroom to stay clean on motion.
+        //
+        // Resolution deliberately stays at veryHigh. Dropping to 720p would save
+        // as much again and cost the one thing the footage is actually used for —
+        // freezing a frame and seeing whether the foot landed.
+        videoBitrate: fps >= 60 ? 12000000 : 8000000,
+        // Speech, in a loud hall, mono-ish. 128k is generous for it and rounds to
+        // nothing beside the video.
+        audioBitrate: 128000,
       );
 
       await controller.initialize();
@@ -262,11 +284,23 @@ class Recorder {
     }
   }
 
-  static Future<bool> deleteVideo({String? uri, required String path}) async {
+  /// Delete the video, and say WHAT happened rather than just whether it went.
+  ///
+  ///   gone      — the file is no longer there (deleted, or already absent).
+  ///   denied    — the platform will not let this app touch it. The usual cause
+  ///               is a REINSTALL: a clip published to the media library by the
+  ///               previous install is no longer owned by this one, so Android
+  ///               refuses both the delete and, on 13+, the read.
+  ///   failed    — anything else.
+  static Future<({bool gone, bool denied})> deleteVideo({String? uri, required String path}) async {
     try {
-      return await _platform.invokeMethod<bool>('deleteVideo', {'uri': uri, 'path': path}) ?? false;
+      final gone = await _platform.invokeMethod<bool>('deleteVideo', {'uri': uri, 'path': path}) ?? false;
+
+      return (gone: gone, denied: false);
+    } on PlatformException catch (e) {
+      return (gone: false, denied: e.code == 'delete_denied');
     } catch (_) {
-      return false;
+      return (gone: false, denied: false);
     }
   }
 

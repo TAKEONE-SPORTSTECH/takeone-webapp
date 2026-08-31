@@ -103,7 +103,13 @@
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    @foreach ($d['bouts'] as $b)
+                    @php
+    /* Deleting footage is super-admin only and the controller enforces it,
+       so anybody else must not be shown the control at all (Navigation
+       Integrity: no dead ends). Computed once per shelf, not per card. */
+    $mayDelete = (bool) auth()->user()?->hasRole('super-admin');
+@endphp
+                        @foreach ($d['bouts'] as $b)
                         <div x-show="showBout(@js($b['stage']))" x-cloak>
                         <x-bout-vs-card
                             :arena="$b['arena']"
@@ -112,7 +118,8 @@
                             :preview="$b['preview']"
                             :duration="$b['duration']"
                             :angles="$b['angles']"
-                            :shell-link="true" />
+                            :shell-link="true"
+                            :delete-url="$mayDelete ? route('me.events.bout.video.destroy', ['event' => $e['key'], 'matchNo' => $b['match_no']]) : null" />
                         </div>
                     @endforeach
                 </div>

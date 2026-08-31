@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use App\Models\ClubEvent;
-use App\Models\ClubProduct;
+use App\Shop\Models\ClubProduct;
 use App\Models\Duel;
 use App\Models\User;
 use App\Models\UserPost;

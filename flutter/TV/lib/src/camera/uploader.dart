@@ -68,7 +68,6 @@ class ClipUploader {
         if (_cancelled) return 'Upload cancelled.';
 
         final end = (offset + _chunk) > total ? total : offset + _chunk;
-        final body = await source.openRead(offset, end).expand((c) => c).toList();
         final isLast = end >= total;
 
         final request = await _client.postUrl(
@@ -78,7 +77,18 @@ class ClipUploader {
         request.headers.set(HttpHeaders.acceptHeader, 'application/json');
         request.headers.set(HttpHeaders.contentTypeHeader, 'application/octet-stream');
         request.headers.set('Upload-Offset', '$offset');
-        request.add(body);
+
+        // STREAMED, not materialised.
+        //
+        // This used to be `openRead(offset, end).expand((c) => c).toList()`,
+        // which turns eight megabytes into a growable Dart List of eight
+        // million elements before a single byte leaves the phone — allocated,
+        // copied, and held in memory alongside the file read, on a mid-range
+        // handset that is also encoding video. The bytes are already arriving as
+        // chunks from the file; handing that stream straight to the socket costs
+        // nothing and keeps memory flat regardless of the chunk size.
+        request.contentLength = end - offset;
+        await request.addStream(source.openRead(offset, end));
 
         final response = await request.close().timeout(const Duration(minutes: 3));
         final text = await response.transform(utf8.decoder).join();

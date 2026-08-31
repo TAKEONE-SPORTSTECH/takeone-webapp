@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Match Video Card — Standalone</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;600;700;800&family=Zen+Old+Mincho:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!-- Flag icons (CDN — swap for self-host if desired) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css">
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   PAGE — dark backdrop just to preview the card
+════════════════════════════════════════════════════════════════════════ */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #0f0f0f; color: #fff;
+    font-family: 'Roboto', system-ui, sans-serif; min-height: 100vh; }
+.page {
+    max-width: 1400px; margin: 0 auto; padding: 40px 24px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BASE VIDEO CARD  (shared with generic / music / match)
+════════════════════════════════════════════════════════════════════════ */
+.yt-video-card { cursor: pointer; display: flex; flex-direction: column; }
+.yt-video-card a { color: inherit; text-decoration: none; }
+
+.yt-video-card .yt-video-thumb {
+    position: relative; aspect-ratio: 16/9;
+    border-radius: 12px; overflow: hidden; background: #1a1a1a;
+}
+.yt-video-card .yt-video-thumb::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+    background-size: 200% 100%;
+    animation: thumb-shimmer 1.4s ease infinite;
+    z-index: 0; border-radius: inherit;
+}
+@keyframes thumb-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.yt-video-card .yt-video-thumb.loaded::before { animation: none; opacity: 0; }
+
+.yt-video-card .yt-video-thumb img {
+    width: 100%; height: 100%; object-fit: cover;
+    position: absolute; top: 0; left: 0; opacity: 0;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    z-index: 1;
+}
+.yt-video-card .yt-video-thumb img.loaded { opacity: 1; }
+.yt-video-card:hover .yt-video-thumb img.loaded { transform: scale(1.03); }
+
+.yt-video-card .yt-video-thumb video {
+    width: 100%; height: 100%; object-fit: cover;
+    position: absolute; top: 0; left: 0; opacity: 0;
+    transition: opacity 0.3s ease; background: #000; z-index: 2;
+}
+.yt-video-card .yt-video-thumb video.active { opacity: 1; }
+
+.yt-video-card .yt-video-duration {
+    position: absolute; bottom: 8px; right: 8px;
+    background: rgba(0,0,0,0.8); color: white;
+    padding: 3px 6px; border-radius: 4px;
+    font-size: 12px; font-weight: 500; z-index: 3;
+}
+
+.yt-video-card .yt-video-info {
+    display: flex; margin-top: 12px; gap: 12px;
+    height: 76px; overflow: hidden;
+}
+.yt-video-card .yt-channel-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #555; flex-shrink: 0; overflow: hidden;
+    background-size: cover; background-position: center;
+}
+.yt-video-card .yt-video-details { min-width: 0; flex: 1; }
+.yt-video-card .yt-video-title {
+    font-size: 16px; font-weight: 500; color: #fff;
+    margin: 0 0 4px; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.yt-video-card .yt-video-title a { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yt-video-card .yt-video-title a > * { vertical-align: middle; }
+.yt-video-card .yt-channel-name,
+.yt-video-card .yt-video-meta {
+    color: #aaa; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 22px; height: 22px;
+}
+.yt-type-label {
+    font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
+}
+.yt-type-match { color: #60a5fa; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   VS MINI — arena intro that plays inside the thumb
+════════════════════════════════════════════════════════════════════════ */
+.yt-video-thumb .vs-mini {
+    position: absolute; inset: 0; z-index: 1;
+    background: #050507;
+    font-family: 'Barlow Condensed', sans-serif;
+    color: #e8e6e0; overflow: hidden; pointer-events: none;
+    --vs-mini-scale: 0.5;
+    --vs-mini-w: 1920px; --vs-mini-h: 1080px;
+}
+.yt-video-card:hover .yt-video-thumb .vs-mini {
+    animation: vsmFadeOut .55s .25s ease forwards;
+}
+.yt-video-card:hover .yt-video-thumb .vs-mini .vs-mini-panel-red   { animation: vsmExplodeL .55s cubic-bezier(.55,0,.7,.2) forwards !important; }
+.yt-video-card:hover .yt-video-thumb .vs-mini .vs-mini-panel-blue  { animation: vsmExplodeR .55s cubic-bezier(.55,0,.7,.2) forwards !important; }
+.yt-video-card:hover .yt-video-thumb .vs-mini .vs-mini-info-red    { animation: vsmExplodeInfoL .5s cubic-bezier(.55,0,.7,.2) forwards !important; }
+.yt-video-card:hover .yt-video-thumb .vs-mini .vs-mini-info-blue   { animation: vsmExplodeInfoR .5s cubic-bezier(.55,0,.7,.2) forwards !important; }
+.yt-video-card:hover .yt-video-thumb .vs-mini .vs-mini-top         { animation: vsmExplodeTop .5s cubic-bezier(.55,0,.7,.2) forwards !important; }
+.yt-video-card:hover .yt-video-thumb .vs-mini .vs-mini-bottom      { animation: vsmExplodeBot .5s cubic-bezier(.55,0,.7,.2) forwards !important; }
+.yt-video-card:hover .yt-video-thumb .vs-mini .vs-mini-center      { animation: vsmExplodeVS  .6s cubic-bezier(.34,1.56,.64,1) forwards !important; }
+.yt-video-card:hover .yt-video-thumb .vs-mini .vs-mini-divider     { animation: vsmDividerOut .35s ease forwards !important; }
+
+.yt-video-thumb:has(.vs-mini) video { z-index: 5 !important; background: transparent !important; }
+
+.vs-mini .vs-mini-stage {
+    position: absolute; left: 50%; top: 50%;
+    width: var(--vs-mini-w); height: var(--vs-mini-h);
+    transform: translate(-50%, -50%) scale(var(--vs-mini-scale));
+    transform-origin: center center;
+    background: radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%);
+    overflow: hidden; will-change: transform; visibility: hidden;
+}
+.vs-mini.vs-mini-fit .vs-mini-stage { visibility: visible; }
+
+@media (hover: none) {
+    .vs-mini, .vs-mini .vs-mini-panel, .vs-mini .vs-mini-info,
+    .vs-mini .vs-mini-top, .vs-mini .vs-mini-center, .vs-mini .vs-mini-bottom {
+        animation: none !important; opacity: 1 !important; transform: none !important;
+    }
+    .vs-mini .vs-mini-panel-red  { transform: translateX(0) !important; }
+    .vs-mini .vs-mini-panel-blue { transform: translateX(0) !important; }
+    .vs-mini .vs-mini-top        { transform: translateX(-50%) !important; }
+    .vs-mini .vs-mini-bottom     { transform: translateX(-50%) !important; }
+    .vs-mini .vs-mini-center     { transform: translate(-50%, -52%) !important; }
+    .vs-mini .vs-mini-photo, .vs-mini .vs-mini-word, .vs-mini .vs-mini-shine { animation: none !important; }
+}
+
+/* ── Panels ── */
+.vs-mini .vs-mini-panel { position: absolute; overflow: hidden; opacity: 0; }
+.vs-mini .vs-mini-panel-red {
+    inset: 0 auto 0 0; width: 56%;
+    background: oklch(0.28 0.09 25);
+    clip-path: polygon(0 0, 100% 0, 82% 100%, 0 100%);
+}
+.vs-mini .vs-mini-panel-blue {
+    inset: 0 0 0 auto; width: 56%;
+    background: oklch(0.28 0.09 255);
+    clip-path: polygon(18% 0, 100% 0, 100% 100%, 0 100%);
+}
+.vs-mini.vs-mini-run .vs-mini-panel-red  { animation: vsmPanelL .9s cubic-bezier(.22,1,.36,1) both; }
+.vs-mini.vs-mini-run .vs-mini-panel-blue { animation: vsmPanelR .9s cubic-bezier(.22,1,.36,1) both; }
+
+.vs-mini .vs-mini-photo {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    animation: vsmDrift 18s ease-in-out infinite;
+}
+.vs-mini .vs-mini-photo-rev { animation-direction: reverse; }
+.vs-mini .vs-mini-scrim-red  { position: absolute; inset: 0;
+    background: linear-gradient(115deg, oklch(0.45 0.18 25 / 0.55) 0%, transparent 55%); }
+.vs-mini .vs-mini-scrim-blue { position: absolute; inset: 0;
+    background: linear-gradient(245deg, oklch(0.45 0.15 255 / 0.55) 0%, transparent 55%); }
+.vs-mini .vs-mini-fade {
+    position: absolute; inset: 0;
+    background:
+        linear-gradient(to top, rgba(5,5,7,.95) 0%, rgba(5,5,7,.72) 22%, rgba(5,5,7,.30) 42%, transparent 62%),
+        linear-gradient(to bottom, rgba(5,5,7,.82) 0%, rgba(5,5,7,.35) 18%, transparent 32%);
+}
+
+/* Divider */
+.vs-mini .vs-mini-divider {
+    position: absolute; top: -6%; bottom: -6%; left: 50%;
+    width: 3px; margin-left: -1.5px;
+    transform: rotate(10.15deg);
+    background: linear-gradient(to bottom, transparent, oklch(0.85 0.16 85 / .9) 20%, oklch(0.85 0.16 85 / .9) 80%, transparent);
+    pointer-events: none; filter: blur(1px);
+}
+
+/* Fighter identity */
+.vs-mini .vs-mini-info {
+    position: absolute; z-index: 6; max-width: 44%;
+    display: flex; flex-direction: column; gap: 13px; opacity: 0;
+}
+.vs-mini .vs-mini-info-red  { left: 43.2px; bottom: 118.8px; align-items: flex-start; }
+.vs-mini .vs-mini-info-blue { right: 43.2px; bottom: 118.8px; align-items: flex-end; text-align: right; }
+.vs-mini.vs-mini-run .vs-mini-info-red  { animation: vsmRiseUp .8s .7s  cubic-bezier(.22,1,.36,1) both; }
+.vs-mini.vs-mini-run .vs-mini-info-blue { animation: vsmRiseUp .8s .85s cubic-bezier(.22,1,.36,1) both; }
+
+.vs-mini .vs-mini-tag {
+    font: 800 21.6px/1 'Barlow Condensed', sans-serif;
+    letter-spacing: .35em; color: #fff;
+    padding: 5.4px 15.1px 5.4px 18.9px;
+}
+.vs-mini .vs-mini-tag-red  { background: oklch(0.55 0.20 25); }
+.vs-mini .vs-mini-tag-blue { background: oklch(0.50 0.16 255); }
+
+.vs-mini .vs-mini-flag-row   { display: flex; align-items: center; gap: 15.1px; }
+.vs-mini .vs-mini-flag-row-r { flex-direction: row-reverse; }
+.vs-mini .vs-mini-flag {
+    width: 56.2px; height: auto; aspect-ratio: 4/3;
+    background-size: cover !important; background-position: center !important;
+    border: 1px solid rgba(255,255,255,.35);
+    box-shadow: 0 4px 18px rgba(0,0,0,.6);
+    display: inline-block; line-height: 0;
+}
+.vs-mini .vs-mini-country      { font: 700 32.4px/1 'Barlow Condensed', sans-serif; letter-spacing: .28em; }
+.vs-mini .vs-mini-country-red  { color: oklch(0.85 0.05 25); }
+.vs-mini .vs-mini-country-blue { color: oklch(0.85 0.05 255); }
+
+.vs-mini .vs-mini-name {
+    font-family: 'Anton', 'Barlow Condensed', sans-serif;
+    font-size: 71.3px; line-height: .95;
+    text-transform: uppercase; color: #fff;
+    text-shadow: 0 6px 30px rgba(0,0,0,.8);
+}
+
+.vs-mini .vs-mini-club-row   { display: flex; align-items: center; gap: 13px; margin-top: 4.3px; }
+.vs-mini .vs-mini-club-row-r { flex-direction: row-reverse; }
+.vs-mini .vs-mini-logo {
+    width: 69.1px; height: 69.1px; border-radius: 50%;
+    background: rgba(255,255,255,.06);
+    background-size: cover; background-position: center;
+    border: 1px solid rgba(255,255,255,.2);
+}
+.vs-mini .vs-mini-club {
+    font: 600 30.2px/1.1 'Barlow Condensed', sans-serif;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: rgba(232,230,224,.9);
+}
+
+.vs-mini .vs-mini-chips-row { display: flex; flex-wrap: wrap; gap: 9.7px; margin-top: 5.4px; }
+.vs-mini .vs-mini-info-blue .vs-mini-chips-row { justify-content: flex-end; }
+.vs-mini .vs-mini-chip-fighter {
+    font: 700 23.8px/1 'Barlow Condensed', sans-serif;
+    letter-spacing: .12em; text-transform: uppercase;
+    padding: 5.4px 14px;
+    background: rgba(10,10,14,.62);
+    border: 1px solid rgba(255,255,255,.25);
+    color: #fff;
+}
+.vs-mini .vs-mini-chip-fighter-gold {
+    border-color: oklch(0.85 0.16 85 / .6);
+    color: oklch(0.87 0.14 85);
+}
+
+.vs-mini .vsm-nullable:empty { display: none; }
+.vs-mini .vsm-nullable-hide  { display: none; }
+.vs-mini .vs-mini-chip.vsm-nullable-chip[data-vsm-empty="1"] { display: none; }
+
+/* Top block */
+.vs-mini .vs-mini-top {
+    position: absolute; top: 34.6px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 10.8px;
+    z-index: 8; width: 92%; pointer-events: none; opacity: 0;
+}
+.vs-mini.vs-mini-run .vs-mini-top { animation: vsmDropIn .8s .5s cubic-bezier(.22,1,.36,1) both; }
+.vs-mini .vs-mini-top-event {
+    font: 700 30.2px/1.05 'Barlow Condensed', sans-serif;
+    letter-spacing: .42em; text-transform: uppercase;
+    color: rgba(232,230,224,.92); text-align: center;
+    text-shadow: 0 2px 14px rgba(0,0,0,.9);
+}
+.vs-mini .vs-mini-top-stage-row { display: flex; align-items: center; gap: 17.3px; }
+.vs-mini .vs-mini-top-line      { height: 2px; width: 64.8px; }
+.vs-mini .vs-mini-top-line-l { background: linear-gradient(to left,  oklch(0.85 0.16 85), transparent); }
+.vs-mini .vs-mini-top-line-r { background: linear-gradient(to right, oklch(0.85 0.16 85), transparent); }
+.vs-mini .vs-mini-top-stage {
+    font-family: 'Anton', 'Barlow Condensed', sans-serif;
+    font-size: 38.9px; letter-spacing: .30em; padding-left: .3em;
+    color: oklch(0.85 0.16 85); text-transform: uppercase;
+}
+.vs-mini .vs-mini-top-weight {
+    font: 700 42px/1.1 'Anton', 'Barlow Condensed', sans-serif;
+    letter-spacing: .28em; padding-left: .28em; text-transform: uppercase;
+    color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.9);
+}
+
+/* Center VS */
+.vs-mini .vs-mini-center {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -52%);
+    z-index: 7; pointer-events: none; opacity: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.vs-mini.vs-mini-run .vs-mini-center { animation: vsmSlam .7s 1.1s cubic-bezier(.22,1,.36,1) both; }
+.vs-mini .vs-mini-word {
+    position: relative;
+    font-family: 'Anton', 'Barlow Condensed', sans-serif;
+    font-size: 183.6px; font-style: italic;
+    color: #fffdf5; line-height: 1;
+    -webkit-text-stroke: 2px oklch(0.85 0.16 85 / 0.6);
+    animation: vsmPulse 2.4s ease-in-out infinite;
+    overflow: visible;
+}
+.vs-mini .vs-mini-shine-wrap { position: absolute; inset: -10% -20%; overflow: hidden; pointer-events: none; }
+.vs-mini .vs-mini-shine {
+    position: absolute; top: 0; bottom: 0; width: 34%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,.16), transparent);
+    animation: vsmShine 5s ease-in-out infinite;
+}
+
+/* Bottom chips */
+.vs-mini .vs-mini-bottom {
+    position: absolute; bottom: 32.4px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 17.3px; z-index: 8; align-items: center;
+    flex-wrap: wrap; justify-content: center; max-width: 94%; opacity: 0;
+}
+.vs-mini.vs-mini-run .vs-mini-bottom { animation: vsmRiseC .8s 1.3s cubic-bezier(.22,1,.36,1) both; }
+.vs-mini .vs-mini-chip {
+    display: flex; align-items: baseline; gap: 8.6px;
+    background: rgba(10,10,14,.72);
+    border: 1px solid oklch(0.85 0.16 85 / .45);
+    padding: 10.8px 23.8px; backdrop-filter: blur(6px);
+}
+.vs-mini .vs-mini-chip-lbl {
+    font: 600 23.8px/1 'Barlow Condensed', sans-serif;
+    letter-spacing: .30em; text-transform: uppercase;
+    color: rgba(232,230,224,.65);
+}
+.vs-mini .vs-mini-chip-val {
+    font-family: 'Anton', 'Barlow Condensed', sans-serif;
+    font-size: 34.6px; color: #fff;
+}
+.vs-mini .vs-mini-diamond {
+    width: 6px; height: 6px; transform: rotate(45deg);
+    background: oklch(0.85 0.16 85);
+}
+
+.yt-video-thumb:has(.vs-mini)::before { display: none; }
+
+/* VS-mini animations */
+@keyframes vsmPulse {
+    0%,100% { text-shadow: 0 0 30px rgba(255,215,120,.55), 0 0 90px rgba(255,170,60,.3); transform: scale(1); }
+    50%     { text-shadow: 0 0 65px rgba(255,220,130,1),   0 0 160px rgba(255,170,60,.7); transform: scale(1.045); }
+}
+@keyframes vsmShine  { 0% { transform: translateX(-130%) skewX(-18deg); } 60%,100% { transform: translateX(230%) skewX(-18deg); } }
+@keyframes vsmDrift  { 0% { transform: translate3d(0,0,0) scale(1.02); } 50% { transform: translate3d(0,-1.2%,0) scale(1.05); } 100% { transform: translate3d(0,0,0) scale(1.02); } }
+@keyframes vsmPanelL { from { opacity: 1; transform: translateX(-105%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes vsmPanelR { from { opacity: 1; transform: translateX( 105%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes vsmRiseUp { from { opacity: 0; transform: translateY(43.2px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes vsmRiseC  { from { opacity: 0; transform: translate(-50%, 43.2px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes vsmDropIn { from { opacity: 0; transform: translate(-50%, -32.4px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes vsmSlam {
+    0%   { opacity: 0; transform: translate(-50%,-52%) scale(3.4) rotate(-6deg); }
+    60%  { opacity: 1; transform: translate(-50%,-52%) scale(.92) rotate(1deg); }
+    80%  {              transform: translate(-50%,-52%) scale(1.06); }
+    100% { opacity: 1; transform: translate(-50%,-52%) scale(1) rotate(0deg); }
+}
+@keyframes vsmFadeOut      { to { opacity: 0; } }
+@keyframes vsmExplodeL     { from { opacity: 1; transform: translateX(0)      scale(1); } to { opacity: 0; transform: translateX(-140%) scale(1.05); } }
+@keyframes vsmExplodeR     { from { opacity: 1; transform: translateX(0)      scale(1); } to { opacity: 0; transform: translateX( 140%) scale(1.05); } }
+@keyframes vsmExplodeInfoL { from { opacity: 1; transform: translate(0,0)    scale(1); } to { opacity: 0; transform: translate(-70%, 40%) scale(.85); } }
+@keyframes vsmExplodeInfoR { from { opacity: 1; transform: translate(0,0)    scale(1); } to { opacity: 0; transform: translate( 70%, 40%) scale(.85); } }
+@keyframes vsmExplodeTop   { from { opacity: 1; transform: translate(-50%,0)    scale(1); } to { opacity: 0; transform: translate(-50%,-120%) scale(.9); } }
+@keyframes vsmExplodeBot   { from { opacity: 1; transform: translate(-50%,0)    scale(1); } to { opacity: 0; transform: translate(-50%, 120%) scale(.9); } }
+@keyframes vsmExplodeVS    {
+    0%   { opacity: 1; transform: translate(-50%,-52%) scale(1)  rotate(0deg); filter: blur(0); }
+    40%  { opacity: 1; transform: translate(-50%,-52%) scale(1.3) rotate(-2deg); filter: blur(1px); }
+    100% { opacity: 0; transform: translate(-50%,-52%) scale(4)  rotate(6deg); filter: blur(8px); }
+}
+@keyframes vsmDividerOut   { to { opacity: 0; transform: rotate(10.15deg) scaleY(0); } }
+
+/* ══════════════════════════════════════════════════════════════════════
+   SCOREBAR MINI — appears while hover-preview video is playing
+════════════════════════════════════════════════════════════════════════ */
+.yt-video-thumb .sbm {
+    position: absolute; inset: 0; z-index: 6;
+    font-family: 'Barlow Condensed', sans-serif;
+    color: #efe9e0; pointer-events: none;
+    opacity: 0; transition: opacity .25s ease .05s;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    --sbm-scale: 0.4;
+}
+.sbm * { box-sizing: border-box; }
+.yt-video-thumb:has(video.active) .sbm { opacity: 1; }
+
+.sbm .sbm-scale {
+    position: absolute; bottom: 0; left: 0;
+    width: 1150px; height: 100px;
+    transform-origin: bottom left;
+    transform: scale(var(--sbm-scale));
+}
+.sbm .sbm-feed-scale {
+    position: absolute; top: 0; left: 0;
+    width: 1150px; height: 100%;
+    transform-origin: top left;
+    transform: scale(var(--sbm-scale));
+    pointer-events: none;
+}
+.sbm .sbm-feed {
+    position: absolute; top: 22px; right: 24px; width: 262px;
+    display: flex; flex-direction: column; gap: 7px;
+}
+.sbm .sbm-feed-hdr {
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+    font-size: 12px; letter-spacing: .3em; color: #d5cfc7; text-transform: uppercase;
+    text-shadow: 0 1px 6px rgba(0,0,0,.9);
+}
+.sbm .sbm-feed-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #e8534a; animation: sbmPulse 1.6s infinite;
+}
+.sbm .sbm-feed-list { display: flex; flex-direction: column; gap: 7px; }
+.sbm .sbm-feed-entry {
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    padding: 7px 10px;
+    background: rgba(10,10,12,.62); backdrop-filter: blur(6px);
+    border-right: 3px solid transparent;
+    animation: sbmRiseIn .45s ease both;
+}
+.sbm .sbm-feed-entry .ts   { font-size: 12px; line-height: 1; letter-spacing: .16em; color: #79736c; }
+.sbm .sbm-feed-entry .name { font-size: 17px; line-height: 1; letter-spacing: .12em; font-weight: 700; color: #efe9e0; text-transform: uppercase; }
+.sbm .sbm-feed-entry .pts  { font-family: 'Zen Old Mincho', serif; font-size: 19px; line-height: 1; font-weight: 700; }
+.sbm.sbm-small .sbm-feed { display: none; }
+
+@keyframes sbmPulse  { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+@keyframes sbmRiseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<!-- ═══ CARD 1 — full data (event, stage, weight, chips) ═══ -->
+<div class="yt-video-card">
+    <a href="#">
+        <div class="yt-video-thumb" onmouseenter="playVideo(this)" onmouseleave="stopVideo(this)">
+            <img src="https://picsum.photos/seed/match-a/640/360" alt="Match" loading="lazy"
+                 onload="this.classList.add('loaded');this.closest('.yt-video-thumb').classList.add('loaded')">
+
+            <!-- ── VS MINI intro ── -->
+            <div class="vs-mini vs-mini-run" data-vs-mini>
+                <div class="vs-mini-stage">
+
+                    <div class="vs-mini-panel vs-mini-panel-red">
+                        <div class="vs-mini-photo" style="background-image:url('https://picsum.photos/seed/fighter-red-a/900/1200')"></div>
+                        <div class="vs-mini-scrim vs-mini-scrim-red"></div>
+                        <div class="vs-mini-fade"></div>
+                    </div>
+                    <div class="vs-mini-panel vs-mini-panel-blue">
+                        <div class="vs-mini-photo vs-mini-photo-rev" style="background-image:url('https://picsum.photos/seed/fighter-blue-a/900/1200')"></div>
+                        <div class="vs-mini-scrim vs-mini-scrim-blue"></div>
+                        <div class="vs-mini-fade"></div>
+                    </div>
+
+                    <div class="vs-mini-divider"></div>
+
+                    <!-- RED -->
+                    <div class="vs-mini-info vs-mini-info-red">
+                        <div class="vs-mini-tag vs-mini-tag-red">AKA · RED</div>
+                        <div class="vs-mini-flag-row">
+                            <span class="vs-mini-flag fi fi-jp"></span>
+                            <div class="vs-mini-country vs-mini-country-red vsm-nullable">JAPAN</div>
+                        </div>
+                        <div class="vs-mini-name vsm-nullable">TANAKA</div>
+                        <div class="vs-mini-club-row">
+                            <div class="vs-mini-logo" style="background-image:url('https://picsum.photos/seed/club-red-a/200/200')"></div>
+                            <div class="vs-mini-club vsm-nullable">Tokyo Dojo</div>
+                        </div>
+                        <div class="vs-mini-chips-row">
+                            <div class="vs-mini-chip-fighter vsm-nullable">18-2</div>
+                            <div class="vs-mini-chip-fighter vs-mini-chip-fighter-gold vsm-nullable">#1</div>
+                            <div class="vs-mini-chip-fighter vsm-nullable">85% KO</div>
+                        </div>
+                    </div>
+
+                    <!-- BLUE -->
+                    <div class="vs-mini-info vs-mini-info-blue">
+                        <div class="vs-mini-tag vs-mini-tag-blue">AO · BLUE</div>
+                        <div class="vs-mini-flag-row vs-mini-flag-row-r">
+                            <span class="vs-mini-flag fi fi-kr"></span>
+                            <div class="vs-mini-country vs-mini-country-blue vsm-nullable">KOREA</div>
+                        </div>
+                        <div class="vs-mini-name vsm-nullable">KIM</div>
+                        <div class="vs-mini-club-row vs-mini-club-row-r">
+                            <div class="vs-mini-logo" style="background-image:url('https://picsum.photos/seed/club-blue-a/200/200')"></div>
+                            <div class="vs-mini-club vsm-nullable">Seoul Academy</div>
+                        </div>
+                        <div class="vs-mini-chips-row">
+                            <div class="vs-mini-chip-fighter vsm-nullable">21-3</div>
+                            <div class="vs-mini-chip-fighter vs-mini-chip-fighter-gold vsm-nullable">#2</div>
+                            <div class="vs-mini-chip-fighter vsm-nullable">72% KO</div>
+                        </div>
+                    </div>
+
+                    <!-- TOP -->
+                    <div class="vs-mini-top">
+                        <div class="vs-mini-top-event vsm-nullable">World Championship 2026</div>
+                        <div class="vs-mini-top-stage-row">
+                            <div class="vs-mini-top-line vs-mini-top-line-l"></div>
+                            <div class="vs-mini-top-stage">Semifinal</div>
+                            <div class="vs-mini-top-line vs-mini-top-line-r"></div>
+                        </div>
+                        <div class="vs-mini-top-weight vsm-nullable">-68 KG</div>
+                    </div>
+
+                    <!-- CENTER VS -->
+                    <div class="vs-mini-center">
+                        <div class="vs-mini-word">VS
+                            <div class="vs-mini-shine-wrap"><div class="vs-mini-shine"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- BOTTOM chips -->
+                    <div class="vs-mini-bottom">
+                        <div class="vs-mini-chip vsm-nullable-chip" data-vsm-empty="0">
+                            <span class="vs-mini-chip-lbl">Match</span><span class="vs-mini-chip-val vsm-nullable">14</span>
+                        </div>
+                        <div class="vs-mini-diamond vs-mini-diamond-mc"></div>
+                        <div class="vs-mini-chip vsm-nullable-chip" data-vsm-empty="0">
+                            <span class="vs-mini-chip-lbl">Court</span><span class="vs-mini-chip-val vsm-nullable">A</span>
+                        </div>
+                        <div class="vs-mini-diamond vs-mini-diamond-cr"></div>
+                        <div class="vs-mini-chip vsm-nullable-chip" data-vsm-empty="0">
+                            <span class="vs-mini-chip-lbl">Referee</span><span class="vs-mini-chip-val vsm-nullable">Sato</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── HOVER-PREVIEW VIDEO ── -->
+            <video preload="metadata" playsinline muted loop>
+                <source src="https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4" type="video/mp4">
+            </video>
+
+            <!-- ── SCOREBAR MINI ── -->
+            <div class="sbm" data-sbm data-sbm-state='{"rounds":[{"n":1,"name":"","start":0},{"n":2,"name":"","start":60},{"n":3,"name":"","start":120}],"points":[{"t":8,"action":"Body kick","pts":2,"side":"red","sr":2,"sb":0},{"t":18,"action":"Punch","pts":1,"side":"blue","sr":2,"sb":1},{"t":34,"action":"Head kick","pts":3,"side":"red","sr":5,"sb":1},{"t":52,"action":"Body kick","pts":2,"side":"blue","sr":5,"sb":3}],"sport":"taekwondo"}'>
+                <div class="sbm-feed-scale">
+                    <div class="sbm-feed" data-sbm-feed>
+                        <div class="sbm-feed-hdr"><span class="sbm-feed-dot"></span><span>Live scoring</span></div>
+                        <div class="sbm-feed-list" data-sbm-feed-list></div>
+                    </div>
+                </div>
+
+                <div class="sbm-scale">
+                    <div style="position:absolute;left:0;right:0;bottom:14px;padding:0 26px;display:flex;align-items:stretch;gap:0;height:84px;pointer-events:none">
+                      <!-- RED -->
+                      <div style="flex:1 1 0;min-width:0;transform:skewX(-9deg);overflow:hidden;background:linear-gradient(90deg, rgba(122,26,22,.94), rgba(180,52,44,.9));border-bottom:3px solid #ff6a5e">
+                        <div style="transform:skewX(9deg);height:100%;padding:0 16px;display:flex;align-items:center;gap:12px">
+                          <div style="width:46px;height:46px;flex:none;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.24);background-size:cover;background-position:center;background-image:url('https://picsum.photos/seed/club-red-a/200/200')"></div>
+                          <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">
+                            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                              <span class="fi fi-jp" style="width:26px;height:17px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.3);background-size:cover !important;background-position:center !important;display:inline-block"></span>
+                              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">TANAKA</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                              <span style="flex:1 1 auto;min-width:0;font-size:12px;letter-spacing:.03em;color:rgba(255,232,228,.85);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Tokyo Dojo</span>
+                            </div>
+                          </div>
+                          <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+                            <span style="font-size:11px;letter-spacing:.24em;color:rgba(255,236,232,.7)">AKA</span>
+                            <span data-sbm-red-score style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.5)">0</span>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- CENTER -->
+                      <div style="width:118px;flex:none;transform:skewX(-9deg);background:rgba(9,9,11,.9);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-bottom:3px solid #2c2a28">
+                        <div data-sbm-round style="transform:skewX(9deg);font-size:11px;letter-spacing:.3em;color:#8f8a83;text-transform:uppercase">Round 1</div>
+                        <div data-sbm-clock style="transform:skewX(9deg);font-size:34px;line-height:1;font-weight:800;color:#efe9e0;font-variant-numeric:tabular-nums">0:00</div>
+                        <div style="transform:skewX(9deg);display:flex;gap:4px">
+                          <span style="width:20px;height:3px;background:#e8534a"></span>
+                          <span style="width:20px;height:3px;background:#e8534a"></span>
+                          <span style="width:20px;height:3px;background:#3a3734"></span>
+                        </div>
+                      </div>
+                      <!-- BLUE -->
+                      <div style="flex:1 1 0;min-width:0;transform:skewX(-9deg);overflow:hidden;background:linear-gradient(90deg, rgba(30,72,140,.9), rgba(18,44,92,.94));border-bottom:3px solid #6aa6ff">
+                        <div style="transform:skewX(9deg);height:100%;padding:0 16px;display:flex;align-items:center;gap:12px">
+                          <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:5px">
+                            <span style="font-size:11px;letter-spacing:.24em;color:rgba(226,238,255,.7)">AO</span>
+                            <span data-sbm-blue-score style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.5)">0</span>
+                          </div>
+                          <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right">
+                            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">KIM</span>
+                              <span class="fi fi-kr" style="width:26px;height:17px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.3);background-size:cover !important;background-position:center !important;display:inline-block"></span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;min-width:0;justify-content:flex-end">
+                              <span style="flex:1 1 auto;min-width:0;font-size:12px;letter-spacing:.03em;color:rgba(226,238,255,.85);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">Seoul Academy</span>
+                            </div>
+                          </div>
+                          <div style="width:46px;height:46px;flex:none;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.24);background-size:cover;background-position:center;background-image:url('https://picsum.photos/seed/club-blue-a/200/200')"></div>
+                        </div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+
+            <span class="yt-video-duration">3:24</span>
+        </div>
+    </a>
+    <div class="yt-video-info">
+        <a href="#" class="yt-channel-icon" style="background-image:url('https://picsum.photos/seed/channel-a/80/80')"></a>
+        <div class="yt-video-details">
+            <h3 class="yt-video-title">
+                <a href="#">
+                    <span>SEMIFINAL –</span>
+                    <span style="color:#2563eb;font-weight:600;"><span class="fi fi-kr" style="width:16px;height:12px;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span>KIM</span>
+                    <span> vs </span>
+                    <span style="color:#ef4444;font-weight:600;"><span class="fi fi-jp" style="width:16px;height:12px;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span>TANAKA</span>
+                    <span> (-68 KG)</span>
+                </a>
+            </h3>
+            <a href="#" class="yt-channel-name">Takeone Sports</a>
+            <div class="yt-video-meta">
+                <span class="yt-type-label yt-type-match"><i>🏆</i> Sports</span>
+                &nbsp;·&nbsp; 12,483 views · 2 days ago
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ CARD 2 — different fighters, minimal data ═══ -->
+<div class="yt-video-card">
+    <a href="#">
+        <div class="yt-video-thumb" onmouseenter="playVideo(this)" onmouseleave="stopVideo(this)">
+            <img src="https://picsum.photos/seed/match-b/640/360" alt="Match" loading="lazy"
+                 onload="this.classList.add('loaded');this.closest('.yt-video-thumb').classList.add('loaded')">
+
+            <div class="vs-mini vs-mini-run" data-vs-mini>
+                <div class="vs-mini-stage">
+                    <div class="vs-mini-panel vs-mini-panel-red">
+                        <div class="vs-mini-photo" style="background-image:url('https://picsum.photos/seed/fighter-red-b/900/1200')"></div>
+                        <div class="vs-mini-scrim vs-mini-scrim-red"></div>
+                        <div class="vs-mini-fade"></div>
+                    </div>
+                    <div class="vs-mini-panel vs-mini-panel-blue">
+                        <div class="vs-mini-photo vs-mini-photo-rev" style="background-image:url('https://picsum.photos/seed/fighter-blue-b/900/1200')"></div>
+                        <div class="vs-mini-scrim vs-mini-scrim-blue"></div>
+                        <div class="vs-mini-fade"></div>
+                    </div>
+                    <div class="vs-mini-divider"></div>
+
+                    <div class="vs-mini-info vs-mini-info-red">
+                        <div class="vs-mini-tag vs-mini-tag-red">AKA · RED</div>
+                        <div class="vs-mini-flag-row">
+                            <span class="vs-mini-flag fi fi-bh"></span>
+                            <div class="vs-mini-country vs-mini-country-red vsm-nullable">BAHRAIN</div>
+                        </div>
+                        <div class="vs-mini-name vsm-nullable">AL KHALIFA</div>
+                    </div>
+
+                    <div class="vs-mini-info vs-mini-info-blue">
+                        <div class="vs-mini-tag vs-mini-tag-blue">AO · BLUE</div>
+                        <div class="vs-mini-flag-row vs-mini-flag-row-r">
+                            <span class="vs-mini-flag fi fi-us"></span>
+                            <div class="vs-mini-country vs-mini-country-blue vsm-nullable">USA</div>
+                        </div>
+                        <div class="vs-mini-name vsm-nullable">JOHNSON</div>
+                    </div>
+
+                    <div class="vs-mini-top">
+                        <div class="vs-mini-top-event vsm-nullable">Asian Open</div>
+                        <div class="vs-mini-top-stage-row">
+                            <div class="vs-mini-top-line vs-mini-top-line-l"></div>
+                            <div class="vs-mini-top-stage">Final</div>
+                            <div class="vs-mini-top-line vs-mini-top-line-r"></div>
+                        </div>
+                        <div class="vs-mini-top-weight vsm-nullable">-80 KG</div>
+                    </div>
+
+                    <div class="vs-mini-center">
+                        <div class="vs-mini-word">VS
+                            <div class="vs-mini-shine-wrap"><div class="vs-mini-shine"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="vs-mini-bottom">
+                        <div class="vs-mini-chip vsm-nullable-chip" data-vsm-empty="0">
+                            <span class="vs-mini-chip-lbl">Match</span><span class="vs-mini-chip-val vsm-nullable">7</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <video preload="metadata" playsinline muted loop>
+                <source src="https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4" type="video/mp4">
+            </video>
+
+            <div class="sbm" data-sbm data-sbm-state='{"rounds":[{"n":1,"name":"","start":0}],"points":[{"t":12,"action":"Punch","pts":1,"side":"red","sr":1,"sb":0}],"sport":"karate"}'>
+                <div class="sbm-feed-scale">
+                    <div class="sbm-feed" data-sbm-feed>
+                        <div class="sbm-feed-hdr"><span class="sbm-feed-dot"></span><span>Live scoring</span></div>
+                        <div class="sbm-feed-list" data-sbm-feed-list></div>
+                    </div>
+                </div>
+                <div class="sbm-scale">
+                    <div style="position:absolute;left:0;right:0;bottom:14px;padding:0 26px;display:flex;align-items:stretch;gap:0;height:84px;pointer-events:none">
+                      <div style="flex:1 1 0;min-width:0;transform:skewX(-9deg);overflow:hidden;background:linear-gradient(90deg, rgba(122,26,22,.94), rgba(180,52,44,.9));border-bottom:3px solid #ff6a5e">
+                        <div style="transform:skewX(9deg);height:100%;padding:0 16px;display:flex;align-items:center;gap:12px">
+                          <div style="width:46px;height:46px;flex:none;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.24)"></div>
+                          <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">
+                            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                              <span class="fi fi-bh" style="width:26px;height:17px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.3);background-size:cover !important;background-position:center !important;display:inline-block"></span>
+                              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">AL KHALIFA</span>
+                            </div>
+                          </div>
+                          <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+                            <span style="font-size:11px;letter-spacing:.24em;color:rgba(255,236,232,.7)">AKA</span>
+                            <span data-sbm-red-score style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff">0</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div style="width:118px;flex:none;transform:skewX(-9deg);background:rgba(9,9,11,.9);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-bottom:3px solid #2c2a28">
+                        <div data-sbm-round style="transform:skewX(9deg);font-size:11px;letter-spacing:.3em;color:#8f8a83;text-transform:uppercase">Round 1</div>
+                        <div data-sbm-clock style="transform:skewX(9deg);font-size:34px;line-height:1;font-weight:800;color:#efe9e0;font-variant-numeric:tabular-nums">0:00</div>
+                      </div>
+                      <div style="flex:1 1 0;min-width:0;transform:skewX(-9deg);overflow:hidden;background:linear-gradient(90deg, rgba(30,72,140,.9), rgba(18,44,92,.94));border-bottom:3px solid #6aa6ff">
+                        <div style="transform:skewX(9deg);height:100%;padding:0 16px;display:flex;align-items:center;gap:12px">
+                          <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:5px">
+                            <span style="font-size:11px;letter-spacing:.24em;color:rgba(226,238,255,.7)">AO</span>
+                            <span data-sbm-blue-score style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff">0</span>
+                          </div>
+                          <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right">
+                            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JOHNSON</span>
+                              <span class="fi fi-us" style="width:26px;height:17px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.3);background-size:cover !important;background-position:center !important;display:inline-block"></span>
+                            </div>
+                          </div>
+                          <div style="width:46px;height:46px;flex:none;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.24)"></div>
+                        </div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+
+            <span class="yt-video-duration">5:12</span>
+        </div>
+    </a>
+    <div class="yt-video-info">
+        <a href="#" class="yt-channel-icon" style="background-image:url('https://picsum.photos/seed/channel-b/80/80')"></a>
+        <div class="yt-video-details">
+            <h3 class="yt-video-title">
+                <a href="#">
+                    <span>FINAL –</span>
+                    <span style="color:#2563eb;font-weight:600;"><span class="fi fi-us" style="width:16px;height:12px;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span>JOHNSON</span>
+                    <span> vs </span>
+                    <span style="color:#ef4444;font-weight:600;"><span class="fi fi-bh" style="width:16px;height:12px;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span>AL KHALIFA</span>
+                    <span> (-80 KG)</span>
+                </a>
+            </h3>
+            <a href="#" class="yt-channel-name">Asian Open TV</a>
+            <div class="yt-video-meta">
+                <span class="yt-type-label yt-type-match"><i>🏆</i> Sports</span>
+                &nbsp;·&nbsp; 45,120 views · 5 days ago
+            </div>
+        </div>
+    </div>
+</div>
+
+</div><!-- /.page -->
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   HOVER PREVIEW — play/stop the sample video on mouse enter/leave
+════════════════════════════════════════════════════════════════════════ */
+function playVideo(element) {
+    const video = element.querySelector('video');
+    if (!video) return;
+    video.currentTime = 0;
+    video.volume = 0.5;
+    video.play().catch(function() {});
+    video.classList.add('active');
+}
+function stopVideo(element) {
+    const video = element.querySelector('video');
+    if (!video) return;
+    video.pause();
+    video.currentTime = 0;
+    video.classList.remove('active');
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   VS-MINI — fit the 1920×1080 canvas to any thumb size, and restart
+   the intro animation on mouseleave so the next hover replays it.
+════════════════════════════════════════════════════════════════════════ */
+(function () {
+    function fit(el) {
+        const host = el.parentElement;
+        if (!host) return;
+        const w = host.clientWidth, h = host.clientHeight;
+        if (!w || !h) return;
+        const portrait = h > w * 1.05;
+        el.classList.toggle('vs-mini-portrait', portrait);
+        const sw = portrait ? 1080 : 1920;
+        const sh = portrait ? 1920 : 1080;
+        el.style.setProperty('--vs-mini-scale', Math.min(w / sw, h / sh));
+        el.classList.add('vs-mini-fit');
+    }
+    const ro = ('ResizeObserver' in window) ? new ResizeObserver(entries => {
+        for (const e of entries) {
+            const el = e.target.querySelector(':scope > .vs-mini');
+            if (el) fit(el);
+        }
+    }) : null;
+    function register(el) {
+        fit(el);
+        if (ro) ro.observe(el.parentElement);
+    }
+    document.querySelectorAll('.vs-mini').forEach(register);
+
+    const hasHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+    if (hasHover) {
+        document.addEventListener('mouseleave', (e) => {
+            const thumb = e.target?.classList?.contains('yt-video-thumb') ? e.target : null;
+            if (!thumb) return;
+            const vsm = thumb.querySelector(':scope > .vs-mini');
+            if (!vsm) return;
+            vsm.classList.remove('vs-mini-run');
+            void vsm.offsetWidth;
+            vsm.classList.add('vs-mini-run');
+        }, true);
+    }
+})();
+
+/* ══════════════════════════════════════════════════════════════════════
+   SCOREBAR MINI — fit the 1150 px canvas, and sync score/round/clock
+   + live scoring feed to the sibling <video>'s currentTime.
+════════════════════════════════════════════════════════════════════════ */
+(function () {
+    function fit(el) {
+        const host = el.parentElement;
+        if (!host) return;
+        const w = host.clientWidth;
+        if (!w) return;
+        el.style.setProperty('--sbm-scale', (w / 1150));
+        el.classList.toggle('sbm-small', w < 340);
+    }
+    function fmtClock(sec) {
+        sec = Math.max(0, Math.floor(sec || 0));
+        return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+    }
+    function currentRound(rounds, t) {
+        if (!rounds || !rounds.length) return { n: 1, name: '', start: 0 };
+        let cur = rounds[0];
+        for (const r of rounds) { if (t >= (r.start || 0)) cur = r; }
+        return cur;
+    }
+    function lastPoint(points, t) {
+        if (!points || !points.length) return null;
+        let last = null;
+        for (const p of points) { if (p.t <= t + 0.001) last = p; else break; }
+        return last;
+    }
+    function pointLabel(p, sport) {
+        sport = (sport || '').toLowerCase();
+        if (sport.startsWith('taekwondo')) {
+            if (p.pts >= 4) return 'Turning body';
+            if (p.pts === 3) return 'Head kick';
+            if (p.pts === 2) return 'Body kick';
+            if (p.pts === 1) return 'Punch';
+        }
+        if (p.pts === 3) return 'Ippon';
+        if (p.pts === 2) return 'Waza-ari';
+        if (p.pts === 1) return 'Yuko';
+        return p.action || 'Point';
+    }
+    function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    const feedColor = (side) => side === 'red' ? '#ff6a5e' : '#6aa6ff';
+
+    function bindLive(sbm) {
+        let state = null;
+        try { state = JSON.parse(sbm.getAttribute('data-sbm-state') || 'null'); }
+        catch (e) { return; }
+        if (!state) return;
+        const thumb = sbm.parentElement;
+        const video = thumb && thumb.querySelector(':scope > video');
+        if (!video) return;
+
+        const redEl   = sbm.querySelector('[data-sbm-red-score]');
+        const blueEl  = sbm.querySelector('[data-sbm-blue-score]');
+        const roundEl = sbm.querySelector('[data-sbm-round]');
+        const clockEl = sbm.querySelector('[data-sbm-clock]');
+        const feedEl  = sbm.querySelector('[data-sbm-feed-list]');
+        let lastR = null, lastB = null, lastRoundTxt = null, lastClk = null, lastFeedSig = null;
+
+        const tick = () => {
+            const t = video.currentTime || 0;
+            const p = lastPoint(state.points, t);
+            const r = currentRound(state.rounds, t);
+
+            const sr = p ? p.sr : 0, sb = p ? p.sb : 0;
+            if (sr !== lastR) { if (redEl)  redEl.textContent  = sr; lastR = sr; }
+            if (sb !== lastB) { if (blueEl) blueEl.textContent = sb; lastB = sb; }
+
+            const roundTxt = r.name || ('Round ' + r.n);
+            if (roundTxt !== lastRoundTxt) { if (roundEl) roundEl.textContent = roundTxt; lastRoundTxt = roundTxt; }
+
+            const clk = fmtClock(Math.max(0, t - (r.start || 0)));
+            if (clk !== lastClk) { if (clockEl) clockEl.textContent = clk; lastClk = clk; }
+
+            if (feedEl) {
+                const seen = (state.points || []).filter(pt => pt.t <= t + 0.001);
+                const last4 = seen.slice(-4).reverse();
+                const sig = last4.map(pt => pt.t + ':' + pt.side + ':' + pt.pts).join(',');
+                if (sig !== lastFeedSig) {
+                    feedEl.innerHTML = last4.map(pt => {
+                        const col = feedColor(pt.side);
+                        return '<div class="sbm-feed-entry" style="border-color:' + col + '">'
+                            +    '<span class="ts">' + fmtClock(pt.t) + '</span>'
+                            +    '<span class="name">' + esc(pointLabel(pt, state.sport)) + '</span>'
+                            +    '<span class="pts" style="color:' + col + '">+' + pt.pts + '</span>'
+                            +  '</div>';
+                    }).join('');
+                    lastFeedSig = sig;
+                }
+            }
+        };
+        video.addEventListener('timeupdate',     tick);
+        video.addEventListener('seeked',         tick);
+        video.addEventListener('loadedmetadata', tick);
+        video.addEventListener('pause',    tick);
+        video.addEventListener('emptied',  tick);
+        tick();
+    }
+
+    const ro = ('ResizeObserver' in window) ? new ResizeObserver(entries => {
+        for (const e of entries) {
+            const el = e.target.querySelector(':scope > .sbm');
+            if (el) fit(el);
+        }
+    }) : null;
+    function register(el) {
+        fit(el);
+        if (ro) ro.observe(el.parentElement);
+        if (!el._sbmBound) { el._sbmBound = true; bindLive(el); }
+    }
+    document.querySelectorAll('.sbm').forEach(register);
+})();
+</script>
+
+</body>
+</html>

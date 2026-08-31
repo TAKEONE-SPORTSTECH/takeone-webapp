@@ -8,6 +8,12 @@ use App\Models\PersonUnion;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http (MemberController, FamilyController, FamilyTreeController)
+ * and App\Models\Person. Kept shared pending the App\Members migration.
+ */
+
 /**
  * The family-tree brain.
  *

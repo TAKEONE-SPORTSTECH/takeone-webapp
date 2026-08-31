@@ -14,6 +14,21 @@
          this is capped rather than requested of every device. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <!--
+        Reading back a clip this app published earlier.
+
+        Its OWN clips it can always reach — MediaStore grants the creator access.
+        But ownership is lost when the app is uninstalled, so after a reinstall
+        every clip from the previous install becomes another app's media: on
+        Android 13+ it will not play and it will not delete, and the drawer shows
+        a row that does nothing when pressed. That is not a hypothetical; it is
+        what a phone in the hall was stuck on.
+
+        READ_MEDIA_VIDEO is the 13+ replacement for READ_EXTERNAL_STORAGE, which
+        is silently ignored there. Video only — this app has no business reading
+        anybody's photos.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <!-- Required, not optional: a device with no camera cannot be one. -->
     <uses-feature android:name="android.hardware.camera" android:required="true" />
@@ -47,6 +62,35 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                The camera address, claimed by this app.
+
+                One QR for every phone in the hall. Scan it with the camera app
+                installed and Android brings you here; scan it without, and the
+                browser opens the same address and films anyway. Nobody has to
+                know in advance which phone has what on it, which is the whole
+                point — the previous arrangement had one QR that only worked if
+                you had already installed the right APK from the right host, and
+                gave no clue when you hadn't.
+
+                Both hosts are declared because a device is sideloaded from one
+                and may be used against the other; the page itself refuses a code
+                from the wrong server, loudly, by name.
+
+                Without an assetlinks.json served over HTTPS, Android shows a
+                chooser rather than opening this app silently. That is acceptable
+                and still non-blocking — the browser is always one tap away. It
+                becomes a silent open once the release keystore exists and its
+                SHA-256 is published at /.well-known/assetlinks.json.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="takeone.bh" android:path="/camera" />
+                <data android:scheme="https" android:host="stage.takeone.bh" android:path="/camera" />
             </intent-filter>
         </activity>
 

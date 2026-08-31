@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\ClubAdmin;
 
-use App\Models\ClubProduct;
-use App\Models\ClubProductVariant;
+use App\Shop\Models\ClubProduct;
+use App\Shop\Models\ClubProductVariant;
 use Tests\TestCase;
 
 class OrderVariantTest extends TestCase

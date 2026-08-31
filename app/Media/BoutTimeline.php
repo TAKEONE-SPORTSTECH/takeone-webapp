@@ -250,11 +250,32 @@ class BoutTimeline
                 'clock' => $this->clock($anchor['t']),
                 'side' => $both ? 'both' : $colours[0],
                 'label' => $this->label($bucket, $sport),
+                // The bare number of points in this moment, beside the phrase.
+                // The card's ticker needs the value on its own — it prints a
+                // "+2" of its own and picks a colour from it — and deriving that
+                // by parsing the label back out of "Waza-ari +2" would make a
+                // display string load-bearing.
+                'points' => array_sum(array_map(fn (array $p) => (int) ($p['points'] ?? 0), $bucket)),
                 'who' => $both
                     ? __('events.bout_video_both_scored')
                     : ($labels[$colours[0]] ?? $colours[0]),
                 'score_red' => $anchor['score_red'],
                 'score_blue' => $anchor['score_blue'],
+                /*
+                 * The individual points that made up this moment, in display
+                 * order. The grouped row above is what a highlights list wants;
+                 * an on-video scoreboard ticker wants the exchange broken back
+                 * out, one entry per corner, and deriving that by parsing the
+                 * label string back apart would make a display string
+                 * load-bearing. Additive: nothing that predates it reads this.
+                 */
+                'deltas' => array_map(fn (array $p) => [
+                    'colour' => $p['colour'],
+                    'points' => (int) ($p['points'] ?? 0),
+                    'kind' => $p['kind'],
+                    'score_red' => $p['score_red'],
+                    'score_blue' => $p['score_blue'],
+                ], $bucket),
                 'names' => [
                     'red' => $match->{($this->corners($match)['a'] === 'red' ? 'a' : 'b').'_name'},
                     'blue' => $match->{($this->corners($match)['a'] === 'blue' ? 'a' : 'b').'_name'},

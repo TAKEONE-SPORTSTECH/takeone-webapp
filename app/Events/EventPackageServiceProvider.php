@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Events\Contracts\EventType;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use ReflectionClass;
 
@@ -41,6 +42,7 @@ class EventPackageServiceProvider extends ServiceProvider
 
             // The event type's own resources.
             $this->bindResources('event-'.$key, $typePath);
+            $this->registerRoutes($typePath);
             $this->registerCommands($typePath);
 
             // Resources shared by every event type of the same sport, when the
@@ -69,6 +71,41 @@ class EventPackageServiceProvider extends ServiceProvider
         return preg_match('/^App\\\\Events\\\\Sports\\\\([^\\\\]+)\\\\/', $namespace, $m)
             ? strtolower($m[1])
             : null;
+    }
+
+    /**
+     * Load the package's own routes, if it ships any.
+     *
+     * A package that serves its own screens needs URLs, and writing them into
+     * routes/web.php is the one thing that would stop a sport being deletable by
+     * removing its directory: the file would keep a block of dead references
+     * that 500 the whole route table. A routes.php beside the package keeps the
+     * rule — add a directory and a registry line, remove the same two.
+     *
+     * Purely additive: a package with no routes.php is untouched, which is every
+     * package that existed before this. Loading in boot() is the documented
+     * pattern for exactly this and survives `route:cache`, because caching walks
+     * the registered routes rather than the files that declared them.
+     */
+    private function registerRoutes(string $path): void
+    {
+        if (! is_file($routes = $path.'/routes.php')) {
+            return;
+        }
+
+        // Inside the `web` group, exactly as routes/web.php is.
+        //
+        // loadRoutesFrom() on its own registers them bare, and bare is not a
+        // smaller version of `web` — it is a different thing. No session, so
+        // `auth` has nothing to read and every organiser is bounced to login;
+        // and no CSRF, so the scoring endpoints would accept a cross-site POST.
+        // A package declaring its own routes must not quietly opt out of the
+        // protections every other route on the platform has.
+        $this->app->booted(function () use ($routes) {
+            Route::middleware('web')->group(function () use ($routes) {
+                require $routes;
+            });
+        });
     }
 
     /**

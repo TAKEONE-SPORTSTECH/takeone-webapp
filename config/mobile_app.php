@@ -20,13 +20,13 @@ return [
     |
     */
 
-    'version_name' => env('ANDROID_VERSION_NAME', '1.9'),
-    'version_code' => (int) env('ANDROID_VERSION_CODE', 10),
+    'version_name' => env('ANDROID_VERSION_NAME', '1.11'),
+    'version_code' => (int) env('ANDROID_VERSION_CODE', 12),
 
     // Public URL/path to the downloadable APK (served from public/).
     'apk_url' => env('ANDROID_APK_URL', '/app/takeone.apk'),
 
     // Short "what's new" note shown on the update screen.
-    'notes' => env('ANDROID_RELEASE_NOTES', "• Fixed app icon (no more cropping)\n• Notification sound\n• Shows connection status"),
+    'notes' => env('ANDROID_RELEASE_NOTES', "• QR scanning works again — the app now asks Android for the camera\n• Stays signed in: the login is saved before the app is closed"),
 
 ];

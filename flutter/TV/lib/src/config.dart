@@ -78,6 +78,43 @@ class Config {
     }
   }
 
+  /// The servers this device may be pointed at, built host first.
+  ///
+  /// takeone.bh and stage.takeone.bh are separate installations with separate
+  /// databases, and a pairing code is a row in ONE of them — so a camera can
+  /// only film an event on the server it enrolled with. That is not a bug to be
+  /// papered over; it is what "two environments" means. What WAS a bug is that
+  /// the camera had no way to move: the mechanism to adopt a sibling host has
+  /// existed here since the shells were written, and the camera never called it,
+  /// so a phone flashed for one server could only reach the other by being
+  /// reinstalled — on a competition morning, over hall wifi, from an APK
+  /// somebody had to find.
+  ///
+  /// Bounded by [adoptable], so this can only ever offer our own hosts.
+  static List<Uri> get servers {
+    final parts = built.host.toLowerCase().split('.');
+    final root = parts.length <= 2 ? built.host.toLowerCase() : parts.sublist(parts.length - 2).join('.');
+
+    final hosts = <String>{built.host.toLowerCase(), root, 'stage.$root'};
+
+    return hosts
+        .map((h) => Uri(scheme: built.scheme, host: h))
+        .where(adoptable)
+        .toList()
+      ..sort((a, b) => a.host == built.host ? -1 : (b.host == built.host ? 1 : a.host.compareTo(b.host)));
+  }
+
+  /// Point this device at one of [servers]. Persisted, like every adoption.
+  static Future<void> use(Uri origin) async {
+    if (!adoptable(origin)) return;
+
+    _adopted = _origin(origin);
+
+    try {
+      await (await SharedPreferences.getInstance()).setString(_hostKey, _origin(origin).toString());
+    } catch (_) {}
+  }
+
   /// Back to the host this box was flashed with.
   static Future<void> forget() async {
     _adopted = null;

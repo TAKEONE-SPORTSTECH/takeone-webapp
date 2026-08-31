@@ -240,42 +240,14 @@ html, body { overflow: hidden !important; height: 100% !important; }
         ->implode('') ?: 'U';
     $sbRole = $sbUser?->isSuperAdmin() ? __('nav.layouts_admin_club_role_super_admin') : __('nav.layouts_admin_club_role_club_admin');
 
-    // Pending member-claimed records (medals + skills) naming this club, awaiting a decision.
-    $pendingVerifications = \App\Models\TournamentEvent::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
-            ->where('verification_status', 'pending')->count()
-        + \App\Models\SkillAcquisition::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
-            ->where('verification_status', 'pending')->count();
-
-    $navGroups = [
-        ['label'=>__('nav.layouts_admin_club_group_overview'), 'items'=>[
-            ['route'=>'admin.club.dashboard',    'icon'=>'bi-speedometer2',   'label'=>__('nav.layouts_admin_club_nav_dashboard')],
-            ['route'=>'admin.club.analytics',    'icon'=>'bi-bar-chart',      'label'=>__('nav.layouts_admin_club_nav_analytics')],
-            ['route'=>'admin.club.financials',   'icon'=>'bi-currency-dollar','label'=>__('nav.layouts_admin_club_nav_financials')],
-        ]],
-        ['label'=>__('nav.layouts_admin_club_group_people'), 'items'=>[
-            ['route'=>'admin.club.members',      'icon'=>'bi-person-plus',    'label'=>__('nav.layouts_admin_club_nav_members')],
-            ['route'=>'admin.club.instructors',  'icon'=>'bi-people',         'label'=>__('nav.layouts_admin_club_nav_instructors')],
-            ['route'=>'admin.club.roles',        'icon'=>'bi-person-lock',    'label'=>__('nav.layouts_admin_club_nav_roles')],
-            ['route'=>'admin.club.achievements.verifications', 'icon'=>'bi-patch-check', 'label'=>__('nav.layouts_admin_club_nav_verifications'), 'badge'=>$pendingVerifications],
-        ]],
-        ['label'=>__('nav.layouts_admin_club_group_programs'), 'items'=>[
-            ['route'=>'admin.club.activities',   'icon'=>'bi-activity',       'label'=>__('nav.layouts_admin_club_nav_activities')],
-            ['route'=>'admin.club.packages',     'icon'=>'bi-box',            'label'=>__('nav.layouts_admin_club_nav_packages')],
-            ['route'=>'admin.club.events',       'icon'=>'bi-calendar-event', 'label'=>__('nav.layouts_admin_club_nav_events')],
-            ['route'=>'admin.club.sparring',     'icon'=>'bi-lightning-charge','label'=>__('event-sparring::messages.label')],
-            ['route'=>'admin.club.facilities',   'icon'=>'bi-geo-alt',        'label'=>__('nav.layouts_admin_club_nav_facilities')],
-        ]],
-        ['label'=>__('nav.layouts_admin_club_group_storefront'), 'items'=>[
-            ['route'=>'admin.club.shop',         'icon'=>'bi-shop',           'label'=>__('nav.layouts_admin_club_nav_shop')],
-            ['route'=>'admin.club.orders',       'icon'=>'bi-bag-check',      'label'=>__('nav.layouts_admin_club_nav_orders')],
-            ['route'=>'admin.club.perks',        'icon'=>'bi-gift',           'label'=>__('nav.layouts_admin_club_nav_perks')],
-        ]],
-        ['label'=>__('nav.layouts_admin_club_group_content'), 'items'=>[
-            ['route'=>'admin.club.timeline',     'icon'=>'bi-newspaper',      'label'=>__('nav.layouts_admin_club_nav_timeline')],
-            ['route'=>'admin.club.gallery',      'icon'=>'bi-images',         'label'=>__('nav.layouts_admin_club_nav_gallery')],
-            ['route'=>'admin.club.achievements', 'icon'=>'bi-trophy',         'label'=>__('nav.layouts_admin_club_nav_achievements')],
-        ]],
-    ];
+    /*
+     * The sidebar is composed from the platform's modules
+     * (app/, config/modules.php) rather than listed here, so adding
+     * or removing a capability is one directory and one registry line — it does
+     * not mean editing this shell. Shape is unchanged: a list of
+     * ['label' => …, 'items' => [...]].
+     */
+    $navGroups = app(\App\Support\Modules\ModuleRegistry::class)->clubAdminNavGroups($club, 'desktop');
 @endphp
 
 <div x-data="{ showNotificationModal: false }">
@@ -373,7 +345,7 @@ html, body { overflow: hidden !important; height: 100% !important; }
 
 </div>{{-- #emp-layout --}}
 
-@include('admin.club.notifications.send-modal')
+@include('clubs::notifications.send-modal')
 
 @include('partials.admin-shell-nav')
 

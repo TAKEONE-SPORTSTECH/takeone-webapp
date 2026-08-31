@@ -1114,7 +1114,7 @@ return [
     'event_cameras_clips' => 'clips',
     'event_cameras_add_another' => 'Another camera',
     'event_cameras_hint' => 'Films this mat. Starts and stops with the bout.',
-    'event_cameras_code_stale' => 'No camera is waiting with that code. If the app on the phone is showing it, reopen the app — it will ask for a new code.',
+    'event_cameras_code_stale' => 'No camera is waiting with that code on this server. Check the address the phone is pointed at — a code from takeone.bh is not valid on stage.takeone.bh, or the other way round. If the phone is on the right server, reopen the app and it will ask for a new code.',
     'event_cameras_footage_upload' => 'Asked the camera to send that bout.',
     'event_cameras_footage_purge' => 'Asked the camera to clear footage it has already sent. Anything not yet uploaded stays on the phone.',
     'event_cameras_footage_play' => 'Asked the camera to play that bout on its own screen.',
@@ -1123,7 +1123,7 @@ return [
     'event_cameras_free_space' => 'Free space',
     'event_cameras_free_space_body' => 'The camera will delete only footage the server has already accepted. Anything not yet uploaded stays on the phone.',
     'event_cameras_free_space_go' => 'Free space',
-    'event_cameras_not_a_camera' => 'That code belongs to a screen, not a camera. Pair it into one of the board positions.',
+    'event_cameras_not_a_camera' => 'That code came from :host/screen, which makes a device a SCREEN — pair it into one of the board positions above. A bout camera is a different app: install it from :host/screen/cam on the phone that will film the mat, and it will show a camera code of its own.',
     'event_cameras_is_a_camera' => 'That is a camera. Pair it into one of this mat\'s camera positions.',
     'event_cameras_title' => 'Cameras',
     'event_cameras_sub' => 'The phones filming this event. They start and stop with the mat.',
@@ -1158,6 +1158,13 @@ return [
     'event_live_recorded' => 'Every broadcast is recorded and kept with the bout.',
     'event_live_word' => 'on air',
     'event_live_web_camera' => 'Filming from a browser',
+    'camera_web_wait' => 'Show this code to the organiser, or let them scan it. This phone starts and stops with the bout once it is on a mat.',
+    'camera_web_note' => 'Keep this page open and the screen on. For footage that survives a lock screen — and can be uploaded later — install the camera app:',
+    'camera_web_standby' => 'Standby',
+    'camera_web_queued' => 'clips to send',
+    'camera_web_enrol_failed' => 'Could not reach the server. Check the phone is on the hall\'s wifi, then reload.',
+    'camera_web_no_lens' => 'This phone would not give the page its camera. Allow camera access in the browser, then reload.',
+    'camera_web_no_record' => 'This browser cannot record video. Use the camera app instead.',
     'event_live_web_camera_hint' => 'Films this mat from a phone with no app on it.',
     'event_live_feed_off' => 'Feed off',
     'event_live_waiting' => 'Told to go live — waiting for the camera',
@@ -1176,6 +1183,14 @@ return [
     'event_screens_other_fleet' => 'That screen is set up for a different sport, so it cannot be sent to this event\'s board. On the screen itself, open takeone.bh/screen and pair the new code it shows.',
     'event_screens_unsupported' => 'This event does not run wall screens, so there is nothing to pair one to.',
     'event_screens_code_needed' => 'Scan a screen, or type the code shown on it.',
+    // A pairing code lives in ONE server's database. takeone.bh and
+    // stage.takeone.bh are separate installations with separate data, so a code
+    // printed by one is meaningless to the other — and the old message ("that
+    // code is stale, reopen the app") sent organisers to do the one thing that
+    // cannot help. Name both hosts: it is the only way the reader can act.
+    'event_screens_other_host' => 'That code belongs to :there, and you are pairing on :here. These are two separate servers, so a code from one is never valid on the other. Either pair it from :there, or point the device at :here and use the new code it shows.',
+    'event_screens_other_host_fix' => 'Point the phone here instead',
+    'event_screens_not_a_code' => 'That QR is not a pairing code. Scan the QR shown on the screen or the camera itself, or type the 6-character code printed under it.',
     'event_screens_mat_needed' => 'Choose which mat this screen shows.',
     'event_manage_documents' => 'Documents',
     'event_manage_documents_count' => '{0} Nothing attached|{1} :count file|[2,*] :count files',

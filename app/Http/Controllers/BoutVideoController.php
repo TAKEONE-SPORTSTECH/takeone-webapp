@@ -123,7 +123,225 @@ class BoutVideoController extends Controller
             'notes' => $notes,
             'canAnnotate' => $this->mayAnnotate($event, $match, $me),
             'canManage' => $this->access->canManage($event, $me),
+            /*
+             * The watch page's own payload.
+             *
+             * The mobile review screen is the standalone "Match Video Page"
+             * design, which drives its scoreboard overlay, its highlights lists
+             * and its up-next rail from three prepared structures rather than
+             * from loose view variables. Building them here keeps the markup
+             * verbatim — only the values change.
+             */
+            'play' => $this->playPayload($event, $match, $timeline, $notes, $angles),
         ]);
+    }
+
+    /* ──────────────────────────────────────────────────────────────────────
+     | The watch page's payload
+     ────────────────────────────────────────────────────────────────────── */
+
+    /**
+     * The highlights lists again, as JSON.
+     *
+     * The watch design re-reads this after a coach note is written so the panel
+     * and the on-video overlay agree without a reload. Same guard as the page:
+     * whoever may WATCH may read what the page already rendered, and nothing
+     * more than the page already rendered.
+     */
+    public function matchData(Request $request, ClubEvent $event, int $matchNo): JsonResponse
+    {
+        $me = Auth::user();
+        $match = $this->boutOr404($event, $matchNo);
+
+        abort_unless($this->mayWatch($event, $match, $me), 403);
+
+        $recording = $this->film->recordings($match)->first();
+
+        $timeline = $recording
+            ? $this->timeline->for($match, $recording)
+            : ['anchored' => false, 'rounds' => [], 'moments' => []];
+
+        $notes = BoutCoachNote::where('match_id', $match->id)
+            ->orderBy('start_seconds')
+            ->get()
+            ->map(fn (BoutCoachNote $n) => $n->present())
+            ->all();
+
+        return response()->json([
+            'success' => true,
+            'rounds' => $this->playRounds($timeline),
+            'reviews' => $this->playReviews($notes),
+        ]);
+    }
+
+
+    /**
+     * The prepared structures the standalone watch design reads.
+     *
+     * Three of them, and each has one job:
+     *
+     *   • `msb`   — the on-video scoreboard. It replays the bout against the
+     *               player's clock, so it needs the exchange broken back out
+     *               into individual points rather than the grouped rows a
+     *               highlights list wants.
+     *   • `rounds` / `reviews` — the highlights panel. The design re-renders
+     *               those lists in the browser from these two arrays, so they
+     *               are handed over in the shape its renderer already reads.
+     *
+     * A note is addressed by its uuid, never by a row id: the numeric `id` here
+     * is a position in this page's own list, which is all the design's in-memory
+     * lookups need, and the uuid beside it is what a write actually travels on.
+     */
+    private function playPayload(
+        ClubEvent $event,
+        EventMatch $match,
+        array $timeline,
+        array $notes,
+        array $angles,
+    ): array {
+        $bout = $this->header($event, $match);
+        $sport = $this->sports->get($event->sport);
+
+        $red = $bout['a']['colour'] === 'red' ? $bout['a'] : $bout['b'];
+        $blue = $bout['a']['colour'] === 'blue' ? $bout['a'] : $bout['b'];
+
+        $subtitle = collect([
+            $event->title,
+            $bout['division'],
+            $bout['court'] ? __('events.bout_card_court').' '.$bout['court'] : null,
+        ])->filter()->implode(' · ');
+
+        return [
+            'video' => [
+                'hls' => $angles[0]['hls'] ?? null,
+                'mp4' => $angles[0]['mp4'] ?? null,
+                'poster' => $angles[0]['poster'] ?? null,
+                'duration' => (int) ($angles[0]['duration'] ?? 0),
+            ],
+            'msb' => [
+                'sport' => $event->sport,
+                'discipline' => $sport?->label(),
+                'subtitle' => $subtitle,
+                'red' => [
+                    'name' => $red['name'],
+                    'flag' => strtolower((string) $red['country']),
+                    'club' => $red['club'],
+                    'club_logo' => null,
+                ],
+                'blue' => [
+                    'name' => $blue['name'],
+                    'flag' => strtolower((string) $blue['country']),
+                    'club' => $blue['club'],
+                    'club_logo' => null,
+                ],
+                'rounds' => collect($timeline['rounds'])->map(fn (array $r) => [
+                    'n' => $r['number'],
+                    'name' => $r['name'],
+                    'start' => (float) $r['start'],
+                ])->values()->all(),
+                'points' => $this->flatPoints($timeline),
+                'defaults' => [],
+            ],
+            'rounds' => $this->playRounds($timeline),
+            'reviews' => $this->playReviews($notes),
+        ];
+    }
+
+    /**
+     * Every scoring point, one row per corner.
+     *
+     * A simultaneous exchange is ONE moment in the highlights list and TWO
+     * points on the scoreboard — the ticker names each corner as it scores.
+     * `deltas` is what the timeline keeps for exactly this.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function flatPoints(array $timeline): array
+    {
+        $out = [];
+
+        foreach ($timeline['moments'] as $moment) {
+            foreach ($moment['deltas'] ?? [] as $delta) {
+                $out[] = [
+                    't' => (float) $moment['t'],
+                    'action' => ucfirst((string) $delta['kind']),
+                    'pts' => (int) $delta['points'],
+                    'side' => $delta['colour'],
+                    'sr' => (int) $delta['score_red'],
+                    'sb' => (int) $delta['score_blue'],
+                ];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The highlights panel's rounds, in the design's own keys.
+     *
+     * Ids are positions in this list. Nothing is addressable through them —
+     * the officiating log is the source and this page cannot write to it — so
+     * they exist only so the renderer can tell one row from another.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function playRounds(array $timeline): array
+    {
+        $flat = $this->flatPoints($timeline);
+        $byRound = collect($timeline['moments'])->keyBy(fn (array $m) => (string) $m['t']);
+        $n = 0;
+
+        return collect($timeline['rounds'])->map(function (array $r) use ($flat, $byRound, &$n) {
+            $points = [];
+
+            foreach ($flat as $p) {
+                $moment = $byRound->get((string) $p['t']);
+
+                if (($moment['round'] ?? null) !== $r['number']) {
+                    continue;
+                }
+
+                $points[] = [
+                    'id' => ++$n,
+                    'match_round_id' => $r['number'],
+                    'timestamp_seconds' => $p['t'],
+                    'action' => $p['action'],
+                    'points' => $p['pts'],
+                    'competitor' => $p['side'],
+                    'notes' => null,
+                    'score_red' => $p['sr'],
+                    'score_blue' => $p['sb'],
+                ];
+            }
+
+            return [
+                'id' => $r['number'],
+                'round_number' => $r['number'],
+                'name' => $r['name'],
+                'start_time_seconds' => (float) $r['start'],
+                'points' => $points,
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * The coach notes, in the design's own keys.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function playReviews(array $notes): array
+    {
+        return collect($notes)->values()->map(fn (array $note, int $i) => [
+            'id' => $i + 1,
+            'uuid' => $note['uuid'],
+            'start_time_seconds' => $note['start'],
+            'end_time_seconds' => $note['end'],
+            'note' => $note['note'],
+            'coach_name' => $note['coach'],
+            'emoji' => $note['emoji'],
+            'position_x' => $note['x'],
+            'position_y' => $note['y'],
+        ])->all();
     }
 
     /* ──────────────────────────────────────────────────────────────────────
@@ -185,12 +403,25 @@ class BoutVideoController extends Controller
      */
     private function officialsPayload(ClubEvent $event): array
     {
-        return EventOfficial::with('user:id,full_name,name')
+        return EventOfficial::with('user:id,full_name,name,nationality,profile_picture,profile_picture_is_public,updated_at')
             ->where('event_id', $event->id)
             ->orderBy('id')
             ->get()
             ->map(fn (EventOfficial $o) => [
                 'name' => $o->user?->full_name ?: ($o->user?->name ?: __('shared.unknown')),
+                // Their face, only if they chose to show it — the same rule the
+                // competitors' corners follow. Absence is silent: the tile keeps
+                // its 3:4 box and simply shows nothing.
+                'photo' => ($o->user?->profile_picture && $o->user->profile_picture_is_public)
+                    ? file_url($o->user->profile_picture).'?v='.($o->user->updated_at?->timestamp ?? 0)
+                    : null,
+                /*
+                 * An official's own nationality — NOT the club-country rule that
+                 * governs a competitor's flag. That rule exists because an
+                 * athlete competes FOR the club that entered them; an official
+                 * is appointed as themselves and enters for nobody.
+                 */
+                'country' => $o->user?->nationality,
                 'role' => match ($o->role) {
                     EventOfficial::ROLE_JURY => __('events.official_referee'),
                     EventOfficial::ROLE_WEIGH_IN => __('events.official_weigh_in'),

@@ -67,6 +67,27 @@ return [
             'bubble' => true,
         ],
 
+        /*
+        | Pairing — every attempt to put a device on a mat, and why it failed.
+        |
+        | Its own file because this is the question that gets asked in a hall,
+        | under time pressure, by somebody who cannot read a stack trace: "I am
+        | holding a code, the screen says it, why won't it pair?" Mixed into the
+        | application log that answer is unfindable; on its own it is one command.
+        |
+        | Safe to keep on permanently: a pairing code is PUBLIC by design (it is
+        | printed a metre tall on a wall) and nothing here records a token, a
+        | session or a credential. Fourteen days is long enough to cover a
+        | competition weekend and the post-mortem after it.
+        */
+        'pairing' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/pairing.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

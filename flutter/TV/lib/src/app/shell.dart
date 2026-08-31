@@ -163,6 +163,25 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  /// Does the APP itself hold Android's camera permission?
+  ///
+  /// Declaring CAMERA in the manifest is not the grant. Android asks the member
+  /// for it at the moment it is needed, and until they say yes the WebView can
+  /// open a camera device that never delivers a frame — which is what a black
+  /// QR scanner is. A shell too old to know the call answers true, so this can
+  /// only ever add a check, never take a working scanner away.
+  Future<bool> _ensureCameraPermission() async {
+    try {
+      return await const MethodChannel('bh.takeone/app')
+              .invokeMethod<bool>('ensureCameraPermission') ??
+          false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return true;
+    }
+  }
+
   /// The phone's back button walks the page history first, and only leaves the
   /// app once there is nothing left to go back to.
   Future<bool> _onWillPop() async {
@@ -248,11 +267,32 @@ class _AppShellState extends State<AppShell> {
                   // Camera for the QR scanner, microphone, and anything else the
                   // page asks for. Granted per request, at the moment the page
                   // asks — never a blanket grant at launch.
-                  onPermissionRequest: (controller, request) async =>
-                      PermissionResponse(
-                    resources: request.resources,
-                    action: PermissionResponseAction.GRANT,
-                  ),
+                  onPermissionRequest: (controller, request) async {
+                    // Two grants have to line up, and only one of them is the
+                    // page's. Saying GRANT here while the APP holds no runtime
+                    // camera permission opens a camera that yields no frames:
+                    // the QR scanner paints a black viewfinder, decodes
+                    // nothing, and raises no error the page could report. So
+                    // ask Android first, and DENY honestly when the member says
+                    // no — a refusal the page can see becomes "type the code
+                    // instead", which is a way through.
+                    final wantsCamera =
+                        request.resources.contains(PermissionResourceType.CAMERA) ||
+                            request.resources
+                                .contains(PermissionResourceType.CAMERA_AND_MICROPHONE);
+
+                    if (wantsCamera && !await _ensureCameraPermission()) {
+                      return PermissionResponse(
+                        resources: request.resources,
+                        action: PermissionResponseAction.DENY,
+                      );
+                    }
+
+                    return PermissionResponse(
+                      resources: request.resources,
+                      action: PermissionResponseAction.GRANT,
+                    );
+                  },
                   onGeolocationPermissionsShowPrompt: (controller, origin) async =>
                       GeolocationPermissionShowPromptResponse(
                     origin: origin,

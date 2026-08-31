@@ -36,6 +36,24 @@ class HallScreenController extends Controller
 
     public function __construct(private ScreenBoard $board) {}
 
+    /**
+     * Will the scoring console actually open for this screen?
+     *
+     * Asked before redirecting to it, so a screen is never sent somewhere that
+     * will refuse it. Mirrors ScoreboardController::canOpenControl() — and the
+     * identical guard both sibling fleets already carry.
+     */
+    private function canServeControl(ScreenDevice $device): bool
+    {
+        if ($device->event?->sport !== self::SPORT || ! $device->court) {
+            return false;
+        }
+
+        $by = $device->created_by ? \App\Models\User::find($device->created_by) : null;
+
+        return $by !== null && app(EventAccess::class)->canScore($device->event, $by);
+    }
+
     /* ---------------- The screen's own doors (token) ---------------- */
 
     /**
@@ -50,7 +68,26 @@ class HallScreenController extends Controller
     {
         $device = ScreenDevice::resolve($token);
 
-        abort_unless($device, 404);
+        // A token that no longer resolves sends the screen back to the start
+        // rather than to a 404 — the same rule the pairing room and both
+        // sibling fleets already follow (ScreenPairingController::show,
+        // CourtDisplayController::board).
+        //
+        // This is the ONLY recovery a screen has. The board it was paired to is
+        // the address the machine remembers and reopens after a power cut, and
+        // that address dies the moment the screen is unpaired, revoked, or its
+        // event is deleted. A 404 then leaves a television — or a tablet with
+        // no BACK key — parked on an error page it cannot leave, and the only
+        // way out was to clear the app's data. Sent to /screen it stands there
+        // showing a fresh pairing code, which is a state somebody in the hall
+        // can act on.
+        //
+        // Still ONE response for a bad token and a revoked screen: a wall
+        // screen is scanned by whoever walks past it, and differing replies
+        // would tell them which tokens are real.
+        if (! $device) {
+            return redirect()->route('screen.new');
+        }
 
         $device->touchSeen();
 
@@ -76,13 +113,29 @@ class HallScreenController extends Controller
 
         // A paired scoring table is a console, not a board. Sent there rather
         // than drawn here, so there is one console page with two front doors.
-        if ($device->surface === 'control') {
+        //
+        // Only when that door will actually open, and only when the URL is not
+        // explicitly asking for a board. The console can be shut — the organiser
+        // who paired the screen may since have lost the right to score — and
+        // redirecting into a refusal leaves a screen in a hall bouncing between
+        // two URLs with nothing on it and no way back: tokenControl() sends a
+        // console it will not open back to HERE, and without this guard this
+        // sent it straight there again. A board it can draw is always better
+        // than an error it cannot leave.
+        if ($device->surface === 'control'
+            && ! in_array($request->query('surface'), ['queue', 'bout'], true)
+            && $this->canServeControl($device)) {
             return redirect()->route('bjj-scoreboard.token-control', $token);
         }
 
         $event = $device->event;
 
-        abort_unless($event->sport === self::SPORT, 404);
+        // Claimed onto an event that is not this sport's any more. Recover the
+        // same way as every other dead end here rather than 404 — the screen
+        // cannot draw this event, but it can always go back and wait for one.
+        if ($event->sport !== self::SPORT) {
+            return redirect()->route('screen.new');
+        }
 
         $state = MatState::forMat($event, $device->court);
         $state->setRelation('event', $event);
@@ -123,8 +176,14 @@ class HallScreenController extends Controller
     {
         $device = ScreenDevice::resolve($token);
 
-        abort_unless($device && $device->isClaimed() && $device->event, 404);
-        abort_unless($device->event->sport === self::SPORT, 404);
+        // A page, not an endpoint — so every dead end here recovers to the
+        // waiting room rather than 404ing, exactly as screen() does. A device
+        // parked on an overlay whose token, pairing or event has gone has no
+        // keyboard to type its way out with.
+        if (! $device || ! $device->isClaimed() || ! $device->event
+            || $device->event->sport !== self::SPORT) {
+            return redirect()->route('screen.new');
+        }
 
         $device->touchSeen();
 
@@ -203,11 +262,18 @@ class HallScreenController extends Controller
     {
         $device = ScreenDevice::resolve($token);
 
-        abort_unless($device, 404);
+        // RETURNED, not aborted — the same rule ScreenPairingController::status
+        // is written to. abort() raises an exception this app rewrites into a
+        // redirect home for a session-bearing browser; the agent then sees 200
+        // and HTML, concludes all is well, and polls a token that no longer
+        // exists for ever. A returned response cannot be rewritten by a handler.
+        if (! $device) {
+            return response()->json(['error' => 'unknown'], 404);
+        }
 
         $device->touchSeen();
 
-        return response()->json(['claimed' => $device->isClaimed()]);
+        return response()->json(['claimed' => $device->isClaimed() && $device->event !== null]);
     }
 
     /** The running order for this screen's mat, for a board that reconnected. */

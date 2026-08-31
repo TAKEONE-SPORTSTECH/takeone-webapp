@@ -70,6 +70,9 @@ class MainActivity : FlutterActivity() {
 
     private val isMemberApp: Boolean by lazy { meta?.getString("bh.takeone.variant") == "app" }
 
+    /** The page waiting on an Android camera dialog — see ensureCameraPermission. */
+    private var pendingCameraResult: MethodChannel.Result? = null
+
     /**
      * The host this build talks to, stamped into the variant manifest by
      * build.sh — the same value the Dart side gets as --dart-define. The
@@ -138,6 +141,13 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "batteryExemption" -> { requestBatteryExemption(); result.success(null) }
+                    // The WebView can hand the PAGE permission to use the
+                    // camera; only Android can hand it to the APP. Declaring
+                    // CAMERA in the manifest is not the grant — without the
+                    // runtime one the camera opens with no frames, so the QR
+                    // scanner shows a black viewfinder that decodes nothing and
+                    // reports no error. Asked at the moment the page asks.
+                    "ensureCameraPermission" -> ensureCameraPermission(result)
                     "downloadAndInstall" -> {
                         val url = call.argument<String>("url")
                         if (url.isNullOrBlank()) result.error("no-url", "No url given.", null)
@@ -481,6 +491,49 @@ class MainActivity : FlutterActivity() {
      * still runs and still receives, and every notification it posts is dropped
      * silently — which reads as "the app stopped telling me things".
      */
+    /**
+     * Ask for the camera, at the moment a page asks for it.
+     *
+     * Answers true once the app itself holds the runtime grant. The WebView's
+     * own permission callback must wait for this and DENY honestly when the
+     * member says no — granting the page a camera the app may not open is the
+     * black-screen scanner.
+     */
+    private fun ensureCameraPermission(result: MethodChannel.Result) {
+        try {
+            if (Build.VERSION.SDK_INT < 23 ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED
+            ) {
+                result.success(true)
+                return
+            }
+
+            // One asker at a time. A second request while the dialog is up would
+            // strand the first, and the page waiting on it would never hear back.
+            pendingCameraResult?.success(false)
+            pendingCameraResult = result
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), 7312)
+        } catch (e: Throwable) {
+            pendingCameraResult = null
+            result.success(false)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != 7312) return
+
+        val granted = grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        pendingCameraResult?.success(granted)
+        pendingCameraResult = null
+    }
+
     private fun ensureNotificationPermission() {
         if (Build.VERSION.SDK_INT < 33) return
 
@@ -631,6 +684,21 @@ class MainActivity : FlutterActivity() {
     override fun onPause() {
         super.onPause()
         isForeground = false
+
+        // Write the WebView's cookies to disk before we lose the foreground.
+        //
+        // The login lives in a cookie, and Android holds cookies in memory and
+        // persists them on its own schedule — so an app the OS kills in the
+        // background can come back having forgotten a session it was told about
+        // minutes earlier. That reads to the member as "it logged me out
+        // again", and the fix is not a longer session on the server: the server
+        // already keeps one for a year and re-authenticates silently from the
+        // remember-me cookie after that. The cookie simply has to survive the
+        // process, and this is the one moment we are guaranteed to get.
+        try {
+            android.webkit.CookieManager.getInstance().flush()
+        } catch (_: Throwable) {
+        }
     }
 
     private fun hideSystemBars() {

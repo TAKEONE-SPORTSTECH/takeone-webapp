@@ -23,7 +23,7 @@
         ->take(12)
         ->get()
         ->map(function ($n) {
-            $product   = $n->subject_id ? \App\Models\ClubProduct::find($n->subject_id) : null;
+            $product   = $n->subject_id ? \App\Shop\Models\ClubProduct::find($n->subject_id) : null;
             $remaining = $product && $product->quantity !== null ? (int) $product->quantity : null;
             if ($remaining === null && preg_match('/(\d+)/', (string) $n->body, $m)) {
                 $remaining = (int) $m[1];

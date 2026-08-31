@@ -471,11 +471,20 @@
                         </div>
                     </template>
 
-                    {{-- Filming with the phone in your hand, no app needed: a
-                         browser viewfinder on this mat. Kept beside the pairing
-                         row because they are the same decision — which phone
-                         films this mat — reached by two different doors. --}}
-                    <div class="flex items-center gap-3 px-3 py-2.5 border-t border-gray-100">
+    {{-- Filming with the phone in your hand, no app needed: a browser
+         viewfinder on this mat. Kept beside the pairing row because they are the
+         same decision — which phone films this mat — reached by two doors.
+
+         ⚠️ SHOWN ONLY WHEN THE SERVER CAN ACTUALLY DO IT. Live broadcasting was
+         removed from this box on 2026-08-27, so `liveStoreUrl` is null and both
+         buttons here were dead: "Open camera" fetched null, which the browser
+         resolves as the CURRENT page, so it silently did nothing at all. It read
+         as the no-app answer to "how do I film this mat" and sent an organiser
+         round in circles while the real answer — install the camera app — sat one
+         row below it. A control that cannot work must not be on the glass
+         (Navigation Integrity: no dead ends). Restore the row by giving
+         `liveStoreUrl` a real endpoint; nothing else here needs to change. --}}
+                    <div x-show="liveStoreUrl" x-cloak class="flex items-center gap-3 px-3 py-2.5 border-t border-gray-100">
                         <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 bg-muted text-muted-foreground/60">
                             <i class="bi bi-phone"></i>
                         </span>
@@ -710,9 +719,17 @@
 
                     {{-- White ground always: a scanner looks for dark modules on
                          a light field. --}}
-                    <div class="mt-3 bg-white rounded-2xl p-2 inline-block">
-                        <img :src="liveQr ? (liveBase + '/' + liveQr.id + '/qr') : ''" alt="" class="w-56 h-56 block">
+                    {{-- Server-rendered, offline: a hall's wifi is captive or
+                         filtered as often as not, and this must not depend on
+                         reaching anything. One fixed address (/camera), so it is
+                         drawn once with the page rather than fetched per stream —
+                         the per-stream endpoint it used to call died with the
+                         live server on 2026-08-27 and had been showing a broken
+                         image ever since. --}}
+                    <div class="mt-3 bg-white rounded-2xl p-2 inline-block [&>svg]:w-56 [&>svg]:h-56 [&>svg]:block">
+                        {!! \App\Support\Qr::svg(url('/camera'), 224) !!}
                     </div>
+                    <p class="text-[11px] font-mono text-muted-foreground mt-2 break-all">{{ preg_replace('#^https?://#', '', url('/camera')) }}</p>
 
                     <p class="text-[11px] text-muted-foreground mt-3 leading-snug">{{ __('personal.event_live_scan_hint') }}</p>
                     <p class="text-[11px] text-muted-foreground/70 mt-1.5 leading-snug flex items-start gap-1.5 text-start">
@@ -754,6 +771,9 @@
                 liveBase: config.liveBase,
                 liveStoreUrl: config.liveStoreUrl,
                 liveQr: null,
+                // The host a scanned QR came from, when it is not this one. Sent
+                // with the pair so the server can name both and write it down.
+                from: null,
                 mats: config.mats || [],
                 listUrl: config.listUrl,
                 pairUrl: config.pairUrl,
@@ -954,44 +974,22 @@
                  * their own device to bring one into existence.
                  */
                 async handMat(mat) {
-                    if (this.busy) return;
-
-                    const existing = this.streamFor(mat);
-
-                    if (existing) {
-                        this.liveQr = { id: existing.id, label: mat };
-                        return;
-                    }
-
-                    this.busy = 'live-' + mat;
-
-                    try {
-                        const stream = await this.reserveStream(mat);
-                        if (stream) this.liveQr = { id: stream.id, label: mat };
-                    } finally {
-                        this.busy = null;
-                    }
+                    // Somebody ELSE's phone films it: show them the address, they
+                    // scan it, their phone enrols and shows a code. A phone with
+                    // the camera app installed is offered the app by Android; a
+                    // phone without one gets the browser camera and works anyway.
+                    this.liveQr = { url: @js(url('/camera')), label: mat };
                 },
 
                 /** Film this mat with the phone in your hand: a browser viewfinder. */
                 async openCameraFor(mat) {
                     if (this.busy) return;
 
-                    const existing = this.streamFor(mat);
-
-                    if (existing && existing.broadcast_url) {
-                        window.location.href = existing.broadcast_url;
-                        return;
-                    }
-
-                    this.busy = 'live-' + mat;
-
-                    try {
-                        const stream = await this.reserveStream(mat);
-                        if (stream && stream.broadcast_url) window.location.href = stream.broadcast_url;
-                    } finally {
-                        this.busy = null;
-                    }
+                    // THIS phone becomes the camera. It enrols at /camera through
+                    // the same door the app uses, shows a code, and is paired into
+                    // one of this mat's camera slots like any other lens — so the
+                    // organiser holding the console can also be the one filming.
+                    window.location.href = @js(route('camera.web'));
                 },
 
                 /** The browser stream reserved for this mat, if any. */
@@ -1104,44 +1102,22 @@
                  * to bring one into existence.
                  */
                 async handMat(mat) {
-                    if (this.busy) return;
-
-                    const existing = this.streamFor(mat);
-
-                    if (existing) {
-                        this.liveQr = { id: existing.id, label: mat };
-                        return;
-                    }
-
-                    this.busy = 'live-' + mat;
-
-                    try {
-                        const stream = await this.reserveStream(mat);
-                        if (stream) this.liveQr = { id: stream.id, label: mat };
-                    } finally {
-                        this.busy = null;
-                    }
+                    // Somebody ELSE's phone films it: show them the address, they
+                    // scan it, their phone enrols and shows a code. A phone with
+                    // the camera app installed is offered the app by Android; a
+                    // phone without one gets the browser camera and works anyway.
+                    this.liveQr = { url: @js(url('/camera')), label: mat };
                 },
 
                 /** No camera answering: open a viewfinder on THIS device instead. */
                 async openCameraFor(mat) {
                     if (this.busy) return;
 
-                    const existing = this.streamFor(mat);
-
-                    if (existing && existing.broadcast_url) {
-                        window.location.href = existing.broadcast_url;
-                        return;
-                    }
-
-                    this.busy = 'live-' + mat;
-
-                    try {
-                        const stream = await this.reserveStream(mat);
-                        if (stream && stream.broadcast_url) window.location.href = stream.broadcast_url;
-                    } finally {
-                        this.busy = null;
-                    }
+                    // THIS phone becomes the camera. It enrols at /camera through
+                    // the same door the app uses, shows a code, and is paired into
+                    // one of this mat's camera slots like any other lens — so the
+                    // organiser holding the console can also be the one filming.
+                    window.location.href = @js(route('camera.web'));
                 },
 
                 /** Create (or find) this mat's stream. Returns its payload, or null. */
@@ -1345,6 +1321,21 @@
                 },
 
                 /**
+                 * A code, or nothing — never a truncation.
+                 *
+                 * `clean()` normalises what a person is TYPING, so trimming as
+                 * they go is right there. A SCANNED value is different: it is
+                 * whole or it is the wrong QR, and slicing it to six characters
+                 * manufactures a code that looks perfectly valid and exists
+                 * nowhere. Refuse instead, so the message can say "wrong QR".
+                 */
+                strict(v) {
+                    const c = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+                    return c.length === 6 ? c : '';
+                },
+
+                /**
                  * Hand-back mode, so the shared scanner returns the value here
                  * instead of navigating to it — the scan is a step inside this
                  * flow, not a way out of the page.
@@ -1359,20 +1350,89 @@
                  * The screen's QR encodes the claim URL, so the code is its last
                  * path segment — but a code typed or scanned bare is just as
                  * valid. Take whichever shape arrives and keep the six characters.
+                 *
+                 * ⚠️ THE HOSTNAME IS PART OF THE ANSWER, and throwing it away was
+                 * a real, repeated, unfixable-looking bug.
+                 *
+                 * A pairing code is six characters in ONE server's database.
+                 * takeone.bh and stage.takeone.bh are separate installations with
+                 * separate data. This used to parse the scanned URL, keep only
+                 * `.pathname`, and POST the last segment to whatever host the
+                 * console happened to be open on — so a camera enrolled on
+                 * production, scanned by an organiser working on stage, sent a
+                 * code stage had never issued. The server answered, correctly and
+                 * uselessly, "no camera is waiting with that code", which reads as
+                 * a broken app and sent people to reopen it. Retrying could never
+                 * help: nothing about a retry changes the host.
+                 *
+                 * The shared scanner already solved this on its NAVIGATE path
+                 * (partials/qr-scanner.blade.php — it follows a QR to the host
+                 * that printed it, and its comment says why). Hand-back mode
+                 * returns before that code runs, so the fix has to live here.
                  */
                 onScan(detail) {
                     const raw = (detail && detail.value) || '';
                     let found = '';
+                    let url = null;
 
                     try {
-                        const parts = new URL(raw, window.location.origin).pathname.split('/').filter(Boolean);
-                        found = this.clean(parts[parts.length - 1] || '');
+                        url = new URL(raw, window.location.origin);
                     } catch (_) {
-                        found = this.clean(raw);
+                        url = null;
                     }
 
-                    if (found.length !== 6) {
-                        window.showToast && window.showToast('error', @js(__('personal.event_screens_code_needed')));
+                    if (url && (url.protocol === 'http:' || url.protocol === 'https:')) {
+                        const there = url.hostname.toLowerCase();
+                        const here = window.location.hostname.toLowerCase();
+
+                        // Somebody else's QR entirely. A poster is world-writable;
+                        // never act on one that is not ours.
+                        if (window.takeoneIsOwnHost && ! window.takeoneIsOwnHost(there)) {
+                            window.showToast && window.showToast('error', @js(__('header.scan_foreign_host')));
+                            return;
+                        }
+
+                        // Ours, but the OTHER environment.
+                        //
+                        // The two hosts are separate installations with separate
+                        // databases, so this code cannot be looked up here. Saying
+                        // only that leaves somebody holding a phone with no next
+                        // step — so the sheet opens on THIS server's camera
+                        // address. Scan it with the same phone and it enrols
+                        // here, which is the actual fix. Explaining a problem is
+                        // not the same as handing over the answer.
+                        //
+                        // ⚠️ It is REPORTED, not silently swallowed. Refusing on
+                        // the client and returning meant the attempt never
+                        // reached the server, so the pairing log — the one thing
+                        // built to end this guessing — recorded nothing at all,
+                        // and a failure the organiser could see was invisible to
+                        // everyone trying to help them. The submit carries the
+                        // scanned host so the SERVER decides and writes it down;
+                        // the toast below is the same answer, shown immediately.
+                        if (there !== here) {
+                            this.from = there;
+                            this.submit();
+                            return;
+                        }
+
+                        const parts = url.pathname.split('/').filter(Boolean);
+                        found = this.strict(parts[parts.length - 1] || '');
+                    } else {
+                        // Not a URL: a bare code, read aloud or typed into the
+                        // scanner's manual field.
+                        found = this.strict(raw);
+                    }
+
+                    // A QR that is not a pairing code at all — a board URL ending
+                    // in a 40-character token, an event page ending in a uuid, the
+                    // venue's wifi poster. `clean()` would have TRUNCATED any of
+                    // those to six plausible characters and submitted a code that
+                    // never existed; `strict()` refuses instead, so the organiser
+                    // is told they scanned the wrong thing rather than being sent
+                    // to hunt a code that was never real.
+                    if (found === '') {
+                        window.showToast && window.showToast('error', @js(__('personal.event_screens_not_a_code')));
                         return;
                     }
 
@@ -1415,7 +1475,7 @@
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             },
-                            body: JSON.stringify({ code: code, court: court, surface: this.surface }),
+                            body: JSON.stringify({ code: code, court: court, surface: this.surface, from_host: this.from || undefined }),
                         });
                         const data = await res.json().catch(() => ({}));
 

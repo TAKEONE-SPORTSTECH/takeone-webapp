@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter/services.dart';
 
+import '../config.dart';
 import 'api.dart';
 import 'clips.dart';
 import 'drawer.dart';
@@ -161,8 +162,16 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
   }
 
   /// Ask the server for a new identity and keep it.
+  /// Bumped on every published camera build. See the note in _enrol().
+  static const String _build = '1.4-lighter';
+
   Future<String?> _enrol() async {
-    final enrolled = await CameraApi.enroll(deviceName: 'Camera', appVersion: '1.0.0');
+    // The version reaches the server on every enrol and shows up in the pairing
+    // log, so "is the phone running the build we think it is?" is answerable
+    // from here instead of by asking somebody to describe their screen. It was
+    // '1.0.0' through three different builds, which made a new install and a
+    // stale one identical in the one place anybody could look.
+    final enrolled = await CameraApi.enroll(deviceName: 'Camera', appVersion: _build);
     final token = enrolled?['token'] as String?;
 
     if (token != null) {
@@ -182,6 +191,64 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
   /// scanning it was told, wrongly, that it belonged to a screen. There is no
   /// state worth preserving here: an unclaimed identity is worth nothing, and
   /// the clips already recorded are indexed on the phone, not by the token.
+  /// "Which server is this camera for?"
+  ///
+  /// A sheet rather than a toggle because there may one day be a third, and
+  /// because the choice deserves to name what it is doing: the code on the
+  /// glass belongs to whichever server is picked here, and pairing it anywhere
+  /// else can only ever fail.
+  Future<void> _pickServer() async {
+    final servers = Config.servers;
+    if (servers.length < 2) return;
+
+    final chosen = await showModalBottomSheet<Uri>(
+      context: context,
+      backgroundColor: Cam.ink,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
+              child: Text('WHICH SERVER',
+                  style: Cam.cap(13, color: Cam.gold, tracking: 0.20)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+              child: Text(
+                'A pairing code belongs to one server. Pick the one the event is on.',
+                style: Cam.body(13),
+              ),
+            ),
+            for (final s in servers)
+              ListTile(
+                onTap: () => Navigator.of(ctx).pop(s),
+                title: Text(s.host,
+                    style: Cam.body(16, color: Cam.paper)),
+                trailing: s.host == Config.base.host
+                    ? const Icon(Icons.check, color: Cam.gold, size: 20)
+                    : null,
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (chosen == null || chosen.host == Config.base.host) return;
+
+    await Config.use(chosen);
+
+    // The token belongs to the OLD server and means nothing on the new one, so
+    // the identity is dropped rather than carried across — the same reasoning as
+    // a 404 from config().
+    await _reenrol();
+  }
+
   Future<void> _reenrol() async {
     await _link?.close();
     await _recorder.close();
@@ -659,14 +726,36 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
   /// row is a nuisance and a half-deleted clip is a lie.
   Future<void> _deleteClips(List<CameraClip> clips) async {
     for (final clip in clips) {
-      final gone = await Recorder.deleteVideo(uri: clip.uri, path: clip.file);
+      final outcome = await Recorder.deleteVideo(uri: clip.uri, path: clip.file);
 
-      if (!gone) continue;
+      /*
+       * A clip this phone can no longer touch must still be able to LEAVE.
+       *
+       * `continue` here meant an entry the platform refuses to delete stayed in
+       * the drawer for ever: pressed, nothing happens, pressed again, nothing
+       * happens, and no reason anywhere. The cause is almost always a reinstall
+       * — a video published to the media library by the previous install is not
+       * owned by this one, so Android refuses the delete and (on 13+) the read,
+       * which is also why the clip will not play.
+       *
+       * Once it is UPLOADED the footage is safe on the server, so keeping a row
+       * that describes a file this app can neither play nor remove is worse than
+       * dropping it: the row is the only thing making it look unfinished. The
+       * video itself stays in the phone's gallery, where the person holding it
+       * can delete it like any other video.
+       */
+      final strand = outcome.denied && clip.isSafelyUploaded;
+
+      if (!outcome.gone && !strand) continue;
 
       _clips.removeWhere((c) => c.file == clip.file);
 
       final serverId = clip.serverId;
-      if (serverId != null) await CameraApi(_token).deleteClip(serverId);
+
+      // Only when the file really went. A stranded row is being forgotten by
+      // this phone, not withdrawn from the event — the organiser's gallery has
+      // the bout and must keep it.
+      if (outcome.gone && serverId != null) await CameraApi(_token).deleteClip(serverId);
     }
 
     await ClipLog.save(_clips);
@@ -820,6 +909,37 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
                   const SizedBox(height: 14),
                   // Chunked 3+3, because this gets read aloud across a hall.
                   Text(_codeChunked(), style: Cam.num(52, tracking: 0.12)),
+                  const SizedBox(height: 8),
+                  // WHICH SERVER THIS CODE BELONGS TO. The TV has always shown
+                  // its host; the camera never did, and that omission cost a
+                  // competition morning: a phone enrolled on takeone.bh was
+                  // paired from a console open on stage.takeone.bh, and since a
+                  // code is six characters in ONE server's database the console
+                  // could only answer "no camera is waiting with that code".
+                  // Nothing on the glass said the two were different places, so
+                  // it read as a broken app and was retried for twenty minutes.
+                  // The host is half of what a pairing code means — print it.
+                  // TAPPABLE. takeone.bh and stage.takeone.bh are separate
+                  // installations with separate databases, so a camera can only
+                  // film an event on the server it enrolled with — and until
+                  // now the only way to move a phone between them was to
+                  // reinstall it, on a competition morning, over hall wifi.
+                  // One tap re-points the app, drops the old identity and asks
+                  // the new server for a fresh code.
+                  GestureDetector(
+                    onTap: _pickServer,
+                    behavior: HitTestBehavior.opaque,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(Config.base.host.toUpperCase(),
+                            style: Cam.cap(13, color: Cam.paper.withValues(alpha: 0.55), tracking: 0.18)),
+                        const SizedBox(width: 6),
+                        Icon(Icons.unfold_more,
+                            size: 15, color: Cam.paper.withValues(alpha: 0.40)),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 14),
                   SizedBox(
                     width: 320,

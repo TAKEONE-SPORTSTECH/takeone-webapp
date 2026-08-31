@@ -11,11 +11,13 @@ use App\Mcp\Tools\EnrollMembersTool;
 use App\Mcp\Tools\EnterEventAthletesTool;
 use App\Mcp\Tools\GetClubTool;
 use App\Mcp\Tools\GetBoutVideoTool;
+use App\Mcp\Tools\GetBjjScoreboardTool;
 use App\Mcp\Tools\GetEventBracketTool;
 use App\Mcp\Tools\GetEventReadinessTool;
 use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
+use App\Mcp\Tools\ListBjjMatchEventsTool;
 use App\Mcp\Tools\ListCourtScreensTool;
 use App\Mcp\Tools\ListEventDocumentsTool;
 use App\Mcp\Tools\ListEventPeopleTool;
@@ -83,10 +85,12 @@ class TakeOneServer extends Server
         ListEventDocumentsTool::class,
         ListEventPeopleTool::class,
         EnterEventAthletesTool::class,
+        GetBjjScoreboardTool::class,
         GetEventBracketTool::class,
         ListEventVideosTool::class,
         GetBoutVideoTool::class,
         GetEventReadinessTool::class,
+        ListBjjMatchEventsTool::class,
         ListCourtScreensTool::class,
         ArrangeEventBracketTool::class,
         ListActivityCatalogTool::class,

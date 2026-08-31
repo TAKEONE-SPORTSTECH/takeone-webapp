@@ -72,7 +72,9 @@ class ScreenPairingController extends Controller
             }
         }
 
-        ['token' => $token] = PendingScreen::begin();
+        ['screen' => $waiting, 'token' => $token] = PendingScreen::begin();
+
+        PairingLog::screenWaiting($request, $waiting);
 
         // A month: long enough that a television which is switched off between
         // competitions comes back as itself, short enough to be forgotten.
@@ -190,11 +192,33 @@ class ScreenPairingController extends Controller
         // page hides the address of anything it cannot serve.
         abort_unless($path && is_file($path), 404);
 
-        return response()->download($path, 'takeone-screen-'.$variant.'.apk', [
+        /*
+         * THE FILENAME CARRIES THE BUILD. This is not cosmetic.
+         *
+         * Every build used to arrive as `takeone-screen-cam.apk`, and a phone
+         * that had downloaded one before already had a file by that name sitting
+         * in Downloads. Uninstall the app, fetch it again, tap to install — and
+         * Android installs whichever `takeone-screen-cam.apk` the file picker
+         * finds first, which is the OLD one. The new build downloads perfectly,
+         * is never installed, and the phone shows the previous interface with no
+         * error anywhere to explain it. A different phone, with an empty
+         * Downloads folder, works immediately — which is exactly the symptom
+         * that was reported, and the only reason it was ever diagnosable.
+         *
+         * A fingerprint of the actual bytes means two builds can never collide
+         * in a Downloads folder, and the name says which one is in hand.
+         */
+        $stamp = substr(hash_file('xxh128', $path) ?: '', 0, 8);
+
+        return response()->download($path, 'takeone-screen-'.$variant.'-'.$stamp.'.apk', [
             'Content-Type' => 'application/vnd.android.package-archive',
             // A sideloader on a TV must fetch the bytes, not a cached 304 from
             // whatever proxy the venue's wifi runs.
             'Cache-Control' => 'no-store, must-revalidate',
+            // And no shared cache anywhere in between may keep a copy: the URL is
+            // stable across builds even though the file behind it is not.
+            'Pragma' => 'no-cache',
+            'ETag' => '"'.$stamp.'"',
         ]);
     }
 
@@ -218,6 +242,20 @@ class ScreenPairingController extends Controller
         $file = self::APPS[$variant] ?? null;
 
         return $file ? storage_path('app/tv/'.$file) : null;
+    }
+
+    /**
+     * A short fingerprint of a published build, or null when there is none.
+     *
+     * Used to make the download link unique per build and to print the id on the
+     * page, so "did I actually install the new one?" is answerable by looking
+     * rather than by describing a screen to somebody over a message.
+     */
+    public static function appStamp(string $variant = 'tv'): ?string
+    {
+        $path = self::appPath($variant);
+
+        return $path && is_file($path) ? substr(hash_file('xxh128', $path) ?: '', 0, 8) : null;
     }
 
     /** Whether a given build has been published. Cheap enough to ask per render. */

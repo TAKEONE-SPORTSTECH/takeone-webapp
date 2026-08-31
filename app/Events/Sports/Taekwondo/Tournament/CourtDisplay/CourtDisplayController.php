@@ -287,7 +287,14 @@ class CourtDisplayController extends Controller
     {
         $device = CourtDisplayDevice::resolve($token);
 
-        abort_unless($device, 404);
+        // RETURNED, not aborted — the same rule ScreenPairingController::status
+        // is written to. abort() raises an exception this app rewrites into a
+        // redirect home for a session-bearing browser; the agent then sees 200
+        // and HTML, concludes all is well, and polls a token that no longer
+        // exists for ever. A returned response cannot be rewritten by a handler.
+        if (! $device) {
+            return response()->json(['error' => 'unknown'], 404);
+        }
 
         $device->touchSeen();
 
@@ -391,6 +398,20 @@ class CourtDisplayController extends Controller
         // Re-checked here, not trusted from the form that offered it: the list
         // is a convenience, this is the authorization.
         abort_unless($event && app(EventAccess::class)->canManage($event, $request->user()), 403);
+
+        // This device belongs to THIS sport's fleet, and its board draws this
+        // sport's competition — so it may only ever be claimed onto an event of
+        // this sport. Missing here for as long as this door has existed: an
+        // organiser who manages events in two sports could pick the other one
+        // from the list and bind the screen to it, and the board would then
+        // render Taekwondo's scoreboard for an event that is not Taekwondo. The
+        // three fleets exist as three tables precisely to stop a sibling package
+        // resolving this device; this is the same guarantee at the other end.
+        //
+        // Verified safe to add on 2026-08-30: zero live devices in any fleet
+        // were bound to a foreign-sport event, so no working screen is stranded.
+        abort_unless($event->sport === 'taekwondo', 404);
+
 
 
         // A screen paired as the scoring table can write results, so pairing one
@@ -594,7 +615,7 @@ class CourtDisplayController extends Controller
             ->orderBy('date')
             ->limit(50)
             ->get()
-            ->filter(fn (ClubEvent $e) => $access->canManage($e, $user))
+            ->filter(fn (ClubEvent $e) => $e->sport === 'taekwondo' && $access->canManage($e, $user))
             ->map(fn (ClubEvent $e) => [
                 'uuid' => $e->uuid,
                 'title' => $e->title,

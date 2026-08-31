@@ -143,14 +143,29 @@ class BoutArena
         }
 
         return [
+            // The card's ticker names a point from the SPORT — a 2 is a body
+            // kick in taekwondo and a waza-ari in karate — and without this it
+            // falls through to the karate names for everybody.
+            'sport' => (string) ($match->event?->sport ?? ''),
             'rounds' => array_map(fn (array $r) => [
                 'n' => $r['number'],
                 'name' => $r['name'],
                 'start' => $r['start'],
             ], $timeline['rounds']),
+            /*
+             * Keyed for the card's ticker, which is the standalone template's
+             * script and is not ours to edit: it reads `pts` for the value it
+             * prints and `action` for the phrase, falling back to a generic
+             * "Point" when neither is there. `label` stays because the review
+             * page's highlights bar already reads it — the two consumers want
+             * the same moment described two ways, and it is cheaper to send both
+             * than to make either of them translate for the other.
+             */
             'points' => array_map(fn (array $m) => [
                 't' => $m['t'],
                 'label' => $m['label'],
+                'action' => $m['label'],
+                'pts' => $m['points'] ?? 0,
                 'side' => $m['side'],
                 'sr' => $m['score_red'],
                 'sb' => $m['score_blue'],

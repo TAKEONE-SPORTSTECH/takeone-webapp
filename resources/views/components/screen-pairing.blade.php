@@ -323,7 +323,26 @@
     .btn .icon { width: 34px; height: 34px; }
     .btn .title { font-size: 14px; }
     .btn .sub { font-size: 11px; }
+
+    /* The phone's own business, directly under the code it is reading. */
+    .cam-cta { display: flex; flex-direction: column; gap: 10px; width: 100%;
+               max-width: 540px; margin: clamp(20px, 6vw, 30px) auto 0; padding: 0 18px; }
+    .cam-cta-head { margin: 0 0 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.16em;
+                    text-transform: uppercase; color: rgba(255,255,255,0.55); text-align: center; }
+    .cam-btn { display: flex; align-items: center; gap: 12px; padding: 13px 15px;
+               border-radius: 14px; background: rgba(255,255,255,0.05);
+               border: 1px solid rgba(255,255,255,0.16); color: inherit; text-decoration: none; }
+    .cam-btn-primary { background: oklch(0.62 0.21 25 / 0.16); border-color: oklch(0.62 0.21 25 / 0.55); }
+    .cam-ico { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center;
+               border-radius: 11px; background: rgba(255,255,255,0.07); color: oklch(0.78 0.16 25); }
+    .cam-btn-primary .cam-ico { background: oklch(0.62 0.21 25 / 0.22); }
+    .cam-txt { display: flex; flex-direction: column; min-width: 0; }
+    .cam-title { font-size: 15px; font-weight: 700; }
+    .cam-sub { font-size: 11.5px; color: rgba(255,255,255,0.6); margin-top: 1px; }
   }
+
+  /* Signage never sees this: a television cannot film and cannot install. */
+  .cam-cta { display: none; }
 
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 </style>
@@ -402,6 +421,56 @@
         </div>
       </div>
     </div>
+
+    {{-- ── Filming, for the PHONE reading this ──────────────────────────────
+         This page is signage: a television shows the code, somebody pairs it,
+         done. But the other device that opens this address is a phone, and a
+         phone is almost never here to become a wall display — it is here to
+         film the mat. Everything it needed was in the footer, below the QR, the
+         code and the instructions, under a heading about televisions, and the
+         honest summary of that arrangement is that nobody found it.
+
+         So the two things a phone can do are put where the phone is already
+         looking, and the one that needs no install is first: it works on any
+         phone, right now, with nothing to download and no way to end up on the
+         wrong server. Hidden on a television, which has no use for either. --}}
+    <div class="cam-cta">
+      <p class="cam-cta-head">{{ __('events.screen_film_title') }}</p>
+
+      <a class="cam-btn cam-btn-primary" href="{{ route('camera.web') }}">
+        <span class="cam-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2.5" y="6.5" width="13" height="11" rx="2"></rect>
+            <path d="M15.5 11l6-3.2v8.4l-6-3.2z"></path>
+          </svg>
+        </span>
+        <span class="cam-txt">
+          <span class="cam-title">{{ __('events.screen_film_now') }}</span>
+          <span class="cam-sub">{{ __('events.screen_film_now_sub') }}</span>
+        </span>
+      </a>
+
+      @if ($camUrl)
+        <a class="cam-btn" href="{{ route('screen.app.cam', ['v' => \App\Events\Support\ScreenPairingController::appStamp('cam')]) }}" download>
+          <span class="cam-ico">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3v12"></path><path d="M7.5 10.5L12 15l4.5-4.5"></path>
+              <path d="M4 19h16"></path>
+            </svg>
+          </span>
+          <span class="cam-txt">
+            <span class="cam-title">{{ __('events.screen_film_app') }}</span>
+            <span class="cam-sub">{{ __('events.screen_film_app_sub') }}</span>
+            {{-- The build id, printed. A phone that installs the wrong APK from
+                 its own Downloads folder shows no error at all, so the only way
+                 to tell is to compare what was offered with what is running. --}}
+            <span class="cam-sub" style="opacity:.7">{{ \App\Events\Support\ScreenPairingController::appStamp('cam') }}</span>
+          </span>
+        </a>
+      @endif
+    </div>
   </main>
 
   <footer>
@@ -410,7 +479,7 @@
          offer a download that 404s. --}}
     <div class="dl-group">
       @if ($appUrl)
-        <a class="btn" href="{{ route('screen.app') }}" download>
+        <a class="btn" href="{{ route('screen.app', ['v' => \App\Events\Support\ScreenPairingController::appStamp('tv')]) }}" download>
           <span class="icon">
             {{-- A television: a wide screen on a stand. The device drawn, not a
                  download arrow — two identical buttons say nothing about which
@@ -430,7 +499,7 @@
       @endif
 
       @if ($tabUrl)
-        <a class="btn" href="{{ route('screen.app.tab') }}" download>
+        <a class="btn" href="{{ route('screen.app.tab', ['v' => \App\Events\Support\ScreenPairingController::appStamp('tab')]) }}" download>
           <span class="icon">
             {{-- A tablet: taller than wide, with a home dot. The silhouette is
                  what separates it from the television at a glance. --}}
@@ -448,7 +517,7 @@
       @endif
 
       @if ($camUrl)
-        <a class="btn" href="{{ route('screen.app.cam') }}" download>
+        <a class="btn" href="{{ route('screen.app.cam', ['v' => \App\Events\Support\ScreenPairingController::appStamp('cam')]) }}" download>
           <span class="icon">
             {{-- A camera body with its lens: the third silhouette, and the one
                  that says this build films rather than displays. --}}
