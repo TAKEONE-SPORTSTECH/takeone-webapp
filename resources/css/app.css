@@ -37,6 +37,7 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
+@source '../../app/**/resources/views/**/*.blade.php';
 @source '../**/*.js';
 
 @theme {
@@ -3464,6 +3465,16 @@ a.text-decoration-none:hover .family-card { text-decoration: none; }
     border-radius: 0.75rem !important;
 }
 
+/* …except one with a leading icon inside it (the birthdate YEAR field). The rule
+   above sets `padding: 0 0.875rem !important`, which beat the field's own ps-9 and
+   printed the word "Year" on top of the calendar icon. Logical padding, so RTL
+   pads the correct side. */
+#profileEditForm .tf-dropdown-trigger.tf-has-leading-icon,
+#memberCreateForm .tf-dropdown-trigger.tf-has-leading-icon,
+.profile-modal-form .tf-dropdown-trigger.tf-has-leading-icon {
+    padding-inline-start: 2.25rem !important;
+}
+
 /* tf-input (social links URL input) — also needs to match */
 #profileEditForm .tf-input,
 .profile-modal-form .tf-input {
@@ -3599,6 +3610,25 @@ a.text-decoration-none:hover .family-card { text-decoration: none; }
 .m-press { transition: transform .14s cubic-bezier(.22,.61,.36,1), box-shadow .2s ease; -webkit-tap-highlight-color: transparent; }
 .m-press:active { transform: scale(.975); }
 
+/* Attention pulse — "the thing you just tapped for is THIS one".
+   Used when a summary chip scrolls the page to the element it summarises: the
+   scroll gets you to the right region, this says which element in it. Three
+   beats then silence — a pulse that never stops is just noise, and the ring is
+   drawn with box-shadow so it never reflows the layout it lands on.
+   Tint it per context with --m-attn-color; defaults to the brand primary. */
+@keyframes m-attn {
+    0%   { box-shadow: 0 0 0 0   var(--m-attn-color, hsl(var(--primary) / .5)); }
+    70%  { box-shadow: 0 0 0 12px transparent; }
+    100% { box-shadow: 0 0 0 0   transparent; }
+}
+.m-attn { animation: m-attn 1.1s cubic-bezier(.22,.61,.36,1) 3 both; }
+
+@media (prefers-reduced-motion: reduce) {
+    /* Still say WHICH element — just hold a ring instead of beating one.
+       The script removes the class on the same timer either way. */
+    .m-attn { animation: none; box-shadow: 0 0 0 3px var(--m-attn-color, hsl(var(--primary) / .5)); }
+}
+
 /* Elevated, on-system card with a hairline gradient edge + soft depth. */
 .m-card {
     position: relative;
@@ -3724,3 +3754,65 @@ html[dir="rtl"] :is(
     padding-right: 2.5rem;
     text-overflow: ellipsis;
 }
+
+/* The draw/bracket icon always reads sideways.
+   `bi-diagram-3` is drawn as a top-down org chart, but a knockout bracket runs
+   left-to-right, so wherever the icon stands for a DRAW or a BRACKET it is turned
+   a quarter turn clockwise. Add `bracket-icon` alongside the `bi-diagram-3` /
+   `bi-diagram-3-fill` class — never to the family-tree, business-chain, roles or
+   affiliation uses of the same glyph, which stay upright.
+   `inline-block` is required: a bare <i> is an inline box and CSS transforms do
+   not apply to those, so the rotation would silently do nothing. */
+.bracket-icon {
+    display: inline-block;
+    transform: rotate(90deg);
+}
+
+/* ── The live dot ─────────────────────────────────────────────────────────
+   A broadcast tally, not a fading circle.
+
+   `animate-pulse` was doing this job, and it is the wrong motion for it: it
+   fades the whole dot in and out, so the signal READS as something switching
+   off and on again — which beside the word LIVE is exactly the wrong idea. A
+   tally light does not blink out. It sits there, solid, and throws a ring.
+
+   So: a solid core that never dims, and a ring that expands out of it and
+   fades — the radar ping every broadcast gallery in the world uses. The core
+   and the ring both inherit `currentColor`, so one class works on the red
+   badge, the white-on-gradient one, and anything else that comes later without
+   a second variant.
+
+   Give the element a size (w-1.5 h-1.5 …) and a colour; this adds the motion. */
+.m-live-dot {
+    position: relative;
+    border-radius: 9999px;
+    background: currentColor;
+    flex-shrink: 0;
+}
+.m-live-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    box-shadow: 0 0 0 0 currentColor;
+    animation: m-live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes m-live-ping {
+    0%   { box-shadow: 0 0 0 0 currentColor; opacity: 0.55; }
+    70%  { box-shadow: 0 0 0 6px currentColor; opacity: 0; }
+    100% { box-shadow: 0 0 0 0 currentColor; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Hold the ring instead of throwing one. The dot still reads as live —
+       it is simply not moving, which is the whole point of the setting. */
+    .m-live-dot::after {
+        animation: none;
+        box-shadow: 0 0 0 2.5px currentColor;
+        opacity: 0.35;
+    }
+}
+
+/* Which bundle is this? Readable from the browser:
+   getComputedStyle(document.documentElement).getPropertyValue("--takeone-build") */
+:root { --takeone-build: "20260905-2210"; }

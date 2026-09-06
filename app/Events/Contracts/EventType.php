@@ -6,7 +6,7 @@ use App\Events\Support\EnrolmentDecision;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * An event type as a self-contained package (CLAUDE.md → "Events Are
@@ -89,6 +89,19 @@ interface EventType
 
     /** May this member enter as a COMPETITOR, and in which division? */
     public function enrolmentGate(ClubEvent $event, User $user, ?ClubEventRegistration $existing = null): EnrolmentDecision;
+
+    /**
+     * Place an entry now that its weight is known.
+     *
+     * A club may enter an athlete before anyone has recorded a weight — they are
+     * weighed on the day like everyone else (see EnrolmentDecision::defer). This
+     * is how they stop being unclassified: the weigh-in desk records the
+     * official weight and asks the package where that puts them.
+     *
+     * Returns the division they were placed in, or null when the type has no
+     * divisions or the weight matches none being run.
+     */
+    public function classifyEntry(ClubEvent $event, ClubEventRegistration $registration): ?EventCategory;
 
     /**
      * The entrant set changed (join, removal, moderation). Let the package
@@ -264,7 +277,27 @@ interface EventType
      * each package decides what fills it. A type that runs no brackets (a belt
      * test, a league) returns an empty array and the screen never offers one.
      *
+     * The viewer is NULLABLE because a draw is also a public fact: the
+     * event page a stranger opens (App\Events\Support\PublicEvent) asks for
+     * the same brackets with nobody signed in, exactly as a draw sheet on the
+     * hall wall is read by whoever walks past it. A type that wants to vary the
+     * board per viewer must therefore tolerate no viewer at all.
+     *
      * @return array<int, array<string, mixed>> one entry per division
      */
-    public function bracketView(ClubEvent $event, User $viewer): array;
+    public function bracketView(ClubEvent $event, ?User $viewer = null): array;
+
+    /**
+     * Tell this event's hall screens to reload themselves.
+     *
+     * For the things a screen holds that are NOT its live state: the sounds it
+     * plays, the fonts and artwork it fetched, anything it cached on load. The
+     * mat state travels on its own; this is the blunt instrument for everything
+     * else, and a type with no wall screens does nothing.
+     *
+     * It lives on the contract because shared code needs it — an organiser
+     * replacing this event's music is in `ScreenMediaController`, which must
+     * never know which sport it is looking at.
+     */
+    public function reloadHallScreens(ClubEvent $event): void;
 }

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Business;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
 
 class BusinessApprovalController extends Controller
 {
@@ -86,7 +88,7 @@ class BusinessApprovalController extends Controller
             if ($business->logo && Storage::disk('public')->exists($business->logo)) {
                 Storage::disk('public')->delete($business->logo);
             }
-            $business->logo = $request->file('logo')->store('business-logos', 'public');
+            $business->logo = $request->file('logo')->store(StoragePath::business($business, 'branding'), 'public');
         }
 
         $business->name = $validated['name'];
@@ -183,7 +185,7 @@ class BusinessApprovalController extends Controller
             ->map(fn ($c) => [
             'id' => $c->id,
             'name' => $c->club_name,
-            'logo_url' => $c->logo ? asset('storage/'.$c->logo) : null,
+            'logo_url' => $c->logo ? file_url($c->logo) : null,
             'owner' => $c->owner?->full_name,
             'business' => $c->business?->name,
         ])
@@ -247,7 +249,7 @@ class BusinessApprovalController extends Controller
             ->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->club_name,
-                'logo_url' => $c->logo ? asset('storage/'.$c->logo) : null,
+                'logo_url' => $c->logo ? file_url($c->logo) : null,
                 'owner' => $c->owner?->full_name,
             ])
             ->all();
@@ -310,7 +312,7 @@ class BusinessApprovalController extends Controller
             'status' => $business->status,
             'rejection_reason' => $business->rejection_reason,
             'logo' => $business->logo,
-            'logo_url' => $business->logo ? asset('storage/'.$business->logo) : null,
+            'logo_url' => $business->logo ? file_url($business->logo) : null,
             'owner_id' => $business->owner_user_id,
             'owner_name' => $business->owner?->full_name,
             'owner_email' => $business->owner?->email,

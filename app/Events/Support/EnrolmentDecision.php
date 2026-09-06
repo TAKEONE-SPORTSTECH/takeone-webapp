@@ -21,6 +21,9 @@ final class EnrolmentDecision
         public readonly ?EventCategory $category = null,
         public readonly ?float $weight = null,
         public readonly bool $offerSpectator = false,
+        // A refusal the DESK can settle: the entry is fine, something simply
+        // is not known yet and weigh-in will supply it. See deny().
+        public readonly bool $deferrable = false,
     ) {}
 
     /** Member may enter — optionally routed into a division at a recorded weight. */
@@ -34,9 +37,28 @@ final class EnrolmentDecision
      *
      * @param  string  $code  stable machine code the UI can branch on (no_weight, no_division, …)
      * @param  bool  $offerSpectator  true when a spectator ticket is the sensible fallback
+     * @param  bool  $deferrable  true when weigh-in can settle it — see below
      */
-    public static function deny(string $code, string $message, bool $offerSpectator = false): self
+    public static function deny(string $code, string $message, bool $offerSpectator = false, bool $deferrable = false): self
     {
-        return new self(allowed: false, code: $code, message: $message, offerSpectator: $offerSpectator);
+        return new self(allowed: false, code: $code, message: $message, offerSpectator: $offerSpectator, deferrable: $deferrable);
+    }
+
+    /**
+     * A refusal that only stands until the desk resolves it.
+     *
+     * Some refusals are about the PERSON — barred, wrong age group, no class
+     * being run — and no amount of standing on a scale changes them. One is
+     * about a missing FACT: nobody has recorded a weight yet. That is not a
+     * reason to keep an athlete out of a competition where everyone is weighed
+     * on the day; it is the thing weigh-in exists to answer.
+     *
+     * A package marks such a refusal deferrable, and the entry service admits it
+     * for a CLUB entry — a coach committing their own squad — while self-entry
+     * still asks the member to fill their profile in first.
+     */
+    public static function defer(string $code, string $message): self
+    {
+        return self::deny($code, $message, deferrable: true);
     }
 }

@@ -23,6 +23,14 @@
         ],
         'Community' => [
             ['route'=>'me.events',   'icon'=>'bi-calendar-heart',  'label'=>__('nav.events')],
+            // Open Mat had no door anywhere in the product: its only address was
+            // one somebody had to be told out loud, and inside the Android app
+            // there is no address bar to type it into. A drawer row, not a bottom
+            // tab — it is a thing you do occasionally, not a place you live.
+            ['route'=>'openmat',     'icon'=>'bi-fire',            'label'=>__('nav.open_mat')],
+            // Footage: bouts, duels, clips. A drawer row for the same reason as
+            // Open Mat — somewhere you go back to, not somewhere you live.
+            ['route'=>'me.videos',   'icon'=>'bi-camera-reels',    'label'=>__('nav.my_videos')],
         ],
         'Settings' => [
             ['route'=>'me.settings', 'icon'=>'bi-gear',            'label'=>__('nav.account_settings')],
@@ -74,7 +82,7 @@
                 <button @click="drawer=false" class="absolute top-3 end-3 w-8 h-8 rounded-lg bg-white/70 backdrop-blur flex items-center justify-center text-muted-foreground hover:bg-white transition-colors" aria-label="{{ __('nav.close_menu') }}"><i class="bi bi-x-lg"></i></button>
                 <a href="{{ route('member.show', $u->uuid) }}" class="m-press flex items-center gap-3 min-w-0 pe-8">
                     <span class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-white shadow-sm">
-                        @if($u->profile_picture)<img src="{{ asset('storage/'.$u->profile_picture) }}?v={{ optional($u->updated_at)->timestamp }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-person text-xl text-muted-foreground"></i>@endif
+                        @if($u->profile_picture)<img src="{{ file_url($u->profile_picture) }}?v={{ optional($u->updated_at)->timestamp }}" alt="" class="w-9 h-12 object-cover">@else<i class="bi bi-person text-xl text-muted-foreground"></i>@endif
                     </span>
                     <div class="min-w-0">
                         <p class="font-bold text-foreground truncate text-[15px] leading-tight">{{ $u->full_name }}</p>

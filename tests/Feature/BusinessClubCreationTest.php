@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Business;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**

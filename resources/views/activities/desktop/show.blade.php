@@ -5,7 +5,7 @@
 
 @php
     $rtl = $locale === 'ar';
-    $img = $activity->picture_url ? asset('storage/'.$activity->picture_url).'?v='.optional($activity->updated_at)->timestamp : null;
+    $img = $activity->picture_url ? file_url($activity->picture_url).'?v='.optional($activity->updated_at)->timestamp : null;
     $variants = $activity->variants ?: [];
     $videos = $activity->sanitizedVideos();
 @endphp
@@ -15,7 +15,7 @@
     <div class="ax-progress"><span id="axBar"></span></div>
 
     <div class="ax-mini" id="axMini">
-        <a href="{{ url()->previous() }}" id="axBackMini" onclick="if(history.length>1){event.preventDefault();history.back();}" class="ax-mini-back"><i class="bi bi-arrow-left"></i></a>
+        <a href="{{ url()->previous() }}" id="axBackMini" onclick="if(history.length>1){event.preventDefault();history.back();}" class="ax-mini-back"><i class="bi bi-chevron-left"></i></a>
         <span class="ax-mini-title">{{ $name }}</span>
         <div class="ax-mini-actions">
             @if(count($content) > 1)
@@ -45,7 +45,7 @@
             <div class="ax-hero-topfade"></div>
 
             <div class="ax-topbar">
-                <a href="{{ url()->previous() }}" id="axBack" onclick="if(history.length>1){event.preventDefault();history.back();}" class="ax-ctrl" title="{{ $rtl ? 'رجوع' : 'Back' }}"><i class="bi bi-arrow-left"></i></a>
+                <a href="{{ url()->previous() }}" id="axBack" onclick="if(history.length>1){event.preventDefault();history.back();}" class="ax-ctrl" title="{{ $rtl ? 'رجوع' : 'Back' }}"><i class="bi bi-chevron-left"></i></a>
                 <div class="ax-topbar-right">
                     <button type="button" class="ax-ctrl" onclick="axShare()" title="{{ $rtl ? 'مشاركة' : 'Share' }}"><i class="bi bi-share"></i></button>
                     <x-qr-code :url="route('activity.show', $activity)" :title="$name" label="" icon="bi-qr-code" buttonClass="ax-ctrl" :size="248" :caption="$rtl ? 'امسح للفتح على الجوال' : 'Scan to open on your phone'" />

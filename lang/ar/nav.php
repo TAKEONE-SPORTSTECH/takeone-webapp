@@ -43,6 +43,8 @@ return [
     'my_profile' => 'ملفي الشخصي',
     'club_chat' => 'دردشة النادي',
     'events' => 'الفعاليات',
+    'open_mat' => 'افتح بساطًا',
+    'open_mat_sub' => 'شخصان، الآن — بلا نماذج',
 
     // Get the App / update hub
     'get_app' => 'حمّل التطبيق',
@@ -250,4 +252,6 @@ return [
     'partials_mobile_chat_unblock' => 'إلغاء الحظر',
     'partials_mobile_chat_view_profile' => 'عرض الملف الشخصي',
     'partials_mobile_chat_you_prefix' => 'أنت:',
+    'layouts_admin_nav_error_log' => 'سجل الأخطاء',
+    'my_videos' => 'فيديوهاتي',
 ];

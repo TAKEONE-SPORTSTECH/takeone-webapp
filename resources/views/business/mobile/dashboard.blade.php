@@ -104,7 +104,7 @@
                         <div class="flex items-center gap-3">
                             <span class="w-11 h-11 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden ring-2 ring-accent">
                                 @if($club['logo'])
-                                    <img src="{{ asset('storage/' . $club['logo']) }}" alt="" class="w-11 h-11 object-cover">
+                                    <img src="{{ file_url($club['logo']) }}" alt="" class="w-11 h-11 object-cover">
                                 @else
                                     <i class="bi bi-building text-muted-foreground text-lg"></i>
                                 @endif

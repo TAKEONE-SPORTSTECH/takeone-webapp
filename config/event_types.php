@@ -23,13 +23,29 @@ return [
 
         // Combat championships — bracketed, weight-classed, medal-awarding.
         \App\Events\Sports\Taekwondo\Tournament\Tournament::class,
+        \App\Events\Sports\Karate\Tournament\Tournament::class,
+        \App\Events\Sports\BrazilianJiuJitsu\Tournament\Tournament::class,
+
+        // The club's own scoreboard for training: sparring, a friendly, an
+        // exhibition. No draw, no medal, opened in one tap on a Tuesday — but
+        // the same mat screens, the same scoring table, the same VS
+        // introduction as a championship. Cross-sport by design: it adds no
+        // rules of its own, it borrows the sport's scoring table whole.
+        \App\Events\Sparring\Sparring::class,
+
+        // Open Mat — a scoreboard for a fight nobody planned. No entries, no
+        // draw, no queue: two corners, and either may be a member found by
+        // search, a member who scanned the mat's code, or a stranger whose name
+        // was typed in. Opened by ANY member from /me, for any club they belong
+        // to. Sits below Sparring because both claim by event_type and neither
+        // overlaps; order between them is immaterial.
+        \App\Events\OpenMat\OpenMat::class,
 
         // TODO — port the remaining types out of the generic bucket. Each
         // lives under its SPORT's folder (see Documentation/EVENTS.md):
         // \App\Events\Sports\Taekwondo\BeltTest\BeltTest::class,
         // \App\Events\Sports\Taekwondo\Poomsae\Poomsae::class,
         // \App\Events\Sports\Football\League\League::class,
-        // \App\Events\Sports\Karate\Tournament\Tournament::class,
     ],
 
     /*

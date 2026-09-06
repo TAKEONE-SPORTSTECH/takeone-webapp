@@ -160,9 +160,9 @@
 
         // Cover + logo images (cache-bust so a freshly uploaded image shows).
         const cover = wrapper.querySelector('.club-cover-img');
-        if (cover && c.cover_image) cover.src = '/storage/' + c.cover_image + '?t=' + Date.now();
+        if (cover && c.cover_image) cover.src = '/file/' + c.cover_image + '?t=' + Date.now();
         const logo = wrapper.querySelector('.absolute.bottom-2.left-2 img');
-        if (logo && c.logo) logo.src = '/storage/' + c.logo + '?t=' + Date.now();
+        if (logo && c.logo) logo.src = '/file/' + c.logo + '?t=' + Date.now();
     });
 </script>
 @endpush

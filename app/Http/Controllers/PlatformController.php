@@ -8,20 +8,21 @@ use App\Http\Requests\NearbyClubsRequest;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubPackage;
-use App\Models\ClubPerk;
-use App\Models\ClubTimelinePost;
+use App\Clubs\Models\ClubPackage;
+use App\Shop\Models\ClubPerk;
+use App\Clubs\Models\ClubTimelinePost;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubTimelinePostLike;
-use App\Models\Membership;
-use App\Models\PerkCollection;
-use App\Models\Tenant;
-use App\Models\UserRelationship;
+use App\Members\Models\Membership;
+use App\Shop\Models\PerkCollection;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\UserRelationship;
 use App\Services\RegistrationCostService;
 use App\Services\SubscriptionService;
 use App\Support\ClubCache;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\StoresBase64Images;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -75,7 +76,7 @@ class PlatformController extends Controller
         }
 
         // Only users who have explicitly opted in as personal trainers appear on the explore page
-        $instructors = \App\Models\User::where('is_personal_trainer', true)
+        $instructors = \App\Members\Models\User::where('is_personal_trainer', true)
             ->with(['clubInstructors.tenant', 'clubInstructors.reviews'])
             ->get()
             ->map(function ($user) {
@@ -96,11 +97,40 @@ class PlatformController extends Controller
                 ];
             });
 
+        // Only render a category tab when it can actually return something.
+        //
+        // The six placeholder categories (nutrition, physiotherapy, shops,
+        // venues, supplements, food plans) are absent deliberately: they have no
+        // data source at all, and the runtime falls back to listing CLUBS for any
+        // unknown category — so they did not merely look empty, they showed the
+        // wrong results under a label that promised something else.
+        $categories = collect([
+            [
+                'key' => 'sports-clubs',
+                'icon' => 'bi-trophy',
+                'label' => __('explore.cat_clubs'),
+                'count' => Tenant::count(),
+            ],
+            [
+                'key' => 'personal-trainers',
+                'icon' => 'bi-person',
+                'label' => __('explore.cat_trainers'),
+                'count' => $instructors->count(),
+            ],
+            [
+                'key' => 'events',
+                'icon' => 'bi-calendar-event',
+                'label' => __('explore.cat_events'),
+                // Same query the Events tab runs, so the tab can never open empty.
+                'count' => $this->openEventsFor($user)->count(),
+            ],
+        ])->filter(fn ($c) => $c['count'] > 0)->values();
+
         $isMobile = request()->attributes->get('is_mobile', false);
 
         // The mobile shell reads $shellTitle to label its header for pages that
         // sit outside the bottom-nav route list (explore is one).
-        return view($isMobile ? 'platform.mobile.explore' : 'platform.explore', compact('familyMembers', 'instructors'))
+        return view($isMobile ? 'platform.mobile.explore' : 'platform.explore', compact('familyMembers', 'instructors', 'categories'))
             ->with('shellTitle', __('explore.explore'));
     }
 
@@ -230,7 +260,7 @@ class PlatformController extends Controller
         // Compute member statistics for the Statistics tab — cached for 1 hour.
         $memberStats = Cache::remember(ClubCache::showStats($club->id), ClubCache::TTL_STATS, function () use ($club) {
             $memberIds = $club->members()->pluck('users.id');
-            $members = \App\Models\User::whereIn('id', $memberIds)->get();
+            $members = \App\Members\Models\User::whereIn('id', $memberIds)->get();
 
             // Nationality breakdown — map ISO-2 codes to full country names
             static $countryNames = null;
@@ -284,7 +314,7 @@ class PlatformController extends Controller
                 ->filter(fn ($_, $key) => ! empty($key));
 
             // Member goal status breakdown
-            $memberGoals = \App\Models\Goal::whereIn('user_id', $memberIds)->get()->groupBy('user_id');
+            $memberGoals = \App\Members\Models\Goal::whereIn('user_id', $memberIds)->get()->groupBy('user_id');
             $goalStats = ['Achieved' => 0, 'In Progress' => 0, 'Pending' => 0, 'No Goals Set' => 0];
             foreach ($memberIds as $id) {
                 if (! isset($memberGoals[$id])) {
@@ -625,6 +655,111 @@ class PlatformController extends Controller
     }
 
     /**
+     * Open events for the explore "Events" tab.
+     *
+     * Returns only what is still live on the calendar — events that have not
+     * started yet, plus events running right now. Anything already finished is
+     * excluded, as are archived and cancelled events.
+     *
+     * Visibility mirrors App\Events\Support\EventAccess::eligible() exactly
+     * (own-club events at any scope, plus other clubs' events whose scope
+     * reaches this member), so the tab can never advertise an event whose
+     * detail page would then 403.
+     */
+    /**
+     * Open events this user may see — not started yet, plus running right now.
+     *
+     * Shared by the Events tab itself and by the tab list that decides whether
+     * to render the tab at all, so a visible "Events" tab can never open onto
+     * an empty pane.
+     */
+    private function openEventsFor(\App\Members\Models\User $me): \Illuminate\Support\Collection
+    {
+        $clubIds = $me->memberClubs()->pluck('tenants.id');
+        $myCountries = $me->memberClubs()->pluck('tenants.country')->filter()->unique()->values();
+        $today = now()->startOfDay()->toDateString();
+
+        return ClubEvent::query()
+            ->where('is_archived', false)
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($q) use ($clubIds, $myCountries, $me) {
+                $q->whereIn('tenant_id', $clubIds)
+                    ->orWhereIn('scope', ['inter_club', 'worldwide'])
+                    ->orWhere(fn ($w) => $w->whereIn('scope', ['nationwide', 'regional'])
+                        ->whereHas('tenant', fn ($t) => $t->whereIn('country', $myCountries)))
+                    ->orWhere('created_by', $me->id);
+            })
+            // Date-grain prefilter so the DB never hands back the whole archive.
+            // The exact end moment (which needs end_time) is settled in PHP via
+            // the model's own hasEnded() — one rule, one place.
+            ->where(function ($q) use ($today) {
+                $q->where(fn ($w) => $w->whereNotNull('end_date')->whereDate('end_date', '>=', $today))
+                    ->orWhere(fn ($w) => $w->whereNull('end_date')->whereDate('date', '>=', $today));
+            })
+            ->withCount('participantRegistrations')
+            ->with('tenant:id,club_name,country,logo')
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->limit(120)
+            ->get()
+            ->reject(fn (ClubEvent $e) => $e->hasEnded())
+            ->values();
+    }
+
+    public function events(Request $request)
+    {
+        $events = $this->openEventsFor(Auth::user());
+
+        $payload = $events->map(function (ClubEvent $e) {
+            $date = $e->date;
+            $start = $e->start_time ? Carbon::parse($e->start_time) : null;
+            $end = $e->end_time ? Carbon::parse($e->end_time) : null;
+            $startsAt = $date->copy()->setTimeFromTimeString($e->start_time ?: '00:00');
+            $live = $e->isOngoing();
+            $going = (int) ($e->participant_registrations_count ?? 0);
+            $cap = (int) ($e->max_capacity ?: 0);
+
+            return [
+                // Public key is the uuid — never the auto-increment id.
+                'key' => $e->uuid,
+                'url' => route('me.events.show', $e->uuid),
+                'title' => $e->title,
+                'state' => $live ? 'live' : 'upcoming',
+                'day' => $date->format('d'),
+                'mon' => $date->format('M'),
+                'wday' => $date->format('D'),
+                'date_label' => $date->isoFormat('ddd, D MMM YYYY'),
+                'end_date_label' => $e->end_date && ! $e->end_date->isSameDay($date)
+                    ? $e->end_date->isoFormat('D MMM')
+                    : null,
+                'time' => $start ? $start->format('g:i A') : null,
+                'end_time' => $end ? $end->format('g:i A') : null,
+                'starts_in' => $live ? null : $startsAt->diffForHumans(['parts' => 2, 'short' => true]),
+                'club' => $e->tenant?->club_name,
+                'location' => $e->location,
+                'type' => $e->event_type,
+                'sport' => $e->sport,
+                'level' => $e->level,
+                'icon' => $e->icon ?: 'bi-calendar-event',
+                'color' => $e->color ?: '#7c3aed',
+                'image' => is_array($e->images) ? ($e->images[0] ?? null) : null,
+                'going' => $going,
+                'capacity' => $cap ?: null,
+                'spots_left' => $cap ? max(0, $cap - $going) : null,
+                'fee' => $e->participant_fee ?: null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'events' => $payload,
+            'live' => $payload->where('state', 'live')->count(),
+            'upcoming' => $payload->where('state', 'upcoming')->count(),
+            'total' => $payload->count(),
+        ]);
+    }
+
+    /**
      * Get club packages as JSON for the join modal.
      */
     public function clubPackages(string $country, string $slug, RegistrationCostService $costSvc)
@@ -684,7 +819,7 @@ class PlatformController extends Controller
 
                         return [
                             'name' => $pa->instructor->user->full_name ?? $pa->instructor->user->name,
-                            'image_url' => $pa->instructor->user->profile_picture ? asset('storage/'.$pa->instructor->user->profile_picture) : null,
+                            'image_url' => $pa->instructor->user->profile_picture ? file_url($pa->instructor->user->profile_picture) : null,
                         ];
                     })->filter()->unique('name')->values(),
                 ];
@@ -803,12 +938,12 @@ class PlatformController extends Controller
         // focused on this registrant's outstanding row (the desktop ledger filters to
         // pending; #collect opens the mobile panel).
         $focusUserId = (int) ($registrantIds[0] ?? $user->id);
-        $focusUuid = \App\Models\User::whereKey($focusUserId)->value('uuid');
+        $focusUuid = \App\Members\Models\User::whereKey($focusUserId)->value('uuid');
         $reviewUrl = route('admin.club.financials', $club->slug)
             .($focusUuid ? '?member='.$focusUuid : '').'#collect';
 
         foreach ($club->staffUserIds() as $staffId) {
-            \App\Models\UserNotification::notifyUser($staffId, 'new_member', 'New member registration', [
+            \App\Members\Models\UserNotification::notifyUser($staffId, 'new_member', 'New member registration', [
                 'actor_id'     => $user->id,
                 'tenant_id'    => $club->id,
                 'subject_type' => 'user',
@@ -865,7 +1000,7 @@ class PlatformController extends Controller
 
         // Multiple eligible members and no selection yet — return picker data
         if ($forUserId === null && count($canCollectFor) > 1) {
-            $members = \App\Models\User::whereIn('id', $canCollectFor)->get(['id', 'full_name', 'name', 'profile_picture']);
+            $members = \App\Members\Models\User::whereIn('id', $canCollectFor)->get(['id', 'full_name', 'name', 'profile_picture']);
             $collected = PerkCollection::where('perk_id', $perk->id)
                 ->whereIn('collected_for_user_id', $canCollectFor)
                 ->pluck('collected_at', 'collected_for_user_id')
@@ -961,7 +1096,7 @@ class PlatformController extends Controller
             'body' => $comment->body,
             'user_name' => $comment->user->full_name ?? $comment->user->name,
             'avatar' => $comment->user->profile_picture
-                                ? asset('storage/'.$comment->user->profile_picture)
+                                ? file_url($comment->user->profile_picture)
                                 : null,
             'time_ago' => $comment->created_at->diffForHumans(),
             'is_owner' => true,

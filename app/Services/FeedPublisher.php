@@ -2,12 +2,18 @@
 
 namespace App\Services;
 
-use App\Models\User;
-use App\Models\UserBlock;
-use App\Models\UserFollow;
-use App\Models\UserNotification;
-use App\Models\UserPost;
+use App\Members\Models\User;
+use App\Members\Models\UserBlock;
+use App\Members\Models\UserFollow;
+use App\Members\Models\UserNotification;
+use App\Members\Models\UserPost;
 use Illuminate\Support\Facades\DB;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http (UserPostController) and by AchievementVerificationService.
+ * Feed fan-out serves every vertical that publishes, so it stays shared.
+ */
 
 /**
  * Live-delivers a freshly created feed post: MQTT push (posts channel) to the author's

@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * Live, accumulating trainer experience: the total time a person has spent working

@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * Accumulated skill experience for a member: how long they've practised each skill

@@ -62,6 +62,17 @@
                                     <p class="text-muted mb-0 small">{{ __('shared.profile_modal_fields_toggle_visibility') }}</p>
                                 </div>
                                 <div class="form-check form-switch" style="font-size: 1.2rem;">
+                                    {{-- ⚠️ Load-bearing. An unchecked checkbox is not
+                                         submitted at all, so without this the server
+                                         cannot tell "the member switched their picture
+                                         to private" from "this form has no privacy
+                                         toggle on it". It used to read the second as
+                                         the first and quietly privatise a member's face
+                                         on every save through any other form. The
+                                         controllers now write the column ONLY when the
+                                         request carried it; this hidden 0 is what makes
+                                         sure a form that HAS the switch always does. --}}
+                                    <input type="hidden" name="profile_picture_is_public" value="0">
                                     <input class="form-check-input" type="checkbox" role="switch"
                                            id="profilePictureVisibility"
                                            x-model="profilePicturePublic"
@@ -220,7 +231,9 @@
                 :id="$formId . '_gender'"
                 label="{{ __('shared.profile_modal_fields_gender') }}"
                 :value="$userGender"
-                :required="true"
+                {{-- Asterisk follows the real rule, so it never asks for
+                     something the endpoint would accept without. --}}
+                :required="$demandPersonFields"
                 :error="$errors->first('gender')" />
         </div>
         <div>
@@ -239,7 +252,8 @@
             :id="$formId . '_birthdate'"
             label="{{ __('shared.profile_modal_fields_date_of_birth') }}"
             :value="$userBirthdate"
-            :required="true"
+            {{-- Never required, of anyone. --}}
+            :required="false"
             :min-age="$isCreate ? 0 : 10"
             :max-age="120"
             :error="$errors->first('birthdate')" />
@@ -260,8 +274,31 @@
                 :id="$formId . '_nationality'"
                 label="{{ __('shared.profile_modal_fields_nationality') }}"
                 :value="$userNationality"
-                :required="true"
+                :required="$demandPersonFields"
                 :error="$errors->first('nationality')" />
+        </div>
+    </div>
+
+    {{-- Height. A standing fact about the person, unlike the dated series in
+         health records — it is what a competition screen announces alongside
+         age and the official weigh-in weight. Optional everywhere: an athlete
+         without one gets a shorter stat line, never an invented number. --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div>
+            <label for="{{ $formId }}_height_cm" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ __('shared.profile_modal_fields_height') }}
+            </label>
+            <div class="relative">
+                <input type="number" inputmode="numeric" min="50" max="260" step="1"
+                       name="height_cm" id="{{ $formId }}_height_cm"
+                       value="{{ $userHeightCm }}"
+                       class="w-full px-3 py-2.5 pe-12 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="{{ __('shared.profile_modal_fields_height_placeholder') }}">
+                <span class="absolute inset-y-0 end-3 flex items-center text-xs font-semibold text-gray-400">cm</span>
+            </div>
+            @error('height_cm')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
         </div>
     </div>
 
@@ -432,6 +469,15 @@
         </p>
     </div>
 
+
+</div>
+
+{{-- ═══════════════════════ Documents ═══════════════════════
+     Identity documents, on a tab of their own. They used to sit at the bottom of
+     the Medical tab, which is where nobody looked for a passport number — and
+     that tab was long enough that the uploader was below the fold on a phone.
+     Same fields, same uploader, same `docs` array on the form. --}}
+<div x-show="activeTab === 'docs'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
     {{-- Identity Documents with drag-and-drop upload --}}
     <div class="mb-2">
         <div class="flex justify-between items-center mb-2">
@@ -496,7 +542,7 @@
                                 <p class="text-sm font-medium text-gray-700 truncate" x-text="doc.file_name || doc.file_path"></p>
                                 <p class="text-xs text-gray-400">{{ __('shared.profile_modal_fields_click_to_replace') }}</p>
                             </div>
-                            <a :href="doc.file_url || ('/storage/' + doc.file_path)" target="_blank" @click.stop class="flex-shrink-0 text-xs text-primary hover:underline">
+                            <a :href="doc.file_url" x-show="doc.file_url" target="_blank" @click.stop class="flex-shrink-0 text-xs text-primary hover:underline">
                                 {{ __('shared.profile_modal_fields_view') }} <i class="bi bi-box-arrow-up-right"></i>
                             </a>
                         </div>
@@ -514,7 +560,6 @@
             {{ __('shared.profile_modal_fields_no_documents') }}
         </p>
     </div>
-
 </div>
 
 {{-- Document delete confirmation overlay — fixed so it centers over the whole screen --}}
@@ -561,3 +606,166 @@
         </div>
     </div>
 </div>
+
+{{-- ═══════════════════════ Security ═══════════════════════
+     Account security, for an existing person only. Two cards with very
+     different owners:
+
+       · Password — platform staff may set one or have one generated. Moved here
+         from a standalone card on the mobile profile page, so the place you edit
+         a person is the place you manage their access.
+       · Two-factor — the member's own, and nobody else's. Every
+         TwoFactorController action runs against Auth::user() because the secret
+         must be scanned by their own authenticator, so for an admin this reports
+         the state and offers nothing to press. A disable button with no endpoint
+         behind it would be worse than none.
+
+     Neither card is part of the surrounding form: both act through their own
+     requests, so nothing here is submitted by Save. --}}
+@if($showSecurityTab ?? false)
+<div x-show="activeTab === 'security'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-4">
+
+    @if($canSetPassword ?? false)
+        <div x-data="memberPwdAdmin(@js($securityPwdUrls['reset']), @js($securityPwdUrls['regenerate']), @js($user->full_name ?? ''))"
+             class="bg-white rounded-2xl shadow-sm border border-amber-200 p-4">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 grid place-items-center flex-shrink-0">
+                    <i class="bi bi-shield-lock-fill text-lg"></i>
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-bold text-foreground leading-tight">{{ __('member.account_security') }}</h3>
+                    <p class="text-[11px] text-muted-foreground">{{ __('member.super_admin_only') }}</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-3">
+                <button type="button" @click="openSet()" class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-foreground text-sm font-semibold active:bg-muted/70 transition-colors">
+                    <i class="bi bi-key"></i> {{ __('member.set') }}
+                </button>
+                <button type="button" @click="generate()" :disabled="busy" class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 transition-colors disabled:opacity-60">
+                    <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-magic'"></i> {{ __('member.generate') }}
+                </button>
+            </div>
+
+            {{-- Set a password. Teleported to body: this sheet lives inside a modal
+                 that is itself a positioned, scrolling container. --}}
+            <template x-teleport="body">
+            <div x-show="setOpen" x-cloak class="fixed inset-0 z-[80] flex items-end justify-center" @keydown.escape.window="setOpen=false">
+                <div class="absolute inset-0 bg-black/50" @click="setOpen=false" x-transition.opacity></div>
+                <div class="relative w-full max-w-lg bg-white rounded-t-3xl overflow-hidden"
+                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                     x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+                    {{-- Header --}}
+                    <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                         style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                        <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                        <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                        <div class="relative flex items-start gap-3">
+                            <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                <i class="bi bi-key-fill text-xl"></i>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-lg font-black leading-tight">{{ __('member.set_password') }}</h3>
+                                <p class="text-[12px] text-white/85 mt-0.5" x-text="@js(__('member.set_password_for')).replace(':name', name)"></p>
+                            </div>
+                            <button type="button" @click="setOpen=false" aria-label="{{ __('shared.close') }}"
+                                    class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-5 pb-8">
+                    <div class="space-y-3">
+                        <input type="password" x-model="pw1" placeholder="{{ __('member.new_password') }}" minlength="8" autocomplete="new-password"
+                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                        <input type="password" x-model="pw2" placeholder="{{ __('member.confirm_password') }}" minlength="8" autocomplete="new-password"
+                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                    </div>
+                    <div class="flex gap-2 mt-5">
+                        <button type="button" @click="setOpen=false" class="m-press flex-1 py-3 rounded-xl bg-muted text-foreground text-sm font-semibold">{{ __('shared.cancel') }}</button>
+                        <button type="button" @click="submitSet()" :disabled="busy" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60">
+                            <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('member.set_password') }}
+                        </button>
+                    </div>
+                    </div>
+                </div>
+            </div>
+            </template>
+
+            {{-- What was generated. Shown once — the plaintext exists nowhere else. --}}
+            <template x-teleport="body">
+            <div x-show="resultOpen" x-cloak class="fixed inset-0 z-[80] flex items-end justify-center" @keydown.escape.window="resultOpen=false">
+                <div class="absolute inset-0 bg-black/50" @click="resultOpen=false" x-transition.opacity></div>
+                <div class="relative w-full max-w-lg bg-white rounded-t-3xl overflow-hidden"
+                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
+                    {{-- Header --}}
+                    <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                         style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                        <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                        <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                        <div class="relative flex items-start gap-3">
+                            <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                <i class="bi bi-check-circle-fill text-xl"></i>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-lg font-black leading-tight">{{ __('member.new_password_generated') }}</h3>
+                                <p class="text-[12px] text-white/85 mt-0.5" x-show="emailed">{{ __('member.password_emailed') }}</p>
+                                <p class="text-[12px] text-white mt-0.5" x-show="!emailed">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ __('member.password_not_emailed') }}
+                                </p>
+                            </div>
+                            <button type="button" @click="resultOpen=false" aria-label="{{ __('shared.close') }}"
+                                    class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-5 pb-8 text-center">
+                    <button type="button" @click="copy()" class="m-press w-full mt-4 flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-muted border border-dashed border-primary/40">
+                        <span class="font-mono font-bold text-base text-foreground tracking-wider select-all" x-text="newPw"></span>
+                        <i class="bi" :class="copied ? 'bi-clipboard-check text-green-600' : 'bi-clipboard text-primary'"></i>
+                    </button>
+                    <button type="button" @click="resultOpen=false" class="m-press w-full mt-4 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90">{{ __('shared.done') }}</button>
+                    </div>
+                </div>
+            </div>
+            </template>
+        </div>
+    @endif
+
+    {{-- Two-factor. Theirs to manage; ours only to report. --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div class="flex items-center gap-2">
+            <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 {{ ($securityTwoFa['enabled'] ?? false) ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400' }}">
+                <i class="bi {{ ($securityTwoFa['enabled'] ?? false) ? 'bi-patch-check-fill' : 'bi-shield-slash' }} text-lg"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+                <h3 class="font-bold text-foreground leading-tight">{{ __('member.two_factor') }}</h3>
+                <p class="text-[11px] text-muted-foreground">
+                    @if($securityTwoFa['enabled'] ?? false)
+                        {{ $securityTwoFa['since'] ? __('member.two_factor_on_since', ['date' => $securityTwoFa['since']]) : __('member.two_factor_on') }}
+                    @else
+                        {{ __('member.two_factor_off') }}
+                    @endif
+                </p>
+            </div>
+        </div>
+
+        @if($securityTwoFa['mine'] ?? false)
+            {{-- Your own: the real flow lives on the security page (it needs a QR
+                 code and a confirmation code), so this points there rather than
+                 reimplementing it in a tab. --}}
+            <a href="{{ route('security.show') }}" class="m-press mt-3 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 transition-colors">
+                <i class="bi bi-shield-lock"></i>{{ ($securityTwoFa['enabled'] ?? false) ? __('member.two_factor_manage') : __('member.two_factor_enable') }}
+            </a>
+        @else
+            <p class="mt-3 text-xs text-muted-foreground bg-muted/60 rounded-xl px-3 py-2.5">
+                <i class="bi bi-info-circle me-1"></i>{{ __('member.two_factor_member_only') }}
+            </p>
+        @endif
+    </div>
+</div>
+@endif

@@ -36,4 +36,55 @@ class Taekwondo extends AbstractCombatSport
     {
         return 'repechage';
     }
+
+    /**
+     * The WT kyorugi officiating panel, in the order it is listed on a match
+     * sheet: one Center Referee in the ring, three corner Judges, then the
+     * table and court officials.
+     *
+     * Keys are stable and never translated — they are what gets stored against a
+     * bout and sent to the video platform. Only the labels are localised.
+     *
+     * @return array<int, array{key: string, label: string}>
+     */
+    public function officialRoles(): array
+    {
+        return [
+            ['key' => 'center_referee',   'label' => __('sport-taekwondo::messages.official_center_referee'), 'hint' => __('sport-taekwondo::messages.official_center_referee_hint')],
+            ['key' => 'corner_judge_1',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 1]), 'hint' => __('sport-taekwondo::messages.official_corner_judge_hint')],
+            ['key' => 'corner_judge_2',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 2]), 'hint' => __('sport-taekwondo::messages.official_corner_judge_hint')],
+            ['key' => 'corner_judge_3',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 3]), 'hint' => __('sport-taekwondo::messages.official_corner_judge_hint')],
+            ['key' => 'review_jury',      'label' => __('sport-taekwondo::messages.official_review_jury'), 'hint' => __('sport-taekwondo::messages.official_review_jury_hint')],
+            ['key' => 'court_supervisor', 'label' => __('sport-taekwondo::messages.official_court_supervisor'), 'hint' => __('sport-taekwondo::messages.official_court_supervisor_hint')],
+            ['key' => 'table_recorder',   'label' => __('sport-taekwondo::messages.official_table_recorder'), 'hint' => __('sport-taekwondo::messages.official_table_recorder_hint')],
+            ['key' => 'timekeeper',       'label' => __('sport-taekwondo::messages.official_timekeeper'), 'hint' => __('sport-taekwondo::messages.official_timekeeper_hint')],
+        ];
+    }
+
+    /**
+     * WT kyorugi scoring, by value: five for a turning head kick, four for a
+     * turning body kick, three to the head, two to the body, one for a punch.
+     * The technique is what the value MEANS, which is why the bar can name it
+     * from the number alone.
+     */
+    public function scoreLabel(int $points): ?string
+    {
+        return match ($points) {
+            5 => __('sport-taekwondo::messages.score_turning_head'),
+            4 => __('sport-taekwondo::messages.score_turning_body'),
+            3 => __('sport-taekwondo::messages.score_head_kick'),
+            2 => __('sport-taekwondo::messages.score_body_kick'),
+            1 => __('sport-taekwondo::messages.score_punch'),
+            default => null,
+        };
+    }
+
+    /** HONG is the red corner, CHUNG the blue. */
+    public function cornerLabels(): array
+    {
+        return [
+            'red' => __('sport-taekwondo::messages.corner_hong'),
+            'blue' => __('sport-taekwondo::messages.corner_chung'),
+        ];
+    }
 }

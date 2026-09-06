@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\ClubAdmin;
 
-use App\Models\ClubTransaction;
+use App\Clubs\Models\ClubTransaction;
 use Tests\TestCase;
 
 class FinancialTest extends TestCase

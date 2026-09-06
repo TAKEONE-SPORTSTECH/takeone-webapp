@@ -12,7 +12,7 @@ use App\Models\EventCategory;
  */
 class DrawEngine
 {
-    public function __construct(private Scheduler $scheduler) {}
+    public function __construct(private Scheduler $scheduler, private GroupEngine $groups) {}
 
     /**
      * Keep each division's draw current:
@@ -72,12 +72,40 @@ class DrawEngine
      * a stable pseudo-random order (changes only when the entrant set changes — no
      * reshuffle jitter); field padded to the next power of two with byes that auto-advance.
      */
+    /**
+     * @param  bool  $paidOnly  the FINAL draw: only officially verified entries.
+     */
     public function build(ClubEvent $event, EventCategory $cat, bool $paidOnly): void
     {
-        // Final (at-start) draw: only confirmed athletes compete — paid AND weighed in.
+        /*
+         * A division can be run as a GROUP instead of a ladder.
+         *
+         * The dispatch lives here, at the one door every caller already uses —
+         * `ensure()`, each package's `generateDraw`, the entrant-set hooks — so
+         * a second shape of competition needed no branch in any of them, and a
+         * division whose format is edited simply builds differently next time.
+         */
+        if (($cat->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN) {
+            $this->groups->build($event, $cat, $paidOnly);
+
+            return;
+        }
+
+        // The final draw is the one people actually fight, so an entry earns its
+        // place by being CHECKED, not by claiming to be ready:
+        //
+        //   paid_by        a payments official matched the proof to the account
+        //   weighed_in_by  a weigh-in official put the athlete on the scale
+        //
+        // `paid` and `weight` alone are assertions — a member ticks a box and
+        // types a number. Drawing on those is how someone reaches the mat
+        // without having paid or made weight. The provisional draw still shows
+        // everyone, so nobody disappears from the board before the weigh-in.
         $regs = $cat->registrations()
             ->where('role', 'participant')
-            ->when($paidOnly, fn ($q) => $q->where('paid', true)->whereNotNull('weight'))
+            ->when($paidOnly, fn ($q) => $q
+                ->where('paid', true)->whereNotNull('paid_by')
+                ->whereNotNull('weight')->whereNotNull('weighed_in_by'))
             ->with('user:id,full_name,name')
             ->get();
 
@@ -87,7 +115,16 @@ class DrawEngine
         $competitors = $regs->map(fn ($r) => [
             'id' => $r->id,
             'name' => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
-            'provisional' => ! $paidOnly && (! $r->paid || $r->weight === null),
+            // The entry's country (ISO alpha-2), so the board can fly a flag.
+            // Same source Arrangement::place() reads when a draw is hand-made.
+            'country' => $r->countryCode(),
+            // "At risk of removal when the draw goes final" — so it has to ask
+            // the same question the final draw asks, signatures included. Marking
+            // a self-declared entry as safe here would promise a place the final
+            // build then takes away.
+            'provisional' => ! $paidOnly && (
+                ! $r->paid || ! $r->paid_by || $r->weight === null || ! $r->weighed_in_by
+            ),
             'key' => md5($cat->id.':'.$r->user_id),
         ])->sortBy('key')->values();
 
@@ -127,9 +164,11 @@ class DrawEngine
                 'slot' => $slot++,
                 'a_name' => $a['name'] ?? null,
                 'a_competitor_id' => $a['id'] ?? null,
+                'a_country' => $a['country'] ?? null,
                 'a_provisional' => $a['provisional'] ?? false,
                 'b_name' => $b['name'] ?? null,
                 'b_competitor_id' => $b['id'] ?? null,
+                'b_country' => $b['country'] ?? null,
                 'b_provisional' => $b['provisional'] ?? false,
                 'winner' => $bye ? ($a ? 'a' : 'b') : null,
                 'status' => $bye ? 'done' : 'upcoming',

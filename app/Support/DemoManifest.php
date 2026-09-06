@@ -15,6 +15,19 @@ class DemoManifest
 
     public const FILE = 'demo/manifest.json';
 
+    /**
+     * Which manifest this is. Seeds that can coexist keep separate books, so
+     * purging one never deletes rows another one is still responsible for —
+     * `demo:seed` owns "manifest", `demo:competition` owns "competition".
+     * Defaults preserve the original single-manifest behaviour everywhere.
+     */
+    public function __construct(private string $name = 'manifest') {}
+
+    public static function fileFor(string $name = 'manifest'): string
+    {
+        return 'demo/'.$name.'.json';
+    }
+
     /** @var array<string, array<int, int>> table => list of ids */
     private array $tables = [];
 
@@ -53,30 +66,30 @@ class DemoManifest
             'tables' => array_map('array_values', $this->tables),
             'files' => $this->files,
         ];
-        Storage::disk(self::DISK)->put(self::FILE, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        Storage::disk(self::DISK)->put(self::fileFor($this->name), json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 
-    public static function exists(): bool
+    public static function exists(string $name = 'manifest'): bool
     {
-        return Storage::disk(self::DISK)->exists(self::FILE);
+        return Storage::disk(self::DISK)->exists(self::fileFor($name));
     }
 
-    public static function load(): ?array
+    public static function load(string $name = 'manifest'): ?array
     {
-        if (! self::exists()) {
+        if (! self::exists($name)) {
             return null;
         }
 
-        return json_decode(Storage::disk(self::DISK)->get(self::FILE), true);
+        return json_decode(Storage::disk(self::DISK)->get(self::fileFor($name)), true);
     }
 
-    public static function delete(): void
+    public static function delete(string $name = 'manifest'): void
     {
-        Storage::disk(self::DISK)->delete(self::FILE);
+        Storage::disk(self::DISK)->delete(self::fileFor($name));
     }
 
-    public static function path(): string
+    public static function path(string $name = 'manifest'): string
     {
-        return Storage::disk(self::DISK)->path(self::FILE);
+        return Storage::disk(self::DISK)->path(self::fileFor($name));
     }
 }

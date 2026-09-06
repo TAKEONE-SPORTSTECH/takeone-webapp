@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\ClubAffiliation;
+use App\Clubs\Models\ClubAffiliation;
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubPackage;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Clubs\Models\ClubPackage;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**

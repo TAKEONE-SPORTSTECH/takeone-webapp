@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\Challenge;
-use App\Models\ChallengeParticipation;
-use App\Models\Duel;
-use App\Models\User;
+use App\Challenges\Models\Challenge;
+use App\Challenges\Models\ChallengeParticipation;
+use App\Challenges\Models\Duel;
+use App\Members\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 

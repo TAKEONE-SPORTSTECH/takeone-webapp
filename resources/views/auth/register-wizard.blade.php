@@ -7,8 +7,8 @@
     <title>{{ session('club.context.name', 'Register') }} — TAKEONE</title>
     {{-- Use the club's logo as the browser tab favicon --}}
     @if(session('club.context.logo'))
-        <link rel="icon" href="{{ asset('storage/' . session('club.context.logo')) }}">
-        <link rel="apple-touch-icon" href="{{ asset('storage/' . session('club.context.logo')) }}">
+        <link rel="icon" href="{{ file_url(session('club.context.logo')) }}">
+        <link rel="apple-touch-icon" href="{{ file_url(session('club.context.logo')) }}">
     @endif
     @vite(['resources/css/app.css'])
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -836,13 +836,24 @@
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  :dir="lang === 'ar' ? 'rtl' : 'ltr'">
-                <div class="flex-shrink-0 px-6 pt-5 pb-2 text-center">
-                    <div class="w-12 h-1.5 rounded-full bg-gray-200 mx-auto mb-4"></div>
-                    <div class="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
-                        <i class="bi bi-shield-lock text-2xl"></i>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-shield-lock text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight" x-text="t.otpTitle"></h3>
+                            <p class="text-[12px] text-white/85 mt-0.5" x-text="t.otpSub.replace('{email}', otpEmailHint)"></p>
+                        </div>
+                        <button type="button" @click="cancelOtp()" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900" x-text="t.otpTitle"></h3>
-                    <p class="text-sm text-gray-500 mt-1" x-text="t.otpSub.replace('{email}', otpEmailHint)"></p>
                 </div>
                 <div class="px-6 py-4">
                     <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
@@ -880,14 +891,25 @@
                  x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  :dir="lang === 'ar' ? 'rtl' : 'ltr'">
                 {{-- Header --}}
-                <div class="flex-shrink-0 px-6 pt-5 pb-4 text-center">
-                    <div class="w-12 h-1.5 rounded-full bg-gray-200 mx-auto mb-4"></div>
-                    <div class="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
-                        <i class="bi bi-people-fill text-2xl"></i>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-people-fill text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight" x-text="t.familyTitle"></h3>
+                            <p class="text-[12px] text-white/85 mt-0.5"
+                               x-text="t.familySub.replace('{name}', familyOwnerName)"></p>
+                        </div>
+                        <button type="button" @click="closeFamilySheet()" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900" x-text="t.familyTitle"></h3>
-                    <p class="text-sm text-gray-500 mt-1"
-                       x-text="t.familySub.replace('{name}', familyOwnerName)"></p>
                 </div>
 
                 {{-- Relative list --}}
@@ -1003,9 +1025,9 @@ function wizard() {
 
         clubSlug:  @json(session('club.context.slug', '')),
         clubName:  @json(session('club.context.name', '')),
-        clubLogo:  @json(session('club.context.logo') ? asset('storage/' . session('club.context.logo')) : ''),
-        clubCover: @json(session('club.context.cover_image') ? asset('storage/' . session('club.context.cover_image')) : ''),
-        clubSplash: @json(session('club.context.splash') ? asset('storage/' . session('club.context.splash')) : ''),
+        clubLogo:  @json(session('club.context.logo') ? file_url(session('club.context.logo')) : ''),
+        clubCover: @json(session('club.context.cover_image') ? file_url(session('club.context.cover_image')) : ''),
+        clubSplash: @json(session('club.context.splash') ? file_url(session('club.context.splash')) : ''),
 
         // Bilingual rich-HTML registration content (sanitised server-side).
         clubTermsEn: @js(session('club.context.terms')),

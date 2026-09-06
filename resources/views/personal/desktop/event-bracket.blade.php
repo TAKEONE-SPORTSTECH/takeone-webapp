@@ -21,7 +21,7 @@
 
 @section('content')
 <div class="px-4 sm:px-6 lg:px-8 py-6"
-     x-data="{ cat: '{{ collect($categories)->first()['key'] ?? '' }}', busy: false,
+     x-data="{ cat: '{{ $initialCategory ?? (collect($categories)->first()['key'] ?? '') }}', busy: false,
         // Server-side auto-draw: (re)builds every division's bracket + numbers.
         async generateNewDraw() {
             if (this.busy) return;
@@ -50,55 +50,77 @@
 
     @include('partials.personal-desktop-subnav')
 
-    <a href="{{ route('me.events.show', $e['key']) }}"
-       class="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors mb-4">
-        <i class="bi bi-arrow-left rtl:rotate-180"></i> {{ $e['title'] }}
-    </a>
-
-    {{-- ===== Header band ===== --}}
-    <div class="rounded-2xl overflow-hidden shadow-sm mb-6 text-white relative"
+    {{-- Standard header band (Design Rule #6). Drill-down: the subject's own
+         colour and a labelled back pill to the event. --}}
+    <div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative"
          style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
-        <div class="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-white/10"></div>
-        <div class="absolute right-10 bottom-6 w-24 h-24 rounded-full bg-white/10"></div>
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
-        <div class="relative p-6 sm:p-7 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-                <p class="text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/70 mb-1">
-                    {{ __('personal.event_show_brackets_draws') }}
-                </p>
-                <h1 class="text-2xl font-black leading-tight">{{ $e['title'] }}</h1>
-                <p class="text-sm text-white/80 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span class="inline-flex items-center gap-1.5">
-                        <i class="bi bi-diagram-3"></i>
-                        {{ count($categories) }} {{ __('personal.personal_event_bracket_divisions') }}
-                    </span>
-                    @if($e['started'] ?? false)
-                        <span class="inline-flex items-center gap-1.5"><i class="bi bi-lock-fill"></i> {{ __('events.bracket_locked') }}</span>
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center justify-between gap-2 mb-4">
+                <a href="{{ route('me.events.show', $e['key']) }}"
+                   class="inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors"
+           aria-label="{{ __('personal.event_show_event') }}" title="{{ __('personal.event_show_event') }}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+
+                <div class="flex items-center gap-2">
+                    @if($canManage ?? false)
+                        <a href="{{ route('me.events.manage', $e['key']) }}" title="{{ __('personal.event_manage_title') }}"
+                           class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors">
+                            <i class="bi bi-sliders text-base"></i>
+                        </a>
                     @endif
-                </p>
+                </div>
             </div>
 
-            @if(($canManage ?? false) && !($e['ended'] ?? false) && !($e['started'] ?? false))
-                <button type="button" @click="generateNewDraw()" :disabled="busy"
-                        class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 border border-white/25 backdrop-blur
-                               text-sm font-bold hover:bg-white/25 transition-colors disabled:opacity-60">
-                    <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-shuffle'"></i>
-                    {{ __('personal.personal_event_bracket_generate_draw_match_numbers') }}
-                </button>
-            @endif
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-diagram-3 bracket-icon"></i> {{ __('personal.event_show_brackets_draws') }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    {{ count($categories) }} {{ __('personal.personal_event_bracket_divisions') }}
+                </span>
+                @if($e['started'] ?? false)
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                        <i class="bi bi-lock-fill"></i> {{ __('events.bracket_locked') }}
+                    </span>
+                @endif
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ $e['title'] }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-building"></i>{{ $e['club'] }}
+            </p>
         </div>
     </div>
 
-    {{-- ===== The board ===== --}}
+    {{-- A draw the organiser has not let out yet: the page is the veil and
+         nothing else. Not merely the board — this page also prints the same
+         bouts underneath in readable form, so both halves go quiet together
+         (PersonalEventController::bracket empties $categories to match). --}}
+    @if($drawHidden ?? null)
+        <div class="max-w-xl mx-auto">
+            <x-draw-veil :message="$drawHidden" :color="$color" />
+        </div>
+    @else
+
+    {{-- ===== The board =====
+         `bare`: the draw IS the page here, so the board runs edge to edge with
+         no card chrome. The division switcher above it keeps the page gutters. --}}
     <x-tournament-bracket
         id="event-bracket"
         :data-url="route('me.events.bracket.data', $e['key'])"
-        :arrange-url="route('me.events.bracket.arrange', $e['key'])"
-        :clear-url="route('me.events.bracket.clear', $e['key'])"
         :event-uuid="$e['key']"
-        :can-arrange="$canArrange ?? false"
+        {{-- Read-only board: no arrange mode, and no arrange/clear endpoints
+             handed to the client at all. The console owns rearranging. --}}
+        :can-arrange="false"
+        {{-- Open on the division the link asked for (a bout's "View draw"),
+             else the first — the board keeps its own switcher here. --}}
+        :initial-division="collect($categories)->firstWhere('key', $initialCategory ?? null)['id'] ?? null"
         :my-competitor-ids="$myCompetitorIds ?? []"
-        height="68vh" />
+        height="68vh"
+        bare bleed />
 
     @if(count($categories))
         {{-- ===== Detail: the same bouts, readable, plus podium & entrants ===== --}}
@@ -178,7 +200,7 @@
                             </div>
                         @empty
                             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
-                                <i class="bi bi-diagram-3 text-3xl text-muted-foreground/60"></i>
+                                <i class="bi bi-diagram-3 bracket-icon text-3xl text-muted-foreground/60"></i>
                                 <p class="text-sm text-muted-foreground mt-2">{{ __('events.bracket_no_draw') }}</p>
                             </div>
                         @endforelse
@@ -235,5 +257,6 @@
             @endforeach
         </div>
     @endif
+    @endif {{-- the draw-withheld veil --}}
 </div>
 @endsection

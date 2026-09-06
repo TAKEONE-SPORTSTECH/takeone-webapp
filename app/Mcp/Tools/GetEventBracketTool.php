@@ -47,6 +47,19 @@ class GetEventBracketTool extends BaseTool
             return Response::error('Event not found.');
         }
 
+        // A draw the organiser has withheld is withheld here too. The MCP must
+        // never show more than the acting user could reach in the UI, and an
+        // integration reading a bracket the athletes cannot see would be
+        // exactly that.
+        if (! app(EventAccess::class)->drawVisible($event, $user)) {
+            return Response::json([
+                'event' => ['uuid' => $event->uuid, 'title' => $event->title],
+                'bracketed' => true,
+                'published' => false,
+                'message' => 'The draw for this event has not been published yet.',
+            ]);
+        }
+
         $type = app(EventTypeRegistry::class)->for($event);
         $divisions = $type->bracketView($event, $user);
 

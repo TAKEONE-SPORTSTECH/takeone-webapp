@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Duel;
+use App\Challenges\Models\Duel;
 use App\Support\SectionActivity;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -57,12 +57,17 @@ class SectionActivityTest extends TestCase
         $this->assertDatabaseHas('user_section_views', ['user_id' => $me->id, 'section' => 'events']);
     }
 
-    public function test_mark_section_seen_ignores_unknown_section(): void
+    /**
+     * FIXED 2026-08-31: the endpoint used to accept an unknown section and
+     * answer 200 {"success":true} while writing nothing. It now validates
+     * `section` against SectionActivity::SECTIONS and refuses anything else.
+     */
+    public function test_mark_section_seen_refuses_unknown_section(): void
     {
         $me = $this->createUser();
 
         $this->actingAs($me)->postJson('/me/seen', ['section' => 'not-a-real-section'])
-            ->assertOk();
+            ->assertStatus(422)->assertJsonValidationErrors(['section']);
 
         $this->assertDatabaseMissing('user_section_views', ['user_id' => $me->id, 'section' => 'not-a-real-section']);
     }

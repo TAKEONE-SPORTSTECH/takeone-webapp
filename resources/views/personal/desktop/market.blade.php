@@ -15,36 +15,24 @@
 
     @include('partials.personal-desktop-subnav')
 
-    {{-- ===== Hero: title + search + cart/orders ===== --}}
-    <div class="rounded-2xl shadow-sm p-6 text-white relative overflow-hidden mb-6" style="background: linear-gradient(135deg, hsl(250 65% 65%), hsl(250 65% 52%));">
-        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
-        <div class="relative flex items-center justify-between gap-4 flex-wrap">
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-wider text-white/70">{{ __('market.personal_market_eyebrow') }}</p>
-                <h1 class="text-2xl font-black mt-0.5">{{ __('market.personal_market_title') }}</h1>
+    {{-- Standard header band (Design Rule #6). Platform hub: the shared
+         m-hero mesh, no back pill. --}}
+    <div class="m-hero -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-shop"></i> {{ __('market.personal_market_title') }}
+                </span>
             </div>
-            <div class="flex items-center gap-3 flex-1 max-w-md min-w-[220px]">
-                <div class="relative flex-1">
-                    <i class="bi bi-search absolute start-3.5 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none"></i>
-                    <input x-model="q" type="search" placeholder="{{ __('market.personal_market_search_placeholder') }}"
-                           class="w-full ps-10 pe-3 py-2.5 bg-white/15 border border-white/25 backdrop-blur rounded-xl text-sm text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/40">
-                </div>
-                <a href="{{ route('me.orders') }}"
-                   class="w-11 h-11 flex-shrink-0 rounded-xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors" aria-label="{{ __('market.my_orders') }}">
-                    <i class="bi bi-receipt text-lg"></i>
-                </a>
-                <button type="button" @click="cartOpen=true"
-                        class="relative w-11 h-11 flex-shrink-0 rounded-xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors">
-                    <i class="bi bi-bag text-lg" :class="cartBump ? 'cart-bump' : ''"></i>
-                    <span x-show="count>0" x-transition
-                          class="absolute -top-1 -end-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center"
-                          :class="cartBump ? 'cart-pop' : ''" x-text="count"></span>
-                    <span x-show="cartBump" x-cloak class="cart-plus">+1</span>
-                </button>
-            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('market.personal_market_title') }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-bag"></i>{{ __('market.personal_market_eyebrow') }}
+            </p>
         </div>
     </div>
-
     {{-- ===== Category chips ===== --}}
     <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-6">
         @foreach($categories as $c)
@@ -200,7 +188,7 @@
              x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full rtl:-translate-x-full">
             <div class="p-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                 <h3 class="font-black text-foreground flex items-center gap-2">
-                    <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" class="-ms-1 w-7 h-7 grid place-items-center" aria-label="{{ __('market.back') }}"><i class="bi bi-arrow-left"></i></button>
+                    <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" class="-ms-1 w-7 h-7 grid place-items-center" aria-label="{{ __('market.back') }}"><i class="bi bi-chevron-left"></i></button>
                     <i class="bi" :class="cartStep==='pay' ? 'bi-shield-lock' : 'bi-bag'"></i>
                     <span x-text="cartStep==='pay' ? @js(__('market.pay_title')) : @js(__('market.your_cart'))"></span>
                     <span class="text-muted-foreground font-medium" x-show="cartStep==='cart'" x-text="`(${count})`"></span>

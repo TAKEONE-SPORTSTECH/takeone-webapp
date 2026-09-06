@@ -6,7 +6,7 @@ return [
     'club_waiting'        => 'Your club is waiting. Let\'s go.',
 
     // Form
-    'email_or_phone'      => 'Email or phone',
+    'email_or_phone'      => 'Phone number or email',
     'password'            => 'Password',
     'show_password'       => 'Show password',
     'hide_password'       => 'Hide password',
@@ -37,7 +37,7 @@ return [
     'auth_desktop_login_subtitle'               => "Welcome back! Sign in to continue",
     'auth_desktop_login_tab_password'            => 'Password',
     'auth_desktop_login_tab_link'                => 'Login Link',
-    'auth_desktop_login_email_placeholder'       => 'Email',
+    'auth_desktop_login_email_placeholder'       => 'Phone number or email',
     'auth_desktop_login_password_placeholder'    => 'Password',
     'auth_desktop_login_remember_me'             => 'Remember me',
     'auth_desktop_login_sign_in'                 => 'Sign In',
@@ -125,4 +125,9 @@ return [
     'auth_verify_email_resend_button'        => 'Resend Verification Email',
     'auth_verify_email_wrong_account'        => 'Wrong account?',
     'auth_verify_email_sign_out'             => 'Sign out',
+
+    /* "Who is signing in?" — a telephone number shared by a household. */
+    'choose_title' => 'Who\'s signing in?',
+    'choose_sub' => 'More than one person uses this number. Tap whoever is signing in.',
+    'choose_not_you' => 'Use a different number or email',
 ];

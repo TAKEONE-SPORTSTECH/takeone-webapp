@@ -68,8 +68,9 @@
             </form>
 
             <div class="text-center mt-4">
-                <a href="{{ route('login') }}" class="text-sm text-gray-400 hover:text-gray-600">
-                    <i class="bi bi-arrow-left me-1"></i>{{ __('security.security_challenge_back_to_login') }}
+                <a href="{{ route('login') }}" class="text-sm text-gray-400 hover:text-gray-600"
+           aria-label="{{ __('security.security_challenge_back_to_login') }}" title="{{ __('security.security_challenge_back_to_login') }}">
+                    <i class="bi bi-chevron-left"></i>
                 </a>
             </div>
         </div>

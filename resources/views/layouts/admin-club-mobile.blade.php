@@ -10,52 +10,17 @@
     $currentRoute = request()->route()?->getName();
     $clubPublicUrl = \App\Http\Controllers\QrController::clubPageUrl($club);
 
-    // Pending member-claimed records (medals + skills) naming this club, awaiting a decision.
-    $pendingVerifications = \App\Models\TournamentEvent::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
-            ->where('verification_status', 'pending')->count()
-        + \App\Models\SkillAcquisition::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
-            ->where('verification_status', 'pending')->count();
-
-    // Grouped navigation for the drawer (matches the liked mockup structure).
-    $navGroups = [
-        __('admin.nav_group_overview') => [
-            ['route'=>'admin.club.dashboard',   'icon'=>'bi-speedometer2', 'label'=>__('admin.nav_dashboard')],
-            ['route'=>'admin.club.analytics',   'icon'=>'bi-bar-chart',    'label'=>__('admin.nav_analytics')],
-        ],
-        __('admin.nav_group_people') => [
-            ['route'=>'admin.club.members',     'icon'=>'bi-people',        'label'=>__('admin.nav_members')],
-            ['route'=>'admin.club.instructors', 'icon'=>'bi-person-badge',  'label'=>__('admin.nav_instructors')],
-            ['route'=>'admin.club.roles',       'icon'=>'bi-person-lock',   'label'=>__('admin.nav_roles')],
-            ['route'=>'admin.club.achievements.verifications', 'icon'=>'bi-patch-check', 'label'=>__('nav.layouts_admin_club_nav_verifications'), 'badge'=>$pendingVerifications],
-            ['route'=>'admin.club.messages',    'icon'=>'bi-chat-dots',     'label'=>__('admin.nav_messages')],
-            ['route'=>'admin.club.notifications','icon'=>'bi-bell',         'label'=>__('admin.nav_notifications')],
-        ],
-        __('admin.nav_group_offerings') => [
-            ['route'=>'admin.club.packages',    'icon'=>'bi-box',           'label'=>__('admin.nav_packages')],
-            ['route'=>'admin.club.activities',  'icon'=>'bi-activity',      'label'=>__('admin.nav_activities')],
-            ['route'=>'admin.club.events',      'icon'=>'bi-calendar-event','label'=>__('admin.nav_events')],
-            ['route'=>'admin.club.facilities',  'icon'=>'bi-geo-alt',       'label'=>__('admin.nav_facilities')],
-        ],
-        __('admin.nav_group_store') => [
-            ['route'=>'admin.club.shop',        'icon'=>'bi-shop',          'label'=>__('admin.nav_shop')],
-            ['route'=>'admin.club.orders',      'icon'=>'bi-bag-check',     'label'=>__('admin.nav_orders')],
-        ],
-        __('admin.nav_group_content') => [
-            ['route'=>'admin.club.gallery',     'icon'=>'bi-images',        'label'=>__('admin.nav_gallery')],
-            ['route'=>'admin.club.timeline',    'icon'=>'bi-newspaper',     'label'=>__('admin.nav_timeline')],
-            ['route'=>'admin.club.perks',       'icon'=>'bi-gift',          'label'=>__('admin.nav_perks')],
-            ['route'=>'admin.club.achievements','icon'=>'bi-trophy',        'label'=>__('admin.nav_achievements')],
-        ],
-        __('admin.nav_group_finance') => [
-            ['route'=>'admin.club.financials',  'icon'=>'bi-currency-dollar','label'=>__('admin.nav_financials')],
-        ],
-        __('admin.nav_group_settings') => [
-            ['route'=>'admin.club.details',     'icon'=>'bi-building',      'label'=>__('admin.nav_details')],
-        ],
-    ];
+    /*
+     * The drawer is composed from the platform's modules
+     * (app/, config/modules.php) rather than listed here, so adding
+     * or removing a capability is one directory and one registry line — it does
+     * not mean editing this shell. The mobile surface is its own list: its own
+     * groups, icons and labels, exactly as before.
+     */
+    $navGroups = app(\App\Support\Modules\ModuleRegistry::class)->clubAdminNavGroups($club, 'mobile');
 
     // Flatten for label lookup + bottom-tab definition.
-    $allNav = collect($navGroups)->flatten(1);
+    $allNav = collect($navGroups)->pluck('items')->flatten(1);
     $activeLabel = optional($allNav->firstWhere('route', $currentRoute))['label'] ?? '';
     $bottomTabs = [
         ['route'=>'admin.club.dashboard',  'icon'=>'bi-speedometer2',    'label'=>__('admin.nav_home')],
@@ -84,7 +49,7 @@
             <div class="flex items-center justify-between p-4 border-b border-border">
                 <div class="flex items-center gap-2 min-w-0">
                     @if(!empty($club->logo))
-                        <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">
+                        <img src="{{ file_url($club->logo) }}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">
                     @else
                         <span class="w-10 h-10 rounded-lg bg-accent flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">{{ mb_strtoupper(mb_substr($club->club_name ?? 'CL', 0, 2, 'UTF-8'), 'UTF-8') }}</span>
                     @endif
@@ -102,9 +67,9 @@
                    class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
                     <i class="bi bi-eye text-lg w-5 text-center"></i>{{ __('admin.preview_club_page') }}
                 </a>
-                @foreach($navGroups as $groupLabel => $items)
-                    <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ $groupLabel }}</p>
-                    @foreach($items as $item)
+                @foreach($navGroups as $group)
+                    <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ $group['label'] }}</p>
+                    @foreach($group['items'] as $item)
                         @if(!empty($item['external']))
                             <a href="{{ $item['url'] }}"
                                class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
@@ -140,7 +105,7 @@
                         </a>
                         <a href="{{ route('admin.platform.clubs') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
-                            <i class="bi bi-arrow-left text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_back_to_clubs') }}
+                            <i class="bi bi-chevron-left text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_back_to_clubs') }}
                         </a>
                         <a href="{{ route('me.home') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
@@ -149,7 +114,7 @@
                     @else
                         <a href="{{ $hasBusiness ? route('business.dashboard') : route('clubs.explore') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
-                            <i class="bi bi-arrow-left text-lg w-5 text-center"></i>{{ $hasBusiness ? __('admin.back_to_chain') : __('admin.back_to_explore') }}
+                            <i class="bi bi-chevron-left text-lg w-5 text-center"></i>{{ $hasBusiness ? __('admin.back_to_chain') : __('admin.back_to_explore') }}
                         </a>
                     @endif
 
@@ -196,7 +161,7 @@
         </div>
     </nav>
 
-    @include('admin.club.notifications.send-modal')
+    @include('clubs::notifications.send-modal')
 
 </div>
 

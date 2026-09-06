@@ -6,10 +6,11 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventParticipantBan;
-use App\Models\HealthRecord;
-use App\Models\Tenant;
-use App\Models\User;
-use App\Models\UserNotification;
+use App\Members\Models\HealthRecord;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
+use App\Members\Models\UserNotification;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -150,7 +151,21 @@ class BulkEntryTest extends TestCase
 
     /* ---------------- It is not a bypass ---------------- */
 
-    public function test_an_athlete_with_no_weight_on_file_is_refused_with_a_reason(): void
+    /**
+     * CHANGED 2026-08-16 — Phase 1 of Documentation/EVENTS-ENTRY-BILLING.md.
+     *
+     * A missing weight used to REFUSE a club entry. It no longer does: the
+     * sports' `no_weight` gate now returns a DEFERRABLE refusal
+     * (EnrolmentDecision::defer()) and EntryService admits it on the CLUB
+     * channel only — the coach commits their own squad and the athlete stands
+     * on the scale on the day. They go in unclassified and are placed by
+     * EventType::classifyEntry() when the desk records the official weight.
+     *
+     * So this asserts the deferral is real and visible, not that it vanished:
+     * the athlete is in, carries `pending_weigh_in`, and holds NO division.
+     * Self-entry still refuses — pinned by the test below it.
+     */
+    public function test_an_athlete_with_no_weight_on_file_goes_in_pending_the_scale(): void
     {
         $event = $this->event();
         $ok = $this->athlete('Ali');
@@ -159,10 +174,39 @@ class BulkEntryTest extends TestCase
         $response = $this->actingAs($this->coach)
             ->postJson("/me/events/{$event->uuid}/entries", ['user_ids' => [$ok->id, $noWeight->id]])
             ->assertOk()
-            ->assertJsonCount(1, 'entered')
-            ->assertJsonCount(1, 'rejected');
+            ->assertJsonCount(2, 'entered')
+            ->assertJsonCount(0, 'rejected');
 
-        $this->assertSame('no_weight', $response->json('rejected.0.code'));
+        $rows = collect($response->json('entered'))->keyBy('user_id');
+
+        $this->assertFalse($rows[$ok->id]['pending_weigh_in'], 'a weighed athlete is placed immediately');
+        $this->assertSame('Senior Men -58 kg', $rows[$ok->id]['division']);
+
+        $this->assertTrue($rows[$noWeight->id]['pending_weigh_in'], 'the coach is told the desk still has to place them');
+        $this->assertNull($rows[$noWeight->id]['division'], 'and they are NOT guessed into a division');
+
+        $this->assertDatabaseHas('club_event_registrations', [
+            'event_id' => $event->id,
+            'user_id' => $noWeight->id,
+            'role' => 'participant',
+            'entry_channel' => 'club',
+            'category_id' => null,
+        ]);
+    }
+
+    public function test_an_athlete_with_no_weight_still_cannot_enter_themselves(): void
+    {
+        // The other half of the deferral rule: the club may commit its own
+        // athlete unweighed, but a member entering themselves is asked to
+        // complete their own profile first.
+        $event = $this->event();
+        $noWeight = $this->athlete('Unweighed', null);
+
+        $this->actingAs($noWeight)
+            ->postJson("/me/events/{$event->uuid}/register")
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'code' => 'no_weight']);
+
         $this->assertDatabaseMissing('club_event_registrations', ['user_id' => $noWeight->id]);
     }
 
@@ -253,11 +297,50 @@ class BulkEntryTest extends TestCase
         $admin = $this->createUser();
         $admin->memberClubs()->syncWithoutDetaching([$this->club->id => ['status' => 'active']]);
         $this->makeClubAdmin($admin, $this->club);
+        // CHANGED 2026-08-16 — entry authority is the `enter-athletes`
+        // PERMISSION now, not the `club-admin` role slug
+        // (EntryService::administeredClubIds(), Phase 1 of
+        // Documentation/EVENTS-ENTRY-BILLING.md). Production grants it to
+        // club-admin through the migration + RolePermissionSeeder; the bare
+        // test role carries no permissions, so the grant is made here to model
+        // the real club-admin rather than to loosen the rule. The test below
+        // pins that a club-admin WITHOUT the grant is refused.
+        $this->grantEnterAthletes('club-admin');
 
         $this->actingAs($admin->fresh())
             ->postJson("/me/events/{$event->uuid}/entries", ['user_ids' => [$this->athlete('Ali')->id]])
             ->assertOk()
             ->assertJsonCount(1, 'entered');
+    }
+
+    public function test_a_club_admin_whose_grant_was_taken_away_may_not_enter(): void
+    {
+        // The permission is the authority, so a club that revokes it revokes
+        // the ability — the role slug alone must never be enough.
+        $event = $this->event();
+        $admin = $this->createUser();
+        $admin->memberClubs()->syncWithoutDetaching([$this->club->id => ['status' => 'active']]);
+        $this->makeClubAdmin($admin, $this->club);
+
+        $this->actingAs($admin->fresh())
+            ->postJson("/me/events/{$event->uuid}/entries", ['user_ids' => [$this->athlete('Ali')->id]])
+            ->assertForbidden();
+    }
+
+    /** Give a role the `enter-athletes` grant, exactly as RolePermissionSeeder does. */
+    private function grantEnterAthletes(string $roleSlug): void
+    {
+        $permissionId = DB::table('permissions')->where('slug', 'enter-athletes')->value('id');
+        $this->assertNotNull($permissionId, 'the enter-athletes permission must exist');
+
+        $roleId = DB::table('roles')->where('slug', $roleSlug)->value('id');
+
+        DB::table('role_permission')->insertOrIgnore([
+            'role_id' => $roleId,
+            'permission_id' => $permissionId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /* ---------------- The roster the coach picks from ---------------- */
@@ -278,8 +361,14 @@ class BulkEntryTest extends TestCase
         $this->assertTrue($rows[$ready->id]['can_enter']);
         $this->assertSame('Senior Men -58 kg', $rows[$ready->id]['division']);
 
-        $this->assertFalse($rows[$noWeight->id]['can_enter']);
+        // CHANGED 2026-08-16 (same Phase 1 change as above): a missing weight is
+        // a DEFERRABLE refusal, so the coach may still pick them — but the row
+        // must say so plainly, and must not pretend to know their division.
+        $this->assertTrue($rows[$noWeight->id]['can_enter']);
+        $this->assertTrue($rows[$noWeight->id]['pending_weigh_in'], 'the row says the desk still has to place them');
+        $this->assertNull($rows[$noWeight->id]['division'], 'an unweighed athlete is not guessed into a division');
         $this->assertNotEmpty($rows[$noWeight->id]['reason'], 'the coach is told why before submitting, not after');
+        $this->assertFalse($rows[$ready->id]['pending_weigh_in'], 'a weighed athlete needs nothing from the desk');
     }
 
     public function test_the_roster_marks_who_is_already_in(): void

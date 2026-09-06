@@ -22,7 +22,7 @@
         <div class="flex items-center gap-2 px-3 h-14">
             <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('admin.platform.index') }}')"
                     class="m-press w-10 h-10 -ml-1 rounded-xl flex items-center justify-center text-foreground" aria-label="Back">
-                <i class="bi bi-arrow-left text-xl"></i>
+                <i class="bi bi-chevron-left text-xl"></i>
             </button>
             <p class="flex-1 min-w-0 text-base font-bold text-primary truncate">AI Providers</p>
             <button type="button" @click="openCreate()"
@@ -129,16 +129,27 @@
                      style="max-height: 92vh; max-height: 92dvh;" @click.stop>
 
                     {{-- header --}}
-                    <div class="pt-2.5 pb-1 flex justify-center flex-shrink-0"><span class="w-10 h-1 rounded-full bg-gray-300"></span></div>
-                    <div class="flex items-center justify-between px-5 pt-1 pb-3 flex-shrink-0">
-                        <h4 class="font-black text-lg text-foreground" x-text="editing ? 'Edit provider' : 'Add provider'"></h4>
-                        <button type="button" @click="showForm = false" class="w-9 h-9 -me-1.5 rounded-full grid place-items-center text-muted-foreground hover:bg-muted transition-colors">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
+                    <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                         style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                        <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                        <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                        <div class="relative flex items-start gap-3">
+                            <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                <i class="bi bi-cpu text-xl"></i>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h4 class="text-lg font-black leading-tight" x-text="editing ? 'Edit provider' : 'Add provider'"></h4>
+                                <p class="text-[12px] text-white/85 mt-0.5" x-show="form.name" x-text="form.name"></p>
+                            </div>
+                            <button type="button" @click="showForm = false" aria-label="{{ __('shared.close') }}"
+                                    class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
                     </div>
 
                     {{-- scrollable body --}}
-                    <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 space-y-5">
+                    <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-4 pb-5 space-y-5">
 
                         {{-- Name --}}
                         <div>

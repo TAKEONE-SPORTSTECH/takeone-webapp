@@ -5,7 +5,7 @@
 
 @php
     $rtl = $locale === 'ar';
-    $img = $activity->picture_url ? asset('storage/'.$activity->picture_url).'?v='.optional($activity->updated_at)->timestamp : null;
+    $img = $activity->picture_url ? file_url($activity->picture_url).'?v='.optional($activity->updated_at)->timestamp : null;
     $variants = $activity->variants ?: [];
     $videos = $activity->sanitizedVideos();
 @endphp
@@ -26,7 +26,7 @@
         {{-- slim top fade behind controls only — keeps the picture bright --}}
         <div class="axm-hero-topfade"></div>
         <div class="axm-topbar">
-            <a href="{{ url()->previous() }}" id="axmBack" onclick="if(history.length>1){event.preventDefault();history.back();}" class="axm-ctrl" title="{{ $rtl ? 'رجوع' : 'Back' }}"><i class="bi bi-arrow-left"></i></a>
+            <a href="{{ url()->previous() }}" id="axmBack" onclick="if(history.length>1){event.preventDefault();history.back();}" class="axm-ctrl" title="{{ $rtl ? 'رجوع' : 'Back' }}"><i class="bi bi-chevron-left"></i></a>
             <div class="axm-topbar-right">
                 <button type="button" class="axm-ctrl" onclick="axShare()" title="{{ $rtl ? 'مشاركة' : 'Share' }}"><i class="bi bi-share"></i></button>
                 <x-qr-code :url="route('activity.show', $activity)" :title="$name" label="" icon="bi-qr-code" buttonClass="axm-ctrl" :size="240" :caption="$rtl ? 'امسح للفتح على الجوال' : 'Scan to open on your phone'" />

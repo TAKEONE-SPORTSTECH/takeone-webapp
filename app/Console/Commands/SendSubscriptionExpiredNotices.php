@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubNotification;
-use App\Models\UserNotification;
+use App\Clubs\Models\ClubNotification;
+use App\Members\Models\UserNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 

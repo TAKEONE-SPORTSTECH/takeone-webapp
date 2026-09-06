@@ -104,7 +104,7 @@
                                     {{-- Avatar --}}
                                     <div class="shrink-0">
                                         <template x-if="member.profile_picture">
-                                            <img :src="'/storage/' + member.profile_picture" :alt="member.name"
+                                            <img :src="'/file/' + member.profile_picture" :alt="member.name"
                                                  class="w-11 h-11 rounded-full object-cover ring-2 transition-all duration-200"
                                                  :class="joinModal.isMemberSelected(member.id) ? 'ring-primary/30' : 'ring-gray-200'">
                                         </template>

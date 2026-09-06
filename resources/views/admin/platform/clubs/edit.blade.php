@@ -158,7 +158,7 @@
                                 folder="clubs/{{ $club->id }}/logos"
                                 filename="logo_{{ $club->id }}"
                                 uploadUrl="{{ route('admin.platform.clubs.upload-logo', $club) }}"
-                                :currentImage="$club->logo ? asset('storage/' . $club->logo) : ''"
+                                :currentImage="$club->logo ? file_url($club->logo) : ''"
                                 placeholder="{{ __('platform.platform_clubs_edit_no_logo') }}"
                                 placeholderIcon="bi-building"
                                 buttonText="{{ __('platform.platform_clubs_edit_change_logo') }}"
@@ -178,7 +178,7 @@
                                 folder="clubs/{{ $club->id }}/covers"
                                 filename="cover_{{ $club->id }}"
                                 uploadUrl="{{ route('admin.platform.clubs.upload-cover', $club) }}"
-                                :currentImage="$club->cover_image ? asset('storage/' . $club->cover_image) : ''"
+                                :currentImage="$club->cover_image ? file_url($club->cover_image) : ''"
                                 placeholder="{{ __('platform.platform_clubs_edit_no_cover') }}"
                                 placeholderIcon="bi-image"
                                 buttonText="{{ __('platform.platform_clubs_edit_change_cover') }}"
@@ -193,7 +193,7 @@
                         <div class="flex justify-between mt-4 pt-3 border-t">
                             <div>
                                 <a href="{{ route('admin.platform.clubs') }}" class="btn btn-secondary">
-                                    <i class="bi bi-arrow-left me-2"></i>{{ __('shared.cancel') }}
+                                    <i class="bi bi-chevron-left me-2"></i>{{ __('shared.cancel') }}
                                 </a>
                                 <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
                                     <i class="bi bi-trash me-2"></i>{{ __('platform.platform_clubs_edit_delete_club') }}

@@ -18,6 +18,12 @@
     function content() { return document.getElementById('shell-content'); }
     if (!content()) return;
 
+    // This script itself lives in #shell-scripts, which a navigation now replaces.
+    // Its listeners survive that (the closure outlives the tag), so a second run
+    // would only double-bind every click handler.
+    if (window.__mobileShellNavInit) return;
+    window.__mobileShellNavInit = true;
+
     function updateActive(route) {
         document.querySelectorAll('[data-shell-link]').forEach(function (a) {
             a.classList.toggle('is-active', a.getAttribute('data-route') === route);
@@ -25,12 +31,68 @@
     }
 
     // Re-execute any inline <script> tags that arrived inside the swapped content.
+    // Content scripts re-run on EVERY visit on purpose: they bind handlers to the
+    // DOM that was just replaced, so skipping them would leave the new markup dead.
     function runScripts(container) {
+        if (!container) return;
         container.querySelectorAll('script').forEach(function (old) {
             var s = document.createElement('script');
+            for (var i = 0; i < old.attributes.length; i++) { s.setAttribute(old.attributes[i].name, old.attributes[i].value); }
             if (old.src) s.src = old.src; else s.textContent = old.textContent;
             old.parentNode.replaceChild(s, old);
         });
+    }
+
+    /* ── Page-pushed scripts and modals ──────────────────────────────────────
+       Blade's pushed 'scripts' / 'modals' stacks render OUTSIDE #shell-content, in
+       the layout's #shell-scripts / #shell-modals wrappers. Until this existed
+       the mobile navigator never fetched them, so a component whose behaviour is
+       registered from the script stack simply had no behaviour after an in-place
+       navigation.
+
+       The x-qr-code component is the case that exposed it: `Alpine.data('qrCode')` was
+       never registered, so `x-data="qrCode(…)"` threw, the component's scope was
+       EMPTY, and `x-show="open"` then resolved `open` against the global scope —
+       finding `window.open`, a function, which is truthy. The teleported sheet
+       therefore rendered permanently, with no title, no QR and no link. An empty
+       sheet over the page, on arrival, every time.
+
+       These run ONCE per session, deduped by content, because a pushed script
+       declares top-level `const`/`function` at global scope and re-running it
+       throws "already declared". The set is seeded with what the browser already
+       executed on first paint — deferred to DOMContentLoaded, because later
+       siblings in the same stack are not parsed yet at the moment this runs.
+       Same mechanics as the desktop admin shell (partials/admin-shell-nav). ── */
+    var ranScripts = new Set();
+    function scriptKey(el) { return el.src ? ('SRC:' + el.src) : ('TXT:' + el.textContent); }
+    function seedRanScripts() {
+        document.querySelectorAll('#shell-scripts script, #shell-modals script')
+            .forEach(function (el) { ranScripts.add(scriptKey(el)); });
+    }
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', seedRanScripts); }
+    else { seedRanScripts(); }
+
+    function runStackScripts(container) {
+        if (!container) return;
+        container.querySelectorAll('script').forEach(function (old) {
+            var key = scriptKey(old);
+            if (ranScripts.has(key)) return;
+            ranScripts.add(key);
+            var s = document.createElement('script');
+            for (var i = 0; i < old.attributes.length; i++) { s.setAttribute(old.attributes[i].name, old.attributes[i].value); }
+            if (old.src) s.src = old.src; else s.textContent = old.textContent;
+            old.parentNode.replaceChild(s, old);
+        });
+    }
+
+    function swapStacks(doc) {
+        [['shell-modals', false], ['shell-scripts', true]].forEach(function (pair) {
+            var cur = document.getElementById(pair[0]);
+            var next = doc.getElementById(pair[0]);
+            if (cur && next) cur.innerHTML = next.innerHTML;
+        });
+        runStackScripts(document.getElementById('shell-modals'));
+        runStackScripts(document.getElementById('shell-scripts'));
     }
 
     async function navigate(url, push) {
@@ -69,6 +131,7 @@
             // Update the URL BEFORE running inline scripts so they can read the
             // destination's query string (e.g. the schedule list reading ?day=).
             if (push !== false) history.pushState({ shell: true }, '', url);
+            swapStacks(doc);
             runScripts(c);
             window.scrollTo(0, 0);
             window.dispatchEvent(new CustomEvent('shell:navigated'));

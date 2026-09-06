@@ -1,0 +1,138 @@
+<?php
+
+namespace App\Shop\Models;
+
+use App\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Clubs\Models\Tenant;
+
+/**
+ * A product sold in a club's Shop. Held in stock (quantity tracked) or
+ * dropshipped (supplier ships on order).
+ */
+class ClubProduct extends Model
+{
+    use BelongsToTenant, HasFactory, SoftDeletes;
+
+    protected $table = 'club_products';
+
+    protected $fillable = [
+        'tenant_id', 'name', 'brand', 'category', 'price', 'old_price', 'cost',
+        'margin_type', 'margin_value', 'badge',
+        'availability', 'featured', 'color', 'icon', 'image_path', 'description',
+        'colors', 'specs', 'attributes', 'fulfillment', 'quantity', 'low_stock_alert',
+        'supplier', 'supplier_url', 'ships_in', 'status', 'sort',
+        'rating_count', 'rating_sum',
+    ];
+
+    protected $casts = [
+        'price' => 'decimal:2',
+        'old_price' => 'decimal:2',
+        'cost' => 'decimal:2',
+        'margin_value' => 'decimal:2',
+        'featured' => 'boolean',
+        'colors' => 'array',
+        'specs' => 'array',
+        'attributes' => 'array',
+        'quantity' => 'integer',
+    ];
+
+    /**
+     * Declared variant attributes — WooCommerce-style dimensions, each a name
+     * plus its list of values, e.g. [['name'=>'Brand','values'=>['Adidas',…]], …].
+     */
+    public function attributeList(): array
+    {
+        // NOTE: the DB column is named `attributes`, which collides with Eloquent's
+        // internal $this->attributes storage array — always read it via getAttribute()
+        // so the 'array' cast is applied and we get the decoded value.
+        return $this->getAttribute('attributes') ?? [];
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    /** All variants (size/colour/brand combinations) of this product. */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ClubProductVariant::class, 'club_product_id')->orderBy('sort');
+    }
+
+    /** Active variants only — what a buyer can actually choose. */
+    public function activeVariants(): HasMany
+    {
+        return $this->variants()->where('is_active', true);
+    }
+
+    /** True when this product is sold as variants rather than a single SKU. */
+    public function hasVariants(): bool
+    {
+        return $this->relationLoaded('variants')
+            ? $this->variants->isNotEmpty()
+            : $this->variants()->exists();
+    }
+
+    /** Lowest active-variant price, for the "from X" display on variant products. */
+    public function fromPrice(): float
+    {
+        $variants = $this->relationLoaded('variants')
+            ? $this->variants->where('is_active', true)
+            : $this->activeVariants()->get();
+
+        return $variants->isNotEmpty()
+            ? (float) $variants->min('price')
+            : (float) $this->price;
+    }
+
+    /** Shape for the shop grid / market card (matches the JS product object). */
+    public function toCardArray(): array
+    {
+        $variants = $this->relationLoaded('variants')
+            ? $this->variants
+            : $this->variants()->get();
+        $activeVariants = $variants->where('is_active', true);
+        $hasVariants = $variants->isNotEmpty();
+        $displayPrice = $activeVariants->isNotEmpty()
+            ? (float) $activeVariants->min('price')
+            : (float) $this->price;
+
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'brand' => $this->brand,
+            'cat' => $this->category,
+            'price' => $displayPrice,
+            'hasVariants' => $hasVariants,
+            'attributes' => $this->attributeList(),
+            'variants' => $variants->map->toCardArray()->values()->all(),
+            'old' => $this->old_price !== null ? (float) $this->old_price : null,
+            'cost' => $this->cost !== null ? (float) $this->cost : null,
+            'marginType' => $this->margin_type ?? 'fixed',
+            'marginValue' => $this->margin_value !== null ? (float) $this->margin_value : null,
+            'badge' => $this->badge,
+            'availability' => $this->availability,
+            'featured' => (bool) $this->featured,
+            'color' => $this->color,
+            'icon' => $this->icon,
+            'image' => $this->image_path ? file_url($this->image_path) : null,
+            'stock' => $this->availability,   // display label for the market
+            'rating' => $this->rating_count ? round($this->rating_sum / $this->rating_count, 1) : 0,
+            'reviews' => (int) $this->rating_count,
+            'desc' => $this->description,
+            'colors' => $this->colors ?? [],
+            'specs' => $this->specs ?? [],
+            'fulfillment' => $this->fulfillment,
+            'quantity' => $this->quantity,
+            'lowStock' => $this->low_stock_alert,
+            'supplier' => $this->supplier,
+            'supplierUrl' => $this->supplier_url,
+            'shipsIn' => $this->ships_in,
+        ];
+    }
+}

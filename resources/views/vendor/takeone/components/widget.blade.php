@@ -122,6 +122,60 @@ $(function() {
     const currentImage_{{ $id }} = '{{ $currentImage }}';
     const mode_{{ $id }} = '{{ $mode }}';
 
+    // ── Transparency preservation ────────────────────────────────────────────────
+    // A logo/badge is usually a PNG with an alpha channel. JPEG has no alpha, so
+    // re-encoding such an image paints the transparent pixels solid (black/white).
+    // We therefore sniff the SOURCE for real transparency once, and encode the
+    // output as PNG when it has any — otherwise JPEG (much smaller for photos).
+    let hasAlpha_{{ $id }} = false;
+    // Resolves once the sniff below has finished — the save handlers await it so a
+    // fast click can never encode before we know whether alpha must be kept.
+    let alphaReady_{{ $id }} = Promise.resolve();
+
+    function detectAlpha_{{ $id }}(src) {
+        hasAlpha_{{ $id }} = false;
+        // Only alpha-capable containers can carry transparency — a JPEG never does.
+        if (/^data:image\/(jpe?g)\b/i.test(src) || /\.jpe?g(\?|$)/i.test(src)) return;
+        try {
+            const probe = new Image();
+            probe.crossOrigin = 'anonymous';
+            alphaReady_{{ $id }} = new Promise((resolve) => {
+                probe.onerror = () => resolve();
+                probe.onload = function () {
+                    try {
+                        // Sample at a reduced size — presence of alpha survives downscaling
+                        // and keeps the scan cheap even for large sources.
+                        const s = Math.min(1, 160 / Math.max(probe.width, probe.height, 1));
+                        const w = Math.max(1, Math.round(probe.width * s));
+                        const h = Math.max(1, Math.round(probe.height * s));
+                        const c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        const cx = c.getContext('2d', { willReadFrequently: true });
+                        cx.drawImage(probe, 0, 0, w, h);
+                        const px = cx.getImageData(0, 0, w, h).data;
+                        for (let i = 3; i < px.length; i += 4) {
+                            if (px[i] < 250) { hasAlpha_{{ $id }} = true; break; }
+                        }
+                    } catch (e) { /* tainted/unreadable canvas — fall back to JPEG */ }
+                    resolve();
+                };
+            });
+            probe.src = src;
+        } catch (e) { /* ignore — encoding falls back to JPEG */ }
+    }
+
+    // Output mime for the cropped/normalized result.
+    function outMime_{{ $id }}() {
+        return hasAlpha_{{ $id }} ? 'image/png' : 'image/jpeg';
+    }
+
+    // Encode a canvas without flattening transparency. PNG ignores the quality arg.
+    function encodeCanvas_{{ $id }}(canvas, quality) {
+        return hasAlpha_{{ $id }}
+            ? canvas.toDataURL('image/png')
+            : canvas.toDataURL('image/jpeg', quality);
+    }
+
     function applyTransform_{{ $id }}(instance) {
         if (!instance.properties.image) return;
         const p = instance.properties;
@@ -173,6 +227,7 @@ $(function() {
         // would leave a stale/null element and the image would never render.
         const box_{{ $id }} = document.getElementById("box_{{ $id }}");
         if (!box_{{ $id }}) return;
+        detectAlpha_{{ $id }}(imageUrl);
         if (cropper_{{ $id }}) cropper_{{ $id }}.destroy();
 
         // Cropme throws "viewport > container" if the requested viewport doesn't fit the canvas.
@@ -324,9 +379,21 @@ $(function() {
 
             // Crop from the source at full output resolution ({{ $width }}px wide) so quality survives
             // an auto-fit (small) on-screen viewport. No-op for fixed-viewport croppers (profile).
-            cropper_{{ $id }}.crop({ type: 'base64', width: {{ $width }} }).then(base64 => {
+            alphaReady_{{ $id }}.then(() => cropper_{{ $id }}.crop({
+                type: 'base64', width: {{ $width }}, mimetype: outMime_{{ $id }}(), quality: 0.92,
+            })).then(base64 => {
                 // Store in hidden input
                 $('#hiddenInput_{{ $id }}').val(base64);
+
+                // …and SAY so. jQuery's .val() fires no event and does not
+                // touch the attribute, so neither a listener nor a
+                // MutationObserver can see it — a caller holding this value in
+                // its own state (an Alpine flow that posts JSON rather than
+                // submitting the form) had no way to learn it had changed.
+                // Additive: nothing existing listens, and no config moves.
+                document.dispatchEvent(new CustomEvent('cropperCropped', {
+                    detail: { id: '{{ $id }}', base64 },
+                }));
 
                 // Update preview
                 const previewContainer = $('#previewContainer_{{ $id }}');
@@ -359,7 +426,9 @@ $(function() {
             // though the on-screen viewport is auto-fit small. (The old path upscaled a viewport-sized
             // crop → blurry.) Then normalize to EXACTLY {{ $width }}x{{ $height }} (the auto-fit viewport
             // rounds to whole px, so cropme's derived height can be ±2px) and JPEG-encode.
-            cropper_{{ $id }}.crop({ type: 'base64', width: {{ $width }} }).then(hiRes => {
+            alphaReady_{{ $id }}.then(() => cropper_{{ $id }}.crop({
+                type: 'base64', width: {{ $width }}, mimetype: outMime_{{ $id }}(), quality: 0.92,
+            })).then(hiRes => {
                 const img = new Image();
                 img.onload = function () {
                     const canvas = document.createElement('canvas');
@@ -369,7 +438,8 @@ $(function() {
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'high';
                     ctx.drawImage(img, 0, 0, {{ $width }}, {{ $height }});
-                    const compressed = canvas.toDataURL('image/jpeg', 0.92);
+                    // PNG when the source carries alpha — JPEG would paint it solid.
+                    const compressed = encodeCanvas_{{ $id }}(canvas, 0.92);
 
                     $.post("{{ $uploadUrl }}", {
                         _token: "{{ csrf_token() }}",
@@ -457,11 +527,29 @@ $(function() {
                 }
                 const canvas = document.createElement('canvas');
                 canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(rawImg, 0, 0, w, h);
-                const base64 = canvas.toDataURL('image/jpeg', 0.88);
+                const c2d = canvas.getContext('2d', { willReadFrequently: true });
+                c2d.drawImage(rawImg, 0, 0, w, h);
+                // Re-check alpha straight off this canvas (the async probe may not have
+                // finished yet) so a transparent logo is never flattened onto JPEG.
+                if (!/^image\/jpe?g$/i.test(fileInput.files[0].type || '')) {
+                    try {
+                        const px = c2d.getImageData(0, 0, w, h).data;
+                        for (let i = 3; i < px.length; i += 4) {
+                            if (px[i] < 250) { hasAlpha_{{ $id }} = true; break; }
+                        }
+                    } catch (e) { /* unreadable canvas — keep the sniffed value */ }
+                }
+                const base64 = encodeCanvas_{{ $id }}(canvas, 0.88);
 
                 if (mode_{{ $id }} === 'form') {
                     $('#hiddenInput_{{ $id }}').val(base64);
+
+                    // See the note on the other form-mode branch: .val() is
+                    // silent, so the value is announced for callers that keep
+                    // it in their own state.
+                    document.dispatchEvent(new CustomEvent('cropperCropped', {
+                        detail: { id: '{{ $id }}', base64 },
+                    }));
 
                     const previewContainer = $('#previewContainer_{{ $id }}');
                     const borderRadius = '{{ $shape }}' === 'circle' ? '50%' : '8px';
@@ -523,6 +611,9 @@ $(function() {
 
         // Clear hidden input
         $('#hiddenInput_{{ $id }}').val('');
+        document.dispatchEvent(new CustomEvent('cropperCropped', {
+            detail: { id: '{{ $id }}', base64: '' },
+        }));
 
         // Reset preview to placeholder
         previewContainer.html(`

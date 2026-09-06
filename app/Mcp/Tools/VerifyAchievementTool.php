@@ -2,7 +2,7 @@
 
 namespace App\Mcp\Tools;
 
-use App\Models\TournamentEvent;
+use App\Members\Models\TournamentEvent;
 use App\Services\AchievementVerificationService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -18,7 +18,7 @@ class VerifyAchievementTool extends BaseTool
     protected bool $isWrite = true;
 
     /** @var array<string,class-string> */
-    private const TYPES = ['achievement' => TournamentEvent::class, 'skill' => \App\Models\SkillAcquisition::class];
+    private const TYPES = ['achievement' => TournamentEvent::class, 'skill' => \App\Members\Models\SkillAcquisition::class];
 
     public function schema(JsonSchema $schema): array
     {

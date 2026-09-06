@@ -1,9 +1,9 @@
 @php
     $hu = Auth::user();
-    $mNotifs = \App\Models\UserNotification::where('user_id', $hu->id)
+    $mNotifs = \App\Members\Models\UserNotification::where('user_id', $hu->id)
         ->with(['clubNotification.tenant', 'actor', 'tenant'])
         ->latest()->take(10)->get();
-    $mUnread = \App\Models\UserNotification::where('user_id', $hu->id)->where('is_read', false)->count();
+    $mUnread = \App\Members\Models\UserNotification::where('user_id', $hu->id)->where('is_read', false)->count();
     $mItems = $mNotifs->map(function ($n) {
         $d = $n->display();
         return [
@@ -26,7 +26,7 @@
     <div class="flex items-center gap-2 px-3 h-14">
         <button @click="drawer = true" class="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" aria-label="{{ __('header.menu') }}">
             @if($hu->profile_picture)
-                <img src="{{ asset('storage/'.$hu->profile_picture) }}?v={{ optional($hu->updated_at)->timestamp }}" alt="" class="w-9 h-9 rounded-lg object-cover">
+                <img src="{{ file_url($hu->profile_picture) }}?v={{ optional($hu->updated_at)->timestamp }}" alt="" class="w-[27px] h-9 rounded-lg object-cover">
             @else
                 <i class="bi bi-list text-xl text-foreground"></i>
             @endif
@@ -66,7 +66,7 @@
                                 class="w-full text-left px-4 py-3 flex items-center gap-2.5 hover:bg-muted transition-colors border-b border-gray-50"
                                 :class="item.read ? 'opacity-70' : ''">
                             <span class="shrink-0 w-9 h-9 rounded-full bg-accent text-primary flex items-center justify-center overflow-hidden">
-                                <template x-if="item.avatar"><img :src="item.avatar" alt="" class="w-9 h-9 object-cover"></template>
+                                <template x-if="item.avatar"><img :src="item.avatar" alt="" class="w-[27px] h-9 object-cover"></template>
                                 <template x-if="!item.avatar"><i class="bi" :class="item.icon || 'bi-bell-fill'"></i></template>
                             </span>
                             <span class="flex-1 min-w-0">
@@ -186,7 +186,7 @@
                 <span class="notification-badge chat-badge">{{ $chatUnread > 99 ? '99+' : $chatUnread }}</span>
             @endif
         </button>
-        <button type="button" onclick="window.dispatchEvent(new CustomEvent('qr-scan:open'))" class="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0" aria-label="{{ __('header.scan_qr') }}"><i class="bi bi-qr-code-scan"></i></button>
+        <button type="button" onclick="window.dispatchEvent(new CustomEvent('qr-scan:open', { detail: { manual: true, manualLength: 6, manualLabel: @js(__('header.scan_or_type')), manualPlaceholder: @js(__('header.scan_code_placeholder')) } }))" class="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0" aria-label="{{ __('header.scan_qr') }}"><i class="bi bi-qr-code-scan"></i></button>
     </div>
 </header>
 

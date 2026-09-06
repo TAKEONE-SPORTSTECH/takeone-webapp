@@ -2,11 +2,17 @@
 
 namespace App\Services;
 
-use App\Models\Tenant;
-use App\Models\User;
-use App\Models\UserBlock;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
+use App\Members\Models\UserBlock;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http (PeopleController). Discovery spans clubs and members,
+ * so it stays shared rather than being owned by either vertical.
+ */
 
 /**
  * "Suggested for you" people recommendations (the default Find-People state,
@@ -124,7 +130,7 @@ class PeopleRecommendationService
             'uuid' => $u->uuid,
             'slug' => $u->slug,
             'name' => $u->full_name ?: $u->name,
-            'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+            'avatar' => $u->profile_picture ? file_url($u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
             'gender' => $u->gender,
             'is_trainer' => (bool) $u->is_personal_trainer,
             'is_following' => false, // suggestions exclude already-followed

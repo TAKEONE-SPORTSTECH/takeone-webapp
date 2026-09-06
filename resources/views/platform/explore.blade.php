@@ -45,43 +45,25 @@
         </div>
     </div>
 
-    <!-- Category Tabs -->
-    <div class="flex justify-center mb-4">
-        <div class="w-full lg:w-5/6">
-            <div class="flex flex-wrap gap-2 justify-center">
-                <button class="btn btn-primary category-btn active" data-category="all">
-                    <i class="bi bi-search me-2"></i>{{ __('explore.cat_all') }}
-                </button>
-                <button class="btn btn-outline-primary category-btn" data-category="sports-clubs">
-                    <i class="bi bi-trophy me-2"></i>{{ __('explore.cat_clubs') }}
-                </button>
-                <button class="btn btn-outline-primary category-btn" data-category="personal-trainers">
-                    <i class="bi bi-person me-2"></i>{{ __('explore.cat_trainers') }}
-                </button>
-                <button class="btn btn-outline-primary category-btn" data-category="events">
-                    <i class="bi bi-calendar-event me-2"></i>{{ __('explore.cat_events') }}
-                </button>
-                <button class="btn btn-outline-primary category-btn" data-category="nutrition-clinic">
-                    <i class="bi bi-apple me-2"></i>{{ __('explore.cat_nutrition') }}
-                </button>
-                <button class="btn btn-outline-primary category-btn" data-category="physiotherapy-clinics">
-                    <i class="bi bi-activity me-2"></i>{{ __('explore.cat_physiotherapy') }}
-                </button>
-                <button class="btn btn-outline-primary category-btn" data-category="sports-shops">
-                    <i class="bi bi-bag me-2"></i>{{ __('explore.cat_shops') }}
-                </button>
-                <button class="btn btn-outline-primary category-btn" data-category="venues">
-                    <i class="bi bi-building-fill me-2"></i>{{ __('explore.cat_venues') }}
-                </button>
-                <button class="btn btn-outline-primary category-btn" data-category="supplements">
-                    <i class="bi bi-box me-2"></i>{{ __('explore.cat_supplements') }}
-                </button>
-                <button class="btn btn-outline-primary category-btn" data-category="food-plans">
-                    <i class="bi bi-egg-fried me-2"></i>{{ __('explore.cat_food_plans') }}
-                </button>
+    {{-- Category Tabs — only the ones that actually have something behind them.
+         Built in PlatformController@index from real counts, so a tab is never
+         a promise the page cannot keep. The first tab starts active; the
+         runtime's click handler is generic and reads data-category, so adding
+         or removing tabs here needs no JS change. --}}
+    @if($categories->isNotEmpty())
+        <div class="flex justify-center mb-4">
+            <div class="w-full lg:w-5/6">
+                <div class="flex flex-wrap gap-2 justify-center">
+                    @foreach($categories as $cat)
+                        <button class="btn category-btn {{ $loop->first ? 'btn-primary active' : 'btn-outline-primary' }}"
+                                data-category="{{ $cat['key'] }}">
+                            <i class="bi {{ $cat['icon'] }} me-2"></i>{{ $cat['label'] }}
+                        </button>
+                    @endforeach
+                </div>
             </div>
         </div>
-    </div>
+    @endif
 
     <!-- Location Status Alert -->
     <div id="locationAlert" class="alert alert-info relative pe-12 hidden" role="alert" x-show="showAlert" x-transition>
@@ -106,6 +88,37 @@
             <div class="grid gap-5" style="grid-template-columns: repeat(auto-fill, 320px); grid-auto-rows: 1fr; justify-content: center;" id="clubsContainer">
                 <!-- Club cards will be inserted here -->
             </div>
+        </div>
+    </div>
+
+    {{-- Events (Explore → Events tab). Open events only: not started yet, or running now. --}}
+    <div id="eventsSection" style="display: none;">
+        {{-- Happening now --}}
+        <section id="eventsLiveGroup" class="mb-9" style="display: none;">
+            <header class="flex items-center gap-3 mb-4">
+                <span class="relative flex h-2.5 w-2.5 shrink-0">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-70"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                </span>
+                <h2 class="text-lg font-bold text-foreground whitespace-nowrap">{{ __('explore.ev_happening_now') }}</h2>
+                <span id="eventsLiveCount" class="px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-600 text-xs font-bold"></span>
+                <span class="flex-1 h-px bg-border"></span>
+            </header>
+            <div class="grid gap-5" style="grid-template-columns: repeat(auto-fill, 320px); grid-auto-rows: 1fr; justify-content: center;" id="eventsLiveContainer"></div>
+        </section>
+
+        {{-- Coming up --}}
+        <section id="eventsUpcomingGroup" style="display: none;">
+            <div class="grid gap-5" style="grid-template-columns: repeat(auto-fill, 320px); grid-auto-rows: 1fr; justify-content: center;" id="eventsUpcomingContainer"></div>
+        </section>
+
+        {{-- Empty --}}
+        <div id="eventsEmpty" class="flex flex-col items-center justify-center text-center min-h-[360px]" style="display: none;">
+            <div class="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center mb-4">
+                <i class="bi bi-calendar-x text-primary text-2xl"></i>
+            </div>
+            <h4 class="text-muted-foreground font-semibold">{{ __('explore.ev_none_title') }}</h4>
+            <p class="text-muted-foreground text-sm">{{ __('explore.ev_none_hint') }}</p>
         </div>
     </div>
 

@@ -2,14 +2,21 @@
 
 namespace App\Services;
 
-use App\Models\ClubAffiliation;
+use App\Clubs\Models\ClubAffiliation;
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubPackage;
-use App\Models\ClubTransaction;
-use App\Models\Membership;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Clubs\Models\ClubPackage;
+use App\Clubs\Models\ClubTransaction;
+use App\Members\Models\Membership;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use App\Support\ClubCache;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Clubs (ClubMemberAdminController), App\Http (PlatformController,
+ * Auth\WizardRegistrationController) and App\Mcp (EnrollMembersTool). A membership
+ * is created from several entry points, so it is deliberately shared.
+ */
 
 class SubscriptionService
 {
@@ -286,7 +293,7 @@ class SubscriptionService
 
         // Pull coach names from all package activities across all subs for this club
         $packageIds = $allSubs->pluck('package_id')->unique()->filter();
-        $coaches = \App\Models\ClubPackageActivity::whereIn('package_id', $packageIds)
+        $coaches = \App\Clubs\Models\ClubPackageActivity::whereIn('package_id', $packageIds)
             ->with('instructor.user')
             ->get()
             ->pluck('instructor.user.full_name')

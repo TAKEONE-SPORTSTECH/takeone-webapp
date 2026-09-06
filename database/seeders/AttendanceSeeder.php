@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\Attendance;
-use App\Models\User;
-use App\Models\Tenant;
+use App\Members\Models\Attendance;
+use App\Members\Models\User;
+use App\Clubs\Models\Tenant;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 

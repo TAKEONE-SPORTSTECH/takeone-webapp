@@ -26,6 +26,10 @@ class Roster
             ->with([
                 'user:id,full_name,name,gender,birthdate',
                 'user.latestHealthRecord',
+                // For BeltRank: resolving a rank per athlete would otherwise be a
+                // query each, on a list that can run to hundreds of entrants.
+                'user.certifications:id,user_id,title,issue_date',
+                'user.skillAcquisitions:id,user_id,proficiency_level,start_date',
                 'category:id,name,weight_class',
             ])
             ->latest('registered_at')->get()
@@ -45,7 +49,21 @@ class Roster
                     'category' => $ageGroup,
                     'weight_class' => $weightClass,
                     'meta' => $user?->gender ?: ($ageGroup ? __('event-taekwondo_tournament::messages.roster_registered') : __('event-taekwondo_tournament::messages.roster_unclassified')),
+                    // The three things an organiser checks off before a
+                    // competitor can be drawn. `weighed` is the OFFICIAL
+                    // weigh-in (weighed_in_at), which is not the same as
+                    // `weighed_in` below — that only means a weight is on file.
+                    'country' => $r->countryCode(),
+                    'enrolled' => $r->status === 'joined',
+                    // Claimed vs verified: amber until an official has put their
+                    // name to it (paid_by / weighed_in_by), then green.
                     'paid' => (bool) $r->paid,
+                    'paid_verified' => $r->paid && $r->paid_by !== null,
+                    'weighed' => $r->weighed_in_at !== null,
+                    'weighed_verified' => $r->weighed_in_at !== null && $r->weighed_in_by !== null,
+                    // What the arena screen will announce. Null when nothing is
+                    // on file anywhere — the desk then asks the official for it.
+                    'belt' => $user ? app(\App\Sports\Combat\BeltRank::class)->for($user, $r) : null,
                     'weighed_in' => $r->weight !== null,
                     'has_weight' => $weightOnFile !== null,
                 ];

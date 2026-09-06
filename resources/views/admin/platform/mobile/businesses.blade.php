@@ -13,7 +13,7 @@
         <div class="flex items-center gap-2 px-3 h-14">
             <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('admin.platform.index') }}')"
                     class="m-press w-10 h-10 -ml-1 rounded-xl flex items-center justify-center text-foreground" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left text-xl"></i>
+                <i class="bi bi-chevron-left text-xl"></i>
             </button>
             <p class="flex-1 min-w-0 text-base font-bold text-primary truncate">{{ __('platform.businesses') }}</p>
             <span id="bizPendingBadge" class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 {{ $pendingCount > 0 ? '' : 'hidden' }}">
@@ -73,7 +73,7 @@
     $bizData = $businesses->mapWithKeys(fn($b) => [$b->id => [
         'id' => $b->id, 'name' => $b->name, 'description' => $b->description, 'status' => $b->status,
         'rejection_reason' => $b->rejection_reason, 'logo' => $b->logo,
-        'logo_url' => $b->logo ? asset('storage/' . $b->logo) : null,
+        'logo_url' => $b->logo ? file_url($b->logo) : null,
         'owner_name' => $b->owner?->full_name, 'owner_email' => $b->owner?->email, 'clubs_count' => $b->clubs_count,
     ]]);
 @endphp

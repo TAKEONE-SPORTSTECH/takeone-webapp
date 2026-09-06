@@ -43,6 +43,8 @@ return [
     'my_profile' => 'My Profile',
     'club_chat' => 'Club Chat',
     'events' => 'Events',
+    'open_mat' => 'Open a mat',
+    'open_mat_sub' => 'Two people, right now — no form',
 
     // Get the App / update hub
     'get_app' => 'Get the App',
@@ -250,4 +252,6 @@ return [
     'partials_mobile_chat_unblock' => 'Unblock',
     'partials_mobile_chat_view_profile' => 'View profile',
     'partials_mobile_chat_you_prefix' => 'You:',
+    'layouts_admin_nav_error_log' => 'Error log',
+    'my_videos' => 'My videos',
 ];

@@ -3,12 +3,21 @@
 namespace App\Services;
 
 use App\Http\Requests\Admin\StoreClubRequest;
-use App\Models\ClubBankAccount;
-use App\Models\ClubSocialLink;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Clubs\Models\ClubBankAccount;
+use App\Clubs\Models\ClubSocialLink;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use App\Traits\StoresBase64Images;
 use Illuminate\Support\Facades\DB;
+use App\Support\StoragePath;
+use Illuminate\Support\Str;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Clubs (ClubApiController), App\Http (BusinessClubController,
+ * Admin\CopilotController) and the seeders. More than one vertical creates clubs,
+ * so it stays shared rather than becoming a club-private internal.
+ */
 
 /**
  * Creates a Tenant (club) + its social links / bank accounts + owner club-admin
@@ -33,12 +42,17 @@ class ClubCreationService
             ];
         }
 
+        // Branding lands in this club's own folder from the first file. The row
+        // does not exist yet, but the slug is already validated and in $data, so
+        // there is no need for the flat `clubs/logos` root these used to use.
+        $branding = StoragePath::clubBySlug((string) ($data['slug'] ?? ''), 'branding', $data['country'] ?? null);
+
         if ($request->filled('logo') && str_starts_with($request->logo, 'data:image')) {
-            $data['logo'] = $this->handleBase64Image($request->logo, 'clubs/logos', 'logo_'.time());
+            $data['logo'] = $this->handleBase64Image($request->logo, $branding, 'logo_'.Str::random(24));
         }
 
         if ($request->filled('cover_image') && str_starts_with($request->cover_image, 'data:image')) {
-            $data['cover_image'] = $this->handleBase64Image($request->cover_image, 'clubs/covers', 'cover_'.time());
+            $data['cover_image'] = $this->handleBase64Image($request->cover_image, $branding, 'cover_'.Str::random(24));
         }
 
         $data['status'] = $request->input('club_status', 'active');

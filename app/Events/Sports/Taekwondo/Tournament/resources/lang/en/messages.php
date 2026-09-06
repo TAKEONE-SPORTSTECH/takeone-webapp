@@ -69,4 +69,8 @@ return [
     'board_idle' => 'No bouts in play',
     'board_live' => 'Live',
     'board_stale' => 'Reconnecting',
+    // Rehearsal only — never offered in production (Tournament::availableActions)
+    'action_end_next_bout' => 'End the next bout (test)',
+    'end_next_bout_none' => 'No bout is ready to be ended — every queued bout is still waiting on a feeder.',
+    'end_next_bout_done' => ':winner wins on :court. The screens on that mat have been told.',
 ];

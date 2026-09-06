@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\Goal;
-use App\Models\User;
+use App\Members\Models\Goal;
+use App\Members\Models\User;
 
 class GoalSeeder extends Seeder
 {

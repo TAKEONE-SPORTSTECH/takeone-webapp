@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\MemberWorkHistory;
-use App\Models\UserRelationship;
+use App\Members\Models\MemberWorkHistory;
+use App\Members\Models\UserRelationship;
 use Tests\TestCase;
 
 class MemberWorkHistoryTest extends TestCase

@@ -11,19 +11,26 @@
          class="absolute inset-x-0 bottom-0 top-3 bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden">
 
         {{-- Header --}}
-        <div class="shrink-0 px-4 pt-2.5 pb-3 border-b border-gray-100">
-            <div class="flex justify-center mb-2"><span class="w-10 h-1.5 rounded-full bg-gray-300"></span></div>
-            <div class="flex items-center gap-3">
-                <button type="button" @click="joinModal.close()" class="m-press w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0"><i class="bi bi-x-lg"></i></button>
+        <div class="shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+            <div class="relative flex items-start gap-3">
+                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                    <i class="bi bi-person-plus-fill text-xl"></i>
+                </span>
                 <div class="min-w-0 flex-1">
-                    <p class="font-bold text-foreground truncate" x-text="joinModal.clubName ? @js(__('club.join_prefix')) + ' ' + joinModal.clubName : @js(__('club.join_club'))"></p>
-                    <p class="text-[11px] text-muted-foreground" x-text="@js(__('club.step')) + ' ' + joinModal.stepIndex() + ' ' + @js(__('club.of')) + ' ' + joinModal.stepCount() + ' · ' + ({'select-members': @js(__('club.step_who')), 'package-selection': @js(__('club.step_packages')), 'equipment': @js(__('club.step_equipment')), 'payment-review': @js(__('club.step_payment'))}[joinModal.step] || '')"></p>
+                    <h3 class="text-lg font-black leading-tight truncate" x-text="joinModal.clubName ? @js(__('club.join_prefix')) + ' ' + joinModal.clubName : @js(__('club.join_club'))"></h3>
+                    <p class="text-[12px] text-white/85 mt-0.5" x-text="@js(__('club.step')) + ' ' + joinModal.stepIndex() + ' ' + @js(__('club.of')) + ' ' + joinModal.stepCount() + ' · ' + ({'select-members': @js(__('club.step_who')), 'package-selection': @js(__('club.step_packages')), 'equipment': @js(__('club.step_equipment')), 'payment-review': @js(__('club.step_payment'))}[joinModal.step] || '')"></p>
                 </div>
+                <button type="button" @click="joinModal.close()" aria-label="{{ __('shared.close') }}"
+                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
             </div>
             {{-- Progress segments --}}
-            <div class="flex gap-1.5 mt-3">
+            <div class="relative flex gap-1.5 mt-3">
                 <template x-for="n in joinModal.stepCount()" :key="n">
-                    <span class="h-1.5 flex-1 rounded-full transition-colors" :class="n <= joinModal.stepIndex() ? 'bg-primary' : 'bg-gray-200'"></span>
+                    <span class="h-1.5 flex-1 rounded-full transition-colors" :class="n <= joinModal.stepIndex() ? 'bg-white' : 'bg-white/25'"></span>
                 </template>
             </div>
         </div>
@@ -54,7 +61,7 @@
                                 <i x-show="joinModal.isMemberSelected(member.id)" class="bi bi-check text-white text-sm"></i>
                             </span>
                             <span class="shrink-0">
-                                <template x-if="member.profile_picture"><img :src="'/storage/' + member.profile_picture" class="w-11 h-11 rounded-full object-cover" alt=""></template>
+                                <template x-if="member.profile_picture"><img :src="'/file/' + member.profile_picture" class="w-11 h-11 rounded-full object-cover" alt=""></template>
                                 <template x-if="!member.profile_picture"><span class="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center font-bold" x-text="member.name.charAt(0).toUpperCase()"></span></template>
                             </span>
                             <span class="min-w-0 flex-1">

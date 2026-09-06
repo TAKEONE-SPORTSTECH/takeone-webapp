@@ -122,7 +122,7 @@
                     <a href="{{ route('admin.platform.businesses') }}" class="flex items-center gap-3 p-2.5 -mx-1 rounded-lg hover:bg-muted/60 transition-colors no-underline">
                         <span class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center shrink-0 overflow-hidden">
                             @if($biz->logo)
-                                <img src="{{ asset('storage/'.$biz->logo) }}" alt="" class="w-9 h-9 object-cover rounded-lg">
+                                <img src="{{ file_url($biz->logo) }}" alt="" class="w-9 h-9 object-cover rounded-lg">
                             @else
                                 <i class="bi bi-buildings text-primary"></i>
                             @endif
@@ -178,7 +178,7 @@
                         <span class="w-6 text-center font-extrabold {{ $i === 0 ? 'text-amber-400' : ($i === 1 ? 'text-gray-400' : ($i === 2 ? 'text-amber-700' : 'text-gray-300')) }}">{{ $i + 1 }}</span>
                         <span class="w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-accent flex items-center justify-center">
                             @if($club->logo)
-                                <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-9 h-9 object-contain">
+                                <img src="{{ file_url($club->logo) }}" alt="" class="w-9 h-9 object-contain">
                             @else
                                 <span class="text-primary font-bold">{{ mb_strtoupper(mb_substr($club->club_name, 0, 1)) }}</span>
                             @endif
@@ -203,7 +203,7 @@
                     <a href="{{ route('member.show', $m->uuid) }}" class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/60 transition-colors no-underline">
                         <span class="w-9 h-9 rounded-full overflow-hidden shrink-0">
                             @if($m->profile_picture)
-                                <img src="{{ asset('storage/'.$m->profile_picture) }}?v={{ $m->updated_at?->timestamp }}" alt="" class="w-9 h-9 object-cover">
+                                <img src="{{ file_url($m->profile_picture) }}?v={{ $m->updated_at?->timestamp }}" alt="" class="w-[27px] h-9 object-cover">
                             @else
                                 <x-gender-avatar :gender="$m->gender" class="w-9 h-9 rounded-full" />
                             @endif

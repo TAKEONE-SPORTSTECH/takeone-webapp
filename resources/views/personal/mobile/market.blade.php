@@ -217,15 +217,26 @@
         <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl max-h-[85vh] flex flex-col"
              x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
              x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
-            <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mt-2.5"></div>
-            <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="font-black text-foreground flex items-center gap-2">
-                    <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" class="m-press -ms-1 w-7 h-7 grid place-items-center" aria-label="{{ __('market.back') }}"><i class="bi bi-arrow-left"></i></button>
-                    <i class="bi" :class="cartStep==='pay' ? 'bi-shield-lock' : 'bi-bag'"></i>
-                    <span x-text="cartStep==='pay' ? @js(__('market.pay_title')) : @js(__('market.your_cart'))"></span>
-                    <span class="text-muted-foreground font-medium" x-show="cartStep==='cart'" x-text="`(${count})`"></span>
-                </h3>
-                <button type="button" @click="cartOpen=false" class="m-press w-8 h-8 rounded-full bg-muted grid place-items-center"><i class="bi bi-x-lg text-xs"></i></button>
+            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                 style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                <div class="relative flex items-start gap-3">
+                    <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" aria-label="{{ __('market.back') }}"
+                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-chevron-left"></i></button>
+                    <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                        <i class="bi text-xl" :class="cartStep==='pay' ? 'bi-shield-lock' : 'bi-bag'"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-lg font-black leading-tight" x-text="cartStep==='pay' ? @js(__('market.pay_title')) : @js(__('market.your_cart'))"></h3>
+                        <p class="text-[12px] text-white/85 mt-0.5" x-show="cartStep==='cart'" x-text="`(${count})`"></p>
+                    </div>
+                    <button type="button" @click="cartOpen=false" aria-label="{{ __('shared.close') }}"
+                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
             </div>
 
             {{-- Step 1 · cart items --}}

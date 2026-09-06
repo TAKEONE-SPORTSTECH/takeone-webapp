@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\ClubAdmin;
 
-use App\Models\ClubInstructor;
-use App\Models\User;
+use App\Clubs\Models\ClubInstructor;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 class InstructorTest extends TestCase
@@ -108,7 +108,7 @@ class InstructorTest extends TestCase
 
         // A prior coaching role → a 2-year snapshot; a submitted experience number is
         // IGNORED now (experience is calculated, not entered by hand).
-        \App\Models\MemberWorkHistory::create([
+        \App\Members\Models\MemberWorkHistory::create([
             'user_id' => $existingMember->id, 'title' => 'Head Coach', 'organization' => 'Old Club',
             'start_date' => now()->subYears(2)->toDateString(), 'end_date' => now()->toDateString(),
         ]);
@@ -245,7 +245,7 @@ class InstructorTest extends TestCase
 
     // -------------------------------------------------------------------------
     // Instructors page renders the "Manage Access" entry point + underlying
-    // role-assignment endpoint it uses (App\Http\Controllers\Admin\ClubRoleController)
+    // role-assignment endpoint it uses (the Clubs module's club-roles admin)
     // -------------------------------------------------------------------------
 
     public function test_instructors_page_renders_manage_access_action(): void

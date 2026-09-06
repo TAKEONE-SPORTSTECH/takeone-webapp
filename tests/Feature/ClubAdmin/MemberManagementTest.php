@@ -3,8 +3,8 @@
 namespace Tests\Feature\ClubAdmin;
 
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubPackage;
-use App\Models\Membership;
+use App\Clubs\Models\ClubPackage;
+use App\Members\Models\Membership;
 use Tests\TestCase;
 
 class MemberManagementTest extends TestCase

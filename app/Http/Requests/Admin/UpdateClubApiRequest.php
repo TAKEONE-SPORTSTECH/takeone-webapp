@@ -38,8 +38,14 @@ class UpdateClubApiRequest extends FormRequest
             'enrollment_fee' => 'nullable|numeric|min:0',
             'club_status' => 'nullable|in:active,inactive,pending',
             'public_profile_enabled' => 'nullable|boolean',
-            'logo' => 'nullable|image|max:2048',
-            'cover_image' => 'nullable|image|max:2048',
+            // The club modal posts these as a base64 data-URI (the cropper's
+            // output) or as the already-stored path when the picture was not
+            // touched — never as an uploaded file. `image` therefore rejected
+            // every edit, which is why the modal could not be saved at all.
+            // The bytes are validated for real by StoresBase64Images.
+            'logo' => 'nullable|string',
+            'cover_image' => 'nullable|string',
+            'registration_splash_image' => 'nullable|string',
             'social_links' => 'nullable|array',
             'bank_accounts' => 'nullable|array',
         ];

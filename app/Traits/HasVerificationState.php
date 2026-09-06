@@ -2,9 +2,9 @@
 
 namespace App\Traits;
 
-use App\Models\AchievementVouch;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\AchievementVouch;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;

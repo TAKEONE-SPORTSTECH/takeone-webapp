@@ -2,8 +2,8 @@
 
 namespace App\Services\Copilot;
 
-use App\Models\Tenant;
-use App\Models\User;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;

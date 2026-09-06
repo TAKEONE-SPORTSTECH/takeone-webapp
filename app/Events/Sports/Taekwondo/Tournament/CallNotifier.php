@@ -6,9 +6,9 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
 use App\Models\EventNotificationSent;
-use App\Models\User;
-use App\Models\UserNotification;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserNotification;
+use App\Members\Models\UserRelationship;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 
@@ -95,7 +95,7 @@ class CallNotifier
                 'icon' => $kind === 'call_room' ? 'bi-megaphone-fill' : 'bi-stopwatch',
                 'action_url' => route('me.events.next-up', $event->uuid),
                 'tenant_id' => $event->tenant_id,
-                'subject_type' => ClubEvent::class,
+                'subject_type' => (new ClubEvent)->getMorphClass(),
                 'subject_id' => $event->id,
                 'context' => $kind,
                 // The summons has to ring through a locked, idle phone in a
@@ -148,7 +148,7 @@ class CallNotifier
                         'icon' => $won ? 'bi-trophy' : 'bi-flag',
                         'action_url' => route('me.events.next-up', $event->uuid),
                         'tenant_id' => $event->tenant_id,
-                        'subject_type' => ClubEvent::class,
+                        'subject_type' => (new ClubEvent)->getMorphClass(),
                         'subject_id' => $event->id,
                         'context' => 'result',
                     ]), null, false);

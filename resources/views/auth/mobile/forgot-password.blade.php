@@ -154,7 +154,7 @@
 <div class="ml-screen">
 
     <a href="{{ route('login') }}" class="ml-back" aria-label="{{ __('auth.auth_forgot_password_back_to_login') }}">
-        <i class="bi bi-arrow-left"></i>
+        <i class="bi bi-chevron-left"></i>
     </a>
 
     {{-- Living aurora background --}}

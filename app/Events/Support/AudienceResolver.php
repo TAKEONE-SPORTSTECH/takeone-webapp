@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEvent;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -44,6 +44,78 @@ class AudienceResolver
         }
 
         return $this->membersPractising($event, $clubIds, $announcement);
+    }
+
+    /**
+     * Everyone who may MANAGE this event — user ids.
+     *
+     * The realtime twin of EventAccess::canManage(), and it exists because the
+     * two kept drifting apart. `canManage` was widened (2026-09-03) to the host
+     * club's owner, its club-admins and every appointed organiser, but the
+     * push audiences were not: `pushEventRefresh` still sent to registrations +
+     * officials + creator, and `AbstractEventType::audienceFor` to
+     * registrations + creator alone. So a club owner with the console open, or
+     * an appointed organiser cutting the draw, was never nudged — the single
+     * most visible instance of "it does not update by itself".
+     *
+     * Kept HERE rather than on EventAccess because that class answers a
+     * yes/no about ONE person (and memoises per person); this enumerates. Same
+     * rule, two shapes — so when the rule changes, both places are one file
+     * apart.
+     *
+     * Cheap: three indexed lookups, no model hydration.
+     *
+     * @return array<int, int>
+     */
+    public function managers(ClubEvent $event): array
+    {
+        $ids = [];
+
+        if ($event->created_by) {
+            $ids[] = (int) $event->created_by;
+        }
+
+        $tenantId = (int) ($event->tenant_id ?? 0);
+
+        if ($tenantId !== 0) {
+            // The club's owner. Owning a club and being a member of it are
+            // different things, so this asks the tenant directly — exactly as
+            // EventAccess::resolveCanManage() does.
+            $owner = Tenant::whereKey($tenantId)->value('owner_user_id');
+            if ($owner) {
+                $ids[] = (int) $owner;
+            }
+
+            // Its club-admins, by the role rows rather than by membership.
+            $ids = array_merge($ids, DB::table('user_roles')
+                ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                ->where('user_roles.tenant_id', $tenantId)
+                ->whereIn('roles.slug', ['club-admin', 'owner'])
+                ->pluck('user_roles.user_id')->map('intval')->all());
+        }
+
+        // Appointed to THIS event as the person running it.
+        $ids = array_merge($ids, $event->officials()
+            ->where('role', 'organiser')
+            ->pluck('user_id')->map('intval')->all());
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * Everyone who should be told when one entry changes: the athlete, everyone
+     * who may manage the event, and every official whose desk reads the entry
+     * list (weigh-in, payments, jury arranging a draw).
+     *
+     * @return array<int, int>
+     */
+    public function entryWatchers(ClubEvent $event, int $athleteId): array
+    {
+        return array_values(array_unique(array_filter(array_merge(
+            [$athleteId],
+            $this->managers($event),
+            $event->officials()->pluck('user_id')->map('intval')->all(),
+        ))));
     }
 
     /** Everyone already registered for the event, plus its organiser. */

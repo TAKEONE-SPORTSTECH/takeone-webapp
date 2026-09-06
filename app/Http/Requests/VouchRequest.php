@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\AchievementVouch;
+use App\Members\Models\AchievementVouch;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**

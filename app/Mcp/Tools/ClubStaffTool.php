@@ -2,7 +2,7 @@
 
 namespace App\Mcp\Tools;
 
-use App\Models\ClubInstructor;
+use App\Clubs\Models\ClubInstructor;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;

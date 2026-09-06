@@ -67,21 +67,22 @@
          x-transition:leave-end="translate-y-full"
          class="fixed inset-x-0 bottom-0 z-[60] max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl">
 
-        {{-- Grab handle + header --}}
-        <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-border/70 rounded-t-3xl"
-             :style="`background: linear-gradient(160deg, ${form.color}, ${form.color}cc)`">
-            <div class="w-10 h-1.5 rounded-full bg-white/40 mx-auto"></div>
-            <div class="flex items-center justify-between mt-3 text-white">
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <div class="w-10 h-10 rounded-2xl bg-white/20 border border-white/30 grid place-items-center flex-shrink-0">
-                        <i class="bi" :class="form.icon || 'bi-calendar-check'"></i>
-                    </div>
-                    <div class="min-w-0">
-                        <h2 class="text-base font-black leading-tight truncate" x-text="clubMode ? '{{ __('shared.schedule_session_modal_edit_class') }}' : (mode==='edit' ? '{{ __('shared.schedule_session_modal_edit_session') }}' : '{{ __('shared.schedule_session_modal_new_session') }}')"></h2>
-                        <p class="text-[11px] text-white/80 truncate" x-text="form.title || (clubMode ? '{{ __('shared.schedule_session_modal_class_details') }}' : '{{ __('shared.schedule_session_modal_add_to_week') }}')"></p>
-                    </div>
+        {{-- Grab handle + header band --}}
+        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+             :style="`background: linear-gradient(150deg, ${form.color}, ${form.color}b0)`">
+            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+            <div class="relative flex items-start gap-3">
+                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                    <i class="bi text-xl" :class="form.icon || 'bi-calendar-check'"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <h2 class="text-lg font-black leading-tight truncate" x-text="clubMode ? '{{ __('shared.schedule_session_modal_edit_class') }}' : (mode==='edit' ? '{{ __('shared.schedule_session_modal_edit_session') }}' : '{{ __('shared.schedule_session_modal_new_session') }}')"></h2>
+                    <p class="text-[12px] text-white/85 mt-0.5 truncate" x-text="form.title || (clubMode ? '{{ __('shared.schedule_session_modal_class_details') }}' : '{{ __('shared.schedule_session_modal_add_to_week') }}')"></p>
                 </div>
-                <button type="button" @click="close()" class="m-press w-9 h-9 rounded-full bg-white/20 border border-white/30 grid place-items-center text-white flex-shrink-0">
+                <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
+                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -199,7 +200,7 @@
                                             class="w-full text-start px-3 py-2 text-sm hover:bg-muted flex items-center gap-2.5"
                                             :class="form.coach===ins.name ? 'bg-accent' : ''">
                                         <span class="w-8 h-8 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
-                                            <template x-if="ins.avatar"><img :src="ins.avatar" alt="" class="w-8 h-8 object-cover"></template>
+                                            <template x-if="ins.avatar"><img :src="ins.avatar" alt="" class="w-6 h-8 object-cover"></template>
                                             <template x-if="!ins.avatar"><span class="text-[10px] font-bold text-muted-foreground" x-text="ins.initials"></span></template>
                                         </span>
                                         <span class="truncate flex-1" :class="form.coach===ins.name ? 'text-primary font-semibold' : 'text-foreground'" x-text="ins.name"></span>

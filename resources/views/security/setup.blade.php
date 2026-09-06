@@ -83,7 +83,7 @@
 
                     <div class="mt-4">
                         <a href="{{ route('security.show') }}" class="text-sm text-muted-foreground hover:text-foreground">
-                            <i class="bi bi-arrow-left me-1"></i>{{ __('shared.cancel') }}
+                            <i class="bi bi-chevron-left me-1"></i>{{ __('shared.cancel') }}
                         </a>
                     </div>
                 </div>

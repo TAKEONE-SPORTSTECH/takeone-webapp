@@ -5,14 +5,14 @@
     // Equipment catalog per package (computed on a separate collection so the
     // schedule/instructor mapping below keeps its own relations intact).
     $joinCostSvc = app(\App\Services\RegistrationCostService::class);
-    $eqPackages  = \App\Models\ClubPackage::where('tenant_id', $club->id)->get();
+    $eqPackages  = \App\Clubs\Models\ClubPackage::where('tenant_id', $club->id)->get();
     $joinCostSvc->attachEquipmentToPackages($eqPackages, $club->id, null);
     $equipmentByPkg = $eqPackages->pluck('equipment', 'id');
 
     $joinOwnedMap = [];
     if (auth()->check()) {
         $joinMemberIds = collect([auth()->id()])
-            ->merge(\App\Models\UserRelationship::where('guardian_user_id', auth()->id())->pluck('dependent_user_id'))
+            ->merge(\App\Members\Models\UserRelationship::where('guardian_user_id', auth()->id())->pluck('dependent_user_id'))
             ->unique();
         foreach ($joinMemberIds as $mid) {
             $joinOwnedMap[$mid] = [
@@ -45,7 +45,7 @@
                 if (!$pa->instructor?->user) return null;
                 return [
                     'name'      => $pa->instructor->user->full_name ?? $pa->instructor->user->name,
-                    'image_url' => $pa->instructor->user->profile_picture ? asset('storage/' . $pa->instructor->user->profile_picture) : null,
+                    'image_url' => $pa->instructor->user->profile_picture ? file_url($pa->instructor->user->profile_picture) : null,
                 ];
             })->filter()->unique('name')->values(),
         ];
@@ -142,7 +142,7 @@ function selectPackageApp() {
                         type: m.type === 'guardian' ? 'self' : 'child',
                         packageId: this._preselectPackageId || '',
                         name: m.name, gender: m.gender || '', dateOfBirth: m.birthdate || '',
-                        avatarUrl: m.profile_picture ? '/storage/' + m.profile_picture : null,
+                        avatarUrl: m.profile_picture ? '/file/' + m.profile_picture : null,
                         relationship: m.relationship, isMember: m.is_member || false,
                         equipment: [],
                     }));

@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Family;
 
-use App\Models\Person;
-use App\Models\PersonParentLink;
-use App\Models\PersonUnion;
-use App\Models\User;
+use App\Members\Models\Person;
+use App\Members\Models\PersonParentLink;
+use App\Members\Models\PersonUnion;
+use App\Members\Models\User;
 use App\Services\KinshipService;
 use Tests\TestCase;
 

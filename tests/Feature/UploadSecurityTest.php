@@ -14,6 +14,22 @@ use Tests\TestCase;
  */
 class UploadSecurityTest extends TestCase
 {
+    /**
+     * Every upload in this class goes to a FAKE public disk.
+     *
+     * Without this the suite writes into the real `storage/app/public`, and it
+     * has: `avatars/me.png` sat there from a run on 2026-08-05, which is both a
+     * stray file nobody owns and a landmine — a later assertion that the path is
+     * absent then fails against a leftover from months earlier rather than
+     * against anything the test did.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('public');
+    }
+
     /** A 1x1 transparent PNG as a base64 data URI (real image bytes). */
     private function validPng(): string
     {
@@ -49,6 +65,8 @@ class UploadSecurityTest extends TestCase
     {
         $user = $this->createUser();
 
+        // A deliberately hostile destination: this is where the caller WANTS the
+        // file written. The server must ignore it entirely.
         $response = $this->actingAs($user)->postJson("/member/{$user->id}/upload-picture", [
             'image'    => $this->validPng(),
             'folder'   => 'avatars',
@@ -56,9 +74,22 @@ class UploadSecurityTest extends TestCase
         ]);
 
         $response->assertOk()->assertJson(['success' => true]);
-        // Extension is assigned server-side from the real MIME, not the input.
-        $this->assertEquals('avatars/me.png', $user->fresh()->profile_picture);
-        Storage::disk('public')->assertExists('avatars/me.png');
+
+        $stored = $user->fresh()->profile_picture;
+
+        // The upload succeeds and the extension is assigned server-side from the
+        // real MIME, never from the input.
+        $this->assertStringEndsWith('.png', $stored);
+        Storage::disk('public')->assertExists($stored);
+
+        // …but the DESTINATION is ours. `folder`/`filename` used to be honoured
+        // verbatim, which let any authenticated user write to any path on the
+        // public disk — naming another member's folder overwrote their picture.
+        // The path is now derived from the resolved, authorised owner.
+        $this->assertNotEquals('avatars/me.png', $stored, 'the caller must not choose the path');
+        $this->assertStringStartsNotWith('avatars/', $stored);
+        $this->assertStringContainsString($user->uuid, $stored, 'the owner keys their own folder');
+        Storage::disk('public')->assertMissing('avatars/me.png');
     }
 
     public function test_upload_rejects_traversal_in_folder_or_filename(): void
@@ -76,5 +107,63 @@ class UploadSecurityTest extends TestCase
             'folder'   => 'avatars',
             'filename' => 'evil.php',
         ])->assertStatus(422)->assertJsonValidationErrors('filename');
+    }
+
+    // ── Identity documents are private, and reaching one is authorised ──────
+
+    public function test_a_member_can_read_their_own_identity_document(): void
+    {
+        Storage::fake('local');
+
+        $user = $this->createUser();
+        $path = "members/{$user->uuid}/documents/cpr.jpg";
+        Storage::disk('local')->put($path, 'not-a-real-jpeg');
+        $user->forceFill(['documents' => [['type' => 'CPR', 'file_path' => $path]]])->save();
+
+        $this->actingAs($user)
+            ->get(route('member.download-document', ['id' => $user->id, 'path' => $path]))
+            ->assertOk();
+    }
+
+    public function test_a_stranger_cannot_read_someone_elses_identity_document(): void
+    {
+        Storage::fake('local');
+
+        $owner = $this->createUser();
+        $path = "members/{$owner->uuid}/documents/cpr.jpg";
+        Storage::disk('local')->put($path, 'not-a-real-jpeg');
+
+        // A signed-in member with no relationship to the owner. Identity papers
+        // are the most sensitive thing on a profile; being logged in is not a
+        // reason to be shown someone else's.
+        $stranger = $this->createUser();
+
+        $this->actingAs($stranger)
+            ->getJson(route('member.download-document', ['id' => $owner->id, 'path' => $path]))
+            ->assertNotFound();
+    }
+
+    public function test_a_member_cannot_read_a_file_outside_their_own_documents_folder(): void
+    {
+        Storage::fake('local');
+
+        $user = $this->createUser();
+        $other = $this->createUser();
+        $victim = "members/{$other->uuid}/documents/cpr.jpg";
+        Storage::disk('local')->put($victim, 'not-a-real-jpeg');
+
+        // The path is a request field, so it decides which file is read. Naming
+        // another member's document under your OWN id must not work.
+        $this->actingAs($user)
+            ->getJson(route('member.download-document', ['id' => $user->id, 'path' => $victim]))
+            ->assertNotFound();
+
+        // …and neither does climbing out of the folder.
+        $this->actingAs($user)
+            ->getJson(route('member.download-document', [
+                'id' => $user->id,
+                'path' => "members/{$user->uuid}/documents/../../../.env",
+            ]))
+            ->assertNotFound();
     }
 }

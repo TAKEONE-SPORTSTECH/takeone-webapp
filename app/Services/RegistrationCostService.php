@@ -2,14 +2,21 @@
 
 namespace App\Services;
 
-use App\Models\ClubActivityEquipment;
+use App\Clubs\Models\ClubActivityEquipment;
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubPackage;
-use App\Models\ClubTransaction;
-use App\Models\MemberEquipment;
-use App\Models\Membership;
-use App\Models\Tenant;
+use App\Clubs\Models\ClubPackage;
+use App\Clubs\Models\ClubTransaction;
+use App\Members\Models\MemberEquipment;
+use App\Members\Models\Membership;
+use App\Clubs\Models\Tenant;
 use Illuminate\Support\Collection;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Clubs (ClubMemberAdminController, ClubRoleController) and
+ * App\Http (PlatformController, Auth\WizardRegistrationController). Two verticals
+ * price a registration, so it is deliberately shared.
+ */
 
 /**
  * Resolves the first-time registration cost model: per-package registration fee
@@ -127,7 +134,7 @@ class RegistrationCostService
                         // With variants the price is "from" the cheapest option;
                         // the UI charges the price of whichever variant is chosen.
                         'price' => $hasVariants ? (float) $variants->min('price') : (float) $product->price,
-                        'image' => $product->image_path ? asset('storage/'.$product->image_path) : null,
+                        'image' => $product->image_path ? file_url($product->image_path) : null,
                         'is_required' => (bool) $e->is_required,
                         'has_variants' => $hasVariants,
                         'variants' => $variants->map(fn ($v) => [

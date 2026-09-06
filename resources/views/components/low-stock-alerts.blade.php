@@ -15,7 +15,7 @@
 --}}
 @auth
 @php
-    $__stockAlerts = \App\Models\UserNotification::query()
+    $__stockAlerts = \App\Members\Models\UserNotification::query()
         ->where('user_id', auth()->id())
         ->where('type', 'stock')
         ->where('is_read', false)
@@ -23,7 +23,7 @@
         ->take(12)
         ->get()
         ->map(function ($n) {
-            $product   = $n->subject_id ? \App\Models\ClubProduct::find($n->subject_id) : null;
+            $product   = $n->subject_id ? \App\Shop\Models\ClubProduct::find($n->subject_id) : null;
             $remaining = $product && $product->quantity !== null ? (int) $product->quantity : null;
             if ($remaining === null && preg_match('/(\d+)/', (string) $n->body, $m)) {
                 $remaining = (int) $m[1];
@@ -33,7 +33,7 @@
             return [
                 'id'        => $n->id,
                 'name'      => $name,
-                'image'     => $product && $product->image_path ? asset('storage/'.$product->image_path) : null,
+                'image'     => $product && $product->image_path ? file_url($product->image_path) : null,
                 'remaining' => $remaining,
                 'url'       => $n->action_url,
                 'muteUrl'   => $product && $product->tenant ? route('admin.club.shop.products.stock-mute', [$product->tenant, $product]) : null,

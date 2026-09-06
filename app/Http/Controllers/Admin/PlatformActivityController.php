@@ -452,7 +452,7 @@ PROMPT;
             return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
         }
 
-        return response()->json(['success' => true, 'path' => $path, 'url' => asset('storage/'.$path)]);
+        return response()->json(['success' => true, 'path' => $path, 'url' => file_url($path)]);
     }
 
     /** Attach a previously-uploaded (staged) image to an activity as its hero. */
@@ -696,7 +696,7 @@ PROMPT;
             'usage_count' => (int) $entry->usage_count,
             'variants' => $entry->variants ?: [],
             'videos' => $entry->sanitizedVideos(),
-            'picture_src' => $entry->picture_url ? asset('storage/'.$entry->picture_url) : null,
+            'picture_src' => $entry->picture_url ? file_url($entry->picture_url) : null,
             'has_prompt' => filled($entry->image_prompt),
             'update_url' => route('admin.platform.activities.update', $entry),
             'image_url' => route('admin.platform.activities.image', $entry),

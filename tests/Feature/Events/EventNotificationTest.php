@@ -5,11 +5,11 @@ namespace Tests\Feature\Events;
 use App\Events\Support\AudienceResolver;
 use App\Events\Support\EventNotifier;
 use App\Jobs\DeliverEventNotification;
-use App\Models\ClubActivity;
+use App\Clubs\Models\ClubActivity;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventNotificationSent;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -314,7 +314,7 @@ class EventNotificationTest extends TestCase
     {
         Queue::fake();
         [$club] = $this->taekwondoClub();
-        $owner = \App\Models\User::find($club->owner_user_id);
+        $owner = \App\Members\Models\User::find($club->owner_user_id);
         $owner->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
 
         $this->actingAs($owner->fresh())->postJson('/me/events', [
@@ -335,7 +335,7 @@ class EventNotificationTest extends TestCase
     {
         Queue::fake();
         [$club] = $this->taekwondoClub();
-        $owner = \App\Models\User::find($club->owner_user_id);
+        $owner = \App\Members\Models\User::find($club->owner_user_id);
         $owner->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
 
         $this->actingAs($owner->fresh())->postJson('/me/events', [

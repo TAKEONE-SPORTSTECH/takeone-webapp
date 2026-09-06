@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="564ae515-8de4-491f-bd01-41aa8ef9eca8"></script>
+</head>
+<body>
+
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=1920">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>/* vietnamese */
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("c2cfba6a-c7b0-4116-b9a4-6085580f2f7a") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("4040139d-240a-41c4-a9d0-dca77cd2607a") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("4cbe2bbc-8354-417b-b02b-333d1dd20705") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("0b747bc0-c4f0-4f19-b05c-397690e6abc9") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("6cd87f55-11a0-4eac-a8a4-51c9f32af8c3") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("b6bf3f3c-3fb5-4204-a056-6ce8cab1b41e") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("7ddbe988-bc10-43f1-b285-58a158afc608") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("50eef3ee-b24b-45b3-90c6-8ff3d64c371f") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("3a56fbc9-0730-4ff9-bc68-d7c26e837cdc") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("ada4719f-bc8b-43f4-8d2d-ea9419be98fd") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("924b0717-fd4e-4f31-98b4-82f6e1fbef1e") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("93623c0b-097d-4b96-b332-0f7f5d5f5486") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<style>
+html,body{margin:0;padding:0;background:#0a0b10;}
+a{color:#ffd666;} a:hover{color:#fff;}
+input,select{outline:none;}
+@keyframes cardIn{0%{transform:translateY(50px);opacity:0;}100%{transform:translateY(0);opacity:1;}}
+@keyframes barIn{0%{transform:translateY(-40px);opacity:0;}100%{transform:translateY(0);opacity:1;}}
+@keyframes popNum{0%{transform:scale(1);}35%{transform:scale(1.35);color:#ffd666;}100%{transform:scale(1);}}
+@keyframes timerPulseCtl{0%,100%{color:#ff3b47;text-shadow:0 0 30px rgba(255,59,71,.5);}50%{color:#ffc2c6;text-shadow:0 0 60px rgba(255,59,71,.95);}}
+@keyframes goldGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,214,102,.0);}50%{box-shadow:0 0 30px 4px rgba(255,214,102,.55);}}
+@keyframes runningPulse{0%,100%{box-shadow:0 0 0 0 rgba(122,229,130,.0);}50%{box-shadow:0 0 34px 4px rgba(122,229,130,.45);}}
+@keyframes ambient{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+@keyframes orbDriftA{0%,100%{transform:translate(0,0) scale(1);}33%{transform:translate(120px,60px) scale(1.15);}66%{transform:translate(-60px,110px) scale(.95);}}
+@keyframes orbDriftB{0%,100%{transform:translate(0,0) scale(1);}33%{transform:translate(-140px,-50px) scale(1.1);}66%{transform:translate(70px,-100px) scale(.9);}}
+@keyframes breathRed{0%,100%{box-shadow:0 0 0 0 rgba(179,18,31,0);}50%{box-shadow:0 -6px 44px -6px rgba(179,18,31,.45);}}
+@keyframes breathBlue{0%,100%{box-shadow:0 0 0 0 rgba(13,85,184,0);}50%{box-shadow:0 -6px 44px -6px rgba(13,85,184,.5);}}
+@keyframes tickPop{0%{transform:scale(1.06);opacity:.7;}100%{transform:scale(1);opacity:1;}}
+@keyframes statusSwap{0%{transform:translateY(14px);opacity:0;letter-spacing:.5em;}100%{transform:translateY(0);opacity:1;letter-spacing:.28em;}}
+@keyframes chipPop{0%{transform:scale(.4) rotate(-6deg);opacity:0;}60%{transform:scale(1.15) rotate(2deg);}100%{transform:scale(1) rotate(0);opacity:1;}}
+@keyframes titleSweep{0%{transform:translateX(-110%);}60%,100%{transform:translateX(320%);}}
+@keyframes confettiFall{0%{transform:translateY(-90px) rotate(0deg);opacity:1;}100%{transform:translateY(1200px) rotate(760deg);opacity:.75;}}
+@keyframes stampIn{0%{transform:scale(2.6);opacity:0;filter:blur(10px);}45%{transform:scale(.96);opacity:1;filter:blur(0);}60%{transform:scale(1.04);}100%{transform:scale(1);opacity:1;}}
+</style>
+</helmet>
+<div style="width:1920px;height:1080px;background:linear-gradient(120deg,#0a0b10 0%,#10121c 30%,#0a0b10 55%,#12101a 80%,#0a0b10 100%);background-size:300% 300%;animation:ambient 18s ease-in-out infinite;font-family:'Barlow Condensed',sans-serif;color:#e8eaf2;display:flex;flex-direction:column;gap:22px;padding:26px 36px 22px;box-sizing:border-box;overflow:hidden;position:relative;">
+  <div style="position:absolute;left:-120px;top:220px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(179,18,31,.14),transparent 70%);filter:blur(30px);animation:orbDriftA 16s ease-in-out infinite;pointer-events:none;"></div>
+  <div style="position:absolute;right:-120px;top:180px;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle,rgba(13,85,184,.16),transparent 70%);filter:blur(30px);animation:orbDriftB 19s ease-in-out infinite;pointer-events:none;"></div>
+  <!-- top bar: title + event meta -->
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:28px;animation:barIn .6s cubic-bezier(.2,.8,.2,1) both;">
+    <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+      <div style="font-family:'Anton',sans-serif;font-size:34px;letter-spacing:.04em;text-transform:uppercase;position:relative;overflow:hidden;">Match Control<span style="position:absolute;top:0;bottom:0;left:0;width:36%;background:linear-gradient(90deg,transparent,rgba(255,214,102,.35),transparent);transform:skewX(-18deg);animation:titleSweep 5s 1.2s ease-in-out infinite;"></span></div>
+      <div style="font-size:18px;color:#7d8296;letter-spacing:.18em;text-transform:uppercase;">WKF Kumite</div>
+    </div>
+    <div style="flex:1;min-width:0;display:grid;grid-template-columns:2fr 1.6fr .7fr .7fr 1.2fr;gap:12px;">
+      <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:16px;letter-spacing:.18em;color:#7d8296;text-transform:uppercase;">Tournament</span><input value="{{ tournament }}" sc-camel-on-change="{{ setTournament }}" style="font-family:'Barlow Condensed',sans-serif;font-size:21px;background:#12141d;color:#e8eaf2;border:1px solid #1f2230;border-radius:10px;padding:12px 12px;width:100%;min-width:0;box-sizing:border-box;"></label>
+      <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:16px;letter-spacing:.18em;color:#7d8296;text-transform:uppercase;">Category</span><input value="{{ category }}" sc-camel-on-change="{{ setCategory }}" style="font-family:'Barlow Condensed',sans-serif;font-size:21px;background:#12141d;color:#e8eaf2;border:1px solid #1f2230;border-radius:10px;padding:12px 12px;width:100%;min-width:0;box-sizing:border-box;"></label>
+      <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:16px;letter-spacing:.18em;color:#7d8296;text-transform:uppercase;">Match</span><input value="{{ matchNo }}" sc-camel-on-change="{{ setMatchNo }}" style="font-family:'Barlow Condensed',sans-serif;font-size:21px;background:#12141d;color:#e8eaf2;border:1px solid #1f2230;border-radius:10px;padding:12px 12px;width:100%;min-width:0;box-sizing:border-box;"></label>
+      <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:16px;letter-spacing:.18em;color:#7d8296;text-transform:uppercase;">Tatami</span><input value="{{ court }}" sc-camel-on-change="{{ setCourt }}" style="font-family:'Barlow Condensed',sans-serif;font-size:21px;background:#12141d;color:#e8eaf2;border:1px solid #1f2230;border-radius:10px;padding:12px 12px;width:100%;min-width:0;box-sizing:border-box;"></label>
+      <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:16px;letter-spacing:.18em;color:#7d8296;text-transform:uppercase;">Round</span>
+        <sc-raw-select value="{{ roundLabel }}" sc-camel-on-change="{{ setRoundLabel }}" style="font-family:'Barlow Condensed',sans-serif;font-size:21px;background:#12141d;color:#e8eaf2;border:1px solid #1f2230;border-radius:10px;padding:13px 12px;cursor:pointer;width:100%;min-width:0;box-sizing:border-box;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">
+          <option>Elimination</option><option>Quarterfinal</option><option>Semifinal</option><option>Bronze Medal</option><option>Final</option>
+        </sc-raw-select>
+      </label>
+    </div>
+    <div style="display:flex;gap:10px;flex-shrink:0;">
+      <button sc-camel-on-click="{{ openBracket }}" style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:{{ bracketBtnBg }};color:{{ bracketBtnFg }};border:1px solid rgba(122,229,130,.5);border-radius:10px;padding:13px 16px;white-space:nowrap;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.96);">{{ bracketBtnLabel }}</button>
+      <a href="WKF Scoreboard.html" target="_blank" style="font-size:18px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;border:1px solid rgba(255,214,102,.5);border-radius:10px;padding:13px 16px;white-space:nowrap;display:flex;align-items:center;">Scoreboard ↗</a>
+    </div>
+  </div>
+
+  <!-- main: AKA | timer | AO -->
+  <div style="flex:1;display:grid;grid-template-columns:1fr 500px 1fr;gap:22px;min-height:0;">
+    <sc-for list="{{ sides }}" as="sd">
+      <div style="background:#12141d;border:1px solid #1f2230;border-top:8px solid {{ sd.color }};border-radius:18px;padding:24px 32px;display:flex;flex-direction:column;gap:18px;order:{{ sd.order }};animation:cardIn .7s {{ sd.delay }} cubic-bezier(.2,.8,.2,1) both,{{ sd.breath }} 3.4s 1.2s ease-in-out infinite;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:30px;font-weight:700;letter-spacing:.28em;color:{{ sd.color }};text-transform:uppercase;">{{ sd.label }}</div>
+          {{ sd.scoreEl }}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <button sc-camel-on-click="{{ sd.add1 }}" style="font-family:'Barlow Condensed',sans-serif;font-size:27px;font-weight:700;background:{{ sd.color }};color:#fff;border:none;border-radius:12px;padding:13px 0;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">Yuko +1</button>
+          <button sc-camel-on-click="{{ sd.add2 }}" style="font-family:'Barlow Condensed',sans-serif;font-size:27px;font-weight:700;background:{{ sd.color }};color:#fff;border:none;border-radius:12px;padding:13px 0;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">Waza-ari +2</button>
+          <button sc-camel-on-click="{{ sd.add3 }}" style="font-family:'Barlow Condensed',sans-serif;font-size:27px;font-weight:700;background:{{ sd.color }};color:#fff;border:none;border-radius:12px;padding:13px 0;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">Ippon +3</button>
+          <button sc-camel-on-click="{{ sd.sub1 }}" style="font-family:'Barlow Condensed',sans-serif;font-size:27px;font-weight:700;background:#1f2230;color:#e8eaf2;border:none;border-radius:12px;padding:13px 0;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">Correct −1</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="font-size:19px;letter-spacing:.2em;color:#7d8296;text-transform:uppercase;width:104px;">Penalty</div>
+          <div style="display:flex;gap:10px;flex:1;">
+            <sc-for list="{{ sd.penChips }}" as="p" hint-placeholder-count="5">
+              <div style="flex:1;height:58px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Anton',sans-serif;font-size:24px;background:{{ p.bg }};color:{{ p.fg }};border:{{ p.border }};animation:{{ p.anim }};">{{ p.label }}</div>
+            </sc-for>
+          </div>
+          <button sc-camel-on-click="{{ sd.penUp }}" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;background:#1f2230;color:#e8eaf2;border:none;border-radius:10px;padding:13px 24px;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">+</button>
+          <button sc-camel-on-click="{{ sd.penDown }}" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;background:#1f2230;color:#e8eaf2;border:none;border-radius:10px;padding:13px 24px;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">−</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="font-size:19px;letter-spacing:.2em;color:#7d8296;text-transform:uppercase;width:104px;">Senshu</div>
+          <button sc-camel-on-click="{{ sd.toggleSenshu }}" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;background:{{ sd.senshuBg }};color:{{ sd.senshuFg }};border:{{ sd.senshuBorder }};border-radius:10px;padding:13px 40px;cursor:pointer;animation:{{ sd.senshuAnim }};transition:background .3s,color .3s;">Senshu</button>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;border-top:1px solid #1f2230;padding-top:22px;">
+          <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:17px;letter-spacing:.18em;color:#7d8296;text-transform:uppercase;">Name</span><input value="{{ sd.name }}" sc-camel-on-change="{{ sd.setName }}" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;background:#0a0b10;color:#e8eaf2;border:1px solid #1f2230;border-radius:10px;padding:13px 14px;"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:17px;letter-spacing:.18em;color:#7d8296;text-transform:uppercase;">Club</span><input value="{{ sd.club }}" sc-camel-on-change="{{ sd.setClub }}" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;background:#0a0b10;color:#e8eaf2;border:1px solid #1f2230;border-radius:10px;padding:13px 14px;"></label>
+          <div style="grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;"><span style="font-size:17px;letter-spacing:.18em;color:#7d8296;text-transform:uppercase;">Country</span>
+            <button sc-camel-on-click="{{ sd.openPicker }}" style="display:flex;align-items:center;gap:14px;font-family:'Barlow Condensed',sans-serif;font-size:24px;background:#0a0b10;color:#e8eaf2;border:1px solid #1f2230;border-radius:10px;padding:10px 14px;cursor:pointer;text-align:left;transition:transform .1s,filter .15s;" style-hover="border:1px solid rgba(255,214,102,.5);" style-active="transform:scale(.98);">
+              {{ sd.flagEl }}
+              <span style="flex:1;">{{ sd.country }}</span>
+              <span style="color:#7d8296;font-size:19px;letter-spacing:.1em;">CHANGE ▾</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+    <!-- center timer column -->
+    <div style="background:#12141d;border:1px solid #1f2230;border-radius:18px;padding:34px 30px;display:flex;flex-direction:column;align-items:center;gap:24px;order:2;animation:cardIn .7s .25s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="font-size:19px;letter-spacing:.32em;color:#7d8296;text-transform:uppercase;">Bout timer</div>
+      <div style="font-family:'Anton',sans-serif;font-size:132px;line-height:1.2;font-variant-numeric:tabular-nums;color:{{ timerColor }};animation:{{ timerAnim }};">{{ timeDigitsEl }}</div>
+      <div style="font-size:32px;font-weight:700;letter-spacing:.28em;color:#ffd666;text-transform:uppercase;">{{ statusEl }}</div>
+      <button sc-camel-on-click="{{ toggleTimer }}" style="width:100%;font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:{{ startBg }};color:#000;border:none;border-radius:14px;padding:24px 0;cursor:pointer;animation:{{ startAnim }};transition:background .3s;">{{ startLabel }}</button>
+      <button sc-camel-on-click="{{ toggleKo }}" style="width:100%;font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:{{ koBg }};color:{{ koFg }};border:1px solid rgba(255,59,71,.5);border-radius:14px;padding:16px 0;cursor:pointer;transition:transform .1s,filter .15s,background .3s;animation:{{ koAnim }};" style-hover="filter:brightness(1.2);" style-active="transform:scale(.96);">{{ koLabel }}</button>
+      <sc-if value="{{ showTimeAdjust }}" hint-placeholder-val="{{ false }}">
+      <div style="width:100%;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <button sc-camel-on-click="{{ minus10 }}" style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:600;background:#1f2230;color:#e8eaf2;border:none;border-radius:12px;padding:18px 0;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">−10s</button>
+        <button sc-camel-on-click="{{ plus10 }}" style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:600;background:#1f2230;color:#e8eaf2;border:none;border-radius:12px;padding:18px 0;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">+10s</button>
+      </div>
+      </sc-if>
+      <label style="width:100%;display:flex;flex-direction:column;gap:6px;"><span style="font-size:17px;letter-spacing:.18em;color:#7d8296;text-transform:uppercase;">Bout duration (mm:ss)</span>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <input value="{{ durMin }}" sc-camel-on-change="{{ setDurMin }}" type="number" min="0" max="59" style="flex:1;font-family:'Anton',sans-serif;font-size:32px;text-align:center;background:#1f2230;color:#e8eaf2;border:none;border-radius:12px;padding:12px 8px;">
+          <div style="font-family:'Anton',sans-serif;font-size:32px;color:#7d8296;">:</div>
+          <input value="{{ durSec }}" sc-camel-on-change="{{ setDurSec }}" type="number" min="0" max="59" style="flex:1;font-family:'Anton',sans-serif;font-size:32px;text-align:center;background:#1f2230;color:#e8eaf2;border:none;border-radius:12px;padding:12px 8px;">
+          <button sc-camel-on-click="{{ applyDuration }}" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#1f2230;color:#ffd666;border:1px solid rgba(255,214,102,.4);border-radius:12px;padding:15px 24px;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">Set</button>
+        </div>
+      </label>
+      <label style="width:100%;display:flex;align-items:center;gap:12px;"><span style="flex:1;font-size:17px;letter-spacing:.14em;color:#7d8296;text-transform:uppercase;">Win by point gap<br><span style="font-size:14px;letter-spacing:.04em;text-transform:none;">0 = off · WKF rule: 8</span></span>
+        <input value="{{ gapWin }}" sc-camel-on-change="{{ setGapWin }}" type="number" min="0" max="20" style="width:90px;font-family:'Anton',sans-serif;font-size:30px;text-align:center;background:#1f2230;color:#ffd666;border:none;border-radius:12px;padding:10px 6px;">
+      </label>
+      <div style="flex:1;"></div>
+      <button sc-camel-on-click="{{ resetMatch }}" style="width:100%;font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:transparent;color:#ff6b78;border:1px solid rgba(255,107,120,.5);border-radius:12px;padding:18px 0;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.94);">Reset match</button>
+      <div style="font-size:16px;color:#5c6175;letter-spacing:.06em;text-align:center;">Changes appear on the scoreboard instantly.</div>
+    </div>
+  </div>
+  {{ winnerEl }}
+  <sc-if value="{{ bracketOpen }}" hint-placeholder-val="{{ false }}">
+    <div sc-camel-on-click="{{ closeBracket }}" style="position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;">
+      <div sc-camel-on-click="{{ stopClick }}" style="width:860px;max-height:880px;background:#12141d;border:1px solid #2a2e40;border-radius:18px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 100px rgba(0,0,0,.7);animation:cardIn .25s cubic-bezier(.2,.8,.2,1) both;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-family:'Anton',sans-serif;font-size:26px;letter-spacing:.04em;text-transform:uppercase;color:#7ae582;">Bracket connection</div>
+          <button sc-camel-on-click="{{ closeBracket }}" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;background:#1f2230;color:#e8eaf2;border:none;border-radius:8px;padding:6px 16px;cursor:pointer;">✕</button>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <input value="{{ apiUrl }}" sc-camel-on-change="{{ setApiUrl }}" placeholder="https://your-tournament-system.com/api/matches" style="flex:1;font-family:'Barlow Condensed',sans-serif;font-size:22px;background:#0a0b10;color:#e8eaf2;border:1px solid #2a2e40;border-radius:12px;padding:14px 16px;">
+          <button sc-camel-on-click="{{ fetchBracket }}" style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#7ae582;color:#000;border:none;border-radius:12px;padding:14px 28px;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.15);" style-active="transform:scale(.96);">Fetch</button>
+          <button sc-camel-on-click="{{ loadDemo }}" style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:600;background:#1f2230;color:#e8eaf2;border:none;border-radius:12px;padding:14px 22px;cursor:pointer;transition:transform .1s,filter .15s;" style-hover="filter:brightness(1.2);" style-active="transform:scale(.96);">Demo data</button>
+        </div>
+        <sc-if value="{{ bracketError }}" hint-placeholder-val="{{ false }}"><div style="font-size:20px;color:#ff6b78;background:rgba(255,59,71,.1);border:1px solid rgba(255,59,71,.3);border-radius:10px;padding:12px 16px;">{{ bracketErrorMsg }}</div></sc-if>
+        <details style="font-size:18px;color:#7d8296;">
+          <summary style="cursor:pointer;letter-spacing:.08em;">Expected JSON format · or paste matches manually</summary>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+            <pre style="font-size:15px;background:#0a0b10;border:1px solid #1f2230;border-radius:10px;padding:12px;margin:0;overflow-x:auto;color:#a7abbe;">[{"matchNo":"24","tatami":"2","round":"Semifinal","category":"Male Kumite -75 kg",
+  "aka":{"name":"R. Aghayev","club":"Judan KC","country":"Azerbaijan","flagCode":"az"},
+  "ao":{"name":"S. Da Costa","club":"Paris KE","country":"France","flagCode":"fr"}}, …]</pre>
+            <textarea value="{{ pasteJson }}" sc-camel-on-change="{{ setPasteJson }}" placeholder="Paste bracket JSON here…" rows="4" style="font-family:monospace;font-size:15px;background:#0a0b10;color:#e8eaf2;border:1px solid #2a2e40;border-radius:10px;padding:12px;resize:vertical;"></textarea>
+            <button sc-camel-on-click="{{ loadPasted }}" style="align-self:flex-start;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:600;background:#1f2230;color:#e8eaf2;border:none;border-radius:10px;padding:10px 22px;cursor:pointer;">Load pasted JSON</button>
+          </div>
+        </details>
+        <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:160px;">
+          <sc-for list="{{ bracketMatches }}" as="bm" hint-placeholder-count="0">
+            <button sc-camel-on-click="{{ bm.load }}" style="display:grid;grid-template-columns:90px 150px 1fr 40px 1fr;align-items:center;gap:14px;font-family:'Barlow Condensed',sans-serif;font-size:23px;background:{{ bm.bg }};color:#e8eaf2;border:1px solid #1f2230;border-radius:12px;padding:14px 18px;cursor:pointer;text-align:left;" style-hover="background:#1f2230;">
+              <span style="font-family:'Anton',sans-serif;color:#ffd666;">#{{ bm.matchNo }}</span>
+              <span style="color:#7d8296;text-transform:uppercase;font-size:19px;letter-spacing:.08em;">{{ bm.round }}</span>
+              <span style="color:#ff6b78;">{{ bm.akaName }}</span>
+              <span style="color:#5c6175;text-align:center;">vs</span>
+              <span style="color:#6ea8ff;">{{ bm.aoName }}</span>
+            </button>
+          </sc-for>
+          <sc-if value="{{ bracketEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:21px;color:#5c6175;padding:16px 4px;">No matches loaded yet — fetch from your API, load the demo, or paste JSON.</div></sc-if>
+        </div>
+        <div style="font-size:17px;color:#5c6175;">Click a match to load it onto the board. You can still edit everything manually afterwards.</div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ pickerOpen }}" hint-placeholder-val="{{ false }}">
+    <div sc-camel-on-click="{{ closePicker }}" style="position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;">
+      <div sc-camel-on-click="{{ stopClick }}" style="width:620px;max-height:820px;background:#12141d;border:1px solid #2a2e40;border-radius:18px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 100px rgba(0,0,0,.7);animation:cardIn .25s cubic-bezier(.2,.8,.2,1) both;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-family:'Anton',sans-serif;font-size:26px;letter-spacing:.04em;text-transform:uppercase;color:{{ pickerColor }};">Select country — {{ pickerSideLabel }}</div>
+          <button sc-camel-on-click="{{ closePicker }}" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;background:#1f2230;color:#e8eaf2;border:none;border-radius:8px;padding:6px 16px;cursor:pointer;">✕</button>
+        </div>
+        <input value="{{ pickerQuery }}" sc-camel-on-change="{{ setPickerQuery }}" sc-camel-auto-focus="{{ true }}" placeholder="Type a country name…" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;background:#0a0b10;color:#e8eaf2;border:1px solid #2a2e40;border-radius:12px;padding:16px 18px;">
+        <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:200px;">
+          <sc-for list="{{ pickerResults }}" as="c" hint-placeholder-count="0">
+            <button sc-camel-on-click="{{ c.pick }}" style="display:flex;align-items:center;gap:18px;font-family:'Barlow Condensed',sans-serif;font-size:26px;background:transparent;color:#e8eaf2;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;text-align:left;" style-hover="background:#1f2230;">
+              {{ c.flagEl }}
+              <span style="flex:1;">{{ c.name }}</span>
+              <span style="color:#5c6175;font-size:19px;text-transform:uppercase;">{{ c.code }}</span>
+            </button>
+          </sc-for>
+          <sc-if value="{{ pickerEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:22px;color:#5c6175;padding:20px 14px;">No country matches that name.</div></sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1920, &quot;height&quot;: 1080}, &quot;showTimeAdjust&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Options&quot;}}">
+class Component extends DCLogic {
+  state = {
+    akaScore: 0, aoScore: 0, akaPen: 0, aoPen: 0, akaSenshu: false, aoSenshu: false,
+    timeLeft: 180, running: false, finished: false, matchMinutes: 3, durMin: '3', durSec: '0',
+    tournament: 'Karate 1 Premier League', category: 'Male Kumite -75 kg',
+    matchNo: '24', court: '2', roundLabel: 'Semifinal',
+    akaName: 'R. Aghayev', akaClub: 'Judan Karate Club', akaCountry: 'Azerbaijan', akaFlagCode: 'az',
+    aoName: 'S. Da Costa', aoClub: 'Paris Karaté Élite', aoCountry: 'France', aoFlagCode: 'fr',
+    pickerFor: null, pickerQuery: '',
+    bracketOpen: false, apiUrl: '', pasteJson: '', bracketMatches: [], bracketError: '', loadedMatchNo: null,
+    koTime: null, gapWin: '8', winnerDismissed: false,
+  };
+  winnerEl() {
+    const s = this.state;
+    if (!s.finished || s.winnerDismissed) return null;
+    const akaLead = s.akaScore > s.aoScore || (s.akaScore === s.aoScore && s.akaSenshu);
+    const aoLead = s.aoScore > s.akaScore || (s.akaScore === s.aoScore && s.aoSenshu);
+    if (!akaLead && !aoLead) return null;
+    const side = akaLead ? 'aka' : 'ao';
+    const color = akaLead ? '#b3121f' : '#0d55b8';
+    if (!this._confetti) this._confetti = Array.from({ length: 40 }, (_, i) => ({
+      left: Math.random() * 100, w: 8 + Math.random() * 12, h: 18 + Math.random() * 16,
+      color: ['#ffd666', '#fff', '#ff3b47', '#4d9aff'][i % 4],
+      dur: 2.4 + Math.random() * 2, delay: Math.random() * 2.2, rot: Math.random() * 360,
+    }));
+    const confetti = this._confetti.map((c, i) => React.createElement('div', {
+      key: i, style: { position: 'absolute', left: c.left + '%', top: -40, width: c.w, height: c.h, background: c.color, transform: 'rotate(' + c.rot + 'deg)', animation: 'confettiFall ' + c.dur + 's ' + c.delay + 's linear infinite' }
+    }));
+    const btn = (label, onClick, primary) => React.createElement('button', {
+      onClick, style: { fontFamily: "'Barlow Condensed',sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', background: primary ? '#ffd666' : 'transparent', color: primary ? '#000' : '#e8eaf2', border: primary ? 'none' : '1px solid rgba(255,255,255,.35)', borderRadius: 12, padding: '16px 40px', cursor: 'pointer' }
+    }, label);
+    return React.createElement('div', { style: { position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(0,0,0,.75)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+      confetti,
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 26, animation: 'stampIn .8s cubic-bezier(.2,.8,.2,1) both' } },
+        React.createElement('div', { style: { fontSize: 40, fontWeight: 700, letterSpacing: '.5em', color: '#ffd666', textTransform: 'uppercase' } }, 'Winner'),
+        React.createElement('div', { style: { background: 'linear-gradient(135deg,' + color + ', #000)', padding: '28px 90px', boxShadow: '0 0 140px ' + color, borderRadius: 6 } },
+          React.createElement('div', { style: { fontFamily: "'Anton',sans-serif", fontSize: 110, lineHeight: 1, color: '#fff', textTransform: 'uppercase' } }, s[side + 'Name'])),
+        React.createElement('div', { style: { fontSize: 34, fontWeight: 600, letterSpacing: '.2em', color: '#e8eaf2', textTransform: 'uppercase' } }, s.akaScore + ' — ' + s.aoScore + (s[side + 'Senshu'] && s.akaScore === s.aoScore ? ' · Senshu' : '')),
+        React.createElement('div', { style: { display: 'flex', gap: 16, marginTop: 8 } },
+          btn('New match', () => this.set({ akaScore: 0, aoScore: 0, akaPen: 0, aoPen: 0, akaSenshu: false, aoSenshu: false, timeLeft: this.state.matchMinutes * 60, running: false, finished: false, winnerDismissed: false }), true),
+          btn('Dismiss', () => this.setState({ winnerDismissed: true }), false))));
+  }
+  normalizeMatch(raw, i) {
+    const f = (side) => {
+      const o = raw[side] || {};
+      return { name: o.name || o.athlete || '', club: o.club || o.team || '', country: o.country || '', flagCode: (o.flagCode || o.flag || o.iso || '').toLowerCase() };
+    };
+    return {
+      matchNo: String(raw.matchNo ?? raw.match ?? raw.number ?? i + 1),
+      tatami: String(raw.tatami ?? raw.court ?? ''),
+      round: raw.round || raw.stage || '',
+      category: raw.category || raw.division || '',
+      tournament: raw.tournament || raw.event || '',
+      aka: f('aka'), ao: f('ao'),
+    };
+  }
+  applyMatches(arr) {
+    if (!Array.isArray(arr)) throw new Error('Expected a JSON array of matches');
+    this.setState({ bracketMatches: arr.map((m, i) => this.normalizeMatch(m, i)), bracketError: '' });
+  }
+  loadMatch(m) {
+    this.set({
+      matchNo: m.matchNo, court: m.tatami || this.state.court,
+      roundLabel: m.round || this.state.roundLabel, category: m.category || this.state.category,
+      tournament: m.tournament || this.state.tournament,
+      akaName: m.aka.name, akaClub: m.aka.club, akaCountry: m.aka.country, akaFlagCode: m.aka.flagCode || 'az',
+      aoName: m.ao.name, aoClub: m.ao.club, aoCountry: m.ao.country, aoFlagCode: m.ao.flagCode || 'fr',
+      akaScore: 0, aoScore: 0, akaPen: 0, aoPen: 0, akaSenshu: false, aoSenshu: false,
+      timeLeft: this.state.matchMinutes * 60, running: false, finished: false,
+      bracketOpen: false, loadedMatchNo: m.matchNo,
+    });
+  }
+  demoBracket() {
+    return [
+      { matchNo: '21', tatami: '2', round: 'Quarterfinal', category: 'Male Kumite -75 kg', aka: { name: 'L. Busà', club: 'Fiamme Oro', country: 'Italy', flagCode: 'it' }, ao: { name: 'K. Nishimura', club: 'Teikyo University', country: 'Japan', flagCode: 'jp' } },
+      { matchNo: '22', tatami: '2', round: 'Quarterfinal', category: 'Male Kumite -75 kg', aka: { name: 'R. Aghayev', club: 'Judan Karate Club', country: 'Azerbaijan', flagCode: 'az' }, ao: { name: 'S. Da Costa', club: 'Paris Karaté Élite', country: 'France', flagCode: 'fr' } },
+      { matchNo: '23', tatami: '2', round: 'Semifinal', category: 'Male Kumite -75 kg', aka: { name: 'B. Horuna', club: 'Dynamo Kyiv', country: 'Ukraine', flagCode: 'ua' }, ao: { name: 'E. Garibov', club: 'Istanbul BBSK', country: 'Turkey', flagCode: 'tr' } },
+      { matchNo: '24', tatami: '2', round: 'Semifinal', category: 'Male Kumite -75 kg', aka: { name: 'D. Assadilov', club: 'Almaty KC', country: 'Kazakhstan', flagCode: 'kz' }, ao: { name: 'A. Zaretska', club: 'Baku KC', country: 'Azerbaijan', flagCode: 'az' } },
+      { matchNo: '25', tatami: '1', round: 'Final', category: 'Male Kumite -75 kg', aka: { name: 'Winner M23', club: '', country: 'TBD', flagCode: 'un' }, ao: { name: 'Winner M24', club: '', country: 'TBD', flagCode: 'un' } },
+    ];
+  }
+  flagImg(code, w) {
+    return React.createElement('img', { src: 'https://flagcdn.com/w80/' + code + '.png', alt: '', style: { width: w, height: Math.round(w * 2 / 3), objectFit: 'cover', borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,.5)' } });
+  }
+  componentDidMount() {
+    this._countries = [];
+    this._countries = [["Afghanistan","af"],["Albania","al"],["Algeria","dz"],["Andorra","ad"],["Angola","ao"],["Argentina","ar"],["Armenia","am"],["Australia","au"],["Austria","at"],["Azerbaijan","az"],["Bahamas","bs"],["Bahrain","bh"],["Bangladesh","bd"],["Barbados","bb"],["Belarus","by"],["Belgium","be"],["Belize","bz"],["Benin","bj"],["Bhutan","bt"],["Bolivia","bo"],["Bosnia and Herzegovina","ba"],["Botswana","bw"],["Brazil","br"],["Brunei","bn"],["Bulgaria","bg"],["Burkina Faso","bf"],["Burundi","bi"],["Cambodia","kh"],["Cameroon","cm"],["Canada","ca"],["Cape Verde","cv"],["Central African Republic","cf"],["Chad","td"],["Chile","cl"],["China","cn"],["Colombia","co"],["Comoros","km"],["Congo","cg"],["DR Congo","cd"],["Costa Rica","cr"],["Croatia","hr"],["Cuba","cu"],["Cyprus","cy"],["Czech Republic","cz"],["Denmark","dk"],["Djibouti","dj"],["Dominica","dm"],["Dominican Republic","do"],["Ecuador","ec"],["Egypt","eg"],["El Salvador","sv"],["Equatorial Guinea","gq"],["Eritrea","er"],["Estonia","ee"],["Eswatini","sz"],["Ethiopia","et"],["Fiji","fj"],["Finland","fi"],["France","fr"],["Gabon","ga"],["Gambia","gm"],["Georgia","ge"],["Germany","de"],["Ghana","gh"],["Greece","gr"],["Grenada","gd"],["Guatemala","gt"],["Guinea","gn"],["Guinea-Bissau","gw"],["Guyana","gy"],["Haiti","ht"],["Honduras","hn"],["Hong Kong","hk"],["Hungary","hu"],["Iceland","is"],["India","in"],["Indonesia","id"],["Iran","ir"],["Iraq","iq"],["Ireland","ie"],["Israel","il"],["Italy","it"],["Ivory Coast","ci"],["Jamaica","jm"],["Japan","jp"],["Jordan","jo"],["Kazakhstan","kz"],["Kenya","ke"],["Kiribati","ki"],["Kosovo","xk"],["Kuwait","kw"],["Kyrgyzstan","kg"],["Laos","la"],["Latvia","lv"],["Lebanon","lb"],["Lesotho","ls"],["Liberia","lr"],["Libya","ly"],["Liechtenstein","li"],["Lithuania","lt"],["Luxembourg","lu"],["Macau","mo"],["Madagascar","mg"],["Malawi","mw"],["Malaysia","my"],["Maldives","mv"],["Mali","ml"],["Malta","mt"],["Marshall Islands","mh"],["Mauritania","mr"],["Mauritius","mu"],["Mexico","mx"],["Micronesia","fm"],["Moldova","md"],["Monaco","mc"],["Mongolia","mn"],["Montenegro","me"],["Morocco","ma"],["Mozambique","mz"],["Myanmar","mm"],["Namibia","na"],["Nauru","nr"],["Nepal","np"],["Netherlands","nl"],["New Zealand","nz"],["Nicaragua","ni"],["Niger","ne"],["Nigeria","ng"],["North Korea","kp"],["North Macedonia","mk"],["Norway","no"],["Oman","om"],["Pakistan","pk"],["Palau","pw"],["Palestine","ps"],["Panama","pa"],["Papua New Guinea","pg"],["Paraguay","py"],["Peru","pe"],["Philippines","ph"],["Poland","pl"],["Portugal","pt"],["Puerto Rico","pr"],["Qatar","qa"],["Romania","ro"],["Russia","ru"],["Rwanda","rw"],["Saint Kitts and Nevis","kn"],["Saint Lucia","lc"],["Saint Vincent","vc"],["Samoa","ws"],["San Marino","sm"],["Sao Tome and Principe","st"],["Saudi Arabia","sa"],["Senegal","sn"],["Serbia","rs"],["Seychelles","sc"],["Sierra Leone","sl"],["Singapore","sg"],["Slovakia","sk"],["Slovenia","si"],["Solomon Islands","sb"],["Somalia","so"],["South Africa","za"],["South Korea","kr"],["South Sudan","ss"],["Spain","es"],["Sri Lanka","lk"],["Sudan","sd"],["Suriname","sr"],["Sweden","se"],["Switzerland","ch"],["Syria","sy"],["Taiwan","tw"],["Tajikistan","tj"],["Tanzania","tz"],["Thailand","th"],["Timor-Leste","tl"],["Togo","tg"],["Tonga","to"],["Trinidad and Tobago","tt"],["Tunisia","tn"],["Turkey","tr"],["Turkmenistan","tm"],["Tuvalu","tv"],["Uganda","ug"],["Ukraine","ua"],["United Arab Emirates","ae"],["United Kingdom","gb"],["United States","us"],["Uruguay","uy"],["Uzbekistan","uz"],["Vanuatu","vu"],["Venezuela","ve"],["Vietnam","vn"],["Yemen","ye"],["Zambia","zm"],["Zimbabwe","zw"]]; this.forceUpdate();
+    this._bc = new BroadcastChannel('wkf-scoreboard');
+    this._bc.onmessage = (ev) => { if (ev.data && ev.data.type === 'hello') this.send(); };
+    this._tick = setInterval(() => {
+      this.setState(s => {
+        if (s.koTime != null && s.koTime > 0) return { koTime: Math.max(0, +(s.koTime - 0.1).toFixed(1)) };
+        if (!s.running) return null;
+        const t = Math.max(0, +(s.timeLeft - 0.1).toFixed(1));
+        return { timeLeft: t, running: t > 0, finished: t <= 0 };
+      }, () => this.send());
+    }, 100);
+    this.send();
+  }
+  componentWillUnmount() { clearInterval(this._tick); if (this._bc) this._bc.close(); }
+  send() { if (this._bc) this._bc.postMessage({ type: 'state', data: this.state }); }
+  set(patch) { this.setState(patch, () => this.send()); }
+  setFn(fn) { this.setState(fn, () => this.send()); }
+  field(key) { return (e) => this.set({ [key]: e.target.value }); }
+  penChips(n) {
+    return ['C1', 'C2', 'C3', 'HC', 'H'].map((label, i) => {
+      const on = i < n;
+      const col = i === 4 ? '#ff3b47' : i === 3 ? '#ff9636' : '#ffd666';
+      return { label, bg: on ? col : 'transparent', fg: on ? '#000' : '#5c6175', border: on ? '1px solid transparent' : '1px solid #1f2230', anim: on ? 'chipPop .35s cubic-bezier(.2,.8,.2,1) both' : 'none' };
+    });
+  }
+  side(key, label, color, order, delay, breath) {
+    const s = this.state;
+    const bump = (n) => () => this.setFn(st => {
+      const patch = { [key + 'Score']: Math.max(0, st[key + 'Score'] + n), [key + 'Flash']: Date.now() };
+      const akaS = key === 'aka' ? patch.akaScore : st.akaScore;
+      const aoS = key === 'ao' ? patch.aoScore : st.aoScore;
+      const gap = parseInt(st.gapWin, 10) || 0;
+      if (gap > 0 && Math.abs(akaS - aoS) >= gap) { patch.running = false; patch.finished = true; patch.winnerDismissed = false; }
+      return patch;
+    });
+    return {
+      key, label, color, order, delay, breath,
+      scoreEl: React.createElement('div', {
+        key: key + (s[key + 'Flash'] || 0),
+        style: { fontFamily: "'Anton',sans-serif", fontSize: 96, lineHeight: 1, fontVariantNumeric: 'tabular-nums', animation: s[key + 'Flash'] ? 'popNum .45s cubic-bezier(.2,.8,.2,1)' : 'none' }
+      }, s[key + 'Score']),
+      add1: bump(1), add2: bump(2), add3: bump(3), sub1: bump(-1),
+      penUp: () => this.setFn(st => ({ [key + 'Pen']: Math.min(5, st[key + 'Pen'] + 1) })),
+      penDown: () => this.setFn(st => ({ [key + 'Pen']: Math.max(0, st[key + 'Pen'] - 1) })),
+      penChips: this.penChips(s[key + 'Pen']),
+      toggleSenshu: () => this.setFn(st => key === 'aka' ? { akaSenshu: !st.akaSenshu, aoSenshu: false } : { aoSenshu: !st.aoSenshu, akaSenshu: false }),
+      senshuBg: s[key + 'Senshu'] ? '#ffd666' : 'transparent',
+      senshuFg: s[key + 'Senshu'] ? '#000' : '#5c6175',
+      senshuBorder: s[key + 'Senshu'] ? '1px solid transparent' : '1px solid #1f2230',
+      senshuAnim: s[key + 'Senshu'] ? 'goldGlow 1.6s ease-in-out infinite' : 'none',
+      name: s[key + 'Name'], club: s[key + 'Club'], country: s[key + 'Country'],
+      flagEl: this.flagImg(s[key + 'FlagCode'], 48),
+      openPicker: () => this.setState({ pickerFor: key, pickerQuery: '' }),
+      setName: this.field(key + 'Name'), setClub: this.field(key + 'Club'),
+    };
+  }
+  pickerResults() {
+    const s = this.state;
+    if (!s.pickerFor) return [];
+    const q = s.pickerQuery.trim().toLowerCase();
+    const list = (this._countries || []).filter(([n]) => !q || n.toLowerCase().includes(q)).slice(0, 40);
+    return list.map(([name, code]) => ({
+      name, code,
+      flagEl: this.flagImg(code, 54),
+      pick: () => this.set({ [s.pickerFor + 'Country']: name, [s.pickerFor + 'FlagCode']: code, pickerFor: null }),
+    }));
+  }
+  renderVals() {
+    const s = this.state;
+    const m = Math.floor(s.timeLeft / 60), sec = Math.floor(s.timeLeft % 60);
+    return {
+      timeDigitsEl: React.createElement('span', {
+        key: 't' + m + ':' + sec,
+        style: { display: 'inline-block', animation: s.running ? 'tickPop .3s ease-out' : 'none' }
+      }, m + ':' + String(sec).padStart(2, '0')),
+      showTimeAdjust: this.props.showTimeAdjust ?? false,
+      gapWin: s.gapWin,
+      winnerEl: this.winnerEl(),
+      setGapWin: (e) => this.set({ gapWin: e.target.value }),
+      toggleKo: () => this.setFn(st => st.koTime == null ? { koTime: 10, running: false } : { koTime: null }),
+      koLabel: s.koTime == null ? 'KO · 10s count' : (s.koTime <= 0 ? 'Count over — dismiss' : 'Counting… ' + Math.ceil(s.koTime) + ' — cancel'),
+      koBg: s.koTime == null ? 'transparent' : '#ff3b47',
+      koFg: s.koTime == null ? '#ff6b78' : '#fff',
+      koAnim: s.koTime != null && s.koTime > 0 ? 'goldGlow 1s ease-in-out infinite' : 'none',
+      timerColor: s.timeLeft <= 15 && s.timeLeft > 0 ? '#ff3b47' : '#fff',
+      timerAnim: s.timeLeft <= 15 && s.timeLeft > 0 && s.running ? 'timerPulseCtl 1s ease-in-out infinite' : 'none',
+      startAnim: s.running ? 'runningPulse 1.6s ease-in-out infinite' : 'none',
+      statusEl: (() => {
+        const lbl = s.finished || s.timeLeft <= 0 ? 'Time' : (s.running ? 'Hajime' : 'Yame');
+        return React.createElement('span', { key: lbl, style: { display: 'inline-block', animation: 'statusSwap .45s cubic-bezier(.2,.8,.2,1) both' } }, lbl);
+      })(),
+      startLabel: s.running ? 'Pause' : 'Start',
+      startBg: s.running ? '#ff9636' : '#7ae582',
+      toggleTimer: () => this.setFn(st => ({ running: !st.running && st.timeLeft > 0 })),
+      plus10: () => this.setFn(st => ({ timeLeft: Math.min(st.matchMinutes * 60, st.timeLeft + 10), finished: false })),
+      minus10: () => this.setFn(st => ({ timeLeft: Math.max(0, st.timeLeft - 10) })),
+      durMin: s.durMin, durSec: s.durSec,
+      setDurMin: (e) => this.setState({ durMin: e.target.value }),
+      setDurSec: (e) => this.setState({ durSec: e.target.value }),
+      applyDuration: () => {
+        const total = Math.max(10, (parseInt(s.durMin, 10) || 0) * 60 + (parseInt(s.durSec, 10) || 0));
+        this.set({ matchMinutes: total / 60, timeLeft: total, running: false, finished: false });
+      },
+      resetMatch: () => this.set({ akaScore: 0, aoScore: 0, akaPen: 0, aoPen: 0, akaSenshu: false, aoSenshu: false, timeLeft: s.matchMinutes * 60, running: false, finished: false, winnerDismissed: false }),
+      sides: [this.side('aka', 'AKA · Red', '#b3121f', 1, '.1s', 'breathRed'), this.side('ao', 'AO · Blue', '#0d55b8', 3, '.4s', 'breathBlue')],
+      bracketOpen: s.bracketOpen,
+      openBracket: () => this.setState({ bracketOpen: true }),
+      closeBracket: () => this.setState({ bracketOpen: false }),
+      bracketBtnLabel: s.bracketMatches.length ? 'Bracket · ' + s.bracketMatches.length + ' matches' : 'Connect bracket',
+      bracketBtnBg: s.bracketMatches.length ? 'rgba(122,229,130,.15)' : 'transparent',
+      bracketBtnFg: '#7ae582',
+      apiUrl: s.apiUrl, setApiUrl: (e) => this.setState({ apiUrl: e.target.value }),
+      pasteJson: s.pasteJson, setPasteJson: (e) => this.setState({ pasteJson: e.target.value }),
+      fetchBracket: () => {
+        if (!s.apiUrl.trim()) { this.setState({ bracketError: 'Enter your bracket API URL first.' }); return; }
+        this.setState({ bracketError: '' });
+        fetch(s.apiUrl.trim()).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(j => this.applyMatches(Array.isArray(j) ? j : j.matches || j.data || []))
+          .catch(err => this.setState({ bracketError: 'Could not fetch: ' + err.message + '. Check the URL and that the API allows browser access (CORS) — or paste the JSON below.' }));
+      },
+      loadDemo: () => this.applyMatches(this.demoBracket()),
+      loadPasted: () => { try { this.applyMatches(JSON.parse(s.pasteJson)); } catch (err) { this.setState({ bracketError: 'Invalid JSON: ' + err.message }); } },
+      bracketError: !!s.bracketError, bracketErrorMsg: s.bracketError,
+      bracketEmpty: s.bracketMatches.length === 0,
+      bracketMatches: s.bracketMatches.map(m => ({
+        matchNo: m.matchNo, round: m.round || '—', akaName: m.aka.name, aoName: m.ao.name,
+        bg: m.matchNo === s.loadedMatchNo ? 'rgba(122,229,130,.08)' : '#0a0b10',
+        load: () => this.loadMatch(m),
+      })),
+      pickerOpen: !!s.pickerFor,
+      pickerSideLabel: s.pickerFor === 'aka' ? 'AKA (Red)' : 'AO (Blue)',
+      pickerColor: s.pickerFor === 'aka' ? '#ff6b78' : '#6ea8ff',
+      pickerQuery: s.pickerQuery,
+      setPickerQuery: (e) => this.setState({ pickerQuery: e.target.value }),
+      closePicker: () => this.setState({ pickerFor: null }),
+      stopClick: (e) => e.stopPropagation(),
+      pickerResults: this.pickerResults(),
+      pickerEmpty: this.pickerResults().length === 0,
+      tournament: s.tournament, category: s.category, matchNo: s.matchNo, court: s.court, roundLabel: s.roundLabel,
+      setTournament: this.field('tournament'), setCategory: this.field('category'),
+      setMatchNo: this.field('matchNo'), setCourt: this.field('court'), setRoundLabel: this.field('roundLabel'),
+    };
+  }
+}
+</script>
+
+
+</body></html>

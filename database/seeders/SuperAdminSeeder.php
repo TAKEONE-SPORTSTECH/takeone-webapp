@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\User;
-use App\Models\Role;
+use App\Members\Models\User;
+use App\Members\Models\Role;
 use Illuminate\Support\Facades\Hash;
 
 class SuperAdminSeeder extends Seeder

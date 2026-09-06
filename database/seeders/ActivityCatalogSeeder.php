@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\ActivityCatalog;
-use App\Models\ClubActivity;
+use App\Clubs\Models\ClubActivity;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Scopes\TenantScope;

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Members\Models\User;
 
 /**
  * One row per ownership transfer of a Business (chain) — the audit trail.

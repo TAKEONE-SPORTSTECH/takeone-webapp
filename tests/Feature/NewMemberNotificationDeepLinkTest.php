@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\UserNotification;
+use App\Members\Models\UserNotification;
 use Tests\TestCase;
 
 /**
@@ -18,7 +18,7 @@ class NewMemberNotificationDeepLinkTest extends TestCase
         $club = $this->createClub($owner, ['country' => 'BH']);
         $this->makeClubAdmin($owner, $club);
 
-        $package = \App\Models\ClubPackage::create([
+        $package = \App\Clubs\Models\ClubPackage::create([
             'tenant_id' => $club->id,
             'name' => 'Monthly',
             'price' => 25,

@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Role;
-use App\Models\User;
+use App\Members\Models\Role;
+use App\Members\Models\User;
 use Illuminate\Console\Command;
 
 class MakeSuperAdmin extends Command

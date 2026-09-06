@@ -59,7 +59,19 @@ trait StoresBase64Images
         $extension = self::ALLOWED_IMAGE_TYPES[$mimeType];
         $fullPath = trim($folder, '/').'/'.$filenameBase.'.'.$extension;
 
-        Storage::disk($disk)->put($fullPath, $binary);
+        // A write can fail for reasons that have nothing to do with the bytes —
+        // a folder the web user cannot write into, a full disk. `put()` reports
+        // that by returning false, and this used to ignore it and hand back the
+        // path anyway: the caller then saved a path to a file that was never
+        // written, told the user it had worked, and the picture came back 404
+        // on every screen that asked for it. Silence is the worst outcome here,
+        // so it is logged as well as refused — a permissions fault is an
+        // operator's problem and cannot be diagnosed from a 422.
+        if (Storage::disk($disk)->put($fullPath, $binary) === false) {
+            report(new \RuntimeException("Failed to store uploaded image at [{$disk}://{$fullPath}]."));
+
+            return null;
+        }
 
         return $fullPath;
     }
@@ -105,7 +117,13 @@ trait StoresBase64Images
         if (! function_exists('imagecreatefromstring')) {
             $ext = self::ALLOWED_IMAGE_TYPES[$mimeType];
             $path = trim($folder, '/').'/'.$filenameBase.'.'.$ext;
-            Storage::disk($disk)->put($path, $binary);
+
+            // Same as above: a refused write must never be reported as a stored file.
+            if (Storage::disk($disk)->put($path, $binary) === false) {
+                report(new \RuntimeException("Failed to store uploaded image at [{$disk}://{$path}]."));
+
+                return null;
+            }
 
             return $path;
         }
@@ -151,7 +169,11 @@ trait StoresBase64Images
             return null;
         }
 
-        Storage::disk($disk)->put($path, $out);
+        if (Storage::disk($disk)->put($path, $out) === false) {
+            report(new \RuntimeException("Failed to store uploaded image at [{$disk}://{$path}]."));
+
+            return null;
+        }
 
         return $path;
     }

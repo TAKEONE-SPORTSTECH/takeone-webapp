@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\ClubAffiliation;
-use App\Models\Goal;
-use App\Models\MemberEvent;
+use App\Clubs\Models\ClubAffiliation;
+use App\Members\Models\Goal;
+use App\Members\Models\MemberEvent;
 use Tests\TestCase;
 
 /**

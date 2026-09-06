@@ -19,7 +19,7 @@
         'usage_count' => (int) $a->usage_count,
         'variants' => $a->variants ?: [],
         'videos' => $a->sanitizedVideos(),
-        'picture_src' => $a->picture_url ? asset('storage/'.$a->picture_url) : null,
+        'picture_src' => $a->picture_url ? file_url($a->picture_url) : null,
         'update_url' => route('admin.platform.activities.update', $a),
         'destroy_url' => route('admin.platform.activities.destroy', $a),
     ])->values();

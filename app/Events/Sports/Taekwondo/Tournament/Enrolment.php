@@ -6,7 +6,7 @@ use App\Events\Support\EnrolmentDecision;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Sports\Combat\CombatSport;
 use Carbon\Carbon;
 
@@ -37,9 +37,13 @@ class Enrolment
             );
         }
 
+        // No weight on file. That is a fact nobody has recorded yet, not a
+        // reason to keep an athlete out of a competition where every entrant
+        // stands on the scale on the day — so it is DEFERRED to weigh-in, and a
+        // coach entering their own squad is not stopped by it.
         $weight = $this->declaredWeight($user);
         if (! $weight) {
-            return EnrolmentDecision::deny(
+            return EnrolmentDecision::defer(
                 'no_weight',
                 __('event-taekwondo_tournament::messages.gate_no_weight'),
             );

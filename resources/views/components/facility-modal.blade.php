@@ -93,8 +93,8 @@ window.facilityModal = function (cfg) {
                     maps_url: f.maps_url || '', is_available: !!f.is_available,
                 };
                 const imgs = f.images || [];
-                if (imgs.length) this.preview = '/storage/' + imgs[0];
-                else if (f.photo) this.preview = '/storage/' + f.photo;
+                if (imgs.length) this.preview = '/file/' + imgs[0];
+                else if (f.photo) this.preview = '/file/' + f.photo;
             } catch (e) { window.showToast && window.showToast('error', e.message); }
         },
         close() { this.open = false; },

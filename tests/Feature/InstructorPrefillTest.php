@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\ClubAffiliation;
-use App\Models\MemberWorkHistory;
+use App\Clubs\Models\ClubAffiliation;
+use App\Members\Models\MemberWorkHistory;
 use Tests\TestCase;
 
 /**

@@ -27,6 +27,15 @@ class CheckRole
             return $next($request);
         }
 
+        // A role held platform-wide (user_roles.tenant_id IS NULL) belongs to no
+        // single club, so it satisfies a club-scoped gate as well. Super-admin is
+        // granted that way, and without this every {club}-bound admin route 403s
+        // for the platform owner — which is what happened the moment the tenant
+        // resolution above stopped (incorrectly) returning null for a bound club.
+        if ($tenantId !== null && $user->hasPlatformRole($roles)) {
+            return $next($request);
+        }
+
         // If user doesn't have required role, abort with 403
         abort(403, 'Unauthorized action.');
     }
@@ -44,14 +53,14 @@ class CheckRole
     {
         $param = $request->route('tenant') ?? $request->route('club');
 
-        if ($param instanceof \App\Models\Tenant) {
+        if ($param instanceof \App\Clubs\Models\Tenant) {
             return $param->id;
         }
         if (is_numeric($param)) {
             return (int) $param;
         }
         if ($slug = $request->route('slug')) {
-            return \App\Models\Tenant::where('slug', $slug)->value('id');
+            return \App\Clubs\Models\Tenant::where('slug', $slug)->value('id');
         }
 
         return null;

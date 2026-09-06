@@ -27,6 +27,14 @@ class CheckPermission
             return $next($request);
         }
 
+        // Same as CheckRole: a permission carried by a PLATFORM-WIDE role (pivot
+        // tenant_id IS NULL, i.e. super-admin) is not scoped to one club, so it
+        // also clears a club-scoped gate. Deliberately not "any role in any
+        // tenant" — that would let an admin of one club through another's.
+        if ($tenantId !== null && $user->hasPlatformPermission($permission)) {
+            return $next($request);
+        }
+
         // If user doesn't have required permission, abort with 403
         abort(403, 'Unauthorized action.');
     }
@@ -44,14 +52,14 @@ class CheckPermission
     {
         $param = $request->route('tenant') ?? $request->route('club');
 
-        if ($param instanceof \App\Models\Tenant) {
+        if ($param instanceof \App\Clubs\Models\Tenant) {
             return $param->id;
         }
         if (is_numeric($param)) {
             return (int) $param;
         }
         if ($slug = $request->route('slug')) {
-            return \App\Models\Tenant::where('slug', $slug)->value('id');
+            return \App\Clubs\Models\Tenant::where('slug', $slug)->value('id');
         }
 
         return null;

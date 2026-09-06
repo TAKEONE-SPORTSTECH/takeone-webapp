@@ -1,0 +1,14 @@
+Bout Number,Group,Red Corner (AKA),Red Club,Blue Corner (AO),Blue Club,Category,Weight Class
+1,1,Abdullah Bassam,Sparta,Waleed Waheeb,Shotokan Muharraq,Under 15,52 kg / 57 kg
+2,2,Mohammed Ahmed,Shotokan Muharraq,Hassan Faramarzi,Sparta,Under 21,75 kg / 81 kg
+3,3,Sharifa Sanad,Shotokan Al-Hala,Dana Mohammed,Shotokan Muharraq,Under 14 / Under 21,60 kg / 75 kg
+4,4,Mohammed Nabeel,Shotokan,Yousef Nawaf,Budaiya,Under 21,60 kg / 67 kg
+5,5,Mohammed Hameed,Shotokan Muharraq,Abdullah Al-Mirbati,Shotokan Muharraq,Under 17 / Under 21,55 kg / 60 kg
+6,1,Waleed Waheeb,Shotokan Muharraq,Zakaria Shuwaiter,Shotokan Muharraq,Under 15 / Under 16,57 kg / 50 kg
+7,2,Hassan Faramarzi,Sparta,Khalifa Sanad,Shotokan Al-Hala,Under 21,81 kg / 54 kg
+8,3,Dana Mohammed,Shotokan Muharraq,Fawzia Abdullah,Sparta,Under 21,75 kg / 61 kg
+9,5,Abdullah Al-Mirbati,Shotokan Muharraq,Hamad Sanad,Shotokan Al-Hala,Under 21,60 kg / 75 kg
+10,1,Zakaria Shuwaiter,Shotokan Muharraq,Abdullah Bassam,Sparta,Under 16 / Under 15,50 kg / 52 kg
+11,2,Khalifa Sanad,Shotokan Al-Hala,Mohammed Ahmed,Shotokan Muharraq,Under 21,54 kg / 75 kg
+12,3,Fawzia Abdullah,Sparta,Sharifa Sanad,Shotokan Al-Hala,Under 21 / Under 14,61 kg / 60 kg
+13,5,Hamad Sanad,Shotokan Al-Hala,Mohammed Hameed,Shotokan Muharraq,Under 21 / Under 17,75 kg / 55 kg

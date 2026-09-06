@@ -4,9 +4,15 @@ namespace App\Services;
 
 use App\Models\Business;
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubTransaction;
-use App\Models\Membership;
+use App\Clubs\Models\ClubTransaction;
+use App\Members\Models\Membership;
 use Illuminate\Support\Collection;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http (BusinessDashboardController). A chain sits ABOVE clubs and
+ * aggregates across them, so it belongs to the platform, not inside App\Clubs.
+ */
 
 /**
  * Aggregates performance metrics across every club in a business (chain).

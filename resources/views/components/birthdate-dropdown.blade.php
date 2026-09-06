@@ -8,7 +8,21 @@
     'minYear' => null,
     'maxYear' => null,
     'minAge' => null,
-    'maxAge' => null
+    'maxAge' => null,
+    /* ── Alpine mode ───────────────────────────────────────────────────────
+       An Alpine state path in the PARENT scope (e.g. "fix.form.birthdate")
+       holding an ISO `YYYY-MM-DD`. Given one, this control reads and writes
+       that property instead of posting a hidden input, and its behaviour is
+       written INLINE rather than as a named function in a script tag — because a
+       script inside a `<template x-if>` never runs, and this control is now
+       used inside one. See the note on the gender dropdown.
+
+       Note the shape of this comment too: a component TAG written in angle
+       brackets is compiled by Blade even inside a PHP comment, and takes the
+       whole view down with `Undefined variable $component`. Names, not tags.
+
+       Omit `model` and everything below behaves exactly as it always has. */
+    'model' => null,
 ])
 
 @php
@@ -38,7 +52,128 @@
     }
 @endphp
 
-<div class="mb-4" x-data="birthdateDropdown_{{ $id }}()">
+@php
+    /* Null-safe READ of the bound path — the sheet that holds this control sets
+       its state object to null when it closes, and `fix.form.x` would throw on
+       the way out (it did: an uncaught error on every close). Writes still use
+       the plain path: they only ever run while the sheet is open. */
+    $modelSafe = $model ? str_replace('.', '?.', $model) : null;
+
+    $state = $model
+        ? "{
+            dayOpen: false, monthOpen: false,
+            dayDropUp: false, monthDropUp: false,
+            selectedDay: '', selectedMonth: '', selectedMonthLabel: '', selectedYear: '',
+            age: null, horoscope: null, ageGroup: null,
+            days: Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')),
+            months: [
+                { value: '01', label: 'January', short: 'Jan' }, { value: '02', label: 'February', short: 'Feb' },
+                { value: '03', label: 'March', short: 'Mar' },   { value: '04', label: 'April', short: 'Apr' },
+                { value: '05', label: 'May', short: 'May' },     { value: '06', label: 'June', short: 'Jun' },
+                { value: '07', label: 'July', short: 'Jul' },    { value: '08', label: 'August', short: 'Aug' },
+                { value: '09', label: 'September', short: 'Sep' },{ value: '10', label: 'October', short: 'Oct' },
+                { value: '11', label: 'November', short: 'Nov' },{ value: '12', label: 'December', short: 'Dec' }
+            ],
+            minYear: {$endYear},
+            maxYear: {$startYear},
+
+            init() {
+                this.seed({$modelSafe});
+                /* The sheet fetches the entry AFTER this control is on screen,
+                   so the bound value arrives late — without this the three
+                   boxes would sit empty over a date that is already set. */
+                this.\$watch('{$modelSafe}', v => { if (v !== this.compose()) this.seed(v) });
+            },
+
+            /** Fill the three boxes from an ISO date (or clear them). */
+            seed(iso) {
+                const parts = String(iso || '').split('-');
+                if (parts.length === 3) {
+                    this.selectedYear = parts[0];
+                    this.selectedMonth = parts[1];
+                    this.selectedDay = parts[2];
+                } else {
+                    this.selectedYear = ''; this.selectedMonth = ''; this.selectedDay = '';
+                }
+                const m = this.months.find(x => x.value === this.selectedMonth);
+                this.selectedMonthLabel = m ? m.short : '';
+                this.badges();
+            },
+
+            /** The ISO the three boxes currently spell, or '' while incomplete. */
+            compose() {
+                const yearValid = /^\\d{4}\$/.test(this.selectedYear)
+                    && parseInt(this.selectedYear) >= this.minYear
+                    && parseInt(this.selectedYear) <= this.maxYear;
+                return (this.selectedDay && this.selectedMonth && yearValid)
+                    ? this.selectedYear + '-' + this.selectedMonth + '-' + this.selectedDay
+                    : '';
+            },
+
+            toggleDay() {
+                this.monthOpen = false;
+                if (! this.dayOpen) {
+                    const rect = this.\$refs.dayTrigger.getBoundingClientRect();
+                    this.dayDropUp = (window.innerHeight - rect.bottom) < 220;
+                }
+                this.dayOpen = ! this.dayOpen;
+            },
+            toggleMonth() {
+                this.dayOpen = false;
+                if (! this.monthOpen) {
+                    const rect = this.\$refs.monthTrigger.getBoundingClientRect();
+                    this.monthDropUp = (window.innerHeight - rect.bottom) < 220;
+                }
+                this.monthOpen = ! this.monthOpen;
+            },
+            selectDay(day) { this.selectedDay = day; this.dayOpen = false; this.updateValue() },
+            selectMonth(m) { this.selectedMonth = m.value; this.selectedMonthLabel = m.short; this.monthOpen = false; this.updateValue() },
+            onYearInput(e) { this.selectedYear = e.target.value.replace(/\\D/g, '').slice(0, 4); this.updateValue() },
+
+            /** Write through to the bound property, and redraw the badges. */
+            updateValue() { {$model} = this.compose(); this.badges() },
+
+            badges() {
+                const iso = this.compose();
+                if (! iso) { this.age = null; this.horoscope = null; this.ageGroup = null; return }
+                const today = new Date();
+                const birth = new Date(parseInt(this.selectedYear), parseInt(this.selectedMonth) - 1, parseInt(this.selectedDay));
+                let a = today.getFullYear() - birth.getFullYear();
+                const md = today.getMonth() - birth.getMonth();
+                if (md < 0 || (md === 0 && today.getDate() < birth.getDate())) a--;
+                this.age = a >= 0 ? a : null;
+                this.horoscope = this.getHoroscope(parseInt(this.selectedMonth), parseInt(this.selectedDay));
+                this.ageGroup = this.age !== null ? this.getAgeGroup(this.age) : null;
+            },
+
+            getHoroscope(m, d) {
+                if ((m === 3 && d >= 21) || (m === 4 && d <= 19)) return { sign: 'Aries', symbol: '♈' };
+                if ((m === 4 && d >= 20) || (m === 5 && d <= 20)) return { sign: 'Taurus', symbol: '♉' };
+                if ((m === 5 && d >= 21) || (m === 6 && d <= 20)) return { sign: 'Gemini', symbol: '♊' };
+                if ((m === 6 && d >= 21) || (m === 7 && d <= 22)) return { sign: 'Cancer', symbol: '♋' };
+                if ((m === 7 && d >= 23) || (m === 8 && d <= 22)) return { sign: 'Leo', symbol: '♌' };
+                if ((m === 8 && d >= 23) || (m === 9 && d <= 22)) return { sign: 'Virgo', symbol: '♍' };
+                if ((m === 9 && d >= 23) || (m === 10 && d <= 22)) return { sign: 'Libra', symbol: '♎' };
+                if ((m === 10 && d >= 23) || (m === 11 && d <= 21)) return { sign: 'Scorpio', symbol: '♏' };
+                if ((m === 11 && d >= 22) || (m === 12 && d <= 21)) return { sign: 'Sagittarius', symbol: '♐' };
+                if ((m === 12 && d >= 22) || (m === 1 && d <= 19)) return { sign: 'Capricorn', symbol: '♑' };
+                if ((m === 1 && d >= 20) || (m === 2 && d <= 18)) return { sign: 'Aquarius', symbol: '♒' };
+                return { sign: 'Pisces', symbol: '♓' };
+            },
+            getAgeGroup(age) {
+                if (age <= 2) return { label: 'Infant', style: 'color:#0284c7;background:#f0f9ff;' };
+                if (age <= 12) return { label: 'Child', style: 'color:#16a34a;background:#f0fdf4;' };
+                if (age <= 17) return { label: 'Teenager', style: 'color:#ca8a04;background:#fefce8;' };
+                if (age <= 25) return { label: 'Young Adult', style: 'color:#9333ea;background:#faf5ff;' };
+                if (age <= 45) return { label: 'Adult', style: 'color:#4f46e5;background:#eef2ff;' };
+                if (age <= 64) return { label: 'Middle Aged', style: 'color:#ea580c;background:#fff7ed;' };
+                return { label: 'Senior', style: 'color:#dc2626;background:#fef2f2;' };
+            }
+        }"
+        : "birthdateDropdown_{$id}()";
+@endphp
+
+<div class="mb-4" x-data="{{ $state }}">
     <label class="tf-label">
         {{ $label }}@if($required) <span class="text-red-500">*</span>@endif
     </label>
@@ -102,13 +237,13 @@
 
         {{-- Year --}}
         <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <span class="absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none">
                 <i class="bi bi-calendar-event text-primary/40" :class="{ 'text-primary': selectedYear }"></i>
             </span>
             <input type="text" inputmode="numeric" maxlength="4" placeholder="Year"
                    x-model="selectedYear"
                    @input="onYearInput($event)"
-                   class="tf-dropdown-trigger pl-9 text-sm text-gray-800 placeholder:text-gray-400 {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
+                   class="tf-dropdown-trigger tf-has-leading-icon ps-9 text-sm text-gray-800 placeholder:text-gray-400 {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
         </div>
     </div>
 
@@ -144,7 +279,10 @@
 
     </div>
 
-    <input type="hidden" id="{{ $id }}" name="{{ $name }}" x-model="hiddenValue" {{ $required ? 'required' : '' }}>
+    {{-- Form mode only: in Alpine mode the bound property IS the value. --}}
+    @unless($model)
+        <input type="hidden" id="{{ $id }}" name="{{ $name }}" x-model="hiddenValue" {{ $required ? 'required' : '' }}>
+    @endunless
 
     @if($error)
         <span class="tf-error" role="alert">
@@ -153,6 +291,7 @@
     @endif
 </div>
 
+@unless($model)
 <script>
     function birthdateDropdown_{{ $id }}() {
         return {
@@ -265,3 +404,4 @@
         }
     }
 </script>
+@endunless

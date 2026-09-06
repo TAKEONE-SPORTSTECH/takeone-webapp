@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\ClubInstructor;
-use App\Models\SkillAcquisition;
-use App\Models\User;
+use App\Clubs\Models\ClubInstructor;
+use App\Members\Models\SkillAcquisition;
+use App\Members\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 

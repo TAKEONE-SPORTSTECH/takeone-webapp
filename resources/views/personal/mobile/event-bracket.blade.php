@@ -1,4 +1,6 @@
-@extends('layouts.personal-mobile')
+{{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
+     nothing shared this is the member shell exactly as before. See entry/shell. --}}
+@extends($shell ?? 'layouts.personal-mobile')
 
 @section('title', __('personal.personal_event_bracket_title'))
 
@@ -11,9 +13,20 @@
 --}}
 @php
     $color = $e['color'];
-    $first = collect($categories)->first()['key'] ?? '';
+    // The division to open on: whatever the link asked for (a bout's "View draw"
+    // names its own), else the first. Drives the initial view mode too.
+    $first = $initialCategory ?? (collect($categories)->first()['key'] ?? '');
     // helpers
     $ini = fn ($n) => collect(explode(' ', $n))->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->implode('');
+
+    // flag-icons needs a lowercase ISO alpha-2 class. Normalised the same way the
+    // board runtime does it (strip non-letters, lowercase, first two), so a stray
+    // code can never emit a broken `fi fi-` class. Returns '' when unusable.
+    $flag = function ($code) {
+        $c = strtolower(substr(preg_replace('/[^a-zA-Z]/', '', (string) $code), 0, 2));
+
+        return strlen($c) === 2 ? '<span class="fi fi-'.$c.' rounded-sm"></span>' : '';
+    };
 @endphp
 
 @php
@@ -24,8 +37,45 @@
     ]])->all();
 @endphp
 @section('personal-content')
+@php
+    // Division stats, keyed the same way the selector is, so the header can show
+    // the capacity of whichever one is picked without duplicating the card.
+    $catStats = collect($categories)->mapWithKeys(fn ($c) => [$c['key'] => [
+        'id' => $c['id'],
+        'name' => $c['name'],
+        'class' => $c['class'],
+        'status' => $c['status'],
+        'joined' => $c['joined'],
+        'cap' => $c['cap'],
+        'open' => $c['open'],
+        'pct' => $c['cap'] ? min(100, (int) round($c['joined'] / $c['cap'] * 100)) : 0,
+        'rounds' => count($c['rounds'] ?? []),
+    ]])->all();
+@endphp
 <div x-data="{
         cat: '{{ $first }}',
+        {{-- 'board' = the zoomable draw, 'table' = the same bouts round by round.
+             The board owns no switcher here (showDivisions=false); this page's
+             pill tray drives it through window.BracketBoard.show(). --}}
+        view: '{{ ($catStats[$first]['rounds'] ?? 0) ? 'board' : 'table' }}',
+        stats: @js($catStats),
+        get stat() { return this.stats[this.cat] || {}; },
+        pickCat(key) {
+            this.cat = key;
+            {{-- Nothing drawn yet in this division: the board would be an empty
+                 frame, so fall back to the list. --}}
+            if (! (this.stats[key] && this.stats[key].rounds)) this.view = 'table';
+            const id = this.stats[key] ? this.stats[key].id : null;
+            if (this.view === 'board' && id && window.BracketBoard) window.BracketBoard.show(id);
+        },
+        setView(v) {
+            this.view = v;
+            {{-- The board only lays out once it is visible. --}}
+            if (v === 'board') this.$nextTick(() => {
+                const id = this.stat.id;
+                if (id && window.BracketBoard) window.BracketBoard.show(id);
+            });
+        },
         canManage: {{ ($canManage ?? false) ? 'true' : 'false' }},
         editorCats: @js($editorCats),
         saveUrlBase: '{{ url('me/events/'.$e['key'].'/categories') }}',
@@ -100,31 +150,102 @@
         }
      }" class="-mx-4 -mt-4 pb-6">
 
-    {{-- ===== Header ===== --}}
-    <header class="m-hero px-5 pt-5 pb-12 text-white relative overflow-hidden"
-            style="background: linear-gradient(150deg, {{ $color }}, #1f2937);">
-        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
-        <div class="flex items-center justify-between relative z-10">
-            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.events.show', $e['key']) }}')"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left text-lg"></i>
-            </button>
-            <span class="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur inline-flex items-center gap-1.5">
-                <i class="bi bi-diagram-3-fill"></i> {{ __('personal.personal_event_bracket_title') }}
-            </span>
+    {{-- ===== Header ===== The standard event hero band (Design Rule #6): the
+         subject's own colour lightened to +b0 (never faded to charcoal), two soft
+         circles, a labelled back pill on the left with round 40px actions on the
+         right, then chips → title → who it belongs to. The content below rides up
+         over its tail. --}}
+    <header class="m-hero px-5 pt-5 pb-14 text-white relative overflow-hidden"
+            style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
+        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+        {{-- Control row. z-50 so any dropdown paints above the title block. --}}
+        <div class="flex items-center justify-between gap-2 relative z-50">
+            {{-- Inside the sealed event app, back from a sub-screen means the
+                     CONSOLE — the screen it was opened from. On the platform it
+                     still means the event page. Same pill, honest label either
+                     way (the audit: "'Event' means two different pages"). --}}
+                <a href="{{ isset($shell) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
+               class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
+           aria-label="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}" title="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+
+            <div class="flex items-center gap-2">
+                @if($canManage ?? false)
+                    <a href="{{ route('me.events.manage', $e['key']) }}" data-shell-link data-route="me.events"
+                       class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center"
+                       aria-label="{{ __('personal.event_manage_title') }}">
+                        <i class="bi bi-sliders text-base"></i>
+                    </a>
+                @endif
+                <x-qr-code
+                    :url="route('me.events.show', ['event' => $e['key']])"
+                    :title="$e['title'] . ' — ' . __('personal.event_show_event')"
+                    caption="{{ __('personal.event_show_qr_caption') }}"
+                    :filename="'qr-event-' . $e['key']"
+                    label=""
+                    icon="bi-qr-code"
+                    :poster-url="route('qr.event', ['event' => $e['key']])"
+                    button-class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center text-white" />
+            </div>
         </div>
-        <div class="relative z-10 mt-4">
-            <h1 class="text-xl font-black leading-tight">{{ $e['title'] }}</h1>
-            <p class="text-sm text-white/85 mt-1 flex items-center gap-1.5"><i class="bi bi-diagram-3"></i> {{ count($categories) }} {{ __('personal.personal_event_bracket_weight_categories') }}</p>
+
+        {{-- Identity: chips, the title, then who it belongs to. --}}
+        <div class="relative z-10 mt-6">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-diagram-3-fill bracket-icon"></i> {{ __('personal.personal_event_bracket_title') }}
+                </span>
+                @if(!empty($e['sport_label']))
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi {{ $e['sport_icon'] ?? 'bi-dribbble' }}"></i> {{ $e['sport_label'] }}</span>
+                @endif
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-people-fill"></i> <span x-text="stat.name">{{ count($categories) }} {{ __('personal.personal_event_bracket_weight_categories') }}</span>
+                </span>
+            </div>
+
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ $e['title'] }}</h1>
+            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                <i class="bi bi-building"></i>{{ $e['club'] }}
+            </p>
+
+            {{-- How full the picked division is. It was a bar inside a card below;
+                 the header is where "where does this stand" belongs. --}}
+            <div class="mt-4">
+                <div class="flex items-center justify-between text-[11px] font-medium text-white/85">
+                    <span><span x-text="stat.joined">0</span> {{ __('personal.personal_event_bracket_joined') }}</span>
+                    <span class="text-white/70"
+                          x-text="stat.cap
+                                    ? (stat.open + ' ' + (stat.open === 1 ? @js(__('personal.personal_event_bracket_slot')) : @js(__('personal.personal_event_bracket_slots'))) + ' ' + @js(__('personal.personal_event_bracket_slots_open_suffix')))
+                                    : @js(__('personal.personal_event_bracket_no_cap'))"></span>
+                </div>
+                <div class="h-2 rounded-full bg-white/20 overflow-hidden mt-1.5" x-show="stat.cap" x-cloak>
+                    <div class="m-bar-fill h-full bg-white/80 transition-all duration-500" :style="`width: ${stat.pct}%`"></div>
+                </div>
+            </div>
         </div>
     </header>
+
+    {{-- A draw the organiser has not let out yet: the page is the veil and
+         nothing else — not merely the board, because this page also reads the
+         same bouts out as a list (PersonalEventController::bracket empties
+         $categories to match). --}}
+    @if($drawHidden ?? null)
+        <div class="px-4 mt-4">
+            <x-draw-veil :message="$drawHidden" :color="$color" />
+        </div>
+    @else
 
     {{-- ===== Category selector ===== --}}
     <div class="px-4 -mt-6 relative z-10">
         <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-2">
             <div class="flex gap-2 overflow-x-auto scrollbar-hide">
                 @foreach($categories as $c)
-                    <button type="button" @click="cat='{{ $c['key'] }}'; window.BracketBoard && window.BracketBoard.show({{ $c['id'] }})"
+                    {{-- Filters the round cards below. It no longer drives a board:
+                         that moved to the full-screen "Manage draw" page. --}}
+                    <button type="button" @click="pickCat('{{ $c['key'] }}')"
                             class="m-press flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                             :class="cat==='{{ $c['key'] }}' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
                         {{ $c['name'] }}
@@ -136,39 +257,53 @@
         </div>
     </div>
 
-    {{-- ===== The draw itself — pan/zoom board, and drag-to-arrange for organisers =====
-         Same gestures as the family tree: drag to pan, pinch to zoom. The board
-         owns its own data, saves and realtime refresh; the stacked round cards
-         below stay as the readable, scrollable detail of the same bouts. --}}
-    <div class="px-4 mt-4">
+    {{-- ===== How to read the draw: the board, or the same bouts as a list =====
+         Only appears once the picked division HAS a draw — there is nothing to
+         switch between while a division is still enrolling. --}}
+    <div class="px-4 mt-3" x-show="stat.rounds" x-cloak>
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-2">
+            <div class="flex gap-2">
+                <button type="button" @click="setView('board')"
+                        :aria-pressed="view === 'board'"
+                        class="m-press flex-1 min-w-0 px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                        :class="view === 'board' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
+                    <i class="bi bi-diagram-3-fill bracket-icon"></i>{{ __('personal.personal_event_bracket_view_board') }}
+                </button>
+                <button type="button" @click="setView('table')"
+                        :aria-pressed="view === 'table'"
+                        class="m-press flex-1 min-w-0 px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                        :class="view === 'table' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
+                    <i class="bi bi-list-ol"></i>{{ __('personal.personal_event_bracket_view_table') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- The zoomable board. Read-only here — arranging lives in the console — and
+         with its own division switcher off, because this page already has one. --}}
+    <div class="px-4 mt-3" x-show="view === 'board' && stat.rounds" x-cloak>
         <x-tournament-bracket
-            id="event-bracket"
+            id="event-bracket-mobile"
             :data-url="route('me.events.bracket.data', $e['key'])"
-            :arrange-url="route('me.events.bracket.arrange', $e['key'])"
-            :clear-url="route('me.events.bracket.clear', $e['key'])"
             :event-uuid="$e['key']"
-            :can-arrange="$canArrange ?? false"
+            :can-arrange="false"
+            {{-- Open on the division this page opened on, not the first. --}}
+            :initial-division="$catStats[$first]['id'] ?? null"
+            :show-divisions="false"
             :my-competitor-ids="$myCompetitorIds ?? []"
-            :show-divisions="false"   {{-- the page's own category chips drive the board --}}
             height="62vh" />
     </div>
 
-    {{-- ===== Manager: generate draw (pre-start only; nothing once the event is over) ===== --}}
-    @if(($canManage ?? false) && !($e['ended'] ?? false))
+    {{-- ===== Manager: draw locked =====
+         Event-wide and only once the event has started. The Generate button and
+         the provisional-draw note both moved into each division card, next to
+         the action they describe. --}}
+    @if(($canManage ?? false) && !($e['ended'] ?? false) && ($e['started'] ?? false))
         <div class="px-4 mt-3">
-            @if($e['started'] ?? false)
-                <div class="rounded-xl border border-gray-200 bg-muted/40 p-3 flex items-center gap-2 text-[12px] text-muted-foreground">
-                    <i class="bi bi-lock-fill text-foreground"></i>
-                    <span><span class="font-bold text-foreground">{{ __('personal.personal_event_bracket_draw_is_final') }}</span> {{ __('personal.personal_event_bracket_draw_locked') }}</span>
-                </div>
-            @else
-                <button type="button" @click="generateNewDraw()" :disabled="busy"
-                        class="m-press w-full py-2.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60" style="background: {{ $color }};">
-                    <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-shuffle'"></i>
-                    <span>{{ __('personal.personal_event_bracket_generate_draw_match_numbers') }}</span>
-                </button>
-                <p class="text-[11px] text-muted-foreground text-center mt-1.5">{{ __('personal.personal_event_bracket_provisional_draw_hint') }}</p>
-            @endif
+            <div class="rounded-xl border border-gray-200 bg-muted/40 p-3 flex items-center gap-2 text-[12px] text-muted-foreground">
+                <i class="bi bi-lock-fill text-foreground"></i>
+                <span><span class="font-bold text-foreground">{{ __('personal.personal_event_bracket_draw_is_final') }}</span> {{ __('personal.personal_event_bracket_draw_locked') }}</span>
+            </div>
         </div>
     @endif
 
@@ -176,46 +311,14 @@
     @foreach($categories as $c)
         <div x-show="cat==='{{ $c['key'] }}'" x-transition class="px-4 mt-4 space-y-4">
 
-            {{-- status / enrolment summary — hidden once the event is over --}}
-            @if(!($e['ended'] ?? false))
-            <div class="m-card rounded-2xl p-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-base font-black text-foreground">{{ $c['name'] }}</h2>
-                        <p class="text-[11px] text-muted-foreground">{{ $c['class'] }}</p>
-                    </div>
-                    @php
-                        $badge = match($c['status']) {
-                            'live' => [__('personal.personal_event_bracket_live_now'), 'bg-red-50 text-red-600'],
-                            'completed' => [__('personal.personal_event_bracket_completed'), 'bg-green-50 text-green-600'],
-                            default => [__('personal.personal_event_bracket_enrolling'), 'bg-amber-50 text-amber-600'],
-                        };
-                    @endphp
-                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold {{ $badge[1] }}">{{ $badge[0] }}</span>
-                </div>
-
-                {{-- joined / open slots --}}
-                <div class="flex items-center justify-between text-[11px] mt-3 mb-1.5">
-                    <span class="font-semibold text-foreground">{{ $c['joined'] }} {{ __('personal.personal_event_bracket_joined') }}</span>
-                    <span class="text-muted-foreground">{{ is_null($c['cap']) ? __('personal.personal_event_bracket_no_cap') : ($c['open'] . ' ' . ($c['open'] === 1 ? __('personal.personal_event_bracket_slot') : __('personal.personal_event_bracket_slots')) . ' ' . __('personal.personal_event_bracket_slots_open_suffix')) }}</span>
-                </div>
-                @if(!is_null($c['cap']) && $c['cap'] > 0)
-                    <div class="h-2 rounded-full bg-muted overflow-hidden flex">
-                        <div class="m-bar-fill h-full" style="width: {{ round($c['joined'] / $c['cap'] * 100) }}%; background: {{ $color }};"></div>
-                    </div>
-                @endif
-                @if($c['note'])
-                    <p class="text-[11px] text-muted-foreground mt-2 flex items-center gap-1.5"><i class="bi bi-info-circle"></i> {{ $c['note'] }}</p>
-                @endif
-
-                {{-- Manager: set / manage the draw — hidden once the event is over --}}
-                @if(($canManage ?? false) && !($e['ended'] ?? false))
-                    <button type="button" @click="openEditor({{ $c['id'] }})"
-                            class="m-press mt-3 w-full py-2.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2" style="background: {{ $color }};">
-                        <i class="bi bi-diagram-3-fill"></i> {{ empty($c['matches_flat']) ? __('personal.personal_event_bracket_set_draw_bracket') : __('personal.personal_event_bracket_manage_draw') }}
-                    </button>
-                @endif
-            </div>
+            {{-- The division summary card (name, status, joined/open, capacity bar)
+                 used to sit here. Its numbers moved into the header, where they
+                 describe whichever division is picked, and the note it carried
+                 rides with the provisional notice below. --}}
+            @if(!($e['ended'] ?? false) && $c['note'])
+                <p class="text-[11px] text-muted-foreground flex items-center gap-1.5 px-1">
+                    <i class="bi bi-info-circle"></i>{{ $c['note'] }}
+                </p>
             @endif
 
             {{-- Provisional-draw notice --}}
@@ -239,7 +342,7 @@
                             <div class="flex items-center gap-3 rounded-xl p-2.5" style="background: {{ $medal[0] }}12;">
                                 <div class="w-9 h-9 grid place-items-center text-2xl flex-shrink-0 leading-none">{{ $medal[1] }}</div>
                                 <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-foreground truncate">{{ $p['name'] }} <span class="text-[10px] font-semibold text-muted-foreground">{{ $p['country'] }}</span></p>
+                                    <p class="text-sm font-bold text-foreground truncate">{{ $p['name'] }} {!! $flag($p['country']) !!} <span class="text-[10px] font-semibold text-muted-foreground">{{ $p['country'] }}</span></p>
                                     <p class="text-[11px] text-muted-foreground">{{ $p['place'] === 1 ? __('personal.personal_event_bracket_champion') : ($p['place'] === 2 ? __('personal.personal_event_bracket_runner_up') : __('personal.personal_event_bracket_third_place')) }}</p>
                                 </div>
                                 <span class="text-[11px] font-black flex-shrink-0" style="color: {{ $medal[0] }};">{{ $p['prize'] }}</span>
@@ -249,8 +352,13 @@
                 </div>
             @endif
 
-            {{-- ===== Bracket (rounds) ===== --}}
+            {{-- ===== Bracket (rounds) — the TABLE reading of the draw =====
+                 The board reading of the same bouts is mounted once above; only
+                 these cards swap with the toggle. Everything else on the panel —
+                 the podium, the roster, the entry button — belongs to the
+                 division, not to how you are looking at its draw. --}}
             @if(!empty($c['rounds']))
+                <template x-if="view === 'table'"><div class="space-y-4">
                 @foreach($c['rounds'] as $round)
                     <div class="m-card rounded-2xl p-4">
                         <div class="flex items-center justify-between mb-3">
@@ -290,9 +398,13 @@
                                                     @if($win)<i class="bi bi-check-circle-fill text-[11px]" style="color: {{ $color }};"></i>@endif
                                                     @if($prov)<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 not-italic flex-shrink-0"><i class="bi bi-hourglass-split"></i> {{ __('personal.personal_event_bracket_unpaid') }}</span>@endif
                                                 </p>
-                                                <p class="text-[10px] text-muted-foreground">
-                                                    @if($prov){{ __('personal.personal_event_bracket_provisional_removed') }}@elseif($ath['country']){{ $ath['country'] }}@endif
-                                                    @if($ath['seed']) · #{{ $ath['seed'] }} {{ __('personal.personal_event_bracket_seed') }} @endif
+                                                <p class="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                    @if($prov)
+                                                        <span>{{ __('personal.personal_event_bracket_provisional_removed') }}</span>
+                                                    @elseif($ath['country'])
+                                                        {!! $flag($ath['country']) !!}<span>{{ $ath['country'] }}</span>
+                                                    @endif
+                                                    @if($ath['seed'])<span>· #{{ $ath['seed'] }} {{ __('personal.personal_event_bracket_seed') }}</span>@endif
                                                 </p>
                                             </div>
                                             <span class="text-base font-black flex-shrink-0 {{ $win ? '' : 'text-muted-foreground' }}" style="{{ $win ? 'color: '.$color : '' }}">{{ $ath['score'] }}</span>
@@ -326,6 +438,7 @@
                         </div>
                     </div>
                 @endforeach
+                </div></template>
             @endif
 
             {{-- ===== Enrolling → roster + open slots ===== --}}
@@ -353,28 +466,29 @@
                     <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-1"><i class="bi bi-people text-primary"></i> {{ __('personal.personal_event_bracket_registered_athletes') }}</h3>
                     <p class="text-[11px] text-muted-foreground mb-3"><i class="bi bi-clock-history"></i> {{ __('personal.personal_event_bracket_bracket_seeding_after_weighin') }}</p>
                     <div class="space-y-2">
-                        @foreach($c['roster'] as $i => $r)
+                        @forelse($c['roster'] as $i => $r)
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0" style="background: hsl({{ ($i*67)%360 }} 55% 58%);">{{ $ini($r['name']) }}</div>
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm font-semibold text-foreground truncate">{{ $r['name'] }}</p>
-                                    <p class="text-[10px] text-muted-foreground">{{ $r['country'] }}</p>
+                                    <p class="text-[10px] text-muted-foreground flex items-center gap-1">
+                                        {!! $flag($r['country']) !!}<span>{{ $r['country'] }}</span>
+                                    </p>
                                 </div>
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600"><i class="bi bi-check2"></i> {{ __('personal.personal_event_bracket_in_badge') }}</span>
                             </div>
-                        @endforeach
+                        @empty
+                            {{-- The placeholder rows used to fill this space; without
+                                 them an unentered division needs to say so itself. --}}
+                            <p class="text-[11px] text-muted-foreground text-center py-2">
+                                {{ __('personal.personal_event_bracket_no_entrants_yet') }}
+                            </p>
+                        @endforelse
 
-                        {{-- open slots (yet to join) --}}
-                        @for($s = 0; $s < $c['open']; $s++)
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-full grid place-items-center text-gray-300 border-2 border-dashed border-gray-200 flex-shrink-0"><i class="bi bi-person-plus"></i></div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-semibold text-muted-foreground">{{ __('personal.personal_event_bracket_open_slot') }}</p>
-                                    <p class="text-[10px] text-gray-400">{{ __('personal.personal_event_bracket_awaiting_entry') }}</p>
-                                </div>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{{ __('personal.personal_event_bracket_open') }}</span>
-                            </div>
-                        @endfor
+                        {{-- No placeholder rows for unfilled slots: a division with 6
+                             entrants and a cap of 16 listed ten "Open slot" rows,
+                             burying the real athletes. The remaining capacity is
+                             already stated in the enrolment summary above. --}}
                     </div>
 
                     @if(!($e['ended'] ?? false))
@@ -397,12 +511,23 @@
             <div class="absolute inset-0 bg-black/40" @click="editing=null" x-transition.opacity></div>
             <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl max-h-[90vh] flex flex-col"
                  x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-                <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-                    <div class="min-w-0">
-                        <h3 class="font-black text-foreground flex items-center gap-2 truncate"><i class="bi bi-diagram-3-fill" style="color: {{ $color }};"></i> <span x-text="editName">{{ __('personal.personal_event_bracket_draw_fallback') }}</span></h3>
-                        <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_bracket_set_bracket_results_podium') }}</p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-diagram-3-fill bracket-icon text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight truncate"><span x-text="editName">{{ __('personal.personal_event_bracket_draw_fallback') }}</span></h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('personal.personal_event_bracket_set_bracket_results_podium') }}</p>
+                        </div>
+                        <button type="button" @click="editing=null" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <button type="button" @click="editing=null" class="m-press w-8 h-8 rounded-full bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 space-y-4">
@@ -487,5 +612,6 @@
         </template>
     @endif
 
+    @endif {{-- the draw-withheld veil --}}
 </div>
 @endsection

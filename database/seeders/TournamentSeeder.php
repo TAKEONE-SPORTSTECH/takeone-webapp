@@ -4,10 +4,10 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\User;
-use App\Models\TournamentEvent;
-use App\Models\PerformanceResult;
-use App\Models\NotesMedia;
+use App\Members\Models\User;
+use App\Members\Models\TournamentEvent;
+use App\Members\Models\PerformanceResult;
+use App\Members\Models\NotesMedia;
 
 class TournamentSeeder extends Seeder
 {

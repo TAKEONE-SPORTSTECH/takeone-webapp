@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -23,7 +23,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: vendor
           key: composer-${{ hashFiles('composer.lock') }}
@@ -46,7 +46,7 @@ jobs:
         run: php artisan migrate --force
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -59,3 +59,16 @@ jobs:
 
       - name: Run tests
         run: php artisan test
+
+      # Static analysis. Added in Phase R1 (workstream D).
+      # Pint is advisory for now: the codebase has pre-existing style drift and
+      # getting to zero is a separate, deliberate phase. continue-on-error keeps
+      # it reporting without ever blocking a deploy.
+      - name: Check code style (Pint, non-blocking)
+        continue-on-error: true
+        run: vendor/bin/pint --test
+
+      # PHPStan runs at level 0 with a committed baseline, so the existing code
+      # passes cleanly and only NEW breakage fails the build.
+      - name: Static analysis (PHPStan)
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress

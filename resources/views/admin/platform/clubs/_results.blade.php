@@ -26,7 +26,7 @@
                         <!-- Cover Image -->
                         <div class="relative overflow-hidden h-48 flex-shrink-0">
                             @if($club->cover_image)
-                                <img src="{{ asset('storage/' . $club->cover_image) }}" alt="{{ $club->club_name }}" loading="lazy" class="w-full h-full object-cover club-cover-img transition-transform duration-300">
+                                <img src="{{ file_url($club->cover_image) }}" alt="{{ $club->club_name }}" loading="lazy" class="w-full h-full object-cover club-cover-img transition-transform duration-300">
                             @else
                                 <div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(135deg, hsl(250 65% 66%) 0%, hsl(262 60% 56%) 100%);">
                                     <i class="bi bi-image text-white text-5xl opacity-30"></i>
@@ -37,7 +37,7 @@
                             <div class="absolute bottom-2 start-2">
                                 <div class="bg-white shadow border p-0.5 w-20 h-20 rounded-full" style="border-color: rgba(0,0,0,0.1) !important;">
                                     @if($club->logo)
-                                        <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }} logo" loading="lazy" class="w-full h-full rounded-full object-contain">
+                                        <img src="{{ file_url($club->logo) }}" alt="{{ $club->club_name }} logo" loading="lazy" class="w-full h-full rounded-full object-contain">
                                     @else
                                         <div class="w-full h-full rounded-full bg-primary flex items-center justify-center">
                                             <span class="text-white font-bold text-xl">{{ substr($club->club_name, 0, 1) }}</span>

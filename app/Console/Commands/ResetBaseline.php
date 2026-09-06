@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Tenant;
-use App\Models\User;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -116,7 +116,8 @@ class ResetBaseline extends Command
     private function clearUploadFolders(): void
     {
         foreach (['payment-proofs', 'order-proofs', 'payment-screenshots'] as $dir) {
-            foreach ([storage_path("app/private/$dir"), storage_path("app/public/$dir")] as $path) {
+            // One storage root now — the public/private split is gone.
+            foreach ([storage_path("app/$dir")] as $path) {
                 if (! is_dir($path)) { continue; }
                 foreach (glob($path.'/*') as $f) {
                     if (is_file($f) && ! str_ends_with($f, '.gitignore')) { @unlink($f); }

@@ -11,13 +11,47 @@ class EventMatch extends Model
         'event_id', 'category_id', 'round', 'phase', 'match_no', 'slot',
         'a_name', 'a_competitor_id', 'a_country', 'a_seed', 'a_score', 'a_provisional',
         'b_name', 'b_competitor_id', 'b_country', 'b_seed', 'b_score', 'b_provisional',
-        'winner', 'court', 'scheduled_time', 'status',
+        'winner', 'court', 'day', 'scheduled_time', 'status',
     ];
 
     protected $casts = [
         'a_provisional' => 'boolean',
         'b_provisional' => 'boolean',
+        'day' => 'integer',
     ];
+
+    /**
+     * Bouts that were actually CONTESTED — two people met and it was decided.
+     *
+     * The distinction that matters everywhere something is about to be deleted:
+     * a bracket is full of bouts carrying `status = done` and a winner that
+     * nobody fought. A BYE is exactly that — one competitor, no opponent, the
+     * engine marks it decided so the winner advances — and a ladder of byes is
+     * scaffolding, not a record of anything.
+     *
+     * So a bout counts here only if BOTH corners were filled and it has an
+     * outcome: a finished status, a recorded winner, or a score on the board.
+     * Anything this scope returns is somebody's competition and must not be
+     * deleted behind a confirmation.
+     */
+    public function scopeContested($query)
+    {
+        return $query
+            ->whereNotNull('a_name')
+            ->whereNotNull('b_name')
+            ->where(function ($q) {
+                $q->where('status', 'done')
+                    ->orWhereNotNull('winner')
+                    ->orWhere('a_score', '>', 0)
+                    ->orWhere('b_score', '>', 0);
+            });
+    }
+
+    /** The championship this bout belongs to. */
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(ClubEvent::class, 'event_id');
+    }
 
     public function category(): BelongsTo
     {

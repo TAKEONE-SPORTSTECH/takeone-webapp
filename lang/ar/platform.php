@@ -372,6 +372,8 @@ return [
     'admin_platform_settings_reset_modal_title' => 'إعادة تعيين المنصة بالكامل؟',
     'admin_platform_settings_reset_modal_warning' => 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع الأندية والأعضاء وبياناتهم نهائيًا وإعادة إنشاء الوضع الأساسي.',
     'admin_platform_settings_reset_modal_confirm_label' => 'اكتب RESET للتأكيد',
+    'admin_platform_settings_reset_modal_body' => 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع الأندية والأعضاء وبياناتهم نهائيًا وإعادة إنشاء الوضع الأساسي.',
+    'admin_platform_settings_reset_modal_prompt' => 'اكتب RESET للتأكيد',
     'admin_platform_settings_reset_modal_cancel' => 'إلغاء',
     'admin_platform_settings_reset_modal_confirm' => 'مسح وإعادة الإنشاء',
     'admin_platform_settings_reset_working' => 'جارٍ إعادة التعيين…',

@@ -3,7 +3,7 @@
 namespace App\Traits;
 
 use App\Models\Business;
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use Illuminate\Support\Facades\Auth;
 
 trait HandlesClubAuthorization

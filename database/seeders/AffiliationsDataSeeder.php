@@ -3,16 +3,16 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\User;
-use App\Models\Tenant;
-use App\Models\ClubAffiliation;
-use App\Models\SkillAcquisition;
-use App\Models\AffiliationMedia;
-use App\Models\ClubPackage;
-use App\Models\ClubActivity;
-use App\Models\ClubInstructor;
+use App\Members\Models\User;
+use App\Clubs\Models\Tenant;
+use App\Clubs\Models\ClubAffiliation;
+use App\Members\Models\SkillAcquisition;
+use App\Members\Models\AffiliationMedia;
+use App\Clubs\Models\ClubPackage;
+use App\Clubs\Models\ClubActivity;
+use App\Clubs\Models\ClubInstructor;
 use App\Models\ClubMemberSubscription;
-use App\Models\ClubPackageActivity;
+use App\Clubs\Models\ClubPackageActivity;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 

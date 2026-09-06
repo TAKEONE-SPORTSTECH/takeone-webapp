@@ -10,7 +10,7 @@
     {{-- Hero --}}
     <div class="relative h-64 sm:h-80 w-full overflow-hidden">
         @if($activity->picture_url)
-            <img src="{{ asset('storage/'.$activity->picture_url) }}" alt="{{ $name }}" class="absolute inset-0 w-full h-full object-cover">
+            <img src="{{ file_url($activity->picture_url) }}" alt="{{ $name }}" class="absolute inset-0 w-full h-full object-cover">
             <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10"></div>
         @else
             <div class="absolute inset-0" style="background: linear-gradient(135deg, hsl(250 65% 55%), hsl(250 65% 35%));"></div>
@@ -21,8 +21,9 @@
 
         <div class="absolute inset-x-0 bottom-0 p-5 sm:p-8">
             <div class="max-w-3xl mx-auto">
-                <a href="{{ url()->previous() }}" class="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-3">
-                    <i class="bi bi-arrow-left"></i> {{ __('shared.back') ?? 'Back' }}
+                <a href="{{ url()->previous() }}" class="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-3"
+           aria-label="{{ __('shared.back') ?? 'Back' }}" title="{{ __('shared.back') ?? 'Back' }}">
+                    <i class="bi bi-chevron-left"></i>
                 </a>
                 <h1 class="text-3xl sm:text-4xl font-bold text-white drop-shadow">{{ $name }}</h1>
                 @if(!empty($activity->variants) && count($activity->variants))

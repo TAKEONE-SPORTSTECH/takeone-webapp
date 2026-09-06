@@ -15,7 +15,8 @@ return [
     // sport key (matches ClubEvent->sport) => plug-in class (app/Events/Sports/<Sport>/)
     'sports' => [
         'taekwondo' => \App\Events\Sports\Taekwondo\Taekwondo::class,
-        // 'karate'  => \App\Events\Sports\Karate\Karate::class,
+        'karate' => \App\Events\Sports\Karate\Karate::class,
+        'bjj' => \App\Events\Sports\BrazilianJiuJitsu\BrazilianJiuJitsu::class,
         // 'judo'    => \App\Events\Sports\Judo\Judo::class,
     ],
 

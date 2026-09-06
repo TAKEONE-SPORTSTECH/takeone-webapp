@@ -267,7 +267,11 @@
     @stack('styles')
 </head>
 <body class="bg-background text-foreground antialiased">
-    @if(!request()->routeIs('clubs.show.public') && !(session('club.context') && request()->routeIs('register', 'verification.notice')) && !$__env->hasSection('hide-navbar'))
+    {{-- A guest on a public club page or public profile gets the page and nothing
+         else: no top bar, no nav. Signed-in members keep the full chrome, so this
+         can only ever affect visitors who could not reach these pages before. --}}
+    @php $__publicGuest = auth()->guest() && request()->routeIs('clubs.show', 'people.show', 'live.watch'); @endphp
+    @if(!$__publicGuest && !request()->routeIs('clubs.show.public') && !(session('club.context') && request()->routeIs('register', 'verification.notice')) && !$__env->hasSection('hide-navbar'))
     <div x-data="{ mobileMenuOpen: false }" @keydown.escape.window="mobileMenuOpen = false">
     <nav class="to-bar">
         <div class="container mx-auto px-4">
@@ -422,12 +426,12 @@
                         <!-- Notifications Dropdown -->
                         @auth
                         @php
-                            $recentNotifs = \App\Models\UserNotification::where('user_id', Auth::id())
+                            $recentNotifs = \App\Members\Models\UserNotification::where('user_id', Auth::id())
                                 ->with(['clubNotification.tenant', 'actor', 'tenant'])
                                 ->latest()
                                 ->take(5)
                                 ->get();
-                            $unreadCount = \App\Models\UserNotification::where('user_id', Auth::id())
+                            $unreadCount = \App\Members\Models\UserNotification::where('user_id', Auth::id())
                                 ->where('is_read', false)
                                 ->count();
                         @endphp
@@ -569,7 +573,7 @@
                             <button @click="open = !open" class="profile-chip" type="button">
                                 <div class="avatar-container">
                                     @if(Auth::user()->profile_picture)
-                                        <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
+                                        <img src="{{ file_url(Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
                                              alt="{{ Auth::user()->full_name }}"
                                              class="user-avatar"
                                              onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
@@ -830,7 +834,7 @@
                    class="flex items-center gap-3 p-3 mb-4 bg-white rounded-lg hover:bg-accent/40 transition-colors">
                     <div class="avatar-container">
                         @if(Auth::user()->profile_picture)
-                            <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
+                            <img src="{{ file_url(Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
                                  alt="{{ Auth::user()->full_name }}"
                                  class="user-avatar"
                                  onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">

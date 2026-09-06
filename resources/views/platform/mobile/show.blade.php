@@ -6,7 +6,7 @@
 @php $clubIcon = $club->logo ?: $club->favicon; @endphp
 @if($clubIcon)
 @section('favicon')
-@php $clubIconUrl = asset('storage/' . $clubIcon) . '?v=' . ($club->updated_at?->timestamp ?? '1'); @endphp
+@php $clubIconUrl = file_url($clubIcon) . '?v=' . ($club->updated_at?->timestamp ?? '1'); @endphp
 <link rel="icon" type="image/png" href="{{ $clubIconUrl }}">
 <link rel="shortcut icon" type="image/png" href="{{ $clubIconUrl }}">
 <link rel="apple-touch-icon" href="{{ $clubIconUrl }}">
@@ -28,8 +28,8 @@
         $club->packages->flatMap(fn ($p) => $p->activities ?? [])->pluck('name')
     );
 
-    $cover = $club->cover_image ? asset('storage/'.$club->cover_image)
-           : ($club->galleryImages->first() ? asset('storage/'.$club->galleryImages->first()->image_path) : null);
+    $cover = $club->cover_image ? file_url($club->cover_image)
+           : ($club->galleryImages->first() ? file_url($club->galleryImages->first()->image_path) : null);
 
     // Weekly class slots from all packages.
     $slots = collect();
@@ -61,8 +61,8 @@
 
         {{-- Back --}}
         <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('clubs.explore') }}')"
-                class="m-press absolute top-3 left-3 w-10 h-10 rounded-full bg-black/35 backdrop-blur text-white flex items-center justify-center" aria-label="{{ __('shared.back') }}">
-            <i class="bi bi-arrow-left text-lg"></i>
+                class="m-press absolute top-3 start-3 inline-flex items-center w-10 h-10 justify-center rounded-full bg-black/35 backdrop-blur text-white text-sm font-semibold" aria-label="{{ __('shared.back') }}">
+            <i class="bi bi-chevron-left"></i>
         </button>
 
         {{-- One QR button → modal with a Register / Club page tab switcher --}}
@@ -96,7 +96,7 @@
             <div class="flex items-end gap-3">
                 @if($club->logo)
                     <span class="w-16 h-16 flex-shrink-0">
-                        <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-full h-full object-contain">
+                        <img src="{{ file_url($club->logo) }}" alt="" class="w-full h-full object-contain">
                     </span>
                 @endif
                 <div class="min-w-0">
@@ -165,8 +165,8 @@
                     <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory">
                         @foreach($club->facilities as $f)
                             @php
-                                $facImages = collect($f->images ?? [])->map(fn($p) => asset('storage/'.$p))->values()->toArray();
-                                if (empty($facImages) && $f->photo) $facImages = [asset('storage/'.$f->photo)];
+                                $facImages = collect($f->images ?? [])->map(fn($p) => file_url($p))->values()->toArray();
+                                if (empty($facImages) && $f->photo) $facImages = [file_url($f->photo)];
                                 $facTag = $f->maps_url ? 'a' : 'div';
                             @endphp
                             <{{ $facTag }} @if($f->maps_url) href="{{ $f->maps_url }}" target="_blank" rel="noopener" @endif
@@ -233,7 +233,7 @@
                             <a href="{{ route('trainer.show', $ins->user_id) }}"
                                class="m-press snap-start flex-shrink-0 w-60 flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-2.5">
                                 <span class="w-14 h-14 flex-shrink-0 rounded-xl bg-muted overflow-hidden flex items-center justify-center">
-                                    @if($ins->user?->profile_picture)<img src="{{ asset('storage/'.$ins->user->profile_picture) }}" alt="" class="w-14 h-14 object-cover">@else<i class="bi bi-person text-2xl text-muted-foreground"></i>@endif
+                                    @if($ins->user?->profile_picture)<img src="{{ file_url($ins->user->profile_picture) }}" alt="" class="w-[42px] h-14 object-cover">@else<i class="bi bi-person text-2xl text-muted-foreground"></i>@endif
                                 </span>
                                 <span class="flex-1 min-w-0">
                                     <span class="block text-[13px] font-semibold text-foreground truncate">{{ $ins->user?->full_name ?? __('club.coach') }}</span>
@@ -254,11 +254,11 @@
                     // Resolve linked-athlete user ids -> uuids for member-profile links (single query).
                     $athleteIds = $achievementsAll->flatMap(fn ($a) => collect($a->athletes ?? [])->pluck('user_id'))->filter()->unique()->values();
                     $athleteUuidMap = $athleteIds->isNotEmpty()
-                        ? \App\Models\User::whereIn('id', $athleteIds)->pluck('uuid', 'id')->toArray()
+                        ? \App\Members\Models\User::whereIn('id', $athleteIds)->pluck('uuid', 'id')->toArray()
                         : [];
                     $achievementsJson = $achievementsAll->map(function ($a) use ($athleteUuidMap) {
                         $combined = collect(array_filter(array_merge($a->image_path ? [$a->image_path] : [], $a->images ?? [])))
-                            ->map(fn ($p) => asset('storage/' . $p))->values()->toArray();
+                            ->map(fn ($p) => file_url($p))->values()->toArray();
                         $medals = [];
                         if ($a->medals_gold)   $medals[] = $a->medals_gold . ' Gold';
                         if ($a->medals_silver) $medals[] = $a->medals_silver . ' Silver';
@@ -385,9 +385,36 @@
                                      style="max-height: 92vh;" @click.stop>
                                     <template x-if="ach">
                                         <div class="flex flex-col overflow-hidden">
+                                            {{-- Header --}}
+                                            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                                                 style="background: linear-gradient(150deg, #b45309, #d97706b0);">
+                                                <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                                                <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                                                <div class="relative flex items-start gap-3">
+                                                    <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                                                        <i class="bi bi-trophy-fill text-xl"></i>
+                                                    </span>
+                                                    <div class="min-w-0 flex-1">
+                                                        <h3 class="text-lg font-black leading-tight" x-text="ach.title"></h3>
+                                                        <p class="text-[12px] text-white/85 mt-0.5" x-show="ach.date_label" x-text="ach.date_label"></p>
+                                                    </div>
+                                                    <button type="button" @click="showAch = false" aria-label="{{ __('shared.close') }}"
+                                                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </div>
+
+                                                <div class="relative mt-3 flex flex-wrap gap-1.5" x-show="ach.medal_summary">
+                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold">
+                                                        <span class="text-[12px] leading-none" x-text="ach.medal_emojis || '🏅'"></span><span x-text="ach.medal_summary"></span>
+                                                    </span>
+                                                </div>
+                                            </div>
+
                                             {{-- Media --}}
                                             <div class="relative flex-shrink-0">
-                                                <div class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-t-3xl sm:rounded-t-2xl"
+                                                <div class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
                                                      x-ref="strip" @scroll.debounce.50ms="idx = Math.round($refs.strip.scrollLeft / $refs.strip.offsetWidth)">
                                                     <template x-if="ach.images && ach.images.length">
                                                         <template x-for="img in ach.images" :key="img">
@@ -400,23 +427,18 @@
                                                         </div>
                                                     </template>
                                                 </div>
-                                                <button type="button" @click="showAch = false" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur text-white grid place-items-center"><i class="bi bi-x-lg"></i></button>
                                                 <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
                                                 <div x-show="ach.images && ach.images.length > 1" class="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5">
                                                     <template x-for="(img, i) in ach.images" :key="i">
                                                         <span class="h-1.5 rounded-full transition-all" :class="idx === i ? 'bg-white w-4' : 'bg-white/50 w-1.5'"></span>
                                                     </template>
                                                 </div>
-                                                <span x-show="ach.medal_summary" class="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white bg-black/40 backdrop-blur">
-                                                    <span class="text-[12px] leading-none" x-text="ach.medal_emojis || '🏅'"></span><span x-text="ach.medal_summary"></span>
-                                                </span>
                                             </div>
 
                                             {{-- Body --}}
                                             <div class="overflow-y-auto p-4 space-y-3" style="max-height: calc(92vh - 15rem);">
                                                 <div>
-                                                    <h3 class="text-lg font-extrabold text-foreground leading-tight" x-text="ach.title"></h3>
-                                                    <p class="mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+                                                    <p class="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
                                                         <span x-show="ach.location"><i class="bi bi-geo-alt mr-0.5"></i><span x-text="ach.location"></span></span>
                                                         <span x-show="ach.date_label"><i class="bi bi-calendar-event mr-0.5"></i><span x-text="ach.date_label"></span></span>
                                                         <span x-show="ach.category"><i class="bi bi-tag mr-0.5"></i><span x-text="ach.category"></span></span>
@@ -516,7 +538,7 @@
                                     class="m-press m-card snap-start flex-shrink-0 w-[60%] max-w-[15rem] text-left rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 flex flex-col">
                                 <div class="relative h-24 flex-shrink-0">
                                     @if($perk->image_path)
-                                        <img src="{{ asset('storage/'.$perk->image_path) }}" alt="{{ $perk->tr('title') }}" class="w-full h-24 object-cover">
+                                        <img src="{{ file_url($perk->image_path) }}" alt="{{ $perk->tr('title') }}" class="w-full h-24 object-cover">
                                     @else
                                         <div class="w-full h-24 flex items-center justify-center" style="background:linear-gradient(135deg,{{ $perk->bg_from ?: '#6d5efc' }},{{ $perk->bg_to ?: '#9b8cff' }});">
                                             <i class="bi {{ $perk->icon ?: 'bi-gift' }} text-white text-4xl opacity-90"></i>
@@ -595,7 +617,7 @@
                                                         class="m-press w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all"
                                                         :class="m.already_collected ? 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed' : 'border-gray-200 hover:border-primary hover:bg-primary/5'">
                                                     <template x-if="m.profile_picture">
-                                                        <img :src="'/storage/' + m.profile_picture" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                                                        <img :src="'/file/' + m.profile_picture" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
                                                     </template>
                                                     <template x-if="!m.profile_picture">
                                                         <span class="w-10 h-10 rounded-full bg-primary text-white font-bold text-sm grid place-items-center flex-shrink-0" x-text="m.name.trim().charAt(0).toUpperCase()"></span>
@@ -711,7 +733,7 @@
             @forelse($club->events->where('is_archived', false)->sortBy('date') as $event)
                 @php $isJoined = in_array($event->id, $joinedEventIds ?? []); @endphp
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    @if($event->cover_image)<img src="{{ asset('storage/'.$event->cover_image) }}" alt="" class="w-full h-32 object-cover">@endif
+                    @if($event->cover_image)<img src="{{ file_url($event->cover_image) }}" alt="" class="w-full h-32 object-cover">@endif
                     <div class="p-4">
                         <div class="flex items-start justify-between gap-2">
                             <p class="font-bold text-foreground">{{ $event->title }}</p>
@@ -758,7 +780,7 @@
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     <div class="flex items-center gap-2.5">
                         <span class="w-9 h-9 rounded-full bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
-                            @if($r->user?->profile_picture)<img src="{{ asset('storage/'.$r->user->profile_picture) }}" alt="" class="w-9 h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                            @if($r->user?->profile_picture)<img src="{{ file_url($r->user->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                         </span>
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-semibold text-foreground truncate">{{ $r->user?->full_name ?? __('club.member') }}</p>

@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\Support\EntryPhoto;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RestoreBackupRequest;
 use App\Http\Requests\Admin\StorePlatformMemberRequest;
 use App\Http\Requests\HealthRecordRequest;
 use App\Http\Requests\TournamentRequest;
 use App\Http\Requests\UploadImageRequest;
-use App\Models\Attendance;
+use App\Members\Models\Attendance;
 use App\Models\Business;
 use App\Models\ClubMemberSubscription;
 use App\Models\Invoice;
-use App\Models\Membership;
-use App\Models\Tenant;
-use App\Models\TournamentEvent;
-use App\Models\User;
+use App\Members\Models\Membership;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\TournamentEvent;
+use App\Members\Models\User;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Support\StoragePath;
 
 class PlatformController extends Controller
 {
@@ -98,8 +100,8 @@ class PlatformController extends Controller
             'members' => User::count(),
             'businesses' => Business::count(),
             'businessesPending' => Business::where('status', Business::STATUS_PENDING)->count(),
-            'trainers' => \App\Models\ClubInstructor::count(),
-            'packages' => \App\Models\ClubPackage::count(),
+            'trainers' => \App\Clubs\Models\ClubInstructor::count(),
+            'packages' => \App\Clubs\Models\ClubPackage::count(),
             'clubsThisMonth' => Tenant::where('created_at', '>=', $startOfThisMonth)->count(),
             'membersThisMonth' => User::where('created_at', '>=', $startOfThisMonth)->count(),
             'membersLastMonth' => User::whereBetween('created_at', [$startOfLastMonth, $startOfThisMonth])->count(),
@@ -420,14 +422,26 @@ class PlatformController extends Controller
             'initial' => mb_strtoupper(mb_substr($user->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
             'has_picture' => (bool) $user->profile_picture,
             'picture_url' => $user->profile_picture
-                ? asset('storage/'.$user->profile_picture).'?v='.$user->updated_at->timestamp
+                ? file_url($user->profile_picture).'?v='.$user->updated_at->timestamp
                 : null,
             'gender' => $user->gender ?? 'Male',
+            // ISO-3166 alpha-2, which is what the flag is built from client-side.
+            // Anything else (a full country name on an old row) is dropped rather
+            // than rendered as two wrong letters.
+            'nationality' => preg_match('/^[A-Za-z]{2}$/', (string) $user->nationality)
+                ? mb_strtoupper($user->nationality)
+                : null,
             'phone' => $phone ?: 'N/A',
             'email' => $user->email ?? 'N/A',
             'age' => $user->age ? $user->age.' years' : 'N/A',
             'since' => $membership ? $membership->created_at->format('d/m/Y') : $user->created_at->format('d/m/Y'),
             'profile_url' => route('member.show', $user->uuid),
+            // The safe public profile — what everyone else sees of this person.
+            // Null when this admin may not open it (a block either way), so the
+            // popup hides the control rather than offering a link into a 403.
+            'public_url' => $user->canViewPublicProfile(Auth::user())
+                ? route('people.show', $user->uuid)
+                : null,
             // Admin popup QR points to the member's management profile, not the public wall.
             'qr_url' => route('member.show', $user->uuid),
             'qr_svg_url' => route('qr.member.svg', ['user' => $user->id, 'target' => 'manage']),
@@ -511,6 +525,24 @@ class PlatformController extends Controller
             'email_verified_at' => now(),
         ];
 
+        /*
+         * Drop the keys nobody filled in, so the column defaults apply.
+         *
+         * users.blood_type is NOT NULL DEFAULT 'Unknown', and a default only takes
+         * effect when the column is OMITTED from the insert — passing an explicit
+         * NULL violates the constraint instead. So leaving blood type blank on this
+         * form threw
+         *
+         *   SQLSTATE[23000]: NOT NULL constraint failed: users.blood_type
+         *
+         * and no member was created at all. Filtering nulls here fixes that for
+         * every optional column at once, rather than one magic value at a time.
+         *
+         * full_name is exempt: it is genuinely required, and validation has already
+         * refused a blank one, so it must not be silently dropped here.
+         */
+        $data = array_filter($data, fn ($value, $key) => $value !== null || $key === 'full_name', ARRAY_FILTER_USE_BOTH);
+
         $softDeleted = User::withTrashed()->where('email', $request->email)->whereNotNull('deleted_at')->first();
         if ($softDeleted) {
             $softDeleted->restore();
@@ -539,7 +571,7 @@ class PlatformController extends Controller
                 'email' => $user->email,
                 'mobile' => $user->mobile_formatted,
                 'profile_picture' => $user->profile_picture
-                    ? asset('storage/'.$user->profile_picture)
+                    ? file_url($user->profile_picture)
                     : null,
             ];
         });
@@ -587,7 +619,16 @@ class PlatformController extends Controller
         // fields are IGNORED — storeBase64Image() inspects the real bytes (finfo),
         // allowlists the MIME, and builds a server-controlled path. Path traversal
         // and disguised-payload uploads are not possible here.
-        foreach (['logo' => 'clubs/logos', 'cover_image' => 'clubs/covers', 'registration_splash_image' => 'clubs/splash'] as $field => $folder) {
+        // Each image goes in THIS CLUB's own folder. It used to be a flat
+        // `clubs/logos` / `clubs/covers` / `clubs/splash` — purpose first, owner
+        // second — which makes "what belongs to this club?" unanswerable and
+        // leaves branding scattered outside the club subtree. The slug is a
+        // validated field on this request, so the club's folder is known even
+        // though the row does not exist yet.
+        $brandingFolder = StoragePath::clubBySlug((string) $validated['slug'], 'branding', $validated['country'] ?? null);
+
+        foreach (['logo', 'cover_image', 'registration_splash_image'] as $field) {
+            $folder = $brandingFolder;
             if ($request->filled($field) && str_starts_with((string) $request->input($field), 'data:image')
                 && ($stored = $this->storeBase64Image($request->input($field), $folder, $field.'_'.Str::uuid()))) {
                 $validated[$field] = $stored;
@@ -628,7 +669,7 @@ class PlatformController extends Controller
                 'email' => $user->email,
                 'mobile' => $user->mobile_formatted,
                 'profile_picture' => $user->profile_picture
-                    ? asset('storage/'.$user->profile_picture)
+                    ? file_url($user->profile_picture)
                     : null,
             ];
         });
@@ -672,7 +713,7 @@ class PlatformController extends Controller
             if ($club->logo) {
                 Storage::disk('public')->delete($club->logo);
             }
-            $validated['logo'] = $request->file('logo')->store('clubs/logos', 'public');
+            $validated['logo'] = $request->file('logo')->store(StoragePath::clubBranding($club), 'public');
         }
 
         // Handle cover image upload
@@ -681,7 +722,7 @@ class PlatformController extends Controller
             if ($club->cover_image) {
                 Storage::disk('public')->delete($club->cover_image);
             }
-            $validated['cover_image'] = $request->file('cover_image')->store('clubs/covers', 'public');
+            $validated['cover_image'] = $request->file('cover_image')->store(StoragePath::clubBranding($club), 'public');
         }
 
         $club->update($validated);
@@ -716,6 +757,147 @@ class PlatformController extends Controller
     /**
      * Display database backup page.
      */
+    /**
+     * The error log, so a problem can be reported instead of described.
+     *
+     * There was no way to see what actually went wrong on this platform: an error
+     * became "it broke", and the stack trace stayed on the server. This is the
+     * same tool TAKEONE Play has — filter, level, tail, copy — so a failure can be
+     * pasted somewhere useful the moment it happens.
+     *
+     * Reads the log file and nothing else. It writes nothing, and there is no
+     * delete: a log a viewer can prune is not an audit trail.
+     *
+     * SECURITY. Log lines are the most sensitive text on the box — stack traces
+     * carry file paths, request payloads carry personal data, and a careless
+     * Log::info can carry a token. So:
+     *   - super-admin only, enforced by the route group, never by this method;
+     *   - read from a FIXED path, never one the request can influence, so no
+     *     traversal is possible;
+     *   - bounded output, so a huge log cannot be used to exhaust memory;
+     *   - escaped on render (Blade default), because a log line contains whatever
+     *     an attacker managed to get logged, including markup.
+     */
+    public function logs(Request $request)
+    {
+        $filter = trim((string) $request->query('filter', ''));
+        $level = strtoupper(trim((string) $request->query('level', '')));
+        $limit = (int) $request->query('limit', 200);
+
+        // Bounded, and only from the set the form offers.
+        $limit = in_array($limit, [50, 100, 200, 500, 1000], true) ? $limit : 200;
+        $level = in_array($level, ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY', 'WARNING', 'INFO', 'DEBUG'], true) ? $level : '';
+
+        // A fixed path. Nothing from the request reaches it.
+        $path = storage_path('logs/laravel.log');
+
+        $entries = [];
+        $size = 0;
+        $truncated = false;
+
+        if (is_file($path) && is_readable($path)) {
+            $size = filesize($path);
+
+            /*
+             * Read the TAIL, not the file.
+             *
+             * This log is already megabytes and only grows; file() would load all
+             * of it into memory to show the last 200 lines. Seeking back from the
+             * end keeps the page's cost flat no matter how large the log gets —
+             * which matters because the page is most wanted on the worst day.
+             */
+            $entries = $this->tailLogEntries($path, $limit, $filter, $level, $truncated);
+        }
+
+        return view('admin.platform.logs', [
+            'entries' => $entries,
+            'filter' => $filter,
+            'level' => $level,
+            'limit' => $limit,
+            'logSize' => $size,
+            'logPath' => $path,
+            'truncated' => $truncated,
+            'logMissing' => ! is_file($path),
+        ]);
+    }
+
+    /**
+     * The last matching log ENTRIES, newest first.
+     *
+     * An entry is not a line: a stack trace is dozens of lines belonging to one
+     * error, and splitting on newlines turns one failure into forty rows of
+     * gibberish. A new entry starts at a `[YYYY-MM-DD HH:MM:SS]` stamp; everything
+     * after it belongs to it.
+     *
+     * @return array<int, array{stamp: string, level: string, message: string, trace: string}>
+     */
+    private function tailLogEntries(string $path, int $limit, string $filter, string $level, bool &$truncated): array
+    {
+        $handle = fopen($path, 'rb');
+
+        if ($handle === false) {
+            return [];
+        }
+
+        // Enough to hold the requested entries in all but pathological cases, and
+        // a hard ceiling either way.
+        $window = min(filesize($path), max(512 * 1024, $limit * 4096));
+
+        fseek($handle, -$window, SEEK_END);
+        $chunk = (string) fread($handle, $window);
+        fclose($handle);
+
+        $truncated = $window < filesize($path);
+
+        // The first stamp may be mid-entry after seeking; drop the partial head.
+        $parts = preg_split('/\n(?=\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/', $chunk) ?: [];
+
+        if ($truncated && count($parts) > 1) {
+            array_shift($parts);
+        }
+
+        $out = [];
+
+        foreach (array_reverse($parts) as $raw) {
+            $raw = rtrim($raw);
+
+            if ($raw === '') {
+                continue;
+            }
+
+            if ($filter !== '' && stripos($raw, $filter) === false) {
+                continue;
+            }
+
+            preg_match('/^\[([^\]]+)\]\s*(\S+?)\.(\w+):\s*(.*)$/s', $raw, $m);
+
+            $entryLevel = strtoupper($m[3] ?? '');
+
+            if ($level !== '' && $entryLevel !== $level) {
+                continue;
+            }
+
+            // Head line and trace kept apart so the page can fold the trace away
+            // rather than drowning the message in it.
+            $body = $m[4] ?? $raw;
+            $split = explode("
+", $body, 2);
+
+            $out[] = [
+                'stamp' => $m[1] ?? '',
+                'level' => $entryLevel ?: 'LOG',
+                'message' => trim($split[0]),
+                'trace' => trim($split[1] ?? ''),
+            ];
+
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
     public function backup()
     {
         $mobile = request()->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.backup');
@@ -849,7 +1031,20 @@ class PlatformController extends Controller
         try {
             // Validate + store the base64 image with a server-assigned extension
             // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::clubBranding($club),
+                'logo_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
@@ -865,7 +1060,7 @@ class PlatformController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -881,7 +1076,20 @@ class PlatformController extends Controller
         try {
             // Validate + store the base64 image with a server-assigned extension
             // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::clubBranding($club),
+                'cover_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
@@ -897,7 +1105,7 @@ class PlatformController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -996,7 +1204,12 @@ class PlatformController extends Controller
             'dependent_user_id' => $member->id,
         ];
 
-        return view('family.show', [
+        return view('members::family.show', [
+            // What the platform already knows about this member's clubs and
+            // events — the two tabs otherwise show only what they typed in
+            // themselves. Read-only, de-duplicated against the self-reported rows.
+            'derivedAffiliations' => app(\App\Support\ProfileHistory::class)->derivedAffiliations($relationship->dependent),
+            'derivedTournaments'  => app(\App\Support\ProfileHistory::class)->derivedTournaments($relationship->dependent),
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,
@@ -1039,12 +1252,36 @@ class PlatformController extends Controller
             'is_billing_contact' => false,
         ];
 
-        return view('family.edit', compact('relationship'));
+        return view('members::family.edit', compact('relationship'));
     }
 
     /**
      * Update a member.
      */
+
+    /**
+     * 'required' or 'nullable' for the person details on an admin edit.
+     *
+     * Same rule as PersonFieldRules: staff entering somebody else are asked for a
+     * name and nothing more, because a referee off a federation list or an athlete
+     * off a paper sheet arrives without the rest, and an invented value is worse
+     * than a blank. Their own profile stays strict.
+     */
+    private function personPresence($subjectId): string
+    {
+        $actor = Auth::user();
+
+        if (! $actor) {
+            return 'required';
+        }
+
+        if ((int) $actor->id === (int) $subjectId) {
+            return 'required';
+        }
+
+        return $actor->entersPeopleOnBehalfOfOthers() ? 'nullable' : 'required';
+    }
+
     public function updateMember(Request $request, $id)
     {
         $validated = $request->validate([
@@ -1052,11 +1289,20 @@ class PlatformController extends Controller
             'email' => 'nullable|email|max:255|unique:users,email,'.$id,
             'mobile_code' => 'nullable|string|max:5',
             'mobile' => 'nullable|string|max:20',
-            'gender' => 'required|in:Male,Female',
+            /*
+             * Presence follows WHO is filling the form, exactly as
+             * App\Http\Requests\Concerns\PersonFieldRules does for every other
+             * person form — this endpoint validates inline, so it has to make the
+             * same decision rather than inherit it. A super admin editing somebody
+             * else is the case that must not be asked for what it does not have.
+             *
+             * Birthdate is never required, of anyone.
+             */
+            'gender' => $this->personPresence($id).'|in:Male,Female',
             'marital_status' => 'nullable|in:single,married,divorced,widowed',
-            'birthdate' => 'required|date',
+            'birthdate' => 'nullable|date',
             'blood_type' => 'nullable|string|max:10',
-            'nationality' => 'required|string|max:100',
+            'nationality' => $this->personPresence($id).'|string|max:100',
             'social_links' => 'nullable|array',
             'social_links.*.platform' => 'required_with:social_links.*.url|string',
             'social_links.*.url' => 'required_with:social_links.*.platform|url',
@@ -1107,26 +1353,33 @@ class PlatformController extends Controller
                 'number' => trim($d['number'] ?? ''),
                 'file_path' => $d['file_path'] ?? null,
                 'file_name' => $d['file_name'] ?? null,
-                'file_url' => $d['file_url'] ?? null,
+                // file_url is deliberately NOT stored. It is derived from
+                // file_path at render time, so the row never carries a hostname
+                // and never carries a link that bypasses authorization.
                 'uploaded_at' => $d['uploaded_at'] ?? now()->format('Y-m-d'),
             ])->values()->all();
 
         $member = User::findOrFail($id);
+        /*
+         * Absent means "leave it alone"; blank means "clear it". Reading an
+         * optional field unconditionally would let a request that simply omits it
+         * wipe what was already stored — and would 500 on the missing key first.
+         */
+        $optional = [];
+        foreach (['gender', 'birthdate', 'nationality', 'email', 'blood_type', 'motto', 'marital_status'] as $field) {
+            if ($request->has($field)) {
+                $optional[$field] = $validated[$field] ?? null;
+            }
+        }
+
         $member->update([
             'full_name' => $validated['full_name'],
-            'email' => $validated['email'],
             'mobile' => $mobile,
-            'gender' => $validated['gender'],
-            'marital_status' => $validated['marital_status'] ?? null,
-            'birthdate' => $validated['birthdate'],
-            'blood_type' => $validated['blood_type'],
-            'nationality' => $validated['nationality'],
             'social_links' => $socialLinks,
-            'motto' => $validated['motto'],
             'emergency_contacts' => $emergencyContacts,
             'health_conditions' => $healthConditions,
             'documents' => $documents,
-        ]);
+        ] + $optional);
 
         // Return JSON for AJAX requests
         if ($request->wantsJson() || $request->ajax()) {
@@ -1171,7 +1424,7 @@ class PlatformController extends Controller
 
         $member = User::findOrFail($id);
 
-        $ownedClubs = \App\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
+        $ownedClubs = \App\Clubs\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
         if ($ownedClubs->isNotEmpty()) {
             $msg = 'Cannot delete this account. They own the club(s): '.$ownedClubs->join(', ').'. Transfer ownership first.';
 
@@ -1201,14 +1454,29 @@ class PlatformController extends Controller
 
             // Validate + store the base64 image with a server-assigned extension
             // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
-            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            // The destination is derived from the entity we just resolved and
+            // authorised — never from the request. `folder`/`filename` used to
+            // come straight from the caller; UploadImageRequest constrains their
+            // CHARSET but not their TARGET, so any authenticated user could name
+            // another member's folder and overwrite that person's picture.
+            //
+            // Existing files are untouched: every path is stored per row, so what
+            // is already on disk keeps resolving where it is. Only new uploads
+            // land in the documented structure.
+            $fullPath = $this->storeBase64Image(
+                $request->image,
+                StoragePath::memberProfile($member),
+                'profile_'.Str::random(24),
+            );
             if ($fullPath === null) {
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
 
-            // Delete old profile picture if exists
-            if ($member->profile_picture && $member->profile_picture !== $fullPath && Storage::disk('public')->exists($member->profile_picture)) {
-                Storage::disk('public')->delete($member->profile_picture);
+            // Only when nothing else still names the file: an event entry can
+            // point AT a profile picture rather than carry a copy, and duplicate
+            // accounts share one path. See App\Events\Support\EntryPhoto.
+            if ($member->profile_picture !== $fullPath) {
+                EntryPhoto::discardShared($member->profile_picture, $member->id);
             }
 
             // Update member's profile_picture field
@@ -1217,7 +1485,7 @@ class PlatformController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/'.$fullPath),
+                'url' => file_url($fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -1231,9 +1499,16 @@ class PlatformController extends Controller
     {
         $member = User::findOrFail($id);
 
-        if ($member->profile_picture && Storage::disk('public')->exists($member->profile_picture)) {
-            Storage::disk('public')->delete($member->profile_picture);
+        // The avatar is also one of the profile's pictures — drop that row first so
+        // the picture viewer never points at a file this method is about to delete.
+        // (The row's own trait purges the file, hence before the Storage delete.)
+        if ($member->profile_picture) {
+            $member->photos()->where('path', $member->profile_picture)->get()->each->delete();
         }
+
+        // The row above has given up its claim; what remains is somebody ELSE
+        // naming this file — an event entry, or a duplicate account.
+        EntryPhoto::discardShared($member->profile_picture, $member->id);
 
         $extensions = ['png', 'jpg', 'jpeg', 'webp'];
         foreach ($extensions as $ext) {

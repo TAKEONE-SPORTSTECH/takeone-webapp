@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Goal;
-use App\Models\UserNotification;
+use App\Members\Models\Goal;
+use App\Members\Models\UserNotification;
 use Illuminate\Console\Command;
 
 /**
@@ -34,7 +34,7 @@ class SendDailyGoalEncouragement extends Command
             ->get(['id', 'user_id', 'title', 'target_date', 'current_progress_value', 'target_value']);
 
         $goalsByUser = $goals->groupBy('user_id');
-        $uuidsByUserId = \App\Models\User::whereIn('id', $goalsByUser->keys())->pluck('uuid', 'id');
+        $uuidsByUserId = \App\Members\Models\User::whereIn('id', $goalsByUser->keys())->pluck('uuid', 'id');
         $count = 0;
 
         foreach ($goalsByUser as $userId => $userGoals) {
@@ -48,7 +48,7 @@ class SendDailyGoalEncouragement extends Command
 
             try {
                 UserNotification::notifyUser((int) $userId, 'goal:encouragement', $message, [
-                    'subject_type' => Goal::class,
+                    'subject_type' => (new Goal)->getMorphClass(),
                     'subject_id' => $nearest->id,
                     'icon' => 'bi-bullseye',
                     'body' => __(':title — :current/:target :progress', [

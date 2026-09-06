@@ -8,6 +8,7 @@
     'size' => 220,               // on-screen QR size (px)
     'posterUrl' => null,         // optional printable-poster URL
     'buttonClass' => null,       // override the trigger button styling
+    'iconOnly' => false,         // trigger shows the icon alone (label becomes its accessible name)
     'targets' => null,           // optional: array of ['url','tab','title','caption','filename','poster']
                                  //           — renders ONE modal with a tab switcher between QRs
 ])
@@ -55,9 +56,23 @@
         ?: 'inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-primary text-primary bg-transparent text-sm font-medium hover:bg-primary hover:text-white transition-colors';
 @endphp
 
-<div x-data="qrCode_{{ $uid }}()" class="inline-block">
-    <button type="button" @click="open = true" class="m-press {{ $btn }}">
-        <i class="bi {{ $icon }}"></i> {{ $label }}
+{{-- The trigger.
+
+     `iconOnly` exists because a caller that wants a compact 40x40 control had no
+     way to say so: the label was printed unconditionally, so "Camera QR" was laid
+     out inside a `w-10 h-10` box and spilled straight out of it. The label is not
+     dropped when it is hidden — it becomes the button's ACCESSIBLE NAME, because
+     a bare icon says nothing to a screen reader, and "QR" is not a word a button
+     can be identified by out loud. --}}
+<div x-data="qrCode(@js([
+        'uid'          => $uid,
+        'items'        => $jsItems,
+        'messagesBase' => url('/messages'),
+        'searchUrl'    => route('messages.search-users'),
+     ]))" class="inline-block">
+    <button type="button" @click="open = true" class="m-press {{ $btn }}"
+            @if($iconOnly && ($label || $title)) aria-label="{{ $label ?: $title }}" @endif>
+        <i class="bi {{ $icon }}"></i>@unless($iconOnly) {{ $label }}@endunless
     </button>
 
     <template x-teleport="body">
@@ -74,14 +89,21 @@
                  x-transition:leave="transition ease-in duration-200"
                  x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-4 opacity-0">
 
-                <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
-                    <div class="w-10 h-1.5 rounded-full bg-gray-300 mx-auto mb-3 sm:hidden"></div>
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0">
-                            <h2 class="text-base font-bold text-foreground truncate" x-text="cur.title"></h2>
-                            <p class="text-[11px] text-muted-foreground truncate" x-show="cur.caption" x-text="cur.caption"></p>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-qr-code text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h2 class="text-lg font-black leading-tight truncate" x-text="cur.title"></h2>
+                            <p class="text-[12px] text-white/85 mt-0.5 truncate" x-show="cur.caption" x-text="cur.caption"></p>
                         </div>
-                        <button type="button" @click="open = false" class="m-press w-9 h-9 rounded-full bg-muted grid place-items-center text-muted-foreground flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                        <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
                     </div>
                 </div>
 
@@ -125,7 +147,17 @@
                         <i class="bi text-[10px]" :class="more ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                     </button>
 
-                    <div x-show="more" x-cloak x-collapse class="grid grid-cols-2 gap-2 mt-2">
+                    {{-- x-transition, not x-collapse: the Alpine Collapse plugin is not
+                         registered in this project, so x-collapse only logs a warning
+                         and the panel appears with no animation at all. --}}
+                    <div x-show="more" x-cloak
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 -translate-y-1"
+                         class="grid grid-cols-2 gap-2 mt-2">
                         <button type="button" @click="downloadPng()" class="m-press inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 text-foreground text-sm font-medium hover:bg-muted transition-colors">
                             <i class="bi bi-download"></i> {{ __('shared.components_qr_code_png') }}
                         </button>
@@ -156,7 +188,7 @@
                                 <button type="button" @click="sendToChat(u)" :disabled="chat.sending"
                                         class="m-press w-full text-start rounded-xl p-2 flex items-center gap-2.5 hover:bg-muted transition-colors disabled:opacity-50">
                                     <span class="w-9 h-9 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
-                                        <template x-if="u.avatar"><img :src="u.avatar" alt="" class="w-9 h-9 object-cover"></template>
+                                        <template x-if="u.avatar"><img :src="u.avatar" alt="" class="w-[27px] h-9 object-cover"></template>
                                         <template x-if="!u.avatar"><span class="text-[11px] font-bold text-muted-foreground" x-text="u.initial"></span></template>
                                     </span>
                                     <span class="min-w-0 flex-1 text-sm font-medium text-foreground truncate" x-text="u.name"></span>
@@ -173,18 +205,41 @@
         </div>
     </template>
 
+{{-- The component's behaviour, registered ONCE per page.
+
+     It used to be an inline `<script>` declaring `function qrCode_<uid>()`
+     right here, next to the markup. That works only when the script executes
+     in DOM order before Alpine reaches the `x-data` — and on this page it does
+     not: `<x-qr-code>` is rendered INSIDE another component's
+     `x-teleport="body"` template (event-public-link), and a `<script>` inside a
+     `<template>` is inert. The factory was therefore never defined, `x-data`
+     evaluated to an empty scope, and every binding failed at once — the QR hid
+     itself (`active === 0` was false), the link rendered as `href=""`, and
+     Share had no url to send. The same hazard applies to any shell-swapped
+     content, where innerHTML never runs scripts either.
+
+     So the behaviour is registered as a real Alpine component from the page's
+     script stack, which renders outside every template, and the per-instance
+     values arrive as config. Nothing about this component now depends on where
+     its markup sits (CLAUDE.md → Standalone Self-Contained Components). --}}
+@once
+@push('scripts')
     <script>
-    function qrCode_{{ $uid }}() {
-        return {
+    (function () {
+        var register = function () {
+            if (! window.Alpine || window.__qrCodeRegistered) return;
+            window.__qrCodeRegistered = true;
+            window.Alpine.data('qrCode', function (cfg) {
+                return {
             open: false,
             more: false,
             active: 0,
-            uid: @json($uid),
-            items: @json($jsItems),
+            uid: cfg.uid,
+            items: cfg.items || [],
             get cur() { return this.items[this.active] || {}; },
             chat: { open: false, q: '', results: [], searching: false, sending: false },
-            messagesBase: @json(url('/messages')),
-            searchUrl: @json(route('messages.search-users')),
+            messagesBase: cfg.messagesBase,
+            searchUrl: cfg.searchUrl,
             shareText() { return (this.cur.title ? this.cur.title + ' — ' : '') + this.cur.link; },
             _csrf() { var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.content : ''; },
 
@@ -299,7 +354,17 @@
                 a.href = href; a.download = name;
                 document.body.appendChild(a); a.click(); a.remove();
             },
+                };
+            });
         };
-    }
+
+        // Both orders have to work: on a first paint Alpine has not started yet
+        // (register on alpine:init), and after a mobile/admin shell swap it is
+        // already running (register immediately, or the name never resolves).
+        if (window.Alpine) { register(); }
+        document.addEventListener('alpine:init', register);
+    })();
     </script>
+@endpush
+@endonce
 </div>

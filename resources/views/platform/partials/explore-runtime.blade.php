@@ -28,6 +28,8 @@ function exploreApp() {
         currentCategory: 'all',
         allClubs: [],
         allTrainers: @json($instructors),
+        allEvents: [],
+        eventsLoaded: false,
         countriesData: [],
 
         // Join Club Modal
@@ -124,7 +126,7 @@ function exploreApp() {
                         name: m.name,
                         gender: m.gender || '',
                         dateOfBirth: m.birthdate || '',
-                        avatarUrl: m.profile_picture ? '/storage/' + m.profile_picture : null,
+                        avatarUrl: m.profile_picture ? '/file/' + m.profile_picture : null,
                         relationship: m.relationship,
                         isMember: m.is_member || false,
                         equipment: []
@@ -458,8 +460,19 @@ function exploreApp() {
                 })
                 .catch(error => console.error('Error loading countries:', error));
 
-            // Always load clubs immediately, then refine with location if available
-            this.fetchAllClubs();
+            // Start on whichever tab is actually rendered first — the tab list is
+            // built from real counts, so "all" may not exist (and on mobile there
+            // are no tabs at all, which falls back to 'all' → clubs).
+            const firstTab = document.querySelector('.category-btn');
+            this.currentCategory = (firstTab && firstTab.dataset.category) || 'all';
+
+            if (this.currentCategory === 'events') {
+                this.showEventsPane();
+                this.fetchEvents();
+            } else {
+                // Load clubs immediately, then refine with location if available.
+                this.fetchAllClubs();
+            }
 
             if (!navigator.geolocation) {
                 this.showAlertMessage('{{ __("explore.geolocation_not_supported") }}', 'danger');
@@ -478,6 +491,14 @@ function exploreApp() {
                     e.target.classList.add('active', 'btn-primary');
 
                     this.currentCategory = e.target.dataset.category;
+
+                    if (this.currentCategory === 'events') {
+                        this.showEventsPane();
+                        this.fetchEvents();
+                        return;
+                    }
+
+                    this.hideEventsPane();
 
                     if (this.currentCategory === 'all' || this.currentCategory === 'sports-clubs') {
                         this.fetchAllClubs();
@@ -652,6 +673,10 @@ function exploreApp() {
         },
 
         fetchNearbyClubs(lat, lng) {
+            // The geolocation watcher can resolve long after the user moved to the
+            // Events tab — never let a late club fetch paint over that pane.
+            if (this.currentCategory === 'events') return;
+
             document.getElementById('loadingSpinner').style.display = 'block';
             document.getElementById('clubsGrid').style.display = 'none';
 
@@ -682,6 +707,8 @@ function exploreApp() {
         },
 
         fetchAllClubs() {
+            if (this.currentCategory === 'events') return;
+
             document.getElementById('loadingSpinner').style.display = 'block';
             document.getElementById('clubsGrid').style.display = 'none';
 
@@ -728,7 +755,7 @@ function exploreApp() {
             if (this.currentCategory === 'all' || this.currentCategory === 'personal-trainers') {
                 (trainers ?? this.allTrainers).forEach(trainer => {
                     const coverHtml = trainer.profile_picture
-                        ? `<img src="/storage/${trainer.profile_picture}" alt="${trainer.name}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300">`
+                        ? `<img src="/file/${trainer.profile_picture}" alt="${trainer.name}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300">`
                         : `<div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                                <i class="bi bi-person-fill text-white text-5xl opacity-50"></i>
                            </div>`;
@@ -826,7 +853,7 @@ function exploreApp() {
                 // Prepare cover image
                 let coverImageHtml = '';
                 if (club.cover_image) {
-                    coverImageHtml = `<img src="/storage/${club.cover_image}" alt="${club.club_name}" loading="lazy" class="w-full h-full object-cover club-cover-img transition-transform duration-300">`;
+                    coverImageHtml = `<img src="/file/${club.cover_image}" alt="${club.club_name}" loading="lazy" class="w-full h-full object-cover club-cover-img transition-transform duration-300">`;
                 } else {
                     coverImageHtml = `<div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                         <i class="bi bi-image text-white text-5xl opacity-30"></i>
@@ -836,7 +863,7 @@ function exploreApp() {
                 // Prepare logo
                 let logoHtml = '';
                 if (club.logo) {
-                    logoHtml = `<img src="/storage/${club.logo}" alt="${club.club_name} logo" loading="lazy" class="w-full h-full rounded-full object-contain">`;
+                    logoHtml = `<img src="/file/${club.logo}" alt="${club.club_name} logo" loading="lazy" class="w-full h-full rounded-full object-contain">`;
                 } else {
                     logoHtml = `<div class="w-full h-full rounded-full bg-primary flex items-center justify-center">
                         <span class="text-white font-bold text-2xl">${club.club_name.charAt(0)}</span>
@@ -945,7 +972,225 @@ function exploreApp() {
             });
         },
 
+        /* ============================ Events tab ============================
+           Open events only — not started yet, or running right now. The server
+           decides what "open" means (and who may see it); this side just paints. */
+
+        // The events pane exists on desktop only — the mobile explore view shares
+        // this runtime but renders no tabs and no #eventsSection, so every lookup
+        // here is guarded rather than assumed.
+        showEventsPane() {
+            const grid = document.getElementById('clubsGrid');
+            const none = document.getElementById('noResultsContainer');
+            const pane = document.getElementById('eventsSection');
+            if (grid) grid.style.display = 'none';
+            if (none) none.style.display = 'none';
+            if (pane) pane.style.display = 'block';
+        },
+
+        hideEventsPane() {
+            const pane = document.getElementById('eventsSection');
+            if (pane) pane.style.display = 'none';
+        },
+
+        fetchEvents() {
+            // Repaint what we already have so the tab feels instant, then refresh.
+            if (this.eventsLoaded) {
+                this.displayEvents(this.filteredEvents());
+            } else {
+                document.getElementById('loadingSpinner').style.display = 'block';
+            }
+
+            fetch(`{{ route('explore.events') }}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingSpinner').style.display = 'none';
+                if (!data.success) {
+                    this.showAlertMessage('{{ __("explore.ev_failed") }}', 'danger');
+                    return;
+                }
+                this.allEvents = data.events || [];
+                this.eventsLoaded = true;
+                if (this.currentCategory === 'events') {
+                    this.displayEvents(this.filteredEvents());
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('loadingSpinner').style.display = 'none';
+                this.showAlertMessage('{{ __("explore.ev_failed") }}', 'danger');
+            });
+        },
+
+        filteredEvents() {
+            const term = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+            if (!term) return this.allEvents;
+
+            return this.allEvents.filter(ev =>
+                (ev.title || '').toLowerCase().includes(term) ||
+                (ev.club || '').toLowerCase().includes(term) ||
+                (ev.location || '').toLowerCase().includes(term) ||
+                (ev.sport || '').toLowerCase().includes(term)
+            );
+        },
+
+        displayEvents(events) {
+            const liveGroup = document.getElementById('eventsLiveGroup');
+            const upGroup = document.getElementById('eventsUpcomingGroup');
+            const liveBox = document.getElementById('eventsLiveContainer');
+            const upBox = document.getElementById('eventsUpcomingContainer');
+            const empty = document.getElementById('eventsEmpty');
+
+            const live = events.filter(e => e.state === 'live');
+            const upcoming = events.filter(e => e.state !== 'live');
+
+            liveBox.innerHTML = live.map(e => this.eventCardHtml(e)).join('');
+            upBox.innerHTML = upcoming.map(e => this.eventCardHtml(e)).join('');
+
+            // Count badges are optional chrome — a group may render without one.
+            const liveCount = document.getElementById('eventsLiveCount');
+            const upCount = document.getElementById('eventsUpcomingCount');
+            if (liveCount) liveCount.textContent = live.length;
+            if (upCount) upCount.textContent = upcoming.length;
+
+            liveGroup.style.display = live.length ? 'block' : 'none';
+            upGroup.style.display = upcoming.length ? 'block' : 'none';
+            empty.style.display = events.length ? 'none' : 'flex';
+        },
+
+        /** Escape untrusted text before it reaches innerHTML. */
+        esc(value) {
+            return String(value ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+            })[c]);
+        },
+
+        eventCardHtml(ev) {
+            const esc = (v) => this.esc(v);
+            // Colour and icon reach a style attribute / class name — whitelist them
+            // rather than trusting whatever an organiser typed into the event form.
+            const color = /^#[0-9a-fA-F]{3,8}$/.test(ev.color || '') ? ev.color : '#7c3aed';
+            const icon = /^bi-[a-z0-9-]+$/i.test(ev.icon || '') ? ev.icon : 'bi-calendar-event';
+            const live = ev.state === 'live';
+
+            const media = ev.image
+                ? `<img src="/file/${encodeURI(ev.image)}" alt="" loading="lazy"
+                        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]">`
+                : `<div class="w-full h-full" style="background: radial-gradient(120% 120% at 15% 0%, ${color} 0%, ${color}cc 40%, #14121f 100%);">
+                       <div class="absolute inset-0 flex items-center justify-center">
+                           <i class="bi ${icon} text-white/15" style="font-size: 5.5rem;"></i>
+                       </div>
+                   </div>`;
+
+            const statePill = live
+                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg">
+                       <span class="relative flex h-1.5 w-1.5">
+                           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                           <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                       </span>{{ __('explore.ev_live') }}
+                   </span>`
+                : (ev.starts_in
+                    ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-sm text-white text-[10px] font-semibold tracking-wide">
+                           <i class="bi bi-hourglass-split"></i>${esc(ev.starts_in)}
+                       </span>`
+                    : '');
+
+            // Tear-off calendar chip — the anchor the eye lands on first.
+            const dateChip = `
+                <div class="absolute top-3 start-3 w-12 rounded-xl overflow-hidden bg-white/95 backdrop-blur-sm shadow-lg text-center">
+                    <div class="text-[9px] font-bold uppercase tracking-[0.12em] text-white py-0.5" style="background: ${color};">${esc(ev.mon)}</div>
+                    <div class="text-lg font-bold leading-tight text-foreground pt-0.5">${esc(ev.day)}</div>
+                    <div class="text-[9px] text-muted-foreground pb-1 uppercase">${esc(ev.wday)}</div>
+                </div>`;
+
+            const metaRow = (iconName, text) => text
+                ? `<div class="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+                       <i class="bi ${iconName} shrink-0" style="color: ${color};"></i>
+                       <span class="truncate">${esc(text)}</span>
+                   </div>`
+                : '';
+
+            const when = ev.time
+                ? (ev.end_time ? `${ev.time} – ${ev.end_time}` : ev.time)
+                : '{{ __('explore.ev_tba') }}';
+            const dates = ev.end_date_label
+                ? `${ev.date_label} → ${ev.end_date_label}`
+                : ev.date_label;
+
+            // Capacity: a filled bar when the organiser set a cap, a plain count otherwise.
+            let capacity = '';
+            if (ev.capacity) {
+                const pct = Math.min(100, Math.round((ev.going / ev.capacity) * 100));
+                const full = ev.spots_left === 0;
+                capacity = `
+                    <div class="mt-3">
+                        <div class="flex items-center justify-between text-[11px] mb-1">
+                            <span class="text-muted-foreground"><strong class="text-foreground">${ev.going}</strong> / ${ev.capacity} {{ __('explore.ev_going') }}</span>
+                            <span class="font-semibold ${full ? 'text-red-600' : 'text-green-600'}">
+                                ${full ? '{{ __('explore.ev_full') }}' : `${ev.spots_left} {{ __('explore.ev_spots_left') }}`}
+                            </span>
+                        </div>
+                        <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div class="h-full rounded-full transition-[width] duration-700" style="width: ${pct}%; background: ${full ? '#dc2626' : color};"></div>
+                        </div>
+                    </div>`;
+            } else if (ev.going) {
+                capacity = `<div class="mt-3 text-[11px] text-muted-foreground"><i class="bi bi-people me-1"></i><strong class="text-foreground">${ev.going}</strong> {{ __('explore.ev_going') }}</div>`;
+            }
+
+            const fee = ev.fee
+                ? `<span class="px-2 py-0.5 rounded-full bg-muted text-[10px] font-semibold text-foreground">${esc(ev.fee)}</span>`
+                : `<span class="px-2 py-0.5 rounded-full bg-green-500/10 text-[10px] font-semibold text-green-600">{{ __('explore.ev_free') }}</span>`;
+
+            return `
+                <div class="group card border border-gray-100 shadow-sm overflow-hidden rounded-2xl h-full flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                     onclick="window.location.href='${esc(ev.url)}'">
+                    <div class="relative overflow-hidden bg-gray-50" style="aspect-ratio: 16 / 9;">
+                        ${media}
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none"></div>
+                        ${dateChip}
+                        <div class="absolute top-3 end-3">${statePill}</div>
+                        <div class="absolute inset-x-0 bottom-0 p-3">
+                            <h3 class="font-bold text-[15px] text-white leading-tight drop-shadow-sm"
+                                style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(ev.title)}</h3>
+                            ${ev.club ? `<div class="flex items-center gap-1 mt-1 text-xs text-white/85">
+                                <i class="bi bi-shield-check"></i><span class="truncate">${esc(ev.club)}</span>
+                            </div>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-white flex-1 flex flex-col">
+                        <div class="space-y-1.5">
+                            ${metaRow('bi-calendar3', dates)}
+                            ${metaRow('bi-clock', when)}
+                            ${metaRow('bi-geo-alt', ev.location)}
+                        </div>
+
+                        ${capacity}
+
+                        <div class="flex items-center gap-2 mt-auto pt-4">
+                            <a href="${esc(ev.url)}" class="btn btn-primary flex-1 font-semibold text-sm text-center" onclick="event.stopPropagation()">
+                                <i class="bi bi-box-arrow-in-right me-1"></i>{{ __('explore.ev_view_event') }}
+                            </a>
+                            ${fee}
+                        </div>
+                    </div>
+                </div>`;
+        },
+
         filterClubs() {
+            // The search box is shared by every tab — route it to whatever is showing.
+            if (this.currentCategory === 'events') {
+                this.displayEvents(this.filteredEvents());
+                return;
+            }
+
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
 
             let filtered = this.allClubs.filter(club => {

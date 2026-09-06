@@ -434,7 +434,7 @@
         {{-- ============ FOOTER NAV ============ --}}
         <div class="relative z-10 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center gap-3" x-show="!success">
             <button type="button" x-show="step>1" @click="back()" class="m-press w-12 h-12 rounded-2xl grid place-items-center bg-white/15 backdrop-blur" aria-label="{{ __('shared.cancel') }}">
-                <i class="bi bi-arrow-left text-lg"></i>
+                <i class="bi bi-chevron-left text-lg"></i>
             </button>
             <button type="button" x-show="step < steps.length" @click="next()" :disabled="!canNext()"
                     class="m-press flex-1 h-12 rounded-2xl bg-white font-bold text-sm grid place-items-center disabled:opacity-50" :style="`color:${color}`">

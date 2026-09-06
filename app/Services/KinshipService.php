@@ -2,11 +2,17 @@
 
 namespace App\Services;
 
-use App\Models\Person;
-use App\Models\PersonParentLink;
-use App\Models\PersonUnion;
-use App\Models\User;
+use App\Members\Models\Person;
+use App\Members\Models\PersonParentLink;
+use App\Members\Models\PersonUnion;
+use App\Members\Models\User;
 use Illuminate\Support\Facades\DB;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http (MemberController, FamilyController, FamilyTreeController)
+ * and App\Members\Models\Person. Kept shared pending the App\Members migration.
+ */
 
 /**
  * The family-tree brain.
@@ -93,7 +99,7 @@ class KinshipService
     {
         $this->personFor($user); // ensure the user's own node exists
 
-        $rels = \App\Models\UserRelationship::where('guardian_user_id', $user->id)
+        $rels = \App\Members\Models\UserRelationship::where('guardian_user_id', $user->id)
             ->orWhere('dependent_user_id', $user->id)
             ->get();
 
@@ -887,7 +893,7 @@ class KinshipService
             return;
         }
 
-        \App\Models\UserNotification::notifyUser(
+        \App\Members\Models\UserNotification::notifyUser(
             $other->user_id,
             'family_request',
             __(':name added you as family (:rel).', ['name' => $actor->full_name, 'rel' => __($type)]),

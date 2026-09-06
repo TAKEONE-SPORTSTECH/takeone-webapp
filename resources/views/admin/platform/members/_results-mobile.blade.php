@@ -51,23 +51,44 @@
                  data-popup-url="{{ route('admin.platform.members.popup', $member->id) }}">
                 {{-- gender accent rail --}}
                 <span class="absolute left-0 top-0 bottom-0 w-1 {{ $isMale ? 'bg-primary' : 'bg-pink-500' }}"></span>
-                <a href="{{ route('member.show', $member->uuid) }}" class="flex items-center gap-3 p-3 pl-4 no-underline">
+                {{-- The card keeps the height it always had — the text block plus the
+                     12px above and below, which now lives on the text column since the
+                     anchor has no padding on the picture's side. The portrait then
+                     fills that height and sits flush against the gender rail, so rail
+                     and photo read as one block (the card's rounded-2xl overflow-hidden
+                     clips its left corners).
+
+                     Height comes from the row (self-stretch); the width is stated as
+                     66px, which is 3:4 of the ~88px the card settles at. It has to be
+                     stated: flex resolves the width BEFORE the stretched height, so an
+                     aspect-ratio has nothing to derive from and the box collapses to
+                     zero — the pictures simply vanish.
+
+                     The image stays absolutely positioned inside the box so its own
+                     600x800 never becomes the box's flex base size, which is what made
+                     the card grow to the picture in an earlier attempt. --}}
+                <a href="{{ route('member.show', $member->uuid) }}" class="flex items-stretch gap-3 ps-1 pe-3 no-underline">
                     {{-- avatar --}}
-                    <span class="relative shrink-0">
-                        <span class="block w-14 h-14 rounded-2xl overflow-hidden ring-2 {{ $isMale ? 'ring-primary/30' : 'ring-pink-400/30' }}">
-                            @if($member->profile_picture)
-                                <img src="{{ asset('storage/'.$member->profile_picture) }}?v={{ optional($member->updated_at)->timestamp }}" alt="" class="w-14 h-14 object-cover">
-                            @else
-                                <span class="w-14 h-14 flex items-center justify-center text-white font-bold text-xl {{ $isMale ? 'bg-gradient-to-br from-purple-500 to-primary' : 'bg-gradient-to-br from-pink-500 to-pink-700' }}">{{ mb_strtoupper(mb_substr($member->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
-                            @endif
-                        </span>
+                    <span class="relative shrink-0 self-stretch w-[66px] overflow-hidden">
+                        @if($member->profile_picture)
+                            <img src="{{ file_url($member->profile_picture) }}?v={{ optional($member->updated_at)->timestamp }}" alt="" class="absolute inset-0 w-full h-full object-cover">
+                        @else
+                            {{-- No picture (or one that was removed): the shared portrait
+                                 placeholder, on a tile tinted to match this row's gender
+                                 rail. Same artwork as every other avatar fallback on the
+                                 platform, rather than a second idea of what "no photo"
+                                 looks like. --}}
+                            <x-gender-avatar :gender="$member->gender"
+                                             :bg="$isMale ? 'hsl(250 55% 60%)' : '#ec4899'"
+                                             class="absolute inset-0 w-full h-full" />
+                        @endif
                         @if($clubs > 0)
-                            <span class="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">{{ $clubs }}</span>
+                            <span class="absolute bottom-1 end-1 min-w-[20px] h-5 px-1 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">{{ $clubs }}</span>
                         @endif
                     </span>
 
-                    {{-- info --}}
-                    <span class="flex-1 min-w-0">
+                    {{-- info — its py-3 is the card's original vertical padding --}}
+                    <span class="flex-1 min-w-0 py-3 self-center">
                         <span class="flex items-center gap-1.5">
                             <span class="font-bold text-foreground truncate text-[15px]">{{ $member->full_name ?? __('platform.unknown') }}</span>
                             @if($flag)<span class="text-sm leading-none">{{ $flag }}</span>@endif
@@ -87,7 +108,8 @@
                         @endif
                     </span>
 
-                    <i class="bi bi-chevron-right text-muted-foreground/50 shrink-0"></i>
+                    {{-- self-center: the row is items-stretch for the portrait's sake --}}
+                    <i class="bi bi-chevron-right text-muted-foreground/50 shrink-0 self-center"></i>
                 </a>
             </div>
         @endforeach

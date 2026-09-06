@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
-use App\Models\UserPost;
+use App\Members\Models\User;
+use App\Members\Models\UserPost;
 
 class UserPostPolicy
 {

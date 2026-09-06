@@ -103,6 +103,21 @@
         border:2px solid hsl(250 65% 65%);transform:translate(-50%,-50%) rotate(-2deg);}
 
     /* ---- Bench (entrants tray) — outside the canvas, so it never zooms ---- */
+    /* ---- Group table: the standings, on the canvas with the cards ---- */
+    .bk-table{position:absolute;inset-inline-start:40px;top:24px;z-index:15;background:#fff;
+        border:1px solid hsl(220 15% 90%);border-radius:14px;overflow:hidden;
+        box-shadow:0 4px 14px hsl(250 30% 40% / .10);}
+    .bk-table-row{display:flex;align-items:center;gap:6px;padding:5px 10px;font-size:.7rem;
+        border-bottom:1px solid hsl(220 15% 95%);}
+    .bk-table-row:last-child{border-bottom:0;}
+    .bk-table-head{background:hsl(250 40% 97%);font-weight:800;color:hsl(250 25% 45%);
+        text-transform:uppercase;font-size:.58rem;letter-spacing:.06em;}
+    .bk-table-row.is-through{background:hsl(145 60% 97%);}
+    .bk-table-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+        white-space:nowrap;font-weight:700;color:hsl(220 20% 20%);}
+    .bk-table-num{flex:0 0 20px;text-align:center;color:hsl(220 10% 45%);font-weight:700;}
+    .bk-table-num.is-pts{color:hsl(250 55% 50%);font-weight:800;}
+
     .bk-bench{position:absolute;z-index:20;background:#fff;border:1px solid hsl(220 15% 90%);
         box-shadow:0 10px 30px hsl(250 30% 35% / .16);display:flex;flex-direction:column;overflow:hidden;}
     .bk-bench-head{display:flex;align-items:center;gap:8px;padding:9px 12px;flex:0 0 auto;
@@ -172,7 +187,7 @@ window.BracketBoard = window.BracketBoard || (function () {
         S = {
             cfg, vp, canvas, svg, layer,
             scale: 1, tx: 0, ty: 0, moved: false,
-            divisions: [], division: null, locked: false,
+            divisions: [], division: null, locked: false, hiddenMsg: null,
             canArrange: false,       // server truth, refreshed on every load
             arrange: false,          // arrange mode on/off
             pick: null,              // { from, name } — tap-to-place selection
@@ -200,13 +215,23 @@ window.BracketBoard = window.BracketBoard || (function () {
 
             S.divisions = data.divisions || [];
             S.locked = !!data.locked;
+            /* A draw the organiser has not let out yet. The server sends no
+               divisions AND says why, so the board can name the day it opens
+               instead of drawing nothing — which reads as "nobody entered". */
+            S.hiddenMsg = data.hidden ? (data.hidden_message || null) : null;
             // Permission is whatever the SERVER just said — never a client flag
             // that a stale page is still carrying.
             S.canArrange = !!data.can_arrange;
             if (!S.canArrange) { S.arrange = false; S.pick = null; }
 
             const stillThere = S.divisions.some(d => d.id === S.division);
-            if (!stillThere) S.division = S.divisions[0] ? S.divisions[0].id : null;
+            if (!stillThere) {
+                // Nothing selected yet (first load), or the selection is gone.
+                // The host may have asked for a particular division — a bout's
+                // "View draw" names the bout's own — otherwise the first.
+                const wanted = S.divisions.find(d => String(d.id) === String(S.cfg.initialDivision ?? ''));
+                S.division = wanted ? wanted.id : (S.divisions[0] ? S.divisions[0].id : null);
+            }
 
             render(keepView);
             emit('bracket:loaded', {
@@ -217,7 +242,7 @@ window.BracketBoard = window.BracketBoard || (function () {
             S.layer.innerHTML = '';
             S.svg.innerHTML = '';
             const box = el('div', 'bk-empty');
-            const icon = el('i', 'bi bi-diagram-3 text-4xl'); box.appendChild(icon);
+            const icon = el('i', 'bi bi-diagram-3 bracket-icon text-4xl'); box.appendChild(icon);
             const msg = el('div'); msg.textContent = S.cfg.text.loadFailed; box.appendChild(msg);
             S.canvas.appendChild(box);
         }
@@ -252,8 +277,11 @@ window.BracketBoard = window.BracketBoard || (function () {
         if (!div || !div.rounds.length) {
             renderBench(div);
             const box = el('div', 'bk-empty');
-            const icon = el('i', 'bi bi-diagram-3 text-4xl'); box.appendChild(icon);
-            const msg = el('div'); msg.textContent = S.cfg.text.noDraw; box.appendChild(msg);
+            /* Withheld and not-yet-drawn are different facts and get different
+               faces: a padlock plus the day it opens, or the bracket glyph. */
+            const icon = el('i', S.hiddenMsg ? 'bi bi-lock-fill text-4xl' : 'bi bi-diagram-3 bracket-icon text-4xl');
+            box.appendChild(icon);
+            const msg = el('div'); msg.textContent = S.hiddenMsg || S.cfg.text.noDraw; box.appendChild(msg);
             S.canvas.appendChild(box);
             return;
         }
@@ -275,7 +303,9 @@ window.BracketBoard = window.BracketBoard || (function () {
         }));
 
         const cardH = (cards[0] && cards[0][0] && cards[0][0].offsetHeight) || CARD_H_GUESS;
-        const totalH = Math.max(1, firstCount) * (cardH + ROW_GAP) + 90;
+        // A group's table sits above the columns, so everything starts lower.
+        const topPad = (div.standings && div.standings.length) ? 60 + div.standings.length * 26 : 0;
+        const totalH = Math.max(1, firstCount) * (cardH + ROW_GAP) + 90 + topPad;
 
         S.layer.style.height = totalH + 'px';
         S.svg.setAttribute('width', totalW);
@@ -284,10 +314,12 @@ window.BracketBoard = window.BracketBoard || (function () {
         // y-centre of every bout, round by round: round 0 stacks evenly, and
         // every later bout sits at the midpoint of the two that feed it.
         const centres = [];
-        const stacked = i => 70 + i * (cardH + ROW_GAP) + cardH / 2;
+        const stacked = i => 70 + topPad + i * (cardH + ROW_GAP) + cardH / 2;
         rounds.forEach((round, r) => {
             centres[r] = round.matches.map((m, i) => {
-                if (r === 0) return stacked(i);
+                // Same reason as drawLinks: after a group, a bout's position is
+                // its own, not the midpoint of two that do not feed it.
+                if (r === 0 || rounds[r - 1].group) return stacked(i);
                 const a = centres[r - 1][i * 2], b = centres[r - 1][i * 2 + 1];
                 if (a === undefined) return stacked(i);
                 return b === undefined ? a : (a + b) / 2;
@@ -299,7 +331,7 @@ window.BracketBoard = window.BracketBoard || (function () {
 
             const label = el('div', 'bk-round-label');
             label.style.left = x + 'px';
-            label.style.top = '24px';
+            label.style.top = (24 + topPad) + 'px';
             label.style.width = CARD_W + 'px';
             label.textContent = round.name;
             S.layer.appendChild(label);
@@ -314,6 +346,7 @@ window.BracketBoard = window.BracketBoard || (function () {
         });
 
         drawLinks(rounds, centres, totalW);
+        renderStandings(div, totalW);
         renderBench(div);
         applyArrangeClasses();
 
@@ -426,6 +459,12 @@ window.BracketBoard = window.BracketBoard || (function () {
         const sign = S.cfg.rtl ? -1 : 1;
 
         for (let r = 0; r < rounds.length - 1; r++) {
+            // A group feeds the knockout through the TABLE, not by position:
+            // bout ⌊i/2⌋ of the next round is a semifinal nobody has qualified
+            // for yet, and a line drawn to it would state a progression that
+            // does not exist.
+            if (rounds[r].group) continue;
+
             const fromX = columnX(r, rounds.length, totalW) + (S.cfg.rtl ? 0 : CARD_W);
             const toX = columnX(r + 1, rounds.length, totalW) + (S.cfg.rtl ? CARD_W : 0);
             const midX = (fromX + toX) / 2;
@@ -462,6 +501,63 @@ window.BracketBoard = window.BracketBoard || (function () {
     // Bench — the entrants tray. Lives OUTSIDE the transformed canvas so it
     // stays legible at any zoom, and only exists for someone who may arrange.
     // -----------------------------------------------------------------
+    /**
+     * The group table.
+     *
+     * A ladder needs no such thing — it IS the record of who beat whom. A group
+     * answers "who is doing best", which lives in none of its bouts and has to
+     * be shown as a table beside them. Drawn into the same transformed canvas
+     * as the cards, so it pans and zooms with the board rather than floating
+     * over it.
+     */
+    function renderStandings(div, totalW) {
+        if (!div.standings || !div.standings.length) return;
+
+        const box = el('div', 'bk-table');
+
+        /* Wide enough to READ a name in, whatever the board is. A group with
+           one column makes a narrow canvas, and sizing the table to that
+           squeezed every competitor down to two letters and an ellipsis. */
+        const width = Math.max(300, Math.min(totalW - 80, 420));
+        box.style.width = width + 'px';
+
+        // The canvas has to be at least as wide as the table, or fit() zooms to
+        // the columns and crops it.
+        if (width + 80 > parseFloat(S.layer.style.width || 0)) {
+            S.layer.style.width = (width + 80) + 'px';
+            S.svg.setAttribute('width', width + 80);
+        }
+
+        const head = el('div', 'bk-table-row bk-table-head');
+        ['#', '', 'P', 'W', 'D', 'L', 'Pts'].forEach((h, i) => {
+            const c = el('span', i === 1 ? 'bk-table-name' : 'bk-table-num');
+            c.textContent = h;
+            head.appendChild(c);
+        });
+        box.appendChild(head);
+
+        div.standings.forEach(row => {
+            const line = el('div', 'bk-table-row');
+            if (row.position <= 2) line.classList.add('is-through');
+
+            const pos = el('span', 'bk-table-num'); pos.textContent = row.position; line.appendChild(pos);
+
+            const name = el('span', 'bk-table-name');
+            name.textContent = row.name || '';
+            line.appendChild(name);
+
+            [row.played, row.won, row.drawn, row.lost].forEach(v => {
+                const c = el('span', 'bk-table-num'); c.textContent = v; line.appendChild(c);
+            });
+
+            const pts = el('span', 'bk-table-num is-pts'); pts.textContent = row.points; line.appendChild(pts);
+
+            box.appendChild(line);
+        });
+
+        S.layer.appendChild(box);
+    }
+
     function renderBench(div) {
         if (S.bench) { S.bench.remove(); S.bench = null; }
         if (!S.arrange || !S.canArrange || !div) return;

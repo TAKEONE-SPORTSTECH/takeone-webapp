@@ -6,7 +6,7 @@ return [
     'club_waiting'        => 'ناديك بانتظارك. لنبدأ.',
 
     // Form
-    'email_or_phone'      => 'البريد الإلكتروني أو الهاتف',
+    'email_or_phone'      => 'رقم الهاتف أو البريد الإلكتروني',
     'password'            => 'كلمة المرور',
     'show_password'       => 'إظهار كلمة المرور',
     'hide_password'       => 'إخفاء كلمة المرور',
@@ -37,7 +37,7 @@ return [
     'auth_desktop_login_subtitle'               => 'مرحباً بعودتك! سجّل الدخول للمتابعة',
     'auth_desktop_login_tab_password'            => 'كلمة المرور',
     'auth_desktop_login_tab_link'                => 'رابط الدخول',
-    'auth_desktop_login_email_placeholder'       => 'البريد الإلكتروني',
+    'auth_desktop_login_email_placeholder'       => 'رقم الهاتف أو البريد الإلكتروني',
     'auth_desktop_login_password_placeholder'    => 'كلمة المرور',
     'auth_desktop_login_remember_me'             => 'تذكرني',
     'auth_desktop_login_sign_in'                 => 'تسجيل الدخول',
@@ -125,4 +125,9 @@ return [
     'auth_verify_email_resend_button'        => 'إعادة إرسال بريد التوثيق',
     'auth_verify_email_wrong_account'        => 'حساب خاطئ؟',
     'auth_verify_email_sign_out'             => 'تسجيل الخروج',
+
+    /* "Who is signing in?" — a telephone number shared by a household. */
+    'choose_title' => 'من يسجّل الدخول؟',
+    'choose_sub' => 'أكثر من شخص يستخدم هذا الرقم. اختر من يسجّل الدخول.',
+    'choose_not_you' => 'استخدم رقماً أو بريداً آخر',
 ];

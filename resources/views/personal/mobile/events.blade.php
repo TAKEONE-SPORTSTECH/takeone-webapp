@@ -53,6 +53,7 @@
         </div>
     </header>
 
+
     @if(empty($demoList))
         <div class="px-4 mt-6">
             <div class="bg-white rounded-2xl border border-gray-100 px-5 py-12 text-center">
@@ -88,16 +89,18 @@
                     <span class="inline-flex items-center gap-1.5"><i class="bi bi-clock-fill"></i>{{ $feat['time'] }}</span>
                 </div>
 
-                {{-- capacity bar --}}
-                <div class="mt-4">
-                    <div class="flex items-center justify-between text-[11px] text-white/80 mb-1.5">
-                        <span>{{ $feat['going'] }} {{ __('personal.personal_events_going') }}</span>
-                        <span>{{ $feat['cap'] - $feat['going'] }} {{ __('personal.personal_events_spots_left') }}</span>
+                {{-- capacity bar — only when a limit was actually set --}}
+                @if($feat['capped'] ?? false)
+                    <div class="mt-4">
+                        <div class="flex items-center justify-between text-[11px] text-white/80 mb-1.5">
+                            <span>{{ $feat['going'] }} {{ __('personal.personal_events_going') }}</span>
+                            <span>{{ max(0, $feat['cap'] - $feat['going']) }} {{ __('personal.personal_events_spots_left') }}</span>
+                        </div>
+                        <div class="h-1.5 rounded-full bg-white/25 overflow-hidden">
+                            <div class="m-bar-fill h-full rounded-full bg-white" style="width: {{ round($feat['going'] / $feat['cap'] * 100) }}%"></div>
+                        </div>
                     </div>
-                    <div class="h-1.5 rounded-full bg-white/25 overflow-hidden">
-                        <div class="m-bar-fill h-full rounded-full bg-white" style="width: {{ round($feat['going'] / $feat['cap'] * 100) }}%"></div>
-                    </div>
-                </div>
+                @endif
 
                 <span class="m-press mt-4 w-full py-2.5 rounded-xl bg-white text-foreground font-bold text-sm flex items-center justify-center gap-2">
                     <i class="bi bi-arrow-right-circle"></i> {{ __('personal.personal_events_view_details') }}

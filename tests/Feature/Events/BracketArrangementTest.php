@@ -6,9 +6,9 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\HealthRecord;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\HealthRecord;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**
@@ -207,8 +207,11 @@ class BracketArrangementTest extends TestCase
         $category = $this->drawnDivision($event);
         $bout = $this->firstRound($category)[0];
 
-        // The event is under way — nobody's opponent changes now.
+        // The event is under way — nobody's opponent changes now. Backdating no
+        // longer does this: an event runs because someone STARTED it, not
+        // because the clock passed its start time.
         $event->update(['date' => now()->subDay()->toDateString(), 'end_date' => now()->addDay()->toDateString()]);
+        $event->forceFill(['started_at' => now(), 'started_by' => $this->organiser->id])->save();
 
         $before = $bout->fresh()->a_name;
 
@@ -383,7 +386,7 @@ class BracketArrangementTest extends TestCase
             ->assertJson(['can_arrange' => false]);
     }
 
-    public function test_the_arrange_control_is_not_rendered_for_a_viewer_who_cannot_manage(): void
+    public function test_the_public_board_never_carries_the_arrange_control(): void
     {
         $event = $this->event();
         $this->drawnDivision($event);
@@ -392,13 +395,19 @@ class BracketArrangementTest extends TestCase
         // The URL is emitted through @json, which escapes forward slashes.
         $needle = trim(json_encode(route('me.events.bracket.arrange', $event->uuid)), '"');
 
-        $this->actingAs($this->organiser)->get("/me/events/{$event->uuid}/brackets")
+        // /brackets SHOWS the draw. Nobody rearranges it there — not even the
+        // organiser, whose editor lives in the console. A visitor came to read
+        // the bracket, not to run it.
+        foreach ([$this->organiser, $watcher] as $viewer) {
+            $this->actingAs($viewer)->get("/me/events/{$event->uuid}/brackets")
+                ->assertOk()
+                ->assertDontSee($needle, false);
+        }
+
+        // The organiser's own editor is where moving people happens.
+        $this->actingAs($this->organiser)->get("/me/events/{$event->uuid}/brackets/manage")
             ->assertOk()
             ->assertSee($needle, false);
-
-        $this->actingAs($watcher)->get("/me/events/{$event->uuid}/brackets")
-            ->assertOk()
-            ->assertDontSee($needle, false);
     }
 
     private function bracketData(ClubEvent $event): array

@@ -4,9 +4,15 @@ namespace App\Services;
 
 use App\Mail\WelcomeEmail;
 use App\Models\Invoice;
-use App\Models\User;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserRelationship;
 use Illuminate\Support\Facades\Mail;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http (MemberController, FamilyController, FamilyTreeController).
+ * Kept shared pending the App\Members migration; it is not club-private.
+ */
 
 class FamilyService
 {

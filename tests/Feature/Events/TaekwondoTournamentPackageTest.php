@@ -8,9 +8,9 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\HealthRecord;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\HealthRecord;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**
@@ -89,8 +89,11 @@ class TaekwondoTournamentPackageTest extends TestCase
             new ClubEvent(['event_type' => 'belt_test', 'sport' => 'taekwondo'])
         )->key());
 
-        // Same type, different sport → not ours.
-        $this->assertSame('generic', $registry->for(
+        // Same type, different sport → not ours. Karate now has a package of
+        // its own (added to config/event_types.php after this test was
+        // written), so the karate championship lands there rather than in the
+        // generic fallback — either way it must never be claimed by Taekwondo.
+        $this->assertSame('karate_tournament', $registry->for(
             new ClubEvent(['event_type' => 'championship', 'sport' => 'karate'])
         )->key());
     }

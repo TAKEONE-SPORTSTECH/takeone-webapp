@@ -25,7 +25,7 @@
             <div class="flex items-center justify-between p-4 border-b border-border">
                 <div class="flex items-center gap-2 min-w-0">
                     <span class="w-10 h-10 rounded-lg bg-accent flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        @if($business->logo)<img src="{{ asset('storage/'.$business->logo) }}" alt="" class="w-10 h-10 object-cover">@else<i class="bi bi-buildings text-primary"></i>@endif
+                        @if($business->logo)<img src="{{ file_url($business->logo) }}" alt="" class="w-10 h-10 object-cover">@else<i class="bi bi-buildings text-primary"></i>@endif
                     </span>
                     <div class="min-w-0">
                         <p class="font-bold text-foreground truncate text-sm">{{ $business->name }}</p>
@@ -46,7 +46,7 @@
                     <a href="{{ route('admin.club.dashboard', $c['slug']) }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
                         <span class="w-6 h-6 rounded bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                            @if(!empty($c['logo']))<img src="{{ asset('storage/'.$c['logo']) }}" alt="" class="w-6 h-6 object-cover">@else<i class="bi bi-building text-[11px] text-muted-foreground"></i>@endif
+                            @if(!empty($c['logo']))<img src="{{ file_url($c['logo']) }}" alt="" class="w-6 h-6 object-cover">@else<i class="bi bi-building text-[11px] text-muted-foreground"></i>@endif
                         </span>
                         <span class="truncate">{{ $c['name'] }}</span>
                     </a>

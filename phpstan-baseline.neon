@@ -1,0 +1,25 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: app/Events/Sports/BrazilianJiuJitsu/Tournament/Scoreboard/MatState.php
+
+		-
+			message: '#^Called ''diff'' on Laravel collection, but could have been retrieved as a query\.$#'
+			identifier: larastan.noUnnecessaryCollectionCall
+			count: 1
+			path: app/Http/Controllers/PersonalMobileController.php
+
+		-
+			message: '#^Cannot unset offset string on array\{\}\|string\.$#'
+			identifier: unset.offset
+			count: 1
+			path: app/Models/ActivityCatalog.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: app/Models/ActivityCatalog.php

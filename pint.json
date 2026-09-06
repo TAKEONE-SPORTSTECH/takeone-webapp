@@ -1,0 +1,14 @@
+{
+    "preset": "laravel",
+    "exclude": [
+        "bootstrap/cache",
+        "docker",
+        "drafts",
+        "flutter",
+        "node_modules",
+        "packages",
+        "public",
+        "storage",
+        "vendor"
+    ]
+}

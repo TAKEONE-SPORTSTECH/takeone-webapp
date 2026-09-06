@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ClubEvent;
-use App\Models\UserNotification;
+use App\Members\Models\UserNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -58,7 +58,7 @@ class DeliverEventNotification implements ShouldQueue
                 'icon' => $this->message['icon'],
                 'action_url' => $url,
                 'tenant_id' => $event->tenant_id,
-                'subject_type' => ClubEvent::class,
+                'subject_type' => (new ClubEvent)->getMorphClass(),
                 'subject_id' => $event->id,
                 'context' => $this->milestone,
             ]);

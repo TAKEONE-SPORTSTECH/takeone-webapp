@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Clubs\Models\ClubPackageActivity;
+use App\Members\Models\User;
 
 /**
  * A substitute trainer covering one dated occurrence of a club class slot.

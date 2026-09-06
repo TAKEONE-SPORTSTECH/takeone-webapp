@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClubEvent;
-use App\Models\Membership;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\Membership;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 use App\Support\Qr;
 use App\Traits\HandlesClubAuthorization;
 use Illuminate\Contracts\View\View;
@@ -63,9 +63,20 @@ class QrController extends Controller
     }
 
     /** Event URL where a logged-in user can view it and take part. */
+    /**
+     * The address to put on an event's QR code.
+     *
+     * The PUBLIC page when the organiser has published one — a code on a wall
+     * or a poster is scanned by people who are not signed in, and sending them
+     * to the member page means a login form instead of a competition. Falls
+     * back to the member page for an event that was never published, which is
+     * what every existing code already points at.
+     */
     public static function eventUrl(ClubEvent $event): string
     {
-        return route('me.events.show', ['event' => $event->uuid]);
+        return app(\App\Events\Support\PublicEvent::class)->isPublic($event)
+            ? route('events.public', ['event' => $event->uuid])
+            : route('me.events.show', ['event' => $event->uuid]);
     }
 
     // ─────────────────────────── Posters ───────────────────────────
@@ -80,7 +91,7 @@ class QrController extends Controller
             'kicker' => 'Club page',
             'cta' => 'Scan to view the club',
             'hint' => 'See packages, schedule, gallery and more.',
-            'logo' => $club->logo ? asset('storage/'.$club->logo) : null,
+            'logo' => $club->logo ? file_url($club->logo) : null,
             'logoIcon' => 'bi-buildings',
             'url' => self::clubPageUrl($club),
         ]);
@@ -96,7 +107,7 @@ class QrController extends Controller
             'kicker' => 'Register',
             'cta' => 'Scan to register',
             'hint' => 'Create your account and enrol in minutes.',
-            'logo' => $club->logo ? asset('storage/'.$club->logo) : null,
+            'logo' => $club->logo ? file_url($club->logo) : null,
             'logoIcon' => 'bi-person-plus',
             'url' => self::clubRegisterUrl($club),
         ]);
@@ -112,7 +123,7 @@ class QrController extends Controller
             'kicker' => 'Profile',
             'cta' => 'Scan to view profile',
             'hint' => 'Connect and see their activity.',
-            'logo' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
+            'logo' => $user->profile_picture ? file_url($user->profile_picture) : null,
             'logoIcon' => 'bi-person',
             'url' => $this->memberQrTarget($request, $user),
         ]);
@@ -142,7 +153,7 @@ class QrController extends Controller
             'kicker' => 'Event',
             'cta' => 'Scan to take part',
             'hint' => 'Open the event to register and join.',
-            'logo' => $club && $club->logo ? asset('storage/'.$club->logo) : null,
+            'logo' => $club && $club->logo ? file_url($club->logo) : null,
             'logoIcon' => 'bi-calendar-event',
             'url' => self::eventUrl($event),
         ]);
@@ -195,7 +206,11 @@ class QrController extends Controller
         if ($event->is_archived) {
             return false;
         }
-        if ($me->isSuperAdmin() || $event->created_by === $me->id) {
+        // Whoever RUNS the event — creator, the host club's owner or admins, an
+        // appointed organiser, platform staff. Asked of the one place that
+        // answers it, so this poster cannot end up narrower than the console
+        // it prints a code for (App\Events\Support\EventAccess::canManage).
+        if (app(\App\Events\Support\EventAccess::class)->canManage($event, $me)) {
             return true;
         }
         if ($me->memberClubs()->whereKey($event->tenant_id)->exists()) {

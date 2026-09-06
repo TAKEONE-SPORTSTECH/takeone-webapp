@@ -3,7 +3,7 @@
 namespace App\Traits;
 
 use App\Models\ClubMemberSubscription;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Collection;
 
 /**
@@ -33,7 +33,7 @@ trait BuildsMemberPayments
                 'type' => 'invoice',
                 'date' => $inv->created_at,
                 'club' => $inv->tenant->club_name ?? 'N/A',
-                'club_logo' => $inv->tenant?->logo ? asset('storage/'.$inv->tenant->logo) : null,
+                'club_logo' => $inv->tenant?->logo ? file_url($inv->tenant->logo) : null,
                 'item' => 'Invoice',
                 'amount' => $inv->amount,
                 'status_key' => $inv->status === 'paid' ? 'paid' : ($inv->status === 'due' ? 'due' : 'other'),
@@ -63,7 +63,7 @@ trait BuildsMemberPayments
                 'type' => 'subscription',
                 'date' => $sub->created_at,
                 'club' => $sub->tenant->club_name ?? 'N/A',
-                'club_logo' => $sub->tenant?->logo ? asset('storage/'.$sub->tenant->logo) : null,
+                'club_logo' => $sub->tenant?->logo ? file_url($sub->tenant->logo) : null,
                 'item' => $sub->package->name ?? 'Subscription',
                 'amount' => $sub->amount_due,
                 'status_key' => $key,

@@ -2,14 +2,14 @@
 
 namespace Database\Seeders;
 
-use App\Models\ClubTimelinePost;
+use App\Clubs\Models\ClubTimelinePost;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubTimelinePostLike;
-use App\Models\Tenant;
-use App\Models\User;
-use App\Models\UserPost;
-use App\Models\UserPostComment;
-use App\Models\UserPostLike;
+use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
+use App\Members\Models\UserPost;
+use App\Members\Models\UserPostComment;
+use App\Members\Models\UserPostLike;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;

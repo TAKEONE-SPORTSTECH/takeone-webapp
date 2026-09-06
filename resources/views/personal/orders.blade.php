@@ -19,8 +19,8 @@
         <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10"></div>
         <div class="relative z-10 flex items-center gap-3">
             <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.market') }}')"
-               class="m-press w-9 h-9 rounded-xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left"></i>
+               class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold flex-shrink-0" aria-label="{{ __('shared.back') }}">
+                <i class="bi bi-chevron-left"></i>
             </button>
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('nav.tab_market') }}</p>
@@ -50,7 +50,7 @@
                         <div class="flex items-center gap-3">
                             <span class="w-10 h-10 rounded-xl grid place-items-center overflow-hidden flex-shrink-0 bg-muted">
                                 @if($it->image_path)
-                                    <img src="{{ asset('storage/'.$it->image_path) }}" alt="" class="w-10 h-10 object-cover">
+                                    <img src="{{ file_url($it->image_path) }}" alt="" class="w-10 h-10 object-cover">
                                 @else
                                     <i class="bi bi-bag text-muted-foreground"></i>
                                 @endif
@@ -131,10 +131,24 @@
             <div class="absolute inset-0 bg-black/50" @click="recv = null"></div>
             <div class="relative w-full bg-white rounded-t-3xl max-h-[90vh] flex flex-col"
                  x-transition:enter="transition ease-out duration-250" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-                <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mt-2.5"></div>
-                <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-                    <h3 class="font-black text-foreground flex items-center gap-2"><i class="bi bi-patch-check text-primary"></i> {{ __('market.confirm_receipt') }}</h3>
-                    <button type="button" @click="recv = null" class="m-press w-8 h-8 rounded-full bg-muted grid place-items-center"><i class="bi bi-x-lg text-xs"></i></button>
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-patch-check text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('market.confirm_receipt') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5" x-text="recv?.club"></p>
+                        </div>
+                        <button type="button" @click="recv = null" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 space-y-5" x-show="recv">

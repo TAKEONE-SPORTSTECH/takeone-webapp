@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\ClubAdmin;
 
-use App\Models\ClubPackage;
+use App\Clubs\Models\ClubPackage;
 use Tests\TestCase;
 
 class PackageTest extends TestCase

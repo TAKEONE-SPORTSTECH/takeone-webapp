@@ -2,9 +2,9 @@
 
 namespace App\Mcp\Tools;
 
-use App\Models\ClubAchievement;
-use App\Models\TournamentEvent;
-use App\Models\User;
+use App\Clubs\Models\ClubAchievement;
+use App\Members\Models\TournamentEvent;
+use App\Members\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -73,6 +73,12 @@ class GetMemberTool extends BaseTool
             'medals' => $this->authenticMedals($member),
             // Only VERIFIED skills (provenance-backed): activity + club + since + proficiency.
             'skills' => $this->verifiedSkills($member),
+            // The pictures on the profile; the avatar is the one flagged is_avatar.
+            'photos' => $member->photos->map(fn ($p) => [
+                'uuid' => $p->uuid,
+                'url' => $p->url(),
+                'is_avatar' => $p->path === $member->profile_picture,
+            ])->values(),
             // Self-managed certifications / qualifications the member holds.
             'certifications' => $member->certifications()
                 ->orderByRaw('issue_date IS NULL, issue_date DESC')
@@ -110,7 +116,7 @@ class GetMemberTool extends BaseTool
      */
     private function verifiedSkills(User $member): array
     {
-        return \App\Models\SkillAcquisition::where('user_id', $member->id)
+        return \App\Members\Models\SkillAcquisition::where('user_id', $member->id)
             ->verified()
             ->with(['activity:id,name,translations', 'verifiedByTenant:id,club_name'])
             ->get()

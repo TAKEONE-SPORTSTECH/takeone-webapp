@@ -20,19 +20,21 @@
          class="fixed inset-x-0 bottom-0 z-[61] flex flex-col bg-background rounded-t-3xl shadow-2xl max-h-[94vh] h-[94vh]"
          style="display:none;" @click.stop>
 
-        <div class="flex-shrink-0 rounded-t-3xl bg-white border-b border-border">
-            <div class="flex justify-center pt-2.5 pb-1">
-                <span class="h-1.5 w-10 rounded-full bg-gray-300"></span>
-            </div>
-            <div class="flex items-center gap-3 px-4 pb-3">
-                <span class="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center flex-shrink-0">
-                    <i class="bi bi-search text-primary text-lg"></i>
+        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+
+            <div class="relative flex items-start gap-3">
+                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                    <i class="bi bi-search text-xl"></i>
                 </span>
                 <div class="min-w-0 flex-1">
-                    <p class="font-bold text-foreground leading-tight">{{ __('member.search_existing_title') }}</p>
-                    <p class="text-[11px] text-muted-foreground leading-tight">{{ __('member.search_existing_sheet_subtitle') }}</p>
+                    <h3 class="text-lg font-black leading-tight">{{ __('member.search_existing_title') }}</h3>
+                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.search_existing_sheet_subtitle') }}</p>
                 </div>
-                <button type="button" @click="close()" class="m-press w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted" aria-label="{{ __('member.close') }}">
+                <button type="button" @click="close()" aria-label="{{ __('member.close') }}"
+                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -63,7 +65,7 @@
                             <button type="button" @click="selected = r"
                                     class="m-press w-full text-start flex items-center gap-3 rounded-xl border border-gray-100 p-3">
                                 <span class="w-10 h-10 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
-                                    <template x-if="r.avatar"><img :src="r.avatar" alt="" class="w-10 h-10 object-cover"></template>
+                                    <template x-if="r.avatar"><img :src="r.avatar" alt="" class="w-[30px] h-10 object-cover"></template>
                                     <template x-if="!r.avatar"><i class="bi bi-person-fill text-muted-foreground"></i></template>
                                 </span>
                                 <span class="min-w-0 flex-1">
@@ -82,7 +84,7 @@
                 <div>
                     <div class="flex items-center gap-3 rounded-xl border border-sky-100 bg-sky-50 p-3 mb-4">
                         <span class="w-11 h-11 rounded-full overflow-hidden bg-white grid place-items-center flex-shrink-0 border border-sky-100">
-                            <template x-if="selected.avatar"><img :src="selected.avatar" alt="" class="w-11 h-11 object-cover"></template>
+                            <template x-if="selected.avatar"><img :src="selected.avatar" alt="" class="w-[33px] h-11 object-cover"></template>
                             <template x-if="!selected.avatar"><i class="bi bi-person-fill text-sky-400"></i></template>
                         </span>
                         <span class="min-w-0 flex-1">

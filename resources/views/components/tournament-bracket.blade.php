@@ -7,7 +7,24 @@
     'canArrange' => false,          // SERVER truth; the runtime re-reads it on every load
     'myCompetitorIds' => [],        // highlights the viewer's own bouts
     'height' => '70vh',             // a CSS length, applied inline — see below
+    'initialDivision' => null,      // open on THIS division instead of the first
     'showDivisions' => true,        // false when the host page has its own switcher
+    'bare' => false,                // the board IS the page, not a card on it —
+                                    // drop the rounding, border and shadow
+    'bleed' => false,               // pull the board out of the host page's
+                                    // standard px-4/6/8 gutters so it runs edge
+                                    // to edge. Separate from `bare` because a
+                                    // page with no gutters of its own (the
+                                    // full-screen draw manager) wants the chrome
+                                    // gone but must NOT be pulled outward.
+    'fill' => false,                // stretch to the host's height instead of
+                                    // measuring one. A page that already IS the
+                                    // viewport (the full-screen draw manager)
+                                    // hands the board a flex slot and passes
+                                    // height="100%"; without this the root sits
+                                    // at auto height and that 100% resolves to
+                                    // ZERO. Opt-in, so every card-shaped use of
+                                    // this component is untouched.
 ])
 
 {{--
@@ -54,7 +71,7 @@
     }"
     @bracket:loaded="onLoaded($event.detail)"
     @bracket:state="onState($event.detail)"
-    class="relative"
+    class="relative {{ $fill ? 'h-full' : '' }}"
 >
     {{-- Division switcher — one draw on screen at a time keeps the bracket readable. --}}
     @if($showDivisions)
@@ -82,7 +99,9 @@
          a height that silently resolves to 0 (an arbitrary class the CSS build
          never saw, because this component was added after the last build)
          would leave a zero-height, un-clickable board. Inline always applies. --}}
-    <div class="relative rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white"
+    <div class="relative overflow-hidden bg-white
+                {{ $bare ? '' : 'rounded-2xl border border-gray-100 shadow-sm' }}
+                {{ $bleed ? '-mx-4 sm:-mx-6 lg:-mx-8' : '' }}"
          style="height: {{ $height }};">
         {{-- The board itself. Everything inside is built by the runtime. --}}
         <div id="{{ $viewportId }}" class="w-full h-full"></div>
@@ -100,7 +119,18 @@
         </div>
 
         {{-- Control cluster: zoom, fit, and (for organisers) arrange + clear. --}}
-        <div class="bk-controls absolute bottom-3 z-30 flex flex-col gap-2 {{ $rtl ? 'left-3' : 'right-3' }}">
+        {{-- ⚠️ The bottom offset carries the safe area. On a phone the board can
+             run to the very bottom of the screen (the full-screen draw manager
+             does), and 12px from that edge is under the home indicator or the
+             gesture bar — reachable only by pressing the system UI. Resolves to
+             plain 0.75rem everywhere there is no inset.
+
+             `bottom-3` STAYS on the class list as the floor: a browser without
+             `env()` drops the whole inline declaration, and without the class
+             the element would have no bottom at all and jump to the top of the
+             board. Inline wins wherever it parses. --}}
+        <div class="bk-controls absolute bottom-3 z-30 flex flex-col gap-2 {{ $rtl ? 'left-3' : 'right-3' }}"
+             style="bottom: calc(0.75rem + env(safe-area-inset-bottom));">
             @if($arrangeEndpoint)
                 <button type="button" x-show="canArrange" x-cloak
                         @click="window.BracketBoard.toggleArrange()"
@@ -150,13 +180,27 @@
                     {{ $rtl ? 'right-3' : 'left-3' }}">
             <i class="bi bi-lock-fill"></i> {{ __('events.bracket_locked') }}
         </div>
-    </div>
 
-    {{-- Legend --}}
-    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.65rem] text-muted-foreground">
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ __('events.bracket_legend_provisional') }}</span>
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-600"></span>{{ __('events.bracket_legend_done') }}</span>
-        <span class="flex items-center gap-1.5"><i class="bi bi-hand-index-thumb"></i>{{ __('events.bracket_legend_gestures') }}</span>
+        {{-- Legend — inside the board, floating on its bottom edge. It reads the
+             board, so it belongs on it; below the frame it was a line of text the
+             page had to make room for, and on a phone that room came out of the
+             draw. pointer-events-none so it never eats a pan that starts on it,
+             and it stands down in arrange mode — the entrants bench takes this
+             same bottom strip on a narrow screen.
+
+             Bare text, NOT a card: it is a caption on the board, and a white
+             panel with a border floating over the draw read as another thing to
+             deal with. Asked for explicitly 2026-09-06. --}}
+        <div id="{{ $id }}-legend" x-show="! arrange"
+             style="bottom: calc(0.75rem + env(safe-area-inset-bottom));"
+             class="absolute bottom-3 z-20 pointer-events-none
+                    flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] text-muted-foreground
+                    {{-- clears the zoom/arrange control column, which shares this edge --}}
+                    {{ $rtl ? 'right-3 left-16' : 'left-3 right-16' }}">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ __('events.bracket_legend_provisional') }}</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-600"></span>{{ __('events.bracket_legend_done') }}</span>
+            <span class="flex items-center gap-1.5"><i class="bi bi-hand-index-thumb"></i>{{ __('events.bracket_legend_gestures') }}</span>
+        </div>
     </div>
 </div>
 
@@ -174,6 +218,10 @@
             arrangeUrl: @json($arrangeEndpoint),
             clearUrl: @json($clearEndpoint),
             eventUuid: @json($eventUuid),
+            // Which division to open on. A bout's "View draw" names its own, so
+            // the board opens where that bout is rather than on the first
+            // division. Null keeps the previous behaviour exactly.
+            initialDivision: @json($initialDivision),
             csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
             myCompetitorIds: @json(array_values((array) $myCompetitorIds)),
             rtl: {{ $rtl ? 'true' : 'false' }},

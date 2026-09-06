@@ -54,7 +54,7 @@
                                     <span class="w-9 h-9 rounded-full overflow-hidden shrink-0 grid place-items-center text-white font-bold text-xs"
                                           style="background: linear-gradient(135deg, {{ $tMale ? 'hsl(250 65% 70%) 0%, hsl(250 60% 58%) 100%' : '#d63384 0%, #a61e4d 100%' }});">
                                         @if($member->profile_picture)
-                                            <img src="{{ asset('storage/' . $member->profile_picture) }}?v={{ $member->updated_at->timestamp }}" alt="{{ $member->full_name }}" class="w-full h-full object-cover">
+                                            <img src="{{ file_url($member->profile_picture) }}?v={{ $member->updated_at->timestamp }}" alt="{{ $member->full_name }}" class="w-full h-full object-cover">
                                         @else
                                             {{ mb_strtoupper(mb_substr($member->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8') }}
                                         @endif

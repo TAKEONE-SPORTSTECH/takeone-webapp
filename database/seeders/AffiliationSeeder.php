@@ -4,12 +4,12 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\User;
-use App\Models\Tenant;
-use App\Models\ClubAffiliation;
-use App\Models\SkillAcquisition;
-use App\Models\AffiliationMedia;
-use App\Models\TournamentEvent;
+use App\Members\Models\User;
+use App\Clubs\Models\Tenant;
+use App\Clubs\Models\ClubAffiliation;
+use App\Members\Models\SkillAcquisition;
+use App\Members\Models\AffiliationMedia;
+use App\Members\Models\TournamentEvent;
 use Carbon\Carbon;
 
 class AffiliationSeeder extends Seeder

@@ -14,6 +14,8 @@
     'eventName' => null,
     'showPasswordFields' => false,
     'showEmailField' => true,
+    // Mobile hands the photo to the profile-photo-sheet component instead, so it opts the tab out.
+    'showPhotoTab' => true,
 ])
 
 @php
@@ -23,6 +25,45 @@
     $modalIcon = $icon ?? ($isCreate ? 'bi-person-plus' : 'bi-person-circle');
     $submitText = $submitText ?? ($isCreate ? __('shared.components_profile_modal_add_member') : __('shared.components_profile_modal_update_profile'));
     $submitIcon = $submitIcon ?? ($isCreate ? 'bi-person-plus' : 'bi-check-circle');
+    /*
+     * Whether this form insists on gender, birthdate and nationality.
+     *
+     * Mirrors the server rule (App\Http\Requests\Concerns\PersonFieldRules)
+     * so the browser never refuses what the server would happily accept — the
+     * two must agree or a staff member is stopped by a message no endpoint would
+     * have sent. Staff entering somebody else need only a name; the member on
+     * their own profile is asked for the rest.
+     */
+    $formActor = auth()->user();
+    $isOwnProfile = $formActor && isset($user) && $user && (int) $formActor->id === (int) ($user->id ?? 0);
+
+    // ── The Security tab ────────────────────────────────────────────────────
+    //
+    // Offered only on an EXISTING person, and only to somebody with business
+    // there: platform staff (who may set or regenerate a password) or the person
+    // themselves (who may manage their own two-factor).
+    //
+    // Two-factor is deliberately NOT an admin action. Every TwoFactorController
+    // method acts on Auth::user(), because the secret has to be scanned by the
+    // member's own authenticator — so for anyone else this tab reports the
+    // STATE and offers nothing to click. Showing an admin a disable button that
+    // no endpoint backs would be worse than showing nothing.
+    $viewerIsPlatformStaff = (bool) ($formActor?->isSuperAdmin());
+    $canSetPassword = ! $isCreate && $user && $viewerIsPlatformStaff;
+    $showSecurityTab = ! $isCreate && $user && ($canSetPassword || $isOwnProfile);
+    $securityPwdUrls = $canSetPassword ? [
+        'reset' => route('member.reset-password', $user->id),
+        'regenerate' => route('member.regenerate-password', $user->id),
+    ] : null;
+    $securityTwoFa = $user ? [
+        'enabled' => (bool) $user->hasTwoFactorEnabled(),
+        'since' => $user->two_factor_confirmed_at?->isoFormat('D MMM YYYY'),
+        'mine' => (bool) $isOwnProfile,
+    ] : null;
+    $demandPersonFields = ! $formActor
+        || $isOwnProfile
+        || ! $formActor->entersPeopleOnBehalfOfOthers();
+
     $formId = $isCreate ? 'memberCreateForm' : 'profileEditForm';
     $alpineComponent = $isCreate ? 'memberProfileModal_create' : 'memberProfileModal_edit';
     $eventName = $eventName ?? ($isCreate ? 'open-member-create-modal' : 'open-profile-modal');
@@ -36,6 +77,7 @@
     $userMaritalStatus = old('marital_status', $user->marital_status ?? '');
     $userBirthdate = old('birthdate', $user ? ($user->birthdate?->format('Y-m-d')) : '');
     $userBloodType = old('blood_type', $user->blood_type ?? '');
+    $userHeightCm = old('height_cm', $user->height_cm ?? '');
     $userNationality = old('nationality', $user->nationality ?? '');
     $userMotto = old('motto', $user->motto ?? '');
     $profilePicturePublic = old('profile_picture_is_public', $user->profile_picture_is_public ?? true);
@@ -54,7 +96,7 @@
     $currentProfileImage = '';
     if (!$isCreate && $user) {
         if ($user->profile_picture && file_exists(public_path('storage/' . $user->profile_picture))) {
-            $currentProfileImage = asset('storage/' . $user->profile_picture) . '?v=' . $user->updated_at->timestamp;
+            $currentProfileImage = file_url($user->profile_picture) . '?v=' . $user->updated_at->timestamp;
         } else {
             $extensions = ['png', 'jpg', 'jpeg', 'webp'];
             foreach ($extensions as $ext) {
@@ -67,14 +109,29 @@
         }
     }
 
-    // Tabs: create mode skips the photo tab
-    $showPhotoTab = !$isCreate && $user;
+    // Tabs: create mode skips the photo tab, and a caller may opt out of it entirely
+    $showPhotoTab = $showPhotoTab && !$isCreate && $user;
     $defaultTab = $showPhotoTab ? 'photo' : 'personal';
 
     // JSON data for dynamic list Alpine components
     $initEmergencyContacts = !$isCreate && $user ? ($user->emergency_contacts ?? []) : [];
     $initHealthConditions  = !$isCreate && $user ? ($user->health_conditions ?? []) : [];
-    $initDocuments         = !$isCreate && $user ? ($user->documents ?? []) : [];
+    // The document URL is DERIVED here, never read from the row.
+    //
+    // It used to be persisted alongside the path — as a full absolute URL, which
+    // baked the environment's hostname into the database and pointed at
+    // /storage/, i.e. the file with no authorization in front of it. Identity
+    // documents are on the private disk now, so the only way to one is the
+    // route, and the route is cheap to recompute on every render.
+    $initDocuments = ! $isCreate && $user
+        ? collect($user->documents ?? [])->map(function ($d) use ($user) {
+            $d['file_url'] = ! empty($d['file_path'])
+                ? route('member.download-document', ['id' => $user->id, 'path' => $d['file_path']])
+                : null;
+
+            return $d;
+        })->values()->all()
+        : [];
     $docUploadUrl  = !$isCreate && $user ? route('member.upload-document', $user->id) : '';
     $docDeleteUrl  = !$isCreate && $user ? route('member.delete-document', $user->id) : '';
 
@@ -136,6 +193,18 @@
                             class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
                         <i class="bi bi-shield-plus me-1"></i>{{ __('shared.components_profile_modal_tab_medical') }}
                     </button>
+                    <button type="button" @click="activeTab = 'docs'"
+                            :class="activeTab === 'docs' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
+                        <i class="bi bi-file-earmark-person me-1"></i>{{ __('shared.components_profile_modal_tab_docs') }}
+                    </button>
+                    @if($showSecurityTab)
+                    <button type="button" @click="activeTab = 'security'"
+                            :class="activeTab === 'security' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
+                        <i class="bi bi-shield-lock me-1"></i>{{ __('shared.components_profile_modal_tab_security') }}
+                    </button>
+                    @endif
                 </nav>
             </div>
 
@@ -165,9 +234,11 @@
                 </div>
                 <div>
                     <button type="button" class="btn btn-outline-secondary me-2" x-show="activeTab !== tabs[0]" @click="prevTab()">
-                        <i class="bi bi-arrow-left me-1"></i>{{ __('shared.components_profile_modal_previous') }}
+                        <i class="bi bi-chevron-left me-1"></i>{{ __('shared.components_profile_modal_previous') }}
                     </button>
-                    <button type="button" class="btn btn-primary" x-show="activeTab !== 'additional'" @click="nextTab()">
+                    {{-- Follows the tab list rather than naming the last tab, so a
+                         conditional tab (Security) does not strand the Next button. --}}
+                    <button type="button" class="btn btn-primary" x-show="activeTab !== tabs[tabs.length - 1]" @click="nextTab()">
                         {{ __('shared.components_profile_modal_next') }}<i class="bi bi-arrow-right ms-1"></i>
                     </button>
                 </div>
@@ -182,6 +253,71 @@
 <x-toast-notification />
 
 @push('scripts')
+<script>
+window.memberPwdAdmin = function (resetUrl, regenerateUrl, name) {
+    return {
+        name: name,
+        busy: false,
+        setOpen: false, resultOpen: false,
+        pw1: '', pw2: '',
+        newPw: '', emailed: false, copied: false,
+        _csrf() { return document.querySelector('meta[name=csrf-token]')?.content || ''; },
+        async _post(url, body) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this._csrf() },
+                credentials: 'same-origin',
+                body: body ? JSON.stringify(body) : null,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.success === false) {
+                throw new Error(data.message || (data.errors?.password?.[0]) || @js(__('shared.error')));
+            }
+            return data;
+        },
+        openSet() { this.pw1 = ''; this.pw2 = ''; this.setOpen = true; },
+        async submitSet() {
+            if (this.busy) return;
+            if (this.pw1.length < 8) { window.showToast && window.showToast('error', @js(__('member.password_min'))); return; }
+            if (this.pw1 !== this.pw2) { window.showToast && window.showToast('error', @js(__('member.passwords_no_match'))); return; }
+            this.busy = true;
+            try {
+                const data = await this._post(resetUrl, { password: this.pw1, password_confirmation: this.pw2 });
+                this.setOpen = false;
+                window.showToast && window.showToast('success', data.message || @js(__('member.password_reset_ok')));
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally { this.busy = false; }
+        },
+        async generate() {
+            if (this.busy) return;
+            const ok = await window.confirmAction({
+                title: @js(__('member.generate_password')),
+                message: @js(__('member.generate_confirm')).replace(':name', this.name),
+                type: 'warning', confirmText: @js(__('member.generate_password')),
+            });
+            if (!ok) return;
+            this.busy = true;
+            try {
+                const data = await this._post(regenerateUrl, {});
+                this.newPw = data.password;
+                this.emailed = !!data.emailed;
+                this.copied = false;
+                this.resultOpen = true;
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally { this.busy = false; }
+        },
+        copy() {
+            const done = () => { this.copied = true; window.showToast && window.showToast('success', @js(__('member.password_copied'))); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(this.newPw).then(done).catch(() => {});
+            } else { done(); }
+        },
+    };
+};
+</script>
+
 <script>
 // Shared phone country data for inline code pickers inside x-for
 window._phoneCodes = [
@@ -208,7 +344,10 @@ function {{ $alpineComponent }}() {
     return {
         open: false,
         activeTab: '{{ $defaultTab }}',
-        tabs: {!! json_encode($showPhotoTab ? ['photo', 'personal', 'social', 'additional'] : ['personal', 'social', 'additional']) !!},
+        tabs: {!! json_encode(array_values(array_filter([
+            $showPhotoTab ? 'photo' : null, 'personal', 'social', 'additional', 'docs',
+            $showSecurityTab ? 'security' : null,
+        ]))) !!},
         isSubmitting: false,
         isCreateMode: {{ $isCreate ? 'true' : 'false' }},
         showPasswordFields: {{ $showPasswordFields ? 'true' : 'false' }},
@@ -337,6 +476,18 @@ function {{ $alpineComponent }}() {
             @endif
 
             @if(!$isCreate)
+            // Arrived here to edit — ?edit=1 on the profile URL opens the editor
+            // straight away. It is how the admin member sheet's Edit button works:
+            // the editor lives on the member's own page, so the button links here
+            // rather than trying to host a second copy of this modal.
+            try {
+                if (new URLSearchParams(window.location.search).get('edit') === '1') {
+                    this.open = true;
+                }
+            } catch (e) {}
+            @endif
+
+            @if(!$isCreate)
             // Listen for image upload success
             document.addEventListener('imageUploaded', (e) => {
                 if (e.detail && e.detail.url) {
@@ -347,7 +498,7 @@ function {{ $alpineComponent }}() {
 
             // Global callback for cropper
             window.imageUploadSuccess = (result) => {
-                const url = result?.url || (result?.path ? window.location.origin + '/storage/' + result.path : null);
+                const url = result?.url || (result?.path ? window.location.origin + '/file/' + result.path : null);
                 if (url) {
                     this.updateProfilePicturePreview(url);
                     this.syncProfilePicsOnPage(url);
@@ -440,6 +591,7 @@ function {{ $alpineComponent }}() {
 
             let valid = true;
             const fid = '{{ $formId }}';
+            const demandPersonFields = @js($demandPersonFields);
 
             // Full name
             const nameEl = document.getElementById(fid + '_full_name');
@@ -476,21 +628,20 @@ function {{ $alpineComponent }}() {
                 }
             }
 
-            // Gender (custom dropdown — hidden input)
+            // Gender / birthdate / nationality — asked for only when this form
+            // demands them, which mirrors the server rule exactly.
             const genderEl = document.getElementById(fid + '_gender');
-            if (!genderEl || !genderEl.value) {
+            if (demandPersonFields && (!genderEl || !genderEl.value)) {
                 this.showInputError(fid + '_gender', '{{ __("shared.components_profile_modal_err_gender_required") }}'); valid = false;
             } else { this.clearInputError(fid + '_gender'); }
 
             // Birthdate (custom dropdown — hidden input)
-            const bdEl = document.getElementById(fid + '_birthdate');
-            if (!bdEl || !bdEl.value) {
-                this.showInputError(fid + '_birthdate', '{{ __("shared.components_profile_modal_err_birthdate_required") }}'); valid = false;
-            } else { this.clearInputError(fid + '_birthdate'); }
+            // Birthdate is never required, of anyone — nothing to check here.
+            this.clearInputError(fid + '_birthdate');
 
             // Nationality (custom dropdown — hidden input)
             const natEl = document.getElementById(fid + '_nationality');
-            if (!natEl || !natEl.value) {
+            if (demandPersonFields && (!natEl || !natEl.value)) {
                 this.showInputError(fid + '_nationality', '{{ __("shared.components_profile_modal_err_nationality_required") }}'); valid = false;
             } else { this.clearInputError(fid + '_nationality'); }
 
@@ -522,6 +673,7 @@ function {{ $alpineComponent }}() {
                 nationality:       fid + '_nationality',
                 relationship_type: fid + '_relationship_type',
                 blood_type:        fid + '_blood_type',
+                height_cm:         fid + '_height_cm',
                 mobile:            fid + '_mobile_number',
                 motto:             fid + '_motto',
             };
@@ -629,7 +781,10 @@ function {{ $alpineComponent }}() {
                 removeBtn.style.display = 'block';
             }
 
-            document.getElementById('removeProfilePictureInput').value = '0';
+            // Absent when the caller opted out of the photo tab — the upload still
+            // reaches us (nav avatars sync), there is just no preview to reset.
+            const removeInput = document.getElementById('removeProfilePictureInput');
+            if (removeInput) removeInput.value = '0';
         },
 
         syncProfilePicsOnPage(imageUrl) {

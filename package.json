@@ -8,6 +8,7 @@
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-react": "^5.0.0",
         "axios": "^1.11.0",
         "browser-image-compression": "^2.0.2",
         "concurrently": "^9.0.1",
@@ -20,6 +21,8 @@
         "chart.js": "^4.5.1",
         "jquery-cropbox": "github:acornejo/jquery-cropbox",
         "mqtt": "^5.15.1",
+        "react": "18.3.1",
+        "react-dom": "18.3.1",
         "select2": "^4.1.0-rc.0"
     }
 }

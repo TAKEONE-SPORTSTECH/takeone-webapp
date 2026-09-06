@@ -35,3 +35,38 @@ Schedule::command('takeone:backup')
     ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('Nightly backup FAILED — restore capability is compromised.'));
 Schedule::command('goals:daily-encouragement')->dailyAt('09:00');
 Schedule::command('alerts:recheck-low-stock')->dailyAt('08:00');
+
+// Court displays that enrolled and were never claimed. Enrolment is open by
+// necessity (a fresh screen has no credential to offer) and grants access to
+// nothing, so this is the other half of that trade — abandoned rows are swept
+// up instead of accumulating. Claimed screens are never touched.
+Schedule::command('court:pair --prune')->dailyAt('04:00');
+// The Taekwondo fleet's own sweep. It shared the line above until its command
+// was found to be shadowed by Karate's identical signature — so for as long as
+// this schedule has existed it has been pruning one table twice and the other
+// never. Same job, same window, the other fleet.
+Schedule::command('taekwondo:court-pair --prune')->dailyAt('04:05');
+
+/*
+|--------------------------------------------------------------------------
+| Media storage
+|--------------------------------------------------------------------------
+|
+| Two jobs that keep "the video is on the NAS" true rather than aspirational.
+|
+| The migration is the important one, and it is about a specific, ordinary
+| failure: during a competition the share goes unreachable for twenty minutes,
+| clips fall back to local disk (losing a bout is not an option), and the share
+| comes back. Without this they stay here forever. It moves them up, verifies
+| each one, repoints the record, and only then deletes the local copy — so no
+| link is ever broken, and it is a no-op when there is nothing to move or no
+| storage attached.
+|
+| The verify pass is the audit: it says out loud if any record's bytes are not
+| where the record claims, instead of that being discovered by somebody pressing
+| play in front of a hall.
+|
+*/
+Schedule::command('media:migrate --auto')->hourly()->withoutOverlapping();
+Schedule::command('media:verify --quiet-when-clean --orphans')->dailyAt('04:30');
+

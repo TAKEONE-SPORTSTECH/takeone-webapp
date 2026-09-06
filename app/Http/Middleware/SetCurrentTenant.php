@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Tenant;
+use App\Clubs\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
 

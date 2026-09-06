@@ -28,11 +28,59 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Hand file delivery back to the web server
+    |--------------------------------------------------------------------------
+    |
+    | Every file is served through FileController so that access is decided in
+    | code. That check is cheap; streaming the BYTES through PHP is not, and on
+    | an image-heavy page it ties up a worker per picture.
+    |
+    | With mod_xsendfile, PHP does the authorisation and then names the file in
+    | an X-Sendfile header — Apache sends it, with its own sendfile(2) path,
+    | caching and range support, and the PHP worker is free immediately.
+    |
+    | OFF by default, and it must stay off until the module is actually enabled:
+    | if Apache does not understand the header it passes it to the browser and
+    | the response body is EMPTY, so every file silently breaks. Turn it on with
+    | FILE_XSENDFILE=true only after:
+    |
+    |     sudo apt-get install libapache2-mod-xsendfile
+    |     sudo a2enmod xsendfile
+    |     # in the vhost:  XSendFile On
+    |     #                XSendFilePath /var/www/takeone/storage/app
+    |     sudo systemctl reload apache2
+    |
+    */
+
+    'x_sendfile' => (bool) env('FILE_XSENDFILE', false),
+
     'disks' => [
+
+        /*
+        |----------------------------------------------------------------------
+        | ONE storage root
+        |----------------------------------------------------------------------
+        |
+        | There is no public/private split any more. Both names resolve to the
+        | same directory, and NOTHING under it is reachable from the web: the
+        | `public/storage` symlink is gone and every file is served by
+        | App\Http\Controllers\FileController, which asks App\Support\FileAccess
+        | who is looking.
+        |
+        | The split used to BE the access-control decision — a file's folder
+        | decided whether the world could read it, and a file written to the
+        | wrong one was public with no way to take it back. Access is decided in
+        | code now, so the two disks only have to agree on where bytes live.
+        |
+        | Both are kept as names so the ~100 existing `disk('public')` call
+        | sites keep working; they are the same disk.
+        */
 
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app/private'),
+            'root' => storage_path('app'),
             'serve' => true,
             'throw' => false,
             'report' => false,
@@ -40,9 +88,8 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL'), '/').'/storage',
-            'visibility' => 'public',
+            'root' => storage_path('app'),
+            'visibility' => 'private',
             'throw' => false,
             'report' => false,
         ],
@@ -73,8 +120,15 @@ return [
     |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    /*
+     * Deliberately EMPTY.
+     *
+     * `storage:link` used to publish storage/app/public into the web root, and
+     * that symlink WAS the access-control decision — anything behind it was
+     * readable by anyone holding the URL. Files are served by FileController
+     * now, which asks FileAccess who is looking, so re-creating this link would
+     * quietly re-expose every file it covers.
+     */
+    'links' => [],
 
 ];

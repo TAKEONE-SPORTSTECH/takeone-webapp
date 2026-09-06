@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\ClubAdmin;
 
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use Tests\TestCase;
 
 class MemberSearchTest extends TestCase

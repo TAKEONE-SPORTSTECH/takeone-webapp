@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Message;
+use App\Members\Models\Message;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
