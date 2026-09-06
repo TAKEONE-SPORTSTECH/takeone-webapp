@@ -15,7 +15,7 @@
 --}}
 @auth
 @php
-    $__stockAlerts = \App\Models\UserNotification::query()
+    $__stockAlerts = \App\Members\Models\UserNotification::query()
         ->where('user_id', auth()->id())
         ->where('type', 'stock')
         ->where('is_read', false)

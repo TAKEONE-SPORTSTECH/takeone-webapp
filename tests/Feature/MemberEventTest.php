@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\UserRelationship;
+use App\Members\Models\UserRelationship;
 use Tests\TestCase;
 
 class MemberEventTest extends TestCase

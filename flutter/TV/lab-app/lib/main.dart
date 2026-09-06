@@ -1638,6 +1638,32 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 12),
 
+            // OFF unless somebody turns it on. The bouts are safe on the phone
+            // either way; what this decides is whether the phone spends the
+            // hall's uplink on them without being asked.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Auto upload bouts', style: Tally.body(11, color: Tally.textSecondary, weight: FontWeight.w600)),
+                TallySwitch(
+                  on: _vault.auto,
+                  onChanged: (v) => unawaited(_vault.setAuto(v).then((_) {
+                    if (mounted) setState(() {});
+                  })),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _vault.auto
+                  ? 'Each bout is sent to the event as soon as it ends, on whatever '
+                      'network this phone is on.'
+                  : 'Bouts stay on this phone. Send them from the recorded-bouts list '
+                      'when you are on a network you are happy to use.',
+              style: Tally.body(9.5, color: Tally.textFaint),
+            ),
+            const SizedBox(height: 12),
+
             Text(
               _pendingFps != null
                   ? 'Frame rate changes to $_pendingFps at the next bout — the mat owns REC and LIVE, so a mid-stream switch is queued.'

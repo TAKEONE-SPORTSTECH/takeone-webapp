@@ -34,9 +34,9 @@
             if (addrText && c.address != null) addrText.textContent = c.address;
 
             const cover = wrapper.querySelector('.club-cover-img');
-            if (cover && c.cover_image) cover.src = '/storage/' + c.cover_image + '?t=' + Date.now();
+            if (cover && c.cover_image) cover.src = '/file/' + c.cover_image + '?t=' + Date.now();
             const logo = wrapper.querySelector('.club-logo-img');
-            if (logo && c.logo) logo.src = '/storage/' + c.logo + '?t=' + Date.now();
+            if (logo && c.logo) logo.src = '/file/' + c.logo + '?t=' + Date.now();
         });
     })();
 </script>

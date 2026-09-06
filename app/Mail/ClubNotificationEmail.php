@@ -3,7 +3,7 @@
 namespace App\Mail;
 
 use App\Clubs\Models\ClubNotification;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;

@@ -70,7 +70,7 @@
         {{-- Header --}}
         <div class="flex items-center gap-3 px-3 py-3 border-b border-border bg-white shadow-sm">
             <button type="button" class="w-9 h-9 rounded-lg flex items-center justify-center m-press" @click="closeThread()">
-                <i class="bi bi-arrow-left text-xl"></i>
+                <i class="bi bi-chevron-left text-xl"></i>
             </button>
             <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                 <template x-if="activeUser.avatar"><img :src="activeUser.avatar" class="w-[27px] h-9 object-cover" alt=""></template>

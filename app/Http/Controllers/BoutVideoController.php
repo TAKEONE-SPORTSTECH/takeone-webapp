@@ -11,7 +11,7 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
 use App\Models\EventOfficial;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Sports\Combat\SportRegistry;
 use App\Support\BoutStage;
 use Illuminate\Http\JsonResponse;

@@ -2,13 +2,13 @@
 
 namespace Tests\Feature\Events;
 
-use App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\Ledger;
-use App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\MatchEvent;
-use App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\MatState;
+use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\Ledger;
+use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatchEvent;
+use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatState;
 use App\Models\ClubEvent;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**
@@ -377,6 +377,233 @@ class BjjScoreboardTest extends TestCase
         $this->assertSame(
             [$owner->id],
             MatchEvent::whereNotNull('operator_id')->pluck('operator_id')->unique()->values()->all()
+        );
+    }
+
+    /* ---------------- An ending has to name somebody ---------------- */
+
+    public function test_a_naming_method_cannot_be_filed_without_a_winner(): void
+    {
+        [$owner, $event, $match] = $this->scenario();
+
+        $this->command($owner, $event, 'load', ['match_id' => $match->id]);
+        // Blue is ahead, so there IS a leader — this is not the level case. The
+        // point is that a SUBMISSION is a claim about a person, and the person
+        // was left out.
+        $this->command($owner, $event, 'point', ['side' => 'blue', 'source' => 'mount']);
+
+        $this->command($owner, $event, 'end', ['method' => 'submission'])
+            ->assertStatus(422);
+
+        // Nothing was filed, and in particular it was NOT quietly filed as the
+        // points win the score would have produced.
+        $state = $this->state($event);
+        $this->assertFalse($state->isFinished());
+        $this->assertNull($state->win_method);
+    }
+
+    public function test_the_same_ending_is_accepted_once_a_corner_is_named(): void
+    {
+        [$owner, $event, $match] = $this->scenario();
+
+        $this->command($owner, $event, 'load', ['match_id' => $match->id]);
+        $this->command($owner, $event, 'point', ['side' => 'blue', 'source' => 'mount']);
+
+        // The corner BEHIND on points, which is the whole reason the method may
+        // not be inferred from the score.
+        $this->command($owner, $event, 'end', ['winner' => 'white', 'method' => 'submission'])
+            ->assertOk();
+
+        $state = $this->state($event);
+        $this->assertSame('white', $state->winner);
+        $this->assertSame('submission', $state->win_method);
+    }
+
+    public function test_ending_on_the_score_still_needs_no_winner(): void
+    {
+        [$owner, $event, $match] = $this->scenario();
+
+        $this->command($owner, $event, 'load', ['match_id' => $match->id]);
+        $this->command($owner, $event, 'point', ['side' => 'blue', 'source' => 'guard_pass']);
+
+        $this->command($owner, $event, 'end', ['method' => 'points'])->assertOk();
+
+        $this->assertSame('points', $this->state($event)->win_method);
+    }
+
+    /* ---------------- The console re-reads itself ---------------- */
+
+    public function test_the_console_page_renders_and_declares_itself_a_console(): void
+    {
+        [$owner, $event] = $this->scenario();
+
+        $response = $this->actingAs($owner)->get($this->endpoint($event));
+
+        $response->assertOk();
+        // The marker the live-link client reads to decide what to do with an
+        // inbound message. Without it a console would be handed a wall board's
+        // payload and draw nothing.
+        //
+        // Two renderers, one invariant: the Blade console declares it inline in
+        // its runtime, the React island (features.react_scoreboard) declares it
+        // in the props it is mounted with. The page must say it EITHER way —
+        // asserting only the Blade spelling made this test a test of which
+        // renderer is switched on, which is not what it is for.
+        $this->assertTrue(
+            str_contains($response->getContent(), "pinned: 'console'")
+                || str_contains($response->getContent(), '&quot;pinned&quot;:&quot;console&quot;'),
+            'The console page does not declare itself a console to the live link.',
+        );
+    }
+
+    public function test_the_console_state_endpoint_returns_the_three_things_a_console_draws(): void
+    {
+        [$owner, $event, $match] = $this->scenario();
+
+        $this->command($owner, $event, 'load', ['match_id' => $match->id]);
+        $this->command($owner, $event, 'point', ['side' => 'blue', 'source' => 'sweep']);
+
+        $response = $this->actingAs($owner)
+            ->getJson($this->endpoint($event).'/state?mat='.urlencode(self::MAT));
+
+        $response->assertOk()
+            ->assertJsonPath('state.matchId', $match->id)
+            ->assertJsonPath('state.score.bluePoints', 2)
+            ->assertJsonStructure(['state', 'log', 'queue', 'stall']);
+    }
+
+    public function test_a_stranger_cannot_re_read_the_console(): void
+    {
+        [, $event] = $this->scenario();
+
+        $this->actingAs($this->createUser())
+            ->getJson($this->endpoint($event).'/state?mat='.urlencode(self::MAT))
+            ->assertForbidden();
+    }
+
+    public function test_the_console_cannot_be_re_read_for_a_mat_this_event_does_not_run(): void
+    {
+        [$owner, $event] = $this->scenario();
+
+        $this->actingAs($owner)
+            ->getJson($this->endpoint($event).'/state?mat=Mat+9')
+            ->assertNotFound();
+    }
+
+    /* ---------------- The console has a door ---------------- */
+
+    public function test_the_management_console_offers_a_way_into_the_scoring_table(): void
+    {
+        [$owner, $event] = $this->scenario();
+
+        $response = $this->actingAs($owner)->get(route('me.events.manage', $event->uuid));
+
+        $response->assertOk();
+        // The whole point: an organiser at a laptop can now REACH the console.
+        // Before this it was only openable by pairing a tablet to it.
+        $response->assertSee($this->endpoint($event), false);
+    }
+
+    public function test_the_scoring_door_is_shown_only_to_somebody_who_may_score(): void
+    {
+        [$owner, $event] = $this->scenario();
+
+        // Appointed to check weigh-ins and nothing else: entitled to the manage
+        // page (canOfficiate), not entitled to score it. Also a member of the
+        // host club, because an internal event is not VISIBLE to an outsider and
+        // the page would refuse them before authorisation was even reached.
+        $official = $this->createUser();
+        $official->memberClubs()->syncWithoutDetaching([$event->tenant_id => ['status' => 'active']]);
+
+        \App\Models\EventOfficial::create([
+            'event_id' => $event->id,
+            'user_id' => $official->id,
+            'role' => \App\Models\EventOfficial::ROLE_WEIGH_IN,
+        ]);
+
+        $this->assertTrue(app(\App\Events\Support\EventAccess::class)->canScore($event, $owner));
+        $this->assertFalse(app(\App\Events\Support\EventAccess::class)->canScore($event, $official));
+
+        $this->actingAs($official)->get(route('me.events.manage', $event->uuid))
+            ->assertOk()
+            ->assertDontSee($this->endpoint($event), false);
+    }
+
+    public function test_the_fleet_hands_out_no_console_for_a_sport_with_no_mat(): void
+    {
+        [, $event] = $this->scenario();
+
+        $this->assertSame(url($this->endpoint($event)), \App\Scoreboard\Fleet::consoleUrl($event));
+
+        $event->sport = 'swimming';
+
+        $this->assertNull(\App\Scoreboard\Fleet::consoleUrl($event));
+    }
+
+    /* ---------------- The console's live link ---------------- */
+
+    public function test_the_console_carries_a_socket_credential_when_realtime_is_on(): void
+    {
+        [$owner, $event] = $this->scenario();
+
+        config([
+            'realtime.enabled' => true,
+            'realtime.broker.ws_url' => 'wss://broker.example/mqtt',
+            'realtime.jwt.secret' => str_repeat('k', 32),
+        ]);
+
+        $response = $this->actingAs($owner)->get($this->endpoint($event));
+
+        $response->assertOk();
+        // The client is included, and it was handed the address this console
+        // re-reads itself from. Together these are the whole of the fix: before
+        // it, the console defined a CourtBoard nothing ever fed.
+        $response->assertSee('console_url', false);
+        // Slash-escaped, because the credential reaches the page through
+        // @json() and that escapes '/' by default.
+        $response->assertSee(
+            str_replace('/', '\\/', '/bjj/control/'.$event->uuid.'/state'),
+            false
+        );
+    }
+
+    public function test_the_console_is_given_the_mats_own_topic_not_a_devices(): void
+    {
+        [, $event] = $this->scenario();
+
+        config([
+            'realtime.enabled' => true,
+            'realtime.broker.ws_url' => 'wss://broker.example/mqtt',
+            'realtime.jwt.secret' => str_repeat('k', 32),
+        ]);
+
+        $link = \App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenChannel::consoleCredentials($event, self::MAT);
+
+        $this->assertNotNull($link);
+        $this->assertSame(
+            \App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenChannel::matTopic($event, self::MAT),
+            $link['topic']
+        );
+
+        // Subscribe-only, on that one topic, and forbidden to publish anywhere.
+        // A console can already write through its own authorised endpoints; the
+        // socket only lets it be told things.
+        $this->assertSame(
+            [
+                ['permission' => 'allow', 'action' => 'subscribe', 'topic' => $link['topic']],
+                ['permission' => 'deny', 'action' => 'publish', 'topic' => '#'],
+            ],
+            json_decode(base64_decode(strtr(explode('.', $link['password'])[1], '-_', '+/')), true)['acl']
+        );
+    }
+
+    public function test_two_mats_never_share_a_topic(): void
+    {
+        [, $event] = $this->scenario();
+
+        $this->assertNotSame(
+            \App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenChannel::matTopic($event, 'Mat 1'),
+            \App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenChannel::matTopic($event, 'Mat 2')
         );
     }
 }

@@ -27,9 +27,13 @@ class PeoplePublicProfileMobileTest extends TestCase
         $this->actingAs($me)->mobileGet("/people/{$person->uuid}")
             ->assertOk()
             ->assertSee('Public Athlete')
-            // Redesigned hero + floating stat card, built from existing tokens.
-            ->assertSee('m-hero', false)
-            ->assertSee('m-card', false);
+            // The page was rebuilt on its own self-contained `prof-*` design
+            // (hero band + floating stat row) and no longer reaches for the
+            // shared `m-hero` / `m-card` tokens it used when this test was
+            // written. Assert on the markers the page actually ships.
+            ->assertSee('prof-page', false)
+            ->assertSee('prof-rise', false)
+            ->assertSee('prof-press', false);
     }
 
     public function test_mobile_public_profile_keeps_its_actions(): void

@@ -228,7 +228,7 @@ window.instructorData = {
         experience: @json($instructor->user->experience_years ?? null),
         skills: @json($instructor->user->skills ?? []),
         bio: @json($instructor->user->bio ?? ''),
-        photo: @json($instructor->user->profile_picture ? '/storage/' . $instructor->user->profile_picture : ''),
+        photo: @json($instructor->user->profile_picture ? '/file/' . $instructor->user->profile_picture : ''),
         compensation_type: @json($instructor->compensation_type ?? 'volunteer'),
         wage_amount: @json($instructor->wage_amount !== null ? (float) $instructor->wage_amount : null),
         wage_period: @json($instructor->wage_period),

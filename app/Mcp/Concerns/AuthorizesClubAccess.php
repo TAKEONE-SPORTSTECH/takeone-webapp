@@ -3,8 +3,8 @@
 namespace App\Mcp\Concerns;
 
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserRelationship;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;

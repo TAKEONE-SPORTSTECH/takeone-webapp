@@ -35,12 +35,4 @@ return [
         ],
     ],
 
-    // Firebase Cloud Messaging (native Android push).
-    // Path to the Firebase service-account JSON (downloaded from
-    // Firebase console → Project settings → Service accounts → Generate new private key).
-    'fcm' => [
-        'credentials' => env('FCM_CREDENTIALS', storage_path('app/firebase/service-account.json')),
-        'enabled' => env('FCM_ENABLED', true),
-    ],
-
 ];

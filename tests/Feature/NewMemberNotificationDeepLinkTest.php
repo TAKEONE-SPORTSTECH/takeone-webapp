@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\UserNotification;
+use App\Members\Models\UserNotification;
 use Tests\TestCase;
 
 /**

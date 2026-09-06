@@ -49,7 +49,7 @@ class EventCameraClip extends Model
     protected $fillable = [
         'camera_id', 'event_id', 'match_id', 'court', 'angle',
         'started_at', 'ended_at', 'duration_seconds', 'bytes', 'local_ref',
-        'play_status', 'play_video_key', 'play_video_id',
+        'play_status', 'play_video_key', 'play_video_id', 'on_device',
         'uploaded_bytes', 'upload_started_at', 'uploaded_at', 'upload_error',
     ];
 
@@ -75,6 +75,9 @@ class EventCameraClip extends Model
         'duration_seconds' => 'integer',
         'bytes' => 'integer',
         'angle' => 'integer',
+        // Nullable on purpose: null is "no phone has told us", which is not
+        // the same as false ("the file is gone").
+        'on_device' => 'boolean',
     ];
 
     public function camera(): BelongsTo

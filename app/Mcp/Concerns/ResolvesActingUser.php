@@ -2,7 +2,7 @@
 
 namespace App\Mcp\Concerns;
 
-use App\Models\User;
+use App\Members\Models\User;
 use Laravel\Mcp\Request;
 
 /**

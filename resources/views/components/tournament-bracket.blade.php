@@ -17,6 +17,14 @@
                                     // page with no gutters of its own (the
                                     // full-screen draw manager) wants the chrome
                                     // gone but must NOT be pulled outward.
+    'fill' => false,                // stretch to the host's height instead of
+                                    // measuring one. A page that already IS the
+                                    // viewport (the full-screen draw manager)
+                                    // hands the board a flex slot and passes
+                                    // height="100%"; without this the root sits
+                                    // at auto height and that 100% resolves to
+                                    // ZERO. Opt-in, so every card-shaped use of
+                                    // this component is untouched.
 ])
 
 {{--
@@ -63,7 +71,7 @@
     }"
     @bracket:loaded="onLoaded($event.detail)"
     @bracket:state="onState($event.detail)"
-    class="relative"
+    class="relative {{ $fill ? 'h-full' : '' }}"
 >
     {{-- Division switcher — one draw on screen at a time keeps the bracket readable. --}}
     @if($showDivisions)
@@ -111,7 +119,18 @@
         </div>
 
         {{-- Control cluster: zoom, fit, and (for organisers) arrange + clear. --}}
-        <div class="bk-controls absolute bottom-3 z-30 flex flex-col gap-2 {{ $rtl ? 'left-3' : 'right-3' }}">
+        {{-- ⚠️ The bottom offset carries the safe area. On a phone the board can
+             run to the very bottom of the screen (the full-screen draw manager
+             does), and 12px from that edge is under the home indicator or the
+             gesture bar — reachable only by pressing the system UI. Resolves to
+             plain 0.75rem everywhere there is no inset.
+
+             `bottom-3` STAYS on the class list as the floor: a browser without
+             `env()` drops the whole inline declaration, and without the class
+             the element would have no bottom at all and jump to the top of the
+             board. Inline wins wherever it parses. --}}
+        <div class="bk-controls absolute bottom-3 z-30 flex flex-col gap-2 {{ $rtl ? 'left-3' : 'right-3' }}"
+             style="bottom: calc(0.75rem + env(safe-area-inset-bottom));">
             @if($arrangeEndpoint)
                 <button type="button" x-show="canArrange" x-cloak
                         @click="window.BracketBoard.toggleArrange()"
@@ -167,10 +186,14 @@
              page had to make room for, and on a phone that room came out of the
              draw. pointer-events-none so it never eats a pan that starts on it,
              and it stands down in arrange mode — the entrants bench takes this
-             same bottom strip on a narrow screen. --}}
+             same bottom strip on a narrow screen.
+
+             Bare text, NOT a card: it is a caption on the board, and a white
+             panel with a border floating over the draw read as another thing to
+             deal with. Asked for explicitly 2026-09-06. --}}
         <div id="{{ $id }}-legend" x-show="! arrange"
+             style="bottom: calc(0.75rem + env(safe-area-inset-bottom));"
              class="absolute bottom-3 z-20 pointer-events-none
-                    px-2.5 py-1.5 rounded-xl bg-white/85 backdrop-blur border border-gray-200 shadow-sm
                     flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] text-muted-foreground
                     {{-- clears the zoom/arrange control column, which shares this edge --}}
                     {{ $rtl ? 'right-3 left-16' : 'left-3 right-16' }}">

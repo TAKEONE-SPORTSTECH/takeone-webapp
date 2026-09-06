@@ -38,12 +38,12 @@
             <div class="inline-flex items-center gap-0.5 rounded-full bg-white/12 border border-white/20 p-0.5">
                 <button type="button" @click="shiftMonth(-1)" aria-label="{{ __('admin.fin_prev_month') }}"
                         class="m-press w-7 h-7 rounded-full grid place-items-center text-white/90 hover:bg-white/15 transition-colors">
-                    <i class="bi bi-chevron-left rtl:rotate-180 text-xs"></i>
+                    <i class="bi bi-chevron-left text-xs"></i>
                 </button>
                 <span class="min-w-[92px] text-center text-xs font-bold tracking-wide" x-text="monthLabel"></span>
                 <button type="button" @click="shiftMonth(1)" :disabled="! canGoNextMonth" aria-label="{{ __('admin.fin_next_month') }}"
                         class="m-press w-7 h-7 rounded-full grid place-items-center text-white/90 hover:bg-white/15 transition-colors disabled:opacity-30 disabled:pointer-events-none">
-                    <i class="bi bi-chevron-right rtl:rotate-180 text-xs"></i>
+                    <i class="bi bi-chevron-right text-xs"></i>
                 </button>
             </div>
         </div>

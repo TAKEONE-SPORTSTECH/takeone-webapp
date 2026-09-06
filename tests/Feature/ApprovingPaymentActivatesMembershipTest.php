@@ -4,9 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Services\SubscriptionService;
 use Tests\TestCase;
 

@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserBlock;
+use App\Members\Models\User;
+use App\Members\Models\UserBlock;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 

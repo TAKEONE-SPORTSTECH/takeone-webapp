@@ -6,7 +6,7 @@ use App\Models\ActivityCatalog;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubInstructor;
 use App\Clubs\Models\ClubAffiliation;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**

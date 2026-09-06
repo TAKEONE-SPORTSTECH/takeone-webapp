@@ -7,7 +7,7 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * Sparring — the scoreboard for a session nobody planned.
@@ -52,8 +52,8 @@ class Sparring extends AbstractEventType
      * claim one and the type never appears for it.
      */
     private const SPORTS = [
-        'karate' => \App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayDevice::class,
-        'taekwondo' => \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice::class,
+        'karate' => \App\Scoreboard\Sports\Karate\HallScreen\CourtDisplayDevice::class,
+        'taekwondo' => \App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplayDevice::class,
     ];
 
     public function __construct(private SparringSession $session) {}
@@ -267,8 +267,8 @@ class Sparring extends AbstractEventType
     private function nudgeMats(ClubEvent $event, ?string $mat = null): void
     {
         $channel = match ((string) $event->sport) {
-            'karate' => \App\Events\Sports\Karate\Tournament\CourtDisplay\ScreenChannel::class,
-            'taekwondo' => \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\ScreenChannel::class,
+            'karate' => \App\Scoreboard\Sports\Karate\HallScreen\ScreenChannel::class,
+            'taekwondo' => \App\Scoreboard\Sports\Taekwondo\HallScreen\ScreenChannel::class,
             default => null,
         };
 
@@ -337,7 +337,7 @@ class Sparring extends AbstractEventType
      * these bouts have no rounds and feed nothing, and a tree drawn over them
      * would invite somebody to read a knockout that does not exist.
      */
-    public function bracketView(ClubEvent $event, User $viewer): array
+    public function bracketView(ClubEvent $event, ?User $viewer = null): array
     {
         return [];
     }

@@ -31,6 +31,7 @@ return [
         \App\Shop\Shop::class,
         \App\Challenges\Challenges::class,
         \App\Trainers\Trainers::class,
+        \App\Scoreboard\Scoreboard::class,
         \App\Media\Media::class,
     ],
 

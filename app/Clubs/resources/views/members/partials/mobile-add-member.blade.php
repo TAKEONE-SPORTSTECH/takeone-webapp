@@ -96,7 +96,7 @@
                     <div class="relative flex items-start gap-3">
                         <button type="button" @click="registerChoiceOpen = false; menuOpen = true" aria-label="{{ __('shared.back') }}"
                                 class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
-                            <i class="bi bi-chevron-left rtl:rotate-180 text-xl"></i>
+                            <i class="bi bi-chevron-left text-xl"></i>
                         </button>
                         <div class="min-w-0 flex-1">
                             <h3 class="text-lg font-black leading-tight">{{ __('admin.register_new') }}</h3>

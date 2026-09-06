@@ -3,8 +3,8 @@
 namespace App\Events\Sports\BrazilianJiuJitsu\Tournament;
 
 use App\Events\AbstractEventType;
-use App\Events\Sports\BrazilianJiuJitsu\Tournament\HallScreen\ScreenDevice;
-use App\Events\Sports\BrazilianJiuJitsu\Tournament\HallScreen\ScreenChannel;
+use App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenDevice;
+use App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenChannel;
 use App\Events\Support\BracketView;
 use App\Events\Support\EnrolmentDecision;
 use App\Events\Support\Milestone;
@@ -13,7 +13,7 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Sports\Combat\Engine\DrawEngine;
 use App\Sports\Combat\Engine\Results;
 use App\Sports\Combat\Engine\Scheduler;
@@ -366,24 +366,22 @@ class Tournament extends AbstractEventType
             ];
         }
 
-        // A way to make the hall board move without twenty people and a mat.
-        //
-        // Ending a bout is otherwise only reachable by POSTing to the outcome
-        // endpoint by hand — there is no run-day scorer yet — which makes the
-        // court display impossible to demonstrate or rehearse. This ends the
-        // next queued bout with a plausible score, which is exactly what the
-        // real thing will do when it exists.
-        //
-        // NOT in production. It invents a result and writes it to a real draw:
-        // fine on a rehearsal event, never something to leave one tap away from
-        // an organiser during a live competition.
-        if (! app()->environment('production') && $this->nextBout($event)) {
-            $actions[] = [
-                'action' => 'end_next_bout',
-                'label' => __('event-bjj_tournament::messages.action_end_next_bout'),
-                'icon' => 'bi-flag-fill',
-            ];
-        }
+        /*
+         * "End the next bout" is NOT OFFERED on the console (asked for on
+         * 2026-09-04).
+         *
+         * It exists to make the hall board move without twenty people and a
+         * mat, by inventing a plausible score for the next queued bout — a
+         * rehearsal tool. On the console it read as an ordinary run-day verb
+         * one tap from an organiser, and what it actually does is write a
+         * fabricated result into a real draw.
+         *
+         * The HANDLER stays (see endNextBout below, and the `end_next_bout`
+         * case in performAction): it is still the way to rehearse a hall
+         * screen, it re-checks the environment itself, and deleting it would
+         * take the only way to exercise the run-day path with it. What is gone
+         * is the BUTTON.
+         */
 
         return $actions;
     }
@@ -549,6 +547,18 @@ class Tournament extends AbstractEventType
      * order. Once the first bout is due the draw is final — a championship can
      * never be re-drawn out from under the competitors who turned up for it.
      */
+    /**
+     * Has anything in this division actually been contested?
+     *
+     * `contested` (EventMatch) is the authority: two corners filled AND an
+     * outcome. A BYE carries `done` and a winner with nobody to beat, and a
+     * ladder of byes is scaffolding — clearing that is the whole point here.
+     */
+    private function hasBeenFought(EventCategory $category): bool
+    {
+        return $category->matches()->contested()->exists();
+    }
+
     private function generateDraw(ClubEvent $event): array
     {
         if ($event->hasStarted()) {
@@ -556,9 +566,33 @@ class Tournament extends AbstractEventType
         }
 
         foreach ($event->categories()->get() as $category) {
-            if ($category->registrations()->where('role', 'participant')->count() >= 1) {
+            $entrants = $category->registrations()->where('role', 'participant')->count();
+
+            if ($entrants >= 2) {
                 $this->draws->build($event, $category, paidOnly: false);
                 $this->advanceByes($category);
+
+                continue;
+            }
+
+            /*
+             * Nothing to draw here — and that is the case this loop used to
+             * walk past.
+             *
+             * It only ever asked for `>= 1`, so a division that had emptied
+             * since the last cut (entrants moved to another group, or the
+             * group released) was SKIPPED, and the bracket from that earlier
+             * cut stayed on the board: a full ladder of bouts with nobody in
+             * them (reported 2026-09-06 — a division showing seven empty bouts
+             * and no entrants).
+             *
+             * So take the stale ladder away. Never one that was fought: a
+             * result is a record of something that happened, and an odd state
+             * on a board is a far smaller problem than a deleted bout.
+             */
+            if (! $this->hasBeenFought($category)) {
+                $category->matches()->delete();
+                $category->update(['draw_state' => 'provisional', 'draw_count' => $entrants]);
             }
         }
 
@@ -703,9 +737,27 @@ class Tournament extends AbstractEventType
     public function finance(ClubEvent $event): array
     {
         $finance = parent::finance($event);
-        $fee = $finance['participant_fee'];
 
-        $finance['breakdown'] = $event->categories()->withCount([
+        /*
+         * Per division, from what each entry was actually charged.
+         *
+         * It used to be `paid_count × the base fee`, which reads as zero on any
+         * event whose price lives in fee options — every division showed
+         * "3 paid · BHD 0" while the event had taken real money (2026-09-06).
+         * `EventFee::chargedForMany` is the same source the event total uses,
+         * so the divisions always add up to it.
+         */
+        $paid = \App\Models\ClubEventRegistration::where('event_id', $event->id)
+            ->where('role', 'participant')
+            ->where('paid', true)
+            ->get(['id', 'category_id']);
+
+        $charged = \App\Events\Support\EventFee::chargedForMany($event, $paid->pluck('id'), 'participant')['amounts'];
+
+        $byDivision = $paid->groupBy('category_id')
+            ->map(fn ($rows) => $rows->sum(fn ($r) => $charged[$r->id] ?? 0.0));
+
+        $rows = $event->categories()->withCount([
             'registrations as entries_count' => fn ($q) => $q->where('role', 'participant'),
             'registrations as paid_count' => fn ($q) => $q->where('role', 'participant')->where('paid', true),
         ])->orderBy('sort_order')->get()
@@ -713,8 +765,31 @@ class Tournament extends AbstractEventType
                 'division' => $c->name,
                 'entries' => (int) $c->entries_count,
                 'paid' => (int) $c->paid_count,
-                'revenue' => (int) $c->paid_count * $fee,
+                'revenue' => round((float) ($byDivision[$c->id] ?? 0.0), 3),
             ])->values()->all();
+
+        /*
+         * Entrants nobody has placed yet get a row of their own.
+         *
+         * Without it the divisions silently failed to add up to the event's
+         * revenue — ten paid entrants with no division carried a hundred dinars
+         * that appeared in the total and in no line of the table.
+         */
+        $unplaced = \App\Models\ClubEventRegistration::where('event_id', $event->id)
+            ->where('role', 'participant')
+            ->whereNull('category_id')
+            ->get(['id', 'paid']);
+
+        if ($unplaced->isNotEmpty()) {
+            $rows[] = [
+                'division' => __('events.entry_no_division_yet'),
+                'entries' => $unplaced->count(),
+                'paid' => $unplaced->where('paid', true)->count(),
+                'revenue' => round($unplaced->where('paid', true)->sum(fn ($r) => $charged[$r->id] ?? 0.0), 3),
+            ];
+        }
+
+        $finance['breakdown'] = $rows;
 
         return $finance;
     }

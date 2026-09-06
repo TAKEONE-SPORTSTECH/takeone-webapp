@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\ClubNotificationEmail;
 use App\Clubs\Models\ClubNotification;
-use App\Models\UserNotification;
+use App\Members\Models\UserNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

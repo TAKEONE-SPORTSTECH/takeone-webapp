@@ -1,13 +1,22 @@
 # Competition entry & billing — agreed design
 
 **Status:** design settled 2026-08-16. **Phases 1–2 are built** (entry authority
-+ channel; structured fee). Pick up at **Phase 3 — invoices**.
++ channel; structured fee), and **multi-pricing was added 2026-09-06** (priced
+options, a late-entry penalty, and frozen per-entry fee lines — see below; it
+reverses decision 3). Pick up at **Phase 3 — invoices**, which now has the fee
+lines to build on.
 
 Scope: how athletes get entered into a martial-arts competition / tournament /
 championship, who is allowed to enter them, who pays, and when money comes back.
 Applies to every combat event type (`Sports/Taekwondo/Tournament`,
 `Sports/Karate/Tournament`, and any future sport) because it lives in
 `app/Events/Support/` + shared core columns — **not** inside a package.
+
+> **Companion spec:** `EVENTS-PUBLIC-ENTRY.md` — how people who are **not on
+> TAKEONE yet** get entered: a public event link, and an incomplete entry that
+> carries its own claim link so a coach never has to invent an athlete's weight
+> or birthdate. It reuses this document's channels, `enter-athletes` permission
+> and fee model unchanged.
 
 ---
 
@@ -38,7 +47,14 @@ Money is the weakest part:
    represent; the club may *disown* the claim, it cannot pre-approve it.
 2. **A coach who enters a squad is billed for all of them — one bill.** The coach
    collects from the athletes offline; the platform does not model that.
-3. **One flat entry fee per athlete.** No per-division fees.
+3. ~~**One flat entry fee per athlete.** No per-division fees.~~
+   **REVERSED 2026-09-06 — see "Multi-pricing" below.** An event may now sell any
+   number of named priced options on top of a base fee, and charge a flat penalty
+   for entering late. The reasoning behind the original call still holds for
+   *divisions* — a fee is not derived from which weight class somebody lands in —
+   but it was never true of what an event actually sells: a jiu-jitsu tournament
+   runs Gi and No-Gi as separate entries, and a championship sells a T-shirt and a
+   banquet seat beside the entry.
 4. **A date change alone is not a refund event** while the competition is still
    listed. **Cancellation is.** So is a postponement that moves the start more
    than **14 days** past the date the payer agreed to, and so is moving the start
@@ -205,6 +221,51 @@ Each phase leaves the app working and is shippable alone.
   "qualified" in the display line (`PersonalEventController::register()`). That is
   a vocabulary problem, not a money one — worth a real flag when the create form
   next changes.
+
+**Multi-pricing** ✅ **BUILT 2026-09-06**
+
+Reverses decision 3 above, at the owner's request. The model:
+
+- **`event_fee_options`** — `event_id`, `role` (participant|spectator), `label`,
+  `amount`, `is_active`, `sort`, `uuid`. A flat list per role; an entrant ticks
+  any number. Deliberately NOT groups with "pick exactly one" semantics — that
+  was offered and declined as too much machinery for the shape organisers
+  actually need.
+- **The base stays the base.** `participant_fee_amount` / `spectator_fee_amount`
+  are unchanged and remain what entering costs at all; options are ADD-ONS.
+  `total = base + options ticked + late penalty`. This is what makes the change
+  safe for events already in the database — one with no options answers every
+  existing question exactly as before — and it is also what stops a flat
+  tick-list producing a free entry when somebody ticks nothing.
+- **`club_events.late_fee_amount` + `late_fee_from`** — a flat penalty added once
+  to an entry taken at or after that moment. Participants only: somebody buying a
+  ticket on the day is the normal way anyone watches sport. Both columns are
+  required together to mean anything.
+- **`event_registration_fee_lines`** — the important part. One row per thing
+  charged, written when the entry is taken, `label` and `amount` COPIED rather
+  than looked up. `finance()` now SUMS these instead of `paid_count × today's
+  fee`, which was wrong before multi-pricing existed (an organiser correcting a
+  price silently restated every entry ever taken) and is inexpressible with it.
+  Entries predating the table have no lines and still fall back to the base fee —
+  reporting them as free would be a worse answer than the one the platform gave
+  at the time.
+- **Options are deactivated, never deleted** (`is_active`), because a frozen line
+  points back at one for provenance. Same rule `club_product_variants` follows.
+- **`event_public_entries.fee_options`** — a JSON list of UUIDs held on a pending
+  public request, so an entrant an organiser reviews next week is billed for
+  exactly what an auto-accepted one is. UUIDs, never amounts: acceptance
+  re-prices from the event's own rows, so an option retired in the meantime
+  simply drops out.
+- **Security:** every door takes option UUIDs and nothing else. `EventFee::quote()`
+  is the single place that resolves them, against that event's own active rows —
+  a forged, retired, duplicated or wrong-role key is dropped silently rather than
+  refused, so a stale form left open overnight never becomes an error page
+  between somebody and entering.
+- Covered doors: self-entry (`register`), spectator `ticket`, coach squad entry
+  (`EntryService::enterMany`, options keyed per athlete), claim issue
+  (`EntryClaim::issue`), the public link (`PublicEntry::enrol`/`settle`/`accept`),
+  the personal create/edit form, and the club-admin event form (participants
+  only — that form still has no spectator pricing at all, unchanged).
 
 **Phase 3 — Invoices**
 - `event_entry_invoices` table + model; squad entry creates/extends, later

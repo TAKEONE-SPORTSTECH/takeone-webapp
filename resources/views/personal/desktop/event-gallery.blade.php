@@ -17,8 +17,9 @@
 
         <div class="flex items-center justify-between gap-3 relative z-50">
             <a href="{{ route('me.events.show', $e['key']) }}"
-               class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline hover:bg-white/25 transition-colors">
-                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
+               class="inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline hover:bg-white/25 transition-colors"
+           aria-label="{{ __('personal.event_show_event') }}" title="{{ __('personal.event_show_event') }}">
+                <i class="bi bi-chevron-left"></i>
             </a>
 
             <div class="flex items-center gap-2">

@@ -8,10 +8,10 @@ use App\Models\ClubMemberSubscription;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Models\EventRecording;
-use App\Models\HealthRecord;
+use App\Members\Models\HealthRecord;
 use App\Models\MediaFile;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 

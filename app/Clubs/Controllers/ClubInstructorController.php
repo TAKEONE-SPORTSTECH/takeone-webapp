@@ -2,6 +2,7 @@
 
 namespace App\Clubs\Controllers;
 
+use App\Events\Support\EntryPhoto;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreInstructorRequest;
 use App\Http\Requests\Admin\UpdateInstructorRequest;
@@ -9,10 +10,10 @@ use App\Http\Requests\UploadImageRequest;
 use App\Clubs\Models\ClubInstructor;
 use App\Clubs\Models\ClubRecurringExpense;
 use App\Clubs\Models\ClubTransaction;
-use App\Models\Role;
-use App\Models\SkillAcquisition;
+use App\Members\Models\Role;
+use App\Members\Models\SkillAcquisition;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Clubs\Services\RecurringExpenseService;
 use App\Support\ClubCache;
 use App\Traits\HandlesClubAuthorization;
@@ -360,8 +361,11 @@ class ClubInstructorController extends Controller
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
 
-            if ($instructor->user->profile_picture && $instructor->user->profile_picture !== $fullPath && Storage::disk('public')->exists($instructor->user->profile_picture)) {
-                Storage::disk('public')->delete($instructor->user->profile_picture);
+            // Only when nothing else still names the file: an event entry can
+            // point AT a profile picture rather than carry a copy, and duplicate
+            // accounts share one path. See App\Events\Support\EntryPhoto.
+            if ($instructor->user->profile_picture !== $fullPath) {
+                EntryPhoto::discardShared($instructor->user->profile_picture, $instructor->user->id);
             }
 
             $instructor->user->update(['profile_picture' => $fullPath]);

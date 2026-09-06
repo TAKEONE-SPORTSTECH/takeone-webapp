@@ -62,6 +62,17 @@
                                     <p class="text-muted mb-0 small">{{ __('shared.profile_modal_fields_toggle_visibility') }}</p>
                                 </div>
                                 <div class="form-check form-switch" style="font-size: 1.2rem;">
+                                    {{-- ⚠️ Load-bearing. An unchecked checkbox is not
+                                         submitted at all, so without this the server
+                                         cannot tell "the member switched their picture
+                                         to private" from "this form has no privacy
+                                         toggle on it". It used to read the second as
+                                         the first and quietly privatise a member's face
+                                         on every save through any other form. The
+                                         controllers now write the column ONLY when the
+                                         request carried it; this hidden 0 is what makes
+                                         sure a form that HAS the switch always does. --}}
+                                    <input type="hidden" name="profile_picture_is_public" value="0">
                                     <input class="form-check-input" type="checkbox" role="switch"
                                            id="profilePictureVisibility"
                                            x-model="profilePicturePublic"

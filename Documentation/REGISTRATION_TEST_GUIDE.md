@@ -142,7 +142,7 @@ php artisan tinker
 
 Then:
 ```php
-$user = App\Models\User::where('email', 'john@example.com')->first();
+$user = App\Members\Models\User::where('email', 'john@example.com')->first();
 $user->markEmailAsVerified();
 ```
 
@@ -160,13 +160,13 @@ php artisan tinker
 ```
 
 ```php
-App\Models\User::latest()->first();
+App\Members\Models\User::latest()->first();
 ```
 
 ### Check if Super-Admin Role Was Assigned:
 
 ```php
-$user = App\Models\User::latest()->first();
+$user = App\Members\Models\User::latest()->first();
 $user->roles;
 ```
 
@@ -247,7 +247,7 @@ php artisan tinker
 ```
 
 ```php
-$user = App\Models\User::where('email', 'your@email.com')->first();
+$user = App\Members\Models\User::where('email', 'your@email.com')->first();
 $user->isSuperAdmin(); // Should return true
 ```
 
@@ -279,7 +279,7 @@ To verify that only the first user gets super-admin:
 1. Register a second user with different email
 2. Check database:
 ```php
-$user2 = App\Models\User::where('email', 'second@example.com')->first();
+$user2 = App\Members\Models\User::where('email', 'second@example.com')->first();
 $user2->isSuperAdmin(); // Should return false
 ```
 

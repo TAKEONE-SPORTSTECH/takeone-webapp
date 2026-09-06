@@ -3,10 +3,14 @@
 @section('title', $e['title'])
 
 @php
-    $pPaid   = !str_contains(strtolower($e['participant_fee']), 'free') && !str_contains(strtolower($e['participant_fee']), 'qualified');
+    /* An event can now be priced entirely out of OPTIONS, with no base fee at
+       all ("Gi 15 / No-Gi 15"). Reading the base line alone then says "free"
+       and the money sections of this page disappear, so the payload's own
+       option list has a say too. */
+    $pPaid   = (!str_contains(strtolower($e['participant_fee']), 'free') && !str_contains(strtolower($e['participant_fee']), 'qualified')) || ! empty($e['fees']['options']);
     $byQual  = str_contains(strtolower($e['participant_fee']), 'qualified');
     $hasTicket = !empty($e['spectator']);
-    $ticketPaid = $hasTicket && !str_contains(strtolower($e['spectator']['fee']), 'free');
+    $ticketPaid = ($hasTicket && !str_contains(strtolower($e['spectator']['fee']), 'free')) || ! empty($e['fees']['spectator_options']);
 
     // Why competing is not on offer — the exact sentence the server produced, so
     // the apology dialog gives the real reason rather than a generic refusal.
@@ -39,8 +43,9 @@
         <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div class="flex items-center justify-between gap-2 mb-4">
                 <a href="{{ route('me.events') }}"
-                   class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors">
-                    <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.personal_events_title') }}
+                   class="inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors"
+           aria-label="{{ __('personal.personal_events_title') }}" title="{{ __('personal.personal_events_title') }}">
+                    <i class="bi bi-chevron-left"></i>
                 </a>
 
                 <div class="flex items-center gap-2">
@@ -57,7 +62,7 @@
                     </a>
                 @endif
                 <x-qr-code
-                    :url="route('me.events.show', ['event' => $e['key']])"
+                    :url="$shareUrl ?? route('me.events.show', ['event' => $e['key']])"
                     :title="$e['title'] . ' — ' . __('personal.event_show_event')"
                     caption="{{ __('personal.event_show_qr_caption') }}"
                     :filename="'qr-event-' . $e['key']"
@@ -138,314 +143,7 @@
                 </button>
             @endif
 
-            {{-- ===== The event, in one card =====
-                 Ported from the mobile view, which is where this information design
-                 was worked out: five sections in five different voices rather than
-                 five copies of icon + eyebrow + text. The timeline is the spine —
-                 it carries the only facts a competitor has to act on (when entries
-                 close, when to make weight, when to be there), so it gets the date
-                 column, the rail and the full type scale. Everything else is
-                 quieter so that peak stays legible. --}}
-            @php
-                // Only ever allow http(s) URLs into an href (defence-in-depth vs javascript: URIs).
-                $locUrl = (is_string($e['location_url'] ?? null) && preg_match('#^https?://#i', $e['location_url'])) ? $e['location_url'] : null;
-                // Turn-by-turn directions: coords > pasted link > place name.
-                $dirHref = (!empty($e['lat']) && !empty($e['lng']))
-                    ? 'https://www.google.com/maps/dir/?api=1&destination=' . $e['lat'] . ',' . $e['lng']
-                    : ($locUrl ?: ($e['location'] && $e['location'] !== 'TBA'
-                        ? 'https://www.google.com/maps/dir/?api=1&destination=' . urlencode($e['location'])
-                        : null));
-                $hasMap = !empty($e['lat']) && !empty($e['lng']);
-            @endphp
-
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
-                {{-- Every section is announced by the same full-bleed dark band, so
-                     the card reads as one object with a repeating beat rather than a
-                     stack of differently-styled panels. The prize band was the
-                     original of this shape; the rest now match it. --}}
-                <x-event-section-band :color="$e['color']" icon="bi-info-circle"
-                                      :title="__('personal.event_show_about')" />
-
-                <div class="p-6">
-                    @if(trim((string) ($e['about'] ?? '')) !== '')
-                        <p class="text-[15px] leading-relaxed text-foreground max-w-prose">{{ $e['about'] }}</p>
-                    @endif
-
-                    @if(!empty($e['tags']))
-                        <div class="flex flex-wrap gap-1.5 mt-4">
-                            @foreach($e['tags'] as $t)
-                                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold"
-                                      style="background: {{ $e['color'] }}14; color: {{ $e['color'] }};">#{{ $t }}</span>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-
-                {{-- ===== The spine ===== --}}
-                @if(!empty($e['phases']))
-                    <span id="how-it-runs" class="block"></span>
-                    <x-event-section-band :color="$e['color']" icon="bi-signpost-split"
-                                          :title="__('personal.event_show_how_it_runs')" />
-                    <div class="p-6">
-                        <div>
-                            @foreach($e['phases'] as $ph)
-                                @php
-                                    // Status is derived from the date — past = done, today = now, future = upcoming.
-                                    $pdate  = !empty($ph['date']) ? rescue(fn () => \Carbon\Carbon::parse($ph['date']), null, false) : null;
-                                    $today  = \Carbon\Carbon::today();
-                                    $done   = $pdate && $pdate->lt($today);
-                                    $active = $pdate && $pdate->isSameDay($today);
-                                    // The phase that falls on the event's own day is where
-                                    // the date chip lands. Only the first match is tagged —
-                                    // a multi-phase opening day would otherwise claim the id
-                                    // more than once.
-                                    $isStart = $pdate && $pdate->toDateString() === ($e['date_iso'] ?? null) && ! ($startTagged ?? false);
-                                    $startTagged = ($startTagged ?? false) || $isStart;
-                                @endphp
-                                <div @if($isStart) id="run-start" @endif
-                                     {{-- Never dimmed. A phase that has happened is not less true than one
-                                      that has not — the agenda is a record as much as a plan, and
-                                      fading the finished half makes a completed event look broken. --}}
-                                 class="flex gap-3.5 rounded-xl"
-                                     style="--m-attn-color: {{ $e['color'] }}80;">
-
-                                    {{-- The date column: a calendar leaf, so the eye can
-                                         run down the dates without reading a word. --}}
-                                    <div class="w-11 shrink-0 text-center pt-0.5">
-                                        <span class="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ $pdate ? $pdate->format('M') : '' }}</span>
-                                        <span class="block text-[22px] font-black leading-none mt-0.5 {{ $active ? '' : 'text-foreground' }}"
-                                              style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $pdate ? $pdate->format('j') : '—' }}</span>
-                                        <span class="block text-[10px] font-semibold text-muted-foreground mt-0.5">{{ $pdate ? $pdate->format('D') : '' }}</span>
-                                    </div>
-
-                                    {{-- The rail --}}
-                                    <div class="flex flex-col items-center pt-1.5">
-                                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 {{ $active ? 'ring-4' : '' }}"
-                                              style="background: {{ $done ? '#10b981' : ($active ? $e['color'] : '#d1d5db') }};{{ $active ? ' box-shadow: 0 0 0 4px '.$e['color'].'26;' : '' }}"></span>
-                                        @if(!$loop->last)
-                                            <span class="w-px flex-1 my-1.5" style="background: {{ $done ? '#10b98159' : '#e5e7eb' }};"></span>
-                                        @endif
-                                    </div>
-
-                                    {{-- No trailing padding on the last step: it stacked
-                                         with the section's own padding and left a gap
-                                         under the timeline. --}}
-                                    <div class="min-w-0 flex-1 {{ $loop->last ? '' : 'pb-6' }}">
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            <p class="text-[15px] font-bold leading-tight {{ $active ? '' : 'text-foreground' }}"
-                                               style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $ph['label'] }}</p>
-                                            @if($active)
-                                                <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide" style="background: {{ $e['color'] }};">{{ __('personal.event_show_now') }}</span>
-                                            @elseif($done)
-                                                {{-- A phase that has already happened says so. The rows are no longer
-                                                     dimmed (a finished event is not a broken one), so "when did this
-                                                     stop being ahead of me?" needs saying in words. --}}
-                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide bg-green-50 text-green-700">
-                                                    <i class="bi bi-check-circle-fill text-[8px]"></i>{{ __('personal.event_show_phase_done') }}
-                                                </span>
-                                            @endif
-                                        </div>
-
-                                        {{-- Time reads as a fact you act on, so it is set
-                                             in the foreground next to a clock, not greyed
-                                             out beside the date. --}}
-                                        @if(!empty($ph['time']))
-                                            <p class="inline-flex items-center gap-1.5 mt-1.5 text-[12px] font-bold text-foreground">
-                                                <i class="bi bi-clock text-[11px]" style="color: {{ $e['color'] }};"></i>{{ $ph['time'] }}
-                                            </p>
-                                        @endif
-
-                                        {{-- A competition day runs play → break → play.
-                                             Three lines, because that is three different
-                                             things to be somewhere for. --}}
-                                        @if(!empty($ph['segments']))
-                                            <div class="mt-2 space-y-1">
-                                                @foreach($ph['segments'] as $seg)
-                                                    @php $isBreak = ($seg['kind'] ?? '') === 'break'; @endphp
-                                                    <p class="flex items-center gap-1.5 text-[12px] font-bold {{ $isBreak ? 'text-muted-foreground' : 'text-foreground' }}">
-                                                        <i class="bi {{ $isBreak ? 'bi-cup-hot-fill' : 'bi-clock' }} text-[11px]"
-                                                           style="color: {{ $isBreak ? '#9ca3af' : $e['color'] }};"></i>
-                                                        <span class="w-10 flex-shrink-0 font-semibold {{ $isBreak ? '' : 'text-muted-foreground' }}">{{ $seg['label'] }}</span>
-                                                        <span>{{ $seg['time'] }}</span>
-                                                    </p>
-                                                @endforeach
-                                            </div>
-                                        @endif
-
-                                        <p class="text-[12px] text-muted-foreground leading-snug mt-1">{{ $ph['note'] }}</p>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Divisions — grouped by AGE GROUP and gender, not gender alone.
-                     A championship running Cadet and Senior would otherwise show two
-                     identical "Men" lists, and the age group — the first thing a
-                     competitor checks — never appeared at all. --}}
-                @if(!empty($e['divisions']))
-                    @php
-                        // Division names are generated as "{Age} {Men|Women} {label} kg"
-                        // by AbstractCombatSport::divisionName(), so they parse back
-                        // reliably. Anything that does not match is kept whole rather
-                        // than mangled.
-                        $divGroups = [];
-                        foreach ($e['divisions'] as $d) {
-                            if (preg_match('/^(.*?)\s*\b(Men|Women)\b\s*(.*)$/i', $d, $m)) {
-                                $age    = trim($m[1]);
-                                $female = strcasecmp($m[2], 'Women') === 0;
-                                $weight = trim($m[3]) !== '' ? trim($m[3]) : $d;
-                                $label  = trim($age.' '.($female ? __('personal.event_show_women') : __('personal.event_show_men')));
-                            } else {
-                                $female = false;
-                                $weight = $d;
-                                $label  = __('personal.event_show_divisions');
-                            }
-                            $key = ($female ? 'f' : 'm').'|'.$label;
-                            $divGroups[$key]['label']  = $label;
-                            $divGroups[$key]['female'] = $female;
-                            $divGroups[$key]['items'][] = $weight;
-                        }
-                        // No sort: PHP keeps insertion order, which is the divisions'
-                        // own sort_order — the sequence the organiser arranged them in.
-                        // Imposing an alphabetical order here would quietly override it.
-                    @endphp
-                    <x-event-section-band :color="$e['color']" icon="bi-diagram-3-fill"
-                                          :title="__('personal.event_show_divisions')" />
-                    <div class="p-6">
-                        {{-- Desktop has the width mobile does not: run the gender/age
-                             groups two-up instead of stacking them. --}}
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                            @foreach($divGroups as $g)
-                                @php $tint = $g['female'] ? '#ec4899' : '#3b82f6'; @endphp
-                                <div>
-                                    <p class="flex items-center gap-1.5 text-[12px] font-black mb-2" style="color: {{ $tint }};">
-                                        <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}"></i>{{ $g['label'] }}
-                                    </p>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach($g['items'] as $w)
-                                            <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
-                                                  style="background: {{ $tint }}14;">{{ $w }}</span>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Requirements — a short contract, set as one. --}}
-                @if(!empty($e['requirements']))
-                    <x-event-section-band :color="$e['color']" icon="bi-clipboard-check"
-                                          :title="__('personal.event_show_requirements')" />
-                    <div class="p-6">
-                        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
-                            @foreach($e['requirements'] as $req)
-                                <li class="flex items-start gap-2.5 text-[13px] text-foreground/85 leading-snug">
-                                    <i class="bi bi-check-circle-fill text-[13px] mt-0.5 flex-shrink-0" style="color: {{ $e['color'] }};"></i>
-                                    <span>{{ $req }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-
-                {{-- Documents — rulebook, entry form, schedule. The section only
-                     exists when there is something to download, unless you are the
-                     organiser, who needs the uploader to put the first one there. --}}
-                @if(!empty($documents))
-                    <x-event-section-band :color="$e['color']" icon="bi-paperclip"
-                                          :title="__('personal.event_docs_heading')" />
-                    <div class="p-6">
-                        {{-- Read-only here. Uploading and deleting is organiser work
-                             and lives in the console. --}}
-                        <x-event-documents :event="$e['key']" :documents="$documents ?? []"
-                                           :can-manage="false" :color="$e['color']" />
-                    </div>
-                @endif
-
-                {{-- Venue — the map IS the section. The address sits on it under a
-                     scrim rather than in a row above it, so the card closes on one
-                     object instead of two stacked. --}}
-                <span id="where" class="block"></span>
-                @if($hasMap)
-                    {{-- The map component is built for forms, so its root is space-y-4
-                         and its inner wrapper space-y-2 — which put a 1rem margin above
-                         the map and stopped it meeting the card's bottom edge. Zero it
-                         for this instance only; the card's overflow-hidden then clips
-                         the map into the rounded corners. --}}
-                    <style>
-                        #evtmapdesktop{{ $e['id'] }}Container,
-                        #evtmapdesktop{{ $e['id'] }}Container > div { margin: 0 !important; }
-                        #evtmapdesktop{{ $e['id'] }}Container > * + *,
-                        #evtmapdesktop{{ $e['id'] }}Container > div > * + * { margin-top: 0 !important; }
-                        #evtmapdesktop{{ $e['id'] }}Map { display: block; }
-                    </style>
-                    {{-- The band sits directly on the map — no padded gap between. --}}
-                    <x-event-section-band :color="$e['color']" icon="bi-geo-alt-fill"
-                                          :title="__('personal.event_show_location')" />
-
-                    <div class="relative">
-                        <x-location-map
-                            :id="'evtmapdesktop'.$e['id']"
-                            :lat="$e['lat']" :lng="$e['lng']"
-                            :draggable="false" :readonly="true" :show-address="false" :show-coords="false" :show-labels="false"
-                            height="15rem" :zoom="15" map-class="bg-muted/30" />
-
-                        {{-- pointer-events-none so the scrim never eats a map drag;
-                             the link re-enables them for itself. --}}
-                        <div class="absolute inset-x-0 bottom-0 z-[400] p-5 pt-10 pointer-events-none"
-                             style="background: linear-gradient(to top, rgba(17,24,39,.88), rgba(17,24,39,0));">
-                            <div class="flex items-end justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-[15px] font-black text-white leading-tight truncate">{{ $e['location'] }}</p>
-                                    @if(!empty($e['address']) && $e['address'] !== $e['location'])
-                                        <p class="text-[11px] text-white/70 truncate mt-0.5">{{ $e['address'] }}</p>
-                                    @endif
-                                </div>
-                                @if($dirHref)
-                                    <a href="{{ $dirHref }}" target="_blank" rel="noopener"
-                                       class="pointer-events-auto flex-shrink-0 px-3 py-2 rounded-xl bg-white text-[12px] font-black
-                                              flex items-center gap-1.5 shadow-lg hover:shadow-xl transition-shadow"
-                                       style="color: {{ $e['color'] }};">
-                                        <i class="bi bi-cursor-fill"></i> {{ __('personal.event_show_directions') }}
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                    <script>
-                        (function () {
-                            var id = 'evtmapdesktop{{ $e['id'] }}', lat = {{ $e['lat'] }}, lng = {{ $e['lng'] }}, tries = 0;
-                            (function go() {
-                                if (window.LocationMap) {
-                                    window.LocationMap.create({ id: id, defaultLat: lat, defaultLng: lng, zoom: 15, draggable: false, readonly: true });
-                                } else if (tries++ < 60) {
-                                    setTimeout(go, 100);
-                                }
-                            })();
-                        })();
-                    </script>
-                @else
-                    {{-- No coordinates: the venue still has to be findable. --}}
-                    <x-event-section-band :color="$e['color']" icon="bi-geo-alt-fill"
-                                          :title="__('personal.event_show_location')" />
-                    <div class="px-6 py-5 flex items-center justify-between gap-3">
-                        <div class="min-w-0">
-                            <p class="text-sm font-black text-foreground leading-tight">{{ $e['location'] }}</p>
-                        </div>
-                        @if($dirHref)
-                            <a href="{{ $dirHref }}" target="_blank" rel="noopener"
-                               class="flex-shrink-0 px-3 py-2 rounded-xl text-white text-[12px] font-black flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-                               style="background: {{ $e['color'] }};">
-                                <i class="bi bi-cursor-fill"></i> {{ __('personal.event_show_directions') }}
-                            </a>
-                        @endif
-                    </div>
-                @endif
-            </div>
+            @include('partials.event-detail-card-desktop')
 
             {{-- League --}}
             @if(!empty($league))
@@ -664,7 +362,7 @@
                     </div>
                     <span class="text-sm font-black flex-shrink-0"
                           x-text="!going ? '{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}' : (feeDue ? '{{ __('personal.event_show_cta_fee_due') }}' : '{{ __('personal.event_show_cta_joined') }}')">{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}</span>
-                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
+                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
                 </div>
             </button>
 
@@ -692,7 +390,7 @@
                         </div>
                         <span class="text-sm font-black flex-shrink-0"
                               x-text="!watching ? '{{ $e['spectator']['fee'] }}' : (feeDue ? '{{ __('personal.event_show_cta_fee_due') }}' : '{{ __('personal.event_show_cta_booked') }}')">{{ $e['spectator']['fee'] }}</span>
-                        <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
+                        <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
                     </div>
                 </button>
             @endif
@@ -741,7 +439,7 @@
                                         <h3 class="font-black text-[15px] leading-tight">{{ __('personal.event_show_tile_draw') }}</h3>
                                         <p class="text-[11px] text-white/85 mt-0.5 truncate">{{ $athleteTotal }} {{ __('personal.event_show_entrants') }}</p>
                                     </div>
-                                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
+                                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
                                 </div>
                             </a>
                         @endif
@@ -761,7 +459,7 @@
                                     <h3 class="font-black text-[15px] leading-tight">{{ __('personal.event_show_tile_officials') }}</h3>
                                     <p class="text-[11px] text-white/85 mt-0.5 truncate">{{ trans_choice('personal.event_manage_officials_count', $e['officials_count'] ?? 0, ['count' => $e['officials_count'] ?? 0]) }}</p>
                                 </div>
-                                <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
+                                <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
                             </div>
                         </a>
 
@@ -789,7 +487,7 @@
                                         @endif
                                     </p>
                                 </div>
-                                <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
+                                <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
                             </div>
                         </a>
 
@@ -813,7 +511,7 @@
                                                 : __('events.bout_gallery_none') }}
                                         </p>
                                     </div>
-                                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
+                                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
                                 </div>
                             </a>
                     </div>
@@ -826,12 +524,13 @@
                  have nowhere else to live. --}}
             <div>
 
-                {{-- Which club this athlete competes for, and — for a coach —
-                     the door to entering a whole squad. --}}
-                <div class="space-y-3 mb-3">
-                    @include('partials.event-representing')
-                    @include('partials.event-squad-entry')
-                </div>
+                {{-- REMOVED 2026-09-02 at the user's request, in step with the
+                     mobile view: the "Competing for" card
+                     (partials.event-representing) and the "Enroll your athletes"
+                     button and sheet (partials.event-squad-entry). The club
+                     choice still renders inside the join sheet below, which an
+                     already-registered athlete reaches through the participant
+                     row. Both partials are left on disk, uncalled. --}}
 
                 {{-- Optional manual proof-of-payment (paid participant events) --}}
                 @include('partials.event-payment-proof')
@@ -851,10 +550,22 @@
         </aside>
     </div>
 
-    <div x-init="$el.addEventListener('share-event-fired', () => {})"
-         @share-event.window="
-            if (navigator.share) { navigator.share({ title: '{{ addslashes($e['title']) }}', text: '{{ addslashes(__('personal.event_show_share_text', ['title' => $e['title']])) }}' }).catch(()=>{}); }
-            else { window.showToast('success', '{{ __('personal.event_show_link_copied') }}'); }
+    {{-- Share handler.
+         Shares the URL the server decided on ($shareUrl): the PUBLIC page when
+         the organiser has published one, the member page otherwise. It used to
+         share a title and a sentence with no url at all, and its "copied"
+         fallback copied nothing — so the only link anybody could actually pass
+         on was the member page, which asks a stranger to log in. --}}
+    <div @share-event.window="
+            const url = @js($shareUrl ?? url()->current());
+            if (navigator.share) {
+                navigator.share({ title: @js($e['title']), text: @js(__('personal.event_show_share_text', ['title' => $e['title']])), url }).catch(() => {});
+                return;
+            }
+            navigator.clipboard?.writeText(url).then(
+                () => window.showToast('success', @js(__('personal.event_show_link_copied'))),
+                () => window.showToast('info', url),
+            );
          "></div>
 
     {{-- ===== Set-winners modal ===== --}}

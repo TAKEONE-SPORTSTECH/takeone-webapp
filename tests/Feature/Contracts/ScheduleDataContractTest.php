@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Contracts;
 
-use App\Models\User;
-use App\Models\UserScheduleSession;
+use App\Members\Models\User;
+use App\Members\Models\UserScheduleSession;
 
 /**
  * RESPONSE-SHAPE CONTRACT — GET /me/schedule/data (route `me.schedule.data`,

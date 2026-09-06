@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Members\Models\User;
 
 /** One person's like on one bout comment. Rows, not a counter — see the migration. */
 class BoutCommentLike extends Model

@@ -3,11 +3,11 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Clubs\Models\Tenant;
 use App\Clubs\Models\ClubAffiliation;
-use App\Models\SkillAcquisition;
-use App\Models\AffiliationMedia;
+use App\Members\Models\SkillAcquisition;
+use App\Members\Models\AffiliationMedia;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubInstructor;

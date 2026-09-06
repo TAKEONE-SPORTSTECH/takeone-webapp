@@ -39,6 +39,10 @@ class EventCamera extends Model
         'storage_total_bytes' => 'integer',
         'storage_free_bytes' => 'integer',
         'battery_percent' => 'integer',
+        // What the console asked this camera to run at, and what the camera
+        // says it is actually running. Kept apart on purpose — see MatCameras.
+        'settings' => 'array',
+        'reported_settings' => 'array',
         'last_seen_at' => 'datetime',
         'claimed_at' => 'datetime',
         'revoked_at' => 'datetime',

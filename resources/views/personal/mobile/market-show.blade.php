@@ -22,7 +22,7 @@
         <div class="flex items-center justify-between relative z-10">
             <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.market') }}')"
                class="m-press w-10 h-10 rounded-full bg-white shadow-sm grid place-items-center text-foreground" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left text-lg"></i>
+                <i class="bi bi-chevron-left text-lg"></i>
             </button>
             <button type="button" @click="liked=!liked"
                     class="m-press w-10 h-10 rounded-full bg-white shadow-sm grid place-items-center"

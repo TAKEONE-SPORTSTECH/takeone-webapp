@@ -137,7 +137,7 @@
                                             {{-- Tap the discipline to read what it actually is (public directory page). --}}
                                             <a href="{{ $actLink }}" class="m-press text-xs font-semibold text-foreground truncate min-w-0 no-underline inline-flex items-center gap-1">
                                                 <i class="bi bi-activity text-primary"></i><span class="truncate">{{ $act->name }}</span>
-                                                <i class="bi bi-chevron-right text-[8px] text-primary rtl:rotate-180 flex-shrink-0"></i>
+                                                <i class="bi bi-chevron-right text-[8px] text-primary flex-shrink-0"></i>
                                             </a>
                                         @else
                                             <p class="text-xs font-semibold text-foreground truncate min-w-0"><i class="bi bi-activity text-primary mr-1"></i>{{ $act->name }}</p>
@@ -151,7 +151,7 @@
                                                     @if(!empty($ins['image']))<img src="{{ file_url($ins['image']) }}" alt="" class="w-5 h-5 object-cover">@else<i class="bi bi-person text-primary text-[10px]"></i>@endif
                                                 </span>
                                                 <span class="truncate max-w-[7rem]">{{ $ins['name'] }}</span>
-                                                <i class="bi bi-chevron-right text-[8px] text-primary rtl:rotate-180"></i>
+                                                <i class="bi bi-chevron-right text-[8px] text-primary"></i>
                                             </a>
                                         @elseif($ins)
                                             <span class="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground flex-shrink-0">

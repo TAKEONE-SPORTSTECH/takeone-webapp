@@ -1,3 +1,51 @@
+@php
+    /*
+     * MULTI-PRICING — the seed for the editor in the sheet below.
+     *
+     * The sheet is opened for whichever event the member tapped, so there is no
+     * single event to render server-side; what is rendered is a LOOKUP for every
+     * event this club owns, and `openEdit()` reads its row out of it. That keeps
+     * the feature inside this file — `window.eventsData`, built by the page
+     * around it, does not have to learn about fee options.
+     *
+     * Only ACTIVE options are offered: a withdrawn one still exists, because the
+     * frozen fee lines on entries already taken point at it.
+     */
+    $feeOptionEventIds = \App\Models\ClubEvent::where('tenant_id', $club->id)->pluck('id');
+
+    $feeOptionsByEvent = \App\Models\EventFeeOption::query()
+        ->whereIn('event_id', $feeOptionEventIds)
+        ->forRole('participant')
+        ->active()
+        ->ordered()
+        ->get()
+        ->groupBy('event_id')
+        ->map(fn ($group) => $group->map(fn ($option) => [
+            'uuid' => $option->uuid,
+            'label' => $option->label,
+            // Trailing zeros trimmed so the box shows the 5 that was typed, not
+            // the 5.000 the decimal column stores.
+            'amount' => rtrim(rtrim(number_format((float) $option->amount, 3, '.', ''), '0'), '.'),
+        ])->values())
+        ->all();
+
+    $lateFeeByEvent = \App\Models\ClubEvent::where('tenant_id', $club->id)
+        ->whereNotNull('late_fee_from')
+        ->get(['id', 'late_fee_amount', 'late_fee_from'])
+        ->mapWithKeys(function ($event) {
+            // No cast on the column yet, so it may arrive as a string or a
+            // Carbon depending on who wrote it. Parse either.
+            $from = \Illuminate\Support\Carbon::parse($event->late_fee_from);
+
+            return [$event->id => [
+                'amount' => rtrim(rtrim(number_format((float) $event->late_fee_amount, 3, '.', ''), '0'), '.'),
+                'date' => $from->format('Y-m-d'),
+                'time' => $from->format('H:i'),
+            ]];
+        })
+        ->all();
+@endphp
+
 {{-- Mobile "Add / Edit Event" — bottom sheet. Opens on `open-add-event` or
      `open-edit-event` (detail.id). Mirrors the desktop event form fields and posts
      to the SAME store/update endpoints & field names, via AJAX (in-place update). --}}
@@ -16,6 +64,23 @@ window.eventFormSheet = function () {
         tags: '', description: '',
         feeType: 'free', feeAmount: '',
         currency: @json($club->currency),
+
+        // MULTI-PRICING. `total = base + what was ticked + the late penalty`;
+        // the base is `feeAmount` above and is untouched, so an event with no
+        // rows here prices exactly as it always has.
+        feeRows: [],
+        lateAmount: '', lateDate: '', lateTime: '',
+        feeOptionsByEvent: @js($feeOptionsByEvent),
+        lateFeeByEvent: @js($lateFeeByEvent),
+
+        // Date and time are edited apart (Design Rule #4 forbids a native
+        // datetime control) and posted as one value. No date means no late fee
+        // at all, so the field goes up empty and the server clears both halves.
+        get lateFromValue() {
+            return this.lateDate ? this.lateDate + ' ' + (this.lateTime || '00:00') : '';
+        },
+        addFeeRow() { this.feeRows.push({ uuid: '', label: '', amount: '' }); },
+        removeFeeRow(i) { this.feeRows.splice(i, 1); },
 
         get participantFee() {
             return this.feeType === 'paid' && this.feeAmount !== '' && this.feeAmount !== null
@@ -49,6 +114,8 @@ window.eventFormSheet = function () {
             this.color = '#7c3aed'; this.location = this.level = this.max_capacity = this.cancel_within_days = '';
             this.tags = ''; this.description = '';
             this.feeType = 'free'; this.feeAmount = '';
+            this.feeRows = [];
+            this.lateAmount = this.lateDate = this.lateTime = '';
             this.keptImages = []; this.newImages = [];
         },
         openAdd() { this.mode = 'add'; this.editId = null; this.resetAll(); this.open = true; },
@@ -84,6 +151,15 @@ window.eventFormSheet = function () {
                 this.feeType = 'free';
                 this.feeAmount = '';
             }
+            // The event's own extras and late penalty, from the lookup above.
+            // Copied, never referenced, so editing a row and then cancelling
+            // does not leave the change behind for the next open.
+            const opts = this.feeOptionsByEvent[id] || [];
+            this.feeRows = opts.map(o => ({ uuid: o.uuid, label: o.label, amount: o.amount }));
+            const late = this.lateFeeByEvent[id] || null;
+            this.lateAmount = late ? late.amount : '';
+            this.lateDate = late ? late.date : '';
+            this.lateTime = late ? late.time : '';
             this.keptImages = Array.isArray(d.images) ? d.images.slice() : [];
             this.open = true;
         },
@@ -264,6 +340,71 @@ window.eventFormSheet = function () {
                     </div>
                 </div>
 
+                {{-- Extras and options, and the late-entry penalty. Both are
+                     ADDED to the entry fee above. --}}
+                <div class="border-t border-gray-200 pt-4">
+                    {{-- The form declaring it owns these fields. Without it the
+                         controller cannot tell "the organiser removed the last
+                         option" from "this caller never had the editor on
+                         screen", and would wipe pricing set elsewhere. --}}
+                    <input type="hidden" name="fee_pricing_present" value="1">
+
+                    <label class="form-label">{{ __('events.fee_options_title') }}</label>
+                    <p class="text-xs text-muted-foreground mb-2">{{ __('events.fee_options_hint') }}</p>
+
+                    <div class="space-y-2">
+                        <template x-for="(row, i) in feeRows" :key="i">
+                            <div class="flex items-center gap-2">
+                                {{-- The uuid says "this row is that existing
+                                     option"; the server resolves it against this
+                                     event's own rows and a stale one simply
+                                     becomes a new option. --}}
+                                <input type="hidden" :name="`fee_options[${i}][uuid]`" :value="row.uuid || ''">
+                                <input type="text" class="form-control flex-1" maxlength="80"
+                                       :name="`fee_options[${i}][label]`" x-model="row.label"
+                                       placeholder="{{ __('events.fee_option_placeholder') }}"
+                                       aria-label="{{ __('events.fee_option_label') }}">
+                                <input type="number" min="0" step="any" class="form-control w-24"
+                                       :name="`fee_options[${i}][amount]`" x-model="row.amount"
+                                       :placeholder="currency"
+                                       aria-label="{{ __('events.fee_option_amount') }}">
+                                <button type="button" @click="removeFeeRow(i)"
+                                        title="{{ __('events.fee_option_remove') }}"
+                                        aria-label="{{ __('events.fee_option_remove') }}"
+                                        class="m-press w-9 h-9 rounded-xl border border-gray-200 text-red-600 grid place-items-center flex-shrink-0">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+
+                    <button type="button" @click="addFeeRow()"
+                            class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 bg-muted/40 text-sm font-medium text-muted-foreground flex items-center justify-center gap-2">
+                        <i class="bi bi-plus-lg"></i> {{ __('events.fee_option_add') }}
+                    </button>
+
+                    {{-- The late penalty. Both halves or neither — an amount with
+                         no moment to start from charges nobody, and a moment with
+                         no amount charges nothing. --}}
+                    <div class="mt-4">
+                        <label class="form-label">{{ __('events.fee_late_title') }}</label>
+                        <p class="text-xs text-muted-foreground mb-2">{{ __('events.fee_late_hint') }}</p>
+                        <div class="relative mb-2">
+                            <span class="absolute inset-y-0 start-0 flex items-center ps-3 text-sm text-muted-foreground pointer-events-none" x-text="currency"></span>
+                            <input type="number" min="0" step="any" name="late_fee_amount" x-model="lateAmount"
+                                   class="form-control ps-14" aria-label="{{ __('events.fee_late_amount') }}">
+                        </div>
+                        <label class="form-label text-xs">{{ __('events.fee_late_from') }}</label>
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1">
+                                <x-date-picker model="lateDate" />
+                            </div>
+                            <input type="time" class="form-control w-32" x-model="lateTime">
+                        </div>
+                        <input type="hidden" name="late_fee_from" :value="lateFromValue">
+                    </div>
+                </div>
+
                 {{-- Tags --}}
                 <div>
                     <label class="form-label">{{ __('admin.partials_form_fields_tags') }} <span class="text-xs text-muted-foreground">{{ __('admin.partials_form_fields_tags_hint') }}</span></label>
@@ -282,7 +423,7 @@ window.eventFormSheet = function () {
                     <div class="grid grid-cols-3 gap-2">
                         <template x-for="(img, i) in keptImages" :key="'k' + i">
                             <div class="relative">
-                                <img :src="'/storage/' + img" alt="" class="w-full h-20 object-cover rounded-xl border border-gray-100">
+                                <img :src="'/file/' + img" alt="" class="w-full h-20 object-cover rounded-xl border border-gray-100">
                                 <button type="button" @click="removeKept(i)" class="m-press absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white grid place-items-center text-xs"><i class="bi bi-x"></i></button>
                             </div>
                         </template>

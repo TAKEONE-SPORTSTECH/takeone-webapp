@@ -153,7 +153,7 @@ window.packageFormSheet = function () {
             this.price = p.price ?? ''; this.registration_fee = p.registration_fee ?? ''; this.duration_months = p.duration_months || 1;
             this.gender = p.gender || 'mixed';
             this.age_min = p.age_min ?? ''; this.age_max = p.age_max ?? '';
-            this.existingImage = p.cover_image ? ('/storage/' + p.cover_image) : '';
+            this.existingImage = p.cover_image ? ('/file/' + p.cover_image) : '';
 
             // Reconstruct schedules from activity pivots (group by activity + time window).
             (p.activities || []).forEach(act => {

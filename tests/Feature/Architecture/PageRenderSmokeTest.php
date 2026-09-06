@@ -3,7 +3,7 @@
 namespace Tests\Feature\Architecture;
 
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 

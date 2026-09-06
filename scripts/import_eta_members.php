@@ -18,9 +18,9 @@ $app = require_once __DIR__ . '/../bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;

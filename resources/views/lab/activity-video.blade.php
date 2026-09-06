@@ -88,7 +88,7 @@
         @endif
         <div class="axm-hero-topfade"></div>
         <div class="axm-topbar">
-            <a href="{{ url('/lab/activity-video') }}" class="axm-ctrl"><i class="bi bi-arrow-left"></i></a>
+            <a href="{{ url('/lab/activity-video') }}" class="axm-ctrl"><i class="bi bi-chevron-left"></i></a>
             <div class="axm-topbar-right">
                 <button type="button" class="axm-ctrl"><i class="bi bi-share"></i></button>
                 <button type="button" class="axm-ctrl"><i class="bi bi-qr-code"></i></button>

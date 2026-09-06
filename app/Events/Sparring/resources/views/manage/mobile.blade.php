@@ -1,4 +1,6 @@
-@extends('layouts.personal-mobile')
+{{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
+     nothing shared this is the member shell exactly as before. See entry/shell. --}}
+@extends($shell ?? 'layouts.personal-mobile')
 
 @section('title', __('event-sparring::messages.label').' · '.$e['title'])
 
@@ -38,7 +40,7 @@
 
         <div class="flex items-center justify-between relative z-50">
             <a href="{{ route('me.events') }}" class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
-                <i class="bi bi-arrow-left rtl:rotate-180"></i>
+                <i class="bi bi-chevron-left"></i>
             </a>
             <button type="button" x-show="! closed" @click="endSession()"
                     class="h-10 px-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-xs font-bold inline-flex items-center gap-1.5">

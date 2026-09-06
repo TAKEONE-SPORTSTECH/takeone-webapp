@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Mail\WelcomeEmail;
 use App\Models\Invoice;
-use App\Models\User;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserRelationship;
 use Illuminate\Support\Facades\Mail;
 
 /*

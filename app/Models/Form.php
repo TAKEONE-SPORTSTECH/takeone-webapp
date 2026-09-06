@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 
 /**
  * A user-built form. Its structure lives in the `schema` JSON:

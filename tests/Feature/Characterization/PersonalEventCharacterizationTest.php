@@ -7,7 +7,7 @@ use App\Models\ClubEventRegistration;
 use App\Models\EventChecklistItem;
 use App\Models\EventParticipantBan;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Database\Factories\ClubEventRegistrationFactory;
 use Illuminate\Support\Facades\Event as EventFacade;
 use Tests\Feature\Contracts\ContractTestCase;
@@ -486,7 +486,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
             'gender' => 'Male',
             'birthdate' => now()->subYears(25)->toDateString(),
         ]);
-        \App\Models\HealthRecord::create(['user_id' => $member->id, 'weight' => 57, 'recorded_at' => now()]);
+        \App\Members\Models\HealthRecord::create(['user_id' => $member->id, 'weight' => 57, 'recorded_at' => now()]);
 
         $this->actingAs($member)->postJson(route('me.events.register', $event->uuid))
             ->assertOk()->assertJson(['success' => true]);

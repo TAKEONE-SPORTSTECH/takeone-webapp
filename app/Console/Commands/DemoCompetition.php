@@ -7,11 +7,11 @@ use App\Clubs\Models\ClubAffiliation;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
-use App\Models\HealthRecord;
-use App\Models\MemberCertification;
-use App\Models\SkillAcquisition;
+use App\Members\Models\HealthRecord;
+use App\Members\Models\MemberCertification;
+use App\Members\Models\SkillAcquisition;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Sports\Combat\SportRegistry;
 use App\Support\DemoManifest;
 use Illuminate\Console\Command;
@@ -115,7 +115,7 @@ class DemoCompetition extends Command
                 'official' => 'Sami Kooheji',
                 'courts' => 3,
                 // Each package owns its own fleet: own devices table, own routes.
-                'device' => \App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayDevice::class,
+                'device' => \App\Scoreboard\Sports\Karate\HallScreen\CourtDisplayDevice::class,
                 'table' => 'karate_court_displays',
                 'court_path' => '/karate/court/',
             ],
@@ -136,7 +136,7 @@ class DemoCompetition extends Command
                 'issuer' => 'Bahrain Taekwondo Federation',
                 'official' => 'Nader Alwadi',
                 'courts' => 3,
-                'device' => \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice::class,
+                'device' => \App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplayDevice::class,
                 'table' => 'court_displays',
                 'court_path' => '/court/',
             ],

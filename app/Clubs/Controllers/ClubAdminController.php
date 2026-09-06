@@ -12,9 +12,9 @@ use App\Clubs\Models\ClubInstructor;
 use App\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Services\FinancialService;
 use App\Support\ClubCache;
 use App\Traits\HandlesClubAuthorization;
@@ -103,7 +103,7 @@ class ClubAdminController extends Controller
         // Member breakdown stats — reuse the same cache as the public page
         $memberStats = Cache::remember(ClubCache::showStats($clubId), ClubCache::TTL_STATS, function () use ($clubId, $club) {
             $memberIds = $club->members()->pluck('users.id');
-            $members = \App\Models\User::whereIn('id', $memberIds)->get();
+            $members = \App\Members\Models\User::whereIn('id', $memberIds)->get();
 
             static $countryNames = null;
             if ($countryNames === null) {
@@ -150,7 +150,7 @@ class ClubAdminController extends Controller
                 ->map(fn ($group) => $group->count())
                 ->filter(fn ($_, $key) => ! empty($key));
 
-            $memberGoals = \App\Models\Goal::whereIn('user_id', $memberIds)->get()->groupBy('user_id');
+            $memberGoals = \App\Members\Models\Goal::whereIn('user_id', $memberIds)->get()->groupBy('user_id');
             $goalStats = ['Achieved' => 0, 'In Progress' => 0, 'Pending' => 0, 'No Goals Set' => 0];
             foreach ($memberIds as $id) {
                 if (! isset($memberGoals[$id])) {

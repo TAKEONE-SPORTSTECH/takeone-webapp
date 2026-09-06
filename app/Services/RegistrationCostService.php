@@ -6,8 +6,8 @@ use App\Clubs\Models\ClubActivityEquipment;
 use App\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
-use App\Models\MemberEquipment;
-use App\Models\Membership;
+use App\Members\Models\MemberEquipment;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use Illuminate\Support\Collection;
 

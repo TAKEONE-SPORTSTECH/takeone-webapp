@@ -47,6 +47,16 @@ abstract class Roster
                 return [
                     'id' => $user?->id,
                     'name' => $user?->full_name ?? $user?->name ?? 'Member',
+                    // The ENTRY's own id and photo. Kept separate from the
+                    // user's picture: this belongs to the entry, and it is what
+                    // an organiser's controls act on — putting a face on a
+                    // competitor with no account, and striking a name off the
+                    // list. AbstractEventType::rosterRows() has always carried
+                    // both; this shared tournament roster did not, so every
+                    // organiser control on the roster page silently rendered
+                    // nothing for every combat sport.
+                    'registration' => $r->id,
+                    'registration_photo' => $r->photo,
                     'gender' => $user?->gender ?: null,
                     'category' => $ageGroup,
                     'weight_class' => $weightClass,

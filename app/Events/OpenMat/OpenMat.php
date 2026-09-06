@@ -8,7 +8,7 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * Open Mat — a scoreboard for a fight nobody planned.
@@ -61,8 +61,17 @@ class OpenMat extends AbstractEventType
      * never appears where it would do nothing.
      */
     private const SPORTS = [
-        'karate' => \App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayDevice::class,
-        'taekwondo' => \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice::class,
+        'karate' => \App\Scoreboard\Sports\Karate\HallScreen\CourtDisplayDevice::class,
+        'taekwondo' => \App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplayDevice::class,
+        // Brazilian Jiu-Jitsu calls the same thing by a different name — its
+        // fleet is HallScreen\ScreenDevice, not CourtDisplay\CourtDisplayDevice.
+        // That naming difference, and nothing else, is what kept BJJ off the mat
+        // until now: every other seam a sport needs here (the `{sport}-scoreboard`
+        // route pair, the device's own query helpers and present()) it already
+        // satisfied. Worth stating out loud, because it is the exact cost
+        // CLAUDE.md warns about under "Never name the same thing differently per
+        // package".
+        'bjj' => \App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenDevice::class,
     ];
 
     public function __construct(private OpenMatSession $session) {}
@@ -433,7 +442,7 @@ class OpenMat extends AbstractEventType
      * rounds and feed nothing, and a tree drawn over them would invite somebody
      * to read a knockout that does not exist.
      */
-    public function bracketView(ClubEvent $event, User $viewer): array
+    public function bracketView(ClubEvent $event, ?User $viewer = null): array
     {
         return [];
     }
@@ -610,8 +619,8 @@ class OpenMat extends AbstractEventType
     private function nudge(ClubEvent $event, ?string $court = null): void
     {
         $channel = match ((string) $event->sport) {
-            'karate' => \App\Events\Sports\Karate\Tournament\CourtDisplay\ScreenChannel::class,
-            'taekwondo' => \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\ScreenChannel::class,
+            'karate' => \App\Scoreboard\Sports\Karate\HallScreen\ScreenChannel::class,
+            'taekwondo' => \App\Scoreboard\Sports\Taekwondo\HallScreen\ScreenChannel::class,
             default => null,
         };
 

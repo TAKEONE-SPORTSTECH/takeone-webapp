@@ -1,4 +1,6 @@
-@extends('layouts.personal-mobile')
+{{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
+     nothing shared this is the member shell exactly as before. See entry/shell. --}}
+@extends($shell ?? 'layouts.personal-mobile')
 
 @section('title', __('event-taekwondo_tournament::messages.next_up_title'))
 
@@ -22,22 +24,35 @@
      x-init="listen()" class="-mx-4 -mt-4 pb-8">
 
     {{-- ===== Hero ===== --}}
-    <header class="m-hero px-5 pt-7 pb-14 text-white relative overflow-hidden">
-        <div class="flex items-center gap-3">
-            <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
-               class="m-press w-10 h-10 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0"
-               aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-chevron-left text-lg rtl:rotate-180"></i>
+    <header class="m-hero px-5 pt-5 pb-14 text-white relative overflow-hidden">
+        {{-- Design Rule #6: back is the round 40px control holding a TAIL-LESS
+             chevron and no words (2026-09-04); the destination is its
+             aria-label / title. --}}
+        <div class="flex items-center justify-between gap-2 relative z-50">
+            {{-- Inside the sealed event app, back from a sub-screen means the
+                     CONSOLE — the screen it was opened from. On the platform it
+                     still means the event page. Same pill, honest label either
+                     way (the audit: "'Event' means two different pages"). --}}
+                <a href="{{ isset($shell) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
+               class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
+           aria-label="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}" title="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}">
+                <i class="bi bi-chevron-left"></i>
             </a>
-            <div class="min-w-0">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ $e['title'] }}</p>
-                <h1 class="text-xl font-black mt-0.5 truncate">{{ __('event-taekwondo_tournament::messages.next_up_title') }}</h1>
-            </div>
+
             <button type="button" @click="refresh()" :disabled="busy"
-                    class="m-press ms-auto w-10 h-10 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0"
+                    class="m-press ev-ico w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0"
                     aria-label="{{ __('shared.refresh') }}">
                 <i class="bi bi-arrow-clockwise text-lg" :class="busy && 'animate-spin'"></i>
             </button>
+        </div>
+
+        <div class="relative z-10 mt-6">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                    <i class="bi bi-hourglass-split"></i>{{ __('event-taekwondo_tournament::messages.next_up_title') }}
+                </span>
+            </div>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ $e['title'] }}</h1>
         </div>
     </header>
 

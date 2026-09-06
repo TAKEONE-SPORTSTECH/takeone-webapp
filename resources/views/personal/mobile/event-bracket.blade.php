@@ -1,4 +1,6 @@
-@extends('layouts.personal-mobile')
+{{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
+     nothing shared this is the member shell exactly as before. See entry/shell. --}}
+@extends($shell ?? 'layouts.personal-mobile')
 
 @section('title', __('personal.personal_event_bracket_title'))
 
@@ -160,9 +162,14 @@
 
         {{-- Control row. z-50 so any dropdown paints above the title block. --}}
         <div class="flex items-center justify-between gap-2 relative z-50">
-            <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
-               class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline">
-                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
+            {{-- Inside the sealed event app, back from a sub-screen means the
+                     CONSOLE — the screen it was opened from. On the platform it
+                     still means the event page. Same pill, honest label either
+                     way (the audit: "'Event' means two different pages"). --}}
+                <a href="{{ isset($shell) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
+               class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
+           aria-label="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}" title="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}">
+                <i class="bi bi-chevron-left"></i>
             </a>
 
             <div class="flex items-center gap-2">
@@ -220,6 +227,16 @@
             </div>
         </div>
     </header>
+
+    {{-- A draw the organiser has not let out yet: the page is the veil and
+         nothing else — not merely the board, because this page also reads the
+         same bouts out as a list (PersonalEventController::bracket empties
+         $categories to match). --}}
+    @if($drawHidden ?? null)
+        <div class="px-4 mt-4">
+            <x-draw-veil :message="$drawHidden" :color="$color" />
+        </div>
+    @else
 
     {{-- ===== Category selector ===== --}}
     <div class="px-4 -mt-6 relative z-10">
@@ -595,5 +612,6 @@
         </template>
     @endif
 
+    @endif {{-- the draw-withheld veil --}}
 </div>
 @endsection

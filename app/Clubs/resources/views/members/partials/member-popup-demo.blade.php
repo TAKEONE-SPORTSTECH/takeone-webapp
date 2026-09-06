@@ -4,7 +4,7 @@
 
 {{-- Trigger the popup immediately on load using the first available member --}}
 @php
-    $firstMember = \App\Models\Membership::where('tenant_id', $club->id)
+    $firstMember = \App\Members\Models\Membership::where('tenant_id', $club->id)
         ->whereHas('user')
         ->with('user')
         ->first();

@@ -39,7 +39,7 @@
     {{-- Image preview --}}
     <div x-show="formData.image_preview || formData.image_path" class="mt-2">
         <div class="relative inline-block">
-            <img :src="formData.image_preview || (formData.image_path ? '/storage/' + formData.image_path : '')"
+            <img :src="formData.image_preview || (formData.image_path ? '/file/' + formData.image_path : '')"
                  class="rounded-lg object-cover" style="max-height:160px; max-width:100%;" alt="{{ __('admin.partials_form_fields_preview') }}">
             <button type="button"
                     class="absolute top-1 end-1 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow text-red-500 text-xs"

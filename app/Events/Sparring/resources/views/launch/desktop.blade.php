@@ -123,7 +123,7 @@
                         <span class="block font-bold text-sm text-gray-900 truncate">{{ $s['title'] }}</span>
                         <span class="block text-xs text-muted-foreground">{{ $sportLabel($s['sport']) }} · {{ __('event-sparring::messages.launch_bouts_n', ['n' => $s['bouts']]) }}</span>
                     </span>
-                    <i class="bi bi-chevron-right text-muted-foreground rtl:rotate-180"></i>
+                    <i class="bi bi-chevron-right text-muted-foreground"></i>
                 </a>
             @empty
                 <p class="text-sm text-muted-foreground">{{ __('event-sparring::messages.launch_past_none') }}</p>

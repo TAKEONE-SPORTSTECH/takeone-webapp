@@ -62,7 +62,7 @@
                             ? items.length + ' {{ __('personal.event_manage_documents') }}'
                             : @js(__('personal.event_docs_empty'))"></span>
         </span>
-        <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
+        <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
     </button>
 
     {{-- The sheet. Teleported to <body> so the mobile shell's transformed wrapper

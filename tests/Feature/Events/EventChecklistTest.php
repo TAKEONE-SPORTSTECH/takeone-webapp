@@ -6,7 +6,7 @@ use App\Models\ClubEvent;
 use App\Models\EventChecklistItem;
 use App\Models\EventOfficial;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**

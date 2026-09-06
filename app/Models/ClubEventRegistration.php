@@ -6,6 +6,7 @@ use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 
 class ClubEventRegistration extends Model
 {
@@ -15,15 +16,27 @@ class ClubEventRegistration extends Model
 
     /**
      * Uploads this row owns, purged before the row goes — see the trait.
-     * `photo` is the competitor picture an official added at the scoring table
-     * for this event's screens.
+     *
+     * `photo` is NOT declared here, deliberately. It holds one of two things:
+     * a competitor picture an official took for this event (ours to delete) or
+     * a reference to the athlete's own `users.profile_picture` (theirs, and
+     * settled that way on purpose by App\Events\Support\PublicEntry). The trait
+     * cannot tell them apart, so it purged member profile pictures whenever an
+     * entry was removed. `App\Events\Support\EntryPhoto` asks first; the
+     * `deleting` hook below routes through it.
      */
     protected array $fileUploads = [
-        'photo' => 'public',
         // The club crest an official supplied for this event's screens — never
         // the club's own `tenants.logo`, which this must not touch.
         'club_logo' => 'public',
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $registration) {
+            \App\Events\Support\EntryPhoto::discard($registration->photo);
+        });
+    }
 
     protected $fillable = [
         'event_id',
@@ -51,6 +64,9 @@ class ClubEventRegistration extends Model
         'entered_by',
         // How they got in, and who they compete FOR — see the migration.
         'entry_channel',
+        // Whether the entry is finished. A coach may commit one from a NAME
+        // alone; the athlete completes it through a claim link.
+        'entry_state',
         'representing_tenant_id',
         'club_disowned_at',
     ];
@@ -135,7 +151,18 @@ class ClubEventRegistration extends Model
             return $this->representingTenant?->country ?: ($this->meta ?: null);
         }
 
-        return $this->meta ?: null;
+        /*
+         * Nobody to compete for — so the athlete's own nationality, added
+         * 2026-09-05 at the user's request.
+         *
+         * The rule that the flag on a competition sheet is the CLUB's rather
+         * than the passport's is unchanged and still comes first: an athlete
+         * representing a Bahraini club is on the sheet as Bahrain whatever
+         * their nationality. This is only the case where there IS no club —
+         * where the old answer was no flag at all, which told a reader nothing
+         * when their nationality was on file all along.
+         */
+        return $this->meta ?: ($this->user?->nationality ?: null);
     }
 
     /**

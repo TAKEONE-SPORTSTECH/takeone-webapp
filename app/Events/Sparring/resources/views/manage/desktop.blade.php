@@ -18,7 +18,11 @@
     $spColor = '#0EA5E9';
 @endphp
 
-<div x-data="sparringConsole()" x-init="init()">
+{{-- The page supplies its own wrapper padding: layouts.app's <main> has none,
+     and the band below cancels `px-4 sm:px-6 lg:px-8 py-6` with negative margins.
+     Without the wrapper the band overhung the viewport and every card under it
+     sat flush against the screen edges. --}}
+<div class="px-4 sm:px-6 lg:px-8 py-6" x-data="sparringConsole()" x-init="init()">
 
     {{-- ══════════════ Hero ══════════════ --}}
     <header class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-8 pt-6 pb-20 text-white relative overflow-hidden"
@@ -28,7 +32,7 @@
 
         <div class="flex items-center justify-between relative z-50">
             <a href="{{ route('me.events') }}" class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
-                <i class="bi bi-arrow-left rtl:rotate-180"></i>
+                <i class="bi bi-chevron-left"></i>
             </a>
             <div class="flex items-center gap-2">
                 <a :href="controlUrls[mat]" x-show="controlUrls[mat] && tableReady"

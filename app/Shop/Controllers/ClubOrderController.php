@@ -73,7 +73,7 @@ class ClubOrderController extends Controller
 
         // Notify the buyer of the status change (bell + live MQTT push).
         $icons = ['confirmed' => 'bi-check-circle-fill', 'fulfilled' => 'bi-bag-check-fill', 'cancelled' => 'bi-x-circle-fill', 'pending' => 'bi-hourglass-split'];
-        \App\Models\UserNotification::notifyUser((int) $order->user_id, 'order',
+        \App\Members\Models\UserNotification::notifyUser((int) $order->user_id, 'order',
             __('market.notify_order_'.$order->status, ['ref' => $order->reference, 'club' => $club->club_name]), [
                 'actor_id' => \Illuminate\Support\Facades\Auth::id(),
                 'tenant_id' => $club->id,

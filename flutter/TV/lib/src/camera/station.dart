@@ -113,6 +113,18 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
   int? _storageTotal;
   bool _linkUp = false;
 
+  /// Does a finished bout go up by itself?
+  ///
+  /// OFF unless somebody turns it on, and remembered on the phone. A camera
+  /// stands on a tripod all day on whatever network the hall has: a hotel's
+  /// metered uplink, a volunteer's tethered phone, a venue that charges by the
+  /// gigabyte. Spending that on 400MB a bout is not a decision this app gets to
+  /// make on its own — so the bytes stay here until the operator says otherwise.
+  ///
+  /// It gates the AUTOMATIC path only. An explicit press in the drawer, and an
+  /// explicit `upload` from the console, are somebody ASKING and always work.
+  bool _autoUpload = false;
+
   @override
   void initState() {
     super.initState();
@@ -148,6 +160,7 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
     _recorder.zoom = prefs.getDouble('$_setupKey.zoom') ?? 1;
     _recorder.exposure = prefs.getDouble('$_setupKey.exposure') ?? 0;
     _recorder.fps = prefs.getInt('$_setupKey.fps') ?? 30;
+    _autoUpload = prefs.getBool('$_setupKey.autoUpload') ?? false;
     var token = prefs.getString(_tokenKey);
 
     token ??= await _enrol();
@@ -279,6 +292,70 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
     await prefs.setDouble('$_setupKey.zoom', _recorder.zoom);
     await prefs.setDouble('$_setupKey.exposure', _recorder.exposure);
     await prefs.setInt('$_setupKey.fps', _recorder.fps);
+    await prefs.setBool('$_setupKey.autoUpload', _autoUpload);
+  }
+
+  /// The operator turning automatic uploading on or off, from the drawer.
+  Future<void> _setAutoUpload(bool on) async {
+    if (_autoUpload == on) return;
+
+    setState(() => _autoUpload = on);
+    await _rememberSetup();
+
+    // Turning it ON is also a decision about the bouts already filmed: they are
+    // what the operator was looking at when they reached for the switch. Nothing
+    // is sent when it goes off — an upload already in flight finishes, because
+    // stopping it halfway leaves the server holding a partial file and gains the
+    // uplink nothing.
+    if (on) {
+      for (final c in _clips) {
+        if (c.playVideoKey == null && c.playStatus != 'uploading') {
+          unawaited(_uploadClip(c));
+        }
+      }
+    }
+  }
+
+  /// What this camera is running right now, for the beat.
+  Map<String, dynamic> _reportedSettings() => {
+        'fps': _recorder.fps,
+        'zoom': double.parse(_recorder.zoom.toStringAsFixed(2)),
+        'exposure': double.parse(_recorder.exposure.toStringAsFixed(1)),
+        'auto_upload': _autoUpload,
+      };
+
+  /// Take the mat's standing orders about how to film.
+  ///
+  /// Applied only where they DIFFER, and each through the same setter a person
+  /// at the phone would use, so a remote change and a local one cannot end up
+  /// meaning two different things. Frame rate is the one that cannot be applied
+  /// mid-bout — re-opening the camera would cut the recording — so it is left
+  /// for the next sync, which happens seconds after the bout ends.
+  ///
+  /// Nothing here is trusted blindly: every value is range-checked exactly as
+  /// the on-screen controls are, because this arrives over a network.
+  Future<void> _adoptSettings(dynamic raw) async {
+    if (raw is! Map) return;
+
+    final fps = raw['fps'];
+    if (fps is num && (fps == 30 || fps == 60) && fps != _recorder.fps && !_recorder.rolling) {
+      await _setFps(fps.toInt());
+    }
+
+    final zoom = raw['zoom'];
+    if (zoom is num) {
+      final wanted = zoom.toDouble().clamp(1.0, _recorder.maxZoom);
+      if ((wanted - _recorder.zoom).abs() > 0.05) await _setZoom(wanted);
+    }
+
+    final exposure = raw['exposure'];
+    if (exposure is num) {
+      final wanted = exposure.toDouble().clamp(-4.0, 4.0);
+      if ((wanted - _recorder.exposure).abs() > 0.05) await _setExposure(wanted);
+    }
+
+    final auto = raw['auto_upload'];
+    if (auto is bool && auto != _autoUpload) await _setAutoUpload(auto);
   }
 
   void _schedule() {
@@ -357,6 +434,12 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
       });
     }
 
+    // How the mat wants this camera to film. Carried on the config beat as well
+    // as pushed over the channel, which is what makes an order given while this
+    // phone was asleep — or while the broker was down — arrive at all rather
+    // than being silently lost.
+    await _adoptSettings(config['settings']);
+
     // Reconcile with what the mat believes. Both directions matter: a bout that
     // started while the app was dead, and a stop that was missed.
     final shouldRoll = config['recording'] == true;
@@ -387,6 +470,14 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
       storageFreeBytes: storage?.free,
       batteryPercent: battery,
       recording: _recorder.rolling,
+      // What this camera is ACTUALLY set to. The scoring table's panel shows it
+      // beside what the mat asked for, so an order this phone never received
+      // reads as "asked · waiting" rather than as done.
+      settings: _reportedSettings(),
+      // And what is still on the disk here. A clip's row outlives its file, and
+      // the panel must not offer to upload a recording somebody deleted at the
+      // mat an hour ago.
+      inventory: _clips.map((c) => c.ref).toList(),
     );
 
     // What became of the uploads. The phone's part ends when the last chunk is
@@ -455,6 +546,38 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
       case 'play':
         _commandPlay(command['clip'] as String?);
         break;
+
+      // ── Orders from the scoring table's camera panel ───────────────────
+
+      // Delete ONE recording, named by its own local ref. Separate from
+      // `purge`, which only ever takes footage the server has confirmed it
+      // holds: this one can be asked for a bout that has never been uploaded,
+      // and so it says so on the way out rather than refusing silently — the
+      // person asking is looking at a panel that already told them it is the
+      // only copy.
+      case 'delete':
+        unawaited(_commandDelete(command['clip'] as String?));
+        break;
+
+      // Clear the phone. `scope: uploaded` (the default, and what "free space"
+      // sends) can only take what the server holds; `scope: all` is the
+      // deliberate, confirmed one and takes everything.
+      case 'wipe':
+        unawaited(_commandWipe(command['scope'] as String?));
+        break;
+
+      // How to film, from the mat. Applied through the same setters the
+      // on-screen controls use — see _adoptSettings.
+      case 'settings':
+        unawaited(_adoptSettings(command['settings']));
+        break;
+
+      // "Tell me how you are, now." A camera beats every thirty seconds, which
+      // is right for a phone on a tripod and far too slow for somebody standing
+      // at the panel waiting for a number to move.
+      case 'report':
+        unawaited(_sync());
+        break;
     }
   }
 
@@ -510,6 +633,38 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
       final one = _clipRef(ref);
       if (one != null && one.isSafelyUploaded) targets.add(one);
     }
+
+    if (targets.isEmpty) return;
+
+    await _deleteClips(targets);
+  }
+
+  /// Delete one recording this phone is holding, at the mat's request.
+  ///
+  /// Unlike `purge` this will destroy a bout the server does not have, because
+  /// the panel that asks has already said so out loud and somebody chose it
+  /// anyway. What it will NOT do is act on a name it cannot find: an unknown
+  /// ref deletes nothing rather than falling back to "the most recent", which
+  /// is the shape of mistake that loses the wrong bout.
+  Future<void> _commandDelete(String? ref) async {
+    if (ref == null || ref.isEmpty || ref == 'all') return;
+
+    final clip = _clipRef(ref);
+
+    if (clip == null || clip.ref != ref) return;
+
+    await _deleteClips([clip]);
+  }
+
+  /// Clear the phone, at the mat's request.
+  ///
+  /// The default scope is the safe one, and it is the default HERE as well as
+  /// at the server: a message that arrives with no scope — an old build, a
+  /// truncated payload — must not be read as "erase everything".
+  Future<void> _commandWipe(String? scope) async {
+    final everything = scope == 'all';
+
+    final targets = _clips.where((c) => everything || c.isSafelyUploaded).toList();
 
     if (targets.isEmpty) return;
 
@@ -610,7 +765,8 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
         await ClipLog.save(_clips);
 
         /*
-         * On hall wifi, the bout goes up by itself.
+         * On hall wifi, the bout goes up by itself — but ONLY if this camera
+         * was told to.
          *
          * "On hall wifi" is not a network name — a phone cannot usefully tell
          * one SSID from another, and the thing that actually matters is whether
@@ -621,8 +777,14 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
          * mat is between bouts and the camera is idle, instead of during the
          * next one. A failure is not retried at the operator: the clip stays on
          * the phone, says `failed` in the drawer, and the console can ask again.
+         *
+         * `_autoUpload` is the operator's switch and defaults to OFF: reachable
+         * is not the same as free, and a camera does not decide on its own to
+         * spend somebody's data on every bout it films. With it off the clip
+         * simply sits in the drawer with its UPLOAD button, and the console can
+         * still ask for it.
          */
-        unawaited(_uploadClip(clip));
+        if (_autoUpload) unawaited(_uploadClip(clip));
       }
     }
 
@@ -871,6 +1033,8 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
                 onSave: _publishClip,
                 onUpload: _uploadClip,
                 onDelete: _deleteClips,
+                autoUpload: _autoUpload,
+                onAutoUpload: (on) => unawaited(_setAutoUpload(on)),
               ),
             ),
           ],

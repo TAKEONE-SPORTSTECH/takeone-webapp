@@ -294,7 +294,7 @@
             <button type="button" @click="step(-1)"
                     :disabled="view === 'years' && !canPageYears(-1)"
                     class="w-8 h-8 rounded-lg grid place-items-center text-muted-foreground hover:bg-white hover:text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors">
-                <i class="bi bi-chevron-left rtl:rotate-180"></i>
+                <i class="bi bi-chevron-left"></i>
             </button>
 
             {{-- Tap the title to zoom out: month grid, then year grid. --}}
@@ -308,7 +308,7 @@
             <button type="button" @click="step(1)"
                     :disabled="view === 'years' && !canPageYears(1)"
                     class="w-8 h-8 rounded-lg grid place-items-center text-muted-foreground hover:bg-white hover:text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors">
-                <i class="bi bi-chevron-right rtl:rotate-180"></i>
+                <i class="bi bi-chevron-right"></i>
             </button>
         </div>
 

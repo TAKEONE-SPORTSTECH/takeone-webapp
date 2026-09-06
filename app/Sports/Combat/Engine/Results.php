@@ -65,16 +65,39 @@ class Results
         }
 
         $cats = $event->categories()->get();
-        $phaseLabel = ['preliminary' => 'Preliminaries', 'quarterfinals' => 'Quarter-finals', 'finals' => 'Finals'];
+        /* ⚠️ TRANSLATED, all of it. This timeline is read on the public event
+           page, which a stranger opens in whichever language they chose — and
+           every label here was a hardcoded English string, so an Arabic reader
+           got an Arabic page with an English schedule down the middle of it.
+           The strings live in the event SYSTEM's file because this engine is
+           shared by every combat sport (CLAUDE.md: put a string at the level
+           that owns it). */
+        $phaseLabel = [
+            'preliminary' => __('events.timeline_phase_preliminary'),
+            'quarterfinals' => __('events.timeline_phase_quarterfinals'),
+            'finals' => __('events.timeline_phase_finals'),
+        ];
 
         // A competition day is not one block of time — it is play, a break, then
         // play again. Emitted as segments so each gets its own line with its own
         // clock, rather than one range plus a footnote nobody reads.
         $segments = $this->daySegments($event);
-        // Only when there is no usable clock at all does the length stand alone.
-        $breakNote = ($segments === [] && $event->break_minutes)
-            ? ' · '.$event->break_minutes.' min break'
-            : '';
+        // The length stands alone whenever no break SEGMENT is shown — either
+        // there is no usable clock at all, or the organiser sized the break
+        // without placing it (see daySegments()).
+        $breakShown = false;
+        foreach ($segments as $seg) {
+            if (($seg['kind'] ?? '') === 'break') {
+                $breakShown = true;
+                break;
+            }
+        }
+
+        $breakLabel = (! $breakShown && $event->break_minutes)
+            ? __('events.timeline_break_minutes', ['minutes' => $event->break_minutes])
+            : null;
+
+        $breakNote = $breakLabel ? ' · '.$breakLabel : '';
 
         $entries = [];
 
@@ -82,18 +105,18 @@ class Results
         // which tells someone what they have missed, not what they can do.
         if ($event->enrollment_starts_at) {
             $entries[] = [
-                'label' => 'Enrolment opens',
+                'label' => __('events.timeline_enrol_opens'),
                 'date' => $event->enrollment_starts_at->toDateString(),
-                'note' => 'Entries accepted from this day',
+                'note' => __('events.timeline_enrol_opens_note'),
                 'icon' => 'bi-calendar-plus',
             ];
         }
 
         if ($event->enrollment_ends_at) {
             $entries[] = [
-                'label' => 'Registration closes',
+                'label' => __('events.timeline_enrol_closes'),
                 'date' => $event->enrollment_ends_at->toDateString(),
-                'note' => 'Last day to enrol',
+                'note' => __('events.timeline_enrol_closes_note'),
                 'icon' => 'bi-pencil-square',
             ];
         }
@@ -102,10 +125,11 @@ class Results
         // carries its time and its place, not just a date.
         $wi = $event->weigh_in_at ? \Carbon\Carbon::parse($event->weigh_in_at) : $start->copy();
         $entries[] = [
-            'label' => 'Weigh-in & draw',
+            'label' => __('events.timeline_weigh_in'),
             'date' => $wi->toDateString(),
-            'time' => $event->weigh_in_at ? $wi->format('g:i A') : null,
-            'note' => 'Official weights recorded, brackets drawn'
+            // translatedFormat: an Arabic reader gets ص/م, not AM/PM.
+            'time' => $event->weigh_in_at ? $wi->locale(app()->getLocale())->translatedFormat('g:i A') : null,
+            'note' => __('events.timeline_weigh_in_note')
                 .($event->location ? ' · '.$event->location : ''),
             'icon' => 'bi-clipboard-data',
         ];
@@ -132,11 +156,22 @@ class Results
             $lastCompetitionDay = $start->copy()->addDays($d - 1);
 
             $entries[] = [
-                'label' => 'Tournament Day '.$d,
+                'label' => __('events.timeline_day', ['day' => $d]),
                 'date' => $lastCompetitionDay->toDateString(),
                 // Play / break / play, each its own line.
                 'segments' => $segments,
-                'note' => implode(' · ', $names).' — '.$classCount.' weight '.\Illuminate\Support\Str::plural('class', $classCount).$breakNote,
+                'note' => implode(' · ', $names).' — '
+                    .trans_choice('events.timeline_weight_classes', $classCount, ['count' => $classCount])
+                    .$breakNote,
+                // The same facts as `note`, but as separate items so the view
+                // can set them as chips rather than printing one long line
+                // glued together with middots. `note` stays for any caller
+                // that has not been taught about this.
+                'note_items' => array_values(array_filter(array_merge(
+                    $names,
+                    [trans_choice('events.timeline_weight_classes', $classCount, ['count' => $classCount])],
+                    [$breakLabel],
+                ))),
                 'icon' => 'bi-flag',
             ];
         }
@@ -146,10 +181,14 @@ class Results
         // stay for it.
         if ($lastCompetitionDay) {
             $entries[] = [
-                'label' => 'Awards & finish',
+                'label' => __('events.timeline_finish'),
                 'date' => $lastCompetitionDay->toDateString(),
-                'time' => $event->end_time ? \Carbon\Carbon::parse($event->end_time)->format('g:i A') : null,
-                'note' => 'Medals presented'.($event->prize ? ' · '.$event->prize : '').' — right after the finals',
+                'time' => $event->end_time
+                    ? \Carbon\Carbon::parse($event->end_time)->locale(app()->getLocale())->translatedFormat('g:i A')
+                    : null,
+                'note' => __('events.timeline_finish_note')
+                    .($event->prize ? ' · '.$event->prize : '')
+                    .' — '.__('events.timeline_finish_after'),
                 'icon' => 'bi-award-fill',
             ];
         }
@@ -187,25 +226,50 @@ class Results
             ? max(0, $this->minsOfDay($event->break_end) - $this->minsOfDay($event->break_start))
             : (int) ($event->break_minutes ?? 0);
 
+        $wholeDay = [[
+            'label' => __('events.timeline_play'), 'kind' => 'play', 'approx' => false,
+            'time' => $this->clock($s).' – '.$this->clock($t),
+        ]];
+
         // No break, or one that would swallow the day: a single block of play.
         if ($len <= 0 || $len >= ($t - $s)) {
-            return [[
-                'label' => 'Play', 'kind' => 'play', 'approx' => false,
-                'time' => $this->clock($s).' – '.$this->clock($t),
-            ]];
+            return $wholeDay;
         }
 
-        $bStart = $exact
-            ? $this->minsOfDay($event->break_start)
-            : $s + intdiv($t - $s - $len, 2);
+        /*
+         * Sized but never PLACED — we know how long, not when.
+         *
+         * This used to centre it in the bout time and print "Break 5:30 PM –
+         * 6:30 PM" in exactly the same type as a time the organiser actually
+         * chose. Two things made that worse than it looks: `break_minutes`
+         * carries a DATABASE DEFAULT of 60, so every event ever created has
+         * one whether anybody asked or not; and the `approx` flag meant to
+         * qualify it was computed and then ignored by the view. The result was
+         * a public poster announcing a break to competitors and their families
+         * that the organiser had never set and could not see anywhere.
+         *
+         * A made-up clock time is worse than no clock time. The length still
+         * travels — as a note beside the day, where it reads as "the day
+         * includes an hour's break" rather than "be back at half past six".
+         * The Scheduler goes on using `break_minutes` to reserve the time,
+         * which is what that column is actually for.
+         *
+         * Put break_start/break_end on the event form and this branch stops
+         * being reached — the segments below are the good path.
+         */
+        if (! $exact) {
+            return $wholeDay;
+        }
+
+        $bStart = $this->minsOfDay($event->break_start);
         $bEnd = min($t, $bStart + $len);
 
         return [
-            ['label' => 'Play', 'kind' => 'play', 'approx' => false,
+            ['label' => __('events.timeline_play'), 'kind' => 'play', 'approx' => false,
                 'time' => $this->clock($s).' – '.$this->clock($bStart)],
-            ['label' => 'Break', 'kind' => 'break', 'approx' => ! $exact,
+            ['label' => __('events.timeline_break'), 'kind' => 'break', 'approx' => ! $exact,
                 'time' => $this->clock($bStart).' – '.$this->clock($bEnd)],
-            ['label' => 'Play', 'kind' => 'play', 'approx' => false,
+            ['label' => __('events.timeline_play'), 'kind' => 'play', 'approx' => false,
                 'time' => $this->clock($bEnd).' – '.$this->clock($t)],
         ];
     }
@@ -223,6 +287,9 @@ class Results
     {
         $mins = ((int) $mins % 1440 + 1440) % 1440;
 
-        return \Carbon\Carbon::createFromTime(intdiv($mins, 60), $mins % 60)->format('g:i A');
+        // translatedFormat, so an Arabic reader gets ص/م rather than AM/PM.
+        return \Carbon\Carbon::createFromTime(intdiv($mins, 60), $mins % 60)
+            ->locale(app()->getLocale())
+            ->translatedFormat('g:i A');
     }
 }

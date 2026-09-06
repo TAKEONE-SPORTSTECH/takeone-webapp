@@ -17,7 +17,7 @@ use App\Mcp\Tools\WhoAmITool;
 use App\Clubs\Models\ClubInstructor;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use Laravel\Mcp\Request;
 use Tests\TestCase;
 
@@ -445,7 +445,7 @@ class McpServerTest extends TestCase
 
         $athlete = $this->createUser(['full_name' => 'Ali', 'gender' => 'Male', 'birthdate' => now()->subYears(25)->toDateString()]);
         $athlete->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
-        \App\Models\HealthRecord::create(['user_id' => $athlete->id, 'weight' => 57, 'recorded_at' => now()]);
+        \App\Members\Models\HealthRecord::create(['user_id' => $athlete->id, 'weight' => 57, 'recorded_at' => now()]);
 
         $this->actingAs($coach->fresh());
 
@@ -492,7 +492,7 @@ class McpServerTest extends TestCase
     /**
      * A championship with a generated draw, plus the organiser who runs it.
      *
-     * @return array{0: \App\Models\ClubEvent, 1: \App\Models\User, 2: \App\Models\EventCategory}
+     * @return array{0: \App\Models\ClubEvent, 1: \App\Members\Models\User, 2: \App\Models\EventCategory}
      */
     private function drawnChampionship(): array
     {
@@ -927,7 +927,7 @@ class McpServerTest extends TestCase
             'start_time' => '09:00', 'end_time' => '17:00', 'status' => 'active', 'is_archived' => false,
         ]);
 
-        $mat = \App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\MatState::create([
+        $mat = \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatState::create([
             'event_id' => $event->id, 'court' => '1', 'mode' => 'match', 'status' => 'live',
             'match_id' => 4242, 'division' => 'Adult Male Light',
             'blue' => ['name' => 'Ana Costa', 'club' => 'Alliance'],
@@ -935,10 +935,10 @@ class McpServerTest extends TestCase
             'remaining' => 300, 'duration' => 300, 'running' => true,
         ]);
 
-        $ledger = app(\App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\Ledger::class);
+        $ledger = app(\App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\Ledger::class);
         // Mount is worth four. Called with the value the package's own table
         // gives it, so the test cannot drift from the rule it is checking.
-        $mount = \App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\Ledger::POINT_SOURCES['mount'];
+        $mount = \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\Ledger::POINT_SOURCES['mount'];
 
         $ledger->append($event, '1', 'point', 4242, 'blue', $mount, 'mount', null, null, $organiser->id);
         $ledger->append($event, '1', 'advantage', 4242, 'white', 0, null, null, null, $organiser->id);

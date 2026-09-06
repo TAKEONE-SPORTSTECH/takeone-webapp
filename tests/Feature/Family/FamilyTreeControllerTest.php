@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Family;
 
-use App\Models\Person;
-use App\Models\PersonParentLink;
-use App\Models\UserRelationship;
+use App\Members\Models\Person;
+use App\Members\Models\PersonParentLink;
+use App\Members\Models\UserRelationship;
 use App\Services\FamilyService;
 use App\Services\KinshipService;
 use Tests\TestCase;
@@ -156,7 +156,7 @@ class FamilyTreeControllerTest extends TestCase
         ])->assertOk()->assertJsonPath('success', true);
 
         // It became a real family member (User + guardianship), not just a node.
-        $kid = \App\Models\User::where('full_name', 'Zaid')->first();
+        $kid = \App\Members\Models\User::where('full_name', 'Zaid')->first();
         $this->assertNotNull($kid);
         $this->assertDatabaseHas('user_relationships', [
             'guardian_user_id'  => $user->id,

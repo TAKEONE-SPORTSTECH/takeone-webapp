@@ -1,4 +1,6 @@
-@extends('layouts.personal-mobile')
+{{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
+     nothing shared this is the member shell exactly as before. See entry/shell. --}}
+@extends($shell ?? 'layouts.personal-mobile')
 
 @section('title', __('event-open_mat::messages.label').' · '.$e['title'])
 
@@ -40,8 +42,9 @@
 
         <div class="flex items-center justify-between relative z-50">
             <a href="{{ route('me.events') }}"
-               class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold">
-                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('nav.events') }}
+               class="inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold"
+           aria-label="{{ __('nav.events') }}" title="{{ __('nav.events') }}">
+                <i class="bi bi-chevron-left"></i>
             </a>
             <button type="button" x-show="! closed" @click="endMat()"
                     class="h-10 px-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-xs font-bold inline-flex items-center gap-1.5">

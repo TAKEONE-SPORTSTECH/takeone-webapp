@@ -102,11 +102,11 @@
                     <img src="{{ file_url($club->cover_image) }}"
                          id="coverPreview"
                          class="cropper-preview-image"
-                         style="width: 250px; height: 83px; border-radius: 8px; border: 2px solid #dee2e6;">
+                         style="width: 250px; height: 141px; border-radius: 8px; border: 2px solid #dee2e6; object-fit: cover;">
                     @else
                     <div id="coverPreview"
                          class="cropper-preview-placeholder"
-                         style="width: 250px; height: 83px; border-radius: 8px; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; color: #6c757d;">
+                         style="width: 250px; height: 141px; border-radius: 8px; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; color: #6c757d;">
                         <i class="bi bi-image text-2xl"></i>
                     </div>
                     @endif
@@ -159,7 +159,7 @@
                 resolve(v) {
                     if (!v) return '';
                     if (v.startsWith('data:') || v.startsWith('http') || v.startsWith('/')) return v;
-                    return '/storage/' + v; // stored relative path
+                    return '/file/' + v; // stored relative path, served by file.show
                 },
             };
         }
@@ -220,16 +220,75 @@
         </div>
     </div>
 
-    <!-- PART 2: Internal Cropper Overlays (NOT separate modals) -->
-    <!-- Logo Cropper Overlay -->
-    <div id="logoCropperOverlay" class="cropper-overlay" style="display: none;">
-        <div class="cropper-panel">
-            <div class="flex justify-between items-center mb-3">
-                <h5 class="mb-0 font-semibold">{{ __('shared.tabs_identity_branding_crop_logo') }}</h5>
-                <button type="button" class="btn-close" onclick="closeLogoCropper()"></button>
-            </div>
+    {{-- PART 2: Crop sheets. Each rises from the bottom edge with the shared
+         gradient band (Design Rule #8): band, scrollable body, sticky footer. --}}
+    @once
+    <style>
+        /* The crop sheets: the shared overlay, anchored to the bottom edge. */
+        .cropper-sheet { align-items: flex-end !important; padding: 0 !important; }
+        .cropper-sheet-panel {
+            max-width: 640px; width: 100%; max-height: 92vh;
+            padding: 0 !important;
+            border-radius: 1.5rem 1.5rem 0 0 !important;
+            display: flex; flex-direction: column; overflow: hidden !important;
+            animation: cropSheetIn .24s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes cropSheetIn { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+        @media (prefers-reduced-motion: reduce) { .cropper-sheet-panel { animation: none; } }
 
+        /* Shape picker — selection cards, one job each. */
+        .crop-shape-card {
+            display: flex; align-items: center; justify-content: center; gap: .5rem;
+            padding: .625rem .75rem; border-radius: .75rem; cursor: pointer;
+            border: 1px solid hsl(210 14% 80%); background: #fff;
+            font-size: .875rem; font-weight: 500; color: hsl(220 9% 30%);
+            transition: border-color .15s, background-color .15s, color .15s;
+        }
+        .crop-shape-card:hover { border-color: hsl(250 65% 65% / .5); }
+        .crop-shape-card.is-active {
+            border-color: hsl(250 65% 65%); color: hsl(250 65% 55%);
+            background: hsl(250 60% 96%);
+        }
+    </style>
+    @endonce
+
+    <div id="logoCropperOverlay" class="cropper-overlay cropper-sheet" style="display:none;">
+        <div class="cropper-panel cropper-sheet-panel">
+        {{-- Header band (Design Rule #8) --}}
+        <div class="cropper-sheet-band" style="flex-shrink:0; position:relative; overflow:hidden; padding:0.75rem 1.25rem 1rem; color:#fff; border-radius:1.5rem 1.5rem 0 0; background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+            <div style="position:absolute; right:-2rem; top:-2.5rem; width:9rem; height:9rem; border-radius:9999px; background:rgba(255,255,255,.10);"></div>
+            <div style="position:relative; margin:0 auto 0.75rem; width:2.5rem; height:0.25rem; border-radius:9999px; background:rgba(255,255,255,.4);"></div>
+            <div style="position:relative; display:flex; align-items:flex-start; gap:0.75rem;">
+                <span style="width:3rem; height:3rem; border-radius:1rem; background:rgba(255,255,255,.2); display:grid; place-items:center; flex-shrink:0;">
+                    <i class="bi bi-image" style="font-size:1.25rem;"></i>
+                </span>
+                <div style="min-width:0; flex:1 1 auto;">
+                    <h3 style="font-size:1.125rem; font-weight:900; line-height:1.2; margin:0;">{{ __('shared.tabs_identity_branding_crop_logo') }}</h3>
+                    <p style="font-size:12px; color:rgba(255,255,255,.85); margin:0.125rem 0 0;">400 &times; 400</p>
+                </div>
+                <button type="button" onclick="closeLogoCropper()" aria-label="{{ __('shared.close') }}"
+                        style="width:2.25rem; height:2.25rem; border-radius:9999px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); display:grid; place-items:center; flex-shrink:0; color:#fff; cursor:pointer;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div style="flex:1 1 auto; overflow-y:auto; padding:1rem 1.25rem;">
             <input type="file" id="logoFileInput" class="form-control form-control-sm mb-3" accept="image/*">
+
+            {{-- Crop shape — selection cards, not a dropdown (Mobile Pattern Language §3) --}}
+            <div class="mb-3">
+                <label class="form-label text-sm">{{ __('shared.tabs_identity_branding_crop_shape') }}</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" id="logoShapeSquare" data-logo-shape="square" onclick="setLogoShape('square')"
+                            class="crop-shape-card">
+                        <i class="bi bi-square"></i>{{ __('shared.tabs_identity_branding_shape_square') }}
+                    </button>
+                    <button type="button" id="logoShapeCircle" data-logo-shape="circle" onclick="setLogoShape('circle')"
+                            class="crop-shape-card">
+                        <i class="bi bi-circle"></i>{{ __('shared.tabs_identity_branding_shape_circle') }}
+                    </button>
+                </div>
+            </div>
 
             <div id="logoBox" class="takeone-canvas" style="height: 400px; background: #111; border-radius: 8px;"></div>
 
@@ -243,22 +302,36 @@
                     <input type="range" class="w-full" id="logoRotation" min="-180" max="180" step="1" value="0">
                 </div>
             </div>
-
-            <div class="flex gap-2 mt-3">
-                <button type="button" class="btn btn-secondary flex-1" onclick="closeLogoCropper()">{{ __('shared.cancel') }}</button>
-                <button type="button" class="btn btn-primary flex-1" onclick="saveLogoCrop()">{{ __('shared.tabs_identity_branding_save_apply') }}</button>
-            </div>
+        </div>
+        {{-- Sticky footer: the actions stay reachable while the body scrolls --}}
+        <div style="flex-shrink:0; display:flex; gap:0.5rem; border-top:1px solid #e5e7eb; padding:0.75rem 1.25rem; padding-bottom:calc(0.75rem + env(safe-area-inset-bottom));">
+            <button type="button" class="btn btn-secondary flex-1" onclick="closeLogoCropper()">{{ __('shared.cancel') }}</button>
+            <button type="button" class="btn btn-primary flex-1" onclick="saveLogoCrop()">{{ __('shared.tabs_identity_branding_save_apply') }}</button>
+        </div>
         </div>
     </div>
 
-    <!-- Cover Cropper Overlay -->
-    <div id="coverCropperOverlay" class="cropper-overlay" style="display: none;">
-        <div class="cropper-panel">
-            <div class="flex justify-between items-center mb-3">
-                <h5 class="mb-0 font-semibold">{{ __('shared.tabs_identity_branding_crop_cover') }}</h5>
-                <button type="button" class="btn-close" onclick="closeCoverCropper()"></button>
+    <div id="coverCropperOverlay" class="cropper-overlay cropper-sheet" style="display:none;">
+        <div class="cropper-panel cropper-sheet-panel">
+        {{-- Header band (Design Rule #8) --}}
+        <div class="cropper-sheet-band" style="flex-shrink:0; position:relative; overflow:hidden; padding:0.75rem 1.25rem 1rem; color:#fff; border-radius:1.5rem 1.5rem 0 0; background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+            <div style="position:absolute; right:-2rem; top:-2.5rem; width:9rem; height:9rem; border-radius:9999px; background:rgba(255,255,255,.10);"></div>
+            <div style="position:relative; margin:0 auto 0.75rem; width:2.5rem; height:0.25rem; border-radius:9999px; background:rgba(255,255,255,.4);"></div>
+            <div style="position:relative; display:flex; align-items:flex-start; gap:0.75rem;">
+                <span style="width:3rem; height:3rem; border-radius:1rem; background:rgba(255,255,255,.2); display:grid; place-items:center; flex-shrink:0;">
+                    <i class="bi bi-card-image" style="font-size:1.25rem;"></i>
+                </span>
+                <div style="min-width:0; flex:1 1 auto;">
+                    <h3 style="font-size:1.125rem; font-weight:900; line-height:1.2; margin:0;">{{ __('shared.tabs_identity_branding_crop_cover') }}</h3>
+                    <p style="font-size:12px; color:rgba(255,255,255,.85); margin:0.125rem 0 0;">1920 &times; 1080</p>
+                </div>
+                <button type="button" onclick="closeCoverCropper()" aria-label="{{ __('shared.close') }}"
+                        style="width:2.25rem; height:2.25rem; border-radius:9999px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); display:grid; place-items:center; flex-shrink:0; color:#fff; cursor:pointer;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
-
+        </div>
+        <div style="flex:1 1 auto; overflow-y:auto; padding:1rem 1.25rem;">
             <input type="file" id="coverFileInput" class="form-control form-control-sm mb-3" accept="image/*">
 
             <div id="coverBox" class="takeone-canvas" style="height: 400px; background: #111; border-radius: 8px;"></div>
@@ -273,22 +346,36 @@
                     <input type="range" class="w-full" id="coverRotation" min="-180" max="180" step="1" value="0">
                 </div>
             </div>
-
-            <div class="flex gap-2 mt-3">
-                <button type="button" class="btn btn-secondary flex-1" onclick="closeCoverCropper()">{{ __('shared.cancel') }}</button>
-                <button type="button" class="btn btn-primary flex-1" onclick="saveCoverCrop()">{{ __('shared.tabs_identity_branding_save_apply') }}</button>
-            </div>
+        </div>
+        {{-- Sticky footer: the actions stay reachable while the body scrolls --}}
+        <div style="flex-shrink:0; display:flex; gap:0.5rem; border-top:1px solid #e5e7eb; padding:0.75rem 1.25rem; padding-bottom:calc(0.75rem + env(safe-area-inset-bottom));">
+            <button type="button" class="btn btn-secondary flex-1" onclick="closeCoverCropper()">{{ __('shared.cancel') }}</button>
+            <button type="button" class="btn btn-primary flex-1" onclick="saveCoverCrop()">{{ __('shared.tabs_identity_branding_save_apply') }}</button>
+        </div>
         </div>
     </div>
 
-    <!-- Splash Cropper Overlay -->
-    <div id="splashCropperOverlay" class="cropper-overlay" style="display: none;">
-        <div class="cropper-panel">
-            <div class="flex justify-between items-center mb-3">
-                <h5 class="mb-0 font-semibold">{{ __('shared.tabs_identity_branding_crop_splash') }}</h5>
-                <button type="button" class="btn-close" onclick="closeSplashCropper()"></button>
+    <div id="splashCropperOverlay" class="cropper-overlay cropper-sheet" style="display:none;">
+        <div class="cropper-panel cropper-sheet-panel">
+        {{-- Header band (Design Rule #8) --}}
+        <div class="cropper-sheet-band" style="flex-shrink:0; position:relative; overflow:hidden; padding:0.75rem 1.25rem 1rem; color:#fff; border-radius:1.5rem 1.5rem 0 0; background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
+            <div style="position:absolute; right:-2rem; top:-2.5rem; width:9rem; height:9rem; border-radius:9999px; background:rgba(255,255,255,.10);"></div>
+            <div style="position:relative; margin:0 auto 0.75rem; width:2.5rem; height:0.25rem; border-radius:9999px; background:rgba(255,255,255,.4);"></div>
+            <div style="position:relative; display:flex; align-items:flex-start; gap:0.75rem;">
+                <span style="width:3rem; height:3rem; border-radius:1rem; background:rgba(255,255,255,.2); display:grid; place-items:center; flex-shrink:0;">
+                    <i class="bi bi-phone" style="font-size:1.25rem;"></i>
+                </span>
+                <div style="min-width:0; flex:1 1 auto;">
+                    <h3 style="font-size:1.125rem; font-weight:900; line-height:1.2; margin:0;">{{ __('shared.tabs_identity_branding_crop_splash') }}</h3>
+                    <p style="font-size:12px; color:rgba(255,255,255,.85); margin:0.125rem 0 0;">1080 &times; 1920</p>
+                </div>
+                <button type="button" onclick="closeSplashCropper()" aria-label="{{ __('shared.close') }}"
+                        style="width:2.25rem; height:2.25rem; border-radius:9999px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); display:grid; place-items:center; flex-shrink:0; color:#fff; cursor:pointer;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
-
+        </div>
+        <div style="flex:1 1 auto; overflow-y:auto; padding:1rem 1.25rem;">
             <input type="file" id="splashFileInput" class="form-control form-control-sm mb-3" accept="image/*">
 
             <div id="splashBox" class="takeone-canvas" style="height: 400px; background: #111; border-radius: 8px;"></div>
@@ -303,11 +390,12 @@
                     <input type="range" class="w-full" id="splashRotation" min="-180" max="180" step="1" value="0">
                 </div>
             </div>
-
-            <div class="flex gap-2 mt-3">
-                <button type="button" class="btn btn-secondary flex-1" onclick="closeSplashCropper()">{{ __('shared.cancel') }}</button>
-                <button type="button" class="btn btn-primary flex-1" onclick="saveSplashCrop()">{{ __('shared.tabs_identity_branding_save_apply') }}</button>
-            </div>
+        </div>
+        {{-- Sticky footer: the actions stay reachable while the body scrolls --}}
+        <div style="flex-shrink:0; display:flex; gap:0.5rem; border-top:1px solid #e5e7eb; padding:0.75rem 1.25rem; padding-bottom:calc(0.75rem + env(safe-area-inset-bottom));">
+            <button type="button" class="btn btn-secondary flex-1" onclick="closeSplashCropper()">{{ __('shared.cancel') }}</button>
+            <button type="button" class="btn btn-primary flex-1" onclick="saveSplashCrop()">{{ __('shared.tabs_identity_branding_save_apply') }}</button>
+        </div>
         </div>
     </div>
 
@@ -386,6 +474,10 @@
     let logoCropper = null;
     let coverCropper = null;
     let splashCropper = null;
+    // The logo's crop frame: square or circle. Kept between opens so a club
+    // that wants round marks does not re-pick it on every upload.
+    let logoShape = 'square';
+    let logoImageData = null;
     const zoomMin = 0.01;
     const zoomMax = 3;
 
@@ -600,13 +692,27 @@
         const el = document.getElementById(elementId);
         if (!el) return null;
 
+        // The viewport plus its border has to fit INSIDE the black canvas, or
+        // the frame is clipped at the edges and reads as off-centre. Scale it
+        // down (keeping the aspect ratio) whenever it would overflow. Costs no
+        // quality: crop() re-renders from the source image at the size asked
+        // for, so the output resolution is independent of the on-screen frame.
+        const border = 2;
+        const canvasHeight = 400;
+        const canvasWidth = el.clientWidth || canvasHeight;
+        const maxWidth = Math.max(40, canvasWidth - (border * 2) - 16);
+        const maxHeight = Math.max(40, canvasHeight - (border * 2) - 16);
+        const fit = Math.min(1, maxWidth / width, maxHeight / height);
+        const viewportWidth = Math.round(width * fit);
+        const viewportHeight = Math.round(height * fit);
+
         const cropper = new Cropme(el, {
-            container: { width: '100%', height: 400 },
+            container: { width: '100%', height: canvasHeight },
             viewport: {
-                width: width,
-                height: height,
+                width: viewportWidth,
+                height: viewportHeight,
                 type: shape,
-                border: { enable: true, width: 2, color: '#fff' }
+                border: { enable: true, width: border, color: '#fff' }
             },
             transformOrigin: 'viewport',
             zoom: { min: zoomMin, max: zoomMax, enable: true, mouseWheel: true, slider: false },
@@ -617,7 +723,38 @@
     }
 
     // ===== LOGO CROPPER =====
+
+    // Rebuild the cropper on the current source with the currently chosen
+    // shape. Cropme has no way to change a live viewport's type, so picking a
+    // shape re-binds the same image rather than asking for the file again.
+    function buildLogoCropper() {
+        if (!logoImageData) return;
+        if (logoCropper) { logoCropper.destroy(); logoCropper = null; }
+        logoCropper = initCropper('logoBox', 400, 400, logoShape, 1);
+        if (!logoCropper) return;
+        logoCropper.bind({ url: logoImageData }).then(() => {
+            const z = document.getElementById('logoZoom');
+            const r = document.getElementById('logoRotation');
+            if (z) z.value = 0;
+            if (r) r.value = 0;
+        });
+    }
+
+    function paintLogoShapeCards() {
+        document.querySelectorAll('[data-logo-shape]').forEach(el => {
+            el.classList.toggle('is-active', el.dataset.logoShape === logoShape);
+            el.setAttribute('aria-pressed', el.dataset.logoShape === logoShape ? 'true' : 'false');
+        });
+    }
+
+    function setLogoShape(shape) {
+        logoShape = shape === 'circle' ? 'circle' : 'square';
+        paintLogoShapeCards();
+        buildLogoCropper();
+    }
+
     function openLogoCropper() {
+        paintLogoShapeCards();
         const overlay = document.getElementById('logoCropperOverlay');
         overlay.style.display = 'flex';
         const modalBody = document.querySelector('#clubModal .modal-body');
@@ -633,21 +770,26 @@
             logoCropper.destroy();
             logoCropper = null;
         }
+        logoImageData = null;
         document.getElementById('logoFileInput').value = '';
     }
 
     function saveLogoCrop() {
         if (!logoCropper) return;
+        // A circle crop comes back as a PNG with transparent corners, so the
+        // preview is rounded to match what was actually stored.
+        const radius = logoShape === 'circle' ? '50%' : '8px';
         logoCropper.crop({ type: 'base64', width: 400, height: 400 }).then(base64 => {
             document.getElementById('logoInput').value = base64;
             window.dispatchEvent(new CustomEvent('logo-image-updated', { detail: base64 }));
             const preview = document.getElementById('logoPreview');
             if (preview && preview.tagName === 'IMG') {
                 preview.src = base64;
+                preview.style.borderRadius = radius;
             } else {
                 const container = document.getElementById('logoPreviewContainer');
                 if (container) {
-                    container.innerHTML = `<img src="${base64}" id="logoPreview" class="cropper-preview-image" style="width: 150px; height: 150px; border-radius: 8px; border: 2px solid #dee2e6;">`;
+                    container.innerHTML = `<img src="${base64}" id="logoPreview" class="cropper-preview-image" style="width: 150px; height: 150px; border-radius: ${radius}; border: 2px solid #dee2e6;">`;
                 }
             }
             closeLogoCropper();
@@ -662,14 +804,8 @@
                 if (this.files && this.files[0]) {
                     const reader = new FileReader();
                     reader.onload = function(event) {
-                        if (logoCropper) logoCropper.destroy();
-                        logoCropper = initCropper('logoBox', 400, 400, 'square', 1);
-                        if (logoCropper) {
-                            logoCropper.bind({ url: event.target.result }).then(() => {
-                                document.getElementById('logoZoom').value = 0;
-                                document.getElementById('logoRotation').value = 0;
-                            });
-                        }
+                        logoImageData = event.target.result;
+                        buildLogoCropper();
                     };
                     reader.readAsDataURL(this.files[0]);
                 }
@@ -717,7 +853,7 @@
 
     function saveCoverCrop() {
         if (!coverCropper) return;
-        coverCropper.crop({ type: 'base64', width: 1200, height: 400 }).then(base64 => {
+        coverCropper.crop({ type: 'base64', width: 1920, height: 1080 }).then(base64 => {
             document.getElementById('coverInput').value = base64;
             const preview = document.getElementById('coverPreview');
             if (preview && preview.tagName === 'IMG') {
@@ -725,7 +861,7 @@
             } else {
                 const container = document.getElementById('coverPreviewContainer');
                 if (container) {
-                    container.innerHTML = `<img src="${base64}" id="coverPreview" class="cropper-preview-image" style="width: 250px; height: 83px; border-radius: 8px; border: 2px solid #dee2e6;">`;
+                    container.innerHTML = `<img src="${base64}" id="coverPreview" class="cropper-preview-image" style="width: 250px; height: 141px; border-radius: 8px; border: 2px solid #dee2e6; object-fit: cover;">`;
                 }
             }
             closeCoverCropper();
@@ -741,7 +877,7 @@
                     const reader = new FileReader();
                     reader.onload = function(event) {
                         if (coverCropper) coverCropper.destroy();
-                        coverCropper = initCropper('coverBox', 600, 200, 'square', 3);
+                        coverCropper = initCropper('coverBox', 480, 270, 'square', 16 / 9);
                         if (coverCropper) {
                             coverCropper.bind({ url: event.target.result }).then(() => {
                                 document.getElementById('coverZoom').value = 0;

@@ -5,6 +5,7 @@ namespace App\Events\Support\Tournament;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Sports\Combat\CombatSport;
+use App\Sports\Combat\Engine\GroupEngine;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,6 +36,17 @@ abstract class Advancement
     abstract protected function winReasons(): array;
 
     public function __construct(private CombatSport $sport) {}
+
+    /**
+     * The group engine, resolved rather than injected: every package builds its
+     * Advancement with `new Advancement($sport)`, and widening that constructor
+     * would mean editing three packages to add a dependency only the group
+     * shape uses.
+     */
+    private function groups(): GroupEngine
+    {
+        return app(GroupEngine::class);
+    }
 
     /**
      * Record a bout's outcome and propagate it.
@@ -96,6 +108,20 @@ abstract class Advancement
      */
     public function propagate(EventCategory $category, EventMatch $from): array
     {
+        /*
+         * A GROUP bout feeds nothing directly.
+         *
+         * In a ladder the winner walks one slot forward and that is the whole
+         * of progression. In a group the bout changes a TABLE, and the table —
+         * once every bout in it is decided — decides who is in the knockout. So
+         * the walk-forward rule must not run here at all: bout ⌊i/2⌋ of the next
+         * round is a knockout semifinal, and carrying a group winner into it
+         * would seed the bracket by fixture order instead of by merit.
+         */
+        if ($from->round === GroupEngine::ROUND) {
+            return array_map(fn (EventMatch $m) => $this->row($m), $this->groups()->seed($category));
+        }
+
         $rounds = $this->rounds($category);
         $changed = [];
         $current = $from;
@@ -152,7 +178,19 @@ abstract class Advancement
         $final = $matches->firstWhere('round', 'Final');
 
         if (! $final || ! $final->winner) {
-            return [];
+            /*
+             * A small group has no final — three people who have each fought
+             * each other have answered the question, so the table awards the
+             * medals. Returns [] for every other division, so a ladder still
+             * waits for its final exactly as before.
+             */
+            $table = $this->groups()->podium($category);
+
+            if ($table !== []) {
+                $category->update(['podium' => $table, 'status' => 'completed']);
+            }
+
+            return $table;
         }
 
         $win = $final->winner;
@@ -167,8 +205,30 @@ abstract class Advancement
         // single third-place bout winner when the sport says so.
         if ($this->sport->bronzeRule() === 'third_place_match') {
             $third = $matches->firstWhere('round', 'Third place');
+
             if ($third?->winner) {
                 $podium[] = $this->medal(3, $third, $third->winner);
+            } elseif ($matches->contains('round', GroupEngine::ROUND)) {
+                /*
+                 * A GROUP has no third-place bout to hold — and does not need
+                 * one. Everybody has already met everybody, so the third medal
+                 * is simply the third line of the table: the best competitor
+                 * who is not in the final. Without this a group division in a
+                 * sport that settles bronze by a play-off awarded two medals
+                 * and stopped.
+                 */
+                $table = collect(app(GroupEngine::class)->standings($category));
+                $inFinal = [$final->a_competitor_id, $final->b_competitor_id];
+
+                $bronze = $table->first(fn (array $r) => ! in_array($r['competitor_id'], $inFinal, true));
+
+                if ($bronze) {
+                    $podium[] = [
+                        'place' => 3,
+                        'name' => $bronze['name'],
+                        'competitor_id' => $bronze['competitor_id'],
+                    ];
+                }
             }
         } else {
             foreach ($matches->where('round', 'Semifinal') as $sf) {

@@ -4,7 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\AuthorizesClubAccess;
 use App\Mcp\Concerns\ResolvesActingUser;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;

@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 

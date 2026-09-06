@@ -426,12 +426,12 @@
                         <!-- Notifications Dropdown -->
                         @auth
                         @php
-                            $recentNotifs = \App\Models\UserNotification::where('user_id', Auth::id())
+                            $recentNotifs = \App\Members\Models\UserNotification::where('user_id', Auth::id())
                                 ->with(['clubNotification.tenant', 'actor', 'tenant'])
                                 ->latest()
                                 ->take(5)
                                 ->get();
-                            $unreadCount = \App\Models\UserNotification::where('user_id', Auth::id())
+                            $unreadCount = \App\Members\Models\UserNotification::where('user_id', Auth::id())
                                 ->where('is_read', false)
                                 ->count();
                         @endphp

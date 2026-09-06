@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * A shop order — one per club (tenant) per checkout. Manual fulfilment:

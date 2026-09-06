@@ -5,8 +5,8 @@ namespace App\Clubs\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\User;
-use App\Models\UserNotification;
+use App\Members\Models\User;
+use App\Members\Models\UserNotification;
 
 class ClubNotification extends Model
 {

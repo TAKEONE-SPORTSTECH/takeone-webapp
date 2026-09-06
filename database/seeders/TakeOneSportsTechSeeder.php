@@ -6,7 +6,7 @@ use App\Models\ActivityCatalog;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Services\ClubCreationService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;

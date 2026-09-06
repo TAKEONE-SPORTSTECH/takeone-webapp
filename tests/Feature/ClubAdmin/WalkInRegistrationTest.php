@@ -3,7 +3,7 @@
 namespace Tests\Feature\ClubAdmin;
 
 use App\Clubs\Models\ClubPackage;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 class WalkInRegistrationTest extends TestCase

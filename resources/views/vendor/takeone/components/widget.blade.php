@@ -385,6 +385,16 @@ $(function() {
                 // Store in hidden input
                 $('#hiddenInput_{{ $id }}').val(base64);
 
+                // …and SAY so. jQuery's .val() fires no event and does not
+                // touch the attribute, so neither a listener nor a
+                // MutationObserver can see it — a caller holding this value in
+                // its own state (an Alpine flow that posts JSON rather than
+                // submitting the form) had no way to learn it had changed.
+                // Additive: nothing existing listens, and no config moves.
+                document.dispatchEvent(new CustomEvent('cropperCropped', {
+                    detail: { id: '{{ $id }}', base64 },
+                }));
+
                 // Update preview
                 const previewContainer = $('#previewContainer_{{ $id }}');
                 const borderRadius = '{{ $shape }}' === 'circle' ? '50%' : '8px';
@@ -534,6 +544,13 @@ $(function() {
                 if (mode_{{ $id }} === 'form') {
                     $('#hiddenInput_{{ $id }}').val(base64);
 
+                    // See the note on the other form-mode branch: .val() is
+                    // silent, so the value is announced for callers that keep
+                    // it in their own state.
+                    document.dispatchEvent(new CustomEvent('cropperCropped', {
+                        detail: { id: '{{ $id }}', base64 },
+                    }));
+
                     const previewContainer = $('#previewContainer_{{ $id }}');
                     const borderRadius = '{{ $shape }}' === 'circle' ? '50%' : '8px';
                     previewContainer.html(`
@@ -594,6 +611,9 @@ $(function() {
 
         // Clear hidden input
         $('#hiddenInput_{{ $id }}').val('');
+        document.dispatchEvent(new CustomEvent('cropperCropped', {
+            detail: { id: '{{ $id }}', base64: '' },
+        }));
 
         // Reset preview to placeholder
         previewContainer.html(`

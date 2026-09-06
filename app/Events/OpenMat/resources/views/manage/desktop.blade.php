@@ -27,7 +27,11 @@
     ];
 @endphp
 
-<div x-data="openMatConsole(@js($boot))" x-init="init()">
+{{-- The page supplies its own wrapper padding: layouts.app's <main> has none,
+     and the band below cancels `px-4 sm:px-6 lg:px-8 py-6` with negative margins.
+     Without the wrapper the band overhung the viewport and every card under it
+     sat flush against the screen edges. --}}
+<div class="px-4 sm:px-6 lg:px-8 py-6" x-data="openMatConsole(@js($boot))" x-init="init()">
 
     {{-- ══════════════ Hero ══════════════ --}}
     <header class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-8 pt-6 pb-20 text-white relative overflow-hidden"
@@ -37,8 +41,9 @@
 
         <div class="flex items-center justify-between relative z-50">
             <a href="{{ route('me.events') }}"
-               class="inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold">
-                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('nav.events') }}
+               class="inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold"
+           aria-label="{{ __('nav.events') }}" title="{{ __('nav.events') }}">
+                <i class="bi bi-chevron-left"></i>
             </a>
             <button type="button" x-show="! closed" @click="endMat()"
                     class="h-10 px-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-xs font-bold inline-flex items-center gap-1.5">

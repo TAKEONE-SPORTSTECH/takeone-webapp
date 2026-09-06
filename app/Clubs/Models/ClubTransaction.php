@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use App\Models\ClubMemberSubscription;
-use App\Models\User;
+use App\Members\Models\User;
 
 class ClubTransaction extends Model
 {

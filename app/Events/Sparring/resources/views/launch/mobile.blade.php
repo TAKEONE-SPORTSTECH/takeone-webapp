@@ -152,7 +152,7 @@
                                 {{ $sportLabel($s['sport']) }} · {{ __('event-sparring::messages.launch_bouts_n', ['n' => $s['bouts']]) }}
                             </span>
                         </span>
-                        <i class="bi bi-chevron-right text-muted-foreground rtl:rotate-180"></i>
+                        <i class="bi bi-chevron-right text-muted-foreground"></i>
                     </a>
                 @empty
                     <p class="text-sm text-muted-foreground px-1">{{ __('event-sparring::messages.launch_past_none') }}</p>

@@ -8,7 +8,7 @@ use App\Http\Requests\Admin\UpdateClubApiRequest;
 use App\Clubs\Models\ClubBankAccount;
 use App\Clubs\Models\ClubSocialLink;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -163,20 +163,25 @@ class ClubApiController extends Controller
                 ];
             }
 
-            // Handle logo upload
-            if ($request->filled('logo') && str_starts_with($request->logo, 'data:image')) {
-                if ($club->logo) {
-                    Storage::disk('public')->delete($club->logo);
-                }
-                $data['logo'] = $this->handleBase64Image($request->logo, StoragePath::clubBranding($club), 'logo_'.Str::random(24));
-            }
+            // Branding pictures. The modal posts a base64 data-URI when the
+            // cropper produced a new one, and otherwise re-posts the path that
+            // is already on file. Only a data-URI is a new upload; anything
+            // else is dropped from $data so a client-supplied string can never
+            // become the stored path.
+            foreach (['logo', 'cover_image', 'registration_splash_image'] as $field) {
+                $value = (string) $request->input($field, '');
 
-            // Handle cover image upload
-            if ($request->filled('cover_image') && str_starts_with($request->cover_image, 'data:image')) {
-                if ($club->cover_image) {
-                    Storage::disk('public')->delete($club->cover_image);
+                if ($value !== '' && str_starts_with($value, 'data:image')) {
+                    $old = $club->$field;
+                    $data[$field] = $this->handleBase64Image($value, StoragePath::clubBranding($club), $field.'_'.Str::random(24));
+
+                    // The replacement is on disk before the old one goes.
+                    if ($old && $old !== $data[$field]) {
+                        Storage::disk('public')->delete($old);
+                    }
+                } else {
+                    unset($data[$field]);
                 }
-                $data['cover_image'] = $this->handleBase64Image($request->cover_image, StoragePath::clubBranding($club), 'cover_'.Str::random(24));
             }
 
             // Set status

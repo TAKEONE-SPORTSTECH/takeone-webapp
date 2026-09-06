@@ -6,7 +6,7 @@ use App\Events\Support\EnrolmentDecision;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * An event type as a self-contained package (CLAUDE.md → "Events Are
@@ -277,9 +277,15 @@ interface EventType
      * each package decides what fills it. A type that runs no brackets (a belt
      * test, a league) returns an empty array and the screen never offers one.
      *
+     * The viewer is NULLABLE because a draw is also a public fact: the
+     * event page a stranger opens (App\Events\Support\PublicEvent) asks for
+     * the same brackets with nobody signed in, exactly as a draw sheet on the
+     * hall wall is read by whoever walks past it. A type that wants to vary the
+     * board per viewer must therefore tolerate no viewer at all.
+     *
      * @return array<int, array<string, mixed>> one entry per division
      */
-    public function bracketView(ClubEvent $event, User $viewer): array;
+    public function bracketView(ClubEvent $event, ?User $viewer = null): array;
 
     /**
      * Tell this event's hall screens to reload themselves.

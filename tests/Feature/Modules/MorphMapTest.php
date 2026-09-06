@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Modules;
 
-use App\Models\User;
+use App\Members\Models\User;
 use App\Support\MorphMap;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;

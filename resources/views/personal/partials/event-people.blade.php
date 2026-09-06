@@ -8,9 +8,18 @@
     Expects $e, $canManage, $hasTicket, $byQual, and the Alpine state from
     partials.event-show-script (moderate(), goingCount, spectators,
     blockedCount) — so whatever includes this must sit inside that x-data.
+
+    ===== $sheetOnly =====
+    Included a second time, by the ENTRY LIST (personal.event-people), with
+    `$sheetOnly = true`: that page renders its own roster of cards and wants
+    only the PERSON SHEET from here — the weigh-in, the payment and the receipt
+    for one entry, opened in place rather than by sending an organiser to
+    another screen. Everything below the scope is skipped in that mode, so
+    there is one sheet in the project and two places it can be opened from.
 --}}
         @php
-            $showTabs = $hasTicket || ($canManage ?? false);
+            $sheetOnly = $sheetOnly ?? false;
+            $showTabs = ! $sheetOnly && ($hasTicket || ($canManage ?? false));
 
             $canWeigh = $canWeigh ?? false;
             $canPay = $canPay ?? false;
@@ -52,6 +61,12 @@
                     // sheet asks the official a different question for each.
                     'has_proof' => (bool) ($p['has_proof'] ?? false),
                     'proof_url' => $p['proof_url'] ?? null,
+                    // WHAT they are paying for. `fee_recorded` false means no
+                    // amount was ever quoted for this entry — the case the
+                    // picker below exists to fix.
+                    'fee_options' => $p['fee_options'] ?? [],
+                    'fee_recorded' => (bool) ($p['fee_recorded'] ?? false),
+                    'fee_charged' => $p['fee_charged'] ?? null,
                 ] : [])])->all();
         @endphp
         {{-- No card around the whole list: each person is their own card, so the
@@ -62,6 +77,8 @@
              so the header follows the desk without either side reaching into the
              other's scope. $dispatch bubbles, so the header listens on .window. --}}
         <div @if($officiating) x-effect="$dispatch('roster-readiness', { ready: readyCount, total: gateTotal, tab: rtab })" @endif
+             x-init="deepLink()"
+             @open-verification.window="openEntry($event.detail.entry)"
              x-data="{
                 rtab: 'participants', open: false, q: '',
                 // Filtering is client-side on purpose: every name in the current
@@ -99,9 +116,56 @@
                 sel: null,        {{-- user id whose action sheet is open --}}
                 draft: '',        {{-- the weight being typed for them --}}
 
+                {{-- ===== Arriving already focused on one entry =====
+
+                     The entry list's own action sheet sends an organiser here
+                     for the weigh-in and the payment of ONE person, and landing
+                     on a desk of two hundred names to find them again is the
+                     work the tap was meant to save. So `?entry=<registration>`
+                     opens that person's sheet on arrival.
+
+                     Keyed on the REGISTRATION id, which the entry list already
+                     holds and already puts in the DOM — never the numeric user
+                     id, which is not a public key (CLAUDE.md → Unpredictable
+                     Resource Identifiers). It discloses nothing either way: the
+                     sheet still renders only what this official may see, and a
+                     stranger's id in the query just opens nothing.
+
+                     The row is CLICKED rather than openPerson() being called
+                     directly, so a row that is not tappable for this viewer
+                     stays exactly that. --}}
+                deepLink() {
+                    const wanted = new URLSearchParams(window.location.search).get('entry');
+                    if (! wanted) return;
+
+                    this.$nextTick(() => {
+                        /* ⚠️ NO DOUBLE QUOTES ANYWHERE IN THIS FILE. The whole
+                           partial is the VALUE of an x-data attribute, so one
+                           double quote — even inside a string or a comment —
+                           closes that attribute early and dumps everything
+                           after it onto the page as visible text. A
+                           a querySelector with a quoted attribute selector did just that.
+                           Matching by hand needs no quoting at all. */
+                        const row = Array.from(document.querySelectorAll('[data-entry]'))
+                            .find(el => el.getAttribute('data-entry') === String(wanted));
+                        if (! row) return;
+                        row.click();
+                        row.scrollIntoView({ block: 'center' });
+                    });
+                },
+
                 {{-- One sheet, opened from the row. Everything an official or
                      organiser can do to this person is in it, so the row itself
                      stays a single readable line. --}}
+                {{-- Opened from the entry list's action sheet, which knows the
+                     REGISTRATION rather than the user id (a numeric user id is
+                     not a public key). Same sheet, same gate: a registration
+                     with no gate for this viewer opens nothing. --}}
+                openEntry(reg) {
+                    const uid = Object.keys(this.gates).find(u => String(this.gates[u].reg_id) === String(reg));
+                    if (uid) this.openPerson(Number(uid));
+                },
+
                 openPerson(uid) {
                     this.sel = uid;
                     this.draft = this.gates[uid]?.weight ?? '';
@@ -111,8 +175,13 @@
                     const belt = this.gates[uid]?.belt;
                     this.beltColour = belt?.colour ?? '';
                     this.beltGrade = belt?.grade ?? '';
+                    {{-- The fee picker opens on what is on file. An entry with
+                         nothing on file opens with nothing ticked, which is the
+                         honest starting point: nobody knows what they paid for. --}}
+                    this.feeDraft = (this.gates[uid]?.fee_options || []).slice();
+                    this.feeTouched = false;
                 },
-                closePerson() { this.sel = null; this.draft = ''; this.beltColour = ''; this.beltGrade = ''; },
+                closePerson() { this.sel = null; this.draft = ''; this.beltColour = ''; this.beltGrade = ''; this.feeDraft = []; this.feeTouched = false; },
                 get current() { return this.sel === null ? null : (this.gates[this.sel] || null); },
 
                 gate(uid) { return this.gates[uid] || null; },
@@ -152,17 +221,11 @@
                      other way types it into the grade field. --}}
                 beltColour: '',
                 beltGrade: '',
-                beltColours: [
-                    { value: 'White',  label: @js(__('personal.belt_white')),  bg: '#f8fafc', fg: '#1f2937' },
-                    { value: 'Yellow', label: @js(__('personal.belt_yellow')), bg: '#facc15', fg: '#1f2937' },
-                    { value: 'Orange', label: @js(__('personal.belt_orange')), bg: '#fb923c', fg: '#1f2937' },
-                    { value: 'Green',  label: @js(__('personal.belt_green')),  bg: '#16a34a', fg: '#ffffff' },
-                    { value: 'Blue',   label: @js(__('personal.belt_blue')),   bg: '#2563eb', fg: '#ffffff' },
-                    { value: 'Purple', label: @js(__('personal.belt_purple')), bg: '#7c3aed', fg: '#ffffff' },
-                    { value: 'Brown',  label: @js(__('personal.belt_brown')),  bg: '#78350f', fg: '#ffffff' },
-                    { value: 'Red',    label: @js(__('personal.belt_red')),    bg: '#dc2626', fg: '#ffffff' },
-                    { value: 'Black',  label: @js(__('personal.belt_black')),  bg: '#111827', fg: '#ffffff' },
-                ],
+                {{-- ONE ladder, from App\Sports\Combat\BeltRank::ladder() — the
+                     same list the athlete's own doors offer. It used to be a
+                     Title-Case copy of it, so this desk wrote 'White' into a
+                     column every other door writes 'white' into. --}}
+                beltColours: @js(\App\Sports\Combat\BeltRank::ladder()),
 
                 async weigh(uid) {
                     const g = this.gates[uid];
@@ -196,14 +259,99 @@
                     finally { this.busy = null; }
                 },
 
+                {{-- ── What the entry is being charged for ─────────────────
+                     `feeDraft` is the working copy of the ticked boxes; it is
+                     seeded when the sheet opens (openEntry) so the picker shows
+                     what is on file, and only the SERVER prices it. --}}
+                feeTypes: @js($feeTypes ?? []),
+                feeDraft: [],
+                feeSaving: false,
+                {{-- Did the official actually touch the boxes? An untouched
+                     sheet must never post `fee_options: []` with an approval:
+                     the server reads an explicit empty list as "they chose
+                     nothing", which records the entry as FREE, where the truth
+                     is that nobody has said yet. --}}
+                feeTouched: false,
+                {{-- Its own formatter: the outer scope's money() reads the
+                     finance payload, which this page does not load. --}}
+                feeCurrency: @js($feeCurrency ?? 'BHD'),
+                feeMoney(n) { return this.feeCurrency + ' ' + (parseFloat(n) || 0).toFixed(3); },
+
+                toggleFee(key) {
+                    this.feeTouched = true;
+                    const i = this.feeDraft.indexOf(key);
+                    if (i === -1) this.feeDraft.push(key);
+                    else this.feeDraft.splice(i, 1);
+                },
+
+                {{-- A courtesy total, never the authority: the amount that gets
+                     stored is the one the event's own rows produce. --}}
+                get feeDraftTotal() {
+                    return this.feeTypes
+                        .filter((t) => this.feeDraft.includes(t.key))
+                        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+                },
+
+                get feeDirty() {
+                    const g = this.current;
+                    if (! g) return false;
+                    const was = (g.fee_options || []).slice().sort().join(',');
+
+                    return was !== this.feeDraft.slice().sort().join(',') || ! g.fee_recorded;
+                },
+
+                async saveFees() {
+                    const uid = this.sel, g = this.gates[uid];
+                    if (! g || this.feeSaving) return;
+
+                    this.feeSaving = true;
+                    try {
+                        const d = await this.send(
+                            `{{ url('me/events/'.$e['key'].'/verify') }}/${g.reg_id}/fees`,
+                            { fee_options: this.feeDraft }
+                        );
+                        g.fee_options = d.fee_options || [];
+                        g.fee_recorded = true;
+                        g.fee_charged = d.charged;
+                        this.feeDraft = (g.fee_options || []).slice();
+                        this.feeTouched = false;
+                        window.showToast('success', d.message);
+                    } catch (e) { window.showToast('error', e.message); }
+                    finally { this.feeSaving = false; }
+                },
+
                 async pay(uid, approve) {
                     const g = this.gates[uid];
                     if (! g) return;
 
                     this.busy = uid;
                     try {
-                        const d = await this.send(`{{ url('me/events/'.$e['key'].'/verify') }}/${g.reg_id}/payment`, { approve });
+                        {{-- Approving carries the ticked types with it, so one
+                             tap both takes the money and records what it was
+                             for. Sent only on approval and only when the
+                             official actually touched the picker: an untouched
+                             sheet must not tell the server "they chose
+                             nothing", which is a different statement from "we
+                             do not know" (see recordFees). --}}
+                        const body = { approve };
+
+                        if (approve && this.feeTouched && this.feeTypes.length) {
+                            body.fee_options = this.feeDraft;
+                        }
+
+                        const d = await this.send(`{{ url('me/events/'.$e['key'].'/verify') }}/${g.reg_id}/payment`, body);
                         g.pay_verified = approve;
+
+                        {{-- The server answers with what it stored whenever the
+                             approval wrote a record — so the picker and the
+                             "recorded" line follow without a reload. --}}
+                        if (d.fee_options) {
+                            g.fee_options = d.fee_options;
+                            g.fee_recorded = true;
+                            g.fee_charged = d.charged;
+                            if (this.sel === uid) { this.feeDraft = d.fee_options.slice(); this.feeTouched = false; }
+                        }
+
                         window.showToast('success', d.message);
                     } catch (e) { window.showToast('error', e.message); }
                     finally { this.busy = null; }
@@ -227,6 +375,7 @@
                 passes(uid) { return true; },
                 @endif
              }">
+        @unless($sheetOnly)
             {{-- One group, floating on the band's edge: the search and the list
                  switcher. These are the controls you always have, whichever list
                  you are on, so they share one tray. The competitor filter is NOT
@@ -384,7 +533,8 @@
                              @keydown.space.prevent="openPerson({{ $uid }})"
                              aria-haspopup="dialog"
                          @endif
-                         @if($uid) id="prow-{{ $uid }}" @endif>
+                         @if($uid) id="prow-{{ $uid }}" @endif
+                         @if($pp['reg_id'] ?? null) data-entry="{{ $pp['reg_id'] }}" @endif>
                       <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0"
                              style="background: hsl({{ ($i * 67) % 360 }} 55% 58%);">{{ $initials }}</div>
@@ -445,7 +595,7 @@
                         @endif
                         @if($tappable)
                             {{-- Affordance only — the whole card is the target. --}}
-                            <i class="bi bi-chevron-right text-muted-foreground text-xs flex-shrink-0 rtl:rotate-180"></i>
+                            <i class="bi bi-chevron-right text-muted-foreground text-xs flex-shrink-0"></i>
                         @endif
                       </div>
                     </div>
@@ -522,6 +672,8 @@
                     </p>
                 </div>
             @endif
+
+            @endunless
 
             @if($officiating)
                 {{-- ===== The person sheet =====
@@ -709,6 +861,56 @@
                                                 <i class="bi bi-cash-stack mt-0.5"></i>
                                                 <span>{{ __('personal.event_verify_cash_hint') }}</span>
                                             </p>
+                                        </template>
+
+                                        {{-- ── What they are paying FOR ─────────────
+                                             The event's own price list, ticked by
+                                             the official. Selection cards, never a
+                                             dropdown, inside a scrolling sheet
+                                             (Mobile Pattern Language).
+
+                                             It matters beyond tidiness: an entry
+                                             taken at the door carries no fee line
+                                             at all, so the event reports revenue
+                                             it cannot attribute and values that
+                                             entry at a guess. Ticking a type here
+                                             writes the real record — the SERVER
+                                             prices it from its own rows, so
+                                             nothing here can invent an amount. --}}
+                                        <template x-if="feeTypes.length">
+                                            <div class="mt-3 pt-3 border-t border-gray-100">
+                                                <p class="text-[11px] font-bold text-foreground mb-2">{{ __('personal.event_verify_fees_title') }}</p>
+
+                                                <div class="space-y-1.5">
+                                                    <template x-for="t in feeTypes" :key="t.key">
+                                                        <button type="button" @click="toggleFee(t.key)"
+                                                                class="m-press w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 text-start transition-colors"
+                                                                :class="feeDraft.includes(t.key) ? 'border-primary bg-primary/5' : 'border-gray-200'">
+                                                            <span class="w-5 h-5 rounded-md border-2 grid place-items-center flex-shrink-0"
+                                                                  :class="feeDraft.includes(t.key) ? 'border-primary bg-primary text-white' : 'border-gray-300'">
+                                                                <i class="bi bi-check text-[11px]" x-show="feeDraft.includes(t.key)"></i>
+                                                            </span>
+                                                            <span class="min-w-0 flex-1 text-[13px] font-bold text-foreground truncate" x-text="t.label"></span>
+                                                            <span class="text-[12px] font-black flex-shrink-0" style="color: {{ $e['color'] }};" x-text="t.label_amount"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+
+                                                <div class="flex items-center justify-between mt-2.5">
+                                                    <span class="text-[11px] text-muted-foreground"
+                                                          x-text="current?.fee_recorded
+                                                                    ? @js(__('personal.event_verify_fees_on_file'))
+                                                                    : @js(__('personal.event_verify_fees_none'))"></span>
+                                                    <span class="text-[13px] font-black text-foreground" x-text="feeMoney(feeDraftTotal)"></span>
+                                                </div>
+
+                                                <button type="button" @click="saveFees()" x-show="feeDirty" x-cloak
+                                                        :disabled="feeSaving"
+                                                        class="m-press w-full h-10 mt-2 rounded-xl text-white text-xs font-black disabled:opacity-60"
+                                                        style="background: {{ $e['color'] }};">
+                                                    {{ __('personal.event_verify_fees_save') }}
+                                                </button>
+                                            </div>
                                         </template>
 
                                         <div class="mt-3 flex items-center gap-2">

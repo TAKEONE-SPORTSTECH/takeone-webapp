@@ -6,9 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\EventRequest;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
+use App\Models\EventFeeOption;
 use App\Clubs\Models\ClubFacility;
 use App\Clubs\Models\Tenant;
-use App\Models\UserNotification;
+use App\Members\Models\UserNotification;
 use App\Traits\HandlesClubAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -123,6 +124,8 @@ class ClubEventController extends Controller
 
         $event = ClubEvent::create($data);
 
+        $this->applyEventPricing($request, $event);
+
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'Event created successfully.', 'event' => $event]);
         }
@@ -157,6 +160,8 @@ class ClubEventController extends Controller
 
         $event->update($data);
 
+        $this->applyEventPricing($request, $event);
+
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'Event updated successfully.', 'event' => $event]);
         }
@@ -186,6 +191,114 @@ class ClubEventController extends Controller
         }
 
         return back()->with('success', $msg);
+    }
+
+    /**
+     * The two ADDITIVE halves of an event's price: its named options, and the
+     * late-entry penalty.
+     *
+     * Gated on `fee_pricing_present` on purpose. An organiser who deletes the
+     * last option posts no `fee_options` key at all, so "no rows" and "this
+     * caller never had the editor" arrive identically — and guessing wrong in
+     * either direction is bad: guess "clear" and any other path that ever posts
+     * to this endpoint silently wipes an event's pricing; guess "leave alone"
+     * and the organiser cannot remove their last option. The marker is the form
+     * saying which of the two it is.
+     *
+     * Runs AFTER the event is saved, so a create has an id to hang options on.
+     */
+    private function applyEventPricing(EventRequest $request, ClubEvent $event): void
+    {
+        if (! $request->boolean('fee_pricing_present')) {
+            return;
+        }
+
+        $this->syncParticipantFeeOptions($event, (array) $request->input('fee_options', []));
+
+        // Both columns or neither. An amount with no date has no moment to start
+        // from and a date with no amount charges nothing, so a half-set pair is
+        // stored as no late fee at all rather than as a rule nobody can read.
+        $amount = $request->filled('late_fee_amount') ? round((float) $request->input('late_fee_amount'), 3) : null;
+        $from = $request->filled('late_fee_from') ? $request->input('late_fee_from') : null;
+        $armed = $amount !== null && $amount > 0 && $from;
+
+        $event->late_fee_amount = $armed ? $amount : null;
+        // Formatted here rather than handed over as a Carbon, because the column
+        // carries no cast on the model yet and a raw object would depend on the
+        // grammar to do the right thing.
+        $event->late_fee_from = $armed ? \Illuminate\Support\Carbon::parse($from)->format('Y-m-d H:i:s') : null;
+        $event->save();
+    }
+
+    /**
+     * Make this event's participant options look like the rows the form sent.
+     *
+     * ⚠️ A removed option is DEACTIVATED, never deleted. Frozen fee lines on
+     * entries already taken point at these rows for provenance — "what was this
+     * charge for" has to keep having an answer long after the organiser stops
+     * selling the thing. `EventFee::options()` only ever offers the active ones,
+     * so a deactivated row disappears from every door without taking the record
+     * with it.
+     *
+     * A posted uuid is a hint, not authority: it is resolved against THIS
+     * event's own rows, and anything that does not resolve becomes a new option
+     * rather than an error — so a stale or copied uuid can never reprice
+     * somebody else's event.
+     */
+    private function syncParticipantFeeOptions(ClubEvent $event, array $rows): void
+    {
+        $existing = EventFeeOption::where('event_id', $event->id)
+            ->forRole('participant')
+            ->get()
+            ->keyBy('uuid');
+
+        $kept = [];
+        $sort = 0;
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $label = trim((string) ($row['label'] ?? ''));
+
+            if ($label === '') {
+                continue;
+            }
+
+            $amount = round((float) ($row['amount'] ?? 0), 3);
+            $uuid = trim((string) ($row['uuid'] ?? ''));
+            $option = $uuid !== '' ? $existing->get($uuid) : null;
+
+            if ($option) {
+                // Reactivates as a side effect, which is what an organiser who
+                // re-adds a row they just removed expects to happen.
+                $option->fill([
+                    'label' => $label,
+                    'amount' => $amount,
+                    'sort' => $sort,
+                    'is_active' => true,
+                ])->save();
+            } else {
+                $option = EventFeeOption::create([
+                    'event_id' => $event->id,
+                    'role' => 'participant',
+                    'label' => $label,
+                    'amount' => $amount,
+                    'sort' => $sort,
+                    'is_active' => true,
+                ]);
+            }
+
+            $kept[] = $option->id;
+            $sort++;
+        }
+
+        EventFeeOption::where('event_id', $event->id)
+            ->forRole('participant')
+            ->where('is_active', true)
+            ->when($kept !== [], fn ($query) => $query->whereNotIn('id', $kept))
+            ->update(['is_active' => false]);
     }
 
     private function saveEventBase64Images(array $base64List, int $clubId): array

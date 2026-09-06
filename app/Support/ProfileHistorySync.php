@@ -5,9 +5,9 @@ namespace App\Support;
 use App\Clubs\Models\ClubAffiliation;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\TournamentEvent;
+use App\Members\Models\TournamentEvent;
 use Illuminate\Support\Facades\Log;
 
 /**

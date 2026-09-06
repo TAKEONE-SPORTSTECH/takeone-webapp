@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Duel;
+use App\Challenges\Models\Duel;
 use App\Support\SectionActivity;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;

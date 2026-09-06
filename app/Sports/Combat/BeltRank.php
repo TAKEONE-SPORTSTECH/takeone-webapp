@@ -3,9 +3,9 @@
 namespace App\Sports\Combat;
 
 use App\Models\ClubEventRegistration;
-use App\Models\MemberCertification;
-use App\Models\SkillAcquisition;
-use App\Models\User;
+use App\Members\Models\MemberCertification;
+use App\Members\Models\SkillAcquisition;
+use App\Members\Models\User;
 
 /**
  * What belt an athlete is announced at.
@@ -43,6 +43,100 @@ class BeltRank
         'black', 'red', 'brown', 'purple', 'blue', 'green',
         'orange', 'yellow', 'white', 'grey', 'gray',
     ];
+
+    /**
+     * The one belt ladder every door offers.
+     *
+     * There were three, and they disagreed on both the SET and the CASING:
+     * the public entry door and the claim page offered six colours in
+     * lowercase, while the organiser's weigh-in desk offered nine in Title
+     * Case. So a purple belt literally could not say so through the public
+     * door, and any rank the desk recorded arrived in the column spelled
+     * differently from every rank an athlete recorded. Stored data is
+     * lowercase, so lowercase is what this returns and what writers normalise
+     * to (Canonical Enum Vocabularies).
+     *
+     * Here rather than in a sport package because every combat sport ranks by
+     * belt — and deliberately a SHORTCUT, not a constraint: `belt_grade` stays
+     * free text on the server, so a federation that grades some other way types
+     * it in and nothing here refuses it.
+     *
+     * @return array<int, array{value: string, label: string, bg: string, fg: string}>
+     */
+    public static function ladder(): array
+    {
+        return [
+            ['value' => 'white',  'label' => __('personal.belt_white'),  'bg' => '#f8fafc', 'fg' => '#1f2937'],
+            ['value' => 'yellow', 'label' => __('personal.belt_yellow'), 'bg' => '#facc15', 'fg' => '#1f2937'],
+            ['value' => 'orange', 'label' => __('personal.belt_orange'), 'bg' => '#fb923c', 'fg' => '#1f2937'],
+            ['value' => 'green',  'label' => __('personal.belt_green'),  'bg' => '#16a34a', 'fg' => '#ffffff'],
+            ['value' => 'blue',   'label' => __('personal.belt_blue'),   'bg' => '#2563eb', 'fg' => '#ffffff'],
+            ['value' => 'purple', 'label' => __('personal.belt_purple'), 'bg' => '#7c3aed', 'fg' => '#ffffff'],
+            ['value' => 'brown',  'label' => __('personal.belt_brown'),  'bg' => '#78350f', 'fg' => '#ffffff'],
+            ['value' => 'red',    'label' => __('personal.belt_red'),    'bg' => '#dc2626', 'fg' => '#ffffff'],
+            ['value' => 'black',  'label' => __('personal.belt_black'),  'bg' => '#111827', 'fg' => '#ffffff'],
+        ];
+    }
+
+    /**
+     * A belt resolved for DISPLAY as a chip — colour, wording, and whether it
+     * needs an outline to be visible.
+     *
+     * One place, because three surfaces draw the same chip and had started to
+     * draw it three ways: the shared <x-entrant-card>, and the public event's
+     * participant list on both breakpoints. Whichever shape the caller holds is
+     * accepted — a plain colour string, or the whole `{colour, grade, …}` this
+     * class's `for()` returns — because both are already in circulation.
+     *
+     * `pale` is measured by LUMINANCE rather than by name: most entrants at a
+     * jiu-jitsu event are white belts, a white dot on a white card is invisible,
+     * and falsifying the colour is not an option — a white belt IS white. An
+     * outline is the honest fix, and measuring it means any pale colour added to
+     * the ladder later is handled without touching this.
+     *
+     * @param  mixed       $belt   a ladder value ('white'), or a resolved array
+     * @param  string|null $grade  free text as an organiser typed it ('2nd')
+     * @return array{colour: string, label: string, pale: bool}|null
+     */
+    public static function chip(mixed $belt, ?string $grade = null): ?array
+    {
+        $value = is_array($belt) ? ($belt['colour'] ?? null) : $belt;
+        $degree = $grade ?? (is_array($belt) ? ($belt['grade'] ?? null) : null);
+
+        $key = $value !== null && $value !== '' ? mb_strtolower(trim((string) $value)) : null;
+
+        if ($key === null) {
+            return null;
+        }
+
+        $row = collect(self::ladder())->firstWhere('value', $key);
+
+        if ($row === null) {
+            return null;
+        }
+
+        /* Degrees: the first run of digits in whatever was typed, capped at six
+           so a mistyped number cannot stretch the chip across the card. */
+        preg_match('/\d+/', (string) $degree, $m);
+        $degrees = min(6, max(0, (int) ($m[0] ?? 0)));
+
+        $hex = ltrim((string) $row['bg'], '#');
+        $lum = strlen($hex) === 6
+            ? (0.2126 * hexdec(substr($hex, 0, 2)) + 0.7152 * hexdec(substr($hex, 2, 2)) + 0.0722 * hexdec(substr($hex, 4, 2))) / 255
+            : 0;
+
+        return [
+            'colour' => $row['bg'],
+            'label' => trim($row['label'].($degrees > 0 ? ' '.$degrees : '')),
+            'pale' => $lum > 0.82,
+        ];
+    }
+
+    /** The colour values the ladder offers — for an `in:` validation rule. */
+    public static function colours(): array
+    {
+        return array_column(self::ladder(), 'value');
+    }
 
     /**
      * The belt to announce, or null when nothing is recorded.

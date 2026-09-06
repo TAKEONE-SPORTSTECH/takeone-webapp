@@ -3,7 +3,7 @@
 namespace Tests\Feature\Contracts;
 
 use App\Models\ClubEventRegistration;
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * RESPONSE-SHAPE CONTRACT — GET /me/videos/data (route `me.videos.data`,

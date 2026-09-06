@@ -216,7 +216,7 @@ window.accessFormSheet = function () {
                                         <div class="flex items-center gap-2 px-3 py-2.5 bg-muted/40">
                                             <button type="button" @click="toggleGroupOpen(g.label)" class="flex items-center gap-2 flex-1 min-w-0 text-start">
                                                 <i class="bi bi-chevron-right text-xs text-muted-foreground transition-transform flex-shrink-0"
-                                                   :class="groupOpen(g.label) ? 'rotate-90' : 'rtl:rotate-180'"></i>
+                                                   :class="groupOpen(g.label) ? 'rotate-90' : ''"></i>
                                                 <span class="text-xs font-bold uppercase tracking-wide text-foreground truncate" x-text="g.label"></span>
                                                 <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0"
                                                       :class="groupCount(g) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-muted-foreground'"

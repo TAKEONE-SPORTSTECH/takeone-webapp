@@ -11,7 +11,7 @@
         <div class="flex items-center gap-2 px-3 h-14">
             <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('admin.platform.index') }}')"
                     class="m-press w-10 h-10 -ml-1 rounded-xl flex items-center justify-center text-foreground" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left text-xl"></i>
+                <i class="bi bi-chevron-left text-xl"></i>
             </button>
             <p class="flex-1 min-w-0 text-base font-bold text-primary truncate">{{ __('platform.all_members') }}</p>
             <button type="button" @click="$dispatch('open-member-create-modal')"

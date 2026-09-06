@@ -8,10 +8,10 @@ use App\Mail\WizardOtpMail;
 use App\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserRelationship;
 use App\Services\SubscriptionService;
 use App\Support\ClubCache;
 use App\Traits\StoresBase64Images;
@@ -498,7 +498,7 @@ class WizardRegistrationController extends Controller
             if ($enrolledCount > 0) {
                 $who = $enrolledCount === 1 ? $parentUser->name : $parentUser->name.' (+'.($enrolledCount - 1).' more)';
                 foreach ($tenant->staffUserIds() as $staffId) {
-                    \App\Models\UserNotification::notifyUser($staffId, 'new_member', 'New member registration', [
+                    \App\Members\Models\UserNotification::notifyUser($staffId, 'new_member', 'New member registration', [
                         'actor_id'     => $parentUser->id,
                         'tenant_id'    => $tenant->id,
                         'subject_type' => 'user',

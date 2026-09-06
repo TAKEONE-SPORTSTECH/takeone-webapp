@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClubEvent;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Support\Qr;
 use App\Traits\HandlesClubAuthorization;
 use Illuminate\Contracts\View\View;
@@ -63,9 +63,20 @@ class QrController extends Controller
     }
 
     /** Event URL where a logged-in user can view it and take part. */
+    /**
+     * The address to put on an event's QR code.
+     *
+     * The PUBLIC page when the organiser has published one — a code on a wall
+     * or a poster is scanned by people who are not signed in, and sending them
+     * to the member page means a login form instead of a competition. Falls
+     * back to the member page for an event that was never published, which is
+     * what every existing code already points at.
+     */
     public static function eventUrl(ClubEvent $event): string
     {
-        return route('me.events.show', ['event' => $event->uuid]);
+        return app(\App\Events\Support\PublicEvent::class)->isPublic($event)
+            ? route('events.public', ['event' => $event->uuid])
+            : route('me.events.show', ['event' => $event->uuid]);
     }
 
     // ─────────────────────────── Posters ───────────────────────────
@@ -195,7 +206,11 @@ class QrController extends Controller
         if ($event->is_archived) {
             return false;
         }
-        if ($me->isSuperAdmin() || $event->created_by === $me->id) {
+        // Whoever RUNS the event — creator, the host club's owner or admins, an
+        // appointed organiser, platform staff. Asked of the one place that
+        // answers it, so this poster cannot end up narrower than the console
+        // it prints a code for (App\Events\Support\EventAccess::canManage).
+        if (app(\App\Events\Support\EventAccess::class)->canManage($event, $me)) {
             return true;
         }
         if ($me->memberClubs()->whereKey($event->tenant_id)->exists()) {

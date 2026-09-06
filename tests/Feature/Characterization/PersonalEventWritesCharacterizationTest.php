@@ -9,7 +9,7 @@ use App\Models\EventMatch;
 use App\Models\EventOfficial;
 use App\Models\EventParticipantBan;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Database\Factories\ClubEventRegistrationFactory;
 use Tests\Feature\Contracts\ContractTestCase;
 

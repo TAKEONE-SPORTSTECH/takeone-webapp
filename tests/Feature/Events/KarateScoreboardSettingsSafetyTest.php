@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Events;
 
-use App\Events\Sports\Karate\Tournament\Scoreboard\MatState;
+use App\Scoreboard\Sports\Karate\Mat\MatState;
 use App\Models\ClubEvent;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
@@ -45,7 +45,7 @@ class KarateScoreboardSettingsSafetyTest extends TestCase
      * Modelled on tests/Feature/Events/TaekwondoRealtimeTest::scenario() and
      * built from the Tests\TestCase helpers — no new factory infrastructure.
      *
-     * @return array{0: \App\Models\User, 1: ClubEvent, 2: EventMatch}
+     * @return array{0: \App\Members\Models\User, 1: ClubEvent, 2: EventMatch}
      */
     private function scenario(string $sport = 'karate'): array
     {

@@ -4,7 +4,7 @@ namespace App\Shop\Services;
 
 use App\Shop\Models\ClubProduct;
 use App\Shop\Models\StockAlertState;
-use App\Models\UserNotification;
+use App\Members\Models\UserNotification;
 
 /**
  * Decides when to nag a club owner about a low-stock item.

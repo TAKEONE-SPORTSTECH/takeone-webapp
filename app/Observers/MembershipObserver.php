@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Support\ProfileHistorySync;
 
 /**

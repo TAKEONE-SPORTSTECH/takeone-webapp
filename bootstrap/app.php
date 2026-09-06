@@ -114,6 +114,26 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->with('error', 'Your session expired — please try again.');
         });
 
+        /*
+         * A signed-out visitor to a page inside a public event page is sent to
+         * the EVENT's own sign-in, never to /login.
+         *
+         * `auth` raises this exception, and the framework turns it into a
+         * redirect out here — outside the route's middleware — so the seal
+         * cannot be applied by SealEventPage and belongs here instead. The
+         * intended URL is still remembered, so signing in lands them back on
+         * the screen they asked for.
+         */
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return null;   // an API caller wants the 401, not a page
+            }
+
+            $signIn = \App\Support\SealedRequest::signIn($request);
+
+            return $signIn ? redirect()->guest($signIn) : null;
+        });
+
         // Gracefully handle "forbidden" (403) responses instead of showing the raw
         // "Unauthorized action" page. This happens most often when a long-open page
         // belongs to a previous, higher-privilege session (e.g. super-admin) while
@@ -135,6 +155,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 403);
             }
 
+            // Inside a public event page, "somewhere they can access" is the
+            // EVENT, never the platform home. That surface is a standalone app
+            // — often installed to a home screen, with no address bar and no
+            // back button — so a bounce to `/` is not a redirect, it is the
+            // reader losing the thing they opened. See
+            // App\Http\Middleware\SealEventPage.
+            if ($sealed = \App\Support\SealedRequest::home($request)) {
+                return redirect()->to($sealed)->with('error', "You don't have access to that page.");
+            }
+
             // Web navigation: reroute rather than dead-end on a 403 page.
             if ($request->user()) {
                 return redirect()->to('/')->with('error', "You don't have access to that page.");
@@ -151,7 +181,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (Throwable $e, \Illuminate\Http\Request $request) {
             $isNotFound = $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException
                 || ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
-                    && $e->getStatusCode() === 404);
+                    // 405 is folded in with 404 deliberately: to a reader,
+                    // "that address does not answer" is one thing, and inside a
+                    // chromeless event page the framework's own error page is a
+                    // dead end with no way back.
+                    && in_array($e->getStatusCode(), [404, 405], true));
 
             if (! $isNotFound) {
                 return null; // not a 404 → let Laravel handle it normally
@@ -160,6 +194,14 @@ return Application::configure(basePath: dirname(__DIR__))
             // AJAX / API callers get real JSON 404 so their code can react.
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Not found.'], 404);
+            }
+
+            // Same as the 403 above: a miss inside a public event page stays
+            // inside it, for guests too — the whole point of that surface is
+            // that it has no exit.
+            if ($sealed = \App\Support\SealedRequest::home($request)) {
+                return redirect()->to($sealed)
+                    ->with('error', "That page doesn't exist or is no longer available.");
             }
 
             // Guests fall through to Laravel's default 404 page — there's no

@@ -61,7 +61,7 @@
                                 <i x-show="joinModal.isMemberSelected(member.id)" class="bi bi-check text-white text-sm"></i>
                             </span>
                             <span class="shrink-0">
-                                <template x-if="member.profile_picture"><img :src="'/storage/' + member.profile_picture" class="w-11 h-11 rounded-full object-cover" alt=""></template>
+                                <template x-if="member.profile_picture"><img :src="'/file/' + member.profile_picture" class="w-11 h-11 rounded-full object-cover" alt=""></template>
                                 <template x-if="!member.profile_picture"><span class="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center font-bold" x-text="member.name.charAt(0).toUpperCase()"></span></template>
                             </span>
                             <span class="min-w-0 flex-1">

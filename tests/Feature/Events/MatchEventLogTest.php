@@ -2,14 +2,14 @@
 
 namespace Tests\Feature\Events;
 
-use App\Events\Sports\Karate\Tournament\Scoreboard\Scoring as KarateScoring;
+use App\Scoreboard\Sports\Karate\Mat\Scoring as KarateScoring;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Models\EventMatchEvent;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -189,7 +189,8 @@ class MatchEventLogTest extends TestCase
 
     public function test_nothing_is_recorded_when_the_log_is_switched_off(): void
     {
-        config(['play.event_log' => false]);
+        // Key renamed from play.event_log when the Play platform was disconnected (2026-08-27).
+        config(['events.match_log' => false]);
 
         $this->scoring()->apply($this->event, '1', 'load', ['match_id' => $this->match->id]);
 
@@ -198,7 +199,8 @@ class MatchEventLogTest extends TestCase
 
     public function test_scoring_still_works_when_the_log_is_switched_off(): void
     {
-        config(['play.event_log' => false]);
+        // Key renamed from play.event_log when the Play platform was disconnected (2026-08-27).
+        config(['events.match_log' => false]);
 
         $this->scoring()->apply($this->event, '1', 'load', ['match_id' => $this->match->id]);
         $this->scoring()->apply($this->event, '1', 'start', []);

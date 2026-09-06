@@ -1,4 +1,6 @@
-@extends('layouts.personal-mobile')
+{{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
+     nothing shared this is the member shell exactly as before. See entry/shell. --}}
+@extends($shell ?? 'layouts.personal-mobile')
 
 @section('title', $bout['a']['name'].' vs '.$bout['b']['name'])
 
@@ -71,7 +73,7 @@
             <a href="{{ route('me.events.show', $e['key']) }}"
                class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center"
                aria-label="{{ __('personal.back') }}">
-                <i class="bi bi-chevron-left rtl:rotate-180"></i>
+                <i class="bi bi-chevron-left"></i>
             </a>
             <div class="flex items-center gap-2">
             @if ($canManage)

@@ -220,7 +220,8 @@
             {{-- Email / Phone --}}
             <div class="ml-field">
                 <input id="email" type="text" name="email" value="{{ old('email') }}"
-                       placeholder=" " required autocomplete="username">
+                       placeholder=" " required autocomplete="username" inputmode="text"
+                       autocapitalize="none" spellcheck="false">
                 <label for="email">{{ __('auth.email_or_phone') }}</label>
             </div>
             @error('email')

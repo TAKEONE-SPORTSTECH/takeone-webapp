@@ -188,7 +188,7 @@
              x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full rtl:-translate-x-full">
             <div class="p-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                 <h3 class="font-black text-foreground flex items-center gap-2">
-                    <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" class="-ms-1 w-7 h-7 grid place-items-center" aria-label="{{ __('market.back') }}"><i class="bi bi-arrow-left"></i></button>
+                    <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" class="-ms-1 w-7 h-7 grid place-items-center" aria-label="{{ __('market.back') }}"><i class="bi bi-chevron-left"></i></button>
                     <i class="bi" :class="cartStep==='pay' ? 'bi-shield-lock' : 'bi-bag'"></i>
                     <span x-text="cartStep==='pay' ? @js(__('market.pay_title')) : @js(__('market.your_cart'))"></span>
                     <span class="text-muted-foreground font-medium" x-show="cartStep==='cart'" x-text="`(${count})`"></span>

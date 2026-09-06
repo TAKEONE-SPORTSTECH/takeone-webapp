@@ -5,7 +5,7 @@ namespace App\Shop\Controllers;
 use App\Shop\Models\ClubProduct;
 use App\Shop\Models\Order;
 use App\Clubs\Models\Tenant;
-use App\Models\UserNotification;
+use App\Members\Models\UserNotification;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

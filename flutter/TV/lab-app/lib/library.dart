@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -125,7 +126,46 @@ class _ClipLibraryState extends State<ClipLibrary> {
               ],
             ),
           ),
+
+          // The manual door. Auto upload is off by default, so this is how a
+          // day's footage leaves the phone: deliberately, on a network the
+          // operator picked. Hidden when there is nothing waiting.
+          if (waiting > 0)
+            GestureDetector(
+              onTap: _sendNow,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: Tally.gold.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Tally.gold.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  widget.vault.inFlight != null ? 'SENDING' : 'SEND $waiting',
+                  style: Tally.label(10, color: Tally.gold, tracking: 0.14, weight: FontWeight.w700),
+                ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  /// Push whatever is waiting, now, whatever the auto-upload switch says.
+  void _sendNow() {
+    if (widget.vault.inFlight != null) return;
+
+    unawaited(widget.vault.sendNow());
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Tally.navyPrimary,
+        content: Text(
+          'Sending ${widget.vault.waiting} bout${widget.vault.waiting == 1 ? '' : 's'} to the event. '
+          'They stay on this phone either way.',
+          style: Tally.body(12.5),
+        ),
       ),
     );
   }

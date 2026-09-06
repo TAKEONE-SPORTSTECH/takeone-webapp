@@ -129,7 +129,7 @@
                 <div class="relative flex items-center justify-between gap-2">
                     <div class="flex items-center gap-1.5 min-w-0">
                         <button type="button" id="mpHeaderBack" onclick="mpBack()" aria-label="{{ __('shared.back') }}"
-                                class="hidden w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-chevron-left text-lg rtl:rotate-180"></i></button>
+                                class="hidden w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-chevron-left text-lg"></i></button>
                         <span id="mpHeaderTitle" class="text-[12px] font-bold text-white/85 truncate"></span>
                         {{-- The member's number, in the space the view title leaves empty
                              on the profile view. Hidden in a sub-view, where that space

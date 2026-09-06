@@ -1,4 +1,27 @@
-@props(['name' => 'country_code', 'id' => 'country_code', 'value' => '+1', 'required' => false, 'error' => null, 'syncWithCountry' => true])
+@props([
+    'name' => 'country_code',
+    'id' => 'country_code',
+    'value' => '+1',
+    'required' => false,
+    'error' => null,
+    'syncWithCountry' => true,
+
+    /*
+     * Optional Alpine state path in the PARENT scope, e.g. "form.mobile_code".
+     * When given, the chosen dial code is mirrored into it — so a page that
+     * posts JSON from its own Alpine root gets the value without reading the
+     * hidden input. The hidden input stays for ordinary form posts, so every
+     * existing caller is untouched.
+     */
+    'model' => null,
+
+    /*
+     * The wrapper's classes. Defaults to the platform's own input group; a
+     * surface with its own field styling (the public event pages' `.e-field`)
+     * passes its own instead of fighting `tf-input-group`'s purple borders.
+     */
+    'groupClass' => 'tf-input-group',
+])
 
 {{-- Keep the mobile-number group left-to-right even on RTL pages: the flag/code
      button stays on the LEFT and the phone field on the right (phone numbers read
@@ -6,13 +29,21 @@
      correct. @once keeps it to a single <style> no matter how many times this renders. --}}
 @once
 <style>
-    [dir="rtl"] .tf-input-group { direction: ltr; }
+    /* Keyed on the data attribute, not the class, so it still holds when a
+       caller supplies its own `groupClass`. */
+    [dir="rtl"] [data-phone-group] { direction: ltr; }
 </style>
 @endonce
 
-<div class="tf-input-group"
+<div class="{{ $groupClass }}" data-phone-group
      x-data="countryCodeDropdown_{{ $id }}()"
-     x-init="init()">
+     x-init="init()"
+     @if($model)
+         {{-- Mirrored with x-effect rather than on click, so the parent also
+              gets the initial value and any change made by the shared
+              `country-changed` event. --}}
+         x-effect="{{ $model }} = selectedCode"
+     @endif>
     <!-- Country Code Button -->
     <div class="relative">
         <button type="button"

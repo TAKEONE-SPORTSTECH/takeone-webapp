@@ -20,11 +20,73 @@ use Tests\TestCase;
 class RouteIntegrityTest extends TestCase
 {
     /**
-     * Total registered routes, measured 2026-08-31 on branch `development`
-     * (`php artisan route:list --json | jq length` agrees with the in-test
-     * count, so the CLI and the test boot the same table).
+     * Total registered routes.
+     *
+     * Measured 2026-08-31 on branch `development` at 650 (`php artisan
+     * route:list --json | jq length` agrees with the in-test count, so the CLI
+     * and the test boot the same table). It stayed at 650 through the Shop,
+     * Clubs, Members, Challenges and Trainers module migrations — moving a
+     * controller into a module must never change this number, which is the
+     * whole reason the tripwire exists.
+     *
+     * 651 since 2026-09-01: `openmat.sport` (GET /openmat/{sport}), the direct
+     * per-sport door onto an open mat. One route added on purpose.
+     *
+     * 649 since 2026-09-01: `me.push-tokens.store` / `me.push-tokens.destroy`
+     * removed with Firebase. Native push is delivered over MQTT by the broker
+     * the platform already runs, so there is no per-device token to register.
+     *
+     * 655 since 2026-09-01: the claim link (Documentation/EVENTS-PUBLIC-ENTRY.md,
+     * Phase A). Two OPEN routes — `entry.claim` / `entry.claim.store`, the
+     * athlete's side, reachable with no account — and four behind /me for the
+     * coach: `me.events.entries.unnamed`, `me.events.entry-links`, and that
+     * link's revoke / relink. Six added on purpose.
+     *
+     * 657 since 2026-09-01: the public event page (same document, Phase B) —
+     * `events.public`, the read-only poster anybody may open, and
+     * `me.events.public.toggle`, the organiser's switch for it. Two on purpose.
+     *
+     * 663 since 2026-09-01: public enrolment (same document, Phase C). Two OPEN
+     * — `events.public.enter` and `events.public.enter.store`, the only place a
+     * wholly unauthenticated stranger creates an account — and four behind /me
+     * for the organiser: `me.events.public.auto-accept`,
+     * `me.events.public-entries` and that queue's accept / decline. Six on
+     * purpose.
+     *
+     * 665 since 2026-09-01: the shared link wears the EVENT's identity, not the
+     * platform's — `events.public.manifest` and `events.public.icon`, the
+     * per-event web-app manifest and its generated icon, so a competition added
+     * to a home screen is that competition's app. Two on purpose.
+     *
+     * 670 since 2026-09-02. Five, and they arrived from two places — recorded
+     * separately because a tripwire that lumps them together teaches nothing:
+     *
+     *   · THREE from the module / BJJ-package work already in the tree when the
+     *     count was next checked. Not audited here; the number had drifted to
+     *     668 before the two below were written.
+     *   · TWO for the scoring console's own re-read —
+     *     `bjj-scoreboard.console-state` and its token twin
+     *     `bjj-scoreboard.token-console-state`. Both READS, authorised exactly
+     *     as the command endpoint beside them. They exist because a console
+     *     draws three things (state, log, queue) and so cannot patch itself from
+     *     the single board payload a wall screen is sent: when the socket says
+     *     the mat moved, it re-reads its own. See ScoreboardController.
+     *
+     * 677 since 2026-09-02: building a bracket BY HAND. Five, all under
+     * `me.events.divisions.*` — create / update / delete a group, read who could
+     * go in it, and put people in and out. Split by what the act is: the first
+     * three need canManage, the last two only canArrange, because filling a
+     * group is the same act as moving people around a draw. Every one scopes the
+     * division to the event uuid in the path.
      */
-    private const EXPECTED_ROUTE_COUNT = 650;
+    /*
+     * 680 since 2026-09-02: `locale.set` (PUT /locale) — switching the UI
+     * language without an account. `me.locale.update` already existed but sits
+     * behind auth + verified + two-factor, and the first place a visitor is
+     * offered a language is the PUBLIC event cover, before any of that. Same
+     * controller, one route added on purpose.
+     */
+    private const EXPECTED_ROUTE_COUNT = 680;   // +4: events.public.draw.data, events.public.section, events.public.enter.mine, events.public.enter.clubs; +5: me.events.divisions.*; +1: locale.set
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -237,6 +299,18 @@ class RouteIntegrityTest extends TestCase
             fn (RoutingRoute $r) => $r->getName() !== null
         );
 
-        $this->assertCount(638, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 639 with `openmat.sport`, then 637: the two push-token routes went
+        // with Firebase. 643 with the six claim-link routes (Phase A of
+        // EVENTS-PUBLIC-ENTRY), 645 with the public page and its switch
+        // (Phase B), 651 with public enrolment and the organiser's review
+        // queue (Phase C), 653 with the per-event manifest and icon that make
+        // the link its own app. 658 on 2026-09-02: three from the module / BJJ
+        // work already in the tree, plus the scoring console's two re-read
+        // routes — see the note on EXPECTED_ROUTE_COUNT. 659 with
+        // `events.public.draw.data`, the public page's read-only draw feed, and
+        // 660 with `events.public.section` — one route for the poster's four
+        // doors (draw, officials, gallery, participants). Every change
+        // deliberate.
+        $this->assertCount(668, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

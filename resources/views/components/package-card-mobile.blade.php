@@ -153,7 +153,7 @@
                                     {{-- Tap the discipline to read what it is (public directory page). --}}
                                     <a href="{{ $actLink }}" class="m-press min-w-0 inline-flex items-center gap-1 no-underline">
                                         <h5 class="text-[12px] font-bold text-foreground truncate">{{ $activity->tr('name') ?: ($activity->title ?? $activity->name) }}</h5>
-                                        <i class="bi bi-chevron-right text-[8px] text-primary rtl:rotate-180 flex-shrink-0"></i>
+                                        <i class="bi bi-chevron-right text-[8px] text-primary flex-shrink-0"></i>
                                     </a>
                                 @else
                                     <h5 class="text-[12px] font-bold text-foreground truncate">{{ $activity->tr('name') ?: ($activity->title ?? $activity->name) }}</h5>
@@ -166,7 +166,7 @@
                                             <span class="w-4 h-4 rounded-full bg-primary/15 grid place-items-center text-[8px] font-bold text-primary">{{ mb_strtoupper(mb_substr($instructor['name'], 0, 1, 'UTF-8'), 'UTF-8') }}</span>
                                         @endif
                                         <span class="text-[10px] text-primary font-medium max-w-[5rem] truncate">{{ $instructor['name'] }}</span>
-                                        <i class="bi bi-chevron-right text-[8px] text-primary rtl:rotate-180 flex-shrink-0"></i>
+                                        <i class="bi bi-chevron-right text-[8px] text-primary flex-shrink-0"></i>
                                     </a>
                                 @endif
                             </div>

@@ -5,8 +5,8 @@ namespace App\Support;
 use App\Events\Support\EventAccess;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
-use App\Models\TournamentEvent;
-use App\Models\User;
+use App\Members\Models\TournamentEvent;
+use App\Members\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -61,8 +61,13 @@ class BoutHistory
 
         // Every bout of those entries, in one query. A bout with no winner yet is
         // kept: it was fought, and reporting it as a loss would be untrue.
+        //
+        // `contested()` keeps a BYE out. A bye is a draw row with one competitor,
+        // no opponent and a winner recorded so the bracket can advance somebody —
+        // it is scaffolding, not a bout, and listing it gives an athlete a win
+        // over nobody.
         $bouts = EventMatch::query()
-            ->where(fn ($q) => $q->whereNotNull('winner')->orWhere('status', 'done'))
+            ->contested()
             ->where(fn ($q) => $q->whereIn('a_competitor_id', $regIds)->orWhereIn('b_competitor_id', $regIds))
             ->with(['event:id,uuid,title,date', 'category:id,name,weight_class'])
             ->orderBy('match_no')

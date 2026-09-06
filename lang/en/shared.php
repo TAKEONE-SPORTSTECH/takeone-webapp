@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'language' => 'Language',
     'language_updated' => 'Language updated',
     'save'             => 'Save',
     'cancel'           => 'Cancel',
@@ -129,7 +130,7 @@ return [
     'tabs_identity_branding_logo_help_2' => 'Used as main logo and favicon',
     'tabs_identity_branding_cover_image' => 'Cover Image',
     'tabs_identity_branding_upload_cover' => 'Upload Cover',
-    'tabs_identity_branding_cover_help_1' => 'Wide banner image (1200x400px)',
+    'tabs_identity_branding_cover_help_1' => 'Wide banner image (1920x1080px)',
     'tabs_identity_branding_cover_help_2' => 'Used for club profile header',
     'tabs_identity_branding_reg_splash' => 'Registration Splash Image',
     'tabs_identity_branding_reg_splash_desc' => 'A dedicated portrait image shown as the background of this club\'s self-registration page. This is <strong>not</strong> the cover banner — upload a tall phone-shaped image. The live preview shows exactly how it will look behind the logo, club name and language picker.',
@@ -139,6 +140,9 @@ return [
     'tabs_identity_branding_crop_logo' => 'Crop Logo',
     'tabs_identity_branding_crop_cover' => 'Crop Cover Image',
     'tabs_identity_branding_crop_splash' => 'Crop Splash Image',
+    'tabs_identity_branding_crop_shape' => 'Crop shape',
+    'tabs_identity_branding_shape_square' => 'Square',
+    'tabs_identity_branding_shape_circle' => 'Circle',
     'tabs_identity_branding_zoom' => 'Zoom',
     'tabs_identity_branding_rotation' => 'Rotation',
     'tabs_identity_branding_save_apply' => 'Save & Apply',

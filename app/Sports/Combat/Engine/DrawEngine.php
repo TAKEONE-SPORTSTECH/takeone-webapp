@@ -12,7 +12,7 @@ use App\Models\EventCategory;
  */
 class DrawEngine
 {
-    public function __construct(private Scheduler $scheduler) {}
+    public function __construct(private Scheduler $scheduler, private GroupEngine $groups) {}
 
     /**
      * Keep each division's draw current:
@@ -77,6 +77,20 @@ class DrawEngine
      */
     public function build(ClubEvent $event, EventCategory $cat, bool $paidOnly): void
     {
+        /*
+         * A division can be run as a GROUP instead of a ladder.
+         *
+         * The dispatch lives here, at the one door every caller already uses —
+         * `ensure()`, each package's `generateDraw`, the entrant-set hooks — so
+         * a second shape of competition needed no branch in any of them, and a
+         * division whose format is edited simply builds differently next time.
+         */
+        if (($cat->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN) {
+            $this->groups->build($event, $cat, $paidOnly);
+
+            return;
+        }
+
         // The final draw is the one people actually fight, so an entry earns its
         // place by being CHECKED, not by claiming to be ready:
         //

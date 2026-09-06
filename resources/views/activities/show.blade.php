@@ -21,8 +21,9 @@
 
         <div class="absolute inset-x-0 bottom-0 p-5 sm:p-8">
             <div class="max-w-3xl mx-auto">
-                <a href="{{ url()->previous() }}" class="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-3">
-                    <i class="bi bi-arrow-left"></i> {{ __('shared.back') ?? 'Back' }}
+                <a href="{{ url()->previous() }}" class="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-3"
+           aria-label="{{ __('shared.back') ?? 'Back' }}" title="{{ __('shared.back') ?? 'Back' }}">
+                    <i class="bi bi-chevron-left"></i>
                 </a>
                 <h1 class="text-3xl sm:text-4xl font-bold text-white drop-shadow">{{ $name }}</h1>
                 @if(!empty($activity->variants) && count($activity->variants))

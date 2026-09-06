@@ -11,7 +11,7 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventExpense;
-use App\Models\User;
+use App\Members\Models\User;
 use Carbon\Carbon;
 
 /**
@@ -78,14 +78,41 @@ abstract class AbstractEventType implements EventType
         ];
     }
 
+    /**
+     * The list columns every type keeps on the event row.
+     *
+     * ⚠️ ABSENT IS NOT THE SAME AS BLANK (CLAUDE.md, "Who Fills The Form
+     * Decides"). A key the request never sent is left OUT of the returned
+     * columns, so an update leaves it alone; a key sent EMPTY is a deliberate
+     * clear and is written as one. `$data['x'] ?? []` treated the two the
+     * same, which meant any caller posting a partial payload — an older form,
+     * an integration, a screen that renders only some sections — silently
+     * erased the requirements, tags and run-of-show of an event it never
+     * meant to touch (found while chasing a lost end date, 2026-09-04).
+     *
+     * On CREATE nothing is lost either way: a column nobody sent is null.
+     */
     public function columnsFromInput(array $data, ?ClubEvent $event = null): array
     {
-        return [
-            'agenda' => $this->cleanAgenda($data['agenda'] ?? []),
-            'requirements' => $this->cleanList($data['requirements'] ?? []),
-            'tags' => $this->cleanTags($data['tags'] ?? []),
-            'phases' => $this->cleanPhases($data['phases'] ?? []),
-        ];
+        $columns = [];
+
+        if (array_key_exists('agenda', $data)) {
+            $columns['agenda'] = $this->cleanAgenda($data['agenda'] ?? []);
+        }
+
+        if (array_key_exists('requirements', $data)) {
+            $columns['requirements'] = $this->cleanList($data['requirements'] ?? []);
+        }
+
+        if (array_key_exists('tags', $data)) {
+            $columns['tags'] = $this->cleanTags($data['tags'] ?? []);
+        }
+
+        if (array_key_exists('phases', $data)) {
+            $columns['phases'] = $this->cleanPhases($data['phases'] ?? []);
+        }
+
+        return $columns;
     }
 
     public function saveRelatedData(ClubEvent $event, array $data): void
@@ -356,14 +383,36 @@ abstract class AbstractEventType implements EventType
 
     public function finance(ClubEvent $event): array
     {
-        // The stated price, not a number scraped out of the display line.
+        // The stated BASE price, not a number scraped out of the display line.
+        // Still reported as the headline figure an organiser recognises, but it
+        // is no longer what revenue is derived from — see below.
         $pFee = EventFee::amount($event, 'participant') ?? 0.0;
         $sFee = $event->spectator_enabled ? (EventFee::amount($event, 'spectator') ?? 0.0) : 0.0;
 
         $paidP = $event->registrations()->where('role', 'participant')->where('paid', true)->count();
         $paidS = $event->registrations()->where('role', 'spectator')->where('paid', true)->count();
-        $pRev = $paidP * $pFee;
-        $sRev = $paidS * $sFee;
+
+        /*
+         * Revenue is SUMMED from what each entry was actually charged, not
+         * multiplied out from today's price.
+         *
+         * `paid_count × current_fee` was wrong before multi-pricing existed —
+         * an organiser correcting a price silently restated every entry ever
+         * taken, and the event's profit moved underneath them. With options and
+         * a late penalty it is not merely imprecise, it is inexpressible: two
+         * entrants in the same event legitimately pay different amounts.
+         *
+         * `event_registration_fee_lines` is that record. Entries taken BEFORE
+         * lines existed have none, so they are still counted at the event's base
+         * fee — reporting them as free would be a worse answer than the one the
+         * platform gave at the time. Hence two terms per role rather than one.
+         */
+        [$pRev, $pEst] = self::chargedRevenue($event, 'participant');
+        [$sRev, $sEst] = $event->spectator_enabled
+            ? self::chargedRevenue($event, 'spectator')
+            : [0.0, 0];
+
+        $money = self::moneySources($event);
 
         $expenses = $event->expenses()->latest('id')->get(['id', 'label', 'amount'])
             ->map(fn (EventExpense $x) => ['id' => $x->id, 'label' => $x->label, 'amount' => (float) $x->amount])->all();
@@ -379,10 +428,164 @@ abstract class AbstractEventType implements EventType
             'paid_spectators' => $paidS,
             'spectator_revenue' => $sRev,
             'revenue' => $pRev + $sRev,
+            // How much of that revenue is an ESTIMATE — paid entries with no
+            // recorded amount, valued at the list price. A total that includes
+            // guesses has to be able to say how many.
+            'estimated_entries' => $pEst + $sEst,
+            'list_price' => EventFee::listPrice($event, 'participant'),
+
+            // WHERE the money came from, and what it would be if everybody
+            // paid. See moneySources().
+            'sources' => $money['sources'],
+            'expected_revenue' => $money['expected'],
+            'expected_outstanding' => round($money['expected'] - ($pRev + $sRev), 3),
+            'unpaid_entries' => $money['unpaid'],
             'expenses' => $expenses,
             'expenses_total' => $expTotal,
             'profit' => ($pRev + $sRev) - $expTotal,
             'breakdown' => [],
+        ];
+    }
+
+    /**
+     * What a role actually brought in, and how much of it is an estimate:
+     * frozen fee lines where they exist, the event's own list price where they
+     * do not.
+     *
+     * Two queries whatever the size of the entry list — never a loop over
+     * registrations.
+     *
+     * @return array{0: float, 1: int}  [revenue, entries valued by estimate]
+     */
+    private static function chargedRevenue(ClubEvent $event, string $role): array
+    {
+        $paidIds = $event->registrations()
+            ->where('role', $role)
+            ->where('paid', true)
+            ->pluck('club_event_registrations.id');
+
+        if ($paidIds->isEmpty()) {
+            return [0.0, 0];
+        }
+
+        /*
+         * ⚠️ The fallback for an entry with no fee line is the LIST PRICE, not
+         * the base fee.
+         *
+         * It used to be the base column, which is exactly 0 on any event that
+         * prices itself through options — so an organiser who had taken
+         * eighteen payments was shown the revenue of one (reported 2026-09-06).
+         * `EventFee::listPrice` answers with the base where there is one and
+         * the cheapest option where there is not.
+         *
+         * The entries that need it are the ones taken at the desk: an official
+         * ticks "paid" on the entry list and nothing writes a line, because the
+         * amount was never quoted. Reporting those as free was the worse of two
+         * imperfect answers.
+         */
+        $charged = EventFee::chargedForMany($event, $paidIds, $role);
+
+        return [
+            round(array_sum($charged['amounts']), 3),
+            count($charged['estimated']),
+        ];
+    }
+
+    /**
+     * Where the money came from, and what it would be if everyone paid.
+     *
+     * TWO questions an organiser asks about the same table, so they are
+     * answered from one pass:
+     *
+     *   · **Sources.** "Gi entries brought BHD 30, Gi + No-Gi brought BHD 45."
+     *     A total tells nobody which of the things they are selling is selling.
+     *     The rows come straight from the frozen fee lines, grouped by the
+     *     option they name, so a price change afterwards never restates them —
+     *     and a late-entry penalty appears as its own row, because that is a
+     *     different kind of income from an entry fee.
+     *
+     *   · **Forecast.** What the event takes if every entrant on the list pays.
+     *     Same arithmetic, over ALL entries instead of the paid ones, so the
+     *     difference between the two is exactly what is outstanding.
+     *
+     * Entries with NO fee line are their own row, marked as an estimate: they
+     * were ticked paid at a desk where no amount was ever quoted, so all this
+     * can honestly say is how many and what the list price is.
+     *
+     * Two queries, whatever the size of the entry list.
+     *
+     * @return array{sources: array<int, array<string, mixed>>, expected: float, unpaid: int}
+     */
+    private static function moneySources(ClubEvent $event): array
+    {
+        $entries = $event->registrations()
+            ->whereIn('role', ['participant', 'spectator'])
+            ->get(['club_event_registrations.id', 'role', 'paid']);
+
+        if ($entries->isEmpty()) {
+            return ['sources' => [], 'expected' => 0.0, 'unpaid' => 0];
+        }
+
+        $paidIds = $entries->where('paid', true)->pluck('id')->all();
+
+        $lines = \App\Models\EventRegistrationFeeLine::whereIn('registration_id', $entries->pluck('id'))
+            ->get(['registration_id', 'fee_option_id', 'kind', 'label', 'amount']);
+
+        $isPaid = array_fill_keys($paidIds, true);
+        $lined = $lines->pluck('registration_id')->unique()->all();
+
+        $sources = [];
+
+        foreach ($lines->groupBy(fn ($l) => $l->kind.':'.($l->fee_option_id ?? 0).':'.$l->label) as $group) {
+            $first = $group->first();
+
+            // A zero-amount line is a recorded free entry, not a source of
+            // money — it is what makes "recorded free" different from "no
+            // record at all", and it does not belong in this table.
+            if ((float) $group->sum('amount') <= 0) {
+                continue;
+            }
+
+            $paidRows = $group->filter(fn ($l) => isset($isPaid[$l->registration_id]));
+
+            $sources[] = [
+                'label' => (string) $first->label,
+                'kind' => (string) $first->kind,
+                'count' => $paidRows->count(),
+                'revenue' => round((float) $paidRows->sum('amount'), 3),
+                'expected' => round((float) $group->sum('amount'), 3),
+                'estimated' => false,
+            ];
+        }
+
+        // Everything the record does not cover, valued at the list price.
+        $unrecorded = $entries->reject(fn ($r) => in_array($r->id, $lined, true));
+
+        foreach (['participant', 'spectator'] as $role) {
+            $rows = $unrecorded->where('role', $role);
+            $price = EventFee::listPrice($event, $role);
+
+            if ($rows->isEmpty() || $price <= 0) {
+                continue;
+            }
+
+            $sources[] = [
+                'label' => __('personal.event_show_money_unrecorded'),
+                'kind' => 'unrecorded',
+                'count' => $rows->where('paid', true)->count(),
+                'revenue' => round($rows->where('paid', true)->count() * $price, 3),
+                'expected' => round($rows->count() * $price, 3),
+                'estimated' => true,
+            ];
+        }
+
+        // Biggest first: the question is which of these is carrying the event.
+        usort($sources, fn ($a, $b) => $b['expected'] <=> $a['expected']);
+
+        return [
+            'sources' => $sources,
+            'expected' => round(array_sum(array_column($sources, 'expected')), 3),
+            'unpaid' => $entries->where('paid', false)->count(),
         ];
     }
 
@@ -486,7 +689,7 @@ abstract class AbstractEventType implements EventType
      * (a belt test, a league table) yields nothing and the screen offers no
      * bracket rather than an empty one.
      */
-    public function bracketView(ClubEvent $event, User $viewer): array
+    public function bracketView(ClubEvent $event, ?User $viewer = null): array
     {
         if (! $event->categories()->whereHas('matches')->exists()) {
             return [];

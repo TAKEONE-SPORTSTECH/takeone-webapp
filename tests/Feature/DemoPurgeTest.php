@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Models\UserPhoto;
+use App\Members\Models\User;
+use App\Members\Models\UserPhoto;
 use App\Support\DemoManifest;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;

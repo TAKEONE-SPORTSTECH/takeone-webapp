@@ -88,6 +88,6 @@ class Clubs extends AbstractModule implements ContributesClubAdminNav
             ->where('verification_status', 'pending')
             ->count();
 
-        return $pending(\App\Models\TournamentEvent::class) + $pending(\App\Models\SkillAcquisition::class);
+        return $pending(\App\Members\Models\TournamentEvent::class) + $pending(\App\Members\Models\SkillAcquisition::class);
     }
 }

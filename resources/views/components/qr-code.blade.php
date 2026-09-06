@@ -64,7 +64,12 @@
      dropped when it is hidden — it becomes the button's ACCESSIBLE NAME, because
      a bare icon says nothing to a screen reader, and "QR" is not a word a button
      can be identified by out loud. --}}
-<div x-data="qrCode_{{ $uid }}()" class="inline-block">
+<div x-data="qrCode(@js([
+        'uid'          => $uid,
+        'items'        => $jsItems,
+        'messagesBase' => url('/messages'),
+        'searchUrl'    => route('messages.search-users'),
+     ]))" class="inline-block">
     <button type="button" @click="open = true" class="m-press {{ $btn }}"
             @if($iconOnly && ($label || $title)) aria-label="{{ $label ?: $title }}" @endif>
         <i class="bi {{ $icon }}"></i>@unless($iconOnly) {{ $label }}@endunless
@@ -142,7 +147,17 @@
                         <i class="bi text-[10px]" :class="more ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                     </button>
 
-                    <div x-show="more" x-cloak x-collapse class="grid grid-cols-2 gap-2 mt-2">
+                    {{-- x-transition, not x-collapse: the Alpine Collapse plugin is not
+                         registered in this project, so x-collapse only logs a warning
+                         and the panel appears with no animation at all. --}}
+                    <div x-show="more" x-cloak
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 -translate-y-1"
+                         class="grid grid-cols-2 gap-2 mt-2">
                         <button type="button" @click="downloadPng()" class="m-press inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 text-foreground text-sm font-medium hover:bg-muted transition-colors">
                             <i class="bi bi-download"></i> {{ __('shared.components_qr_code_png') }}
                         </button>
@@ -190,18 +205,41 @@
         </div>
     </template>
 
+{{-- The component's behaviour, registered ONCE per page.
+
+     It used to be an inline `<script>` declaring `function qrCode_<uid>()`
+     right here, next to the markup. That works only when the script executes
+     in DOM order before Alpine reaches the `x-data` — and on this page it does
+     not: `<x-qr-code>` is rendered INSIDE another component's
+     `x-teleport="body"` template (event-public-link), and a `<script>` inside a
+     `<template>` is inert. The factory was therefore never defined, `x-data`
+     evaluated to an empty scope, and every binding failed at once — the QR hid
+     itself (`active === 0` was false), the link rendered as `href=""`, and
+     Share had no url to send. The same hazard applies to any shell-swapped
+     content, where innerHTML never runs scripts either.
+
+     So the behaviour is registered as a real Alpine component from the page's
+     script stack, which renders outside every template, and the per-instance
+     values arrive as config. Nothing about this component now depends on where
+     its markup sits (CLAUDE.md → Standalone Self-Contained Components). --}}
+@once
+@push('scripts')
     <script>
-    function qrCode_{{ $uid }}() {
-        return {
+    (function () {
+        var register = function () {
+            if (! window.Alpine || window.__qrCodeRegistered) return;
+            window.__qrCodeRegistered = true;
+            window.Alpine.data('qrCode', function (cfg) {
+                return {
             open: false,
             more: false,
             active: 0,
-            uid: @json($uid),
-            items: @json($jsItems),
+            uid: cfg.uid,
+            items: cfg.items || [],
             get cur() { return this.items[this.active] || {}; },
             chat: { open: false, q: '', results: [], searching: false, sending: false },
-            messagesBase: @json(url('/messages')),
-            searchUrl: @json(route('messages.search-users')),
+            messagesBase: cfg.messagesBase,
+            searchUrl: cfg.searchUrl,
             shareText() { return (this.cur.title ? this.cur.title + ' — ' : '') + this.cur.link; },
             _csrf() { var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.content : ''; },
 
@@ -316,7 +354,17 @@
                 a.href = href; a.download = name;
                 document.body.appendChild(a); a.click(); a.remove();
             },
+                };
+            });
         };
-    }
+
+        // Both orders have to work: on a first paint Alpine has not started yet
+        // (register on alpine:init), and after a mobile/admin shell swap it is
+        // already running (register immediately, or the name never resolves).
+        if (window.Alpine) { register(); }
+        document.addEventListener('alpine:init', register);
+    })();
     </script>
+@endpush
+@endonce
 </div>

@@ -77,6 +77,10 @@
         </div>
         <div class="relative min-w-0 flex-1">
             <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">{{ __('personal.event_check_title') }}</p>
+            {{-- Eyebrow + one value line, and nothing else. The third line
+                 ("press to review the list") said what the chevron already
+                 says, and it made this card taller than every tile under it
+                 (asked for 2026-09-06: one line per button, no expanding). --}}
             <p class="text-base font-black leading-tight mt-0.5"
                x-text="started
                         ? (overridden ? @js(__('personal.event_start_was_overridden')) : @js(__('personal.event_start_running')))
@@ -85,13 +89,12 @@
                             : (outstanding === 0
                                 ? @js(__('personal.event_check_all_clear'))
                                 : outstandingLabel()))"></p>
-            <p class="text-[11px] text-white/80 mt-0.5" x-show="! started">{{ __('personal.event_check_open') }}</p>
         </div>
         <div class="relative flex items-center gap-2 flex-shrink-0">
             <p class="text-2xl font-black leading-none" x-show="items.length">
                 <span x-text="items.length - outstanding"></span><span class="text-white/60">/<span x-text="items.length"></span></span>
             </p>
-            <i class="bi bi-chevron-right rtl:rotate-180 text-white/70"></i>
+            <i class="bi bi-chevron-right text-white/70"></i>
         </div>
     </button>
 
@@ -194,15 +197,25 @@
 
                         {{-- Add an item. Enter submits, because the organiser is writing a list
                              and reaching for the mouse between each line is the slow way. --}}
+                        {{-- ⚠️ `min-w-0` on the input is load-bearing. A flex item's
+                             default `min-width:auto` never shrinks below its
+                             INTRINSIC width, and a text input's intrinsic width is
+                             its ~20-character default size — so `flex-1` alone left
+                             the field at ~180px and pushed the button clean out of
+                             the sheet (reported 2026-09-04, in Arabic, where the
+                             label is widest). `w-full` gives it a basis to shrink
+                             from; `whitespace-nowrap` keeps the button's own label
+                             on one line rather than growing it taller instead. --}}
                         <div x-show="! started" x-cloak class="flex items-center gap-2">
                             <input type="text" x-model="draft" maxlength="160"
                                    @keydown.enter.prevent="add()"
                                    placeholder="{{ __('personal.event_check_placeholder') }}"
-                                   class="flex-1 h-11 px-3 rounded-xl border-2 border-gray-200 text-sm font-semibold text-foreground
+                                   class="flex-1 min-w-0 w-full h-11 px-3 rounded-xl border-2 border-gray-200 text-sm font-semibold text-foreground
                                           focus:outline-none focus:border-current"
                                    style="caret-color: {{ $ckColor }};">
                             <button type="button" @click="add()" :disabled="busy === 'add' || ! draft.trim()"
-                                    class="m-press h-11 px-4 rounded-xl text-white text-xs font-black disabled:opacity-50 flex items-center gap-2 flex-shrink-0"
+                                    class="m-press h-11 px-3.5 rounded-xl text-white text-xs font-black disabled:opacity-50
+                                           flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap"
                                     style="background: {{ $ckColor }};">
                                 <i class="bi" :class="busy === 'add' ? 'bi-arrow-repeat animate-spin' : 'bi-plus-lg'"></i>
                                 {{ __('personal.event_check_add') }}

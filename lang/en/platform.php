@@ -381,6 +381,8 @@ return [
     'admin_platform_settings_reset_modal_title' => 'Reset the entire platform?',
     'admin_platform_settings_reset_modal_warning' => 'This cannot be undone. All clubs, members and their data will be permanently deleted and the platform re-seeded to the clean baseline.',
     'admin_platform_settings_reset_modal_confirm_label' => 'Type RESET to confirm',
+    'admin_platform_settings_reset_modal_body' => 'This cannot be undone. All clubs, members and their data will be permanently deleted and the platform re-seeded to the clean baseline.',
+    'admin_platform_settings_reset_modal_prompt' => 'Type RESET to confirm',
     'admin_platform_settings_reset_modal_cancel' => 'Cancel',
     'admin_platform_settings_reset_modal_confirm' => 'Wipe & re-seed',
     'admin_platform_settings_reset_working' => 'Resetting…',

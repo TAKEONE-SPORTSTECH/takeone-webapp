@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\UserBlock;
+use App\Members\Models\UserBlock;
 use Tests\TestCase;
 
 class PeopleDiscoveryTest extends TestCase

@@ -98,7 +98,7 @@
                         @click="prevTab()"
                         class="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors"
                         title="Previous">
-                    <i class="bi bi-arrow-left"></i>
+                    <i class="bi bi-chevron-left"></i>
                 </button>
 
                 <button type="button" class="flex-1 btn btn-success py-2.5" id="{{ $formId }}_submitBtn" @click="submitForm()" :disabled="isSubmitting">

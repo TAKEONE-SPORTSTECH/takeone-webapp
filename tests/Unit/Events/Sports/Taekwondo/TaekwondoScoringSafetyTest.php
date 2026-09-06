@@ -2,8 +2,8 @@
 
 namespace Tests\Unit\Events\Sports\Taekwondo;
 
-use App\Events\Sports\Taekwondo\Tournament\Scoreboard\MatState;
-use App\Events\Sports\Taekwondo\Tournament\Scoreboard\Scoring;
+use App\Scoreboard\Sports\Taekwondo\Mat\MatState;
+use App\Scoreboard\Sports\Taekwondo\Mat\Scoring;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -35,7 +35,7 @@ class TaekwondoScoringSafetyTest extends TestCase
 
     public function test_the_accepted_command_vocabulary_is_stable(): void
     {
-        // Locks App\Events\Sports\Taekwondo\Tournament\Scoreboard\Scoring::COMMANDS.
+        // Locks App\Scoreboard\Sports\Taekwondo\Mat\Scoring::COMMANDS.
         // The scoreboard endpoint validates 'command' => in:<this list>, so it is
         // the authorization surface for what an operator may ask a mat to do.
         $commands = Scoring::COMMANDS;

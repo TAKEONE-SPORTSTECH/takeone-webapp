@@ -14,8 +14,9 @@
         <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
         <div class="relative z-10">
             <a href="{{ route('admin.club.events', $club->slug) }}"
-               class="inline-flex items-center gap-1.5 text-[13px] font-medium text-white/80 mb-3">
-                <i class="bi bi-arrow-left"></i>{{ __('admin.evt_back_to_events') }}
+               class="inline-flex items-center justify-center w-9 h-9 rounded-full text-[13px] font-medium text-white/80 mb-3"
+           aria-label="{{ __('admin.evt_back_to_events') }}" title="{{ __('admin.evt_back_to_events') }}">
+                <i class="bi bi-chevron-left"></i>
             </a>
             <div class="flex items-end justify-between gap-3">
                 <div class="min-w-0">

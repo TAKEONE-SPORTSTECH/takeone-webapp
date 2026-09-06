@@ -20,7 +20,7 @@
 --}}
 @auth
 @php
-    $__memberAlerts = \App\Models\UserNotification::query()
+    $__memberAlerts = \App\Members\Models\UserNotification::query()
         ->where('user_id', auth()->id())
         ->where('type', 'new_member')
         ->where('is_read', false)
@@ -28,7 +28,7 @@
         ->take(12)
         ->get()
         ->map(function ($n) {
-            $member = $n->subject_id ? \App\Models\User::find($n->subject_id) : null;
+            $member = $n->subject_id ? \App\Members\Models\User::find($n->subject_id) : null;
             $club   = $n->tenant_id ? \App\Clubs\Models\Tenant::find($n->tenant_id) : null;
 
             return [

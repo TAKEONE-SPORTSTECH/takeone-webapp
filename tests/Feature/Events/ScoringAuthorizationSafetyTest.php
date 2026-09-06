@@ -2,12 +2,12 @@
 
 namespace Tests\Feature\Events;
 
-use App\Events\Sports\Karate\Tournament\Scoreboard\MatState as KarateMatState;
-use App\Events\Sports\Taekwondo\Tournament\Scoreboard\MatState as TaekwondoMatState;
+use App\Scoreboard\Sports\Karate\Mat\MatState as KarateMatState;
+use App\Scoreboard\Sports\Taekwondo\Mat\MatState as TaekwondoMatState;
 use App\Models\ClubEvent;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**

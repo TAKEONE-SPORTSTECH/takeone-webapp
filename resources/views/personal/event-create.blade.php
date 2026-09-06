@@ -1,4 +1,6 @@
-@extends('layouts.personal-mobile')
+{{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
+     nothing shared this is the member shell exactly as before. See entry/shell. --}}
+@extends($shell ?? 'layouts.personal-mobile')
 
 @section('title', ($mode ?? 'create') === 'edit' ? __('personal.personal_event_create_page_title_edit') : __('personal.personal_event_create_page_title_new'))
 
@@ -25,7 +27,25 @@
     // uuid, not id: these routes bind {event:uuid}. A GET by id happens to be
     // redirected to the uuid form, which hid this — but PUT by id 404s, so
     // "Save changes" was silently failing.
-    $submitUrl   = $isEdit ? route('me.events.update', $ev->uuid) : route('me.events.store');
+    /*
+     * ⚠️ INSIDE THE SEALED EVENT APP, THE EVENT ROOT NEEDS ITS OWN ADDRESS.
+     *
+     * PublicEventSkin::rewriteBody() maps a bare, quoted `/me/events/{uuid}` to
+     * the public POSTER (`/e/{uuid}`), because inside the app the event page IS
+     * the poster. That is right for a LINK and wrong for an ENDPOINT: the
+     * poster route only answers GET, so this form's PUT was rewritten onto it
+     * and came back 404 — "Save changes" reported Not found every time
+     * (reported 2026-09-04). Anything DEEPER (`/register`, `/expenses`, …) is
+     * rewritten into `/admin/…` correctly and is unaffected.
+     *
+     * So in the sealed shell the endpoint is named directly, as the mirrored
+     * admin root — the same route, the same controller, the same middleware
+     * stack (App\Events\Support\SealedEventRoutes). `$shell` is shared ONLY on
+     * the mirrored routes, so the platform form is untouched.
+     */
+    $submitUrl   = $isEdit
+        ? (isset($shell) ? url('/e/'.$ev->uuid.'/admin') : route('me.events.update', $ev->uuid))
+        : route('me.events.store');
     $submitMethod = $isEdit ? 'PUT' : 'POST';
     // belt range parsed out of `level` ("White → Brown")
     $beltFrom = ''; $beltTo = '';
@@ -39,6 +59,41 @@
     $trim = fn ($n) => $n === null ? '' : rtrim(rtrim(number_format((float) $n, 3, '.', ''), '0'), '.');
     $pAmt = $ev ? $trim(\App\Events\Support\EventFee::amount($ev, 'participant')) : '';
     $sAmt = $ev ? $trim(\App\Events\Support\EventFee::amount($ev, 'spectator')) : '';
+
+    /* The priced extras an entrant may add on top of the base fee, and the
+       penalty for entering late (multi-pricing, 2026-09-06).
+
+       Seeded from the ACTIVE options only: a retired one is kept in the table so
+       an old charge can still say what it was for, but it is not something the
+       organiser is still editing. Sent back with its uuid so saving edits the
+       row rather than retiring it and creating a stranger with the same price. */
+    $rows = fn ($role) => $ev
+        ? \App\Events\Support\EventFee::options($ev, $role)
+            ->map(fn ($o) => ['uuid' => $o->uuid, 'label' => $o->label, 'amount' => $trim($o->amount)])
+            ->values()->all()
+        : [];
+
+    $initFeeOptions = $rows('participant');
+    $initSpectatorOptions = $rows('spectator');
+
+    /* An event priced BEFORE the fee list existed carries its number in
+       `*_fee_amount` and has no options at all. Seed that number as a row so the
+       organiser opens the form and sees the price they set, rather than an empty
+       list that reads as "this event is free".
+
+       Saving then turns it into a real option and clears the old column — the
+       same total, expressed the one way the model now understands. Nothing is
+       converted until they actually save. */
+    if ($ev && ! $initFeeOptions && ($legacy = \App\Events\Support\EventFee::amount($ev, 'participant')) > 0) {
+        $initFeeOptions = [['uuid' => null, 'label' => __('events.fee_line_entry'), 'amount' => $trim($legacy)]];
+    }
+
+    if ($ev && ! $initSpectatorOptions && ($legacyS = \App\Events\Support\EventFee::amount($ev, 'spectator')) > 0) {
+        $initSpectatorOptions = [['uuid' => null, 'label' => __('events.fee_line_ticket'), 'amount' => $trim($legacyS)]];
+    }
+    $lateAmt = $ev ? $trim($ev->late_fee_amount) : '';
+    $lateFrom = $ev?->late_fee_from ? $ev->late_fee_from->format('Y-m-d') : '';
+    $lateTime = $ev?->late_fee_from ? $ev->late_fee_from->format('H:i') : '23:59';
 @endphp
 @section('personal-content')
 <div x-data="{
@@ -64,7 +119,14 @@
         {{-- Weight tables come from the Taekwondo package's own catalogue. This
              division picker is the last type-specific block left in the shared
              create form; Phase 2 moves it into the package's own screen. --}}
-        tkdConfig: @js($catalogs['taekwondo_tournament']['weight_divisions'] ?? []),
+        /* Every package's weight table, keyed by package. The form used to be
+           handed `taekwondo_tournament` and nothing else, so a jiu-jitsu event
+           offered Taekwondo Senior classes -- Fin, Fly, Bantam -- for a sport
+           that grades by belt and calls its groups Adult and Master. Each
+           package publishes its own via formCatalog(); the form now asks for
+           the one belonging to THIS event. */
+        catalogs: @js(collect($catalogs ?? [])->map(fn ($c) => $c['weight_divisions'] ?? [])->filter()->all()),
+        presetsOpen: false,
         tkdAge: 'Senior',
         tkdGender: 'male',
         tkdChecked: {},
@@ -84,6 +146,11 @@
         clubs: @js($clubs),
         participant_free: {{ $partFree ? 'true' : 'false' }},
         participant_amount: @js($pAmt),
+        fee_options: @js($initFeeOptions),
+        spectator_options: @js($initSpectatorOptions),
+        late_amount: @js($lateAmt),
+        late_from: @js($lateFrom),
+        late_time: @js($lateTime),
         spectator_enabled: {{ $specOn ? 'true' : 'false' }},
         spectator_amount: @js($sAmt),
         max_capacity: @js((string) ($ev?->max_capacity ?? '')),
@@ -220,6 +287,25 @@
         // ----- Combat weight-class picker -----
         genderWord(g) { return g === 'female' ? 'Women' : 'Men'; },
         divName(age, gender, label) { return age + ' ' + this.genderWord(gender) + ' ' + label + ' kg'; },
+        /* The package whose table this event should use: the one whose key
+           starts with the chosen sport. No match -- boxing, padel, chess --
+           means no preset table, and the only way in is the manual sheet. */
+        get presetKey() {
+            if (! this.sport) return null;
+            return Object.keys(this.catalogs).find(k => k.startsWith(this.sport + '_')) || null;
+        },
+        get tkdConfig() { return this.presetKey ? (this.catalogs[this.presetKey] || {}) : {}; },
+        get hasPresets() { return Object.keys(this.tkdConfig).length > 0; },
+        get presetGroups() { return Object.keys(this.tkdConfig); },
+        /* A group from a DIFFERENT sport cannot survive a sport change -- BJJ has
+           no Senior, Taekwondo has no Juvenile -- so the age group follows the
+           table rather than the other way round. */
+        syncPresetGroup() {
+            const groups = this.presetGroups;
+            if (! groups.includes(this.tkdAge)) this.tkdAge = groups[0] || '';
+            this.tkdChecked = {};
+        },
+        openPresets() { this.syncPresetGroup(); this.presetsOpen = true; },
         tkdClassesFor() { return (this.tkdConfig[this.tkdAge] || {})[this.tkdGender] || []; },
         get anyTkdChecked() { return Object.values(this.tkdChecked).some(Boolean); },
         addTkdClasses() {
@@ -230,6 +316,7 @@
                 this.divisions.push({ name, capacity: '', schedule: this.newSchedule() });
             });
             this.tkdChecked = {};
+            this.presetsOpen = false;
         },
         addDivision() { this.divisions.push({ name: '', capacity: 8, schedule: this.newSchedule() }); },
         removeDivision(i) { this.divisions.splice(i, 1); },
@@ -290,11 +377,44 @@
                     // only what the page shows, and the server composes it
                     // from the amount anyway. Sending both keeps older readers
                     // of this payload working.
-                    participant_fee: this.participant_free ? null : (this.participant_amount ? (this.currency + ' ' + this.participant_amount) : 'Free'),
-                    participant_fee_amount: this.participant_free ? null : (this.participant_amount === '' || this.participant_amount === null ? 0 : parseFloat(this.participant_amount)),
+                    // Always ZERO (or null when free). The price lives in the
+                    // fee list below, and leaving a number here as well would
+                    // charge it ON TOP of every row. The column stays only for
+                    // events priced before the fee list existed.
+                    //
+                    // NB: single quotes only, in this comment and every other
+                    // one in this object. It all lives inside an x-data
+                    // ATTRIBUTE, so one double quote anywhere — a comment
+                    // included — closes the attribute early and the whole rest
+                    // of the component is rendered on the page as visible text.
+                    participant_fee: this.participant_free ? null : 'Free',
+                    participant_fee_amount: this.participant_free ? null : 0,
                     spectator_enabled: this.spectator_enabled,
-                    spectator_fee: this.spectator_enabled ? (this.spectator_amount ? (this.currency + ' ' + this.spectator_amount) : 'Free') : null,
-                    spectator_fee_amount: this.spectator_enabled ? (this.spectator_amount === '' || this.spectator_amount === null ? 0 : parseFloat(this.spectator_amount)) : null,
+                    spectator_fee: this.spectator_enabled ? 'Free' : null,
+                    spectator_fee_amount: this.spectator_enabled ? 0 : null,
+                    // The priced extras, both roles in one list — the server
+                    // tells them apart by `role`. Blank rows are dropped here
+                    // rather than refused: a half-typed row somebody abandoned
+                    // is not an error worth stopping a save for.
+                    // Both roles, ALWAYS, regardless of the free/tickets
+                    // toggles: those switches decide what is CHARGED, not what
+                    // the organiser has typed. Sending only the enabled half
+                    // used to retire the other half's options for good.
+                    fee_option_roles: ['participant', 'spectator'],
+                    fee_options: [
+                        ...this.fee_options,
+                        ...this.spectator_options.map(o => ({...o, role: 'spectator'})),
+                    ].filter(o => (o.label || '').trim()).map(o => ({
+                        uuid: o.uuid || null,
+                        role: o.role || 'participant',
+                        label: o.label.trim(),
+                        amount: (o.amount === '' || o.amount == null) ? 0 : parseFloat(o.amount),
+                    })),
+                    // Both halves or neither: an amount with no moment to start
+                    // from charges nobody, and a moment with no amount is a rule
+                    // that does nothing. The server enforces the same pairing.
+                    late_fee_amount: (!this.participant_free && this.late_amount !== '' && this.late_from) ? parseFloat(this.late_amount) : null,
+                    late_fee_from: (!this.participant_free && this.late_amount !== '' && this.late_from) ? (this.late_from + ' ' + (this.late_time || '23:59') + ':00') : null,
                     max_capacity: (this.isCombat || !this.max_capacity) ? null : parseInt(this.max_capacity, 10),
                     prize: (this.has('prize') && !this.isCombat) ? (this.prize || null) : null,
                     agenda: (this.has('schedule') && !this.isCombat) ? this.agenda.filter(a => (a.t||'').trim() || (a.d||'').trim()) : [],
@@ -324,13 +444,32 @@
      class="-mx-4 -mt-4 pb-6">
 
     {{-- ===== Header ===== --}}
-    <header class="m-hero px-5 pt-5 pb-10 text-white relative overflow-hidden" :style="`background: linear-gradient(150deg, ${color}, #1f2937)`">
+    {{-- Design Rule #6: the gradient is the subject's own colour LIGHTENED —
+         `colour → colour+b0` — never faded to charcoal. It was
+         `${color}, #1f2937`, which turned every event's colour into the same
+         dark grey halfway across the band. --}}
+    <header class="m-hero px-5 pt-5 pb-10 text-white relative overflow-hidden" :style="`background: linear-gradient(150deg, ${color}, ${color}b0)`">
         <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="flex items-center gap-3 relative z-10">
-            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ $isEdit ? route('me.events.show', $ev->uuid) : route('me.events') }}')"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left text-lg"></i>
-            </button>
+{{-- ⚠️ AN ADDRESS, NOT A GESTURE.
+
+                 `history.back()` was here, and on a surface people reach from a
+                 shared link it is never safe: a link opened from WhatsApp has an
+                 EMPTY history, and the `history.length > 1` guard does not save
+                 it — a redirect earlier in the session makes the length pass and
+                 the gesture then falls into whatever the browser remembers,
+                 which inside the sealed event app was sometimes the platform.
+                 Back now names where it goes (Design Rule #6) and gets there by
+                 address. --}}
+            @php
+                $backHref = $isEdit ? route('me.events.show', $ev->uuid) : route('me.events');
+                $backLabel = $isEdit ? __('events.public_enrol_back_event') : __('personal.event_show_events');
+            @endphp
+            <a href="{{ $backHref }}"
+               class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
+           aria-label="{{ $backLabel }}" title="{{ $backLabel }}">
+                <i class="bi bi-chevron-left"></i>
+            </a>
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ $isEdit ? __('personal.personal_event_create_eyebrow_edit') : __('personal.personal_event_create_eyebrow_new') }}</p>
                 <h1 class="text-xl font-black">{{ $isEdit ? __('personal.personal_event_create_eyebrow_edit') : __('personal.personal_event_create_heading_new') }}</h1>
@@ -366,7 +505,7 @@
                         <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_event_create_generic_event') }}</span>
                         <span class="block text-[11px] text-muted-foreground mt-0.5">{{ __('personal.personal_event_create_generic_event_sub') }}</span>
                     </span>
-                    <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
+                    <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
                 </button>
                 <button type="button" @click="pickSportMode()"
                         class="m-press w-full rounded-2xl p-3.5 border-2 shadow-sm flex items-center gap-3 text-start transition-colors"
@@ -378,7 +517,7 @@
                         <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_event_create_sport') }}</span>
                         <span class="block text-[11px] text-muted-foreground mt-0.5">{{ __('personal.personal_event_create_sport_sub') }}</span>
                     </span>
-                    <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0 transition-transform"
+                    <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 transition-transform"
                        :class="mode === 'sport' && 'rotate-90'"></i>
                 </button>
                 {{-- Sport filter — only when "Sport" is chosen --}}
@@ -417,7 +556,7 @@
                         <span class="block text-sm font-bold text-foreground">{{ __('nav.open_mat') }}</span>
                         <span class="block text-[11px] text-muted-foreground mt-0.5">{{ __('nav.open_mat_sub') }}</span>
                     </span>
-                    <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
+                    <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
                 </a>
             </div>
         </div>
@@ -431,7 +570,7 @@
                 <i class="bi text-lg text-primary" :class="picked === 'general' ? 'bi-calendar-event' : (sportMeta.icon || 'bi-trophy')"></i>
                 <span class="text-sm font-bold text-foreground truncate" x-text="pickedLabel"></span>
             </div>
-            <button type="button" @click="step = 1" class="m-press text-[11px] font-bold text-primary px-2 py-1 rounded-lg bg-accent"><i class="bi bi-arrow-left"></i> {{ __('personal.personal_event_create_change') }}</button>
+            <button type="button" @click="step = 1" class="m-press text-[11px] font-bold text-primary px-2 py-1 rounded-lg bg-accent"><i class="bi bi-chevron-left"></i> {{ __('personal.personal_event_create_change') }}</button>
         </div>
 
         {{-- Details --}}
@@ -650,7 +789,18 @@
             </button>
         </div>
 
-        {{-- Weight categories (combat) — pick age × gender × classes, then schedule per day --}}
+        {{-- ===== Weight categories (combat) =====
+
+             The bulk PICKER stays — an organiser adding nine weight classes at
+             once should not have to type nine rows — but everything after it is
+             now <x-event-divisions> in local mode: one short row per division,
+             an Add button, and a single sheet for editing. What it replaces was
+             a hundred-odd lines of inline capacity boxes and day selects
+             REPEATED per division, which is exactly why it read as a wall.
+
+             The same component in SERVER mode is the console's Divisions
+             section, so the two cannot drift — and it carries the bracket /
+             round-robin choice with it. --}}
         <div class="m-card rounded-2xl p-4" x-show="isCombat && has('divisions')" x-cloak>
             <div class="flex items-center justify-between mb-1">
                 <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 bracket-icon text-primary"></i> {{ __('personal.personal_event_create_weight_categories') }}</p>
@@ -658,14 +808,26 @@
             </div>
             <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.personal_event_create_weight_cat_hint') }}</p>
 
-            {{-- Picker --}}
-            <div class="rounded-2xl border-2 border-dashed border-gray-200 p-3 space-y-2.5">
+            {{-- ===== The bulk picker, BEHIND a button =====
+
+                 It used to sit open at the top of the card: two dropdowns and a
+                 row of weight chips, before you had asked for any of it. Closed
+                 by default, the card opens on the list of what you actually have.
+
+                 The button itself lives in the divisions component's action row,
+                 BESIDE Add division -- see the `actions` slot below. The two are
+                 alternatives, not steps, and stacking them full-width read as a
+                 sequence. --}}
+            <div class="rounded-2xl border-2 border-dashed border-gray-200 p-3 space-y-2.5 mb-3" x-show="presetsOpen" x-cloak
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0">
+                {{-- The groups this SPORT grades by, not another sport's. --}}
                 <div class="grid grid-cols-2 gap-2">
                     <select x-model="tkdAge" @change="tkdChecked = {}" class="app-select w-full px-2.5 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                        <template x-for="g in Object.keys(tkdConfig)" :key="g"><option :value="g" x-text="g"></option></template>
+                        <template x-for="g in presetGroups" :key="g"><option :value="g" x-text="g"></option></template>
                     </select>
-                    <x-select-menu model="tkdGender" change="tkdChecked = {}"
-                                   :options="[['value' => 'male', 'label' => __('personal.personal_event_create_men')], ['value' => 'female', 'label' => __('personal.personal_event_create_women')]]" />
+                    <x-gender-dropdown model="tkdGender" name="tkd_gender" />
                 </div>
                 <div class="flex flex-wrap gap-1.5">
                     <template x-for="c in tkdClassesFor()" :key="c.label">
@@ -684,33 +846,27 @@
                 </button>
             </div>
 
-            {{-- Added divisions: capacity + day per section --}}
-            <div class="space-y-2.5 mt-3">
-                <template x-for="(d, i) in divisions" :key="i">
-                    <div class="rounded-2xl border border-gray-100 p-3" x-show="(d.name||'').trim()">
-                        <div class="flex items-center justify-between mb-2">
-                            <p class="text-sm font-bold text-foreground truncate" x-text="d.name"></p>
-                            <button type="button" @click="removeDivision(i)" class="m-press w-7 h-7 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
-                        </div>
-                        <div class="flex items-center gap-2 mb-2">
-                            <label class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_capacity') }}</label>
-                            <input x-model="d.capacity" type="number" min="2" placeholder="{{ __('personal.personal_event_create_no_cap_ph') }}" class="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                            <span class="text-[10px] text-muted-foreground">{{ __('personal.personal_event_create_optional_word') }}</span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <template x-for="ph in phaseDefs" :key="ph.key">
-                                <div>
-                                    <label class="block text-[10px] font-semibold text-gray-500 mb-1" x-text="ph.label"></label>
-                                    <select x-model.number="d.schedule[ph.key]" @change="clampDivSchedule(d)" :disabled="dayCount < 2"
-                                            class="app-select w-full px-2 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-60">
-                                        <template x-for="day in days" :key="day"><option :value="day" x-text="'Day ' + day"></option></template>
-                                    </select>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </template>
-                <p x-show="!divisions.filter(d => (d.name||'').trim()).length" class="text-[11px] text-muted-foreground text-center py-2">{{ __('personal.personal_event_create_no_weight_cats') }}</p>
+            {{-- The list, and the sheet that edits one. `model` binds the very
+                 array this form already submits, so the payload is unchanged. --}}
+            <div class="mt-3">
+                <x-event-divisions model="divisions" :server="false"
+                    :phases="[
+                        ['key' => 'preliminary', 'label' => __('personal.event_phase_prelim')],
+                        ['key' => 'quarterfinals', 'label' => __('personal.event_phase_quarters')],
+                        ['key' => 'finals', 'label' => __('personal.event_phase_finals')],
+                    ]">
+                    {{-- Beside Add division, not under it. Only for a sport that
+                         HAS a preset table: boxing, padel and chess have none,
+                         and an empty picker is worse than no button. --}}
+                    <x-slot:actions>
+                        <button type="button" x-show="hasPresets" x-cloak
+                                @click="presetsOpen ? presetsOpen = false : openPresets()"
+                                class="m-press flex-1 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground flex items-center justify-center gap-2 transition-colors hover:bg-muted/60">
+                            <i class="bi" :class="presetsOpen ? 'bi-chevron-up' : 'bi-lightning-charge'"></i>
+                            <span x-text="presetsOpen ? '{{ __('personal.personal_event_create_close') }}' : '{{ __('events.divisions_add_preset') }}'"></span>
+                        </button>
+                    </x-slot:actions>
+                </x-event-divisions>
             </div>
 
             <div x-show="dayCount < 2" x-cloak class="flex items-start gap-2 text-[11px] text-amber-600 bg-amber-50 rounded-xl p-2.5 mt-3">
@@ -781,10 +937,92 @@
                 </button>
             </div>
             <div x-show="!participant_free" x-cloak>
-                <div class="relative">
-                    <span class="absolute start-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none" x-text="currency">BHD</span>
-                    <input x-model="participant_amount" type="number" min="0" step="0.001" inputmode="decimal" placeholder="0.000"
-                           class="w-full ps-16 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                {{-- ===== The participation fee IS this list =====
+
+                     There is deliberately NO single amount box above this.
+                     Asked for on 2026-09-06, and it is the right shape: a
+                     competition does not have one price with decorations on it,
+                     it sells named things — Gi, No-Gi, a T-shirt, a banquet
+                     seat — and an entrant picks the ones they want. A separate
+                     base fee sitting above the list only invited the question
+                     "is that as well as, or instead of?".
+
+                     One price is expressed as one row. That reads no worse than
+                     a lone box did, and it means the model never has two places
+                     a price can live.
+
+                     An event created before this change keeps its base amount on
+                     the row and is seeded here as a row (see $initFeeOptions),
+                     so the organiser sees the price they set — and saving turns
+                     it into an option and clears the old column, for the same
+                     total. --}}
+                <div>
+                    <p class="text-sm font-bold text-foreground">{{ __('events.fee_options_title') }}</p>
+                    <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('events.fee_options_hint') }}</p>
+
+                    <template x-for="(opt, i) in fee_options" :key="i">
+                        <div class="flex items-center gap-2 mt-2">
+                            <input x-model="opt.label" type="text" maxlength="80"
+                                   placeholder="{{ __('events.fee_option_placeholder') }}"
+                                   class="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            <div class="relative w-32 shrink-0">
+                                <span class="absolute start-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground pointer-events-none" x-text="currency">BHD</span>
+                                <input x-model="opt.amount" type="number" min="0" step="0.001" inputmode="decimal" placeholder="0.000"
+                                       class="w-full ps-12 pe-2 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            </div>
+                            <button type="button" @click="fee_options.splice(i, 1)"
+                                    aria-label="{{ __('events.fee_option_remove') }}"
+                                    class="m-press shrink-0 w-9 h-9 rounded-xl grid place-items-center text-red-600 border border-red-200 hover:bg-red-50 transition-colors">
+                                <i class="bi bi-trash text-sm"></i>
+                            </button>
+                        </div>
+                    </template>
+
+                    <button type="button" @click="fee_options.push({ uuid: null, label: '', amount: '' })"
+                            class="m-press mt-2 inline-flex items-center gap-2 h-9 px-3.5 rounded-full border text-[12px] font-bold"
+                            style="border-color: #7c6bf559; color: #7c6bf5;">
+                        <i class="bi bi-plus-lg"></i>{{ __('events.fee_option_add') }}
+                    </button>
+
+                    {{-- What an entrant will be asked to choose from, worked
+                         out live — an organiser reads their own price list back
+                         rather than trusting they typed it correctly. --}}
+                    <p class="text-[11px] text-muted-foreground mt-2" x-show="fee_options.filter(o => (o.label||'').trim()).length" x-cloak>
+                        <span x-text="fee_options.filter(o => (o.label||'').trim()).map(o => o.label.trim() + ' ' + currency + ' ' + ((parseFloat(o.amount || 0) || 0).toFixed(3).replace(/\.?0+$/, ''))).join('  ·  ')"></span>
+                    </p>
+
+                    {{-- An empty list means nobody can be charged anything, which
+                         is a thing an organiser does by accident far more often
+                         than on purpose — "free" is the switch above. --}}
+                    <p class="text-[11px] mt-2 flex items-start gap-1.5" style="color:#92400e;"
+                       x-show="!fee_options.filter(o => (o.label||'').trim()).length" x-cloak>
+                        <i class="bi bi-exclamation-triangle mt-0.5"></i>
+                        <span>{{ __('events.fee_options_empty_warning') }}</span>
+                    </p>
+                </div>
+
+                {{-- ===== Late entry penalty =====
+
+                     Flat, once, on top of whatever they selected — a penalty for
+                     being late rather than a different product. Frozen onto the
+                     entry when it is taken, so moving this date afterwards never
+                     re-bills, or un-bills, anyone already in. --}}
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                    <p class="text-sm font-bold text-foreground">{{ __('events.fee_late_title') }}</p>
+                    <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('events.fee_late_hint') }}</p>
+
+                    <div class="flex items-center gap-2 mt-2">
+                        <div class="relative w-32 shrink-0">
+                            <span class="absolute start-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground pointer-events-none" x-text="currency">BHD</span>
+                            <input x-model="late_amount" type="number" min="0" step="0.001" inputmode="decimal" placeholder="0.000"
+                                   class="w-full ps-12 pe-2 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            {{-- Design Rule #4: the project's own calendar, never
+                                 a native date input. --}}
+                            <x-date-picker model="late_from" placeholder="{{ __('events.fee_late_from') }}" />
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
@@ -799,10 +1037,35 @@
                 </button>
             </div>
             <div x-show="spectator_enabled" x-cloak>
-                <div class="relative">
-                    <span class="absolute start-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none" x-text="currency">BHD</span>
-                    <input x-model="spectator_amount" type="number" min="0" step="0.001" inputmode="decimal" placeholder="{{ __('personal.personal_event_create_spectator_amount_ph') }}"
-                           class="w-full ps-16 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                {{-- Ticket types, the same shape as the participation fee above:
+                     the list IS the price, one row per kind of ticket —
+                     ringside, family pass, whatever this event sells. No single
+                     amount box, and no late penalty here: somebody buying a
+                     ticket on the day is the normal way anyone watches sport. --}}
+                <div>
+                    <template x-for="(opt, i) in spectator_options" :key="i">
+                        <div class="flex items-center gap-2 mt-2">
+                            <input x-model="opt.label" type="text" maxlength="80"
+                                   placeholder="{{ __('events.fee_option_placeholder') }}"
+                                   class="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            <div class="relative w-32 shrink-0">
+                                <span class="absolute start-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground pointer-events-none" x-text="currency">BHD</span>
+                                <input x-model="opt.amount" type="number" min="0" step="0.001" inputmode="decimal" placeholder="0.000"
+                                       class="w-full ps-12 pe-2 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            </div>
+                            <button type="button" @click="spectator_options.splice(i, 1)"
+                                    aria-label="{{ __('events.fee_option_remove') }}"
+                                    class="m-press shrink-0 w-9 h-9 rounded-xl grid place-items-center text-red-600 border border-red-200 hover:bg-red-50 transition-colors">
+                                <i class="bi bi-trash text-sm"></i>
+                            </button>
+                        </div>
+                    </template>
+
+                    <button type="button" @click="spectator_options.push({ uuid: null, label: '', amount: '' })"
+                            class="m-press mt-2 inline-flex items-center gap-2 h-9 px-3.5 rounded-full border text-[12px] font-bold"
+                            style="border-color: #7c6bf559; color: #7c6bf5;">
+                        <i class="bi bi-plus-lg"></i>{{ __('events.fee_option_add') }}
+                    </button>
                 </div>
             </div>
         </div>
@@ -879,376 +1142,6 @@
             </div>
             <button type="button" @click="addPhase()" class="m-press mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add_stage') }}</button>
         </div>
-
-        {{-- ===== Officials (the jury) — edit mode only =====
-             Appointing needs an event to appoint to, so this has no place in the
-             create wizard. It saves on its own rather than riding the form's
-             submit: appointing someone is a decision in its own right, and an
-             organiser should not have to press "Save changes" for it to count. --}}
-        @if($isEdit)
-        <div class="m-card rounded-2xl p-4 mt-4"
-             x-data="{
-                officials: [], candidates: [], roles: [], role: 'jury', roleChosen: false, q: '', open: false, busy: false, loaded: false,
-                /*
-                 * Appointing takes one more decision than a tap.
-                 *
-                 * storeOfficial() requires `compensation` — a paid appointment is a
-                 * line in the event's P&L — and the form never sent it, so EVERY
-                 * appointment failed validation with 'The compensation field is
-                 * required'. Tapping a candidate therefore opens this sheet instead
-                 * of posting immediately.
-                 *
-                 * NB: single quotes on purpose. This whole object lives inside an
-                 * x-data attribute, so a double quote anywhere in it — comments
-                 * included — closes the attribute early and the rest of the
-                 * component is rendered on the page as visible text.
-                 *
-                 * Nationality rides along because this is the only moment anyone is
-                 * looking at an official's details: an official is listed by country
-                 * on every officiating sheet, and a referee with none shows no flag.
-                 * Asked ONLY when the member has no country on file — it is their
-                 * data, and the form fills a blank rather than correcting it.
-                 */
-                compensations: [], currency: '',
-                sheet: false, pick: null, comp: 'volunteer', fee: '',
-                get canAppoint() {
-                    if (this.busy || ! this.pick) return false;
-                    if (this.comp === 'paid' && ! (parseFloat(this.fee) > 0)) return false;
-                    return true;
-                },
-                setRole(v) { this.role = v; this.load(); },
-                choose(c) { this.pick = c; this.comp = 'volunteer'; this.fee = ''; this.open = false; this.sheet = true; },
-                get roleMeta() { return this.roles.find(r => r.value === this.role) || {}; },
-                roleLabel(v) { return (this.roles.find(r => r.value === v) || {}).label || v; },
-                byRole(v) { return this.officials.filter(o => o.role === v); },
-                async load() {
-                    try {
-                        // The role goes with the query: a MAT role searches the whole
-                        // platform (referees are rarely members of the host club), a
-                        // permission role searches the club only. Without it the server
-                        // always assumed the narrow pool, so a federation referee could
-                        // never be found here at all.
-                        const res = await fetch(`{{ route('me.events.officials', $ev->uuid) }}?q=${encodeURIComponent(this.q)}&role=${encodeURIComponent(this.role)}`, {
-                            headers: { 'Accept': 'application/json' }, credentials: 'same-origin',
-                        });
-                        const d = await res.json();
-                        if (!res.ok || !d.success) throw new Error(d.message || 'Could not load');
-                        this.officials = d.officials; this.candidates = d.candidates;
-                        this.roles = d.roles; this.loaded = true;
-                        /*
-                         * Land on a MAT role, not the hardcoded 'jury'.
-                         *
-                         * 'jury' is a PERMISSION role, and those are appointable only
-                         * from the host club — so the picker opened on a pool of the
-                         * club's membership rows (one, on a club whose members joined
-                         * some other way) and read as 'there is nobody to appoint'.
-                         * The sport's own first job is both the commonest appointment
-                         * and the one that searches the whole platform.
-                         */
-                        if (! this.roleChosen) {
-                            this.roleChosen = true;
-                            const mat = d.roles.find(r => r.group === 'mat');
-                            if (mat && mat.value !== this.role) { this.role = mat.value; return this.load(); }
-                        }
-                        this.compensations = d.compensations || []; this.currency = d.currency || '';
-                    } catch (e) { window.showToast('error', e.message); }
-                },
-                async add() {
-                    if (! this.canAppoint) return; this.busy = true;
-                    try {
-                        const body = { user_id: this.pick.id, role: this.role, compensation: this.comp };
-                        if (this.comp === 'paid') body.fee = parseFloat(this.fee);
-
-                        const res = await fetch('{{ route('me.events.officials.store', $ev->uuid) }}', {
-                            method: 'POST',
-                            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json',
-                                       'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-                            credentials: 'same-origin',
-                            body: JSON.stringify(body),
-                        });
-                        const d = await res.json().catch(() => ({}));
-                        if (!res.ok || !d.success) throw new Error(d.message || 'Could not appoint');
-                        window.showToast('success', d.message);
-                        this.q = ''; this.sheet = false; this.pick = null; await this.load();
-                    } catch (e) { window.showToast('error', e.message); }
-                    finally { this.busy = false; }
-                },
-                async remove(id) {
-                    if (this.busy) return; this.busy = true;
-                    try {
-                        const res = await fetch(`{{ url('me/events/'.$ev->uuid.'/officials') }}/${id}`, {
-                            method: 'DELETE',
-                            headers: { 'Accept': 'application/json',
-                                       'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-                            credentials: 'same-origin',
-                        });
-                        const d = await res.json().catch(() => ({}));
-                        if (!res.ok || !d.success) throw new Error(d.message || 'Could not remove');
-                        window.showToast('success', d.message);
-                        await this.load();
-                    } catch (e) { window.showToast('error', e.message); }
-                    finally { this.busy = false; }
-                },
-                initials(n) { return (n || '').split(' ').map(p => p[0]).slice(0, 2).join(''); },
-             }"
-             x-init="load()">
-
-            <h3 class="text-sm font-bold text-foreground flex items-center gap-2">
-                <i class="bi bi-person-badge text-primary"></i>
-                {{ __('personal.personal_event_officials_heading') }}
-            </h3>
-            <p class="text-[11px] text-muted-foreground mt-1 mb-3">
-                {{ __('personal.personal_event_officials_intro') }}
-            </p>
-
-            {{-- Appointed, grouped by the job — an organiser checks "is anyone
-                 doing the weigh-in?", not "who is on the list?". --}}
-            <div class="space-y-3">
-                <template x-for="r in roles" :key="r.value">
-                    <div x-show="byRole(r.value).length" x-cloak>
-                        <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-1.5" x-text="r.label"></p>
-                        <div class="space-y-2">
-                            <template x-for="o in byRole(r.value)" :key="o.id">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 bg-primary overflow-hidden">
-                                        <template x-if="o.avatar"><img :src="o.avatar" alt="" class="w-full h-full object-cover"></template>
-                                        <template x-if="!o.avatar"><span x-text="initials(o.name)"></span></template>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-sm font-semibold text-foreground truncate" x-text="o.name"></p>
-                                        <p class="text-[10px] text-muted-foreground truncate flex items-center gap-1.5">
-                                            {{-- The flag the bout page will show, visible here so a
-                                                 missing country is noticed before the event, not after. --}}
-                                            <template x-if="o.nationality">
-                                                <span :class="'fi fi-' + o.nationality.toLowerCase()"
-                                                      style="width:14px;height:11px;background-size:cover;border-radius:2px;flex:none"></span>
-                                            </template>
-                                            <span x-text="o.email"></span><template x-if="o.phone"><span> · <span x-text="o.phone"></span></span></template>
-                                        </p>
-                                    </div>
-                                    <button type="button" @click="remove(o.id)" :disabled="busy"
-                                            class="w-8 h-8 rounded-lg grid place-items-center text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 disabled:opacity-50"
-                                            title="{{ __('personal.personal_event_officials_remove') }}">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </template>
-
-                <p x-show="loaded && !officials.length" x-cloak
-                   class="text-[11px] text-muted-foreground text-center py-2">
-                    {{ __('personal.personal_event_officials_none') }}
-                </p>
-            </div>
-
-            {{-- Appointing. Nothing is on screen until it is asked for: one + Add
-                 button, and only when it is pressed does the picker open — a search
-                 box with the JOB it appoints to sitting right beside it, because the
-                 person you tap is appointed to whatever that button says. The role
-                 list itself expands in normal flow (never absolutely), since this
-                 panel lives inside a scrolling page and an absolute one is clipped. --}}
-            <div class="mt-4" x-data="{ adding: false, pickerOpen: false }">
-                <button type="button" x-show="! adding"
-                        @click="adding = true; pickerOpen = false; $nextTick(() => $refs.search?.focus())"
-                        class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-primary/40 text-primary text-sm font-bold hover:bg-primary/5 transition-colors">
-                    <i class="bi bi-plus-lg"></i>
-                    {{ __('personal.personal_event_officials_appoint') }}
-                </button>
-
-                <div x-show="adding" x-cloak
-                     x-transition:enter="transition ease-out duration-200"
-                     x-transition:enter-start="opacity-0 -translate-y-1"
-                     x-transition:enter-end="opacity-100 translate-y-0">
-
-                    <div class="flex items-center gap-2">
-                        {{-- Search, and its results. Absolute inside this wrapper only —
-                             a short list over the row below, not a page reflow. --}}
-                        <div class="relative flex-1 min-w-0" @click.outside="open = false">
-                            <input type="text" x-ref="search" x-model="q" @focus="open = true" @input.debounce.250ms="load()"
-                                   placeholder="{{ __('personal.personal_event_officials_search') }}"
-                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-
-                            {{-- Opens UPWARD. The search box sits near the bottom of a
-                                 long edit page, so a list dropping down was half
-                                 off-screen and covered the role picker under it. --}}
-                            <div x-show="open" x-cloak x-transition.opacity.duration.120ms
-                                 class="absolute inset-x-0 bottom-full mb-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-40 py-1">
-                                <template x-for="c in candidates" :key="c.id">
-                                    <button type="button" @click="choose(c)" :disabled="busy || c.roles.includes(role)"
-                                            class="w-full flex items-center gap-2.5 px-3 py-2 text-start hover:bg-muted/60 transition-colors disabled:opacity-50">
-                                        <div class="w-7 h-7 rounded-full grid place-items-center bg-muted text-[10px] font-bold text-muted-foreground flex-shrink-0 overflow-hidden">
-                                            <template x-if="c.avatar"><img :src="c.avatar" alt="" class="w-full h-full object-cover"></template>
-                                            <template x-if="!c.avatar"><span x-text="initials(c.name)"></span></template>
-                                        </div>
-                                        <div class="min-w-0 flex-1">
-                                            <p class="text-sm font-semibold text-foreground truncate" x-text="c.name"></p>
-                                            <p class="text-[10px] text-muted-foreground truncate">
-                                                <template x-if="c.roles.length">
-                                                    {{-- What they already do here matters more than their email. --}}
-                                                    <span class="text-primary font-bold" x-text="c.roles.map(r => roleLabel(r)).join(' · ')"></span>
-                                                </template>
-                                                <template x-if="! c.roles.length">
-                                                    <span><span x-text="c.email"></span><template x-if="c.phone"><span> · <span x-text="c.phone"></span></span></template></span>
-                                                </template>
-                                            </p>
-                                        </div>
-                                        <span class="text-[10px] font-bold flex-shrink-0"
-                                              :class="c.roles.includes(role) ? 'text-muted-foreground' : 'text-primary'"
-                                              x-text="c.roles.includes(role) ? '{{ __('personal.personal_event_officials_appointed') }}' : '{{ __('personal.personal_event_officials_add') }}'"></span>
-                                    </button>
-                                </template>
-
-                                <p x-show="! candidates.length" x-cloak class="text-[11px] text-muted-foreground text-center py-3"
-                                   x-text="roleMeta.group === 'mat' && ! q
-                                        ? @js(__('personal.personal_event_officials_type_to_search'))
-                                        : @js(__('personal.personal_event_officials_no_matches'))"></p>
-                            </div>
-                        </div>
-
-                        {{-- The job, beside the search rather than above it: it is what
-                             the next tap appoints to, so it must never scroll away. --}}
-                        <div class="relative flex-shrink-0 max-w-[46%]">
-                            <button type="button" @click="pickerOpen = ! pickerOpen"
-                                    class="w-full flex items-center gap-1.5 px-2.5 py-2.5 rounded-xl border bg-white transition-colors"
-                                    :class="pickerOpen ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
-                                <i class="bi flex-shrink-0"
-                                   :class="roleMeta.group === 'platform' ? 'bi-shield-lock text-amber-600' : 'bi-person-arms-up text-primary'"></i>
-                                <span class="text-[12px] font-bold text-foreground truncate" x-text="roleLabel(role)"></span>
-                                <i class="bi bi-chevron-down text-muted-foreground text-[11px] transition-transform flex-shrink-0"
-                                   :class="pickerOpen && 'rotate-180'"></i>
-                            </button>
-
-                            {{-- The thirteen jobs a Karate tournament has, grouped so the
-                                 ones that carry ACCESS are visibly apart from those that
-                                 run a mat. Opens UPWARD, like the candidate list: this row
-                                 sits low on a long edit page, and thirteen rows dropping
-                                 down landed off-screen. --}}
-                            <div x-show="pickerOpen" x-cloak @click.outside="pickerOpen = false"
-                                 x-transition:enter="transition ease-out duration-200"
-                                 x-transition:enter-start="opacity-0 translate-y-1"
-                                 x-transition:enter-end="opacity-100 translate-y-0"
-                                 class="absolute end-0 bottom-full mb-2 w-64 max-w-[80vw] max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-50">
-                                <template x-for="g in ['mat', 'platform']" :key="g">
-                                    <div x-show="roles.some(r => r.group === g)">
-                                        <p class="px-3 pt-2.5 pb-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground"
-                                           x-text="g === 'platform' ? @js(__('personal.personal_event_officials_group_platform')) : @js(__('personal.personal_event_officials_group_mat'))"></p>
-                                        <template x-for="r in roles.filter(x => x.group === g)" :key="r.value">
-                                            <button type="button" @click="setRole(r.value); pickerOpen = false; $nextTick(() => $refs.search?.focus())"
-                                                    class="w-full flex items-start gap-3 px-3 py-2.5 text-start transition-colors"
-                                                    :class="role === r.value ? 'bg-primary/5' : 'hover:bg-muted/60'">
-                                                <span class="w-4 h-4 mt-0.5 rounded-full border-2 grid place-items-center flex-shrink-0"
-                                                      :class="role === r.value ? 'border-primary' : 'border-gray-300'">
-                                                    <span x-show="role === r.value" class="w-2 h-2 rounded-full bg-primary"></span>
-                                                </span>
-                                                <span class="min-w-0 flex-1">
-                                                    <span class="block text-[13px] font-bold leading-tight"
-                                                          :class="role === r.value ? 'text-primary' : 'text-foreground'" x-text="r.label"></span>
-                                                    <span x-show="r.hint" class="block text-[10px] text-muted-foreground leading-snug mt-0.5" x-text="r.hint"></span>
-                                                </span>
-                                            </button>
-                                        </template>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <button type="button" @click="adding = false; pickerOpen = false; open = false; q = ''"
-                                class="w-9 h-9 rounded-lg grid place-items-center text-muted-foreground hover:bg-muted/60 transition-colors flex-shrink-0"
-                                title="{{ __('personal.personal_event_officials_remove') }}">
-                            <i class="bi bi-x-lg text-[13px]"></i>
-                        </button>
-                    </div>
-
-                    {{-- Who the search reaches, and what this job carries. --}}
-                    <p class="text-[11px] text-muted-foreground mt-1.5"
-                       x-text="(roleMeta.group === 'mat'
-                            ? @js(__('personal.personal_event_officials_pool_wide'))
-                            : @js(__('personal.personal_event_officials_pool_club'))) + ' · ' + roleMeta.hint"></p>
-
-                </div>
-            </div>
-
-            {{-- Appointment sheet. Teleported to <body> so the mobile shell's
-                 transformed wrapper cannot become its containing block and clip it;
-                 scrollable body, safe-area footer. --}}
-            <template x-teleport="body">
-                <div x-show="sheet" x-cloak class="fixed inset-0" style="z-index:70" @keydown.escape.window="sheet = false">
-                    <div x-show="sheet" x-transition.opacity class="absolute inset-0 bg-black/50" @click="sheet = false"></div>
-                    <div x-show="sheet"
-                         x-transition:enter="transition ease-out duration-300"
-                         x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-                         class="absolute inset-x-0 bottom-0 flex flex-col bg-background rounded-t-3xl shadow-2xl" style="max-height:92vh">
-
-                        <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
-                             style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
-                            <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
-                            <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
-                            <div class="relative flex items-start gap-3">
-                                <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0 overflow-hidden text-xs font-bold">
-                                    <template x-if="pick && pick.avatar"><img :src="pick.avatar" alt="" class="w-full h-full object-cover"></template>
-                                    <template x-if="pick && !pick.avatar"><span x-text="initials(pick.name)"></span></template>
-                                </span>
-                                <div class="min-w-0 flex-1">
-                                    <h3 class="text-lg font-black leading-tight truncate" x-text="pick ? pick.name : ''"></h3>
-                                    <p class="text-[12px] text-white/85 mt-0.5" x-text="roleLabel(role)"></p>
-                                </div>
-                                <button type="button" @click="sheet = false" aria-label="{{ __('shared.close') }}"
-                                        class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="flex-1 min-h-0 overflow-y-auto px-5 pb-2">
-                            {{-- Volunteer or paid. Required by the endpoint, and a paid
-                                 appointment becomes an expense on the event. --}}
-                            <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mt-3 mb-1.5">
-                                {{ __('personal.personal_event_officials_pay') }}
-                            </p>
-                            <div class="space-y-2">
-                                <template x-for="c in compensations" :key="c.value">
-                                    <button type="button" @click="comp = c.value"
-                                            class="w-full flex items-start gap-3 p-3 rounded-xl border text-start transition-colors"
-                                            :class="comp === c.value ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'">
-                                        <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 mt-0.5"
-                                              :class="comp === c.value ? 'border-primary' : 'border-gray-300'">
-                                            <span x-show="comp === c.value" class="w-2.5 h-2.5 rounded-full bg-primary"></span>
-                                        </span>
-                                        <span class="min-w-0">
-                                            <span class="block text-sm font-bold text-foreground" x-text="c.label"></span>
-                                            <span class="block text-[11px] text-muted-foreground" x-text="c.hint"></span>
-                                        </span>
-                                    </button>
-                                </template>
-                            </div>
-
-                            <div x-show="comp === 'paid'" x-cloak class="mt-3">
-                                <label class="block text-[11px] font-bold text-muted-foreground mb-1">
-                                    {{ __('personal.personal_event_officials_fee') }} <span x-text="currency"></span>
-                                </label>
-                                <input type="number" step="0.001" min="0.001" x-model="fee" inputmode="decimal"
-                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                            </div>
-
-                        </div>
-
-                        <div class="flex-shrink-0 flex gap-2 px-5 pt-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
-                            <button type="button" @click="sheet = false"
-                                    class="flex-1 h-12 rounded-xl border border-gray-200 bg-white text-sm font-bold text-muted-foreground">
-                                {{ __('shared.cancel') }}
-                            </button>
-                            <button type="button" @click="add()" :disabled="!canAppoint"
-                                    class="h-12 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50" style="flex:1.4">
-                                {{ __('personal.personal_event_officials_add') }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </template>
-        </div>
-        @endif
 
         {{-- Save — stays CLICKABLE when the form is incomplete (only `sending`
              disables it) so tapping it names what is missing. A disabled button

@@ -158,7 +158,7 @@ function facilityCardHtml(f) {
     return `
     <div class="m-card" id="facility-${f.id}" x-data="{ openMenu: false }">
         <div class="relative">
-            ${img ? `<img src="/storage/${escFacility(img)}" alt="" class="w-full h-32 object-cover rounded-t-2xl">` : ''}
+            ${img ? `<img src="/file/${escFacility(img)}" alt="" class="w-full h-32 object-cover rounded-t-2xl">` : ''}
             <div class="absolute top-2 right-2 z-10" @click.stop>
                 <button type="button" @click="openMenu = !openMenu" class="m-press w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-foreground shadow-sm"><i class="bi bi-three-dots-vertical"></i></button>
                 <div x-show="openMenu" x-cloak @click.outside="openMenu = false" class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20">

@@ -433,7 +433,7 @@
             <div class="flex-shrink-0 px-5 sm:px-6 py-4 border-t border-gray-100 flex justify-between gap-3 bg-white"
                  style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
                 <button type="button" @click="prevStep()" x-show="step > 1" class="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                    <i class="bi bi-arrow-left me-2"></i>{{ __('shared.back') }}
+                    <i class="bi bi-chevron-left me-2"></i>{{ __('shared.back') }}
                 </button>
                 <button type="button" @click="closeWalkIn()" x-show="step === 1" class="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">{{ __('shared.cancel') }}</button>
                 <button type="button" @click="nextStep()" x-show="step < 4" class="px-6 py-2.5 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors">

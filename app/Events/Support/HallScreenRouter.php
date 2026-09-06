@@ -3,6 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEvent;
+use App\Scoreboard\Fleet;
 use Illuminate\Http\Request;
 
 /**
@@ -31,11 +32,11 @@ class HallScreenRouter
      * renders the panel — so a request reaching here for one is a 404, not a
      * silent fall-through to somebody else's fleet.
      */
-    private const OWNERS = [
-        'taekwondo' => \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class,
-        'karate' => \App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class,
-        'bjj' => \App\Events\Sports\BrazilianJiuJitsu\Tournament\HallScreen\HallScreenController::class,
-    ];
+    // The sport => controller map that used to live here is GONE. Every mat now
+    // lives in App\Scoreboard, whose controllers are private to it, and this
+    // class reaches exactly one thing: App\Scoreboard\Fleet. That is the whole
+    // point of the split — a change to a screen controller's signature is no
+    // longer a change to a file in the events module.
 
     public function screens(Request $request, ClubEvent $event)
     {
@@ -142,7 +143,7 @@ class HallScreenRouter
          */
         $code = (string) $request->input('code');
 
-        foreach (self::DEVICES as $sport => $model) {
+        foreach (Fleet::fleets() as $sport => $model) {
             if ($sport === (string) $event->sport || ! class_exists($model)) {
                 continue;
             }
@@ -380,48 +381,23 @@ class HallScreenRouter
      */
     public function newScreenUrl(ClubEvent $event): ?string
     {
-        return isset(self::OWNERS[(string) $event->sport])
+        return app(Fleet::class)->runs($event->sport)
             ? route('screen.new')
             : null;
     }
 
     /**
-     * The device models behind each fleet, so a claim can create one.
-     */
-    private const DEVICES = [
-        'taekwondo' => \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice::class,
-        'karate' => \App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayDevice::class,
-        'bjj' => \App\Events\Sports\BrazilianJiuJitsu\Tournament\HallScreen\ScreenDevice::class,
-    ];
-
-    /**
      * The fleets, for anything that must ask every one of them a question.
      *
-     * Exposed because PairingLog has to resolve a code against EVERY place a
-     * code can live before it can honestly say "this code is nothing on this
-     * server" — and that answer is worthless if it silently skips a fleet
-     * somebody added later. One map, asked in full.
+     * Kept as a passthrough because PairingLog and the console already call it
+     * here; the list itself belongs to the module that owns the mats.
      *
      * @return array<string, class-string>
      */
     public static function fleets(): array
     {
-        return self::DEVICES;
+        return Fleet::fleets();
     }
-
-    /**
-     * The board address to send a newly adopted screen to, by sport.
-     *
-     * A map rather than the conditional this used to be: with two fleets a
-     * ternary was readable, with three it stops being — and the failure it
-     * would hide is a television pointed at another sport's board, which only
-     * shows itself on competition morning. Absent = the Taekwondo fleet, which
-     * is the historical default this replaces.
-     */
-    private const BOARD_ROUTES = [
-        'karate' => 'karate-court-display.board',
-        'bjj' => 'bjj-screen.board',
-    ];
 
     /**
      * Turn a waiting screen into a real one on this event's mat.
@@ -435,7 +411,7 @@ class HallScreenRouter
      */
     public function adopt(ClubEvent $event, string $court, string $surface, ?int $by): array
     {
-        $model = self::DEVICES[(string) $event->sport] ?? null;
+        $model = Fleet::deviceFor($event->sport);
 
         abort_unless($model, 404);
 
@@ -450,7 +426,7 @@ class HallScreenRouter
             // from a console command, where there is no host at all — can never
             // send a television to the wrong one.
             'url' => route(
-                self::BOARD_ROUTES[(string) $event->sport] ?? 'court-display.board',
+                Fleet::boardRoute($event->sport) ?? 'court-display.board',
                 $token,
                 false,
             ),
@@ -471,7 +447,7 @@ class HallScreenRouter
      */
     public function existingControl(ClubEvent $event, string $court)
     {
-        $model = self::DEVICES[(string) $event->sport] ?? null;
+        $model = Fleet::deviceFor($event->sport);
 
         if (! $model) {
             return null;
@@ -486,10 +462,15 @@ class HallScreenRouter
 
     private function to(ClubEvent $event)
     {
-        $owner = self::OWNERS[(string) $event->sport] ?? null;
+        /*
+         * One door, for every sport. A sport with no mat is a 404 here rather
+         * than a silent fall-through to somebody else's fleet — the mistake this
+         * class was written to stop.
+         */
+        $fleet = app(Fleet::class);
 
-        abort_unless($owner, 404);
+        abort_unless($fleet->runs($event->sport), 404);
 
-        return app($owner);
+        return $fleet;
     }
 }

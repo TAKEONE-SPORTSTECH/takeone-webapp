@@ -224,7 +224,7 @@
 
                 <div class="relative flex items-start gap-3">
                     <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" aria-label="{{ __('market.back') }}"
-                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-arrow-left"></i></button>
+                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-chevron-left"></i></button>
                     <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
                         <i class="bi text-xl" :class="cartStep==='pay' ? 'bi-shield-lock' : 'bi-bag'"></i>
                     </span>

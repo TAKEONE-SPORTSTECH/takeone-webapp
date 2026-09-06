@@ -207,12 +207,12 @@
                     <div class="inline-flex items-center gap-0.5 rounded-full bg-white/12 border border-white/20 p-0.5">
                         <button type="button" @click="shiftMonth(-1)" aria-label="{{ __('admin.fin_prev_month') }}"
                                 class="m-press w-7 h-7 rounded-full grid place-items-center text-white/90 hover:bg-white/15 transition-colors">
-                            <i class="bi bi-chevron-left rtl:rotate-180 text-xs"></i>
+                            <i class="bi bi-chevron-left text-xs"></i>
                         </button>
                         <span class="min-w-[92px] text-center text-xs font-bold tracking-wide" x-text="monthLabel"></span>
                         <button type="button" @click="shiftMonth(1)" :disabled="! canGoNextMonth" aria-label="{{ __('admin.fin_next_month') }}"
                                 class="m-press w-7 h-7 rounded-full grid place-items-center text-white/90 hover:bg-white/15 transition-colors disabled:opacity-30 disabled:pointer-events-none">
-                            <i class="bi bi-chevron-right rtl:rotate-180 text-xs"></i>
+                            <i class="bi bi-chevron-right text-xs"></i>
                         </button>
                     </div>
                 </div>
@@ -250,7 +250,7 @@
                                     class="w-full flex items-center gap-2 text-[11px] text-white/85 bg-white/12 border border-white/20 rounded-xl px-3 py-2 text-start">
                                 <i class="bi bi-clock-history flex-shrink-0"></i>
                                 <span class="flex-1 min-w-0 truncate">{{ __('admin.fin_awaiting_post', ['amount' => number_format($awaitingTotal, 2) . ' ' . $cur]) }}</span>
-                                <i class="bi bi-chevron-right rtl:rotate-180 flex-shrink-0"></i>
+                                <i class="bi bi-chevron-right flex-shrink-0"></i>
                             </button>
                         @endif
                         @if($isTestMode && $otherModeCount > 0)
@@ -317,7 +317,7 @@
                     <span class="block text-[11px] text-muted-foreground/80 truncate">{{ __('admin.fin_committed_sub') }}</span>
                 </span>
                 <span class="text-base font-black text-foreground tabular-nums flex-shrink-0">{{ number_format($committedMonthly, 0) }} <span class="text-[10px] font-bold text-muted-foreground">{{ $cur }}</span></span>
-                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0 rtl:rotate-180"></i>
+                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
             </button>
         @endif
 
@@ -343,7 +343,7 @@
                     @if(!is_null($row['count']))
                         <span class="text-sm font-bold text-foreground flex-shrink-0">{{ $row['count'] }}</span>
                     @endif
-                    <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0 rtl:rotate-180"></i>
+                    <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
                 </button>
             @endforeach
         </div>
@@ -353,7 +353,7 @@
     <div x-show="panel !== null" x-cloak
          class="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-3 py-2.5 flex items-center gap-2">
         <button type="button" @click="close()" class="m-press w-10 h-10 rounded-xl bg-white border border-border grid place-items-center flex-shrink-0" aria-label="{{ __('admin.cs_back') }}">
-            <i class="bi bi-chevron-left rtl:rotate-180"></i>
+            <i class="bi bi-chevron-left"></i>
         </button>
         <span class="font-bold text-foreground text-sm truncate flex-1" x-text="title"></span>
         <button type="button" x-show="panel === 'ledger'" @click="openIncome()"

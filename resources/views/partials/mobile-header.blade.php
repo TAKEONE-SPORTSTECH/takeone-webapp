@@ -1,9 +1,9 @@
 @php
     $hu = Auth::user();
-    $mNotifs = \App\Models\UserNotification::where('user_id', $hu->id)
+    $mNotifs = \App\Members\Models\UserNotification::where('user_id', $hu->id)
         ->with(['clubNotification.tenant', 'actor', 'tenant'])
         ->latest()->take(10)->get();
-    $mUnread = \App\Models\UserNotification::where('user_id', $hu->id)->where('is_read', false)->count();
+    $mUnread = \App\Members\Models\UserNotification::where('user_id', $hu->id)->where('is_read', false)->count();
     $mItems = $mNotifs->map(function ($n) {
         $d = $n->display();
         return [

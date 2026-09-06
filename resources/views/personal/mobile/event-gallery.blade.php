@@ -1,4 +1,6 @@
-@extends('layouts.personal-mobile')
+{{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
+     nothing shared this is the member shell exactly as before. See entry/shell. --}}
+@extends($shell ?? 'layouts.personal-mobile')
 
 @section('title', __('events.bout_gallery_title').' — '.$e['title'])
 
@@ -16,9 +18,14 @@
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
         <div class="flex items-center justify-between gap-2 relative z-50">
-            <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
-               class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline">
-                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
+            {{-- Inside the sealed event app, back from a sub-screen means the
+                     CONSOLE — the screen it was opened from. On the platform it
+                     still means the event page. Same pill, honest label either
+                     way (the audit: "'Event' means two different pages"). --}}
+                <a href="{{ isset($shell) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
+               class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
+           aria-label="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}" title="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}">
+                <i class="bi bi-chevron-left"></i>
             </a>
 
             <div class="flex items-center gap-2">

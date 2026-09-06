@@ -7,7 +7,7 @@ use App\Models\EventExpense;
 use App\Models\EventOfficial;
 use App\Models\EventParticipantBan;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**

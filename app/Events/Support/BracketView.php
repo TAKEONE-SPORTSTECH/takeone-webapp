@@ -6,6 +6,7 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
+use App\Sports\Combat\Engine\GroupEngine;
 use Illuminate\Support\Collection;
 
 /**
@@ -76,6 +77,21 @@ class BracketView
             'rounds' => $this->rounds($matches),
             'bench' => $this->bench($entrants, $matches),
             'podium' => $c->podium ?: [],
+
+            /*
+             * A GROUP division carries a table as well as its bouts.
+             *
+             * The board can draw a ladder from `rounds` alone, because a ladder
+             * IS its bouts. A group's answer — who is winning — exists in none
+             * of them: it is derived from all of them together, so it has to
+             * travel beside them (App\Sports\Combat\Engine\GroupEngine).
+             * `format` is here so the board knows which of the two it is
+             * looking at without inferring it from a round's name.
+             */
+            'format' => $c->format ?: EventCategory::FORMAT_KNOCKOUT,
+            'standings' => ($c->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN
+                ? $this->standings($c)
+                : [],
         ];
     }
 
@@ -92,10 +108,28 @@ class BracketView
             ->sortBy(fn (Collection $bouts) => $bouts->min('slot'))
             ->map(fn (Collection $bouts, string $name) => [
                 'name' => $name,
+                // A group's bouts feed the knockout through the TABLE, not by
+                // position, so the board must not draw a line from them (see
+                // drawLinks in the bracket runtime).
+                'group' => $name === GroupEngine::ROUND,
                 'matches' => $bouts->sortBy('slot')->values()
                     ->map(fn (EventMatch $m) => $this->match($m))->all(),
             ])
             ->values()->all();
+    }
+
+    /**
+     * The table, with the faces the board already knows how to draw.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function standings(EventCategory $c): array
+    {
+        return array_map(function (array $row) {
+            $row['photo'] = $row['competitor_id'] ? ($this->faces[$row['competitor_id']] ?? null) : null;
+
+            return $row;
+        }, app(GroupEngine::class)->standings($c));
     }
 
     private function match(EventMatch $m): array

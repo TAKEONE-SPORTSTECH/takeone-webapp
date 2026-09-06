@@ -12,7 +12,7 @@
     $joinOwnedMap = [];
     if (auth()->check()) {
         $joinMemberIds = collect([auth()->id()])
-            ->merge(\App\Models\UserRelationship::where('guardian_user_id', auth()->id())->pluck('dependent_user_id'))
+            ->merge(\App\Members\Models\UserRelationship::where('guardian_user_id', auth()->id())->pluck('dependent_user_id'))
             ->unique();
         foreach ($joinMemberIds as $mid) {
             $joinOwnedMap[$mid] = [
@@ -142,7 +142,7 @@ function selectPackageApp() {
                         type: m.type === 'guardian' ? 'self' : 'child',
                         packageId: this._preselectPackageId || '',
                         name: m.name, gender: m.gender || '', dateOfBirth: m.birthdate || '',
-                        avatarUrl: m.profile_picture ? '/storage/' + m.profile_picture : null,
+                        avatarUrl: m.profile_picture ? '/file/' + m.profile_picture : null,
                         relationship: m.relationship, isMember: m.is_member || false,
                         equipment: [],
                     }));

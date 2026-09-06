@@ -27,6 +27,19 @@
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <!--
+            The suite must never reach the LIVE message broker.
+
+            Realtime topics are keyed on the numeric user id (takeone/user/{id}/…),
+            and a fresh in-memory database numbers its users from 1 — so a test
+            that notifies "user 1" publishes onto the real user 1's topic. With
+            this left unset it fell through to .env, where REALTIME_ENABLED=true
+            points at the production broker: every run sprayed invented orders,
+            entries, draws and podiums into real people's browsers, complete with
+            the notification sound. Measured on 2026-09-02 by subscribing as the
+            real user 1 and running the suite.
+        -->
+        <env name="REALTIME_ENABLED" value="false"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

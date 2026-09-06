@@ -43,6 +43,14 @@
 --}}
 @props([
     'event',
+    /* Shortcuts the HOST supplies: the hall's own surfaces — the run-day board,
+       the scoring table. They are not devices this panel pairs; they are the
+       screens those devices SHOW, so they belong at the top of this sheet
+       rather than in the console's tile column two rows above it (moved
+       2026-09-06). The host builds them because only it knows which exist for
+       this viewer and this sport: the board is organiser-only, the scoring
+       table is gated on `canScore` and on the sport having a mat at all. */
+    'shortcuts' => [],
     'mats' => [],
     'screens' => [],
     // The phones filming these mats. Empty is a real answer — an event nobody
@@ -103,7 +111,7 @@
             <span class="block text-sm font-bold text-foreground">{{ __('personal.event_screens_title') }}</span>
             <span class="block text-[11px] text-muted-foreground mt-0.5" x-text="standing()"></span>
         </span>
-        <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
+        <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
     </button>
 
     {{-- The panel, as a sheet. Teleported to <body> so the mobile shell's
@@ -130,7 +138,12 @@
                 </span>
                 <div class="min-w-0 flex-1">
                     <h3 class="text-lg font-black leading-tight">{{ __('personal.event_screens_title') }}</h3>
-                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('personal.event_screens_sub') }}</p>
+                    {{-- `truncate`: the title, an icon tile and two round
+                         controls already share this row, so the text column is
+                         narrow. Without it a sub-line wraps to two lines and the
+                         whole band gets taller — and a translation can do that
+                         even when the English fits. --}}
+                    <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ __('personal.event_screens_sub') }}</p>
                 </div>
 
                 {{-- Sound lives here, behind the gear: what the screens PLAY is a setting
@@ -197,6 +210,28 @@
          not it is filled: a filled one says it is alive and offers to unpair,
          an empty one offers to pair. Pressing Pair on a slot already knows the
          mat and the job, so the sheet has one thing left to ask. --}}
+    @if(! empty($shortcuts))
+        {{-- Space, no rule: these two are the hall's own surfaces and the mats
+             below are the devices pointed at them, so they want separating —
+             but by air rather than by a line. --}}
+        <div class="px-4 pt-4 pb-2 mb-3 space-y-2">
+            @foreach($shortcuts as $s)
+                <a href="{{ $s['href'] }}"
+                   @if(empty($s['external'])) data-shell-link data-route="me.events" @endif
+                   class="m-press bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3 no-underline">
+                    <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 {{ $s['tone'] }}">
+                        <i class="bi {{ $s['icon'] }} text-lg"></i>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-foreground truncate">{{ $s['label'] }}</span>
+                        <span class="block text-[11px] text-muted-foreground truncate mt-0.5">{{ $s['sub'] }}</span>
+                    </span>
+                    <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
+                </a>
+            @endforeach
+        </div>
+    @endif
+
     <div x-show="! mats.length" x-cloak class="px-4 pb-4">
         <div class="rounded-2xl border border-dashed border-gray-200 bg-muted/30 px-4 py-6 text-center">
             <i class="bi bi-diagram-3 text-2xl text-muted-foreground/50"></i>

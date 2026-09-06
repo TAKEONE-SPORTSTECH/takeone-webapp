@@ -13,10 +13,10 @@ use App\Shop\Models\ClubPerk;
 use App\Clubs\Models\ClubTimelinePost;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubTimelinePostLike;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Shop\Models\PerkCollection;
 use App\Clubs\Models\Tenant;
-use App\Models\UserRelationship;
+use App\Members\Models\UserRelationship;
 use App\Services\RegistrationCostService;
 use App\Services\SubscriptionService;
 use App\Support\ClubCache;
@@ -76,7 +76,7 @@ class PlatformController extends Controller
         }
 
         // Only users who have explicitly opted in as personal trainers appear on the explore page
-        $instructors = \App\Models\User::where('is_personal_trainer', true)
+        $instructors = \App\Members\Models\User::where('is_personal_trainer', true)
             ->with(['clubInstructors.tenant', 'clubInstructors.reviews'])
             ->get()
             ->map(function ($user) {
@@ -260,7 +260,7 @@ class PlatformController extends Controller
         // Compute member statistics for the Statistics tab — cached for 1 hour.
         $memberStats = Cache::remember(ClubCache::showStats($club->id), ClubCache::TTL_STATS, function () use ($club) {
             $memberIds = $club->members()->pluck('users.id');
-            $members = \App\Models\User::whereIn('id', $memberIds)->get();
+            $members = \App\Members\Models\User::whereIn('id', $memberIds)->get();
 
             // Nationality breakdown — map ISO-2 codes to full country names
             static $countryNames = null;
@@ -314,7 +314,7 @@ class PlatformController extends Controller
                 ->filter(fn ($_, $key) => ! empty($key));
 
             // Member goal status breakdown
-            $memberGoals = \App\Models\Goal::whereIn('user_id', $memberIds)->get()->groupBy('user_id');
+            $memberGoals = \App\Members\Models\Goal::whereIn('user_id', $memberIds)->get()->groupBy('user_id');
             $goalStats = ['Achieved' => 0, 'In Progress' => 0, 'Pending' => 0, 'No Goals Set' => 0];
             foreach ($memberIds as $id) {
                 if (! isset($memberGoals[$id])) {
@@ -673,7 +673,7 @@ class PlatformController extends Controller
      * to render the tab at all, so a visible "Events" tab can never open onto
      * an empty pane.
      */
-    private function openEventsFor(\App\Models\User $me): \Illuminate\Support\Collection
+    private function openEventsFor(\App\Members\Models\User $me): \Illuminate\Support\Collection
     {
         $clubIds = $me->memberClubs()->pluck('tenants.id');
         $myCountries = $me->memberClubs()->pluck('tenants.country')->filter()->unique()->values();
@@ -938,12 +938,12 @@ class PlatformController extends Controller
         // focused on this registrant's outstanding row (the desktop ledger filters to
         // pending; #collect opens the mobile panel).
         $focusUserId = (int) ($registrantIds[0] ?? $user->id);
-        $focusUuid = \App\Models\User::whereKey($focusUserId)->value('uuid');
+        $focusUuid = \App\Members\Models\User::whereKey($focusUserId)->value('uuid');
         $reviewUrl = route('admin.club.financials', $club->slug)
             .($focusUuid ? '?member='.$focusUuid : '').'#collect';
 
         foreach ($club->staffUserIds() as $staffId) {
-            \App\Models\UserNotification::notifyUser($staffId, 'new_member', 'New member registration', [
+            \App\Members\Models\UserNotification::notifyUser($staffId, 'new_member', 'New member registration', [
                 'actor_id'     => $user->id,
                 'tenant_id'    => $club->id,
                 'subject_type' => 'user',
@@ -1000,7 +1000,7 @@ class PlatformController extends Controller
 
         // Multiple eligible members and no selection yet — return picker data
         if ($forUserId === null && count($canCollectFor) > 1) {
-            $members = \App\Models\User::whereIn('id', $canCollectFor)->get(['id', 'full_name', 'name', 'profile_picture']);
+            $members = \App\Members\Models\User::whereIn('id', $canCollectFor)->get(['id', 'full_name', 'name', 'profile_picture']);
             $collected = PerkCollection::where('perk_id', $perk->id)
                 ->whereIn('collected_for_user_id', $canCollectFor)
                 ->pluck('collected_at', 'collected_for_user_id')

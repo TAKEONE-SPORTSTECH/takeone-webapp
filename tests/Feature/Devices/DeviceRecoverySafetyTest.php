@@ -2,15 +2,15 @@
 
 namespace Tests\Feature\Devices;
 
-use App\Events\Sports\BrazilianJiuJitsu\Tournament\HallScreen\ScreenDevice as BjjScreenDevice;
-use App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayDevice as KarateDevice;
-use App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice as TaekwondoDevice;
+use App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenDevice as BjjScreenDevice;
+use App\Scoreboard\Sports\Karate\HallScreen\CourtDisplayDevice as KarateDevice;
+use App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplayDevice as TaekwondoDevice;
 use App\Events\Support\PendingScreen;
 use App\Models\ClubEvent;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**

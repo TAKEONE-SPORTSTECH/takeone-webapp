@@ -134,7 +134,7 @@
                 <button x-show="currentTab > 0"
                         @click="goToTab(currentTab - 1)"
                         class="btn btn-secondary flex-1 sm:flex-initial justify-center">
-                    <i class="bi bi-arrow-left me-2"></i>{{ __('shared.back') }}
+                    <i class="bi bi-chevron-left me-2"></i>{{ __('shared.back') }}
                 </button>
                 <button @click="closeModal()" class="btn btn-secondary flex-1 sm:flex-initial justify-center">{{ __('shared.cancel') }}</button>
                 <button x-show="currentTab < tabs.length - 1"
@@ -229,7 +229,7 @@
             <div class="user-picker-item" onclick="selectUserInternal(${user.id}, '${user.full_name}', '${user.email}', '${user.mobile_formatted || ''}', '${user.profile_picture || ''}')">
                 <div class="flex items-center gap-3">
                     ${user.profile_picture
-                        ? `<img src="/storage/${user.profile_picture}" alt="${user.full_name}" class="rounded-full w-12 h-12 object-cover">`
+                        ? `<img src="/file/${user.profile_picture}" alt="${user.full_name}" class="rounded-full w-12 h-12 object-cover">`
                         : `<div class="rounded-full bg-primary text-white flex items-center justify-center w-12 h-12 text-xl font-semibold">${user.full_name.charAt(0)}</div>`
                     }
                     <div class="flex-1">
@@ -256,7 +256,7 @@
             ownerDisplay.innerHTML = `
                 <div class="flex items-center gap-3">
                     ${picture
-                        ? `<img src="/storage/${picture}" alt="${name}" class="rounded-full w-12 h-12 object-cover">`
+                        ? `<img src="/file/${picture}" alt="${name}" class="rounded-full w-12 h-12 object-cover">`
                         : `<div class="rounded-full bg-primary text-white flex items-center justify-center w-12 h-12 text-xl font-semibold">${name.charAt(0)}</div>`
                     }
                     <div class="flex-1">
@@ -431,7 +431,7 @@
                 if (club.logo) {
                     const logoContainer = document.getElementById('logoPreviewContainer');
                     if (logoContainer) {
-                        const logoUrl = club.logo.startsWith('http') ? club.logo : `/storage/${club.logo}`;
+                        const logoUrl = club.logo.startsWith('http') ? club.logo : `/file/${club.logo}`;
                         logoContainer.innerHTML = `<img src="${logoUrl}" id="logoPreview" class="cropper-preview-image" style="width: 150px; height: 150px; border-radius: 8px; border: 2px solid #dee2e6;">`;
                     }
                 }
@@ -440,8 +440,8 @@
                 if (club.cover_image) {
                     const coverContainer = document.getElementById('coverPreviewContainer');
                     if (coverContainer) {
-                        const coverUrl = club.cover_image.startsWith('http') ? club.cover_image : `/storage/${club.cover_image}`;
-                        coverContainer.innerHTML = `<img src="${coverUrl}" id="coverPreview" class="cropper-preview-image" style="width: 250px; height: 83px; border-radius: 8px; border: 2px solid #dee2e6;">`;
+                        const coverUrl = club.cover_image.startsWith('http') ? club.cover_image : `/file/${club.cover_image}`;
+                        coverContainer.innerHTML = `<img src="${coverUrl}" id="coverPreview" class="cropper-preview-image" style="width: 250px; height: 141px; border-radius: 8px; border: 2px solid #dee2e6; object-fit: cover;">`;
                     }
                 }
             },
@@ -458,7 +458,7 @@
                 if (ownerDisplay && owner) {
                     // Check if profile_picture is a full URL or a relative path
                     const pictureUrl = owner.profile_picture
-                        ? (owner.profile_picture.startsWith('http') ? owner.profile_picture : `/storage/${owner.profile_picture}`)
+                        ? (owner.profile_picture.startsWith('http') ? owner.profile_picture : `/file/${owner.profile_picture}`)
                         : null;
                     const picture = pictureUrl
                         ? `<img src="${pictureUrl}" alt="${owner.full_name}" class="rounded-full w-12 h-12 object-cover">`
@@ -489,7 +489,7 @@
                 // Reset cover preview
                 const coverContainer = document.getElementById('coverPreviewContainer');
                 if (coverContainer) {
-                    coverContainer.innerHTML = `<div id="coverPreview" class="cropper-preview-placeholder" style="width: 250px; height: 83px; border-radius: 8px; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; color: #6c757d;"><i class="bi bi-image text-2xl"></i></div>`;
+                    coverContainer.innerHTML = `<div id="coverPreview" class="cropper-preview-placeholder" style="width: 250px; height: 141px; border-radius: 8px; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; color: #6c757d;"><i class="bi bi-image text-2xl"></i></div>`;
                 }
 
                 // Reset owner display

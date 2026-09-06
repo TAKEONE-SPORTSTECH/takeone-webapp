@@ -108,7 +108,7 @@
 
             {{-- Page header --}}
             <div class="flex items-center gap-2 px-2 border-b border-border bg-white" style="padding-top: calc(0.625rem + env(safe-area-inset-top)); padding-bottom: 0.625rem;">
-                <button type="button" @click="h.expanded = false" class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-foreground m-press" aria-label="{{ __('shared.back') }}"><i class="bi bi-arrow-left text-xl"></i></button>
+                <button type="button" @click="h.expanded = false" class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-foreground m-press" aria-label="{{ __('shared.back') }}"><i class="bi bi-chevron-left text-xl"></i></button>
                 <span class="shrink-0">
                     <template x-if="h.partner.avatar"><img :src="h.partner.avatar" class="w-9 h-9 rounded-full object-cover" alt=""></template>
                     <template x-if="!h.partner.avatar"><span class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-sm font-bold" x-text="h.partner.initial"></span></template>

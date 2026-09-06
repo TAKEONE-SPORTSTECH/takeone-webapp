@@ -52,7 +52,8 @@
                            name="email"
                            value="{{ old('email') }}"
                            placeholder="{{ __('auth.auth_desktop_login_email_placeholder') }}"
-                           required autocomplete="username"
+                           required autocomplete="username" inputmode="text"
+                           autocapitalize="none" spellcheck="false"
                            autofocus>
                     @error('email')
                         <span class="tf-error" role="alert">

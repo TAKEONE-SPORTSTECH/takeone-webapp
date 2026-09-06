@@ -9,10 +9,10 @@ use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubPackageActivity;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubInstructor;
-use App\Models\Goal;
+use App\Members\Models\Goal;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserScheduleSession;
+use App\Members\Models\User;
+use App\Members\Models\UserScheduleSession;
 use App\Shop\Models\ClubProduct;
 use App\Shop\Models\ClubProductCategory;
 use App\Support\SyncedClassToken;
@@ -124,7 +124,7 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
 
         $this->desktop($user)->get('/me')
             ->assertOk()
-            ->assertViewIs('personal.desktop.home')
+            ->assertViewIs('members::personal.desktop.home')
             ->assertViewHas('user')
             ->assertViewHas('posts')
             ->assertViewHas('personalPosts')
@@ -140,7 +140,7 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
 
         $this->phone($user)->get('/me')
             ->assertOk()
-            ->assertViewIs('personal.mobile.home')
+            ->assertViewIs('members::personal.mobile.home')
             ->assertViewHas('user')
             ->assertViewHas('feedTabDots');
     }
@@ -150,7 +150,7 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
     {
         $user = $this->createUser();
 
-        $this->desktop($user)->get('/me')->assertOk()->assertViewIs('personal.desktop.home');
+        $this->desktop($user)->get('/me')->assertOk()->assertViewIs('members::personal.desktop.home');
     }
 
     // ---------------------------------------------------------------------
@@ -165,13 +165,13 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
             'subjectsList', 'iconChoices', 'colorChoices'];
 
         $desktop = $this->desktop($user)->get('/me/schedule')->assertOk()
-            ->assertViewIs('personal.desktop.schedule');
+            ->assertViewIs('members::personal.desktop.schedule');
         foreach ($keys as $key) {
             $desktop->assertViewHas($key);
         }
 
         $mobile = $this->phone($user)->get('/me/schedule')->assertOk()
-            ->assertViewIs('personal.mobile.schedule');
+            ->assertViewIs('members::personal.mobile.schedule');
         foreach ($keys as $key) {
             $mobile->assertViewHas($key);
         }
@@ -268,14 +268,14 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
             'clubFacilities', 'clubInstructors', 'coachLink', 'coachAvatar', 'canEngage'];
 
         $desktop = $this->desktop($user)->get('/me/schedule/'.$session->id)->assertOk()
-            ->assertViewIs('personal.desktop.schedule-show');
+            ->assertViewIs('members::personal.desktop.schedule-show');
         foreach ($keys as $key) {
             $desktop->assertViewHas($key);
         }
         $desktop->assertViewHas('isOwner', true)->assertViewHas('synced', false);
 
         $this->phone($user)->get('/me/schedule/'.$session->id)->assertOk()
-            ->assertViewIs('personal.mobile.schedule-show');
+            ->assertViewIs('members::personal.mobile.schedule-show');
     }
 
     /**
@@ -365,7 +365,7 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
             'slotStart', 'slotEnd', 'attendanceUrl'];
 
         $desktop = $this->desktop($member)->get('/me/schedule/synced/'.$token)->assertOk()
-            ->assertViewIs('personal.desktop.schedule-show');
+            ->assertViewIs('members::personal.desktop.schedule-show');
         foreach ($keys as $key) {
             $desktop->assertViewHas($key);
         }
@@ -374,7 +374,7 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
             ->assertViewHas('canEditClub', false);
 
         $this->phone($member)->get('/me/schedule/synced/'.$token)->assertOk()
-            ->assertViewIs('personal.mobile.schedule-show');
+            ->assertViewIs('members::personal.mobile.schedule-show');
     }
 
     /**
@@ -476,7 +476,7 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
         foreach ([self::DESKTOP_UA, self::PHONE_UA] as $ua) {
             $response = $this->actingAs($user)->withHeader('User-Agent', $ua)
                 ->get('/me/affiliations')->assertOk()
-                ->assertViewIs('personal.affiliations')
+                ->assertViewIs('members::personal.affiliations')
                 ->assertViewHas('active')
                 ->assertViewHas('left')
                 ->assertViewHas('shellTitle');
@@ -511,14 +511,14 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
         ClubMemberSubscription::factory()->create(['tenant_id' => $club->id, 'user_id' => $stranger->id]);
 
         $desktop = $this->desktop($user)->get('/me/packages')->assertOk()
-            ->assertViewIs('personal.desktop.packages')
+            ->assertViewIs('members::personal.desktop.packages')
             ->assertViewHas('subscriptions');
 
         $this->assertCount(1, $desktop->viewData('subscriptions'));
         $this->assertSame($user->id, $desktop->viewData('subscriptions')->first()->user_id);
 
         $this->phone($user)->get('/me/packages')->assertOk()
-            ->assertViewIs('personal.mobile.packages');
+            ->assertViewIs('members::personal.mobile.packages');
     }
 
     // ---------------------------------------------------------------------
@@ -553,7 +553,7 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
         foreach ([self::DESKTOP_UA, self::PHONE_UA] as $ua) {
             $response = $this->actingAs($user)->withHeader('User-Agent', $ua)
                 ->get('/me/progress')->assertOk()
-                ->assertViewIs('personal.progress')
+                ->assertViewIs('members::personal.progress')
                 ->assertViewHas('goals')
                 ->assertViewHas('goalStats');
 
@@ -590,7 +590,7 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
         foreach ([self::DESKTOP_UA, self::PHONE_UA] as $ua) {
             $response = $this->actingAs($user)->withHeader('User-Agent', $ua)
                 ->get('/me/payments')->assertOk()
-                ->assertViewIs('personal.payments')
+                ->assertViewIs('members::personal.payments')
                 ->assertViewHas('subscriptions')
                 ->assertViewHas('totalPaid')
                 ->assertViewHas('totalDue');
@@ -625,13 +625,13 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
         [$user] = $this->member();
 
         $this->desktop($user)->get('/me/videos')->assertOk()
-            ->assertViewIs('personal.desktop.videos')
+            ->assertViewIs('members::personal.desktop.videos')
             ->assertViewHas('shelves')
             ->assertViewHas('total')
             ->assertViewHas('shellTitle');
 
         $this->phone($user)->get('/me/videos')->assertOk()
-            ->assertViewIs('personal.mobile.videos')
+            ->assertViewIs('members::personal.mobile.videos')
             ->assertViewHas('shelves')
             ->assertViewHas('total');
     }
@@ -772,13 +772,13 @@ class PersonalMobileReadRoutesTest extends ContractTestCase
         [$user] = $this->member();
 
         $desktop = $this->desktop($user)->get('/me/settings')->assertOk()
-            ->assertViewIs('personal.desktop.settings')
+            ->assertViewIs('members::personal.desktop.settings')
             ->assertViewHas('user');
 
         $this->assertSame($user->id, $desktop->viewData('user')->id);
 
         $this->phone($user)->get('/me/settings')->assertOk()
-            ->assertViewIs('personal.mobile.settings')
+            ->assertViewIs('members::personal.mobile.settings')
             ->assertViewHas('user');
     }
     // ---------------------------------------------------------------------

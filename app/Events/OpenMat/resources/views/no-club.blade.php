@@ -16,7 +16,8 @@
 @section($isMobile ? 'personal-content' : 'content')
 @php $omColor = '#F97316'; @endphp
 
-<div class="{{ $isMobile ? '-mx-4 -mt-4' : '' }}">
+{{-- Same as join: the desktop band cancels padding the page must supply. --}}
+<div class="{{ $isMobile ? '-mx-4 -mt-4' : 'px-4 sm:px-6 lg:px-8 py-6' }}">
     <header class="{{ $isMobile ? 'm-hero px-5 pt-6 pb-16' : '-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-8 pt-6 pb-20' }} text-white relative overflow-hidden"
             style="background: linear-gradient(150deg, {{ $omColor }}, {{ $omColor }}b0);">
         <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>

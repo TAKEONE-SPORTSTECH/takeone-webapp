@@ -42,6 +42,15 @@ public class MqttNotificationService extends Service {
     private static final String TAG = "MqttPush";
     public static final String CH_ONGOING = "takeone_service";
     public static final String CH_ALERTS = "takeone_alerts2"; // v2: forces the new sound setting
+    /**
+     * Time-critical calls only — an athlete summoned to the mat.
+     *
+     * A separate channel on purpose. Routine notifications and "you are fighting
+     * now" cannot share a lane: somebody who silences the app because of the
+     * former then misses the latter, which is the one that costs them the bout.
+     * Android lets the user mute one and keep the other only if they ARE two.
+     */
+    public static final String CH_URGENT = "takeone_urgent";
     private static final int ONGOING_ID = 1001;
 
     private String baseUrl = "https://takeone.bh";
@@ -223,6 +232,8 @@ public class MqttNotificationService extends Service {
             if (body == null) body = "";
 
             String actionUrl = p.optString("action_url", "");
+            // Set by the server on a call to the mat (UserNotification::notifyUser).
+            boolean urgent = p.optBoolean("urgent", false);
 
             Intent open = new Intent(this, MainActivity.class);
             open.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -232,15 +243,23 @@ public class MqttNotificationService extends Service {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) piFlags |= PendingIntent.FLAG_IMMUTABLE;
             PendingIntent pi = PendingIntent.getActivity(this, alertId, open, piFlags);
 
-            NotificationCompat.Builder b = new NotificationCompat.Builder(this, CH_ALERTS)
+            NotificationCompat.Builder b = new NotificationCompat.Builder(this, urgent ? CH_URGENT : CH_ALERTS)
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentTitle(title.isEmpty() ? "TAKEONE" : title)
                     .setContentText(body)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                     .setAutoCancel(true)
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setPriority(urgent ? NotificationCompat.PRIORITY_MAX : NotificationCompat.PRIORITY_HIGH)
                     .setDefaults(NotificationCompat.DEFAULT_ALL)
                     .setContentIntent(pi);
+
+            if (urgent) {
+                // CALL is what tells Android this is worth interrupting for: it
+                // heads-up over whatever is on screen and rings in a warm-up hall
+                // where the phone is in a bag. setOngoing keeps it from being
+                // swiped away by accident before the athlete has read it.
+                b.setCategory(NotificationCompat.CATEGORY_CALL);
+            }
 
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             nm.notify(alertId++, b.build());
@@ -292,8 +311,20 @@ public class MqttNotificationService extends Service {
                     .build();
             if (sound != null) alerts.setSound(sound, attrs);
 
+            NotificationChannel urgent = new NotificationChannel(CH_URGENT, "Called to the mat", NotificationManager.IMPORTANCE_HIGH);
+            urgent.setDescription("You are being called to fight. Keep this on.");
+            urgent.enableVibration(true);
+            urgent.setVibrationPattern(new long[] {0, 400, 200, 400, 200, 400});
+            urgent.enableLights(true);
+            // Bypasses Do Not Disturb where the user allows it: a competitor who
+            // silenced their phone for the hall still has to hear this one.
+            urgent.setBypassDnd(true);
+            urgent.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            if (sound != null) urgent.setSound(sound, attrs);
+
             nm.createNotificationChannel(ongoing);
             nm.createNotificationChannel(alerts);
+            nm.createNotificationChannel(urgent);
         }
     }
 

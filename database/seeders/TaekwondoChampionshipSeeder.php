@@ -7,7 +7,7 @@ use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Sports\Combat\Engine\DrawEngine;
 use App\Sports\Combat\Engine\Scheduler;
 use Illuminate\Database\Seeder;

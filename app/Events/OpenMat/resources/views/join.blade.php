@@ -19,7 +19,9 @@
 @section($isMobile ? 'personal-content' : 'content')
 @php $omColor = '#F97316'; @endphp
 
-<div class="{{ $isMobile ? '-mx-4 -mt-4' : '' }}"
+{{-- Desktop needs the wrapper padding the band cancels; mobile cancels the
+     shell's instead. --}}
+<div class="{{ $isMobile ? '-mx-4 -mt-4' : 'px-4 sm:px-6 lg:px-8 py-6' }}"
      x-data="{
         busy: false,
         corners: @js($corners),

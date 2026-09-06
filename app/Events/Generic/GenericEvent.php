@@ -5,7 +5,7 @@ namespace App\Events\Generic;
 use App\Events\AbstractEventType;
 use App\Events\Support\SyncsDivisions;
 use App\Models\ClubEvent;
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * TRANSITIONAL catch-all package.

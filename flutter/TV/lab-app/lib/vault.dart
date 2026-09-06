@@ -30,6 +30,12 @@ import 'api.dart';
 ///   server says the whole thing arrived, and it keeps holding it afterwards.
 ///   Storage is recovered by a person, deliberately, not by a background job
 ///   that guessed wrong about what "done" meant.
+/// · **It uploads nothing unless the operator turned auto upload ON.** A camera
+///   stands unattended on whatever network the hall has — a metered hotel
+///   uplink, a volunteer's tether, a venue that bills by the gigabyte — and
+///   spending that on 400MB a bout is not this app's decision to make. The
+///   switch lives in the camera settings drawer and defaults to OFF; with it
+///   off the clips queue up on the phone and go when somebody says so.
 /// · **It never uploads while the camera is rolling.** A bout is being written
 ///   at 60fps and, on this app, very possibly published live at the same time;
 ///   spending the uplink on last bout's 400MB during this one is how the feed
@@ -216,6 +222,9 @@ class ClipVault {
 
   static const _key = 'boutcam.clips';
 
+  /// The auto-upload switch, remembered across restarts.
+  static const _autoKey = 'boutcam.autoUpload';
+
   /// A competition day is a few hundred bouts. The cap stops a phone that is
   /// never cleared carrying an unbounded list in its preferences file.
   static const _max = 500;
@@ -233,6 +242,15 @@ class ClipVault {
 
   /// True while the camera is recording. The queue does nothing at all then.
   bool _held = false;
+
+  /// Does a finished bout go up by itself? OFF until the operator says so.
+  ///
+  /// Persisted next to the ledger, so a phone that restarts in the middle of a
+  /// competition comes back doing what it was told rather than what the app
+  /// assumed. `sendNow()` bypasses it — that is somebody asking.
+  bool _auto = false;
+
+  bool get auto => _auto;
 
   bool _running = false;
   Timer? _sweep;
@@ -252,6 +270,9 @@ class ClipVault {
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
+
+    _auto = prefs.getBool(_autoKey) ?? false;
+
     final raw = prefs.getString(_key);
 
     if (raw == null) return;
@@ -302,6 +323,29 @@ class ClipVault {
     }
   }
 
+  /// The operator turning automatic uploading on or off.
+  ///
+  /// Turning it ON also releases whatever is already queued: those clips are
+  /// what they were looking at when they reached for the switch. Turning it off
+  /// lets an upload already in flight finish — abandoning it halfway leaves the
+  /// server holding a partial file and gains the uplink nothing.
+  Future<void> setAuto(bool on) async {
+    if (_auto == on) return;
+
+    _auto = on;
+    (await SharedPreferences.getInstance()).setBool(_autoKey, on);
+    _notify();
+
+    if (on) unawaited(pump());
+  }
+
+  /// Send everything waiting, once, whatever the switch says.
+  ///
+  /// The manual door: an operator who keeps auto upload off still needs a way
+  /// to say "now" — on the hall's own wifi, at the end of the day, when the
+  /// bytes are free.
+  Future<void> sendNow() => pump(force: true);
+
   /// Hold everything while a bout is being written (see the class comment).
   void hold(bool holding) {
     if (_held == holding) return;
@@ -331,9 +375,14 @@ class ClipVault {
   }
 
   /// Do whatever the queue can do right now. Single-flight.
-  Future<void> pump() async {
+  ///
+  /// `force` is an explicit "send it" from a person and ignores the auto-upload
+  /// switch and the backoff — not the recording hold, which exists to protect
+  /// the bout being filmed and is never somebody's to override.
+  Future<void> pump({bool force = false}) async {
     if (_running || _held || _token == null) return;
-    if (_notBefore != null && DateTime.now().isBefore(_notBefore!)) return;
+    if (!_auto && !force) return;
+    if (!force && _notBefore != null && DateTime.now().isBefore(_notBefore!)) return;
 
     _running = true;
 

@@ -67,7 +67,7 @@
                     <span class="block text-sm font-bold">{{ __('admin.role_assign') }}</span>
                     <span class="block text-[11px] text-white/80 truncate">{{ __('admin.role_pick_member_sub') }}</span>
                 </span>
-                <i class="bi bi-chevron-right text-white/80 text-sm flex-shrink-0 rtl:rotate-180"></i>
+                <i class="bi bi-chevron-right text-white/80 text-sm flex-shrink-0"></i>
             </button>
 
             {{-- Drill-down: team & access --}}
@@ -81,7 +81,7 @@
                     <span class="block text-[11px] text-muted-foreground truncate mt-0.5">{{ __('admin.role_team_members_sub') }}</span>
                 </span>
                 <span class="text-sm font-bold text-foreground flex-shrink-0" id="statTeamRow">{{ $teamCount }}</span>
-                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0 rtl:rotate-180"></i>
+                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
             </button>
 
             {{-- Drill-down: role types --}}
@@ -92,7 +92,7 @@
                     <span class="block text-[11px] text-muted-foreground truncate mt-0.5">{{ __('admin.role_manage_types_sub') }}</span>
                 </span>
                 <span class="text-sm font-bold text-foreground flex-shrink-0" id="statTypes">{{ $typeCount }}</span>
-                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0 rtl:rotate-180"></i>
+                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
             </button>
 
             @unless($canEdit)
@@ -107,7 +107,7 @@
     <div x-show="panel !== null" x-cloak
          class="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-3 py-2.5 flex items-center gap-2">
         <button type="button" @click="close()" class="m-press w-10 h-10 rounded-xl bg-white border border-border grid place-items-center flex-shrink-0" aria-label="{{ __('admin.cs_back') }}">
-            <i class="bi bi-chevron-left rtl:rotate-180"></i>
+            <i class="bi bi-chevron-left"></i>
         </button>
         <span class="font-bold text-foreground text-sm truncate flex-1" x-text="title"></span>
 
@@ -290,7 +290,7 @@
                                     <span class="min-w-0 flex-1">
                                         <span class="block text-sm font-medium text-foreground truncate">{{ $pu->full_name }}</span>
                                     </span>
-                                    <i class="bi bi-chevron-right text-muted-foreground/60 rtl:rotate-180"></i>
+                                    <i class="bi bi-chevron-right text-muted-foreground/60"></i>
                                 </button>
                             @endforeach
                         </div>

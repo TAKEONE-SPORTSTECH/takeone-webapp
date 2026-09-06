@@ -6,42 +6,16 @@
     Include once inside the event-show Alpine root, near the register CTA.
 --}}
 @if($pPaid ?? false)
-    {{-- Inline hint / trigger — only once the member has a participant spot. --}}
-    <div x-show="going" x-cloak class="px-4 sm:px-0 mt-2">
-        {{-- Awaiting the club's approval --}}
-        <div x-show="paymentPending"
-             class="bg-white rounded-2xl shadow-sm border border-amber-200 p-3.5 flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-amber-50 grid place-items-center flex-shrink-0">
-                <i class="bi bi-hourglass-split text-amber-600 text-lg"></i>
-            </div>
-            <div class="min-w-0 flex-1 leading-tight">
-                <p class="text-sm font-bold text-foreground">{{ __('personal.event_show_payment_pending') }}</p>
-                <p class="text-[11px] text-muted-foreground truncate">{{ __('personal.event_show_payment_pending_hint') }}</p>
-            </div>
-            <button type="button" @click="openProof()"
-                    class="m-press text-[11px] font-semibold px-2.5 py-1.5 rounded-full border border-gray-200 text-foreground hover:bg-muted flex-shrink-0">
-                <i class="bi bi-arrow-repeat mr-1"></i>{{ __('personal.event_show_payment_replace') }}
-            </button>
-        </div>
+    {{-- The visible "Fee due · BHD 10" / "Payment pending" cards that used to sit
+         here were REMOVED at the user's request (2026-09-02): the participant
+         pricing row further up the event page already announces the fee, so this
+         card only said it a second time.
 
-        {{-- Not yet uploaded — invite the member to attach proof (optional) --}}
-        <div x-show="!paymentPending"
-             class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3.5 flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-amber-50 grid place-items-center flex-shrink-0">
-                <i class="bi bi-receipt text-amber-600 text-lg"></i>
-            </div>
-            <div class="min-w-0 flex-1 leading-tight">
-                <p class="text-sm font-bold text-foreground">{{ __('personal.event_show_fee_due', ['fee' => $e['participant_fee']]) }}</p>
-                <p class="text-[11px] text-muted-foreground truncate">{{ __('personal.event_show_upload_or_pay_club') }}</p>
-            </div>
-            <button type="button" @click="openProof()"
-                    class="m-press text-[11px] font-semibold px-3 py-1.5 rounded-full text-white flex-shrink-0"
-                    style="background: {{ $e['color'] }}">
-                <i class="bi bi-upload mr-1"></i>{{ __('personal.event_show_upload_proof') }}
-            </button>
-        </div>
-    </div>
-
+         What remains is the SHEET, which is not reachable from this partial at
+         all — `finishJoin(true)` opens it via `openProof()` after someone
+         registers saying they have paid. Removing it would leave that call, and
+         the "I've paid — upload receipt" button in the join sheet, pointing at
+         nothing. --}}
     {{-- Bottom-sheet — teleported to <body> so the fixed overlay anchors to the
          viewport, not the transformed shell content (mobile-forms rule). --}}
     <template x-teleport="body">

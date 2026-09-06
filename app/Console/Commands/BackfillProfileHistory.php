@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ClubEventRegistration;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Support\ProfileHistorySync;
 use Illuminate\Console\Command;
 
@@ -114,7 +114,7 @@ class BackfillProfileHistory extends Command
             return null;
         }
 
-        $user = \App\Models\User::query()
+        $user = \App\Members\Models\User::query()
             ->where('uuid', $ref)
             ->orWhere('id', is_numeric($ref) ? (int) $ref : 0)
             ->first();

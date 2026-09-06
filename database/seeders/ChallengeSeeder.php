@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Challenge;
+use App\Challenges\Models\Challenge;
 use App\Clubs\Models\Tenant;
 use Illuminate\Database\Seeder;
 

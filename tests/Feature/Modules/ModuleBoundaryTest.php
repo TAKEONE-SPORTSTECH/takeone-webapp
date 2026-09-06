@@ -57,10 +57,18 @@ class ModuleBoundaryTest extends TestCase
                 }
 
                 foreach (self::PRIVATE_LAYERS as $layer) {
-                    $needle = $namespace.'\\'.$layer.'\\';
+                    /*
+                     * The layer may sit at ANY depth inside the module, not only
+                     * directly under its root. App\Scoreboard keeps its
+                     * controllers at Sports\<Sport>\Controllers\ because a mat
+                     * is organised by sport, and a rule that only looked one
+                     * level down would have called that boundary enforced while
+                     * enforcing nothing.
+                     */
+                    $pattern = '/'.preg_quote($namespace, '/').'\\\\(?:[A-Za-z0-9_]+\\\\)*'.$layer.'\\\\/';
 
-                    if (str_contains($source, $needle)) {
-                        $violations[] = "{$relative} references {$needle}";
+                    if (preg_match($pattern, $source, $m)) {
+                        $violations[] = "{$relative} references {$m[0]}";
                     }
                 }
             }

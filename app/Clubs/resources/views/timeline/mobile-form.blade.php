@@ -177,7 +177,7 @@ window.timelineFormSheet = function () {
                     <input type="hidden" name="remove_image" :value="removeImage ? '1' : '0'">
                     <div x-show="imagePreview || imagePath" class="mb-2">
                         <div class="relative inline-block">
-                            <img :src="imagePreview || (imagePath ? '/storage/' + imagePath : '')" alt="" class="rounded-xl object-cover border border-gray-100" style="max-height:160px; max-width:100%;">
+                            <img :src="imagePreview || (imagePath ? '/file/' + imagePath : '')" alt="" class="rounded-xl object-cover border border-gray-100" style="max-height:160px; max-width:100%;">
                             <button type="button" @click="clearImage()" class="m-press absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white grid place-items-center text-xs"><i class="bi bi-x"></i></button>
                         </div>
                     </div>

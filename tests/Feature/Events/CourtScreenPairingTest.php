@@ -2,12 +2,13 @@
 
 namespace Tests\Feature\Events;
 
-use App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice;
+use App\Events\Support\PendingScreen;
+use App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplayDevice;
 use App\Models\ClubEvent;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**
@@ -201,8 +202,29 @@ class CourtScreenPairingTest extends TestCase
         // The token still works — it now resolves to a screen showing its code.
         $this->assertNotNull(CourtDisplayDevice::resolve($token));
 
-        // And the board route hands it the pairing screen, not a 404.
-        $this->get("/court/{$token}")->assertOk()->assertSee($screen->pairing_code);
+        // And the board route hands it back towards a pairing screen, not a 404.
+        //
+        // It used to render this package's own code in place, which is what the
+        // assertion here checked. The board now redirects an unclaimed screen to
+        // /screen — CLAUDE.md, "Unattended Devices Must Always Recover":
+        // "Recovery goes to /screen, the sport-neutral room — never a package's
+        // own pairing code, which only that sport's events can claim." What the
+        // test is really about is unchanged: the unpaired screen must reach a
+        // code somebody in the hall can act on, and must never reach a 404.
+        $board = $this->get("/court/{$token}");
+        $board->assertRedirect(route('screen.new'));
+        $this->assertNotSame(404, $board->getStatusCode());
+
+        // Follow it the whole way and prove it lands, with a fresh identity.
+        $before = PendingScreen::count();
+
+        for ($hop = 0; $hop < 5 && $board->isRedirect(); $hop++) {
+            $board = $this->get($board->headers->get('Location'));
+        }
+
+        $board->assertOk();
+        $this->assertGreaterThan($before, PendingScreen::count(),
+            'the screen must end up holding a fresh pairing code, not parked on nothing');
     }
 
     public function test_a_fresh_code_is_issued_on_unpair_so_an_old_photograph_is_useless(): void
@@ -270,7 +292,7 @@ class CourtScreenPairingTest extends TestCase
 
         // Another screen's token must not resolve to this screen's topic.
         $other = CourtDisplayDevice::begin('other')['device'];
-        $this->assertNotSame($topic, \App\Events\Sports\Taekwondo\Tournament\CourtDisplay\ScreenChannel::topic($other));
+        $this->assertNotSame($topic, \App\Scoreboard\Sports\Taekwondo\HallScreen\ScreenChannel::topic($other));
     }
 
     public function test_an_unknown_token_gets_no_realtime_link(): void

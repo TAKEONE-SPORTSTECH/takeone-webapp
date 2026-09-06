@@ -6,7 +6,7 @@ use App\Http\Requests\Admin\StoreClubRequest;
 use App\Clubs\Models\ClubBankAccount;
 use App\Clubs\Models\ClubSocialLink;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Traits\StoresBase64Images;
 use Illuminate\Support\Facades\DB;
 use App\Support\StoragePath;

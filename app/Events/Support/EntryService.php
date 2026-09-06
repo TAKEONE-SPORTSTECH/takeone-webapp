@@ -6,10 +6,10 @@ use App\Events\EventTypeRegistry;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventParticipantBan;
-use App\Models\SkillAcquisition;
+use App\Members\Models\SkillAcquisition;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserNotification;
+use App\Members\Models\User;
+use App\Members\Models\UserNotification;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -36,10 +36,18 @@ class EntryService
     /**
      * Enter many athletes on behalf of their club.
      *
+     * `$optionsByUser` is keyed BY ATHLETE, not by squad, because a coach
+     * entering fourteen people is making fourteen separate purchases: one wants
+     * Gi and No-Gi, the next only Gi, the third neither. A single list for the
+     * whole sheet would bill them all the same and be wrong for most of them.
+     * An athlete missing from the map simply ticked nothing, which is why the
+     * default is an empty array and every existing caller keeps its meaning.
+     *
      * @param  array<int, int>  $userIds
+     * @param  array<int|string, array<int, string>>  $optionsByUser  user id => option uuids
      * @return array{entered: array<int, array>, rejected: array<int, array>, going: int}
      */
-    public function enterMany(ClubEvent $event, User $actor, array $userIds): array
+    public function enterMany(ClubEvent $event, User $actor, array $userIds, array $optionsByUser = []): array
     {
         $entered = [];
         $rejected = [];
@@ -48,7 +56,9 @@ class EntryService
             ->with('latestHealthRecord')->get()->keyBy('id');
 
         foreach ($athletes as $athlete) {
-            $verdict = $this->enter($event, $actor, $athlete);
+            $chosen = $optionsByUser[$athlete->id] ?? $optionsByUser[(string) $athlete->id] ?? [];
+
+            $verdict = $this->enter($event, $actor, $athlete, is_array($chosen) ? $chosen : []);
 
             if ($verdict['ok']) {
                 $entered[] = $verdict['row'];
@@ -67,9 +77,10 @@ class EntryService
     /**
      * Enter one athlete, applying every rule self-entry applies.
      *
+     * @param  array<int, string>  $optionKeys  fee-option UUIDs the coach ticked for THIS athlete
      * @return array{ok: bool, row: array}
      */
-    public function enter(ClubEvent $event, User $actor, User $athlete): array
+    public function enter(ClubEvent $event, User $actor, User $athlete, array $optionKeys = []): array
     {
         $name = $athlete->full_name ?? $athlete->name ?? 'Member';
         $reject = fn (string $code, string $message) => [
@@ -169,6 +180,28 @@ class EntryService
             ],
         );
 
+        // Freeze what this entry COSTS, as a set of lines on the entry itself.
+        //
+        // Priced from the event's own rows — the ticked uuids are looked up and
+        // anything that does not resolve is dropped, so a stale form or a forged
+        // key cannot invent a discount. `paid` above is untouched on purpose:
+        // the lines say what was charged, `paid` says whether anybody has handed
+        // the money over, and those have always been two questions.
+        //
+        // Only for an entry that is NEW, or one whose options the coach is
+        // explicitly restating. Re-running a squad sheet with nothing ticked
+        // must not quietly wipe an option somebody already agreed to pay for,
+        // and re-pricing an old entry at today's clock would hand it a late
+        // penalty it never incurred — hence the entry's own moment as `$at`.
+        if (! $existing || $optionKeys !== []) {
+            EventFee::commit($registration, EventFee::quote(
+                $event,
+                'participant',
+                $optionKeys,
+                $existing?->registered_at ?? $registration->registered_at,
+            ));
+        }
+
         // The entrant set changed — let the package re-derive its draw.
         $this->registry->for($event)->onEntrantsChanged($event, $decision->category);
 
@@ -186,6 +219,11 @@ class EntryService
                 'registration_id' => $registration->id,
                 'division' => $decision->category?->name,
                 'paid' => (bool) $registration->paid,
+                // What this entry was actually charged, read back from its own
+                // frozen lines — so a coach who ticked two options sees the two
+                // options, not the event's headline price.
+                'charged' => EventFee::charged($registration, $event),
+                'currency' => EventFee::currency($event),
                 // In, but not yet in a division — the desk places them.
                 'pending_weigh_in' => $pendingWeighIn,
             ],
@@ -604,13 +642,193 @@ class EntryService
         };
     }
 
-    private function isBanned(ClubEvent $event, int $userId): bool
+    /**
+     * Is this person barred from this event?
+     *
+     * Public because the public door (PublicEntry) has to ask the SAME
+     * question — a block that only the coach's path honoured would be no
+     * block at all. One rule, one place (Shared Stays Shared).
+     */
+    public function isBanned(ClubEvent $event, int $userId): bool
     {
         return EventParticipantBan::where('user_id', $userId)
             ->where(function ($q) use ($event) {
                 $q->where(fn ($w) => $w->where('scope', 'event')->where('event_id', $event->id))
                     ->orWhere(fn ($w) => $w->where('scope', 'club')->where('tenant_id', $event->tenant_id));
             })->exists();
+    }
+
+    /**
+     * Take athletes OUT of an event — the inverse of enterMany().
+     *
+     * Here rather than in the controller for the same reason enter() is here:
+     * an entry list is a set of rules, and the rules for leaving it are as real
+     * as the rules for joining. A controller that deleted rows directly would
+     * be a second entry system with none of them.
+     *
+     * Takes REGISTRATION ids, not user ids, and every one of them is looked up
+     * scoped to this event — an id from another competition finds nothing and is
+     * reported as such, so this endpoint cannot be used to reach across events.
+     *
+     * Partial success is the normal outcome, exactly as it is for entering: an
+     * organiser sweeps six no-shows off the list and one of them turns out to
+     * have already fought.
+     *
+     * @param  array<int, int>  $registrationIds
+     * @return array{removed: array<int, array>, rejected: array<int, array>, going: int}
+     */
+    public function removeMany(ClubEvent $event, User $actor, array $registrationIds): array
+    {
+        $removed = [];
+        $rejected = [];
+
+        $rows = ClubEventRegistration::where('event_id', $event->id)
+            ->whereIn('id', array_slice(array_unique($registrationIds), 0, 200))
+            ->with('user:id,full_name,name')
+            ->get();
+
+        foreach ($rows as $row) {
+            $verdict = $this->remove($event, $actor, $row);
+
+            if ($verdict['ok']) {
+                $removed[] = $verdict['row'];
+            } else {
+                $rejected[] = $verdict['row'];
+            }
+        }
+
+        return [
+            'removed' => $removed,
+            'rejected' => $rejected,
+            'going' => $event->participantRegistrations()->count(),
+        ];
+    }
+
+    /**
+     * Take ONE athlete out.
+     *
+     * Two refusals, and both are about the competition rather than the person:
+     *
+     *   · The event is UNDERWAY. From the first bout the entry list is the thing
+     *     being run — the draw was cut from it and the mats are assigned off it
+     *     — so a name cannot be lifted out of it without the bracket around it
+     *     ceasing to mean anything. This mirrors enter(), which refuses a new
+     *     name from the same moment for the same reason. A no-show on the day is
+     *     a walkover recorded on the bout, not a deletion.
+     *   · They have already FOUGHT. Belt and braces for the case above: an event
+     *     whose start was never pressed can still have a result recorded, and a
+     *     bout with a winner is a fact about the competition that outlives
+     *     somebody's place in it.
+     *
+     * The proof of payment is deleted with the row. `photo` and `club_logo` go
+     * automatically (ClubEventRegistration uses DeletesUploadedFiles, and this
+     * deletes model by model so the hook actually fires); `payment_proof` is not
+     * declared on that trait, so it is purged HERE rather than by widening the
+     * model's behaviour for every other delete path in the platform.
+     *
+     * MONEY IS NOT TOUCHED. Any club transaction the entry created stays in the
+     * books: refunding is a decision with an amount attached, it belongs to
+     * whoever keeps the accounts, and a delete button is not the place to make
+     * it. The caller says so in the confirmation.
+     *
+     * @return array{ok: bool, row: array}
+     */
+    public function remove(ClubEvent $event, User $actor, ClubEventRegistration $registration, bool $notify = true): array
+    {
+        $name = $registration->user?->full_name
+            ?: ($registration->user?->name ?: __('shared.unknown'));
+
+        $reject = fn (string $code, string $message) => [
+            'ok' => false,
+            'row' => ['registration_id' => $registration->id, 'name' => $name, 'code' => $code, 'message' => $message],
+        ];
+
+        if ($event->hasStarted() || $event->isOverdueToStart()) {
+            return $reject('started', __('events.entry_remove_started', ['name' => $name]));
+        }
+
+        if ($this->hasFought($event, $registration)) {
+            return $reject('has_result', __('events.entry_remove_has_result', ['name' => $name]));
+        }
+
+        // Held for after the delete: the division decides which draw has to be
+        // re-cut, and the row is gone by then.
+        $category = $registration->category;
+        $athleteId = $registration->user_id;
+        $proof = $registration->payment_proof;
+
+        DB::transaction(function () use ($registration) {
+            // Files BEFORE the row, while the paths are still readable.
+            // `photo`/`club_logo` are the trait's; this one is not declared
+            // there, so it is done by hand.
+            if ($registration->payment_proof) {
+                rescue(fn () => \Illuminate\Support\Facades\Storage::disk('local')
+                    ->delete($registration->payment_proof), null, false);
+            }
+
+            $registration->delete();
+        });
+
+        // The entrant set changed — the package re-cuts an automatic draw, and
+        // lifts them out of their slot in a hand-arranged one.
+        $this->registry->for($event)->onEntrantsChanged($event, $category);
+
+        // They did not do this themselves, so they must hear it from us rather
+        // than by turning up. Skipped for an entry nobody has claimed: there is
+        // an account behind it, but no person reading it yet.
+        // `$notify` is false only when the CALLER is telling them something
+        // truer. A granted withdrawal removes the entry through this same
+        // method, and "an organiser removed you from the event" is the wrong
+        // sentence for a departure the athlete asked for — App\Events\Support\
+        // Withdrawal sends "your withdrawal was granted" instead. Defaults to
+        // true, so every existing caller is unchanged.
+        if ($notify && $athleteId && $registration->entry_state !== 'unclaimed') {
+            $this->notifyRemoved($event, $athleteId, $actor);
+        }
+
+        return [
+            'ok' => true,
+            'row' => [
+                'registration_id' => $registration->id,
+                'user_id' => $athleteId,
+                'name' => $name,
+                'division' => $category?->name,
+                'had_proof' => (bool) $proof,
+            ],
+        ];
+    }
+
+    /**
+     * Has this entry already been in a decided bout?
+     *
+     * Asks the MATCH table directly rather than the owning package, because the
+     * question is the same for every sport that draws a bracket and a type that
+     * draws none has no rows here to find.
+     */
+    private function hasFought(ClubEvent $event, ClubEventRegistration $registration): bool
+    {
+        return \App\Models\EventMatch::where('event_id', $event->id)
+            ->where(fn ($q) => $q
+                ->where('a_competitor_id', $registration->id)
+                ->orWhere('b_competitor_id', $registration->id))
+            ->where(fn ($q) => $q->whereNotNull('winner')->orWhere('status', 'done'))
+            ->exists();
+    }
+
+    /** Tell somebody their entry was withdrawn, and by whose club. */
+    private function notifyRemoved(ClubEvent $event, int $athleteId, User $actor): void
+    {
+        rescue(fn () => UserNotification::notifyUser($athleteId, 'event', __('events.entry_removed_notify_title', [
+            'title' => $event->title,
+        ]), [
+            'body' => __('events.entry_removed_notify_body', ['club' => $event->tenant?->club_name ?? '']),
+            'icon' => 'bi-person-dash',
+            'action_url' => route('me.events.show', $event->uuid),
+            'actor_id' => $actor->id,
+            'tenant_id' => $event->tenant_id,
+            'subject_type' => (new ClubEvent)->getMorphClass(),
+            'subject_id' => $event->id,
+        ]), null, false);
     }
 
     private function notifyEntered(ClubEvent $event, User $athlete, User $actor, ?string $division): void

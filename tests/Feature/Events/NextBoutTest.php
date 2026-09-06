@@ -7,11 +7,11 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\HealthRecord;
+use App\Members\Models\HealthRecord;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserNotification;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserNotification;
+use App\Members\Models\UserRelationship;
 use Tests\TestCase;
 
 /**
@@ -385,28 +385,58 @@ class NextBoutTest extends TestCase
         $this->actingAs($this->coach)->get("/me/events/{$event->uuid}/board")->assertOk();
     }
 
-    /* ---------------- Push priority ---------------- */
+    /* ---------------- Notification priority ---------------- */
 
+    /**
+     * A call to the mat must ring through a silenced phone; a warm-up nudge
+     * must not.
+     *
+     * The distinction used to ride on the Firebase payload. Firebase is gone —
+     * the tray is served by the app's own MQTT foreground service now — so the
+     * flag rides on the broker payload instead, and the native side posts an
+     * urgent one on its own high-importance channel. Same promise, one transport
+     * fewer: routine notifications can never train somebody to silence the app
+     * and then miss the message that means "you are fighting now".
+     */
     public function test_only_the_call_room_summons_is_marked_urgent(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        $spy = new class implements \Takeone\Realtime\Contracts\Publisher
+        {
+            public array $sent = [];
+
+            public function publish(string $topic, array $payload): bool
+            {
+                $this->sent[] = ['topic' => $topic, 'payload' => $payload];
+
+                return true;
+            }
+
+            public function publishMany(array $messages): bool
+            {
+                foreach ($messages as $m) {
+                    $this->publish($m['topic'], $m['payload']);
+                }
+
+                return true;
+            }
+        };
+        $this->app->instance(\Takeone\Realtime\Contracts\Publisher::class, $spy);
+        config(['realtime.enabled' => true]);
 
         [$event, $cat] = $this->scenario();
         $first = $cat->matches()->where('court', 'Mat 1')->where('match_no', 1)->first();
         $this->package()->recordOutcome($event, $first->id, ['winner' => 'a']);
 
-        $urgent = [];
-        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendPushNotification::class,
-            function ($job) use (&$urgent) {
-                $urgent[] = [$job->body, (bool) ($job->options['urgent'] ?? false)];
+        $notifications = collect($spy->sent)
+            ->filter(fn ($m) => str_ends_with($m['topic'], '/notifications'))
+            // The wording lives in `subject`; `body` carries the mat and the
+            // opponent. Match on the line the athlete actually reads as the alert.
+            ->map(fn ($m) => [(string) ($m['payload']['subject'] ?? ''), (bool) ($m['payload']['urgent'] ?? false)]);
 
-                return true;
-            });
+        $summons = $notifications->filter(fn ($r) => str_contains($r[0], 'call room'));
+        $warmups = $notifications->filter(fn ($r) => str_contains($r[0], 'Warm up'));
 
-        $summons = collect($urgent)->filter(fn ($r) => str_contains($r[0], 'call room'));
-        $warmups = collect($urgent)->filter(fn ($r) => str_contains($r[0], 'Warm up'));
-
-        $this->assertNotEmpty($summons);
+        $this->assertNotEmpty($summons, 'nobody was called to the mat');
         $this->assertTrue($summons->every(fn ($r) => $r[1] === true), 'the summons must ring through an idle phone');
         $this->assertTrue($warmups->every(fn ($r) => $r[1] === false), 'the warm-up nudge must not');
     }

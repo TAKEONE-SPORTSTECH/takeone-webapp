@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ClubEvent;
-use App\Models\UserNotification;
+use App\Members\Models\UserNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

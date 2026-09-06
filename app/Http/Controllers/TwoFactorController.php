@@ -163,7 +163,7 @@ class TwoFactorController extends Controller
             return redirect()->route('login');
         }
 
-        $user = \App\Models\User::findOrFail($userId);
+        $user = \App\Members\Models\User::findOrFail($userId);
         $secret = decrypt($user->two_factor_secret);
         $code = trim($request->code);
 
@@ -238,7 +238,7 @@ class TwoFactorController extends Controller
         )->all();
     }
 
-    private function useRecoveryCode(\App\Models\User $user, string $code): bool
+    private function useRecoveryCode(\App\Members\Models\User $user, string $code): bool
     {
         if (! $user->two_factor_recovery_codes) {
             return false;

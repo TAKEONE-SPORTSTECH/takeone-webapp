@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Members\Models\User;
 
 /**
  * A person appointed to officiate one event — by default, the jury.
@@ -49,8 +50,20 @@ class EventOfficial extends Model
         return [self::COMP_VOLUNTEER, self::COMP_PAID];
     }
 
+    /**
+     * The role that means "a job this competition needs that we have no word
+     * for". Its wording lives in `role_label`.
+     *
+     * Deliberately a fixed VALUE with a separate label, not free text in
+     * `role`: EventAccess reads `role`, so a typed-in `jury` would be an access
+     * grant by spelling. `other` is treated as a mat role — no club membership
+     * required, and none of the four access powers.
+     */
+    public const ROLE_OTHER = 'other';
+
     protected $fillable = [
         'event_id',
+        'role_label',
         'user_id',
         'role',
         'assigned_by',

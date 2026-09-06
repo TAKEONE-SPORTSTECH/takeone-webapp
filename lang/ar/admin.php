@@ -2121,25 +2121,25 @@ return [
     'transaction_detail_modal_status_unpaid' => 'غير مدفوع',
     'transaction_detail_modal_title' => 'تفاصيل المعاملة',
     'transaction_detail_modal_upload_admin_proof' => 'رفع إثبات من الإدارة (اختياري)',
-    'error_log_subtitle' => 'ÙØ§ Ø­Ø¯Ø« ÙØ¹ÙØ§ÙØ ÙÙÙØ¨ÙÙÙØº Ø¹ÙÙ Ø¨Ø¯ÙØ© ÙØ§ Ø¨ÙØµÙ Ø¹Ø§Ù.',
-    'error_log_entries' => 'ÙØ¯Ø®ÙØ§Øª',
-    'error_log_refresh' => 'ØªØ­Ø¯ÙØ«',
-    'error_log_copy' => 'ÙØ³Ø® Ø§ÙÙÙ',
-    'error_log_copied' => 'ØªÙ ÙØ³Ø® Ø§ÙØ³Ø¬Ù',
-    'error_log_nothing_to_copy' => 'ÙØ§ Ø´ÙØ¡ ÙÙØ³Ø®Ù',
-    'error_log_search' => 'Ø¨Ø­Ø«',
-    'error_log_search_hint' => 'Ø±Ø³Ø§ÙØ© Ø£Ù ÙÙÙ Ø£Ù ØµÙÙ…',
-    'error_log_level' => 'Ø§ÙÙØ³ØªÙÙ',
-    'error_log_all_levels' => 'ÙÙ Ø§ÙÙØ³ØªÙÙØ§Øª',
-    'error_log_show' => 'Ø¥Ø¸ÙØ§Ø±',
-    'error_log_n_entries' => '{1} ÙØ¯Ø®Ù ÙØ§Ø­Ø¯|[2,*] :count ÙØ¯Ø®ÙØ§Øª',
-    'error_log_apply' => 'ØªØµÙÙØ©',
-    'error_log_trace' => 'Ø§ÙØªØªØ¨ÙØ¹',
-    'error_log_file_size' => ':size Ù.Ø¨',
-    'error_log_tail_only' => 'ÙÙØ¹Ø±Ø¶ Ø¢Ø®Ø± Ø¬Ø²Ø¡ ÙÙ Ø§ÙÙÙÙ',
-    'error_log_no_file' => 'ÙØ§ ÙÙØ¬Ø¯ ÙÙÙ Ø³Ø¬Ù Ø¨Ø¹Ø¯',
-    'error_log_none' => 'ÙØ§ Ø´ÙØ¡ ÙØ³Ø¬ÙÙ',
-    'error_log_none_hint' => 'ÙØ§ ÙØ¯Ø®ÙØ§Øª ØªØ·Ø§Ø¨Ù ÙØ°Ù Ø§ÙØªØµÙÙØ©.',
+    'error_log_subtitle' => 'ما حدث فعلاً، ليُبلَّغ عنه بدقة لا بوصف عام.',
+    'error_log_entries' => 'مدخلات',
+    'error_log_refresh' => 'تحديث',
+    'error_log_copy' => 'نسخ الكل',
+    'error_log_copied' => 'تم نسخ السجل',
+    'error_log_nothing_to_copy' => 'لا شيء لنسخه',
+    'error_log_search' => 'بحث',
+    'error_log_search_hint' => 'رسالة أو ملف أو صنف…',
+    'error_log_level' => 'المستوى',
+    'error_log_all_levels' => 'كل المستويات',
+    'error_log_show' => 'إظهار',
+    'error_log_n_entries' => '{1} مدخل واحد|[2,*] :count مدخلات',
+    'error_log_apply' => 'تصفية',
+    'error_log_trace' => 'التتبّع',
+    'error_log_file_size' => ':size ك.ب',
+    'error_log_tail_only' => 'يُعرض آخر جزء من الملف',
+    'error_log_no_file' => 'لا يوجد ملف سجل بعد',
+    'error_log_none' => 'لا شيء مسجّل',
+    'error_log_none_hint' => 'لا مدخلات تطابق هذه التصفية.',
     'partials_member_popup_edit' => 'تعديل العضو',
     'partials_member_popup_preview_public' => 'معاينة الملف العام',
     'partials_member_popup_share_public' => 'مشاركة الملف العام',

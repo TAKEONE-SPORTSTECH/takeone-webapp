@@ -196,7 +196,7 @@
                     <!-- Actions -->
                         <div class="flex justify-between mt-4 pt-3 border-t">
                             <a href="{{ route('admin.platform.clubs') }}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-2"></i>{{ __('shared.cancel') }}
+                                <i class="bi bi-chevron-left me-2"></i>{{ __('shared.cancel') }}
                             </a>
                             <button type="submit" class="btn text-white" style="background: linear-gradient(135deg, hsl(250 65% 66%) 0%, hsl(262 60% 56%) 100%);">
                                 <i class="bi bi-check-circle me-2"></i>{{ __('platform.platform_clubs_add_create_club') }}

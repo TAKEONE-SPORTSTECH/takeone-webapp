@@ -7,6 +7,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Horizon\Horizon;
@@ -35,6 +36,28 @@ class AppServiceProvider extends ServiceProvider
         Relation::morphMap(\App\Support\MorphMap::map());
 
         /*
+         * The event management screens, mirrored INSIDE the public event page.
+         *
+         * A shared competition link is a standalone app: nothing inside it may
+         * hand the reader to the platform behind it — including the organiser
+         * who signs in to run the event. The mirror re-serves every screen
+         * under /e/{uuid}/admin/… through the event's own shell.
+         *
+         * Hung on the `Routing` event — dispatched immediately before the router
+         * matches — rather than on `booted()`. The routes being cloned are
+         * declared across several module route files, and ModuleServiceProvider
+         * loads those in a `booted()` callback of its OWN: two callbacks in one
+         * queue is a race, and it lost it in php-fpm while winning it under the
+         * console kernel, so the mirror existed in every test and in none of the
+         * browser's requests. The `Routing` event has no such ambiguity: by the
+         * time it fires, every route file has been loaded.
+         */
+        Event::listen(
+            \Illuminate\Routing\Events\Routing::class,
+            fn () => \App\Events\Support\SealedEventRoutes::register(),
+        );
+
+        /*
          * Keep the profile's Affiliations and Tournaments tabs in step with what
          * the club actually did. Those tabs read the member's self-reported log;
          * `memberships` and `club_event_registrations` are the authoritative
@@ -45,11 +68,11 @@ class AppServiceProvider extends ServiceProvider
          * club or entering an event must never fail because a profile row could
          * not be written. See App\Support\ProfileHistorySync.
          */
-        \App\Models\Membership::observe(\App\Observers\MembershipObserver::class);
+        \App\Members\Models\Membership::observe(\App\Observers\MembershipObserver::class);
         \App\Models\ClubEventRegistration::observe(\App\Observers\ClubEventRegistrationObserver::class);
 
         // A new avatar joins the profile's own pictures, whichever path set it.
-        \App\Models\User::observe(\App\Observers\UserObserver::class);
+        \App\Members\Models\User::observe(\App\Observers\UserObserver::class);
 
         // Horizon dashboard — super-admin only
         Horizon::auth(function (Request $request) {
@@ -114,6 +137,41 @@ class AppServiceProvider extends ServiceProvider
         // Club join / subscription creation: 5 per minute per authenticated user.
         RateLimiter::for('join-club', function (Request $request) {
             return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
+        });
+
+        /*
+         * The PUBLIC ENTRY door — the page a competitor with no account opens
+         * to enter a competition, and the club search inside it.
+         *
+         * The same NAT lesson as `screen-token` below, on the surface where it
+         * costs the most. A venue is ONE address: the whole hall is on the
+         * house wifi, and a coach opening this for eight athletes, plus every
+         * competitor checking the page on their own phone, all arrive from that
+         * one IP. At 30 a minute the allowance was spent in seconds and the
+         * next person to tap "enter this competition" — someone who has never
+         * used the platform and has nothing to retry with — got a bare 429.
+         * The front door is the one page that must not refuse.
+         *
+         * A page read is cheap and writes nothing, so it is generous. There is
+         * no per-user key available here by definition: whoever is asking has
+         * no account yet, which is the entire point of the door.
+         */
+        RateLimiter::for('public-entry', function (Request $request) {
+            return Limit::perMinute(120)->by($request->ip());
+        });
+
+        /*
+         * Committing an entry. This one WRITES — it creates a person and an
+         * entry — so it stays far tighter than the page around it, but it is
+         * lifted off 5 for the same NAT reason: five entries a minute for an
+         * entire venue meant a club registering its squad locked out everybody
+         * else in the building. Twenty still bounds a scripted abuser hard,
+         * and the real protections are elsewhere: validation, one entry per
+         * person per event, and a competitor who must supply what only they
+         * know.
+         */
+        RateLimiter::for('public-entry-write', function (Request $request) {
+            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
         });
 
         // A screen asking about ITSELF — its board, its own status.

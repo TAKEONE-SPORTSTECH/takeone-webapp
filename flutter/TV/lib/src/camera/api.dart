@@ -66,6 +66,15 @@ class CameraApi {
     bool? recording,
     String? deviceName,
     String? appVersion,
+    /// How this camera is actually filming — frame rate, zoom, exposure and
+    /// whether it uploads a bout by itself. Reported so the mat's panel can
+    /// show what IS beside what was asked for; the server never treats it as
+    /// an instruction.
+    Map<String, dynamic>? settings,
+    /// The local refs of every clip still on this phone. The server keeps a
+    /// clip's row forever, but the FILE can be deleted here — without this the
+    /// scoring table would go on offering to upload a recording that is gone.
+    List<String>? inventory,
   }) =>
       token == null
           ? Future.value(null)
@@ -76,6 +85,11 @@ class CameraApi {
               if (recording != null) 'recording': recording,
               if (deviceName != null) 'device_name': deviceName,
               if (appVersion != null) 'app_version': appVersion,
+              if (settings != null) 'settings': settings,
+              // Capped here as well as at the server: a phone that has filmed a
+              // whole championship must not turn its own beat into a 500-item
+              // payload every thirty seconds.
+              if (inventory != null) 'inventory': inventory.take(200).toList(),
             });
 
   /// "I finished a clip, and it is this bout."

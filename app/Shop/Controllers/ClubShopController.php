@@ -7,7 +7,7 @@ use App\Shop\Models\ClubProduct;
 use App\Shop\Models\ClubProductCategory;
 use App\Shop\Models\ClubProductVariant;
 use App\Clubs\Models\Tenant;
-use App\Models\UserNotification;
+use App\Members\Models\UserNotification;
 use App\Services\FinancialService;
 use \App\Shop\Services\StockAlertService;
 use App\Support\ClubView;

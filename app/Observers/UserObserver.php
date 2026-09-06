@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * Keeps a member's several pictures in step with their avatar.

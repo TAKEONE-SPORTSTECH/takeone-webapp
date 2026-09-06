@@ -234,7 +234,7 @@
                 </div>
                 <div>
                     <button type="button" class="btn btn-outline-secondary me-2" x-show="activeTab !== tabs[0]" @click="prevTab()">
-                        <i class="bi bi-arrow-left me-1"></i>{{ __('shared.components_profile_modal_previous') }}
+                        <i class="bi bi-chevron-left me-1"></i>{{ __('shared.components_profile_modal_previous') }}
                     </button>
                     {{-- Follows the tab list rather than naming the last tab, so a
                          conditional tab (Security) does not strand the Next button. --}}
@@ -498,7 +498,7 @@ function {{ $alpineComponent }}() {
 
             // Global callback for cropper
             window.imageUploadSuccess = (result) => {
-                const url = result?.url || (result?.path ? window.location.origin + '/storage/' + result.path : null);
+                const url = result?.url || (result?.path ? window.location.origin + '/file/' + result.path : null);
                 if (url) {
                     this.updateProfilePicturePreview(url);
                     this.syncProfilePicsOnPage(url);

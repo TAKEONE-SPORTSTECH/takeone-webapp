@@ -71,15 +71,65 @@
                     </div>
                 @endif
 
+                {{-- ===== What they are entering =====
+
+                     Selection cards rather than a dropdown, per the Mobile
+                     Pattern Language: a short, known set of choices belongs on
+                     the surface where a thumb can reach it, and an absolutely
+                     positioned panel inside this scrolling body would be clipped
+                     by it anyway.
+
+                     Ticking any number is the whole point — Gi AND No-Gi is a
+                     competitor entering two divisions, not a mistake — so these
+                     are checkboxes, and the amount above adds up as they go. --}}
+                <div x-show="feeOptions().length" x-cloak>
+                    <p class="text-sm font-bold text-foreground mb-2">{{ __('events.fee_select_options') }}</p>
+
+                    <div class="space-y-2">
+                        <template x-for="opt in feeOptions()" :key="opt.key">
+                            <button type="button" @click="toggleFeeOption(opt.key)"
+                                    :class="chosenOptions.includes(opt.key) ? 'border-primary bg-primary/5' : 'border-gray-200'"
+                                    class="m-press w-full rounded-xl border-2 p-3 flex items-center gap-3 text-start transition-colors">
+                                <span class="w-6 h-6 rounded-md border-2 grid place-items-center flex-shrink-0 transition-colors"
+                                      :class="chosenOptions.includes(opt.key) ? 'bg-primary border-primary text-white' : 'border-gray-300 bg-white'">
+                                    <i class="bi bi-check-lg text-[13px] font-black" x-show="chosenOptions.includes(opt.key)" x-cloak></i>
+                                </span>
+                                <span class="flex-1 min-w-0">
+                                    <span class="block text-[13px] font-bold text-foreground truncate" x-text="opt.label"></span>
+                                </span>
+                                <span class="text-[13px] font-bold text-primary flex-shrink-0" x-text="opt.display"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- The penalty, said before they commit rather than discovered
+                     on the total. It is charged by the server on its own clock,
+                     so this is a warning, never the decision. --}}
+                <div x-show="fees.late_active && joinRole === 'participant'" x-cloak
+                     class="rounded-xl p-3 flex items-start gap-2 text-[12px] font-semibold"
+                     style="background: #fef3c7; color: #92400e;">
+                    <i class="bi bi-clock-history mt-0.5"></i>
+                    <span x-text="lateFeeNote()"></span>
+                </div>
+
                 {{-- The amount, stated once and plainly. A free place has no
                      amount and no method: the sheet is then only the club
-                     question and a confirm. --}}
+                     question and a confirm.
+
+                     `joinTotal` rather than the event's headline: with options
+                     ticked the headline is the floor, and showing a competitor
+                     a number they are not about to be charged is how billing
+                     arguments start. --}}
                 <div x-show="joinFee" x-cloak class="rounded-2xl bg-muted/40 p-4 flex items-center justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                             {{ __('personal.event_show_join_amount_due') }}
                         </p>
-                        <p class="text-2xl font-extrabold text-primary mt-0.5 truncate" x-text="joinFee"></p>
+                        <p class="text-2xl font-extrabold text-primary mt-0.5 truncate" x-text="joinTotal()"></p>
+                        {{-- The breakdown, so the number can always be taken
+                             apart by the person paying it. --}}
+                        <p class="text-[11px] text-muted-foreground mt-0.5 truncate" x-show="feeBreakdown()" x-cloak x-text="feeBreakdown()"></p>
                     </div>
                     <div class="w-11 h-11 rounded-xl bg-white grid place-items-center flex-shrink-0 shadow-sm">
                         <i class="bi bi-cash-coin text-primary text-xl"></i>

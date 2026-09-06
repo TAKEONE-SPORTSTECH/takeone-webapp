@@ -93,7 +93,7 @@
             <div x-show="formData.image_path && !formData.remove_image">
                 <p class="text-xs text-muted-foreground mb-1">{{ __('admin.partials_perk_form_fields_current_image') }}</p>
                 <div class="relative inline-block">
-                    <img :src="'/storage/' + formData.image_path"
+                    <img :src="'/file/' + formData.image_path"
                          class="rounded-xl object-cover" style="height:80px;max-width:100%;" alt="{{ __('admin.partials_perk_form_fields_current_alt') }}">
                     <button type="button"
                             class="absolute top-1 end-1 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow text-red-500 text-xs"

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Characterization;
 
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\Feature\Contracts\ContractTestCase;
 
 /**

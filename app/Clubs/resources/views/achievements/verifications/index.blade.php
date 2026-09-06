@@ -9,7 +9,7 @@
             <div class="flex items-center gap-2">
                 <a href="{{ route('admin.club.achievements', $club->slug ?? $club->id) }}" data-shell-link data-route="admin.club.achievements"
                    class="w-8 h-8 rounded-lg flex items-center justify-center bg-card text-foreground hover:bg-accent transition-all border border-border" title="{{ __('Back to achievements') }}">
-                    <i class="bi bi-arrow-left rtl:rotate-180"></i>
+                    <i class="bi bi-chevron-left"></i>
                 </a>
                 <h2 class="text-xl font-bold text-foreground">{{ __('Verification requests') }}</h2>
             </div>

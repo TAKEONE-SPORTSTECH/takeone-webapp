@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ClubEvent;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**
@@ -37,6 +37,14 @@ class ExploreEventsTest extends TestCase
         ], $attrs));
     }
 
+    /** Begin an event for real — `started_at` is guarded, so it is force-filled. */
+    private function start(ClubEvent $event): ClubEvent
+    {
+        $event->forceFill(['started_at' => now()->subHours(2)])->save();
+
+        return $event;
+    }
+
     public function test_it_requires_authentication(): void
     {
         $this->getJson('/explore/events')->assertUnauthorized();
@@ -44,21 +52,30 @@ class ExploreEventsTest extends TestCase
 
     public function test_it_returns_events_that_have_not_started_and_those_running_now(): void
     {
+        // Frozen at midday: the relative times below (+8h, +5h) would otherwise
+        // roll past midnight when the suite runs in the evening, and an
+        // end_time earlier than its start_time reads as already finished.
+        $this->travelTo(\Carbon\Carbon::parse('2026-06-15 12:00:00'));
+
         $user = $this->createUser();
         $club = $this->clubFor($user);
 
-        $this->event($club, [
+        // `live` follows ClubEvent::hasStarted(), which is `started_at !== null`
+        // — the organiser's decision to begin, deliberately NOT the clock (see
+        // the method's docblock). An event whose start time has passed but which
+        // nobody started is late, not running. These two were started for real.
+        $this->start($this->event($club, [
             'title' => 'Running now',
             'date' => now()->toDateString(),
             'start_time' => now()->subHours(2)->format('H:i:s'),
             'end_time' => now()->addHours(3)->format('H:i:s'),
-        ]);
-        $this->event($club, [
+        ]));
+        $this->start($this->event($club, [
             'title' => 'Multi-day, still running',
             'date' => now()->subDays(2)->toDateString(),
             'end_date' => now()->addDay()->toDateString(),
             'end_time' => '18:00:00',
-        ]);
+        ]));
         $this->event($club, [
             'title' => 'Later today',
             'date' => now()->toDateString(),
@@ -70,6 +87,14 @@ class ExploreEventsTest extends TestCase
             'date' => now()->addMonth()->toDateString(),
             'end_time' => '17:00:00',
         ]);
+        // Its scheduled start passed an hour ago and nobody pressed start: it is
+        // still listed, and it is still `upcoming`.
+        $this->event($club, [
+            'title' => 'Overdue, never started',
+            'date' => now()->toDateString(),
+            'start_time' => now()->subHour()->format('H:i:s'),
+            'end_time' => now()->addHours(5)->format('H:i:s'),
+        ]);
 
         $response = $this->actingAs($user->fresh())->getJson('/explore/events')->assertOk();
 
@@ -77,15 +102,16 @@ class ExploreEventsTest extends TestCase
         $states = collect($response->json('events'))->pluck('state', 'title')->all();
 
         $this->assertEqualsCanonicalizing(
-            ['Running now', 'Multi-day, still running', 'Later today', 'Next month'],
+            ['Running now', 'Multi-day, still running', 'Later today', 'Next month', 'Overdue, never started'],
             $titles
         );
         $this->assertSame('live', $states['Running now']);
         $this->assertSame('live', $states['Multi-day, still running']);
         $this->assertSame('upcoming', $states['Later today']);
         $this->assertSame('upcoming', $states['Next month']);
+        $this->assertSame('upcoming', $states['Overdue, never started']);
         $this->assertSame(2, $response->json('live'));
-        $this->assertSame(2, $response->json('upcoming'));
+        $this->assertSame(3, $response->json('upcoming'));
     }
 
     public function test_it_excludes_finished_cancelled_and_archived_events(): void

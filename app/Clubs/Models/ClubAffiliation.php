@@ -6,10 +6,10 @@ use App\Traits\HasVerificationState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\AffiliationMedia;
+use App\Members\Models\AffiliationMedia;
 use App\Models\ClubMemberSubscription;
-use App\Models\SkillAcquisition;
-use App\Models\User;
+use App\Members\Models\SkillAcquisition;
+use App\Members\Models\User;
 
 class ClubAffiliation extends Model
 {

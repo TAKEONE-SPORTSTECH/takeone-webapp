@@ -113,6 +113,17 @@
 })();
 </script>
 <title>{{ __('events.screen_title') }}</title>
+{{-- The mark, as the tab icon. Served by US, like the fonts and the QR above:
+     a venue's wifi is captive or filtered as often as not, so nothing here may
+     depend on the open internet. `asset()` rather than a written path, so it
+     follows APP_URL and picks up the deploy's cache-busting like every other
+     icon on the platform (layouts/app.blade.php declares the same file).
+
+     It earns its place on a screen: a paired tablet at a scoring table lives in
+     a browser with several tabs open, and an unlabelled default favicon is how
+     an official ends up scoring on the wrong mat. --}}
+<link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+<link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
 
 <style>
 @php

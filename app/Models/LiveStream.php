@@ -6,6 +6,7 @@ use App\Events\Support\EventAccess;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Members\Models\User;
 
 /**
  * One mat, broadcasting.

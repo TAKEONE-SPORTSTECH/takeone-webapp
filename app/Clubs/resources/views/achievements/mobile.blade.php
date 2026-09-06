@@ -294,7 +294,7 @@ $achievementsJson = $achievements->map(function ($a) {
             achExistingImages.forEach(function (path, idx) {
                 var wrap = document.createElement('div');
                 wrap.className = 'relative group';
-                wrap.innerHTML = '<img src="/storage/' + path + '" class="w-20 h-20 object-cover rounded-lg border border-border" onerror="this.parentElement.style.display=\'none\'">' +
+                wrap.innerHTML = '<img src="/file/' + path + '" class="w-20 h-20 object-cover rounded-lg border border-border" onerror="this.parentElement.style.display=\'none\'">' +
                     '<button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"><i class="bi bi-x"></i></button>';
                 wrap.querySelector('button').addEventListener('click', function () { achExistingImages.splice(idx, 1); window.renderAchievementExistingThumbnails(achExistingImages); });
                 previews.appendChild(wrap);

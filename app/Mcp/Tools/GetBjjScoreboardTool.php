@@ -2,8 +2,8 @@
 
 namespace App\Mcp\Tools;
 
-use App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\Ledger;
-use App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\MatState;
+use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\Ledger;
+use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatState;
 use App\Events\Support\EventAccess;
 use App\Models\ClubEvent;
 use Illuminate\Contracts\JsonSchema\JsonSchema;

@@ -3,7 +3,7 @@
 namespace App\Events\Sports\Taekwondo\Tournament;
 
 use App\Models\ClubEventRegistration;
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * Which picture the screens show for a competitor.
@@ -49,7 +49,10 @@ class CompetitorPhoto
 
     public function url(?ClubEventRegistration $entry, ?User $user, ?int $eventId = null): ?string
     {
-        if ($entry?->photo) {
+        // Only when the bytes are there. A path with no file behind it used to
+        // win anyway and stop the fall-through, blanking a competitor whose
+        // profile picture was fine. See App\Events\Support\EntryPhoto::showable().
+        if (\App\Events\Support\EntryPhoto::showable($entry?->photo)) {
             return file_url($entry->photo);
         }
 

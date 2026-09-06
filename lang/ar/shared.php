@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'language' => 'اللغة',
     'language_updated' => 'تم تحديث اللغة',
     'save'             => 'حفظ',
     'cancel'           => 'إلغاء',
@@ -129,7 +130,7 @@ return [
     'tabs_identity_branding_logo_help_2' => 'يُستخدم كشعار رئيسي وأيقونة مفضلة',
     'tabs_identity_branding_cover_image' => 'صورة الغلاف',
     'tabs_identity_branding_upload_cover' => 'رفع الغلاف',
-    'tabs_identity_branding_cover_help_1' => 'صورة بانر عريضة (1200×400 بكسل)',
+    'tabs_identity_branding_cover_help_1' => 'صورة بانر عريضة (1920×1080 بكسل)',
     'tabs_identity_branding_cover_help_2' => 'تُستخدم لرأس ملف النادي',
     'tabs_identity_branding_reg_splash' => 'صورة شاشة البداية للتسجيل',
     'tabs_identity_branding_reg_splash_desc' => 'صورة عمودية مخصصة تُعرض كخلفية لصفحة التسجيل الذاتي لهذا النادي. هذه <strong>ليست</strong> صورة الغلاف — ارفع صورة طويلة بشكل الهاتف. تُظهر المعاينة الحية كيف ستبدو تماماً خلف الشعار واسم النادي ومنتقي اللغة.',
@@ -139,6 +140,9 @@ return [
     'tabs_identity_branding_crop_logo' => 'قص الشعار',
     'tabs_identity_branding_crop_cover' => 'قص صورة الغلاف',
     'tabs_identity_branding_crop_splash' => 'قص صورة شاشة البداية',
+    'tabs_identity_branding_crop_shape' => 'شكل القص',
+    'tabs_identity_branding_shape_square' => 'مربع',
+    'tabs_identity_branding_shape_circle' => 'دائري',
     'tabs_identity_branding_zoom' => 'تكبير',
     'tabs_identity_branding_rotation' => 'تدوير',
     'tabs_identity_branding_save_apply' => 'حفظ وتطبيق',

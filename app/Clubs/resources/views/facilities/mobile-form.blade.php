@@ -236,7 +236,7 @@ window.facilityFormSheet = function () {
                     <div class="grid grid-cols-3 gap-2">
                         <template x-for="(img, i) in keptImages" :key="'k' + i">
                             <div class="relative">
-                                <img :src="'/storage/' + img" alt="" class="w-full h-20 object-cover rounded-xl border border-gray-100">
+                                <img :src="'/file/' + img" alt="" class="w-full h-20 object-cover rounded-xl border border-gray-100">
                                 <button type="button" @click="removeKept(i)" class="m-press absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white grid place-items-center text-xs"><i class="bi bi-x"></i></button>
                             </div>
                         </template>

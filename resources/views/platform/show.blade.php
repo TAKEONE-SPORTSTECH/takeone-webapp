@@ -328,7 +328,7 @@
                 // Resolve linked-athlete user ids -> uuids for member-profile links (single query).
                 $achAthleteIds = $achievements->flatMap(fn ($a) => collect($a->athletes ?? [])->pluck('user_id'))->filter()->unique()->values();
                 $achAthleteUuidMap = $achAthleteIds->isNotEmpty()
-                    ? \App\Models\User::whereIn('id', $achAthleteIds)->pluck('uuid', 'id')->toArray()
+                    ? \App\Members\Models\User::whereIn('id', $achAthleteIds)->pluck('uuid', 'id')->toArray()
                     : [];
                 $achievementsJson = $achievements->map(function($a) use ($achAthleteUuidMap) {
                     $combined = array_values(array_filter(array_merge(
@@ -1539,7 +1539,7 @@ window.addEventListener('facility-saved', function (e) {
     const grid = document.getElementById('facilities-grid');
     if (!grid) return;
     const empty = grid.querySelector('.col-span-2.text-center'); if (empty) empty.remove();
-    const imgs = (f.images || []).map(p => '/storage/' + p);
+    const imgs = (f.images || []).map(p => '/file/' + p);
     const media = imgs.length
         ? `<div class="fac-slideshow" data-images='${JSON.stringify(imgs)}'><img src="${imgs[0]}" class="fac-preview" alt=""></div>`
         : `<div class="fac-placeholder"><i class="bi bi-building text-white text-3xl"></i></div>`;
@@ -2107,7 +2107,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const rows = members.map(m => {
             const initials = m.name.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
             const avatar   = m.profile_picture
-                ? `<img src="/storage/${escapeHtml(m.profile_picture)}" class="w-10 h-10 rounded-full object-cover">`
+                ? `<img src="/file/${escapeHtml(m.profile_picture)}" class="w-10 h-10 rounded-full object-cover">`
                 : `<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">${initials}</div>`;
 
             if (m.already_collected) {
@@ -2331,7 +2331,7 @@ function selectPackageApp() {
                         name: m.name,
                         gender: m.gender || '',
                         dateOfBirth: m.birthdate || '',
-                        avatarUrl: m.profile_picture ? '/storage/' + m.profile_picture : null,
+                        avatarUrl: m.profile_picture ? '/file/' + m.profile_picture : null,
                         relationship: m.relationship,
                         isMember: m.is_member || false,
                     }));

@@ -3,7 +3,7 @@
 namespace App\Traits;
 
 use App\Models\ClubMemberSubscription;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Collection;
 
 /**

@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
-use App\Models\InstructorReview;
-use App\Models\User;
+use App\Trainers\Models\InstructorReview;
+use App\Members\Models\User;
 
 class ClubInstructor extends Model
 {

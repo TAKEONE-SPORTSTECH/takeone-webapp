@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Business;
-use App\Models\Challenge;
-use App\Models\ChallengeParticipation;
+use App\Challenges\Models\Challenge;
+use App\Challenges\Models\ChallengeParticipation;
 use App\Clubs\Models\ClubActivity;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
@@ -19,12 +19,12 @@ use App\Clubs\Models\ClubTimelinePost;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubTimelinePostLike;
 use App\Clubs\Models\ClubTransaction;
-use App\Models\Duel;
-use App\Models\Membership;
+use App\Challenges\Models\Duel;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserPost;
-use App\Models\UserScheduleSession;
+use App\Members\Models\User;
+use App\Members\Models\UserPost;
+use App\Members\Models\UserScheduleSession;
 use App\Support\DemoManifest;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;

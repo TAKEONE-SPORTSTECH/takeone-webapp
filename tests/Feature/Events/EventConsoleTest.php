@@ -6,7 +6,7 @@ use App\Models\ClubEvent;
 use App\Models\EventCategory;
 use App\Models\EventOfficial;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**
@@ -120,7 +120,18 @@ class EventConsoleTest extends TestCase
         $this->assertStringNotContainsString('@click="financeOpen=true"', $html, 'an official was offered the P&L');
         $this->assertStringNotContainsString('@click="deleteEvent()"', $html, 'an official was offered the danger zone');
         $this->assertStringNotContainsString('@click="cancelEvent()"', $html, 'an official was offered the danger zone');
-        $this->assertStringNotContainsString('/entry-roster', $html, 'an official was offered entry management');
+        // CHANGED — '/entry-roster' is ALSO a bare URL string inside the shared
+        // Alpine root (partials/event-show-script) that the console and the
+        // public page both include, so its presence proves nothing either: the
+        // same false positive the comment above describes for cancelEvent().
+        // What matters is that no LINK offers it and the endpoint itself
+        // refuses them, which is the stronger claim.
+        $this->assertStringNotContainsString(
+            'href="'.route('me.events.entry-roster', $event->uuid).'"',
+            $html, 'an official was offered entry management');
+        $this->actingAs($scale)
+            ->getJson(route('me.events.entry-roster', $event->uuid))
+            ->assertForbidden();
     }
 
     public function test_the_organiser_is_offered_the_whole_console(): void
@@ -132,7 +143,22 @@ class EventConsoleTest extends TestCase
         $html = $this->actingAs($organiser->fresh())
             ->get("/me/events/{$event->uuid}/manage")->assertOk()->getContent();
 
-        foreach (['@click="financeOpen=true"', '@click="deleteEvent()"', '@click="cancelEvent()"', '@click="openResults()"', '/entry-roster', '/officials', 'eventChecklist'] as $needle) {
+        // CHANGED — the officials card now opens the OFFICIATING SHEET
+        // (me.events.officiating), not the `/officials` JSON endpoint of the
+        // same name, which rendered as raw JSON when linked. Asserting the
+        // rendered href rather than a loose substring also stops a URL that
+        // merely appears in the shared Alpine root from passing for a door.
+        $needles = [
+            '@click="financeOpen=true"',
+            '@click="deleteEvent()"',
+            '@click="cancelEvent()"',
+            '@click="openResults()"',
+            'href="'.route('me.events.entry-roster', $event->uuid).'"',
+            'href="'.route('me.events.officiating', $event->uuid).'"',
+            'eventChecklist',
+        ];
+
+        foreach ($needles as $needle) {
             $this->assertStringContainsString($needle, $html, "the console is missing: {$needle}");
         }
     }

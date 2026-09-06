@@ -2,7 +2,7 @@
 
 namespace App\Events\Sports\Karate\Tournament;
 
-use App\Events\Sports\Karate\Tournament\Scoreboard\Scoring;
+use App\Scoreboard\Sports\Karate\Mat\Scoring;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Sports\Combat\CombatSport;

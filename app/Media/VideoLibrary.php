@@ -4,13 +4,13 @@ namespace App\Media;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\DuelMedia;
+use App\Challenges\Models\DuelMedia;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Models\EventRecording;
 use App\Models\MediaFile;
 use App\Support\BoutStage;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Collection;
 use App\Models\MediaFileSubject;
 

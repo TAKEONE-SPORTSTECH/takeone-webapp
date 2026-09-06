@@ -3,12 +3,12 @@
 namespace App\Support;
 
 use App\Models\Business;
-use App\Models\Challenge;
+use App\Challenges\Models\Challenge;
 use App\Models\ClubEvent;
-use App\Models\Duel;
+use App\Challenges\Models\Duel;
 use App\Models\EventMatch;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 
 /**
  * Where everything this platform stores actually goes.

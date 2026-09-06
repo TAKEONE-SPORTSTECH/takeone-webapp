@@ -14,10 +14,10 @@ use App\Clubs\Models\ClubInstructor;
 use App\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubPackageActivity;
-use App\Models\InstructorReview;
+use App\Trainers\Models\InstructorReview;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserScheduleSession;
+use App\Members\Models\User;
+use App\Members\Models\UserScheduleSession;
 use App\Support\SyncedClassToken;
 use Illuminate\Support\Facades\Storage;
 use Tests\Feature\Contracts\ContractTestCase;
@@ -567,7 +567,7 @@ class PersonalMobileWriteCharacterizationTest extends ContractTestCase
         [$member, , $sub] = $this->unpaidBill();
         $guardian = $this->createUser(['full_name' => 'The Guardian']);
 
-        \App\Models\UserRelationship::create([
+        \App\Members\Models\UserRelationship::create([
             'guardian_user_id' => $guardian->id,
             'dependent_user_id' => $member->id,
             'relationship_type' => 'parent',

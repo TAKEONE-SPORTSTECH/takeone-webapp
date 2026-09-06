@@ -4,9 +4,9 @@ namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Clubs\Models\ClubMessage;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Traits\HandlesClubAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -172,16 +172,7 @@ class ClubMessageController extends Controller
             'created_at_human' => 'just now',
         ]);
 
-        // Native push (FCM) to the tray — reaches the member even if the app is closed.
-        try {
-            \App\Jobs\SendPushNotification::dispatch(
-                (int) $message->recipient_id,
-                $club->club_name ?? 'Club',
-                (string) $message->message,
-                ['type' => 'club_message', 'tenant_id' => (string) $club->id, 'action_url' => url('/messages')],
-            );
-        } catch (\Throwable $e) {
-            // Best-effort.
-        }
+        // The tray is served by the publish above — the app's MQTT foreground
+        // service posts it when the app is not in front. No second path.
     }
 }

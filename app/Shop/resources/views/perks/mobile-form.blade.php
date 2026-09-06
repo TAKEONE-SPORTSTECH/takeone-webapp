@@ -33,7 +33,7 @@ window.perkFormSheet = function () {
         },
         get previewImage() {
             if (this.imageData) return this.imageData;
-            if (this.imagePath && !this.removeImage) return '/storage/' + this.imagePath;
+            if (this.imagePath && !this.removeImage) return '/file/' + this.imagePath;
             return '';
         },
 

@@ -163,7 +163,7 @@
                         </span>
                         <span class="block text-[11px] text-muted-foreground truncate mt-0.5">{{ $s['sub'] }}</span>
                     </span>
-                    <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0 rtl:rotate-180"></i>
+                    <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
                 </button>
             @endforeach
 
@@ -179,7 +179,7 @@
                     </span>
                     <span class="block text-[11px] text-muted-foreground truncate mt-0.5">{{ __('admin.cs_sec_whatsapp_sub') }}</span>
                 </span>
-                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0 rtl:rotate-180"></i>
+                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
             </button>
 
             <button type="button" @click="open('owner')" class="m-card m-press cs-row block">
@@ -191,7 +191,7 @@
                     </span>
                     <span class="block text-[11px] text-muted-foreground truncate mt-0.5">{{ $club->owner->full_name ?? __('admin.cs_no_owner') }}</span>
                 </span>
-                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0 rtl:rotate-180"></i>
+                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
             </button>
 
             <button type="button" @click="open('danger')" class="m-card m-press cs-row block border-red-200">
@@ -200,7 +200,7 @@
                     <span class="font-semibold text-red-600 text-sm block truncate">{{ __('admin.cs_sec_danger') }}</span>
                     <span class="block text-[11px] text-muted-foreground truncate mt-0.5">{{ __('admin.cs_sec_danger_sub') }}</span>
                 </span>
-                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0 rtl:rotate-180"></i>
+                <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
             </button>
         </div>
 
@@ -227,7 +227,7 @@
     <div x-show="panel !== null" x-cloak
          class="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-3 py-2.5 flex items-center gap-2">
         <button type="button" @click="close()" class="m-press w-10 h-10 rounded-xl bg-white border border-border grid place-items-center flex-shrink-0" aria-label="{{ __('admin.cs_back') }}">
-            <i class="bi bi-chevron-left rtl:rotate-180"></i>
+            <i class="bi bi-chevron-left"></i>
         </button>
         <span class="font-bold text-foreground text-sm truncate flex-1" x-text="title"></span>
         <template x-if="panelUsesForm">

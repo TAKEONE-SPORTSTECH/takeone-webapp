@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Concerns;
 
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 /**

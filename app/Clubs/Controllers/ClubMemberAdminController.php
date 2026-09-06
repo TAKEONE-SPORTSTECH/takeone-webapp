@@ -8,10 +8,10 @@ use App\Http\Requests\Admin\WalkInRegistrationRequest;
 use App\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserRelationship;
 use App\Services\FinancialService;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Auth;
@@ -967,7 +967,7 @@ class ClubMemberAdminController extends Controller
 
         $subscriptions->approvePayment($subscription, $proofPath, auth()->user());
 
-        \App\Models\UserNotification::notifyUser($subscription->user_id, 'payment_approved', 'Payment approved', [
+        \App\Members\Models\UserNotification::notifyUser($subscription->user_id, 'payment_approved', 'Payment approved', [
             'tenant_id' => $club->id,
             'action_url' => route('bills.index'),
             'icon' => 'bi-check-circle-fill',
@@ -1054,7 +1054,7 @@ class ClubMemberAdminController extends Controller
             'refund_proof' => $refundProofPath,
         ]);
 
-        \App\Models\UserNotification::notifyUser($subscription->user_id, 'payment_refunded', 'Payment refunded', [
+        \App\Members\Models\UserNotification::notifyUser($subscription->user_id, 'payment_refunded', 'Payment refunded', [
             'tenant_id' => $club->id,
             'action_url' => route('bills.index'),
             'icon' => 'bi-arrow-counterclockwise',

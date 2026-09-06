@@ -3812,3 +3812,7 @@ html[dir="rtl"] :is(
         opacity: 0.35;
     }
 }
+
+/* Which bundle is this? Readable from the browser:
+   getComputedStyle(document.documentElement).getPropertyValue("--takeone-build") */
+:root { --takeone-build: "20260905-2210"; }

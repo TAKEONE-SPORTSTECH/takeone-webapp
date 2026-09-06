@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
-use App\Models\User;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserRelationship;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -19,21 +19,21 @@ class WelcomeEmail extends Mailable implements ShouldQueue
     /**
      * The user instance.
      *
-     * @var \App\Models\User
+     * @var \App\Members\Models\User
      */
     public $user;
 
     /**
      * The guardian user instance.
      *
-     * @var \App\Models\User|null
+     * @var \App\Members\Models\User|null
      */
     public $guardian;
 
     /**
      * The relationship instance.
      *
-     * @var \App\Models\UserRelationship|null
+     * @var \App\Members\Models\UserRelationship|null
      */
     public $relationship;
 

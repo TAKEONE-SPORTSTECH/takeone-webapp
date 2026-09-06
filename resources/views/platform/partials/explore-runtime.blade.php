@@ -126,7 +126,7 @@ function exploreApp() {
                         name: m.name,
                         gender: m.gender || '',
                         dateOfBirth: m.birthdate || '',
-                        avatarUrl: m.profile_picture ? '/storage/' + m.profile_picture : null,
+                        avatarUrl: m.profile_picture ? '/file/' + m.profile_picture : null,
                         relationship: m.relationship,
                         isMember: m.is_member || false,
                         equipment: []
@@ -755,7 +755,7 @@ function exploreApp() {
             if (this.currentCategory === 'all' || this.currentCategory === 'personal-trainers') {
                 (trainers ?? this.allTrainers).forEach(trainer => {
                     const coverHtml = trainer.profile_picture
-                        ? `<img src="/storage/${trainer.profile_picture}" alt="${trainer.name}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300">`
+                        ? `<img src="/file/${trainer.profile_picture}" alt="${trainer.name}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300">`
                         : `<div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                                <i class="bi bi-person-fill text-white text-5xl opacity-50"></i>
                            </div>`;
@@ -853,7 +853,7 @@ function exploreApp() {
                 // Prepare cover image
                 let coverImageHtml = '';
                 if (club.cover_image) {
-                    coverImageHtml = `<img src="/storage/${club.cover_image}" alt="${club.club_name}" loading="lazy" class="w-full h-full object-cover club-cover-img transition-transform duration-300">`;
+                    coverImageHtml = `<img src="/file/${club.cover_image}" alt="${club.club_name}" loading="lazy" class="w-full h-full object-cover club-cover-img transition-transform duration-300">`;
                 } else {
                     coverImageHtml = `<div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                         <i class="bi bi-image text-white text-5xl opacity-30"></i>
@@ -863,7 +863,7 @@ function exploreApp() {
                 // Prepare logo
                 let logoHtml = '';
                 if (club.logo) {
-                    logoHtml = `<img src="/storage/${club.logo}" alt="${club.club_name} logo" loading="lazy" class="w-full h-full rounded-full object-contain">`;
+                    logoHtml = `<img src="/file/${club.logo}" alt="${club.club_name} logo" loading="lazy" class="w-full h-full rounded-full object-contain">`;
                 } else {
                     logoHtml = `<div class="w-full h-full rounded-full bg-primary flex items-center justify-center">
                         <span class="text-white font-bold text-2xl">${club.club_name.charAt(0)}</span>
@@ -1080,7 +1080,7 @@ function exploreApp() {
             const live = ev.state === 'live';
 
             const media = ev.image
-                ? `<img src="/storage/${encodeURI(ev.image)}" alt="" loading="lazy"
+                ? `<img src="/file/${encodeURI(ev.image)}" alt="" loading="lazy"
                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]">`
                 : `<div class="w-full h-full" style="background: radial-gradient(120% 120% at 15% 0%, ${color} 0%, ${color}cc 40%, #14121f 100%);">
                        <div class="absolute inset-0 flex items-center justify-center">

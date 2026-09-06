@@ -61,8 +61,8 @@
 
         {{-- Back --}}
         <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('clubs.explore') }}')"
-                class="m-press absolute top-3 start-3 inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-black/35 backdrop-blur text-white text-sm font-semibold" aria-label="{{ __('shared.back') }}">
-            <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('nav.layouts_app_explore') }}
+                class="m-press absolute top-3 start-3 inline-flex items-center w-10 h-10 justify-center rounded-full bg-black/35 backdrop-blur text-white text-sm font-semibold" aria-label="{{ __('shared.back') }}">
+            <i class="bi bi-chevron-left"></i>
         </button>
 
         {{-- One QR button → modal with a Register / Club page tab switcher --}}
@@ -254,7 +254,7 @@
                     // Resolve linked-athlete user ids -> uuids for member-profile links (single query).
                     $athleteIds = $achievementsAll->flatMap(fn ($a) => collect($a->athletes ?? [])->pluck('user_id'))->filter()->unique()->values();
                     $athleteUuidMap = $athleteIds->isNotEmpty()
-                        ? \App\Models\User::whereIn('id', $athleteIds)->pluck('uuid', 'id')->toArray()
+                        ? \App\Members\Models\User::whereIn('id', $athleteIds)->pluck('uuid', 'id')->toArray()
                         : [];
                     $achievementsJson = $achievementsAll->map(function ($a) use ($athleteUuidMap) {
                         $combined = collect(array_filter(array_merge($a->image_path ? [$a->image_path] : [], $a->images ?? [])))
@@ -617,7 +617,7 @@
                                                         class="m-press w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all"
                                                         :class="m.already_collected ? 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed' : 'border-gray-200 hover:border-primary hover:bg-primary/5'">
                                                     <template x-if="m.profile_picture">
-                                                        <img :src="'/storage/' + m.profile_picture" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                                                        <img :src="'/file/' + m.profile_picture" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
                                                     </template>
                                                     <template x-if="!m.profile_picture">
                                                         <span class="w-10 h-10 rounded-full bg-primary text-white font-bold text-sm grid place-items-center flex-shrink-0" x-text="m.name.trim().charAt(0).toUpperCase()"></span>

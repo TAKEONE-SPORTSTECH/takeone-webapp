@@ -7,7 +7,7 @@ use App\Events\Support\EventAccess;
 use App\Http\Controllers\Controller;
 use App\Models\ClubEvent;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -71,6 +71,48 @@ class OpenMatController extends Controller
         $club = Tenant::findOrFail($clubs[0]['id']);
 
         $event = $this->session->openFor($me, $club, $this->preferredSport($me));
+
+        return redirect()->route('me.events.manage', $event->uuid);
+    }
+
+    /**
+     * `/openmat/{sport}` — the same mat, on a sport you name.
+     *
+     * `/openmat` answers the sport question from what you did yesterday, which
+     * is right when you always run the same one and wrong the first time you
+     * run a second. This is the door for the second: a BJJ club that also runs
+     * karate says "openmat slash bjj" across the floor and gets a BJJ table,
+     * without opening a karate mat and changing it in two taps.
+     *
+     * It resumes rather than duplicates, exactly as `/openmat` does, and it
+     * resumes PER SPORT — `todaysFor()` is scoped by sport, so a karate mat
+     * open in the next room is not what a BJJ request finds. Hitting either
+     * address twice is idempotent and never strands a paired screen.
+     *
+     * The sport is constrained at the route to the list OpenMat actually runs,
+     * so an unknown one is a 404 from the router rather than a branch here. A
+     * sport with no scoring table would give somebody an empty mat, which is
+     * the one outcome this whole feature exists to avoid.
+     */
+    public function sport(Request $request, string $sport)
+    {
+        $sport = strtolower($sport);
+
+        abort_unless(in_array($sport, OpenMat::sports(), true), 404);
+
+        $me = Auth::user();
+
+        $clubs = $this->clubsICanOpenFor($me);
+
+        if (empty($clubs)) {
+            return view('event-open_mat::no-club', [
+                'isMobile' => (bool) $request->attributes->get('is_mobile'),
+            ]);
+        }
+
+        $club = Tenant::findOrFail($clubs[0]['id']);
+
+        $event = $this->session->openFor($me, $club, $sport);
 
         return redirect()->route('me.events.manage', $event->uuid);
     }

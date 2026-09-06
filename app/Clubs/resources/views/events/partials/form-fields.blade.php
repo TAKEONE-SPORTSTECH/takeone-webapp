@@ -1,3 +1,52 @@
+@php
+    /*
+     * MULTI-PRICING — the seed for the editor below.
+     *
+     * The event being edited is chosen in the browser (`formData` is swapped
+     * wholesale by openAdd/openEdit in index.blade.php), so there is no single
+     * event to render server-side. What is rendered instead is a LOOKUP for
+     * every event this club owns, and the Alpine block reads its row out of it
+     * whenever `formData` is replaced. That keeps the whole feature inside this
+     * partial — nothing in the page around it has to learn about fee options.
+     *
+     * Only ACTIVE options are offered: a withdrawn one still exists, because the
+     * frozen fee lines on entries already taken point at it.
+     */
+    $feeOptionEventIds = \App\Models\ClubEvent::where('tenant_id', $club->id)->pluck('id');
+
+    $feeOptionsByEvent = \App\Models\EventFeeOption::query()
+        ->whereIn('event_id', $feeOptionEventIds)
+        ->forRole('participant')
+        ->active()
+        ->ordered()
+        ->get()
+        ->groupBy('event_id')
+        ->map(fn ($group) => $group->map(fn ($option) => [
+            'uuid' => $option->uuid,
+            // Trailing zeros trimmed so the box shows the 5 the organiser typed,
+            // not the 5.000 the decimal column stores.
+            'label' => $option->label,
+            'amount' => rtrim(rtrim(number_format((float) $option->amount, 3, '.', ''), '0'), '.'),
+        ])->values())
+        ->all();
+
+    $lateFeeByEvent = \App\Models\ClubEvent::where('tenant_id', $club->id)
+        ->whereNotNull('late_fee_from')
+        ->get(['id', 'late_fee_amount', 'late_fee_from'])
+        ->mapWithKeys(function ($event) {
+            // The column carries no cast on the model yet, so it may arrive as a
+            // string or as a Carbon depending on who wrote it. Parse either.
+            $from = \Illuminate\Support\Carbon::parse($event->late_fee_from);
+
+            return [$event->id => [
+                'amount' => rtrim(rtrim(number_format((float) $event->late_fee_amount, 3, '.', ''), '0'), '.'),
+                'date' => $from->format('Y-m-d'),
+                'time' => $from->format('H:i'),
+            ]];
+        })
+        ->all();
+@endphp
+
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div class="md:col-span-2">
         <label class="form-label">{{ __('admin.partials_form_fields_title') }} <span class="text-red-500">*</span></label>
@@ -90,6 +139,105 @@
              display line above from it. --}}
         <input type="hidden" name="participant_fee_amount"
                :value="formData.fee_type === 'paid' && formData.fee_amount !== '' && formData.fee_amount !== null ? formData.fee_amount : ''">
+    </div>
+    {{-- ===== Extras and options, and the late-entry penalty =====
+         Both are ADDED to the entry fee above: total = base + what was ticked +
+         the penalty when the entry lands after the stated moment. An event that
+         adds neither prices exactly as it always has. --}}
+    <div class="md:col-span-2 border-t border-border pt-4"
+         x-data="{
+            feeRows: [],
+            lateAmount: '', lateDate: '', lateTime: '',
+            feeOptionsByEvent: @js($feeOptionsByEvent),
+            lateFeeByEvent: @js($lateFeeByEvent),
+
+            get lateFromValue() {
+                return this.lateDate ? this.lateDate + ' ' + (this.lateTime || '00:00') : '';
+            },
+
+            loadPricing(fd) {
+                const id = (fd && fd.id) ? fd.id : null;
+                const opts = (id && this.feeOptionsByEvent[id]) ? this.feeOptionsByEvent[id] : [];
+                this.feeRows = opts.map(o => ({ uuid: o.uuid, label: o.label, amount: o.amount }));
+                const late = (id && this.lateFeeByEvent[id]) ? this.lateFeeByEvent[id] : null;
+                this.lateAmount = late ? late.amount : '';
+                this.lateDate = late ? late.date : '';
+                this.lateTime = late ? late.time : '';
+            },
+            addFeeRow() { this.feeRows.push({ uuid: '', label: '', amount: '' }); },
+            removeFeeRow(i) { this.feeRows.splice(i, 1); },
+         }"
+         x-init="loadPricing(formData); $watch('formData', (v, old) => { if (v !== old) loadPricing(v); })">
+
+        {{-- The form declaring it owns these fields. Without it the controller
+             cannot tell "the organiser removed the last option" from "this
+             caller never had the editor on screen", and would wipe pricing set
+             elsewhere. --}}
+        <input type="hidden" name="fee_pricing_present" value="1">
+
+        <label class="form-label">{{ __('events.fee_options_title') }}</label>
+        <p class="text-xs text-muted-foreground mb-2">{{ __('events.fee_options_hint') }}</p>
+
+        <div class="space-y-2">
+            <template x-for="(row, i) in feeRows" :key="i">
+                <div class="flex items-center gap-2">
+                    {{-- The uuid says "this row is that existing option". The
+                         server resolves it against this event's own rows; a
+                         stale one simply becomes a new option. --}}
+                    <input type="hidden" :name="`fee_options[${i}][uuid]`" :value="row.uuid || ''">
+                    <input type="text" class="form-control flex-1" maxlength="80"
+                           :name="`fee_options[${i}][label]`" x-model="row.label"
+                           placeholder="{{ __('events.fee_option_placeholder') }}"
+                           aria-label="{{ __('events.fee_option_label') }}">
+                    <div class="relative w-32">
+                        <span class="absolute inset-y-0 start-0 flex items-center ps-3 text-sm text-muted-foreground pointer-events-none">{{ $club->currency }}</span>
+                        <input type="number" min="0" step="any" class="form-control ps-14"
+                               :name="`fee_options[${i}][amount]`" x-model="row.amount"
+                               aria-label="{{ __('events.fee_option_amount') }}">
+                    </div>
+                    <button type="button" @click="removeFeeRow(i)"
+                            title="{{ __('events.fee_option_remove') }}"
+                            aria-label="{{ __('events.fee_option_remove') }}"
+                            class="w-9 h-9 rounded-lg flex items-center justify-center text-red-600 hover:bg-red-50 transition-colors border border-border">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </template>
+        </div>
+
+        <button type="button" @click="addFeeRow()"
+                class="mt-2 px-4 py-2 border border-dashed border-border rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted transition-colors flex items-center gap-2">
+            <i class="bi bi-plus-lg"></i> {{ __('events.fee_option_add') }}
+        </button>
+
+        {{-- The late penalty. Both halves or neither — an amount with no moment
+             to start from charges nobody, and a moment with no amount charges
+             nothing. The server stores a half-set pair as no late fee at all. --}}
+        <div class="mt-4">
+            <label class="form-label">{{ __('events.fee_late_title') }}</label>
+            <p class="text-xs text-muted-foreground mb-2">{{ __('events.fee_late_hint') }}</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label text-xs">{{ __('events.fee_late_amount') }}</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 start-0 flex items-center ps-3 text-sm text-muted-foreground pointer-events-none">{{ $club->currency }}</span>
+                        <input type="number" min="0" step="any" name="late_fee_amount" class="form-control ps-14" x-model="lateAmount">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label text-xs">{{ __('events.fee_late_from') }}</label>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1">
+                            <x-date-picker model="lateDate" />
+                        </div>
+                        <input type="time" class="form-control w-32" x-model="lateTime">
+                    </div>
+                    {{-- The pair, joined. A blank date means no late fee at all,
+                         so the field posts empty and the server clears both. --}}
+                    <input type="hidden" name="late_fee_from" :value="lateFromValue">
+                </div>
+            </div>
+        </div>
     </div>
     <div class="md:col-span-2">
         <label class="form-label">{{ __('admin.partials_form_fields_tags') }} <span class="text-xs text-muted-foreground">{{ __('admin.partials_form_fields_tags_hint') }}</span></label>

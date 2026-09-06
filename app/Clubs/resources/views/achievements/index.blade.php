@@ -341,7 +341,7 @@ function renderAchievementExistingThumbnails(paths) {
         const wrap = document.createElement('div');
         wrap.className = 'relative group';
         wrap.innerHTML = `
-            <img src="/storage/${path}" class="w-20 h-20 object-cover rounded-lg border border-border" onerror="this.parentElement.style.display='none'">
+            <img src="/file/${path}" class="w-20 h-20 object-cover rounded-lg border border-border" onerror="this.parentElement.style.display='none'">
             <button type="button" class="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <i class="bi bi-x"></i>
             </button>`;

@@ -3,8 +3,8 @@
 namespace App\Mcp\Tools;
 
 use App\Clubs\Models\ClubAchievement;
-use App\Models\TournamentEvent;
-use App\Models\User;
+use App\Members\Models\TournamentEvent;
+use App\Members\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -116,7 +116,7 @@ class GetMemberTool extends BaseTool
      */
     private function verifiedSkills(User $member): array
     {
-        return \App\Models\SkillAcquisition::where('user_id', $member->id)
+        return \App\Members\Models\SkillAcquisition::where('user_id', $member->id)
             ->verified()
             ->with(['activity:id,name,translations', 'verifiedByTenant:id,club_name'])
             ->get()

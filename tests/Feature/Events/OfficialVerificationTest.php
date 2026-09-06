@@ -6,9 +6,9 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventOfficial;
-use App\Models\HealthRecord;
+use App\Members\Models\HealthRecord;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**
@@ -84,6 +84,15 @@ class OfficialVerificationTest extends TestCase
 
     /* ---------------- Appointing ---------------- */
 
+    /*
+     * CHANGED — appointing now states how the official is compensated
+     * (`volunteer` | `paid`, and a `fee` when paid), because a paid appointment
+     * posts a matching event expense (EventOfficial::booted). `compensation` is
+     * REQUIRED by PersonalEventController::storeOfficial(); these appointments
+     * are volunteers, which is what the file was implicitly testing before the
+     * field existed. What each test proves is unchanged.
+     */
+
     public function test_one_person_can_hold_two_different_jobs(): void
     {
         $event = $this->event();
@@ -91,7 +100,9 @@ class OfficialVerificationTest extends TestCase
 
         foreach ([EventOfficial::ROLE_PAYMENTS, EventOfficial::ROLE_WEIGH_IN] as $role) {
             $this->actingAs($this->organiser)
-                ->postJson("/me/events/{$event->uuid}/officials", ['user_id' => $treasurer->id, 'role' => $role])
+                ->postJson("/me/events/{$event->uuid}/officials", [
+                    'user_id' => $treasurer->id, 'role' => $role, 'compensation' => 'volunteer',
+                ])
                 ->assertOk()->assertJson(['success' => true]);
         }
 
@@ -104,11 +115,15 @@ class OfficialVerificationTest extends TestCase
         $official = $this->member('Sara Ali');
 
         $this->actingAs($this->organiser)
-            ->postJson("/me/events/{$event->uuid}/officials", ['user_id' => $official->id, 'role' => 'payments'])
+            ->postJson("/me/events/{$event->uuid}/officials", [
+                'user_id' => $official->id, 'role' => 'payments', 'compensation' => 'volunteer',
+            ])
             ->assertOk();
 
         $this->actingAs($this->organiser)
-            ->postJson("/me/events/{$event->uuid}/officials", ['user_id' => $official->id, 'role' => 'payments'])
+            ->postJson("/me/events/{$event->uuid}/officials", [
+                'user_id' => $official->id, 'role' => 'payments', 'compensation' => 'volunteer',
+            ])
             ->assertStatus(422);
 
         $this->assertSame(1, $event->officials()->count());
@@ -121,7 +136,9 @@ class OfficialVerificationTest extends TestCase
 
         foreach ([EventOfficial::ROLE_PAYMENTS, EventOfficial::ROLE_WEIGH_IN] as $role) {
             $this->actingAs($this->organiser)
-                ->postJson("/me/events/{$event->uuid}/officials", ['user_id' => $official->id, 'role' => $role])
+                ->postJson("/me/events/{$event->uuid}/officials", [
+                    'user_id' => $official->id, 'role' => $role, 'compensation' => 'volunteer',
+                ])
                 ->assertOk();
         }
 

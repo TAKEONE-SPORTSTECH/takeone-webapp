@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\ClubEvent;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**

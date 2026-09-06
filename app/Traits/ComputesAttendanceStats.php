@@ -3,7 +3,7 @@
 namespace App\Traits;
 
 use App\Models\ClassAttendance;
-use App\Models\User;
+use App\Members\Models\User;
 use App\Support\SyncedClassToken;
 use Carbon\Carbon;
 

@@ -6,7 +6,7 @@ use App\Support\Modules\Module;
 use App\Support\Modules\ModuleRegistry;
 use App\Support\Modules\Surfaces\ContributesClubAdminNav;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route as RouteFacade;
 use Tests\TestCase;

@@ -123,7 +123,7 @@ function tlFormatDate(iso) {
 function timelineCardHtml(p) {
     const isDraft = (p.status || '') !== 'published';
     const img = p.image_path
-        ? `<img src="/storage/${escTimeline(p.image_path)}" alt="" class="w-full h-40 object-cover">`
+        ? `<img src="/file/${escTimeline(p.image_path)}" alt="" class="w-full h-40 object-cover">`
         : '';
     return `
     <div class="m-card overflow-hidden" id="post-${p.id}" x-data="{ openMenu: false }">

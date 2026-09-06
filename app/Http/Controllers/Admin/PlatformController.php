@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\Support\EntryPhoto;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RestoreBackupRequest;
 use App\Http\Requests\Admin\StorePlatformMemberRequest;
 use App\Http\Requests\HealthRecordRequest;
 use App\Http\Requests\TournamentRequest;
 use App\Http\Requests\UploadImageRequest;
-use App\Models\Attendance;
+use App\Members\Models\Attendance;
 use App\Models\Business;
 use App\Models\ClubMemberSubscription;
 use App\Models\Invoice;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\TournamentEvent;
-use App\Models\User;
+use App\Members\Models\TournamentEvent;
+use App\Members\Models\User;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -1203,7 +1204,7 @@ class PlatformController extends Controller
             'dependent_user_id' => $member->id,
         ];
 
-        return view('family.show', [
+        return view('members::family.show', [
             // What the platform already knows about this member's clubs and
             // events — the two tabs otherwise show only what they typed in
             // themselves. Read-only, de-duplicated against the self-reported rows.
@@ -1251,7 +1252,7 @@ class PlatformController extends Controller
             'is_billing_contact' => false,
         ];
 
-        return view('family.edit', compact('relationship'));
+        return view('members::family.edit', compact('relationship'));
     }
 
     /**
@@ -1471,9 +1472,11 @@ class PlatformController extends Controller
                 return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
 
-            // Delete old profile picture if exists
-            if ($member->profile_picture && $member->profile_picture !== $fullPath && Storage::disk('public')->exists($member->profile_picture)) {
-                Storage::disk('public')->delete($member->profile_picture);
+            // Only when nothing else still names the file: an event entry can
+            // point AT a profile picture rather than carry a copy, and duplicate
+            // accounts share one path. See App\Events\Support\EntryPhoto.
+            if ($member->profile_picture !== $fullPath) {
+                EntryPhoto::discardShared($member->profile_picture, $member->id);
             }
 
             // Update member's profile_picture field
@@ -1503,9 +1506,9 @@ class PlatformController extends Controller
             $member->photos()->where('path', $member->profile_picture)->get()->each->delete();
         }
 
-        if ($member->profile_picture && Storage::disk('public')->exists($member->profile_picture)) {
-            Storage::disk('public')->delete($member->profile_picture);
-        }
+        // The row above has given up its claim; what remains is somebody ELSE
+        // naming this file — an event entry, or a duplicate account.
+        EntryPhoto::discardShared($member->profile_picture, $member->id);
 
         $extensions = ['png', 'jpg', 'jpeg', 'webp'];
         foreach ($extensions as $ext) {

@@ -4,14 +4,14 @@ namespace Tests\Feature;
 
 use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\VerifyAchievementTool;
-use App\Models\AchievementVouch;
+use App\Members\Models\AchievementVouch;
 use App\Clubs\Models\ClubAffiliation;
 use App\Clubs\Models\ClubInstructor;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
-use App\Models\TournamentEvent;
-use App\Models\User;
-use App\Models\UserRelationship;
+use App\Members\Models\TournamentEvent;
+use App\Members\Models\User;
+use App\Members\Models\UserRelationship;
 use App\Services\AchievementVerificationService;
 use Laravel\Mcp\Request as McpRequest;
 use Tests\TestCase;
@@ -167,11 +167,11 @@ class AchievementVerificationTest extends TestCase
         // A celebratory feed post now exists for the member, and the guard is stamped.
         $this->assertDatabaseHas('user_posts', ['user_id' => $member->id, 'type' => 'text']);
         $this->assertNotNull($claim->fresh()->verification_announced_at);
-        $this->assertSame(1, \App\Models\UserPost::where('user_id', $member->id)->count());
+        $this->assertSame(1, \App\Members\Models\UserPost::where('user_id', $member->id)->count());
 
         // Re-running verification must NOT create a second post.
         $this->service()->clubConfirm($claim->fresh(), $admin);
-        $this->assertSame(1, \App\Models\UserPost::where('user_id', $member->id)->count());
+        $this->assertSame(1, \App\Members\Models\UserPost::where('user_id', $member->id)->count());
     }
 
     public function test_club_can_confirm_a_club_affiliation(): void
@@ -200,7 +200,7 @@ class AchievementVerificationTest extends TestCase
         $admin = $this->createUser();
         $this->makeClubAdmin($admin, $club);
         $member = $this->createUser();
-        $work = \App\Models\MemberWorkHistory::create([
+        $work = \App\Members\Models\MemberWorkHistory::create([
             'user_id' => $member->id, 'title' => 'Coach', 'organization' => $club->club_name,
             'start_date' => now()->subYear(), 'verification_status' => 'pending',
         ]);

@@ -4,8 +4,8 @@ namespace App\Support;
 
 use App\Models\ClubEvent;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserRelationship;
 
 /**
  * Who may read one stored file.
@@ -63,6 +63,16 @@ class FileAccess
             return true;
         }
 
+        // An event poster, for an event whose page anybody may open. Event
+        // images have always been written under the CLUB
+        // (clubs/{id}/events/…), so the public page would otherwise show a
+        // broken poster for every real event. Narrow deliberately: this exact
+        // file must be the poster of an event the organiser put in public mode
+        // — it is not "club event images are public".
+        if ($purpose === 'events' && self::isPublicEventPoster(implode('/', $segments))) {
+            return true;
+        }
+
         // Anything else under a club — documents, and whatever is added later —
         // is for people who run that club.
         $club = $legacy
@@ -93,10 +103,33 @@ class FileAccess
             return true;
         }
 
-        // Faces are the member's own decision. `profile_picture_is_public` is
-        // the flag the rest of the product already honours on any surface wider
-        // than their own profile, so it decides here too.
         if (in_array($purpose, ['profile', 'photos'], true)) {
+            /*
+             * The face somebody supplied to ENTER a competition whose page
+             * anybody may open.
+             *
+             * Entering through the public link REQUIRES a photo, and it is
+             * required so the competition can announce them. It is stored on
+             * their profile with `profile_picture_is_public` off, because
+             * coming to compete is not publishing your face across the
+             * platform — so without this the one thing we insisted on could
+             * never be shown, and the entry list a stranger opens was a column
+             * of silhouettes.
+             *
+             * Narrow the same way the poster exception is narrow: this EXACT
+             * path must be the `photo` of an entry in an event that is in
+             * public mode. A guessed filename proves nothing — a row has to
+             * name the file. It is not "member profile pictures are public",
+             * and the moment the organiser un-publishes the event it stops.
+             */
+            if (self::isPublicEntryPhoto(implode('/', $segments))) {
+                return true;
+            }
+
+            // Otherwise a face is the member's own decision.
+            // `profile_picture_is_public` is the flag the rest of the product
+            // already honours on any surface wider than their own profile, so
+            // it decides here too.
             return (bool) ($owner->profile_picture_is_public ?? true);
         }
 
@@ -105,12 +138,90 @@ class FileAccess
         return false;
     }
 
+    /**
+     * Is this exact path the poster of an event anybody may open?
+     *
+     * Asked of the stored `images` list rather than of the path's shape, so a
+     * guessed filename proves nothing — the row has to name the file.
+     */
+    private static function isPublicEventPoster(string $path): bool
+    {
+        // `images` is a JSON column, and json_encode escapes forward slashes —
+        // the stored text is "clubs\/67\/events\/x.jpg". Matching the raw path
+        // silently finds nothing, so the needle is encoded the same way.
+        $needle = trim(json_encode($path), '"');
+
+        return ClubEvent::query()
+            ->where('entry_mode', 'public')
+            ->where('is_archived', false)
+            ->whereNotNull('images')
+            ->where('images', 'like', '%'.$needle.'%')
+            ->exists();
+    }
+
+    /**
+     * Is this exact path the competitor photo of an entry in a public event?
+     *
+     * Asked of the entry ROW, like isPublicEventPoster() is asked of the
+     * event's own `images` — the path's shape proves nothing on its own.
+     */
+    private static function isPublicEntryPhoto(string $path): bool
+    {
+        return \App\Models\ClubEventRegistration::query()
+            ->where('photo', $path)
+            ->whereHas('event', fn ($q) => $q
+                ->where('entry_mode', 'public')
+                ->where('is_archived', false))
+            ->exists();
+    }
+
     /** An event's files follow the event's own visibility rules. */
     private static function event(array $segments, ?User $viewer): bool
     {
         $event = ClubEvent::where('uuid', $segments[1] ?? '')->first();
 
-        if ($event === null || $viewer === null) {
+        if ($event === null) {
+            return false;
+        }
+
+        // An event with a page anybody may open needs a POSTER anybody may see —
+        // and, since 2026-09-02, the FILES it publishes too: the rulebook, the
+        // entry form, the schedule. Both are gated on the organiser's own
+        // switch, so turning the public page off closes them again in the same
+        // instant. See Documentation/EVENTS-PUBLIC-ENTRY.md, Phase B.
+        //
+        // Still narrow: `branding` and `documents` only. An event's CLIPS and
+        // its screens stay exactly as closed as they have always been — bout
+        // footage is not a poster fact.
+        if (in_array($segments[2] ?? '', ['branding', 'documents'], true)
+            && app(\App\Events\Support\PublicEvent::class)->isPublic($event)) {
+            return true;
+        }
+
+        /*
+         * A competitor's face, on the entry list of a competition anybody may
+         * open.
+         *
+         * The same exception member() already makes, on the other shape the
+         * same picture takes. An entry photo is written to
+         * `events/{uuid}/competitors/…` when an ORGANISER supplies it (the
+         * weigh-in desk, the entry editor) and left pointing at the athlete's
+         * own `members/{uuid}/profile/…` when they entered through the public
+         * door. member() was taught about the second shape and nothing was
+         * taught about the first, so a public entry list showed a photograph
+         * for the athletes who uploaded their own and a broken image for every
+         * one the organiser photographed — 8 of 30 on the first real event.
+         *
+         * Narrow the identical way: this EXACT path must be the `photo` of an
+         * entry in an event that is in public mode. A guessed filename proves
+         * nothing, and un-publishing the event closes it again.
+         */
+        if (($segments[2] ?? '') === 'competitors'
+            && self::isPublicEntryPhoto(implode('/', $segments))) {
+            return true;
+        }
+
+        if ($viewer === null) {
             return false;
         }
 

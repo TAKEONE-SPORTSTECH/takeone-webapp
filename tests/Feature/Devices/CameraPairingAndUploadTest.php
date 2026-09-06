@@ -9,7 +9,7 @@ use App\Models\EventCameraClip;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 

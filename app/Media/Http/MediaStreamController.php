@@ -48,7 +48,7 @@ class MediaStreamController extends Controller
      */
     public function hls(Request $request, MediaFile $file, string $path = 'playlist.m3u8')
     {
-        $this->authorize($file);
+        $this->authorize($file, publicEventOk: true);
 
         if (! filled($file->hls_rel_path)) {
             // Stored but not yet watchable. 404 rather than an error page: a
@@ -84,7 +84,7 @@ class MediaStreamController extends Controller
     /** The poster frame, for a card or a player's first paint. */
     public function poster(MediaFile $file)
     {
-        $this->authorize($file);
+        $this->authorize($file, publicEventOk: true);
 
         $rel = trim((string) $file->hls_rel_path, '/').'/poster.jpg';
         $abs = rtrim(config('media.local_root'), '/').'/'.$rel;
@@ -153,15 +153,34 @@ class MediaStreamController extends Controller
      * A refusal is a 404, not a 403 — whether a given uuid exists is itself
      * information, and this route is enumerable by definition.
      */
-    private function authorize(MediaFile $file): void
+    private function authorize(MediaFile $file, bool $publicEventOk = false): void
     {
         $user = Auth::user();
+        $event = $this->eventFor($file);
+
+        // An event whose page anybody may open publishes its FOOTAGE too.
+        //
+        // Added 2026-09-02, when the public event page grew a gallery. It is the
+        // organiser's own switch and nothing else — turning the public page off
+        // closes this again in the same instant — and it is narrow in two ways
+        // that matter:
+        //
+        //   · Playback only. `$publicEventOk` is passed by hls() and poster()
+        //     and NOT by original(), because the original of a long bout is a
+        //     gigabyte: an open door to it is cheap to knock on and ruinous to
+        //     answer (CLAUDE.md → attack class 14). A public viewer gets the
+        //     ladder, which is what a player needs anyway.
+        //   · Additive. Every existing path below is untouched; this only ever
+        //     says yes where the old code would have said no.
+        if ($publicEventOk
+            && $event !== null
+            && app(\App\Events\Support\PublicEvent::class)->isPublic($event)) {
+            return;
+        }
 
         if ($user === null) {
             abort(404);
         }
-
-        $event = $this->eventFor($file);
 
         if ($event === null) {
             abort_unless($user->hasRole('super-admin'), 404);
@@ -195,7 +214,7 @@ class MediaStreamController extends Controller
      * about a bout other than its own. A file with no bout — mat footage, an
      * unassigned clip — is not covered here and stays with `visible()`.
      */
-    private function competedInFilmedBout(MediaFile $file, \App\Models\User $user): bool
+    private function competedInFilmedBout(MediaFile $file, \App\Members\Models\User $user): bool
     {
         $matchId = \App\Models\EventRecording::where('media_file_id', $file->id)
             ->whereNotNull('match_id')

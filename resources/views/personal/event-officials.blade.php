@@ -1,4 +1,6 @@
-@extends('layouts.personal-mobile')
+{{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
+     nothing shared this is the member shell exactly as before. See entry/shell. --}}
+@extends($shell ?? 'layouts.personal-mobile')
 
 @section('title', __('personal.event_manage_officials'))
 
@@ -26,8 +28,16 @@
     };
 @endphp
 
-@section('content')
-<div>
+@section($contentSection ?? 'content')
+{{-- ⚠️ The hero band below is full-bleed (Design Rule #6), so the page wrapper's
+     `px-4 py-4` has to be cancelled — but ONLY where there is one to cancel.
+     This page fills `content`, which on the member path replaces
+     layouts.personal-mobile's own section and lands in an UNPADDED <main>;
+     inside the sealed event shell (entry/shell) it fills `personal-content` and
+     lands in a padded one. Cancelling unconditionally would fix the sealed page
+     and push the member page 16px past both screen edges, so the cancellation
+     follows the shell. --}}
+<div class="{{ isset($shell) ? '-mx-4 -mt-4' : '' }}">
     {{-- ===== Header ===== Design Rule #6: full-bleed hero band, the first card
          riding up over its tail. --}}
     <header class="m-hero px-5 pt-5 pb-8 text-white relative overflow-hidden"
@@ -35,13 +45,23 @@
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
-        {{-- Back is a labelled pill (Design Rule #6): on a screen this deep, the
-             only thing worth saying is what you are going back TO. --}}
+        {{-- Back is the round 40px control with a TAIL-LESS chevron and no words
+             (Design Rule #6, 2026-09-04); the destination is its aria-label. --}}
         <div class="flex items-center justify-between gap-2 relative z-50">
-            <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
-               class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline">
-                <i class="bi bi-arrow-left rtl:rotate-180"></i>{{ __('personal.event_show_event') }}
+            {{-- Inside the sealed event app, back from a sub-screen means the
+                     CONSOLE — the screen it was opened from. On the platform it
+                     still means the event page. Same pill, honest label either
+                     way (the audit: "'Event' means two different pages"). --}}
+                <a href="{{ isset($shell) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
+               class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
+           aria-label="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}" title="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}">
+                <i class="bi bi-chevron-left"></i>
             </a>
+
+            {{-- Appointing lives here, on the trailing edge, where every other
+                 page action on this platform lives (Design Rule #6). It renders
+                 nothing at all for a reader who may only look. --}}
+            <x-event-officials :event="$e['key']" :can-manage="$canManage ?? false" />
         </div>
 
         {{-- Identity: chips, the title, then whose event it is. --}}
@@ -125,7 +145,7 @@
                     </div>
 
                     @if($p['uuid'])
-                        <i class="bi bi-chevron-right text-muted-foreground text-xs flex-shrink-0 mt-1 rtl:rotate-180"></i>
+                        <i class="bi bi-chevron-right text-muted-foreground text-xs flex-shrink-0 mt-1"></i>
                     @endif
                 </a>
             @endforeach

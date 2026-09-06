@@ -2,8 +2,8 @@
 
 namespace Tests\Unit\Events\Sports\Karate;
 
-use App\Events\Sports\Karate\Tournament\Scoreboard\MatState;
-use App\Events\Sports\Karate\Tournament\Scoreboard\Scoring;
+use App\Scoreboard\Sports\Karate\Mat\MatState;
+use App\Scoreboard\Sports\Karate\Mat\Scoring;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -42,7 +42,7 @@ class KarateScoringSafetyTest extends TestCase
 
     public function test_the_accepted_command_vocabulary_is_exactly_the_documented_list(): void
     {
-        // Locks App\Events\Sports\Karate\Tournament\Scoreboard\Scoring::COMMANDS
+        // Locks App\Scoreboard\Sports\Karate\Mat\Scoring::COMMANDS
         $this->assertSame([
             'load', 'start', 'pause', 'point', 'undo_point', 'penalty', 'senshu',
             'time', 'reset', 'finish', 'clear', 'commit', 'dismiss', 'celebrate',

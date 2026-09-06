@@ -3,8 +3,8 @@
 namespace App\Mcp\Tools;
 
 use App\Clubs\Models\ClubPackage;
-use App\Models\Membership;
-use App\Models\User;
+use App\Members\Models\Membership;
+use App\Members\Models\User;
 use App\Services\SubscriptionService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;

@@ -3,7 +3,7 @@
 namespace Tests\Feature\ClubAdmin;
 
 use App\Clubs\Models\ClubInstructor;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 class InstructorTest extends TestCase
@@ -108,7 +108,7 @@ class InstructorTest extends TestCase
 
         // A prior coaching role → a 2-year snapshot; a submitted experience number is
         // IGNORED now (experience is calculated, not entered by hand).
-        \App\Models\MemberWorkHistory::create([
+        \App\Members\Models\MemberWorkHistory::create([
             'user_id' => $existingMember->id, 'title' => 'Head Coach', 'organization' => 'Old Club',
             'start_date' => now()->subYears(2)->toDateString(), 'end_date' => now()->toDateString(),
         ]);

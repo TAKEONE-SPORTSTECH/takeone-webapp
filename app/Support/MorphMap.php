@@ -29,7 +29,7 @@ class MorphMap
     {
         return [
             // ---- People ----------------------------------------------------
-            'user' => \App\Models\User::class,
+            'user' => \App\Members\Models\User::class,
 
             // ---- The club and everything it owns ---------------------------
             'club' => \App\Clubs\Models\Tenant::class,
@@ -55,7 +55,7 @@ class MorphMap
             'club_social_link' => \App\Clubs\Models\ClubSocialLink::class,
             'club_timeline_post' => \App\Clubs\Models\ClubTimelinePost::class,
             'club_transaction' => \App\Clubs\Models\ClubTransaction::class,
-            'membership' => \App\Models\Membership::class,
+            'membership' => \App\Members\Models\Membership::class,
             'invoice' => \App\Models\Invoice::class,
             'order' => \App\Shop\Models\Order::class,
             'perk_collection' => \App\Shop\Models\PerkCollection::class,
@@ -65,11 +65,14 @@ class MorphMap
             'club_event_registration' => \App\Models\ClubEventRegistration::class,
 
             // ---- Member-owned records -------------------------------------
-            'duel' => \App\Models\Duel::class,
-            'goal' => \App\Models\Goal::class,
-            'skill_acquisition' => \App\Models\SkillAcquisition::class,
-            'tournament_event' => \App\Models\TournamentEvent::class,
-            'user_post' => \App\Models\UserPost::class,
+            'duel' => \App\Challenges\Models\Duel::class,
+            'goal' => \App\Members\Models\Goal::class,
+            // Vouchable, exactly like a medal or a skill — so it needs an alias
+            // for the same reason they do.
+            'member_work_history' => \App\Members\Models\MemberWorkHistory::class,
+            'skill_acquisition' => \App\Members\Models\SkillAcquisition::class,
+            'tournament_event' => \App\Members\Models\TournamentEvent::class,
+            'user_post' => \App\Members\Models\UserPost::class,
 
             // ---- Media -----------------------------------------------------
             'media_file' => \App\Models\MediaFile::class,

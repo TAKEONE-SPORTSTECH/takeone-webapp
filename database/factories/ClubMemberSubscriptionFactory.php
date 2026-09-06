@@ -4,7 +4,7 @@ namespace Database\Factories;
 
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**

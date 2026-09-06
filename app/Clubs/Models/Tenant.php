@@ -25,9 +25,9 @@ use App\Models\ClubMemberSubscription;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubTimelinePostLike;
 use App\Models\Invoice;
-use App\Models\Membership;
-use App\Models\User;
-use App\Models\UserNotification;
+use App\Members\Models\Membership;
+use App\Members\Models\User;
+use App\Members\Models\UserNotification;
 
 class Tenant extends Model
 {

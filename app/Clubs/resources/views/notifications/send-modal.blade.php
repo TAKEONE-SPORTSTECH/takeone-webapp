@@ -1,6 +1,6 @@
 {{-- Send Notification Modal --}}
 @php
-    $clubMembers = \App\Models\Membership::where('tenant_id', $club->id)
+    $clubMembers = \App\Members\Models\Membership::where('tenant_id', $club->id)
         ->with('user')
         ->get()
         ->pluck('user')

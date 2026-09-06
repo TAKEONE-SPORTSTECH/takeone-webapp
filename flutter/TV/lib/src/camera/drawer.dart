@@ -24,6 +24,8 @@ class ClipDrawer extends StatefulWidget {
     required this.onSave,
     required this.onUpload,
     required this.onDelete,
+    required this.autoUpload,
+    required this.onAutoUpload,
     this.startInSelect = false,
     this.saving,
   });
@@ -39,6 +41,13 @@ class ClipDrawer extends StatefulWidget {
   /// Given every clip the volunteer chose. One call, so the app can delete a
   /// selection as one act and report once.
   final Future<void> Function(List<CameraClip> clips) onDelete;
+
+  /// Does a finished bout go up by itself? Off by default — see
+  /// `_CameraStationState._autoUpload`.
+  final bool autoUpload;
+
+  /// The operator flipping that switch.
+  final void Function(bool on) onAutoUpload;
 
   /// Opened straight into multi-select — how "free up space" arrives from the
   /// storage-low banner.
@@ -91,6 +100,7 @@ class _ClipDrawerState extends State<ClipDrawer> {
         child: Column(
           children: [
             _header(total),
+            if (!_selecting) _autoUploadRow(),
             if (!_selecting) _retentionOffer(),
             Expanded(
               child: widget.clips.isEmpty
@@ -103,6 +113,62 @@ class _ClipDrawerState extends State<ClipDrawer> {
                     ),
             ),
             if (_selecting) _deleteBar(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The one setting that decides what this camera does with a finished bout.
+  ///
+  /// It lives here rather than behind a menu because this is the screen where
+  /// the question is asked: the operator is looking at a list of clips and what
+  /// became of each of them. Off means the footage stays on the phone until
+  /// somebody sends it — every row still has its own UPLOAD button.
+  Widget _autoUploadRow() {
+    final on = widget.autoUpload;
+
+    return InkWell(
+      onTap: () => widget.onAutoUpload(!on),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Cam.paper.withValues(alpha: 0.07))),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              on ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+              size: 16,
+              color: on ? Cam.live : Cam.paper.withValues(alpha: 0.45),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AUTO UPLOAD',
+                    style: Cam.cap(12, color: on ? Cam.live : Cam.paper.withValues(alpha: 0.75)),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    on
+                        ? 'Each bout is sent as soon as it ends'
+                        : 'Bouts stay on this phone until you send them',
+                    style: Cam.body(11, color: Cam.paper.withValues(alpha: 0.45)),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: on,
+              onChanged: widget.onAutoUpload,
+              activeThumbColor: Cam.ink,
+              activeTrackColor: Cam.live,
+              inactiveThumbColor: Cam.paper.withValues(alpha: 0.7),
+              inactiveTrackColor: Cam.paper.withValues(alpha: 0.12),
+            ),
           ],
         ),
       ),

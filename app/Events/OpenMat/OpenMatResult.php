@@ -2,7 +2,7 @@
 
 namespace App\Events\OpenMat;
 
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**

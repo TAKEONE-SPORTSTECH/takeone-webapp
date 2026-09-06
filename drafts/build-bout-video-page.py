@@ -1379,6 +1379,23 @@ rep('''        function activate(title, url, mode) {
 # ─────────────────────────────────────────────────────────────────────────────
 # 99. Write it out.
 # ─────────────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# RTL: a chevron is a DIRECTION, and Arabic runs the other way.
+#
+# The design is left-to-right only, so its prev/next chevrons point the way an
+# English reader expects and stay pointing that way under `<html dir="rtl">`.
+# Tailwind's `rtl:` variant flips them, and the platform uses it everywhere
+# else (CLAUDE.md's back-control rule and the doors on the public poster).
+#
+# Done here rather than in the blade because the blade is GENERATED — a
+# hand-patch would be discarded by the next run of this script.
+# Plain replace, no assertion: rep() raises when the count is not exactly
+# what it was told, and how many chevrons the design carries is not a fact
+# worth failing a build over.
+for _d in ('left', 'right'):
+    s = s.replace('<i class="bi bi-chevron-%s"></i>' % _d,
+                  '<i class="bi bi-chevron-%s rtl:rotate-180"></i>' % _d)
+
 io.open(OUT, 'w', encoding='utf-8').write(s)
 left = s.count('video.takeone.bh')
 print('written:', OUT, '| lines:', s.count('\n') + 1, '| video.takeone.bh refs left:', left)

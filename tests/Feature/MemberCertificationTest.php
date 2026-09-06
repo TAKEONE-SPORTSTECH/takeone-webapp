@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\MemberCertification;
-use App\Models\UserRelationship;
+use App\Members\Models\MemberCertification;
+use App\Members\Models\UserRelationship;
 use Tests\TestCase;
 
 class MemberCertificationTest extends TestCase

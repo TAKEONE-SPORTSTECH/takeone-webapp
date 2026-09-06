@@ -193,7 +193,7 @@
                         <div class="flex justify-between mt-4 pt-3 border-t">
                             <div>
                                 <a href="{{ route('admin.platform.clubs') }}" class="btn btn-secondary">
-                                    <i class="bi bi-arrow-left me-2"></i>{{ __('shared.cancel') }}
+                                    <i class="bi bi-chevron-left me-2"></i>{{ __('shared.cancel') }}
                                 </a>
                                 <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
                                     <i class="bi bi-trash me-2"></i>{{ __('platform.platform_clubs_edit_delete_club') }}

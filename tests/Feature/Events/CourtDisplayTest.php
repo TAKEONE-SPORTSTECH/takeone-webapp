@@ -2,14 +2,14 @@
 
 namespace Tests\Feature\Events;
 
-use App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplay;
-use App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice;
+use App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplay;
+use App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplayDevice;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**
@@ -270,13 +270,22 @@ class CourtDisplayTest extends TestCase
         $bout = $this->bout($event, $cat, ['match_no' => 1, 'a_competitor_id' => $entry->id, 'a_country' => 'KW']);
         $this->assertSame('kw', $this->display()->payload($event, 'Mat 1')['matches'][0]['redFlag']);
 
-        // Nothing on the draw — their own nationality stands in.
+        // Nothing on the draw — the club they compete for supplies it.
+        //
+        // This step used to expect 'jo', the athlete's own nationality. That
+        // fallback was removed on purpose: CLAUDE.md, "Competitor flag = club
+        // country" — at an event the country beside a competitor is the CLUB's
+        // (ClubEventRegistration::competingClub()), never users.nationality. A
+        // passport is a fact about the person, not about this bout.
         $bout->update(['a_country' => null]);
-        $this->assertSame('jo', $this->display()->payload($event, 'Mat 1')['matches'][0]['redFlag']);
-
-        // Nor that — the club's country is the last thing we honestly know.
-        $athlete->update(['nationality' => null]);
         $this->assertSame('bh', $this->display()->payload($event, 'Mat 1')['matches'][0]['redFlag']);
+
+        // And it must never REACH for the passport. The athlete still carries
+        // JO; with the club's country gone the board publishes nothing rather
+        // than the wrong flag, and the design hides that element.
+        $club->update(['country' => '']);
+        $this->assertNull($this->display()->payload($event, 'Mat 1')['matches'][0]['redFlag']);
+        $this->assertSame('JO', $athlete->fresh()->nationality, 'the passport is still on file — it is simply not what a mat flies');
     }
 
     // ── What the board must never leak ───────────────────────────────────────
@@ -418,8 +427,28 @@ class CourtDisplayTest extends TestCase
         // A wall screen is read by whoever walks past it. A revoked token and a
         // fabricated one must answer identically, or the difference maps which
         // tokens are real.
-        $this->get("/court/{$token}")->assertNotFound();
-        $this->get('/court/'.str_repeat('A', 40))->assertNotFound();
+        //
+        // Both used to be a 404. They are now the SAME redirect to the
+        // sport-neutral pairing room — CLAUDE.md, "Unattended Devices Must
+        // Always Recover": a page a device renders may never abort, because a
+        // television parked on an error page has no back button and no way out.
+        // Indistinguishability is unchanged and still the point, so it is
+        // asserted on the whole response, not just the status.
+        $revoked = $this->get("/court/{$token}");
+        $fabricated = $this->get('/court/'.str_repeat('A', 40));
+
+        $revoked->assertRedirect(route('screen.new'));
+        $fabricated->assertRedirect(route('screen.new'));
+        $this->assertSame($revoked->getStatusCode(), $fabricated->getStatusCode());
+        $this->assertSame($revoked->headers->get('Location'), $fabricated->headers->get('Location'));
+        $this->assertSame($revoked->getContent(), $fabricated->getContent());
+
+        // The JSON door a screen POLLS is the other half of the rule, and there
+        // 404 is required: it is the only way the agent can tell "this identity
+        // is gone" from "the wifi dropped" and re-enrol. Still one answer for
+        // both.
+        $this->getJson("/court/{$token}/status")->assertNotFound()->assertExactJson(['error' => 'unknown']);
+        $this->getJson('/court/'.str_repeat('A', 40).'/status')->assertNotFound()->assertExactJson(['error' => 'unknown']);
     }
 
     public function test_the_plaintext_token_is_never_stored(): void
@@ -453,14 +482,58 @@ class CourtDisplayTest extends TestCase
 
     public function test_an_unpaired_screen_shows_a_qr_pairing_code_not_a_board(): void
     {
-        ['device' => $device, 'token' => $token] = CourtDisplayDevice::begin('Wall screen');
+        ['token' => $token] = CourtDisplayDevice::begin('Wall screen');
 
-        $response = $this->get("/court/{$token}")->assertOk();
+        // It used to render this package's own pairing code in place. It now
+        // hands the screen to /screen, the sport-neutral room — CLAUDE.md,
+        // "Unattended Devices Must Always Recover": "Recovery goes to /screen
+        // … never a package's own pairing code, which only that sport's events
+        // can claim." What must still be true is unchanged and asserted below:
+        // the screen ends up looking at a code somebody in the hall can act on,
+        // and never at a board.
+        $this->get("/court/{$token}")->assertRedirect(route('screen.new'));
 
-        $response->assertSee($device->pairing_code, false);
-        $response->assertSee('<svg', false);                  // the QR itself
-        $response->assertSee('Pairing code', false);
-        $response->assertDontSee('id="courtBadge"', false);    // definitely not the board
+        $waiting = $this->waitingRoomFrom("/court/{$token}");
+
+        $waiting->assertOk();
+        $waiting->assertSee('<svg', false);                    // the QR itself
+        $waiting->assertDontSee('id="courtBadge"', false);     // definitely not the board
+        $this->assertSeeCode($waiting);
+    }
+
+    /**
+     * Walk a device page's recovery redirects to the page that actually draws.
+     *
+     * Deliberately hand-rolled rather than followingRedirects(): the chain
+     * crosses /screen, which issues an identity and sets a cookie, and every hop
+     * is asserted to be a redirect until the last, so a chain that never lands
+     * fails here instead of looping.
+     */
+    private function waitingRoomFrom(string $from): \Illuminate\Testing\TestResponse
+    {
+        $response = $this->get($from);
+
+        for ($hop = 0; $hop < 5 && $response->isRedirect(); $hop++) {
+            $response = $this->get($response->headers->get('Location'));
+        }
+
+        $this->assertFalse($response->isRedirect(), "the chain from {$from} never reached a page that renders");
+
+        return $response;
+    }
+
+    /**
+     * The waiting room prints its code as six separate character tiles, so the
+     * assertion is that they appear, in order — a fresh code somebody can read
+     * off the glass and type into the event.
+     */
+    private function assertSeeCode(\Illuminate\Testing\TestResponse $response): void
+    {
+        $code = \App\Events\Support\PendingScreen::query()->latest('id')->value('pairing_code');
+
+        $this->assertNotNull($code, 'the waiting room must issue a fresh identity, not park the screen on nothing');
+        $this->assertMatchesRegularExpression('/^[BCDFGHJKLMNPQRSTVWXYZ2-9]{6}$/', $code);
+        $response->assertSeeInOrder(str_split($code), false);
     }
 
     public function test_an_unpaired_screen_can_ask_whether_it_has_been_claimed(): void
@@ -580,11 +653,15 @@ class CourtDisplayTest extends TestCase
         $token = $response->json('token');
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9]{40}$/', $token);
 
-        // What it got back can show a pairing code and nothing else.
-        $this->get("/court/{$token}")
-            ->assertOk()
-            ->assertSee($response->json('pairing_code'), false)
-            ->assertDontSee('id="courtBadge"', false);
+        // What it got back can show a pairing code and nothing else. The board
+        // address now hands an unclaimed screen to /screen for that code rather
+        // than printing this package's own — see the note on
+        // test_an_unpaired_screen_shows_a_qr_pairing_code_not_a_board.
+        $this->get("/court/{$token}")->assertRedirect(route('screen.new'));
+
+        $waiting = $this->waitingRoomFrom("/court/{$token}");
+        $waiting->assertOk()->assertDontSee('id="courtBadge"', false);
+        $this->assertSeeCode($waiting);
     }
 
     public function test_enrolling_grants_access_to_no_event_data(): void
@@ -596,16 +673,35 @@ class CourtDisplayTest extends TestCase
         $token = $this->postJson('/court/enroll')->assertCreated()->json('token');
 
         // The open endpoint is only acceptable because this is true: an
-        // unclaimed screen is a QR code, not a window into the event.
-        $this->get("/court/{$token}")->assertOk()->assertDontSee('Ali Shamlan', false);
+        // unclaimed screen is a QR code, not a window into the event. Asserted
+        // over the WHOLE recovery chain now that the board address redirects —
+        // no hop on the way to the pairing room may leak the draw either.
+        $this->get("/court/{$token}")->assertRedirect(route('screen.new'));
+        $this->waitingRoomFrom("/court/{$token}")->assertOk()->assertDontSee('Ali Shamlan', false);
+
         $this->getJson("/court/{$token}/status")->assertExactJson(['claimed' => false]);
+        $this->getJson("/court/{$token}/payload")->assertNotFound();
     }
 
     public function test_enrolment_is_throttled(): void
     {
-        // A screen enrols once, ever. Anything past a handful an hour is somebody
-        // making rows for the sake of it.
-        for ($i = 0; $i < 5; $i++) {
+        // A screen enrols once, ever; a venue kitting out a hall does it a few
+        // dozen times from one NAT address. The CEILING is what matters, not the
+        // number: past it, rows are being made for the sake of it.
+        //
+        // This used to hard-code five. The limiter has since been raised
+        // deliberately, twice (5 → 30 → 120 → 600/hour per IP — see the long
+        // note on RateLimiter::for('court-enroll') in AppServiceProvider), so a
+        // fixed count no longer reaches it. Read the configured limit instead
+        // and spend exactly it: the test then keeps exercising the real throttle
+        // whatever the number is, and fails loudly if the limiter is removed.
+        $limit = app(\Illuminate\Cache\RateLimiter::class)
+            ->limiter('court-enroll')(\Illuminate\Http\Request::create('/court/enroll', 'POST'));
+
+        $this->assertNotNull($limit, 'the open enrol endpoint must be behind a named limiter');
+        $this->assertLessThanOrEqual(1000, $limit->maxAttempts, 'an open row-creating endpoint must stay bounded');
+
+        for ($i = 0; $i < $limit->maxAttempts; $i++) {
             $this->postJson('/court/enroll')->assertCreated();
         }
 
@@ -623,7 +719,12 @@ class CourtDisplayTest extends TestCase
         $working = CourtDisplayDevice::issue($event, 'Mat 1', $organiser->id)['device'];
         $working->forceFill(['created_at' => now()->subDays(3)])->save();
 
-        $this->artisan('court:pair --prune')->assertSuccessful();
+        // `taekwondo:court-pair`, not the old `court:pair`: Karate's copy of
+        // this command declared the same signature and won registration, so
+        // this fleet's prune was unreachable from the console and its nightly
+        // schedule swept the other sport's table. Renamed on the shadowed side
+        // only, so nothing that worked changed.
+        $this->artisan('taekwondo:court-pair --prune')->assertSuccessful();
 
         $this->assertNull(CourtDisplayDevice::find($abandoned->id));
         // A screen in a cupboard between events must come back to its own mat.

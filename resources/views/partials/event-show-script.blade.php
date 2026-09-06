@@ -89,6 +89,76 @@ x-data="{
         // Their claim if they already have one, otherwise the club the server
         // suggests — where they last practised THIS event's sport.
         representing: {{ ($representing['claim'] ?? 0) ?: (($representing['default'] ?? null) ?: 'null') }},
+
+        /* ===== Multi-pricing =====
+
+           `fees` is the price list the server rendered with; `chosenOptions`
+           holds the UUIDs of what has been ticked. Only the UUIDs are ever
+           posted — the total below is for the person reading the sheet, and the
+           server re-prices from its own rows before charging anybody, so a
+           reader editing these numbers in their console changes what their
+           screen says and nothing else. */
+        fees: @js($e['fees'] ?? ['currency' => '', 'base' => 0, 'options' => [], 'spectator_base' => 0, 'spectator_options' => [], 'late_active' => false, 'late_amount' => 0, 'late_from' => null]),
+        chosenOptions: [],
+
+        /** The list for whichever door the sheet is open on. */
+        feeOptions() {
+            return (this.joinRole === 'spectator' ? this.fees.spectator_options : this.fees.options) || [];
+        },
+
+        toggleFeeOption(key) {
+            const i = this.chosenOptions.indexOf(key);
+            if (i === -1) this.chosenOptions.push(key); else this.chosenOptions.splice(i, 1);
+        },
+
+        /** Trailing zeros trimmed, the way EventFee::display() writes a number. */
+        feeMoney(n) {
+            return this.fees.currency + ' ' + Number(n || 0).toFixed(3).replace(/\.?0+$/, '');
+        },
+
+        /**
+         * Base + everything ticked + the penalty when it is live.
+         *
+         * Mirrors EventFee::quote() deliberately: the sheet must show the number
+         * the server is about to arrive at, or the person is agreeing to one
+         * price and being charged another.
+         */
+        joinTotal() {
+            const spectator = this.joinRole === 'spectator';
+            let total = spectator ? (this.fees.spectator_base || 0) : (this.fees.base || 0);
+
+            for (const opt of this.feeOptions()) {
+                if (this.chosenOptions.includes(opt.key)) total += (opt.amount || 0);
+            }
+
+            if (! spectator && this.fees.late_active) total += (this.fees.late_amount || 0);
+
+            return total > 0 ? this.feeMoney(total) : this.joinFee;
+        },
+
+        /** The total taken apart, so nobody has to trust it. */
+        feeBreakdown() {
+            const spectator = this.joinRole === 'spectator';
+            const parts = [];
+            const base = spectator ? (this.fees.spectator_base || 0) : (this.fees.base || 0);
+
+            if (base > 0) parts.push('{{ __('events.fee_base_entry') }} ' + this.feeMoney(base));
+
+            for (const opt of this.feeOptions()) {
+                if (this.chosenOptions.includes(opt.key)) parts.push(opt.label + ' ' + opt.display);
+            }
+
+            if (! spectator && this.fees.late_active && this.fees.late_amount > 0) {
+                parts.push('{{ __('events.fee_line_late') }} ' + this.feeMoney(this.fees.late_amount));
+            }
+
+            return parts.length > 1 ? parts.join(' + ') : '';
+        },
+
+        lateFeeNote() {
+            return '{{ __('events.fee_line_late') }} · ' + this.feeMoney(this.fees.late_amount);
+        },
+
         representingDisowned: {{ ($representing['disowned'] ?? false) ? 'true' : 'false' }},
         async setRepresenting(id) {
             const previous = this.representing;
@@ -213,6 +283,116 @@ x-data="{
             this.picked = [];
             window.showToast((d.rejected || []).length ? 'info' : 'success', d.message);
         },
+        /* ---------------- Entering someone not listed (Door B) ----------------
+         * A NAME commits the entry; a single-use link lets the athlete supply
+         * what the coach could only have guessed at. See
+         * Documentation/EVENTS-PUBLIC-ENTRY.md.
+         */
+        byName: { full_name: '', contact_email: '', contact_phone: '' },
+        byNameContact: false,
+        claimSaving: false,
+        // The link just minted, shown ONCE. A claim link is a credential: the
+        // listing below never carries one, so it lives here and nowhere else.
+        freshClaim: null,
+        pendingClaims: [],
+        _claimsLoaded: false,
+
+        async openByName() {
+            this.squadTab = 'byname';
+            if (this._claimsLoaded) return;
+            await this.loadClaimLinks();
+        },
+
+        get waitingCount() {
+            return this.pendingClaims.filter(c => c.entry_state !== 'complete' && c.state === 'live').length;
+        },
+
+        claimStateLabel(c) {
+            return ({
+                live: @js(__('personal.event_show_byname_state_live')),
+                expired: @js(__('personal.event_show_byname_state_expired')),
+                revoked: @js(__('personal.event_show_byname_state_revoked')),
+                claimed: @js(__('personal.event_show_byname_state_claimed')),
+            })[c.state] || '';
+        },
+
+        async loadClaimLinks() {
+            try {
+                const res = await fetch('{{ route('me.events.entry-links', $e['key']) }}',
+                    { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+                const d = await res.json();
+                this.pendingClaims = d.pending || [];
+                this._claimsLoaded = true;
+            } catch (e) { /* the panel simply stays empty */ }
+        },
+
+        async issueClaim() {
+            const name = (this.byName.full_name || '').trim();
+            if (! name || this.claimSaving) return;
+            this.claimSaving = true;
+
+            const d = await this.req('{{ route('me.events.entries.unnamed', $e['key']) }}', 'POST', {
+                full_name: name,
+                contact_email: this.byName.contact_email || null,
+                contact_phone: this.byName.contact_phone || null,
+            });
+            this.claimSaving = false;
+            if (! d) return;
+
+            this.freshClaim = d.claim;
+            this.pendingClaims.unshift(d.claim);
+            this.byName = { full_name: '', contact_email: '', contact_phone: '' };
+            this.byNameContact = false;
+            this.goingCount = d.going ?? this.goingCount;
+            window.showToast('success', d.message);
+        },
+
+        async copyClaim() {
+            if (! this.freshClaim?.url) return;
+            try {
+                await navigator.clipboard.writeText(this.freshClaim.url);
+                window.showToast('success', @js(__('personal.event_show_byname_copied')));
+            } catch (e) {
+                window.showToast('info', @js(__('personal.event_show_byname_copy_manual')));
+            }
+        },
+
+        async shareClaim() {
+            if (! this.freshClaim?.url) return;
+            // The share sheet where the device has one; the clipboard is the
+            // fallback, because an Android WebView may offer neither.
+            if (navigator.share) {
+                try { await navigator.share({ title: this.freshClaim.name, url: this.freshClaim.url }); return; } catch (e) { return; }
+            }
+            this.copyClaim();
+        },
+
+        async relinkClaim(c) {
+            const d = await this.req('{{ url('me/events/'.$e['key'].'/entry-links') }}/' + c.uuid + '/relink', 'POST');
+            if (! d) return;
+            this.freshClaim = d.claim;
+            const i = this.pendingClaims.findIndex(x => x.uuid === c.uuid);
+            if (i !== -1) this.pendingClaims.splice(i, 1, d.claim);
+            window.showToast('success', d.message);
+        },
+
+        async revokeClaim(c) {
+            const ok = await window.confirmAction({
+                title: @js(__('personal.event_show_byname_withdraw')),
+                message: @js(__('personal.event_show_byname_withdraw_msg')),
+                type: 'danger',
+                confirmText: @js(__('personal.event_show_byname_withdraw')),
+            });
+            if (! ok) return;
+
+            const d = await this.req('{{ url('me/events/'.$e['key'].'/entry-links') }}/' + c.uuid, 'DELETE');
+            if (! d) return;
+            this.pendingClaims = this.pendingClaims.filter(x => x.uuid !== c.uuid);
+            if (this.freshClaim?.uuid === c.uuid) this.freshClaim = null;
+            this.goingCount = d.going ?? this.goingCount;
+            window.showToast('success', d.message);
+        },
+
         /** Reject a claim on the club's name. The athlete keeps their place. */
         async disownClaim(userId, name) {
             const ok = await window.confirmAction({
@@ -291,7 +471,12 @@ x-data="{
             // question and a confirm.
             const asksClub = role === 'participant' && {{ ($representing['ask'] ?? false) ? 'true' : 'false' }};
 
-            if (! paid && ! asksClub) {
+            // A free event that nonetheless SELLS something still needs the
+            // sheet: skipping it would enter them with nothing chosen and no
+            // chance to say otherwise.
+            const asksOptions = ((role === 'spectator' ? this.fees.spectator_options : this.fees.options) || []).length > 0;
+
+            if (! paid && ! asksClub && ! asksOptions) {
                 return role === 'spectator' ? this.toggleWatch() : this.toggleGoing();
             }
 
@@ -302,6 +487,10 @@ x-data="{
             this.joinRole = role;
             this.joinMode = mode;
             this.payMethod = null;
+            // A fresh sheet starts with nothing ticked: carrying a previous
+            // selection over would quietly re-enter somebody into something
+            // they had backed out of.
+            this.chosenOptions = [];
             // Empty when there is nothing to pay — the sheet keys its money
             // sections off this, and the word 'Free' is not an amount.
             this.joinFee = role === 'spectator'
@@ -394,8 +583,12 @@ x-data="{
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '', 'Accept': 'application/json' },
                     credentials: 'same-origin',
-                    // The club they chose to compete for, if they were asked.
-                    body: JSON.stringify({ representing_tenant_id: this.representing }),
+                    // The club they chose to compete for, if they were asked,
+                    // and WHAT they are entering. Keys only — never a price.
+                    body: JSON.stringify({
+                        representing_tenant_id: this.representing,
+                        fee_options: this.chosenOptions,
+                    }),
                 });
                 d = await res.json().catch(() => ({}));
             } catch (e) { this.busy = false; window.showToast('error', e.message); return; }
@@ -515,7 +708,12 @@ x-data="{
             this.manageOpen = false;
             const ok = await window.confirmAction({ title: '{{ __("personal.event_show_delete_title") }}', message: '{{ __("personal.event_show_delete_msg") }}', type: 'danger', confirmText: '{{ __('shared.delete') }}' });
             if (!ok) return;
-            const d = await this.req('{{ route('me.events.destroy', $e['key']) }}', 'DELETE');
+            {{-- Same trap as the edit form's PUT: a bare quoted
+                 `/me/events/{uuid}` is rewritten to the public poster inside
+                 the sealed app, and the poster answers GET only — so the
+                 DELETE has to name the mirrored admin root itself. See the
+                 note in personal/event-create.blade.php. --}}
+            const d = await this.req('{{ isset($shell) ? url('/e/'.$e['key'].'/admin') : route('me.events.destroy', $e['key']) }}', 'DELETE');
             if (d) { window.showToast('success', d.message); setTimeout(() => { window.location.href = d.redirect || '{{ route('me.events') }}'; }, 500); }
         },
         // ----- Results / winners -----
@@ -545,9 +743,15 @@ x-data="{
         winners: [],
         openResults() {
             this.manageOpen = false;
+            /* Only a type that ALLOWS a typed-in podium needs the editor's
+               working copy. A bracketed championship opens the read-only
+               podium (partials/event-podium-sheet), which is rendered from the
+               server's own derived result and has nothing to seed. */
+            @if($manual_results ?? true)
             this.winners = this.results.length
                 ? this.results.map(r => ({ place: r.place, name: r.name, prize: r.prize || '' }))
                 : [{ place: 1, name: '', prize: @js($e['prize'] ?? '') }, { place: 2, name: '', prize: '' }, { place: 3, name: '', prize: '' }];
+            @endif
             this.resultsOpen = true;
         },
         addWinner() { this.winners.push({ place: this.winners.length + 1, name: '', prize: '' }); },

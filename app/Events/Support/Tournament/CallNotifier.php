@@ -6,9 +6,9 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
 use App\Models\EventNotificationSent;
-use App\Models\User;
-use App\Models\UserNotification;
-use App\Models\UserRelationship;
+use App\Members\Models\User;
+use App\Members\Models\UserNotification;
+use App\Members\Models\UserRelationship;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 

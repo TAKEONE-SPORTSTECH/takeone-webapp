@@ -2,7 +2,7 @@
 
 namespace App\Events\Sports\BrazilianJiuJitsu\Tournament;
 
-use App\Events\Sports\BrazilianJiuJitsu\Tournament\Scoreboard\Scoring;
+use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\Scoring;
 use App\Events\Support\Tournament\Advancement as SharedAdvancement;
 
 /**

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use App\Shop\Models\ClubProduct;
-use App\Models\MemberEquipment;
+use App\Members\Models\MemberEquipment;
 
 /**
  * Links a shop product (ClubProduct) to an activity as required/optional gear.

@@ -105,7 +105,7 @@
                         </a>
                         <a href="{{ route('admin.platform.clubs') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
-                            <i class="bi bi-arrow-left text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_back_to_clubs') }}
+                            <i class="bi bi-chevron-left text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_back_to_clubs') }}
                         </a>
                         <a href="{{ route('me.home') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
@@ -114,7 +114,7 @@
                     @else
                         <a href="{{ $hasBusiness ? route('business.dashboard') : route('clubs.explore') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
-                            <i class="bi bi-arrow-left text-lg w-5 text-center"></i>{{ $hasBusiness ? __('admin.back_to_chain') : __('admin.back_to_explore') }}
+                            <i class="bi bi-chevron-left text-lg w-5 text-center"></i>{{ $hasBusiness ? __('admin.back_to_chain') : __('admin.back_to_explore') }}
                         </a>
                     @endif
 

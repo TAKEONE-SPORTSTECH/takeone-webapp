@@ -111,7 +111,7 @@
        class="m-press block m-card p-3.5 no-underline overflow-hidden">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-xs font-bold uppercase tracking-wide text-muted-foreground">{{ __('admin.dash_this_month') }}</h3>
-            <i class="bi bi-chevron-right text-[10px] text-muted-foreground rtl:rotate-180"></i>
+            <i class="bi bi-chevron-right text-[10px] text-muted-foreground"></i>
         </div>
 
         <div class="flex items-baseline gap-1.5">
@@ -187,7 +187,7 @@
             @if($newMembers > 0)
                 <span class="text-[10px] font-bold text-emerald-600">+{{ $newMembers }} {{ __('admin.dash_new_members') }}</span>
             @else
-                <i class="bi bi-chevron-right text-[10px] text-muted-foreground rtl:rotate-180"></i>
+                <i class="bi bi-chevron-right text-[10px] text-muted-foreground"></i>
             @endif
         </div>
 

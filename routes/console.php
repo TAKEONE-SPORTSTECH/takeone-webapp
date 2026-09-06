@@ -41,6 +41,11 @@ Schedule::command('alerts:recheck-low-stock')->dailyAt('08:00');
 // nothing, so this is the other half of that trade — abandoned rows are swept
 // up instead of accumulating. Claimed screens are never touched.
 Schedule::command('court:pair --prune')->dailyAt('04:00');
+// The Taekwondo fleet's own sweep. It shared the line above until its command
+// was found to be shadowed by Karate's identical signature — so for as long as
+// this schedule has existed it has been pruning one table twice and the other
+// never. Same job, same window, the other fleet.
+Schedule::command('taekwondo:court-pair --prune')->dailyAt('04:05');
 
 /*
 |--------------------------------------------------------------------------

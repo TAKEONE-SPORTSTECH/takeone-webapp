@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\AchievementVouch;
-use App\Models\User;
-use App\Models\UserNotification;
-use App\Models\UserPost;
-use App\Models\UserRelationship;
+use App\Members\Models\AchievementVouch;
+use App\Members\Models\User;
+use App\Members\Models\UserNotification;
+use App\Members\Models\UserPost;
+use App\Members\Models\UserRelationship;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -393,13 +393,13 @@ class AchievementVerificationService
     /** Human, celebratory feed copy for a newly-verified record, per type. */
     private function announcementBody(Model $model): string
     {
-        if ($model instanceof \App\Models\TournamentEvent) {
+        if ($model instanceof \App\Members\Models\TournamentEvent) {
             $medal = $model->performanceResults->first()?->medal_type;
             $m = ['1st' => '🥇 '.__('Gold'), '2nd' => '🥈 '.__('Silver'), '3rd' => '🥉 '.__('Bronze')][$medal] ?? '🏅';
 
             return '🏆 '.__(':medal — verified at :title', ['medal' => $m, 'title' => $model->title]);
         }
-        if ($model instanceof \App\Models\SkillAcquisition) {
+        if ($model instanceof \App\Members\Models\SkillAcquisition) {
             return '🎓 '.__(':level :skill — now verified', [
                 'level' => ucfirst((string) $model->proficiency_level),
                 'skill' => $model->skill_name,
@@ -408,7 +408,7 @@ class AchievementVerificationService
         if ($model instanceof \App\Clubs\Models\ClubAffiliation) {
             return '🏛 '.__('Verified membership at :club', ['club' => $model->club_name]);
         }
-        if ($model instanceof \App\Models\MemberWorkHistory) {
+        if ($model instanceof \App\Members\Models\MemberWorkHistory) {
             return '💼 '.__(':role at :org — verified', ['role' => $model->title, 'org' => $model->organization]);
         }
 

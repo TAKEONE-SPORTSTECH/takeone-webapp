@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\UserPhoto;
+use App\Members\Models\UserPhoto;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 

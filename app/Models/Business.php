@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use App\Clubs\Models\Tenant;
+use App\Members\Models\User;
 
 /**
  * A Business (chain) groups several clubs (tenants) under one owner.

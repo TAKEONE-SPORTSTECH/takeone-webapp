@@ -5,7 +5,7 @@ namespace App\Events\Support;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Collection;
 
 /**
@@ -76,6 +76,18 @@ class RosterPeople
             'uuid' => $user?->uuid,
             'name' => $row['name'] ?? __('personal.event_people_unknown'),
             'gender' => $row['gender'] ?? null,
+            /* The rank, drawn as the card's edge.
+               Two shapes arrive here and both are legitimate: the event view
+               resolves the ANNOUNCED belt through App\Sports\Combat\BeltRank
+               and hands over `{colour, grade, label, source}`, while the public
+               participants payload carries the plain colour. Normalised to a
+               colour plus a degree so the card never has to know. */
+            'belt' => is_array($row['belt'] ?? null)
+                ? ($row['belt']['colour'] ?? null)
+                : ($row['belt'] ?? null),
+            'belt_grade' => is_array($row['belt'] ?? null)
+                ? ($row['belt']['grade'] ?? null)
+                : null,
             'category' => $row['category'] ?? null,
             'weight_class' => $row['weight_class'] ?? null,
             // The flag is the CLUB's country, not the person's passport. Someone
@@ -132,7 +144,10 @@ class RosterPeople
         // taken for this competition, and it is the only picture most
         // paper-entered competitors have. It carries no privacy gate because
         // uploading it here WAS the decision to show it on this event's surfaces.
-        if ($entryPhoto) {
+        // Only when the bytes are actually there. A path with no file behind
+        // it used to win here anyway and stop the fall-through, blanking a
+        // competitor whose profile picture was perfectly good.
+        if (EntryPhoto::showable($entryPhoto)) {
             return file_url($entryPhoto);
         }
 

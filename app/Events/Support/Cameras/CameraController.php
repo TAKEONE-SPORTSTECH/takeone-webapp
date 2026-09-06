@@ -124,6 +124,9 @@ class CameraController extends Controller
             // backstop for a command it missed.
             'broadcasting' => (bool) $camera->broadcasting,
             'match' => $this->bout($camera),
+            // The mat's standing orders about how to film. Same field as the
+            // beat's, so a phone that reads either learns the same thing.
+            'settings' => MatCameras::clean($camera->settings ?? []),
             'realtime' => CameraChannel::credentials($camera),
         ]);
     }
@@ -154,7 +157,26 @@ class CameraController extends Controller
             'recording' => ['nullable', 'boolean'],
             'device_name' => ['nullable', 'string', 'max:60'],
             'app_version' => ['nullable', 'string', 'max:20'],
+            // How this camera is actually filming: frame rate, zoom, exposure,
+            // and whether it sends a bout by itself. Reported, never obeyed —
+            // it is what the mat's panel shows beside what it ASKED for, so an
+            // order a phone never received is visible rather than assumed.
+            'settings' => ['nullable', 'array'],
+            'settings.fps' => ['nullable', 'integer'],
+            'settings.zoom' => ['nullable', 'numeric'],
+            'settings.exposure' => ['nullable', 'numeric'],
+            'settings.auto_upload' => ['nullable', 'boolean'],
+            // What is still ON the phone. The server keeps a clip's row
+            // forever; the FILE can be deleted at the mat, and without this the
+            // panel would go on offering to upload a recording that no longer
+            // exists. Capped so a phone cannot make one beat expensive.
+            'inventory' => ['nullable', 'array', 'max:200'],
+            'inventory.*' => ['string', 'max:190'],
         ]);
+
+        // Whitelisted and clamped on the way in: a phone is a stranger writing
+        // into a column that is later handed to a browser.
+        $reported = MatCameras::clean($data['settings'] ?? []);
 
         $camera->forceFill(array_filter([
             'storage_total_bytes' => $data['storage_total_bytes'] ?? null,
@@ -162,9 +184,23 @@ class CameraController extends Controller
             'battery_percent' => $data['battery_percent'] ?? null,
             'device_name' => $data['device_name'] ?? null,
             'app_version' => $data['app_version'] ?? null,
+            'reported_settings' => $reported ?: null,
         ], fn ($v) => $v !== null) + [
             'last_seen_at' => now(),
         ])->saveQuietly();
+
+        // Reconcile what the phone is holding against what we filed for it.
+        //
+        // Scoped to THIS camera's own rows, so a token can only ever describe
+        // its own footage, and only ever flips a boolean — there is no way from
+        // here to delete a row, move a clip to another bout, or claim a
+        // recording somebody else filed.
+        if (array_key_exists('inventory', $data) && is_array($data['inventory'])) {
+            $held = array_values(array_unique(array_filter($data['inventory'], 'is_string')));
+
+            $camera->clips()->whereIn('local_ref', $held)->update(['on_device' => true]);
+            $camera->clips()->whereNotIn('local_ref', $held)->update(['on_device' => false]);
+        }
 
         return response()->json([
             // The beat doubles as a correction channel: the phone learns from
@@ -174,6 +210,12 @@ class CameraController extends Controller
             'broadcasting' => (bool) $camera->broadcasting,
             'match' => $this->bout($camera),
             'claimed' => $camera->isClaimed(),
+            // What the mat has ASKED this camera to run at. Carried on every
+            // beat rather than only pushed, because an order given while the
+            // phone was asleep, or while the broker was down, would otherwise
+            // simply be lost — and the operator would be looking at a panel
+            // saying 60fps over a camera still filming at 30.
+            'settings' => MatCameras::clean($camera->settings ?? []),
             // And where its uploads got to. The phone hands over bytes and then
             // has no way of knowing what became of them — the forward to Play
             // and the transcode both happen after its part is done — so the

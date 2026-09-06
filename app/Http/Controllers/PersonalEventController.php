@@ -4,26 +4,32 @@ namespace App\Http\Controllers;
 
 use App\Events\Contracts\EventType;
 use App\Events\EventTypeRegistry;
+use App\Events\Support\EntryClaim;
 use App\Events\Support\EntryService;
 use App\Events\Support\EventAccess;
 use App\Events\Support\EventFee;
 use App\Events\Support\RosterPeople;
+use App\Events\Support\PublicEntry;
 use App\Models\ClubEvent;
+use App\Models\EventFeeOption;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
 use App\Models\EventCategory;
+use App\Models\EventEntryClaim;
 use App\Models\EventChecklistItem;
 use App\Models\EventExpense;
 use App\Models\EventOfficial;
 use App\Models\EventParticipantBan;
+use App\Models\EventPublicEntry;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -70,13 +76,32 @@ class PersonalEventController extends Controller
      *
      * @return array<int, array{id: int, name: string, currency: string}>
      */
-    private function clubsICanCreateFor(User $me): array
+    private function clubsICanCreateFor(User $me, ?ClubEvent $event = null): array
     {
-        $ids = $me->memberClubs()->pluck('tenants.id')
-            ->merge(app(EntryService::class)->administeredClubIds($me))
-            ->unique();
+        // A super-admin runs the platform, so every club is theirs to hold an
+        // event for. Without this they saw only the clubs they happen to own or
+        // train at — a club somebody else owns was simply missing from the
+        // picker, with nothing on screen to say why. `assertMayBroadcast()`
+        // already treats them this way; this is the same rule, one screen
+        // earlier.
+        $query = \App\Clubs\Models\Tenant::query();
 
-        return \App\Clubs\Models\Tenant::whereIn('id', $ids)
+        if (! $me->isSuperAdmin()) {
+            $ids = $me->memberClubs()->pluck('tenants.id')
+                ->merge(app(EntryService::class)->administeredClubIds($me))
+                ->unique();
+
+            // On an EDIT, the event's own host is always in the list. It is
+            // already the answer on file, and dropping it would show the
+            // organiser a picker that cannot say where their event actually is.
+            if ($event) {
+                $ids = $ids->push($event->tenant_id)->unique();
+            }
+
+            $query->whereIn('id', $ids);
+        }
+
+        return $query
             ->orderBy('club_name')
             ->get(['id', 'club_name', 'currency'])
             ->map(fn ($c) => ['id' => $c->id, 'name' => $c->club_name, 'currency' => $c->currency ?: 'BHD'])
@@ -233,6 +258,11 @@ class PersonalEventController extends Controller
             'canCompete' => $banned ? false : $gate->allowed,
             'eligReason' => $banned ? __('events.banned_by_organiser') : $gate->message,
             'actions' => $canManage ? $type->availableActions($event) : [],
+            // The one address to hand out for this event — the public page when
+            // the organiser published one, the member page otherwise. The QR,
+            // the printable poster and the share button all take THIS, so a
+            // published event can never be shared as a login form.
+            'shareUrl' => \App\Http\Controllers\QrController::eventUrl($event),
             'finance' => $canManage ? $type->finance($event) : null,
             // The verification desk only exists for the people who staff it.
             'canOfficiate' => $canOfficiate = app(EventAccess::class)->canOfficiate($event, $me),
@@ -321,6 +351,39 @@ class PersonalEventController extends Controller
             'canOfficiate' => $canOfficiate,
             'canWeigh' => $access->canVerifyWeighIn($event, $me),
             'canPay' => $access->canVerifyPayments($event, $me),
+
+            // The scoring table for this event's mats, or null when the sport
+            // has none or this person may not score.
+            //
+            // The console had no door. It could be reached by pairing a tablet
+            // to it, or by an Open Mat screen that built the URL itself — and
+            // neither of those is available to an organiser sitting at a laptop
+            // running a tournament, who is exactly the person who needs it. The
+            // address comes from App\Scoreboard\Fleet so this view never learns
+            // a sport's name, and the console re-checks canScore on the way in
+            // regardless: this decides what to OFFER, not what is allowed.
+            'scoringUrl' => $access->canScore($event, $me)
+                ? \App\Scoreboard\Fleet::consoleUrl($event)
+                : null,
+
+            // Whether this event has a page anybody may open, and the address of
+            // it. Organiser only — publishing is not an official's decision.
+            'isPublic' => $canManage && ($event->entry_mode ?? 'members') === 'public',
+            'publicUrl' => $canManage ? route('events.public', $event->uuid) : null,
+            // The picture the public cover opens onto — images[0]. Organiser
+            // only: changing the event's face is not an official's decision.
+            'coverPhoto' => $canManage ? file_url(($event->images[0] ?? null)) : null,
+            'autoAccept' => (bool) $event->public_entry_auto_accept,
+            // When the draw becomes readable, and the day `start_day` would open
+            // it on. Organiser only: withholding a draw is not an official's
+            // decision, though an official always reads it (EventAccess::
+            // drawVisible).
+            'drawReveal' => $event->draw_reveal ?: \App\Models\ClubEvent::DRAW_ALWAYS,
+            'drawRevealDate' => $event->date?->translatedFormat('D j M'),
+            // Strangers who followed the public link and are waiting to be let
+            // in. Rendered by the organiser's console only — accepting one is
+            // the gate, and it is not an official's to open.
+            'publicEntries' => $canManage ? app(PublicEntry::class)->pending($event, $me) : [],
             'actions' => $canManage ? $type->availableActions($event) : [],
             // Money is the organiser's alone — an official never receives it.
             'finance' => $canManage ? $type->finance($event) : null,
@@ -398,6 +461,26 @@ class PersonalEventController extends Controller
         $categories = $type->runData($event, $me)['categories'] ?? [];
 
         /*
+         * A draw the organiser has not let out yet.
+         *
+         * The board fetches itself and is veiled by the JSON door, but this page
+         * ALSO prints the same bouts underneath in readable form — bout by bout,
+         * with the entrant list beside them. Withholding one and not the other
+         * would be withholding nothing, so the categories are emptied here and
+         * both halves of the page go quiet together.
+         *
+         * The page still renders: a member who taps "Draw" is told when it
+         * opens, which is the answer they came for.
+         */
+        $drawHidden = app(EventAccess::class)->drawVisible($event, $me)
+            ? null
+            : $this->drawHiddenMessage($event);
+
+        if ($drawHidden !== null) {
+            $categories = [];
+        }
+
+        /*
          * Which division to open on.
          *
          * The board used to open on the FIRST category whatever the link said, so
@@ -433,6 +516,9 @@ class PersonalEventController extends Controller
                 'categories' => $categories,
                 // The division to open on.
                 'initialCategory' => $initialCategory,
+                // Set to the sentence that says when the draw opens, or null
+                // when there is nothing being withheld.
+                'drawHidden' => $drawHidden,
                 'canManage' => $canManage,
                 'canArrange' => $this->canArrangeDraw($event, $type, $canManage),
                 // The viewer's own entries, so the board can mark their bouts.
@@ -506,57 +592,21 @@ class PersonalEventController extends Controller
 
     /* ---------------- Officials' console ---------------- */
 
-    /**
-     * The officials' desk: the roster with the two gates on its rows.
+    /*
+     * ===== The verification desk is GONE =====
      *
-     * This used to be folded into people(), which made one screen answer two
-     * unrelated questions — "who is competing" for everyone walking past, and
-     * "is this entry cleared for the draw" for the two people signing it off.
-     * They are separate screens now: people() is a reading surface with no
-     * controls on it at all, and everything actionable lives here.
+     * `verify()` rendered a screen of its own — the roster with the weigh-in
+     * and payment gates on it. Everything it did now happens on the ENTRY LIST:
+     * tapping a person there opens the SAME sheet (personal/partials/event-people
+     * included in `sheetOnly` mode), which is where an official is already
+     * standing when they need it. Two doors to one job, and the second one made
+     * the console a maze — removed 2026-09-03 at the user's request.
      *
-     * Officials only. A competitor has no use for a scale and a receipt viewer,
-     * and the endpoints each re-authorise anyway — but shipping the wiring to
-     * everyone would put the shape of the officials' tools in every page.
+     * What stayed: that partial, and the endpoints the sheet writes through —
+     * verifyWeighIn(), verifyPayment() and verifyProof() below. Nothing about
+     * WHO may verify changed, and people() now lets an official in explicitly
+     * so deleting this screen could not strand one.
      */
-    public function verify(ClubEvent $event, Request $request): View
-    {
-        $me = Auth::user();
-        $this->assertVisible($event, $me);
-
-        // The two officiating jobs, asked separately: a weigh-in official may
-        // put an athlete on the scale but must not be able to approve money.
-        $access = app(EventAccess::class);
-        $canWeigh = $access->canVerifyWeighIn($event, $me);
-        $canPay = $access->canVerifyPayments($event, $me);
-
-        abort_unless($canWeigh || $canPay, 403);
-
-        $type = $this->typeFor($event);
-
-        $event->loadCount(['participantRegistrations']);
-        $myReg = $this->myRegistrations($me->id, collect([$event->id]));
-        $e = $this->eventView($event, $me->id, $myReg, full: true, wholeRoster: true);
-        $e['cancelled'] = $event->status === 'cancelled';
-        $e['participants'] = $this->attachVerification($event, $e['participants'], $canWeigh, $canPay);
-
-        $canManage = $this->canManage($event, $me);
-        $banned = $this->isBanned($event, $me->id);
-        $gate = $type->enrolmentGate($event, $me, $myReg->get($event->id));
-
-        return view('personal.event-verification', [
-            'e' => $e,
-            'canManage' => $canManage,
-            'banned' => $banned,
-            'canCompete' => $banned ? false : $gate->allowed,
-            'eligReason' => $banned ? __('events.banned_by_organiser') : $gate->message,
-            'actions' => $canManage ? $type->availableActions($event) : [],
-            'finance' => $canManage ? $type->finance($event) : null,
-            'canWeigh' => $canWeigh,
-            'canPay' => $canPay,
-            'payment' => $this->paymentInstructions($event),
-        ] + $type->viewData($event, $me));
-    }
 
     /** Record an official weight. Signing it is the point — hence weighed_in_by. */
     /**
@@ -605,8 +655,13 @@ class PersonalEventController extends Controller
         $registration->update(['photo' => $path]);
 
         // Only once the new one is safely stored, and only if it moved.
+        //
+        // Through EntryPhoto, because `photo` is not always a file this entry
+        // owns: an entry settled through the public door points at the
+        // athlete's own profile picture, and deleting that here took a member's
+        // face off the disk while their profile carried on pointing at it.
         if ($previous && $previous !== $path) {
-            Storage::disk('public')->delete($previous);
+            \App\Events\Support\EntryPhoto::discard($previous);
         }
 
         return response()->json([
@@ -625,9 +680,12 @@ class PersonalEventController extends Controller
 
         $path = $registration->photo;
 
-        // File first, then the row's reference to it.
+        // File first, then the row's reference to it — but only if it IS this
+        // entry's file. See EntryPhoto: a publicly-entered athlete's `photo` is
+        // their profile picture, and removing the event photo must not remove
+        // their face from the platform.
         if ($path) {
-            Storage::disk('public')->delete($path);
+            \App\Events\Support\EntryPhoto::discard($path);
         }
 
         $registration->update(['photo' => null]);
@@ -716,7 +774,15 @@ class PersonalEventController extends Controller
         abort_unless(app(EventAccess::class)->canVerifyPayments($event, $me), 403);
         abort_unless($registration->event_id === $event->id, 404);
 
-        $approve = (bool) $request->validate(['approve' => ['required', 'boolean']])['approve'];
+        $data = $request->validate([
+            'approve' => ['required', 'boolean'],
+            // The desk may say what the money was FOR in the same breath as
+            // approving it — see recordFees().
+            'fee_options' => ['nullable', 'array', 'max:30'],
+            'fee_options.*' => ['string', 'max:64'],
+        ]);
+
+        $approve = (bool) $data['approve'];
 
         $registration->update([
             'paid' => $approve,
@@ -724,12 +790,177 @@ class PersonalEventController extends Controller
             'paid_by' => $approve ? $me->id : null,
         ]);
 
+        /*
+         * Approving a payment WRITES THE MONEY RECORD.
+         *
+         * Until now ticking "paid" set a boolean and nothing else, so the
+         * event knew that money had changed hands and not how much — revenue
+         * fell back to an estimate at the list price, and the "where it comes
+         * from" table could attribute none of it. A payment that is recorded
+         * as an amount at the moment it is taken needs no estimating later.
+         *
+         * Nothing is written on a REJECTION: what an entry was charged is not
+         * undone by refusing the receipt, and the lines are the record of the
+         * charge, not of the payment.
+         */
+        $lines = null;
+
+        if ($approve) {
+            $lines = $this->recordFees($event, $registration, $data['fee_options'] ?? null);
+        }
+
         return response()->json([
             'success' => true,
             'message' => $approve
                 ? __('personal.event_verify_payment_approved')
                 : __('personal.event_verify_payment_rejected'),
+        ] + ($lines ?? []));
+    }
+
+    /**
+     * Write what an entry was charged, at the moment its payment is approved.
+     *
+     * Three cases, and the third is the reason this is careful rather than
+     * clever:
+     *
+     *  1. **The desk said what it was for** (`fee_options` came with the
+     *     approval, from the sheet's picker) → price exactly that. An explicit
+     *     answer always wins, including the answer "nothing".
+     *  2. **Nothing was said, and the price is not in doubt** — the event
+     *     charges a base fee, or offers exactly ONE type, or is genuinely free
+     *     for this role → record it. One option is not a choice.
+     *  3. **Nothing was said and the price DEPENDS on a choice** (two or more
+     *     types, nobody ticked one) → write NOTHING and leave the entry
+     *     unrecorded.
+     *
+     * Case 3 matters: `commit()` writes a zero line for an empty quote, and a
+     * zero line means "recorded free". Saying an entry was free because nobody
+     * told us which of three prices it paid would turn a known unknown into a
+     * confident wrong answer — and the finance sheet would report LESS than the
+     * estimate it replaced. Unrecorded is the honest state, the sheet says so,
+     * and the picker beside this button is how it gets answered.
+     *
+     * An entry that already has lines is never overwritten by an approval;
+     * only the picker (verifyFees) rewrites a record that exists.
+     *
+     * @return array<string, mixed>|null  what to echo back, or null when nothing was written
+     */
+    private function recordFees(ClubEvent $event, ClubEventRegistration $registration, ?array $options): ?array
+    {
+        $role = $registration->role === 'spectator' ? 'spectator' : 'participant';
+
+        $explicit = $options !== null;
+        $chosen = array_values(array_filter((array) $options, 'is_string'));
+
+        $recorded = \App\Models\EventRegistrationFeeLine::where('registration_id', $registration->id)->exists();
+
+        if (! $explicit) {
+            if ($recorded) {
+                return null;
+            }
+
+            $types = EventFee::options($event, $role);
+
+            if ($types->count() === 1) {
+                $chosen = [$types->first()->uuid];
+            } elseif ($types->count() > 1) {
+                return null;   // case 3 — ambiguous, so nothing is invented
+            }
+        }
+
+        $quote = EventFee::quote($event, $role, $chosen, $registration->registered_at);
+
+        // An implicit quote of nothing is only recorded when the event really
+        // does charge nothing for this role. Otherwise it is case 3 again.
+        if (! $explicit && $quote['total'] <= 0 && EventFee::chargesAnything($event, $role)) {
+            return null;
+        }
+
+        $total = EventFee::commit($registration, $quote);
+
+        return [
+            'charged' => $total,
+            'charged_label' => EventFee::display($total, $quote['currency']),
+            'fee_options' => collect($quote['lines'])->pluck('fee_option_id')->filter()
+                ->map(fn ($id) => \App\Models\EventFeeOption::where('id', $id)->value('uuid'))
+                ->filter()->values()->all(),
+        ];
+    }
+
+    /**
+     * What this entry is being charged for — set at the desk.
+     *
+     * The gap this closes: an entry taken at the door is ticked "paid" and
+     * nothing records WHAT for, because no price was ever quoted. The event
+     * then reports revenue it cannot attribute — eighteen paid entrants showing
+     * one recorded amount and seventeen estimates (2026-09-06).
+     *
+     * The official ticks the types; the server prices them. Deliberately NOT
+     * from the amounts the browser sends: `EventFee::quote` reads the event's
+     * own rows, so a hand-made request cannot invent a price, and the late
+     * penalty is judged by when they ENTERED rather than by when the desk got
+     * round to them.
+     *
+     * `commit()` replaces the entry's lines wholesale, which is what makes this
+     * a correction rather than an addition — and it writes a zero line for a
+     * free entry, so "recorded free" stays distinguishable from "no record".
+     */
+    public function verifyFees(Request $request, ClubEvent $event, ClubEventRegistration $registration): JsonResponse
+    {
+        $me = Auth::user();
+        abort_unless(app(EventAccess::class)->canVerifyPayments($event, $me), 403);
+        abort_unless($registration->event_id === $event->id, 404);
+
+        $data = $request->validate([
+            'fee_options' => ['nullable', 'array', 'max:30'],
+            'fee_options.*' => ['string', 'max:64'],
         ]);
+
+        $role = $registration->role === 'spectator' ? 'spectator' : 'participant';
+
+        $quote = EventFee::quote(
+            $event,
+            $role,
+            $data['fee_options'] ?? [],
+            $registration->registered_at,
+        );
+
+        $total = EventFee::commit($registration, $quote);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.event_verify_fees_saved'),
+            'charged' => $total,
+            'charged_label' => EventFee::display($total, $quote['currency']),
+            // Echo what was actually stored, so the sheet shows the server's
+            // answer rather than what it hoped for.
+            'fee_options' => collect($quote['lines'])->pluck('fee_option_id')->filter()
+                ->map(fn ($id) => \App\Models\EventFeeOption::where('id', $id)->value('uuid'))
+                ->filter()->values()->all(),
+            'lines' => collect($quote['lines'])->map(fn ($l) => [
+                'label' => $l['label'],
+                'amount' => (float) $l['amount'],
+                'kind' => $l['kind'],
+            ])->values()->all(),
+        ]);
+    }
+
+    /**
+     * The event's price list in the shape a picker reads.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function feeTypesFor(ClubEvent $event): array
+    {
+        $currency = EventFee::currency($event);
+
+        return EventFee::options($event, 'participant')
+            ->map(fn ($o) => [
+                'key' => (string) $o->uuid,
+                'label' => (string) $o->label,
+                'amount' => (float) $o->amount,
+                'label_amount' => EventFee::display((float) $o->amount, $currency),
+            ])->values()->all();
     }
 
     /** Stream one entry's proof image to an official (private disk). */
@@ -801,16 +1032,277 @@ class PersonalEventController extends Controller
         // Nothing actionable is assembled here — no registration ids, no
         // weights, no payment state, no moderation. An official who needs those
         // goes to verify(), which is a different screen with a different guard.
+        $canManage = app(EventAccess::class)->canManage($event, $me);
+
+        /*
+         * The whole list, for whoever runs the event.
+         *
+         * A sport's own roster may hold names back — the shared tournament one
+         * drops anybody with no weight on file, because the screens it feeds
+         * cannot announce an unclassified competitor. That is right for a
+         * reading surface and wrong for this one: an entrant with no weight is
+         * PRECISELY who an organiser is looking for when they open the list, and
+         * a name that is not on the page cannot be struck off it.
+         *
+         * So the missing entries are appended, and only for the organiser: what
+         * everybody else reads here is unchanged.
+         */
+        if ($canManage) {
+            $e['participants'] = $this->appendUnlistedEntrants($event, $e['participants']);
+        }
+
         $people = app(RosterPeople::class)->build($e['participants'], $event);
+
+        /*
+         * ===== The two readiness badges on each card =====
+         *
+         * Asked for on 2026-09-04: an organiser reading down the list must see,
+         * without tapping anything, whether an entry is paid for and whether a
+         * weight has been taken.
+         *
+         * RosterPeople is a READING surface and deliberately drops payment and
+         * weight, so the flags are put back here — positionally, because
+         * build() maps the rows it was given one-for-one and in order.
+         *
+         * The scoping decision is NOT retaken: a row the event view already
+         * withheld status from (`show_status` false — somebody else's child's
+         * fee and body weight) gets no badges at all. A missing badge would
+         * itself disclose something, so the pair is absent rather than grey.
+         */
+        $people['participants'] = $this->attachReadiness($event, $people['participants'], $e['participants']);
+
+        /*
+         * ===== The club an athlete was written down under =====
+         *
+         * `event_club_entrants` records which club standing behind THIS event
+         * brought which entrant, and that club may not be a tenant at all — it
+         * is a name and a crest an organiser typed at the desk. RosterPeople
+         * only knows about tenant-backed clubs, so an athlete brought by a
+         * written-down one showed NO club on this screen, even though the join
+         * row was sitting right there.
+         *
+         * Overlaid here rather than pushed into RosterPeople: the shared roster
+         * feeds the draw, the boards and the hall screens, and none of them
+         * asks this question. Positional, exactly like attachReadiness above —
+         * build() maps its rows one-for-one and in order.
+         */
+        $people['participants'] = $this->attachEventClubs($event, $people['participants'], $e['participants']);
+        $people['clubs'] = $this->eventClubTab($event, $people['clubs'] ?? []);
+
+        /*
+         * ===== The flag beside a name is the PERSON'S =====
+         *
+         * ⚠️ This REVERSES the platform's standing rule, deliberately and at
+         * the owner's request. `ClubEventRegistration::countryCode()` answers
+         * with the CLUB's country — so an Egyptian competing for a Bahraini
+         * club flew Bahrain on every sheet — and CLAUDE.md records that as the
+         * decided behaviour.
+         *
+         * Both answers are defensible: a team competition flies the club, an
+         * international flies the passport. Which is exactly why it is done
+         * HERE, on this one roster, and NOT in the shared `countryCode()` that
+         * the draw, the boards and the hall screens all read. One screen
+         * changing its mind is a change anybody can see; all of them changing
+         * silently is a regression somebody finds on an event day.
+         *
+         * Falls back to whatever was there when no nationality is on file — a
+         * blank flag says less than the club's.
+         */
+        $people['participants'] = $this->attachNationality($people['participants'], $e['participants']);
+
+        /*
+         * ===== Verifying an entry WITHOUT leaving this list =====
+         *
+         * Asked for on 2026-09-03: tapping a person here and choosing the
+         * verification desk must open that person's weigh-in and payment sheet
+         * ON THIS PAGE, not navigate to another screen. So the same data
+         * verify() assembles is assembled here, by the same method, behind the
+         * same two questions — a weigh-in official may put an athlete on the
+         * scale and must still not be able to approve money.
+         *
+         * Withheld entirely from anybody who may not officiate: the roster
+         * itself is readable by everyone in the event, and a weight or a
+         * receipt is not part of it.
+         */
+        $access = app(EventAccess::class);
+        $canWeigh = $access->canVerifyWeighIn($event, $me);
+        $canPay = $access->canVerifyPayments($event, $me);
+
+        if ($canWeigh || $canPay) {
+            $e['participants'] = $this->attachVerification($event, $e['participants'], $canWeigh, $canPay);
+        }
+
+        /*
+         * ===== The money, at a glance =====
+         *
+         * Asked for on 2026-09-05: an organiser opening this list wants to know
+         * how much of the field has paid without counting badges down a column
+         * of thirty.
+         *
+         * Counted only over rows this viewer may see the status of — the same
+         * `show_status` gate the per-card badges use — so the denominator never
+         * silently includes an entry whose fee is somebody else's business. And
+         * only when there IS a fee: a free competition has nothing to be a
+         * fraction of, and a permanent 0% would read as a fault.
+         */
+        $money = null;
+
+        /* `eventView()` does not carry `fee_is_paid` (that is PublicEvent's
+           payload, a different shape) — so ask EventFee directly, which is the
+           authority either way. */
+        $hasFee = \App\Events\Support\EventFee::isPaid($event, 'participant');
+
+        if (($canManage || $canPay) && $hasFee) {
+            $visible = collect($people['participants'])->filter(fn ($p) => $p['show_status'] ?? false);
+            $paid = $visible->filter(fn ($p) => $p['paid'] ?? false)->count();
+
+            if ($visible->isNotEmpty()) {
+                $money = [
+                    'paid' => $paid,
+                    'due' => $visible->count() - $paid,
+                    'total' => $visible->count(),
+                    'percent' => (int) round($paid / $visible->count() * 100),
+                ];
+            }
+        }
 
         return view('personal.event-people', [
             'e' => $e,
             'participants' => $people['participants'],
             'clubs' => $people['clubs'],
-            // Whether this viewer may put a face on an entry. The roster is
-            // readable by everyone in the event; only whoever runs it may edit.
-            'canManage' => app(EventAccess::class)->canManage($event, Auth::user()),
+            'money' => $money,
+            // Whether this viewer may put a face on an entry, and select names
+            // to take off the list. The roster is readable by everyone in the
+            // event; only whoever runs it may act on it.
+            'canManage' => $canManage,
+            // The verification sheet is rendered on this page for an official,
+            // and not at all for anybody else.
+            'canWeigh' => $canWeigh,
+            'canPay' => $canPay,
+            'payment' => ($canWeigh || $canPay) ? $this->paymentInstructions($event) : null,
+            // The event's own price list, for the desk's fee picker. Only to an
+            // official who may take money — nobody else has a use for it here.
+            'feeTypes' => $canPay ? $this->feeTypesFor($event) : [],
+            'feeCurrency' => EventFee::currency($event),
         ]);
+    }
+
+    /**
+     * Put back the entrants the event type's own roster left out.
+     *
+     * Organiser only, and only on the roster PAGE — see people(). Built here
+     * rather than by loosening the type's roster, because the two lists answer
+     * different questions: a package's roster feeds the hall screens and is
+     * entitled to hold back a competitor it cannot yet announce, while this page
+     * answers "who is on my list", where an incomplete entry is the interesting
+     * one.
+     *
+     * Deliberately minimal. These rows carry a name, a face, a country and the
+     * entry's id — no payment state, no weight, nothing the roster proper
+     * scopes per viewer — so appending them can leak nothing that the guarded
+     * rows would not already have shown to the organiser reading them.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function appendUnlistedEntrants(ClubEvent $event, array $rows): array
+    {
+        $listed = collect($rows)->pluck('registration')->filter()->all();
+
+        $missing = $event->participantRegistrations()
+            ->when($listed !== [], fn ($q) => $q->whereNotIn('id', $listed))
+            ->with(['user:id,full_name,name,gender', 'category:id,name,weight_class'])
+            ->latest('registered_at')
+            ->get()
+            ->map(fn (ClubEventRegistration $r) => [
+                'id' => $r->user?->id,
+                'name' => $r->user?->full_name ?? $r->user?->name ?? __('shared.unknown'),
+                'gender' => $r->user?->gender ?: null,
+                'category' => $r->category?->name,
+                'weight_class' => $r->category?->weight_class,
+                'meta' => null,
+                'country' => $r->countryCode(),
+                'enrolled' => $r->status === 'joined',
+                'registration' => $r->id,
+                'registration_photo' => $r->photo,
+                // The organiser is staff, so the roster's own scoping would have
+                // shown them these anyway.
+                'show_status' => true,
+                'paid' => (bool) $r->paid,
+                'paid_verified' => $r->paid && $r->paid_by !== null,
+                'weighed' => $r->weighed_in_at !== null,
+                'weighed_verified' => $r->weighed_in_at !== null && $r->weighed_in_by !== null,
+            ])
+            ->all();
+
+        return array_merge($rows, $missing);
+    }
+
+    /**
+     * Put the payment / weigh-in state back on the people-page rows.
+     *
+     * Read from the registrations themselves rather than from whatever shape a
+     * sport's roster happened to build, because the three weigh-in states the
+     * cards draw need a fact no roster row carries consistently: a weight ON
+     * FILE with nobody's name against it.
+     *
+     *   · payment  — green once paid, grey until then.
+     *   · weigh-in — grey with no weight anywhere, amber for a weight the
+     *                athlete themselves put on file, green once a weigh-in
+     *                official signed for it (`weighed_in_by`).
+     *
+     * Gated by the roster row's own `show_status`, so this widens no
+     * disclosure: exactly the rows that were already allowed to show their
+     * status show these badges.
+     *
+     * @param  array<int, array<string, mixed>>  $people  RosterPeople participants
+     * @param  array<int, array<string, mixed>>  $rows    the roster rows they were built from
+     * @return array<int, array<string, mixed>>
+     */
+    private function attachReadiness(ClubEvent $event, array $people, array $rows): array
+    {
+        $regs = $event->participantRegistrations()
+            ->get(['id', 'user_id', 'paid', 'paid_by', 'weight', 'weighed_in_at', 'weighed_in_by'])
+            ->keyBy('user_id');
+
+        $rows = array_values($rows);
+
+        foreach (array_values($people) as $i => $person) {
+            $row = $rows[$i] ?? [];
+
+            if (! ($row['show_status'] ?? false)) {
+                continue;
+            }
+
+            $reg = $regs->get($row['id'] ?? null);
+
+            if (! $reg) {
+                continue;
+            }
+
+            $people[$i]['show_status'] = true;
+            /* The belt's degree is NOT set here: RosterPeople already carries
+               the announced rank (BeltRank resolves weigh-in, then
+               certification, then skill), and a second writer would let the
+               card disagree with the hall screen. */
+            $people[$i]['paid'] = (bool) $reg->paid;
+            $people[$i]['paid_verified'] = (bool) $reg->paid && $reg->paid_by !== null;
+            $people[$i]['weigh_state'] = match (true) {
+                $reg->weighed_in_by !== null => 'official',
+                $reg->weight !== null => 'self',
+                default => 'none',
+            };
+            // The number itself, so the card can print it rather than leaving
+            // the weight line blank (asked for on 2026-09-04). Same gate as the
+            // badges — `show_status` — so it is the organiser, the officials
+            // and the athlete's own row, never the rest of the draw. Trailing
+            // zeros go: a scale reading of 62.00 is written 62.
+            $people[$i]['weight'] = $reg->weight !== null
+                ? rtrim(rtrim(number_format((float) $reg->weight, 2, '.', ''), '0'), '.')
+                : null;
+        }
+
+        return $people;
     }
 
     /**
@@ -878,6 +1370,14 @@ class PersonalEventController extends Controller
             'e' => $this->eventView($event, $me->id, $myReg),
             'groups' => $groups,
             'total' => $rows->count(),
+            /*
+             * Whether this viewer may APPOINT, which is a narrower question than
+             * whether they may read the page. The sheet of who is officiating is
+             * visible to anyone who can see the event; the appointment card
+             * moved here from the create form on 2026-09-06 and is a management
+             * action, so it is gated separately rather than by where it sits.
+             */
+            'canManage' => app(\App\Events\Support\EventAccess::class)->canManage($event, $me),
         ]);
     }
 
@@ -910,7 +1410,13 @@ class PersonalEventController extends Controller
             ->get(['id', 'user_id', 'weight', 'payment_proof'])
             ->keyBy('user_id');
 
-        return array_map(function (array $row) use ($regs, $canWeigh, $canPay, $event) {
+        // id => uuid for the event's fee types, so a stored line can be matched
+        // back to the box that is ticked in the sheet. One query, not one per row.
+        $optionKeys = $canPay
+            ? \App\Models\EventFeeOption::where('event_id', $event->id)->pluck('uuid', 'id')->all()
+            : [];
+
+        return array_map(function (array $row) use ($regs, $canWeigh, $canPay, $event, $optionKeys) {
             $reg = $regs->get($row['id'] ?? null);
 
             if (! $reg) {
@@ -928,6 +1434,24 @@ class PersonalEventController extends Controller
                 $row['proof_url'] = $reg->payment_proof
                     ? route('me.events.verify.proof', [$event->uuid, $reg->id])
                     : null;
+
+                /*
+                 * WHAT they are paying for, so the desk can correct it.
+                 *
+                 * Only the uuids they ticked and what the entry was charged —
+                 * the same two facts the sheet needs to draw the tick boxes and
+                 * a total. `lines` is empty for an entry taken at a desk before
+                 * anything was quoted, which is exactly the case this exists to
+                 * fix: an official chooses the types and the amount stops being
+                 * a guess (see verifyFees).
+                 */
+                $lines = \App\Models\EventRegistrationFeeLine::where('registration_id', $reg->id)
+                    ->get(['fee_option_id', 'amount']);
+
+                $row['fee_options'] = $lines->pluck('fee_option_id')->filter()
+                    ->map(fn ($id) => $optionKeys[$id] ?? null)->filter()->values()->all();
+                $row['fee_recorded'] = $lines->isNotEmpty();
+                $row['fee_charged'] = $lines->isNotEmpty() ? round((float) $lines->sum('amount'), 3) : null;
             }
 
             return $row;
@@ -955,16 +1479,56 @@ class PersonalEventController extends Controller
         $type->onEntrantsChanged($event);
 
         $canManage = $this->canManage($event, $me);
+        $canArrange = $this->canArrangeDraw($event, $type, $canManage);
 
-        if (! $this->canArrangeDraw($event, $type, $canManage)) {
+        /*
+         * This page is TWO jobs now: arranging a draw, and building the groups a
+         * draw is cut from.
+         *
+         * It used to open only when arranging was on offer, which the packages
+         * withhold until at least one division exists. That is right for
+         * arranging — there is nothing to move — and it locked an organiser out
+         * of the one screen where the FIRST group is made. An event with no
+         * divisions could never get one by hand.
+         *
+         * So the door is "may you manage this event, or may you arrange its
+         * draw", and arranging itself stays gated exactly as it was: the board
+         * below is handed $canArrange, not a hardcoded true, so an organiser who
+         * arrives before there is a draw gets the groups tools and a read-only
+         * board rather than an arrange mode that would refuse every drop.
+         */
+        if (! $canManage && ! $canArrange) {
             return redirect()
                 ->route('me.events.bracket', $event->uuid)
                 ->with('error', __('events.draw_final'));
         }
 
+        /*
+         * The DRAW's own actions — build it, clear it — offered here rather
+         * than on the console.
+         *
+         * They were console tiles, three screens away from the board they act
+         * on: an organiser pressed "create the draw" and then had to go and
+         * find it. The package still decides whether each one may run today
+         * (availableActions is the only place that judges that); this only
+         * decides WHERE it is offered. `arrange_draw` is dropped from the list,
+         * because arranging is what this page IS.
+         */
+        $drawActions = $canManage
+            ? array_values(array_filter(
+                $type->availableActions($event),
+                fn (array $a) => str_contains($a['action'] ?? '', 'draw') && ($a['action'] ?? '') !== 'arrange_draw',
+            ))
+            : [];
+
         return view('personal.event-manage-draw', [
             'e' => $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: true),
-            'canArrange' => true,
+            'canArrange' => $canArrange,
+            'drawActions' => $drawActions,
+            // Creating and deleting a GROUP is managing the event; filling one is
+            // only arranging. An appointed official reaches this page and may
+            // move people between groups, but does not get the New group button.
+            'canManage' => $canManage,
             'myCompetitorIds' => ClubEventRegistration::where('event_id', $event->id)
                 ->where('user_id', $me->id)->pluck('id')->all(),
             // Deep-link straight to the division the organiser came from.
@@ -995,10 +1559,22 @@ class PersonalEventController extends Controller
      * event page and the bracket. Nothing about a bout is visible to someone who
      * could not see the event it belongs to.
      */
-    public function bout(Request $request, ClubEvent $event, int $matchNo): View
+    public function bout(Request $request, ClubEvent $event, int $matchNo): View|RedirectResponse
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);
+
+        /*
+         * A bout page is the draw, one pairing at a time — so a concealed draw
+         * that still served bout pages would be concealed from nobody who could
+         * count to sixteen. Sent back to the event, which says when the draw
+         * opens; never a 404, which would say a bout number does not exist and
+         * make the next one worth trying.
+         */
+        if (! app(EventAccess::class)->drawVisible($event, $me)) {
+            return redirect()->route('me.events.show', $event->uuid)
+                ->with('error', $this->drawHiddenMessage($event));
+        }
 
         $match = EventMatch::where('event_id', $event->id)
             ->where('match_no', $matchNo)
@@ -1469,6 +2045,26 @@ class PersonalEventController extends Controller
         $type = $this->typeFor($event);
         $canManage = $this->canManage($event, $me);
 
+        /*
+         * A draw the organiser has not let out yet.
+         *
+         * Withheld HERE rather than in the view, because the board fetches its
+         * own data and this endpoint is the only door to it — a veil painted in
+         * Blade over a JSON feed that still answers is not a veil at all.
+         *
+         * The board is told WHY, so it can say when the draw opens instead of
+         * drawing an empty bracket that reads as "nobody entered".
+         */
+        if (! app(EventAccess::class)->drawVisible($event, $me)) {
+            return response()->json([
+                'divisions' => [],
+                'can_arrange' => false,
+                'locked' => true,
+                'hidden' => true,
+                'hidden_message' => $this->drawHiddenMessage($event),
+            ]);
+        }
+
         return response()->json([
             'divisions' => $type->bracketView($event, $me),
             // The bench is an organiser's working area, not part of the public
@@ -1805,6 +2401,57 @@ class PersonalEventController extends Controller
      * Appointing is the organiser's call (canManage), never the jury's own —
      * otherwise an official could appoint their friends onto the panel.
      */
+    /**
+     * Who may hold a role that GRANTS ACCESS to this event — organiser, jury,
+     * weigh-in, payments: somebody connected to the club HOSTING it.
+     *
+     * "Connected" is not just a `memberships` row, and reading only that row is
+     * the bug this replaces. A club's OWNER is not automatically a member of
+     * their own club — owning it and training in it are different things — and
+     * neither is somebody holding `club-admin` on it. So the membership-only
+     * test left the very people who RUN the host club unable to be appointed to
+     * their own club's event: they were missing from the picker with nothing on
+     * screen to say why, and the endpoint would have refused them anyway.
+     *
+     * One list, asked by both the picker and the write endpoint, so an offered
+     * candidate is never one the server then refuses.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function hostClubPeople(ClubEvent $event): \Illuminate\Support\Collection
+    {
+        $ids = DB::table('memberships')
+            ->where('tenant_id', $event->tenant_id)
+            ->distinct()->pluck('user_id');
+
+        if ($owner = Tenant::whereKey($event->tenant_id)->value('owner_user_id')) {
+            $ids->push($owner);
+        }
+
+        $ids = $ids->merge(
+            DB::table('user_roles')
+                ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                ->where('user_roles.tenant_id', $event->tenant_id)
+                ->whereIn('roles.slug', ['club-admin', 'instructor'])
+                ->pluck('user_roles.user_id')
+        );
+
+        return $ids->map('intval')->unique()->values();
+    }
+
+    /**
+     * May this person be appointed to an access-granting role here?
+     *
+     * A super-admin may appoint anybody: they can already add that person to
+     * the host club or hand them a role there, so the host-club rule only makes
+     * them do it in two steps. It grants nothing new — the rule stays exactly
+     * as it was for every organiser who is not a super-admin.
+     */
+    private function mayHoldAccessRole(ClubEvent $event, int $userId, User $actor): bool
+    {
+        return $actor->isSuperAdmin() || $this->hostClubPeople($event)->contains($userId);
+    }
+
     public function officials(Request $request, ClubEvent $event): JsonResponse
     {
         $me = Auth::user();
@@ -1853,8 +2500,14 @@ class PersonalEventController extends Controller
         $candidates = User::query()
             ->distinct()
             ->when($wide,
-                fn ($q) => $q->where('is_discoverable', true),
-                fn ($q) => $q->whereIn('id', DB::table('memberships')->where('tenant_id', $event->tenant_id)->distinct()->pluck('user_id')))
+                // Discoverability is the member's own opt-in to being found, so
+                // an organiser browsing the platform for a referee obeys it. A
+                // super-admin does not: this is an admin tool, and they can
+                // already open any member's record from /admin — hiding people
+                // here only stopped them appointing somebody they were looking
+                // straight at.
+                fn ($q) => $me->isSuperAdmin() ? $q : $q->where('is_discoverable', true),
+                fn ($q) => $me->isSuperAdmin() ? $q : $q->whereIn('id', $this->hostClubPeople($event)))
             ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q, $phone) {
                 $w->where('full_name', 'like', "%{$q}%")
                     ->orWhere('name', 'like', "%{$q}%")
@@ -2039,23 +2692,10 @@ class PersonalEventController extends Controller
      */
     private function officialRoleOptions(ClubEvent $event): array
     {
-        $out = [];
-
-        $sport = app(\App\Sports\Combat\SportRegistry::class)->get($event->sport);
-
-        if ($sport !== null) {
-            foreach ($sport->officialRoles() as $role) {
-                if (! empty($role['key'])) {
-                    $out[$role['key']] = $role['label'] ?? \Illuminate\Support\Str::title($role['key']);
-                }
-            }
-        }
-
-        foreach (EventOfficial::roles() as $role) {
-            $out[$role] = __('personal.personal_event_officials_role_'.$role);
-        }
-
-        return $out;
+        // The public event page prints the same sheet, so the vocabulary moved
+        // to App\Events\Support\OfficialRoles rather than being copied into a
+        // second place to drift from this one.
+        return app(\App\Events\Support\OfficialRoles::class)->labels($event);
     }
 
     /**
@@ -2130,12 +2770,7 @@ class PersonalEventController extends Controller
          * official and has usually never joined the club hosting the event.
          */
         if (! $this->isMatRole($event, $data['role'])) {
-            $isMember = DB::table('memberships')
-                ->where('tenant_id', $event->tenant_id)
-                ->where('user_id', $data['user_id'])
-                ->exists();
-
-            if (! $isMember) {
+            if (! $this->mayHoldAccessRole($event, (int) $data['user_id'], $me)) {
                 return response()->json([
                     'success' => false,
                     'message' => __('personal.personal_event_officials_not_a_member'),
@@ -2204,18 +2839,12 @@ class PersonalEventController extends Controller
 
         if (! empty($data['role']) && $data['role'] !== $official->role) {
             // Moving to a role that grants access requires what that role requires.
-            if (! $this->isMatRole($event, $data['role'])) {
-                $isMember = DB::table('memberships')
-                    ->where('tenant_id', $event->tenant_id)
-                    ->where('user_id', $official->user_id)
-                    ->exists();
-
-                if (! $isMember) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => __('personal.personal_event_officials_not_a_member'),
-                    ], 422);
-                }
+            if (! $this->isMatRole($event, $data['role'])
+                && ! $this->mayHoldAccessRole($event, (int) $official->user_id, $me)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('personal.personal_event_officials_not_a_member'),
+                ], 422);
             }
 
             $official->role = $data['role'];
@@ -2316,6 +2945,26 @@ class PersonalEventController extends Controller
             'spectator_enabled' => ['required', 'boolean'],
             'spectator_fee' => ['nullable', 'string', 'max:40'],
             'spectator_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            /*
+             * Multi-pricing (2026-09-06). The two amounts above stay the BASE
+             * price; these are the named extras an entrant ticks on top, and
+             * the penalty for entering late.
+             *
+             * Capped at 30 options because this is a list an organiser types by
+             * hand — a request carrying five hundred of them is not a very
+             * detailed competition, it is somebody probing the endpoint.
+             */
+            'fee_options' => ['nullable', 'array', 'max:30'],
+            // Which roles the form is speaking for, so retiring an option is
+            // never inferred from a role the request simply did not mention.
+            'fee_option_roles' => ['nullable', 'array', 'max:2'],
+            'fee_option_roles.*' => [Rule::in(['participant', 'spectator'])],
+            'fee_options.*.uuid' => ['nullable', 'string', 'max:64'],
+            'fee_options.*.role' => ['nullable', Rule::in(['participant', 'spectator'])],
+            'fee_options.*.label' => ['required_with:fee_options', 'string', 'max:80'],
+            'fee_options.*.amount' => ['required_with:fee_options', 'numeric', 'min:0', 'max:1000000'],
+            'late_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'late_fee_from' => ['nullable', 'date'],
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
             'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
@@ -2364,6 +3013,9 @@ class PersonalEventController extends Controller
             // typed — never from a sentence assembled in the browser.
         ] + $this->feeColumns($data, Tenant::whereKey($data['tenant_id'])->value('currency') ?: 'BHD'));
 
+        $this->syncFeeOptions($event, $data);
+        $this->refreshFeeDisplay($event);
+
         $type->saveRelatedData($event, $data);
 
         // Announce it to everyone the event's scope reaches. Queued and capped —
@@ -2382,7 +3034,7 @@ class PersonalEventController extends Controller
         $me = Auth::user();
         $this->assertCanManage($event, $me);
 
-        $clubs = $this->clubsICanCreateFor($me);
+        $clubs = $this->clubsICanCreateFor($me, $event);
 
         return view('personal.event-create', ['clubs' => $clubs, 'mode' => 'edit', 'event' => $event] + $this->schemaPayload($event));
     }
@@ -2413,41 +3065,104 @@ class PersonalEventController extends Controller
             'spectator_enabled' => ['required', 'boolean'],
             'spectator_fee' => ['nullable', 'string', 'max:40'],
             'spectator_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            /*
+             * Multi-pricing (2026-09-06). The two amounts above stay the BASE
+             * price; these are the named extras an entrant ticks on top, and
+             * the penalty for entering late.
+             *
+             * Capped at 30 options because this is a list an organiser types by
+             * hand — a request carrying five hundred of them is not a very
+             * detailed competition, it is somebody probing the endpoint.
+             */
+            'fee_options' => ['nullable', 'array', 'max:30'],
+            // Which roles the form is speaking for, so retiring an option is
+            // never inferred from a role the request simply did not mention.
+            'fee_option_roles' => ['nullable', 'array', 'max:2'],
+            'fee_option_roles.*' => [Rule::in(['participant', 'spectator'])],
+            'fee_options.*.uuid' => ['nullable', 'string', 'max:64'],
+            'fee_options.*.role' => ['nullable', Rule::in(['participant', 'spectator'])],
+            'fee_options.*.label' => ['required_with:fee_options', 'string', 'max:80'],
+            'fee_options.*.amount' => ['required_with:fee_options', 'numeric', 'min:0', 'max:1000000'],
+            'late_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'late_fee_from' => ['nullable', 'date'],
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
             'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
+            'tenant_id' => ['nullable', 'integer'],
         ]);
 
+        /*
+         * The HOST CLUB, which an edit may now change.
+         *
+         * The form has always shown the picker and the endpoint has always
+         * ignored it, so choosing a different club looked like it worked and
+         * silently did nothing. Accepting it is guarded exactly as creating an
+         * event for that club is — the actor must be able to create for the
+         * TARGET club, on top of already being able to manage this event.
+         *
+         * The event's fee CURRENCY is deliberately left alone: the fees on file
+         * were quoted in it, and re-labelling an amount because the event moved
+         * clubs would change what an entrant was asked to pay.
+         */
+        $host = isset($data['tenant_id']) ? (int) $data['tenant_id'] : (int) $event->tenant_id;
+
+        if ($host !== (int) $event->tenant_id) {
+            abort_unless(
+                collect($this->clubsICanCreateFor($me, $event))->contains('id', $host),
+                403,
+            );
+        }
+
         // Widening the scope on an EDIT is the same broadcast power as setting
-        // it at creation — guard it identically.
-        $this->assertMayBroadcast($me, (int) $event->tenant_id, $data['scope'] ?? $event->scope);
+        // it at creation — guard it identically, and against the club the event
+        // is being moved TO.
+        $this->assertMayBroadcast($me, $host, $data['scope'] ?? $event->scope);
 
         $type = $this->typeForInput($data, $event);
         $data += $request->validate($type->validationRules($event));
 
-        $event->update($type->columnsFromInput($data, $event) + [
+        /*
+         * ⚠️ ABSENT IS NOT THE SAME AS BLANK — CLAUDE.md says it, and this
+         * method was the counter-example.
+         *
+         * Every optional column was written as `$data['x'] ?? null`, so a
+         * request that simply did not MENTION a field erased it. That is how
+         * this event lost its end date (audit log, 2026-09-04 13:16): one
+         * partial payload, and a stored value was gone with nothing on screen
+         * to say so. Anything posting less than the whole form — an older
+         * client, an integration, a screen rendering only some sections — was
+         * quietly destroying data.
+         *
+         * Now a key the request SENT is written (including an explicit null or
+         * an empty string, which is a deliberate clear), and a key it did not
+         * send is left exactly as it is on the row.
+         */
+        $optional = [
+            'end_date', 'end_time', 'weigh_in_at', 'enrollment_starts_at', 'enrollment_ends_at',
+            'location', 'gps_lat', 'gps_long', 'location_url', 'break_start', 'break_end',
+            'level', 'description', 'prize', 'max_capacity',
+        ];
+
+        $columns = [];
+
+        foreach ($optional as $key) {
+            if (array_key_exists($key, $data)) {
+                $columns[$key] = $data[$key];
+            }
+        }
+
+        $event->update($type->columnsFromInput($data, $event) + $columns + [
+            'tenant_id' => $host,
             'title' => $data['title'],
             'event_type' => $data['event_type'],
             'scope' => $data['scope'] ?? $event->scope ?? 'internal',
             'icon' => $event->icon ?: ($this->typeIcon($data['event_type'])),
             'date' => $data['date'],
-            'end_date' => $data['end_date'] ?? null,
             'start_time' => $data['start_time'],
-            'end_time' => $data['end_time'] ?? null,
-            'weigh_in_at' => $data['weigh_in_at'] ?? null,
-            'enrollment_starts_at' => $data['enrollment_starts_at'] ?? null,
-            'enrollment_ends_at' => $data['enrollment_ends_at'] ?? null,
-            'location' => $data['location'] ?? null,
-            'gps_lat' => $data['gps_lat'] ?? null,
-            'gps_long' => $data['gps_long'] ?? null,
-            'location_url' => $data['location_url'] ?? null,
-            'break_start' => $data['break_start'] ?? null,
-            'break_end' => $data['break_end'] ?? null,
-            'level' => $data['level'] ?? null,
-            'description' => $data['description'] ?? null,
-            'prize' => $data['prize'] ?? null,
-            'max_capacity' => $data['max_capacity'] ?? null,
         ] + $this->feeColumns($data, EventFee::currency($event)));
+
+        $this->syncFeeOptions($event, $data);
+        $this->refreshFeeDisplay($event);
 
         // Divisions, fixtures, re-scheduling — whatever this type keeps outside
         // the event row.
@@ -2487,6 +3202,22 @@ class PersonalEventController extends Controller
 
         $columns = ['fee_currency' => $currency, 'spectator_enabled' => $spectators];
 
+        /*
+         * The late-entry penalty. Both halves are required to mean anything —
+         * an amount with no date has no moment to start from, and a date with
+         * no amount charges nothing — so a form that sends one without the
+         * other clears both rather than leaving a half-armed rule on the event.
+         */
+        if (array_key_exists('late_fee_amount', $data) || array_key_exists('late_fee_from', $data)) {
+            $lateAmount = ($data['late_fee_amount'] ?? null) !== null ? (float) $data['late_fee_amount'] : null;
+            $lateFrom = $data['late_fee_from'] ?? null;
+
+            $armed = $lateAmount !== null && $lateAmount > 0 && $lateFrom;
+
+            $columns['late_fee_amount'] = $armed ? $lateAmount : null;
+            $columns['late_fee_from'] = $armed ? $lateFrom : null;
+        }
+
         // Participants.
         if ($free) {
             $columns['participant_fee'] = null;
@@ -2511,6 +3242,162 @@ class PersonalEventController extends Controller
         }
 
         return $columns;
+    }
+
+    /**
+     * Put the event's priced extras in step with what the organiser just sent.
+     *
+     * Three rules, and the third is the one that matters:
+     *
+     *  1. A row with a uuid the event already owns is UPDATED. Matching on the
+     *     public key rather than on the label means renaming "T-shirt" to
+     *     "Event T-shirt" edits that option instead of retiring it and creating
+     *     a stranger with the same price.
+     *  2. A row with no uuid, or one this event does not own, is CREATED. The
+     *     ownership check is not paranoia for its own sake: a uuid arrives from
+     *     a browser, and without it an organiser could edit another event's
+     *     prices by pasting an id.
+     *  3. An option the form no longer lists is DEACTIVATED, never deleted. A
+     *     competitor's frozen fee line points back at it for provenance, and a
+     *     deleted row would orphan that — the same reason `club_product_variants`
+     *     deactivates. It stops being offered either way; the difference is only
+     *     visible to somebody asking what an old charge was for.
+     *
+     * A request that never mentions `fee_options` leaves them all alone, exactly
+     * as the `$optional` block above leaves an unsent column alone. An organiser
+     * editing an event from a client that has not been taught about pricing must
+     * not silently retire every extra they sell.
+     *
+     * ⚠️ Retirement is scoped BY ROLE, and to the roles the request actually
+     * spoke for. Without that, a form sending only participant rows retired
+     * every spectator ticket type — so switching spectators off destroyed the
+     * ticket list, and switching them back on showed an empty editor (it seeds
+     * from ACTIVE rows), leaving the organiser to retype prices that were still
+     * sitting in the table, dead. Roles are taken from `fee_option_roles` when
+     * the form states them, and otherwise inferred from the rows themselves,
+     * which keeps an older client from reaching past what it knows about.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function syncFeeOptions(ClubEvent $event, array $data): void
+    {
+        if (! array_key_exists('fee_options', $data)) {
+            return;
+        }
+
+        $rows = is_array($data['fee_options'] ?? null) ? $data['fee_options'] : [];
+
+        $existing = EventFeeOption::where('event_id', $event->id)->get()->keyBy('uuid');
+        $kept = [];
+        $sort = 0;
+
+        // Which roles this request is authoritative for. An explicit list wins;
+        // otherwise only the roles it actually sent rows for.
+        $roles = array_values(array_intersect(
+            EventFeeOption::ROLES,
+            is_array($data['fee_option_roles'] ?? null)
+                ? $data['fee_option_roles']
+                : array_map(
+                    fn ($r) => ($r['role'] ?? 'participant') === 'spectator' ? 'spectator' : 'participant',
+                    $rows,
+                ),
+        ));
+
+        foreach ($rows as $row) {
+            $label = trim((string) ($row['label'] ?? ''));
+
+            if ($label === '') {
+                continue;
+            }
+
+            $role = ($row['role'] ?? 'participant') === 'spectator' ? 'spectator' : 'participant';
+            $amount = round((float) ($row['amount'] ?? 0), 3);
+            $uuid = (string) ($row['uuid'] ?? '');
+
+            $option = $uuid !== '' ? $existing->get($uuid) : null;
+
+            if ($option) {
+                $option->update([
+                    'label' => $label,
+                    'amount' => $amount,
+                    'role' => $role,
+                    'is_active' => true,
+                    'sort' => $sort++,
+                ]);
+            } else {
+                $option = EventFeeOption::create([
+                    'event_id' => $event->id,
+                    'role' => $role,
+                    'label' => $label,
+                    'amount' => $amount,
+                    'is_active' => true,
+                    'sort' => $sort++,
+                ]);
+            }
+
+            $kept[] = $option->id;
+        }
+
+        if ($roles === []) {
+            return;
+        }
+
+        EventFeeOption::where('event_id', $event->id)
+            ->whereIn('role', $roles)
+            ->whereNotIn('id', $kept ?: [0])
+            ->update(['is_active' => false]);
+    }
+
+    /**
+     * Rewrite the display line now that the fee list is the price.
+     *
+     * `feeColumns()` composes `participant_fee` from the amount column, and that
+     * column is deliberately zero for an event priced through its fee list — so
+     * left alone, every such event would advertise itself as "Free" while
+     * charging fifteen. The line has to be composed AFTER the options are
+     * synced, because until then there is nothing to compose it from.
+     *
+     * `headline()` gives "From BHD 10" once a list can take the total higher,
+     * and the plain price when there is only one row. A row-less paid event
+     * legitimately says Free — that is the warning the form shows the organiser,
+     * not something to paper over here.
+     */
+    private function refreshFeeDisplay(ClubEvent $event): void
+    {
+        $columns = [];
+
+        foreach (['participant' => 'participant_fee', 'spectator' => 'spectator_fee'] as $role => $column) {
+            // An event still priced the old way keeps its own line untouched.
+            if (! EventFee::hasOptions($event, $role)) {
+                continue;
+            }
+
+            if ($role === 'spectator' && ! $event->spectator_enabled) {
+                continue;
+            }
+
+            $columns[$column] = EventFee::headline($event, $role);
+
+            /*
+             * ⚠️ The amount column has to be written in the SAME breath.
+             *
+             * ClubEvent's saving hook re-derives `*_fee_amount` from the display
+             * line whenever the line is dirty and the amount is not — the last
+             * surviving scrape, kept for forms that still post only a sentence.
+             * Writing "From BHD 5" alone therefore scraped the 5 straight back
+             * into the base, and every entrant was charged a phantom five on top
+             * of whatever they ticked. Marking the amount dirty is what tells
+             * the hook this caller already knows its own price.
+             *
+             * Zero rather than null: null means "nobody ever stated a price",
+             * and this event has stated one — it is simply stated in the list.
+             */
+            $columns[$role === 'spectator' ? 'spectator_fee_amount' : 'participant_fee_amount'] = 0;
+        }
+
+        if ($columns !== []) {
+            $event->forceFill($columns)->save();
+        }
     }
 
     /** Set / update the event's winners (podium). Manager only. */
@@ -2628,6 +3515,21 @@ class PersonalEventController extends Controller
             // clubs they actually belong to, checked below against the server's
             // own list rather than the one the form was rendered with.
             'representing_tenant_id' => ['nullable', 'integer'],
+            /*
+             * The priced extras they ticked, as option UUIDS ONLY.
+             *
+             * The form never sends a price and this never reads one: what an
+             * option costs is the event's business, looked up server-side by
+             * EventFee::quote() against the event's own active rows. A key that
+             * names nothing, an inactive option, or one belonging to another
+             * event is dropped there rather than refused here — a stale form
+             * somebody left open overnight must not become an error page
+             * between them and entering.
+             *
+             * Capped at 30, matching what the organiser's form can create.
+             */
+            'fee_options' => ['nullable', 'array', 'max:30'],
+            'fee_options.*' => ['string', 'max:64'],
         ]);
 
         // Participation-by-qualification events can't be self-joined.
@@ -2669,8 +3571,38 @@ class PersonalEventController extends Controller
         $division = $decision->category?->name;
         $weight = $decision->weight;
 
-        // What it costs is a number now (EventFee), not a word in a sentence.
-        $paidFee = EventFee::isPaid($event, 'participant');
+        /*
+         * What THIS entry costs — the quote, priced before the row is written
+         * so the `paid` flag below can be derived from it.
+         *
+         * Three things depend on getting the moment and the selection right:
+         *
+         *  · `$at` is the EXISTING entry's registration time when there is one.
+         *    This endpoint is also how somebody uploads a receipt or changes the
+         *    club they represent, and re-pricing at `now()` would hand a
+         *    competitor who entered on time a late penalty they never incurred
+         *    the first time they came back to it.
+         *  · The selection is only taken from the request when the request
+         *    actually CARRIED one. The join sheet posts an empty list when it
+         *    is re-opened for a receipt upload, and committing that would
+         *    silently delete the extras they had already agreed to pay for —
+         *    the same guard `EntryService::enter()` makes.
+         *  · `paid` comes from the TOTAL, not from `isPaid()`, which only knows
+         *    about the base fee. An event priced entirely as options ("Gi 15 /
+         *    No-Gi 15", no base) marked every entrant settled on the way in.
+         */
+        $keepExistingOptions = $existing && ! array_key_exists('fee_options', $data);
+
+        $quote = $keepExistingOptions
+            ? ['total' => EventFee::charged($existing, $event), 'currency' => EventFee::currency($event), 'lines' => []]
+            : EventFee::quote(
+                $event,
+                'participant',
+                $data['fee_options'] ?? [],
+                $existing?->registered_at,
+            );
+
+        $paidFee = $quote['total'] > 0;
 
         // Optional proof-of-payment (paid participant events only). Manual flow —
         // we record the member's proof on the PRIVATE disk and leave paid=false so
@@ -2719,7 +3651,7 @@ class PersonalEventController extends Controller
         $representing = $representing !== null ? (int) $representing : $existing?->representing_tenant_id;
         $claimChanged = $representing && (int) ($existing?->representing_tenant_id ?? 0) !== $representing;
 
-        ClubEventRegistration::updateOrCreate(
+        $registration = ClubEventRegistration::updateOrCreate(
             ['event_id' => $event->id, 'user_id' => $me->id],
             [
                 'role' => 'participant',
@@ -2736,6 +3668,23 @@ class PersonalEventController extends Controller
                 'club_disowned_at' => $claimChanged ? null : $existing?->club_disowned_at,
             ]
         );
+
+        /*
+         * Freeze what this entry costs, as its own lines.
+         *
+         * AFTER the row exists, because a line belongs to a registration; and
+         * on every pass through here rather than only on the first, because
+         * this endpoint is also how somebody changes their mind about what they
+         * are entering. `commit()` replaces rather than appends, so re-running
+         * it leaves one correct set of lines instead of two overlapping ones.
+         *
+         * What is recorded is what they were CHARGED. Whether they have PAID is
+         * the separate question `paid` above answers, and neither one is derived
+         * from the other.
+         */
+        if (! $keepExistingOptions) {
+            EventFee::commit($registration, $quote);
+        }
 
         // The club finds out it is being represented. It cannot pre-approve
         // this; it can only disown it afterwards, so being told is the point.
@@ -2810,7 +3759,7 @@ class PersonalEventController extends Controller
         return response()->json(['success' => true, 'message' => __('events.outcome_saved')] + $changed);
     }
 
-    public function ticket(ClubEvent $event): JsonResponse
+    public function ticket(Request $request, ClubEvent $event): JsonResponse
     {
         $me = Auth::user();
         $this->assertEligible($event, $me);
@@ -2826,17 +3775,51 @@ class PersonalEventController extends Controller
 
         abort_unless($event->spectator_enabled, 422, 'This event has no spectator tickets.');
 
-        $paidFee = EventFee::isPaid($event, 'spectator');
+        // Which ticket they chose, when the event sells more than one kind.
+        // UUIDs only — the price is read from the event's own rows.
+        $ticketData = $request->validate([
+            'fee_options' => ['nullable', 'array', 'max:30'],
+            'fee_options.*' => ['string', 'max:64'],
+        ]);
 
-        ClubEventRegistration::updateOrCreate(
+        $existingTicket = ClubEventRegistration::where('event_id', $event->id)
+            ->where('user_id', $me->id)->first();
+
+        // A re-open that names no ticket keeps the one already agreed, rather
+        // than replacing it with nothing — same guard as the entry door.
+        $keepTicket = $existingTicket && ! array_key_exists('fee_options', $ticketData);
+
+        // No late penalty on this door: turning up to watch on the day is the
+        // ordinary way anybody watches sport, not a late entry.
+        $quote = $keepTicket
+            ? ['total' => EventFee::charged($existingTicket, $event), 'currency' => EventFee::currency($event), 'lines' => []]
+            : EventFee::quote($event, 'spectator', $ticketData['fee_options'] ?? []);
+
+        // Settled only when there is genuinely nothing to pay for THIS ticket —
+        // `isPaid()` reads the base fare alone and would wave through an event
+        // whose only price is a ringside option.
+        $paidFee = $quote['total'] > 0;
+
+        $registration = ClubEventRegistration::updateOrCreate(
             ['event_id' => $event->id, 'user_id' => $me->id],
             ['role' => 'spectator', 'status' => 'joined', 'paid' => ! $paidFee, 'registered_at' => now()],
         );
 
+        if (! $keepTicket) {
+            EventFee::commit($registration, $quote);
+        }
+
+        // A ticket with options priced into it must quote the TOTAL, not the
+        // event's base line — otherwise the door is told one number and the
+        // spectator paid another.
+        $ticketLine = $quote['total'] > 0
+            ? EventFee::display($quote['total'], $quote['currency'])
+            : $event->spectator_fee;
+
         return response()->json([
             'success' => true,
-            'message' => $paidFee
-                ? 'Ticket booked · '.$event->spectator_fee.' — show this in the app at the door'
+            'message' => $paidFee || $quote['total'] > 0
+                ? 'Ticket booked · '.$ticketLine.' — show this in the app at the door'
                 : "You're on the guest list 🎟️",
             'role' => 'spectator',
             'spectators' => $event->registrations()->where('role', 'spectator')->count(),
@@ -2903,7 +3886,7 @@ class PersonalEventController extends Controller
     /** @return array<int, int> */
     private function athletesOfClubs(array $clubIds): array
     {
-        return \App\Models\User::whereHas('memberClubs', fn ($q) => $q
+        return \App\Members\Models\User::whereHas('memberClubs', fn ($q) => $q
             ->whereIn('tenants.id', $clubIds)->where('memberships.status', 'active'))
             ->pluck('id')->map('intval')->all();
     }
@@ -2927,7 +3910,9 @@ class PersonalEventController extends Controller
             : [];
 
         $payload = [
-            'e' => ['key' => $event->uuid, 'title' => $event->title],
+            // The board wears the event's own colour now, the same one the
+            // poster uses — so the payload has to carry it.
+            'e' => ['key' => $event->uuid, 'title' => $event->title, 'color' => $event->color ?: '#7c3aed'],
             'mats' => $mats,
         ];
 
@@ -2974,11 +3959,25 @@ class PersonalEventController extends Controller
         $data = $request->validate([
             'user_ids' => ['required', 'array', 'min:1', 'max:200'],
             'user_ids.*' => ['integer'],
+            /*
+             * What each athlete is entering, keyed BY ATHLETE ID.
+             *
+             * Per athlete rather than per squad because a real squad is mixed —
+             * ten adults and four juniors, some in Gi and some in No-Gi — and a
+             * single selection for everyone could not say that. The coach's
+             * sheet offers an "apply to all" shortcut, which fills this map
+             * rather than replacing it.
+             *
+             * UUIDs only; the prices are the event's, read server-side.
+             */
+            'fee_options' => ['nullable', 'array', 'max:200'],
+            'fee_options.*' => ['array', 'max:30'],
+            'fee_options.*.*' => ['string', 'max:64'],
         ]);
 
         abort_if($entries->administeredClubIds($me) === [] && ! $me->isSuperAdmin(), 403);
 
-        $result = $entries->enterMany($event, $me, $data['user_ids']);
+        $result = $entries->enterMany($event, $me, $data['user_ids'], $data['fee_options'] ?? []);
 
         // A squad landing at once changes the draw everyone else is looking at.
         if ($result['entered']) {
@@ -3010,6 +4009,1138 @@ class PersonalEventController extends Controller
         return response()->json([
             'success' => true,
             'claims' => $entries->claims($event, $me),
+        ]);
+    }
+
+    /**
+     * Turn this event's public page on or off.
+     *
+     * The feature flag, held per event and defaulted OFF: nothing is published
+     * because a feature shipped, only because an organiser decided to publish
+     * THIS event. Only whoever may manage the event may decide that — a coach
+     * with entry authority cannot publish somebody else's competition.
+     */
+    public function setEntryMode(Request $request, ClubEvent $event, EventAccess $access): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if(! $access->canManage($event, $me), 403);
+
+        $data = $request->validate([
+            'entry_mode' => ['required', 'in:members,public'],
+        ]);
+
+        $event->update(['entry_mode' => $data['entry_mode']]);
+
+        $public = $data['entry_mode'] === 'public';
+
+        return response()->json([
+            'success' => true,
+            'message' => $public ? __('events.public_turned_on') : __('events.public_turned_off'),
+            'entry_mode' => $data['entry_mode'],
+            'url' => $public ? route('events.public', $event->uuid) : null,
+        ]);
+    }
+
+    /**
+     * The picture the public cover opens onto.
+     *
+     * The cover page (`entry/public/partials/cover`) lays `images[0]` in
+     * full-bleed behind the event's name, so "the cover picture" IS the first
+     * image — this endpoint replaces that one entry and leaves any others the
+     * organiser has attached alone.
+     *
+     * Three things make it safe rather than "an upload endpoint":
+     *
+     *  - `StoresBase64Images` sniffs the REAL bytes and assigns the extension
+     *    from a whitelist, so a file claiming to be a PNG in its data-URI
+     *    header cannot land as anything executable. SVG is refused (it can
+     *    carry script).
+     *  - The folder is built by `StoragePath::eventBranding()` from the event's
+     *    uuid, never from client input, and the filename is generated. That
+     *    path is also the ONLY thing `FileAccess::event()` will serve to a
+     *    stranger, and only while the organiser has the event public.
+     *  - Only somebody who may MANAGE the event may change its face.
+     */
+    public function setCover(Request $request, ClubEvent $event, EventAccess $access): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if(! $access->canManage($event, $me), 403);
+
+        $request->validate([
+            'image' => ['required', 'string', 'starts_with:data:image/'],
+        ]);
+
+        $path = $this->storeBase64Image(
+            $request->input('image'),
+            \App\Support\StoragePath::eventBranding($event),
+            'cover-'.Str::uuid()->toString(),
+            'local',
+        );
+
+        if ($path === null) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.cover_rejected'),
+            ], 422);
+        }
+
+        $images = is_array($event->images) ? array_values($event->images) : [];
+        $old    = $images[0] ?? null;
+        $images[0] = $path;
+
+        $event->update(['images' => $images]);
+
+        /* Delete the replaced file only if it was one of OURS — a picture under
+         * this event's own branding folder. The seeded events point at images
+         * living in the club's gallery, and those rows are still using them:
+         * unlinking one here would blank a picture somewhere else. */
+        $this->forgetOldCover($event, $old);
+
+        $this->pushCoverChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.cover_saved'),
+            'photo'   => file_url($path),
+            // The shared cropper widget patches the page from `res.url`; the
+            // same value under both names so either consumer works.
+            'url'     => file_url($path),
+        ]);
+    }
+
+    /** Take the picture off, back to the ground drawn from the event's colour. */
+    public function clearCover(ClubEvent $event, EventAccess $access): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if(! $access->canManage($event, $me), 403);
+
+        $images = is_array($event->images) ? array_values($event->images) : [];
+        $old    = array_shift($images);
+
+        $event->update(['images' => $images]);
+
+        $this->forgetOldCover($event, $old);
+
+        $this->pushCoverChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.cover_cleared'),
+            'photo'   => null,
+        ]);
+    }
+
+    /**
+     * Files first, then the record — but only files this event owns.
+     *
+     * *Delete Files Before Records* applied narrowly: the path has to sit under
+     * this event's branding folder before anything is unlinked, because an
+     * event may legitimately point at a picture that belongs to the club's
+     * gallery and is shared with other rows.
+     */
+    private function forgetOldCover(ClubEvent $event, ?string $old): void
+    {
+        if (! $old || $old === '') {
+            return;
+        }
+
+        $mine = rtrim(\App\Support\StoragePath::eventBranding($event), '/').'/';
+
+        if (! str_starts_with($old, $mine)) {
+            return;
+        }
+
+        try {
+            Storage::disk('local')->delete($old);
+        } catch (\Throwable) {
+            // Best effort: a missing file must never block the change.
+        }
+    }
+
+    /**
+     * Nudge the other organisers looking at this event.
+     *
+     * A refresh signal, not the picture: who may see this event's console
+     * differs per person, so each one re-fetches what THEY may see rather than
+     * being handed a payload built for somebody else (Realtime rule §4).
+     */
+    private function pushCoverChanged(ClubEvent $event): void
+    {
+        rescue(function () use ($event) {
+            if (! \Realtime()->enabled()) {
+                return;
+            }
+
+            $ids = app(\App\Events\Support\AudienceResolver::class)->forEvent($event);
+
+            if (! $ids) {
+                return;
+            }
+
+            // publishMany takes pre-built topics so the whole fan-out goes over
+            // one broker connection.
+            \Realtime()->publishMany(array_map(fn (int $uid) => [
+                'topic' => \Realtime()->userTopic($uid, 'events'),
+                'payload' => ['action' => 'cover', 'event' => $event->uuid],
+            ], $ids));
+        }, null, false);
+    }
+
+    /* ---------------- Groups: building a bracket by hand ------------------
+     *
+     * A division is a GROUP of entrants that a bracket is then cut from. Until
+     * now one could only be created on the event form, named by hand, and filled
+     * by whatever the package's own enrolment decided. That works while the
+     * package cuts the divisions; it is useless when an organiser wants to build
+     * one on the day — two brackets merged because four people did not show, a
+     * strong junior moved up, a group invented for a category nobody planned.
+     *
+     * These four endpoints are that. They are SHARED, not part of any sport's
+     * package: a group of people and a range to sort them by means the same
+     * thing in jiu-jitsu, karate and taekwondo. What stays private to a package
+     * is what the range is USUALLY set to — its weight tables and belt ladder.
+     *
+     * Every one of them scopes the division to the event in the URL, so a
+     * division id belonging to another event resolves to nothing. The event's
+     * own uuid is the unguessable part of the address; a division id is only
+     * meaningful inside it, which is the same argument bout() already makes for
+     * match numbers.
+     */
+
+    /** Create a group by hand. */    /**
+     * The weight-classes page.
+     *
+     * Its own screen rather than a slab on the console, for the same reason the
+     * clubs and the officials got one: a division is not a console tile, it is a
+     * subject with a list, an editor and consequences — entrants land in it and
+     * the draw is cut from it. The console links to it.
+     *
+     * Organiser only. Everything on this page edits.
+     */
+    public function divisions(ClubEvent $event, Request $request): View
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $myReg = $this->myRegistrations($me->id, collect([$event->id]));
+
+        return view('personal.event-divisions', [
+            'e' => $this->eventView($event, $me->id, $myReg, true),
+        ]);
+    }
+
+
+    public function storeDivision(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $this->validateDivision($request, $event);
+
+        $division = EventCategory::create($data + [
+            'event_id' => $event->id,
+            'status' => 'enrolling',
+            'sort_order' => (int) $event->categories()->max('sort_order') + 1,
+        ]);
+
+        $this->redrawDivision($event, $division);
+        $this->pushDivisionsChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.division_created'),
+            'division' => $this->divisionPayload($division),
+        ]);
+    }
+
+    /** Rename a group, or change what it is for. */
+    public function updateDivision(Request $request, ClubEvent $event, int $division): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $category = $this->divisionOf($event, $division);
+        $category->update($this->validateDivision($request, $event, $category));
+
+        $this->redrawDivision($event, $category->fresh());
+        $this->pushDivisionsChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.division_saved'),
+            'division' => $this->divisionPayload($category->fresh()),
+        ]);
+    }
+
+    /**
+     * Delete a group.
+     *
+     * "This group still has people or bouts in it. Empty it first." answered
+     * three very different situations with one wall, and was the wrong answer
+     * to two of them. What actually stands in the way, in order:
+     *
+     *  1. **Bouts that have been FOUGHT.** A result is the record of something
+     *     that happened in a hall. It is not deleted behind a confirmation, and
+     *     this still refuses outright.
+     *  2. **A draw that is cut but unfought.** That is a mistake somebody wants
+     *     to undo, so it is cleared — through the package's own `clear_draw`
+     *     action, never by reaching into `event_matches` from here, so a type
+     *     that has locked its draw (the event is running) still says no.
+     *  3. **People in the group.** Not an obstacle at all: a division is a
+     *     container the organiser drew, and putting the same entrants in a
+     *     different one is ordinary work. They are RELEASED — the entry stays
+     *     exactly as it is, minus its group, which is the state an entrant is
+     *     in before anybody places them.
+     *
+     * Nothing here happens silently. The browser asks first (409 + what will
+     * happen), then repeats the request with `release`; a caller that never
+     * asks cannot empty a group by accident.
+     */
+    public function destroyDivision(Request $request, ClubEvent $event, int $division): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $category = $this->divisionOf($event, $division);
+
+        // Anything that was actually contested — see EventMatch::scopeContested.
+        // A BYE is marked done with a winner and is NOT a competition, so a
+        // bracket made of byes never blocks a delete.
+        $boutIds = $category->matches()->pluck('id');
+
+        $fought = $category->matches()->contested()->exists()
+            // Footage is the same answer by another route: a bout somebody
+            // filmed is a bout that happened. The recording would survive this
+            // (its `match_id` is nulled, never the file), but the honest
+            // reading is that this division is not a mistake to undo.
+            || ($boutIds->isNotEmpty() && (
+                DB::table('event_recordings')->whereIn('match_id', $boutIds)->exists()
+                || DB::table('event_camera_clips')->whereIn('match_id', $boutIds)->exists()
+            ));
+
+        if ($fought) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.division_has_results'),
+            ], 422);
+        }
+
+        $bouts = $category->matches()->count();
+        $people = $category->registrations()->count();
+
+        if (($bouts > 0 || $people > 0) && ! $request->boolean('release')) {
+            return response()->json([
+                'success' => false,
+                'needs_release' => true,
+                'people' => $people,
+                'bouts' => $bouts,
+                'message' => $this->divisionDeleteAsk($people, $bouts),
+            ], 409);
+        }
+
+        /*
+         * Once the competition is under way its draw is final — the same line
+         * App\Events\Support\Tournament\Arrangement::clear() draws before it
+         * will empty a slot. A group with no bouts is still deletable then: a
+         * container nobody drew into is not part of the running order.
+         */
+        if ($bouts > 0 && ($event->hasStarted() || $event->hasEnded())) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.division_draw_locked'),
+            ], 422);
+        }
+
+        DB::transaction(function () use ($category) {
+            /*
+             * The bouts go with the group.
+             *
+             * `event_matches.category_id` cascades, but this deletes them
+             * explicitly: the cascade is a database detail, and a division's
+             * unfought bracket disappearing is the intent, said out loud. What
+             * hangs off a bout — a recording, a clip, a stream — keeps its row
+             * and loses only the link (`match_id` is nulled, never the file),
+             * and none of it can be here anyway: anything filmed was refused
+             * above.
+             */
+            $category->matches()->delete();
+
+            // The entry survives; only its group is forgotten. `category_id` is
+            // nullable exactly for the entrant nobody has placed yet, so this
+            // returns them to that state rather than inventing one.
+            $category->registrations()->update(['category_id' => null]);
+            $category->delete();
+        });
+
+        $this->pushDivisionsChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'released' => $people,
+            'message' => $people > 0
+                ? __('events.division_deleted_released', ['count' => $people])
+                : __('events.division_deleted'),
+        ]);
+    }
+
+    /**
+     * The sentence the organiser is asked before a group goes.
+     *
+     * Says what will happen to each thing that is in the way, and only about
+     * the things that ARE in the way — a group with nobody in it must not be
+     * warned about entrants.
+     */
+    private function divisionDeleteAsk(int $people, int $bouts): string
+    {
+        // "1 bouts" is the kind of detail that makes a warning look
+        // machine-written, and this sentence is asking permission.
+        $drawn = trans_choice('events.division_bouts_count', $bouts, ['count' => $bouts]);
+
+        if ($people > 0 && $bouts > 0) {
+            return __('events.division_delete_ask_both', ['count' => $people, 'bouts' => $drawn]);
+        }
+
+        if ($bouts > 0) {
+            return __('events.division_delete_ask_draw', ['bouts' => $drawn]);
+        }
+
+        return __('events.division_delete_ask_people', ['count' => $people]);
+    }
+
+    /**
+     * Who could go in this group, and how each one sits against its range.
+     *
+     * EVERY participant in the event, never a filtered subset: the filtering is
+     * the client's job precisely because the organiser must be able to reach
+     * past it. Someone already in another division is listed too — moving them
+     * is the common case — and says so, so nobody is taken out of a bracket by
+     * accident.
+     */
+    public function divisionCandidates(Request $request, ClubEvent $event, int $division): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanArrange($event, $me);
+
+        $category = $this->divisionOf($event, $division);
+        $range = $category->range();
+
+        $names = $event->categories()->pluck('name', 'id');
+
+        $people = ClubEventRegistration::where('event_id', $event->id)
+            ->where('role', 'participant')
+            ->with(['user:id,full_name,name,gender,birthdate,profile_picture,profile_picture_is_public,updated_at'])
+            ->get()
+            ->map(function (ClubEventRegistration $r) use ($range, $category, $names) {
+                $judged = $range->judge($r);
+
+                return [
+                    'competitor_id' => $r->id,
+                    'name' => $r->user?->full_name ?: $r->user?->name ?: __('events.athlete'),
+                    'gender' => $r->user?->gender ?: null,
+                    'age' => $range->ageOf($r),
+                    'weight' => $r->weight === null ? null : (float) $r->weight,
+                    'belt' => $r->belt_colour ?: null,
+                    // The face taken at the desk for THIS event first, then the
+                    // member's own picture — and only when they made it public
+                    // (CLAUDE.md → Profile Pictures Are Portrait 3:4). No photo
+                    // is not a fault; the client draws a gender avatar.
+                    'photo' => $r->photo
+                        ? file_url($r->photo)
+                        : (($r->user?->profile_picture && $r->user->profile_picture_is_public)
+                            ? file_url($r->user->profile_picture).'?v='.($r->user->updated_at?->timestamp ?? 0)
+                            : null),
+                    'country' => $r->countryCode(),
+                    // Where they are now: this group, another one (named), or nowhere.
+                    'division_id' => $r->category_id,
+                    'division_name' => $r->category_id && $r->category_id !== $category->id
+                        ? ($names[$r->category_id] ?? null) : null,
+                    'here' => $r->category_id === $category->id,
+                    'fit' => $judged['fit'],          // in | out | unknown
+                    'misses' => $judged['misses'],
+                ];
+            })
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()->all();
+
+        return response()->json([
+            'success' => true,
+            'division' => $this->divisionPayload($category),
+            'people' => $people,
+        ]);
+    }
+
+    /**
+     * Put people in this group, or take them out of it.
+     *
+     * Deliberately accepts an entrant the range would reject. An organiser
+     * moving a fourteen-year-old up into the adults, or a lighter athlete into a
+     * heavier bracket to give them a fight at all, is doing their job — the
+     * range narrows the picker and marks the exception, it does not forbid it.
+     * See App\Events\Support\DivisionRange.
+     *
+     * Moving someone between groups takes them out of the bracket they were in:
+     * a bout cannot keep a competitor the division no longer holds. The draw is
+     * re-cut from what is left, by the package.
+     */
+    public function updateDivisionMembers(Request $request, ClubEvent $event, int $division): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanArrange($event, $me);
+
+        if ($event->hasStarted() || $event->hasEnded()) {
+            return response()->json(['success' => false, 'message' => __('events.draw_final')], 422);
+        }
+
+        $category = $this->divisionOf($event, $division);
+
+        $data = $request->validate([
+            'add' => ['nullable', 'array', 'max:256'],
+            'add.*' => ['integer'],
+            'remove' => ['nullable', 'array', 'max:256'],
+            'remove.*' => ['integer'],
+        ]);
+
+        // Scoped to THIS event's participants — an id from another event, or a
+        // spectator's registration, resolves to nothing rather than being moved.
+        $scope = fn (array $ids) => ClubEventRegistration::where('event_id', $event->id)
+            ->where('role', 'participant')
+            ->whereIn('id', $ids)->pluck('id')->all();
+
+        $add = $scope($data['add'] ?? []);
+        $remove = $scope($data['remove'] ?? []);
+
+        $touched = collect();
+
+        DB::transaction(function () use ($add, $remove, $category, $event, &$touched) {
+            if ($add) {
+                // The divisions they are leaving, so their old brackets are
+                // re-cut too — not just the one they arrive in.
+                $touched = ClubEventRegistration::whereIn('id', $add)
+                    ->pluck('category_id')->filter()->unique();
+
+                ClubEventRegistration::whereIn('id', $add)->update(['category_id' => $category->id]);
+            }
+
+            if ($remove) {
+                ClubEventRegistration::whereIn('id', $remove)
+                    ->where('category_id', $category->id)
+                    ->update(['category_id' => null]);
+            }
+
+            // A competitor who has left a division cannot stay in its draw.
+            $moved = array_merge($add, $remove);
+
+            if ($moved) {
+                EventMatch::where('event_id', $event->id)
+                    ->whereIn('a_competitor_id', $moved)
+                    ->where('category_id', '!=', $category->id)
+                    ->update(['a_competitor_id' => null, 'a_name' => null]);
+
+                EventMatch::where('event_id', $event->id)
+                    ->whereIn('b_competitor_id', $moved)
+                    ->where('category_id', '!=', $category->id)
+                    ->update(['b_competitor_id' => null, 'b_name' => null]);
+            }
+        });
+
+        // Let the package re-derive every division that changed shape.
+        $type = $this->typeFor($event);
+
+        foreach ($touched->push($category->id)->unique() as $id) {
+            $type->onEntrantsChanged($event, $event->categories()->find($id));
+        }
+
+        $this->pushDivisionsChanged($event);
+
+        return $this->divisionCandidates($request, $event, $division);
+    }
+
+    /* ---------------- Group plumbing ---------------- */
+
+    /** This event's division, or 404 — never another event's. */
+    private function divisionOf(ClubEvent $event, int $division): EventCategory
+    {
+        $category = $event->categories()->find($division);
+
+        abort_unless($category, 404);
+
+        $category->setRelation('event', $event);
+
+        return $category;
+    }
+
+    /**
+     * The rules a group's own fields are held to.
+     *
+     * The range is a guide, so the only things enforced are that it makes SENSE:
+     * a name, a gender from the canonical vocabulary, and bounds that are the
+     * right way round. Nothing here says who may be put in it.
+     */
+    private function validateDivision(Request $request, ClubEvent $event, ?EventCategory $existing = null): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'weight_class' => ['nullable', 'string', 'max:40'],
+            'gender' => ['nullable', Rule::in(['Male', 'Female'])],
+            'min_age' => ['nullable', 'integer', 'min:2', 'max:100'],
+            'max_age' => ['nullable', 'integer', 'min:2', 'max:100', 'gte:min_age'],
+            'min_weight' => ['nullable', 'numeric', 'min:10', 'max:300'],
+            'max_weight' => ['nullable', 'numeric', 'min:10', 'max:300', 'gte:min_weight'],
+            // How many may enter. Null is "no cap", which is the normal case —
+            // an organiser caps a division to keep a mat's day finite, not
+            // because a bracket needs it.
+            'capacity' => ['nullable', 'integer', 'min:2', 'max:100000'],
+            /*
+             * How the division is decided.
+             *
+             * Restricted to RUNNABLE_FORMATS, not to the full vocabulary: the
+             * column understands `round_robin` and the engine does not, so
+             * accepting it here would let an organiser configure a competition
+             * the mats cannot run. The UI greys it out for the same reason; this
+             * is the half that a hand-made request cannot get past.
+             */
+            'format' => ['nullable', Rule::in(EventCategory::RUNNABLE_FORMATS)],
+            // Which day each phase lands on, for an event that runs over more
+            // than one. Keys are the type's own phases, so they are not listed.
+            'schedule' => ['nullable', 'array'],
+            'schedule.*' => ['nullable', 'integer', 'min:1', 'max:60'],
+        ], [
+            'max_age.gte' => __('events.division_age_backwards'),
+            'max_weight.gte' => __('events.division_weight_backwards'),
+        ]);
+    }
+
+    /**
+     * Let the owning package re-cut this division after it changed.
+     *
+     * A division IS what a draw is made from — its range decides who lands in
+     * it, its capacity decides how many, and (once the engine can read it) its
+     * format decides the shape. Editing one and leaving the bracket alone means
+     * the board on the wall and the row in the database disagree, which nobody
+     * notices until somebody is called to a mat.
+     *
+     * Delegated rather than done here, because how a division is drawn is the
+     * PACKAGE's business, not this controller's (CLAUDE.md, "Events Are
+     * Self-Contained Packages"). Best-effort: a division that cannot be drawn
+     * yet — no entrants, or a format the engine does not run — must not stop the
+     * organiser saving the name they just typed.
+     */
+    private function redrawDivision(ClubEvent $event, ?EventCategory $category): void
+    {
+        rescue(fn () => $this->typeFor($event)->onEntrantsChanged($event, $category), null, false);
+    }
+
+    /**
+     * Fly the athlete's own passport rather than their club's country.
+     *
+     * Positional overlay: `$rows` is the payload RosterPeople was built from,
+     * one entry per person and in the same order.
+     *
+     * @param  array<int, array<string, mixed>>  $people
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function attachNationality(array $people, array $rows): array
+    {
+        $ids = collect($rows)->pluck('id')->filter()->unique()->all();
+
+        if (! $ids) {
+            return $people;
+        }
+
+        $nationality = User::whereIn('id', $ids)
+            ->whereNotNull('nationality')
+            ->pluck('nationality', 'id');
+
+        if ($nationality->isEmpty()) {
+            return $people;
+        }
+
+        $rows = array_values($rows);
+
+        foreach (array_values($people) as $i => $person) {
+            $own = $nationality->get($rows[$i]['id'] ?? null);
+
+            if ($own) {
+                $people[$i]['country'] = strtoupper($own);
+            }
+        }
+
+        return $people;
+    }
+
+    /**
+     * Name the club an athlete was put under on this event.
+     *
+     * Only fills a BLANK — a club the athlete themselves claimed
+     * (`representing_tenant_id`) is their answer and outranks the desk's.
+     *
+     * @param  array<int, array<string, mixed>>  $people
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function attachEventClubs(ClubEvent $event, array $people, array $rows): array
+    {
+        if (! Schema::hasTable('event_club_entrants')) {
+            return $people;
+        }
+
+        // user id => the club they are down as here.
+        $byUser = DB::table('event_club_entrants as l')
+            ->join('event_clubs as c', 'c.id', '=', 'l.event_club_id')
+            ->join('club_event_registrations as r', 'r.id', '=', 'l.registration_id')
+            ->where('c.event_id', $event->id)
+            ->select('r.user_id', 'c.name', 'c.logo', 'c.country', 'c.tenant_id')
+            ->get()
+            ->keyBy('user_id');
+
+        if ($byUser->isEmpty()) {
+            return $people;
+        }
+
+        $rows = array_values($rows);
+
+        foreach (array_values($people) as $i => $person) {
+            if (! empty($person['club'])) {
+                continue;
+            }
+
+            $row = $rows[$i] ?? [];
+            $club = $byUser->get($row['id'] ?? null);
+
+            if (! $club) {
+                continue;
+            }
+
+            $people[$i]['club'] = [
+                'name' => $club->name,
+                'logo' => $club->logo ? file_url($club->logo) : null,
+                'country' => $club->country,
+                // A club written down for one event has no page to open.
+                'href' => null,
+            ];
+
+            $people[$i]['country'] = $people[$i]['country'] ?: $club->country;
+        }
+
+        return $people;
+    }
+
+    /**
+     * The Clubs tab, counting the written-down clubs too.
+     *
+     * Rebuilt from the same overlay so the two tabs cannot disagree: a club
+     * showing on an athlete's card and missing from the club list would read as
+     * a mistake in the draw.
+     *
+     * @param  array<int, array<string, mixed>>  $clubs
+     * @return array<int, array<string, mixed>>
+     */
+    private function eventClubTab(ClubEvent $event, array $clubs): array
+    {
+        if (! Schema::hasTable('event_clubs')) {
+            return $clubs;
+        }
+
+        $named = collect($clubs)->pluck('name')->map(fn ($n) => mb_strtolower((string) $n))->all();
+
+        $extra = \App\Models\EventClub::where('event_id', $event->id)
+            ->whereNull('tenant_id')
+            ->where('state', '!=', 'declined')
+            ->withCount('entrants')
+            ->get()
+            ->reject(fn ($c) => in_array(mb_strtolower($c->name), $named, true))
+            ->filter(fn ($c) => $c->entrants_count > 0)
+            ->map(fn ($c) => [
+                'name' => $c->name,
+                'logo' => $c->logo ? file_url($c->logo) : null,
+                'country' => $c->country,
+                'athletes' => (int) $c->entrants_count,
+                'href' => null,
+            ])
+            ->values()
+            ->all();
+
+        if (! $extra) {
+            return $clubs;
+        }
+
+        // Biggest squad first, the order the roster already uses.
+        return collect(array_merge($clubs, $extra))
+            ->sortByDesc(fn ($c) => $c['athletes'] ?? 0)
+            ->values()
+            ->all();
+    }
+
+    /** One group, as the board and the picker read it. */
+    private function divisionPayload(EventCategory $category): array
+    {
+        return [
+            'id' => $category->id,
+            'name' => $category->name,
+            'weight_class' => $category->weight_class ?: null,
+            'status' => $category->status,
+            'entrants' => $category->registrations()->where('role', 'participant')->count(),
+            'matches' => $category->matches()->count(),
+            // How many of those bouts actually happened. The list uses it to
+            // tell a group that can still be undone from one that cannot,
+            // before it asks a question whose answer is already no.
+            'fought' => $category->matches()->contested()->count(),
+            'range' => $category->range()->toArray(),
+            'capacity' => $category->capacity,
+            'format' => $category->format ?: EventCategory::FORMAT_KNOCKOUT,
+            'schedule' => $category->schedule ?: [],
+        ];
+    }
+
+    /**
+     * The divisions moved. A refresh signal rather than the picture: a bracket
+     * renders differently for every viewer (their own bouts are marked, only an
+     * organiser sees the bench), so each one re-fetches what THEY may see.
+     */
+    private function pushDivisionsChanged(ClubEvent $event): void
+    {
+        rescue(function () use ($event) {
+            if (! \Realtime()->enabled()) {
+                return;
+            }
+
+            $ids = app(\App\Events\Support\AudienceResolver::class)->forEvent($event);
+
+            if (! $ids) {
+                return;
+            }
+
+            \Realtime()->publishMany(array_map(fn (int $uid) => [
+                'topic' => \Realtime()->userTopic($uid, 'events'),
+                'payload' => ['action' => 'draw', 'event' => $event->uuid],
+            ], $ids));
+        }, null, false);
+    }
+
+    /* ---------------- Entering someone not listed (Door B) ----------------
+     *
+     * Documentation/EVENTS-PUBLIC-ENTRY.md. A coach types a NAME and nothing
+     * else; the athlete supplies the rest through a single-use claim link. The
+     * service owns every rule — these methods only carry the request.
+     */
+
+    /** Commit an entry from a name alone, and hand back the link that completes it. */
+    public function storeUnnamedEntry(Request $request, ClubEvent $event, EntryClaim $claims): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $data = $request->validate([
+            // A name and nothing else is the whole point. The optional contact
+            // is only so the platform can deliver the link for the coach.
+            'full_name' => ['required', 'string', 'min:2', 'max:120'],
+            'contact_email' => ['nullable', 'email', 'max:190'],
+            'contact_phone' => ['nullable', 'string', 'max:32'],
+
+            // What the person at the desk happens to know. Every one of these is
+            // OPTIONAL and stays optional — a walk-in handed over on a paper
+            // sheet often comes with a name and nothing else, and an invented
+            // birthdate is worse than a blank because it drives age groups and
+            // the minor safeguards (CLAUDE.md → "Who Fills The Form Decides What
+            // It Demands"). But when the desk DOES know, recording it is what
+            // lets the athlete be sorted into a division immediately instead of
+            // being chased a second time.
+            //
+            // The FORMAT is still enforced. Only the demand that a value be
+            // present is lifted.
+            'gender' => ['nullable', Rule::in(['Male', 'Female'])],
+            'birthdate' => ['nullable', 'date', 'before:today'],
+            'weight' => ['nullable', 'numeric', 'min:10', 'max:300'],
+            'belt_colour' => ['nullable', 'string', 'max:20'],
+            'representing_tenant_id' => ['nullable', 'integer'],
+        ]);
+
+        $result = $claims->issue(
+            $event, $me, $data['full_name'],
+            $data['contact_email'] ?? null,
+            $data['contact_phone'] ?? null,
+            array_filter([
+                'gender' => $data['gender'] ?? null,
+                'birthdate' => $data['birthdate'] ?? null,
+                'weight' => $data['weight'] ?? null,
+                'belt_colour' => $data['belt_colour'] ?? null,
+                'representing_tenant_id' => $data['representing_tenant_id'] ?? null,
+            ], fn ($v) => $v !== null && $v !== ''),
+        );
+
+        if (! $result['ok']) {
+            return response()->json(['success' => false, 'message' => $result['message']], 422);
+        }
+
+        // The entrant count moved for everyone looking at this event.
+        $this->pushEventRefresh($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'claim' => $result['claim'],
+            'going' => $event->participantRegistrations()->count(),
+        ]);
+    }
+
+    /** The entries this coach committed that are still waiting on somebody. */
+    public function entryClaimLinks(ClubEvent $event, EntryClaim $claims): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if(app(EntryService::class)->administeredClubIds($me) === [] && ! $me->isSuperAdmin(), 403);
+
+        return response()->json(['success' => true, 'pending' => $claims->pending($event, $me)]);
+    }
+
+    /** Take back a name typed by mistake, before anybody claimed it. */
+    public function revokeEntryClaim(ClubEvent $event, string $claim, EntryClaim $claims): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $row = EventEntryClaim::where('event_id', $event->id)->where('uuid', $claim)->first();
+        abort_if(! $row, 404);
+
+        $result = $claims->revoke($row, $me);
+        if (! $result['ok']) {
+            return response()->json(['success' => false, 'message' => $result['message']], 422);
+        }
+
+        $this->pushEventRefresh($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'going' => $event->participantRegistrations()->count(),
+        ]);
+    }
+
+    /** A fresh link for the same entry — the old one stops working immediately. */
+    public function regenerateEntryClaim(ClubEvent $event, string $claim, EntryClaim $claims): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $row = EventEntryClaim::where('event_id', $event->id)->where('uuid', $claim)->first();
+        abort_if(! $row, 404);
+
+        $result = $claims->regenerate($row, $me);
+        if (! $result['ok']) {
+            return response()->json(['success' => false, 'message' => $result['message']], 422);
+        }
+
+        return response()->json(['success' => true, 'message' => $result['message'], 'claim' => $result['claim']]);
+    }
+
+    /* ---------------- Reviewing public entries (Door C) ----------------
+     *
+     * Documentation/EVENTS-PUBLIC-ENTRY.md, Phase C. A stranger followed the
+     * shared link and asked to compete. The request is worth nothing until the
+     * organiser accepts it — it counts toward no entrant total, no capacity and
+     * no money — so this queue IS the gate, not paperwork after one.
+     *
+     * Only whoever may MANAGE the event decides; a coach with entry authority
+     * at some club has no say over somebody else's competition. The service
+     * re-checks that on every call, and these methods carry the request.
+     */
+
+    /** Everybody waiting on this organiser. */
+    public function publicEntries(ClubEvent $event, PublicEntry $entries, EventAccess $access): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if(! $access->canManage($event, $me), 403);
+
+        return response()->json(['success' => true, 'pending' => $entries->pending($event, $me)]);
+    }
+
+    /** Admit them. This is the moment the request becomes an entry. */
+    public function acceptPublicEntry(ClubEvent $event, string $entry, PublicEntry $entries): JsonResponse
+    {
+        return $this->decidePublicEntry($event, $entry, fn ($row, $me) => $entries->accept($row, $me));
+    }
+
+    /** Turn it down. The account they made stays theirs; this competition does not. */
+    public function declinePublicEntry(ClubEvent $event, string $entry, PublicEntry $entries): JsonResponse
+    {
+        return $this->decidePublicEntry($event, $entry, fn ($row, $me) => $entries->decline($row, $me));
+    }
+
+    /**
+     * Accept and decline differ by one call, so they share everything else —
+     * including the scoping, which is what stops a uuid from one event being
+     * decided through another event's endpoint.
+     */
+    private function decidePublicEntry(ClubEvent $event, string $entry, callable $decide): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $row = EventPublicEntry::where('event_id', $event->id)->where('uuid', $entry)->first();
+        abort_if(! $row, 404);
+
+        $result = $decide($row, $me);
+
+        if (! $result['ok']) {
+            return response()->json(['success' => false, 'message' => $result['message']], 422);
+        }
+
+        // The entrant count moved for everyone looking at this event.
+        $this->pushEventRefresh($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'division' => $result['division'] ?? null,
+            'going' => $event->participantRegistrations()->count(),
+        ]);
+    }
+
+    /**
+     * Take people OUT of the event — the organiser's multi-select removal.
+     *
+     * The mirror of storeEntries(), and deliberately narrower on who may call
+     * it: entering an athlete is a CLUB's act (a coach submits their squad, from
+     * anywhere), but striking a name off the list is the COMPETITION's, so this
+     * is the organiser and platform staff and nobody else. A coach who wants
+     * their own athlete out asks the organiser, exactly as they would at a desk.
+     *
+     * Thin by design. Every rule about whether a particular entry may go — the
+     * event is underway, the athlete has already fought — lives in
+     * EntryService::remove(), beside the rules for getting in.
+     *
+     * Ids are REGISTRATIONS and are scoped to this event inside the service, so
+     * an id belonging to another competition finds nothing rather than reaching
+     * across events.
+     */
+    public function removeEntries(Request $request, ClubEvent $event, EntryService $entries, EventAccess $access): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if(! $access->canManage($event, $me), 403);
+
+        $data = $request->validate([
+            'registration_ids' => ['required', 'array', 'min:1', 'max:200'],
+            'registration_ids.*' => ['integer'],
+        ]);
+
+        $result = $entries->removeMany($event, $me, $data['registration_ids']);
+
+        // The entry list — and very possibly the draw cut from it — just moved
+        // for everyone looking at this event.
+        if ($result['removed']) {
+            $this->pushEventRefresh($event);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.entry_remove_result', [
+                'removed' => count($result['removed']),
+                'rejected' => count($result['rejected']),
+            ]),
+            // The head count as a SENTENCE, rendered here: "12 athletes"
+            // pluralises differently in the two languages this platform speaks
+            // (Arabic has five forms), and a client that rebuilt it from the
+            // number would get one of them wrong.
+            'going_label' => trans_choice('personal.event_people_athletes', $result['going'], ['count' => $result['going']]),
+        ] + $result);
+    }
+
+    /**
+     * Whether a public entry needs the organiser to say yes.
+     *
+     * Separate from the publish switch on purpose: publishing a page and
+     * opening an unreviewed door are two different decisions, and the second
+     * one should never happen as a side effect of the first.
+     */
+    public function setPublicAutoAccept(Request $request, ClubEvent $event, EventAccess $access): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if(! $access->canManage($event, $me), 403);
+
+        $data = $request->validate(['auto_accept' => ['required', 'boolean']]);
+
+        $event->update(['public_entry_auto_accept' => $data['auto_accept']]);
+
+        return response()->json([
+            'success' => true,
+            'auto_accept' => (bool) $data['auto_accept'],
+            'message' => $data['auto_accept']
+                ? __('events.public_auto_on_done')
+                : __('events.public_auto_off_done'),
+        ]);
+    }
+
+    /**
+     * When the draw opens, said in one sentence.
+     *
+     * One place, because three surfaces say it — the board's veil, the bout
+     * redirect and the console row — and a message that exists three times will
+     * eventually say three different things.
+     *
+     * `hidden` gets no date because there is none: it opens when the organiser
+     * says so, and inventing "soon" would be a promise the platform cannot keep.
+     */
+    private function drawHiddenMessage(ClubEvent $event): string
+    {
+        if (($event->draw_reveal ?? ClubEvent::DRAW_ALWAYS) === ClubEvent::DRAW_START_DAY && $event->date) {
+            return __('events.draw_hidden_until', ['date' => $event->date->translatedFormat('D j M')]);
+        }
+
+        return __('events.draw_hidden_msg');
+    }
+
+    /**
+     * When this event's draw becomes readable.
+     *
+     * Three settings, one switch, and deliberately NOT folded into the event
+     * edit form: an organiser reaches for this in the hour before the doors
+     * open, which is not a moment to walk through a form of thirty fields.
+     *
+     * Organiser only. An official reads a concealed draw (EventAccess::
+     * drawVisible) because they are arranging it — that is not the same as
+     * deciding when a hall full of people gets to read it.
+     */
+    public function setDrawReveal(Request $request, ClubEvent $event, EventAccess $access): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if(! $access->canManage($event, $me), 403);
+
+        $data = $request->validate([
+            'draw_reveal' => ['required', Rule::in(ClubEvent::DRAW_REVEALS)],
+        ]);
+
+        $event->update(['draw_reveal' => $data['draw_reveal']]);
+
+        /*
+         * Everyone looking at this event is looking at a board that may have
+         * just opened or closed. A refresh signal rather than a payload: what
+         * the draw looks like differs per reader (their own bouts are marked,
+         * an organiser sees the bench), so each client re-fetches what it may
+         * see rather than being handed somebody else's view.
+         */
+        $this->pushEventRefresh($event);
+
+        return response()->json([
+            'success' => true,
+            'draw_reveal' => $data['draw_reveal'],
+            'revealed' => $event->fresh()->drawRevealed(),
+            'message' => __('events.draw_reveal_saved'),
         ]);
     }
 
@@ -3195,9 +5326,14 @@ class PersonalEventController extends Controller
         $view = [
             'id' => $e->id,
             'key' => $e->uuid,   // unpredictable public id for URLs
+            // ⚠️ translatedFormat, never format — `format()` is locale-blind
+            // and printed an English "Fri 18 Sep" on an Arabic page. Same fix,
+            // same reason, as App\Events\Support\PublicEvent::payload(); the
+            // two views of one event must not disagree about its date. `day` is
+            // a bare number with nothing to translate.
             'day' => $date->format('d'),
-            'mon' => $date->format('M'),
-            'wday' => $date->format('D'),
+            'mon' => $date->translatedFormat('M'),
+            'wday' => $date->translatedFormat('D'),
             // Comparable form of the same day. The run-of-show timeline uses it
             // to find which of its phases IS the start of the event, so the
             // date chip can jump straight to that row rather than the section.
@@ -3209,8 +5345,8 @@ class PersonalEventController extends Controller
             'location_url' => $e->location_url,
             'lat' => $e->gps_lat ? (float) $e->gps_lat : ($e->tenant?->gps_lat ? (float) $e->tenant->gps_lat : null),
             'lng' => $e->gps_long ? (float) $e->gps_long : ($e->tenant?->gps_long ? (float) $e->tenant->gps_long : null),
-            'time' => $start ? $start->format('g:i A') : 'TBA',
-            'end' => $end ? $end->format('g:i A') : '',
+            'time' => $start ? $start->translatedFormat('g:i A') : __('events.tba'),
+            'end' => $end ? $end->translatedFormat('g:i A') : '',
             'duration' => $this->duration($start, $end),
             'level' => $e->level ?? 'All',
             'tag' => $this->typeLabel($e->event_type),
@@ -3234,8 +5370,68 @@ class PersonalEventController extends Controller
             // render only when it was.
             'cap' => $e->max_capacity ?: max($going, 1),
             'capped' => (int) $e->max_capacity > 0,
-            'participant_fee' => $e->participant_fee ?: 'Free',
-            'spectator' => $e->spectator_enabled ? ['fee' => $e->spectator_fee ?: 'Free', 'count' => $spectators] : null,
+            /*
+             * The fee LINE, priced now rather than read back.
+             *
+             * `participant_fee` is a stored display string, written in whatever
+             * language the organiser's browser was in when they saved — so an
+             * Arabic reader was shown "BHD 10" for ever after (reported
+             * 2026-09-04). Where there is a real AMOUNT on the row, the line is
+             * built from it through EventFee::display(), which translates the
+             * currency — exactly what the public poster already does.
+             *
+             * The stored string is still the fallback, and has to be: a fee
+             * column may hold free text an organiser typed ("by qualification"),
+             * which is not a number and must not be replaced by one.
+             */
+            'participant_fee' => EventFee::amount($e, 'participant')
+                ? EventFee::display(EventFee::amount($e, 'participant'), EventFee::currency($e))
+                : ($e->participant_fee ?: __('events.fee_free')),
+            'spectator' => $e->spectator_enabled ? [
+                'fee' => EventFee::amount($e, 'spectator')
+                    ? EventFee::display(EventFee::amount($e, 'spectator'), EventFee::currency($e))
+                    : ($e->spectator_fee ?: __('events.fee_free')),
+                'count' => $spectators,
+            ] : null,
+            /*
+             * Multi-pricing: what this event sells beyond the base fee, and the
+             * penalty for entering late.
+             *
+             * The UUID is what goes back to the server when somebody ticks a
+             * box; the amount here is for DISPLAY, so the sheet can show a
+             * running total without a round trip. It is never what anybody is
+             * charged — the server re-prices from its own rows on entry, so a
+             * reader editing these numbers in their console changes what their
+             * screen says and nothing else.
+             */
+            'fees' => [
+                'currency' => EventFee::currencyLabel(EventFee::currency($e)),
+                'base' => (float) (EventFee::amount($e, 'participant') ?? 0),
+                'options' => EventFee::options($e, 'participant')
+                    ->map(fn ($o) => [
+                        'key' => $o->uuid,
+                        'label' => $o->label,
+                        'amount' => (float) $o->amount,
+                        'display' => EventFee::display((float) $o->amount, EventFee::currency($e)),
+                    ])->values()->all(),
+                'spectator_base' => (float) (EventFee::amount($e, 'spectator') ?? 0),
+                'spectator_options' => $e->spectator_enabled
+                    ? EventFee::options($e, 'spectator')
+                        ->map(fn ($o) => [
+                            'key' => $o->uuid,
+                            'label' => $o->label,
+                            'amount' => (float) $o->amount,
+                            'display' => EventFee::display((float) $o->amount, EventFee::currency($e)),
+                        ])->values()->all()
+                    : [],
+                // Whether the penalty is live RIGHT NOW, decided on the server:
+                // a browser with a wrong clock must not be able to talk itself
+                // out of a late fee, and the number it shows should match the
+                // number it will be charged.
+                'late_active' => EventFee::lateFeeApplies($e, 'participant'),
+                'late_amount' => (float) ($e->late_fee_amount ?? 0),
+                'late_from' => $e->late_fee_from?->toIso8601String(),
+            ],
             'prize' => $e->prize,
             'results' => array_values($e->results ?? []),
             'about' => $e->description ?? '',
@@ -3271,6 +5467,42 @@ class PersonalEventController extends Controller
             'start_overridden' => (bool) $e->start_overridden,
             'ended' => $e->hasEnded(),
             'categories' => $e->categories()->exists() ? ['_' => true] : [],
+            /*
+             * The divisions in FULL, for the console's editor.
+             *
+             * `divisions` above is a list of names — enough for a chip row and
+             * nothing else. The editor needs what each one is FOR (its range),
+             * how many are in it, whether a draw has been cut, and how it is
+             * decided, because those are the things being edited.
+             *
+             * Organiser only: an entrant has no business reading capacities and
+             * ranges, and `$full` is the same gate the moderation data above
+             * uses.
+             */
+            'division_rows' => ($full && $isOrganiser)
+                ? $e->categories()->orderBy('sort_order')->orderBy('id')->get()
+                    ->map(fn ($c) => $this->divisionPayload($c))->values()->all()
+                : [],
+            /*
+             * The phases a division can be scheduled across, and how many days
+             * there are to spread them over.
+             *
+             * The create form has carried these as hardcoded Alpine state since
+             * it was written. Sending them from the server instead means the
+             * console's editor and the form's agree, and — the real reason —
+             * that a package which runs a different set of phases can one day
+             * supply its own rather than being described by a list typed into a
+             * Blade file.
+             */
+            'phase_defs' => [
+                ['key' => 'preliminary', 'label' => __('personal.event_phase_prelim')],
+                ['key' => 'quarterfinals', 'label' => __('personal.event_phase_quarters')],
+                ['key' => 'finals', 'label' => __('personal.event_phase_finals')],
+            ],
+            // Inclusive: a one-day event is 1, and an end date the day after is 2.
+            'day_count' => $e->end_date && $e->date
+                ? max(1, $e->date->diffInDays($e->end_date) + 1)
+                : 1,
         ];
 
         return $view;

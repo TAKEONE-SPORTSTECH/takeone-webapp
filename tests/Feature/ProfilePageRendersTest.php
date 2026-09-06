@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Clubs\Models\ClubAffiliation;
-use App\Models\Goal;
-use App\Models\MemberEvent;
+use App\Members\Models\Goal;
+use App\Members\Models\MemberEvent;
 use Tests\TestCase;
 
 /**

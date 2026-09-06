@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Clubs\Models\ClubAffiliation;
-use App\Models\SkillAcquisition;
-use App\Models\User;
+use App\Members\Models\SkillAcquisition;
+use App\Members\Models\User;
 use Tests\TestCase;
 
 /**

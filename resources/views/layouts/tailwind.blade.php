@@ -175,7 +175,7 @@
     <!-- Back Button -->
     <div class="container mx-auto px-4 md:px-6 pt-4">
         <a href="{{ url()->previous() }}" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <i class="bi bi-arrow-left"></i>
+            <i class="bi bi-chevron-left"></i>
             {{ __('shared.back') }}
         </a>
     </div>

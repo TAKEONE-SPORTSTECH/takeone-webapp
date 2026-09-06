@@ -8,7 +8,7 @@ use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Models\EventOfficial;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 

@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\ClubEvent;
 use App\Models\EventDocument;
 use App\Clubs\Models\Tenant;
-use App\Models\User;
+use App\Members\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;

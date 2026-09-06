@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Business;
 use App\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubTransaction;
-use App\Models\Membership;
+use App\Members\Models\Membership;
 use Illuminate\Support\Collection;
 
 /*
