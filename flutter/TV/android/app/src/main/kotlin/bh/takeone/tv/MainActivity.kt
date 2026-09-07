@@ -38,6 +38,81 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : FlutterActivity() {
 
+    /*
+     * ── Deleting a video this install does not own ──────────────────────────
+     *
+     * A clip published to the gallery by an EARLIER install of this app belongs
+     * to that install as far as MediaStore is concerned, and this one may not
+     * remove it. On Android 11+ the refusal is silent — `delete()` returns 0 —
+     * which is exactly how a file ends up sitting in the drawer being pressed
+     * over and over with nothing happening and nothing explaining why.
+     *
+     * The sanctioned way through is to let the OS ask: one system dialog, the
+     * person holding the phone taps Allow, and the file goes. It cannot be done
+     * silently by design, and it should not be — this is somebody's competition
+     * footage on their device.
+     *
+     * The MethodChannel reply is parked until the dialog answers, because a
+     * result may be sent exactly once.
+     */
+    private var pendingDelete: MethodChannel.Result? = null
+
+    private val deleteRequestCode = 9731
+
+    private fun askUserToDelete(uri: Uri, result: MethodChannel.Result) {
+        // Only one dialog at a time. A second ask while one is open is answered
+        // false rather than left hanging — the drawer simply stays as it was.
+        if (pendingDelete != null) {
+            result.success(false)
+            return
+        }
+
+        try {
+            val sender = when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
+                    MediaStore.createDeleteRequest(contentResolver, listOf(uri)).intentSender
+
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                    // On 10 the OS raises a recoverable exception carrying its
+                    // own consent intent; provoke it and use that.
+                    try {
+                        contentResolver.delete(uri, null, null)
+                        result.success(true)
+                        return
+                    } catch (e: android.app.RecoverableSecurityException) {
+                        e.userAction.actionIntent.intentSender
+                    }
+                }
+
+                else -> null
+            }
+
+            if (sender == null) {
+                result.success(false)
+                return
+            }
+
+            pendingDelete = result
+            startIntentSenderForResult(sender, deleteRequestCode, null, 0, 0, 0)
+        } catch (e: Exception) {
+            pendingDelete = null
+            result.success(false)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode != deleteRequestCode) return
+
+        // RESULT_OK means the person agreed and the OS has removed it. Anything
+        // else is a refusal, and the clip stays — which the drawer then shows
+        // honestly rather than pretending the delete worked.
+        val reply = pendingDelete
+        pendingDelete = null
+        reply?.success(resultCode == RESULT_OK)
+    }
+
     companion object {
         /**
          * True while the app's UI is in front.
@@ -273,13 +348,35 @@ class MainActivity : FlutterActivity() {
                                 gone = !file.exists() || file.delete()
                             }
 
-                            result.success(gone)
+                            /*
+                             * Not gone, no exception: the row is there and the
+                             * resolver simply declined. That is what a video
+                             * belonging to a PREVIOUS install looks like on
+                             * Android 11+ — no SecurityException, just a delete
+                             * that quietly does nothing. It is the reason two
+                             * clips sat in the drawer refusing to leave however
+                             * many times they were pressed.
+                             */
+                            if (!gone && uri != null) {
+                                askUserToDelete(android.net.Uri.parse(uri), result)
+                            } else {
+                                result.success(gone)
+                            }
                         } catch (e: SecurityException) {
-                            // Android 11+ can require the user's consent to
-                            // delete a media item this app did not create — a
-                            // clip restored from a backup, say. Reported rather
-                            // than swallowed, so the app can say why.
-                            result.error("delete_denied", e.message, null)
+                            /*
+                             * Android's own answer to "this is not yours":
+                             * ask the person holding the phone. On 11+ that is
+                             * MediaStore.createDeleteRequest, on 10 it is the
+                             * RecoverableSecurityException's own intent. Either
+                             * way the OS shows one dialog and the delete goes
+                             * through when they agree — which is the whole
+                             * difference between "cannot" and "will not".
+                             */
+                            if (uri != null) {
+                                askUserToDelete(android.net.Uri.parse(uri), result)
+                            } else {
+                                result.error("delete_denied", e.message, null)
+                            }
                         } catch (e: Exception) {
                             result.error("delete_failed", e.message, null)
                         }

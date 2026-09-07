@@ -54,7 +54,7 @@ class MatCameras
     public const SETTINGS = ['fps', 'zoom', 'exposure', 'auto_upload'];
 
     /** Orders about footage the phone is already holding. */
-    public const FOOTAGE_ACTIONS = ['upload', 'play', 'purge', 'delete', 'wipe'];
+    public const FOOTAGE_ACTIONS = ['upload', 'play', 'purge', 'delete', 'wipe', 'cancel'];
 
     /**
      * Everything the mat's camera panel draws.
@@ -70,6 +70,17 @@ class MatCameras
 
         $clips = EventCameraClip::query()
             ->whereIn('camera_id', $cameras->pluck('id'))
+            /*
+             * THIS event's footage, not this phone's whole history.
+             *
+             * A camera is unpaired at the end of one competition and claimed
+             * onto the next, keeping its row and every clip it ever filed. Left
+             * unscoped, a September console listed a bout from an August event
+             * — with `on_device` false, because the phone had long since been
+             * cleared — so the panel opened on a greyed-out row nobody could
+             * act on, and today's recordings were nowhere to be seen.
+             */
+            ->where('event_id', $event->id)
             // The bout number is the only thing a clip needs from its match,
             // and eager-loading it is the difference between two queries and
             // one per clip on a panel a tablet polls all day.
@@ -118,13 +129,71 @@ class MatCameras
                 : null,
             'device_name' => $camera->device_name,
             'app_version' => $camera->app_version,
-            // Every clip this camera ever filed, newest first — including ones
+            // Every clip this event knows about, newest first — including ones
             // whose file has since been deleted at the phone, which is the
-            // difference between "we never filmed it" and "it is gone".
-            'footage' => $clips->map(fn (EventCameraClip $clip) => static::clip($clip))->values()->all(),
-            'on_phone' => $clips->where('on_device', '!==', false)->count(),
+            // difference between "we never filmed it" and "it is gone" — plus
+            // whatever the phone is holding that this event has NO row for.
+            'footage' => static::footageList($camera, $clips),
+            'on_phone' => is_array($camera->reported_clips)
+                ? count($camera->reported_clips)
+                : $clips->where('on_device', '!==', false)->count(),
             'in_vault' => $clips->filter(fn ($c) => $c->play_video_key !== null)->count(),
         ];
+    }
+
+    /**
+     * The list the panel draws: this event's clips, plus the phone's orphans.
+     *
+     * (Not to be confused with footage() below, which SENDS an order about
+     * footage. This one describes it.)
+     *
+     * The second half is the point. A clip reaches the index only if the phone
+     * managed to file it — one call, at the end of a bout, over a hall's wifi —
+     * and a camera that was at another competition, or that missed that one
+     * call, ends up carrying files no console can see. The operator is then
+     * looking at a phone with two recordings on it and a panel showing none,
+     * which reads as broken software and is, in effect, exactly that.
+     *
+     * So a file the phone reports and this event has no row for is listed too,
+     * and labelled for what it is: on the phone, not in this event's index. It
+     * can be played and it can be deleted — both are questions about the phone's
+     * own disk. It cannot be uploaded from here, because there is no bout on
+     * this event to attach it to; the camera files it itself when it can, and
+     * refuses to attach a week-old bout to today's competition.
+     *
+     * @param  Collection<int, EventCameraClip>  $clips
+     * @return array<int, array<string, mixed>>
+     */
+    private static function footageList(EventCamera $camera, Collection $clips): array
+    {
+        $rows = $clips->map(fn (EventCameraClip $clip) => static::clip($clip))->values();
+
+        $known = $rows->pluck('ref')->filter()->all();
+
+        // Everything on the phone that this event has never been told about.
+        // Untrusted text off a device, so it is length-capped and rendered with
+        // textContent at the far end like every other value here.
+        $orphans = collect(is_array($camera->reported_clips) ? $camera->reported_clips : [])
+            ->filter(fn ($ref) => is_string($ref) && $ref !== '' && ! in_array($ref, $known, true))
+            ->map(fn (string $ref) => [
+                'id' => null,
+                'ref' => mb_substr($ref, 0, 190),
+                'bout' => null,
+                'match_id' => null,
+                'seconds' => null,
+                'bytes' => null,
+                'at' => null,
+                'status' => null,
+                'uploaded' => false,
+                'uploaded_at' => null,
+                'on_device' => true,
+                // What makes this row read differently: the file is here, the
+                // index is not.
+                'unfiled' => true,
+            ])
+            ->values();
+
+        return $rows->concat($orphans)->all();
     }
 
     /**
@@ -154,6 +223,9 @@ class MatCameras
             // NULL is "no phone has said" — an old build, or one that has not
             // beaten since this shipped. Shown as unknown, never as missing.
             'on_device' => $clip->on_device,
+            // This event has a row for it — see footage() for the ones that
+            // only exist on the phone.
+            'unfiled' => false,
         ];
     }
 
@@ -198,7 +270,12 @@ class MatCameras
             'at' => now()->toIso8601String(),
         ]);
 
-        return static::present($camera->fresh(), $camera->clips()->with('match:id,match_no')->orderByDesc('id')->limit(200)->get());
+        return static::present($camera->fresh(), $camera->clips()
+            ->where('event_id', $camera->event_id)
+            ->with('match:id,match_no')
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get());
     }
 
     /**

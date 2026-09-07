@@ -93,7 +93,7 @@ class MatCameraController extends Controller
     public static function apply(Request $request, ClubEvent $event, string $court, int $cameraId): JsonResponse
     {
         $data = $request->validate([
-            'do' => ['required', 'string', 'in:settings,upload,play,purge,delete,wipe,report'],
+            'do' => ['required', 'string', 'in:settings,upload,play,purge,delete,wipe,report,cancel'],
 
             // Footage orders. `clip` is a phone's own handle for a file, or the
             // word "all"; it is passed through to the device and never used to

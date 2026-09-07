@@ -1067,6 +1067,7 @@ return [
     'mat_cameras_clip' => 'مقطع',
     'mat_cameras_play' => 'تشغيل على الهاتف',
     'mat_cameras_upload' => 'ارفع الآن',
+    'mat_cameras_stop_upload' => 'إيقاف الرفع',
     'mat_cameras_delete' => 'حذف من الهاتف',
     'mat_cameras_delete_confirm' => 'حذف هذا التسجيل من الهاتف؟',
     'mat_cameras_delete_only_copy' => 'لم يُرفع بعد — الهاتف يحمل النسخة الوحيدة.',
@@ -1076,4 +1077,6 @@ return [
     'mat_cameras_state_vault' => 'مرفوع',
     'mat_cameras_state_failed' => 'فشل',
     'mat_cameras_state_gone' => 'حُذف من الهاتف',
+    'mat_cameras_state_unfiled' => 'على الهاتف فقط',
+    'mat_cameras_unfiled_hint' => 'لا سجل له في هذا الحدث — صُوّر في مكان آخر أو لم يُسجَّل.',
 ];

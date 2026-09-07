@@ -455,11 +455,13 @@ class _ClipDrawerState extends State<ClipDrawer> {
             if (clip.playVideoKey == null)
               ListTile(
                 leading: Icon(
-                  clip.playStatus == 'uploading' ? Icons.cloud_sync_outlined : Icons.cloud_upload_outlined,
+                  clip.playStatus == 'uploading' ? Icons.stop_circle_outlined : Icons.cloud_upload_outlined,
                   color: Cam.live,
                 ),
                 title: Text(
-                  clip.playStatus == 'uploading' ? 'UPLOADING…' : 'UPLOAD TO TAKEONE',
+                  clip.playStatus == 'uploading'
+                      ? 'STOP UPLOAD · ${(clip.uploadProgress * 100).round()}%'
+                      : 'UPLOAD TO TAKEONE',
                   style: Cam.cap(14, color: Cam.live),
                 ),
                 subtitle: Text(
@@ -470,12 +472,13 @@ class _ClipDrawerState extends State<ClipDrawer> {
                           '${Config.base.host}.',
                   style: Cam.body(11),
                 ),
-                onTap: clip.playStatus == 'uploading'
-                    ? null
-                    : () {
-                        Navigator.of(sheet).pop();
-                        widget.onUpload(clip);
-                      },
+                // Live while it uploads, because pressing it then means STOP.
+                // It used to be disabled, which is how a stalled upload became
+                // something the operator could only wait out.
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  widget.onUpload(clip);
+                },
               )
             else
               ListTile(

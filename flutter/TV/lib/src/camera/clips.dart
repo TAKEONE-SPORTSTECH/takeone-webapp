@@ -26,6 +26,7 @@ class CameraClip {
     this.playVideoKey,
     this.uploadProgress = 0,
     this.reported = false,
+    this.eventUuid,
   });
 
   /// Absolute path on this device. Shown to the operator so they can find it
@@ -44,6 +45,15 @@ class CameraClip {
   final String? court;
   final int? angle;
   int? bytes;
+
+  /// The competition this was filmed at, as the phone knew it at the time.
+  ///
+  /// Only used to decide whether an unfiled clip may still be filed. A camera
+  /// is unpaired at the end of one event and claimed onto the next keeping its
+  /// footage, and the server files a clip against whatever event the camera is
+  /// on NOW — so retrying an old one would hang last month's bout off this
+  /// morning's competition. Null on clips recorded before this field existed.
+  final String? eventUuid;
 
   /// The media-library handle, when the phone accepted the clip. This is what
   /// the in-app player opens; null means the video is still in the app's own
@@ -83,6 +93,13 @@ class CameraClip {
   /// the phone decides on its own. A clip still `uploading`, one that `failed`,
   /// and one nobody ever sent are all false here.
   bool get isSafelyUploaded => playVideoKey != null;
+
+  /// Has this clip reached the event's index at all?
+  ///
+  /// `serverId` is the only honest answer — `reported` is set beside it and a
+  /// clip with one and not the other cannot be uploaded, because the upload
+  /// address is built from the id.
+  bool get isFiled => serverId != null;
 
   /// May the drawer offer to delete this to free space?
   ///
@@ -135,6 +152,7 @@ class CameraClip {
         'play_status': playStatus,
         'play_video_key': playVideoKey,
         'reported': reported,
+        'event_uuid': eventUuid,
       };
 
   static CameraClip fromJson(Map<String, dynamic> json) => CameraClip(
@@ -153,6 +171,7 @@ class CameraClip {
         playStatus: json['play_status'] as String?,
         playVideoKey: json['play_video_key'] as String?,
         reported: json['reported'] as bool? ?? false,
+        eventUuid: json['event_uuid'] as String?,
       );
 }
 

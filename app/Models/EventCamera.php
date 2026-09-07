@@ -43,6 +43,8 @@ class EventCamera extends Model
         // says it is actually running. Kept apart on purpose — see MatCameras.
         'settings' => 'array',
         'reported_settings' => 'array',
+        // The file list the phone last reported holding. See the migration.
+        'reported_clips' => 'array',
         'last_seen_at' => 'datetime',
         'claimed_at' => 'datetime',
         'revoked_at' => 'datetime',

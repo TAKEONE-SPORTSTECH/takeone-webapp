@@ -1129,6 +1129,7 @@ return [
     'mat_cameras_clip' => 'Clip',
     'mat_cameras_play' => 'Play on the phone',
     'mat_cameras_upload' => 'Upload now',
+    'mat_cameras_stop_upload' => 'Stop the upload',
     'mat_cameras_delete' => 'Delete from the phone',
     'mat_cameras_delete_confirm' => 'Delete this recording from the phone?',
     'mat_cameras_delete_only_copy' => 'It has not been uploaded — the phone holds the only copy.',
@@ -1140,4 +1141,6 @@ return [
     'mat_cameras_state_vault' => 'Uploaded',
     'mat_cameras_state_failed' => 'Failed',
     'mat_cameras_state_gone' => 'Deleted at the phone',
+    'mat_cameras_state_unfiled' => 'On the phone only',
+    'mat_cameras_unfiled_hint' => 'This event has no record of it — filmed elsewhere, or never filed.',
 ];

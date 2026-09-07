@@ -200,6 +200,13 @@ class CameraController extends Controller
 
             $camera->clips()->whereIn('local_ref', $held)->update(['on_device' => true]);
             $camera->clips()->whereNotIn('local_ref', $held)->update(['on_device' => false]);
+
+            // …and kept as the phone's own answer to "what is on your disk",
+            // which is NOT the same question as "what has this event been told
+            // about". A camera re-paired onto a new competition still carries
+            // last month's files, and the mat needs to see them to clear them.
+            // A snapshot, rewritten whole each beat, never merged.
+            $camera->forceFill(['reported_clips' => $held])->saveQuietly();
         }
 
         return response()->json([
