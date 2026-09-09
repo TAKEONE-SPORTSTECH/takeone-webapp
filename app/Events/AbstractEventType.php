@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Support\Cldr;
 use App\Events\Contracts\EventType;
 use App\Events\Support\BracketView;
 use App\Events\Support\EnrolmentDecision;
@@ -255,7 +256,7 @@ abstract class AbstractEventType implements EventType
                 title: __('events.notify_created_title', ['title' => $event->title]),
                 body: __('events.notify_created_body', [
                     'club' => $event->tenant?->club_name ?? '',
-                    'date' => $event->date?->format('M j') ?? '',
+                    'date' => $event->date ? Cldr::shortDate($event->date) : '',
                 ]),
                 at: null,                                   // fires on creation
                 audience: Milestone::AUDIENCE_SCOPE,
@@ -279,7 +280,7 @@ abstract class AbstractEventType implements EventType
                 key: 'enrolment_closing',
                 title: __('events.notify_enrolment_closing_title', ['title' => $event->title]),
                 body: __('events.notify_enrolment_closing_body', [
-                    'date' => $event->enrollment_ends_at->format('M j'),
+                    'date' => Cldr::shortDate($event->enrollment_ends_at),
                 ]),
                 at: $event->enrollment_ends_at->copy()->subDays($leadDays)->startOfDay(),
                 audience: Milestone::AUDIENCE_SCOPE,
@@ -604,6 +605,19 @@ abstract class AbstractEventType implements EventType
     public function views(): array
     {
         return [];
+    }
+
+    /**
+     * The platform's frame stays, unless a type asks for it to go.
+     *
+     * FALSE is the safe default and the shipped behaviour: an event renders
+     * inside the member shell, with the top bar, the drawer and the bottom
+     * tabs it has always had. A package that overrides this to true is saying
+     * its competitions are their own app, organiser-branded (see the contract).
+     */
+    public function brandedSurface(): bool
+    {
+        return false;
     }
 
     public function viewData(ClubEvent $event, User $viewer): array

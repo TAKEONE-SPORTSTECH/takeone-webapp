@@ -68,7 +68,21 @@
          /e/{uuid} is the MOBILE app at every width, management screens
          included; serving a laptop the desktop blades full-width was tried on
          2026-09-03 and reverted at the user's instruction. --}}
-    <div class="ev-app ev-app-top mobile-stagger px-4 py-4 min-h-[60vh]">
+    {{-- ⚠️ NO `mobile-stagger` here — removed 2026-09-08.
+
+         That class sets `opacity: 0` on every direct child and rises them in
+         with delays up to .47s, so the content area is BLANK at first paint and
+         fills in piece by piece over about a second. On this surface that was
+         the worst of both worlds: on a first arrival the animation runs behind
+         the full-screen poster cover and is over before anybody dismisses it,
+         and on every RETURN — choosing a language on the cover, coming back
+         from a section or the entry form — it plays in full view and reads as
+         the page reloading itself. Reported exactly that way ("it blinks, it
+         loads back again").
+
+         The entrance the visitor actually sees is the cover lifting. Individual
+         cards keep their own motion; the page itself simply arrives. --}}
+    <div class="ev-app ev-app-top px-4 py-4 min-h-[60vh]">
         @yield('personal-content')
     </div>
 

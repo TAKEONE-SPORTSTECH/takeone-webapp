@@ -96,4 +96,95 @@
                in the middle of it. `inset-x-0` plus an auto margin centres it. */
             .ev-app-fixed { max-width: 520px; margin-inline: auto; }
         }
+
+        /* ── The hero band's control token ─────────────────────────────────
+           ONE definition of the 40px round control, and ONE gap between them.
+
+           Both event doors used to draw this themselves: the member door in
+           Tailwind (`bg-white/15 border-white/25 backdrop-blur`) and the public
+           one in inline styles (`rgba(255,255,255,.14)`, border `.3`).
+
+           (Paths are named in words here on purpose: this stylesheet ships
+           inside the public page, and the audit that proves that page never
+           links back to the platform greps the served HTML for them.) Two
+           implementations of the same button, differing by one percent of
+           alpha — near-identical, which reads worse than plainly different.
+           And the /me row nested its actions in a `gap-2` div inside a 12px
+           row, so the spacing changed halfway along it. That was the mess.
+
+           Real CSS rather than Tailwind classes on purpose: the built bundle
+           only carries classes something already used (see the Tailwind note
+           in CLAUDE.md), and this file is included by BOTH shells —
+           entry/shell.blade.php and entry/layout.blade.php — so one rule here
+           reaches every event surface there is. */
+        /* 12px, which is the value the band itself settled on: "It went 8 → 12
+           → 18 and 18 was too far — at 40px round each they stopped reading as
+           one cluster belonging to this header and started looking like loose
+           buttons" (components/event-poster-band.blade.php). The row is a SPAN
+           because the band's control slot is phrasing content. */
+        .ev-ctl-row { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; }
+        .ev-ctl-spacer { flex: 1 1 auto; }
+        .ev-ctl {
+            width: 40px; height: 40px; flex: none;
+            display: grid; place-items: center;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .15);
+            border: 1px solid rgba(255, 255, 255, .26);
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+            color: #fff; font-size: 15px; line-height: 1;
+            text-decoration: none;
+            transition: background-color .18s ease;
+        }
+        .ev-ctl:hover { background: rgba(255, 255, 255, .26); color: #fff; }
+        .ev-ctl:focus-visible { outline: 2px solid rgba(255, 255, 255, .8); outline-offset: 2px; }
+
+        /* A row in the overflow sheet: an icon tile, a label, a sub-line.
+           The actions in that band had no NAMES at all before — five glyphs,
+           and `bi-sliders` on one door meaning what `bi-gear` meant on the
+           other. */
+        /* ── The band's dropdown ──────────────────────────────────────────
+           A panel, not a sheet: four named rows do not earn a dimmed page and
+           a drag handle. Design Rule #4's dropdown shape — rounded, hairline
+           border, deep soft shadow, hover rows — pinned by the trigger's own
+           rect because the band it hangs off is `overflow-hidden`. */
+        .ev-menu-panel {
+            position: fixed;
+            width: 268px; max-width: calc(100vw - 24px);
+            padding: 6px;
+            background: #fff;
+            border: 1px solid hsl(210 14% 91%);
+            border-radius: 18px;
+            box-shadow: 0 24px 60px -20px rgba(15, 23, 42, .38), 0 2px 8px rgba(15, 23, 42, .06);
+            overflow: hidden;
+            z-index: 1;
+        }
+        .ev-menu-row {
+            width: 100%; display: flex; align-items: center; gap: 12px;
+            padding: 10px 10px; border-radius: 13px;
+            background: transparent; border: 0;
+            text-align: start; text-decoration: none; color: inherit;
+            cursor: pointer;
+            transition: background-color .18s ease;
+        }
+        .ev-menu-row:hover { background: hsl(220 15% 96%); }
+        .ev-menu-row + .ev-menu-row,
+        .ev-menu-slot + .ev-menu-row,
+        .ev-menu-row + form,
+        .ev-menu-slot + form { margin-top: 2px; }
+        .ev-menu-ico {
+            width: 40px; height: 40px; flex: none; border-radius: 12px;
+            display: grid; place-items: center; font-size: 17px;
+        }
+        .ev-menu-label { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.2; color: hsl(222 18% 20%); }
+        .ev-menu-sub { display: block; font-size: 11px; color: hsl(220 9% 48%); margin-top: 2px; line-height: 1.3; }
+        /* The QR component wraps itself in a hard-coded `inline-block` div, so
+           as a full-width sheet row it would shrink to its content. Corrected
+           here rather than in the component, which other callers rely on being
+           inline (RULE #1: additive, never alter working code).
+
+           ⚠️ Do NOT name that component in this comment with its angle-bracket
+           tag. Blade parses a component tag even inside a CSS or JS comment, so
+           the literal broke this whole view with a misleading "expecting endif"
+           error the moment it was added. Exactly the trap CLAUDE.md records. */
+        .ev-menu-slot > div { display: block; width: 100%; }
     </style>

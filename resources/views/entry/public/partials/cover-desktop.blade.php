@@ -47,15 +47,18 @@
         ? $e['color']
         : '#1677FF';
 
-    $dType   = trim($e['type'] ?? '');
-    $dSport  = trim($e['sport_label'] ?? '');
-    $dEyebrow = ($dSport && ! Str::contains(Str::lower($dType), Str::lower($dSport)))
-        ? trim($dSport.' '.$dType)
-        : $dType;
+    // The shared rule — see the note in cover.blade.php for what this
+    // partial's own copy got wrong.
+    $dEyebrow = \App\Events\Support\EventClassification::line(
+        $e['sport_label'] ?? null,
+        $e['type'] ?? null,
+    );
 
     $dWhen = trim("{$e['wday']} {$e['day']} {$e['mon']}");
     if (! empty($e['end_date']) && $e['end_date'] !== $e['date']) {
-        $dWhen .= ' — '.\Illuminate\Support\Carbon::parse($e['end_date'])->format('j M');
+        // See the note in cover.blade.php: `end_date` is already a localised
+        // sentence, and `format()` is locale-blind.
+        $dWhen .= ' — '.$e['end_date_short'];
     }
 @endphp
 
@@ -85,7 +88,10 @@
 @endpush
 @endonce
 
-<div x-data="eventCover()" x-cloak @reopen-cover.window="reopen()">
+<div x-data="eventCover()" x-cloak @reopen-cover.window="reopen()"
+     {{-- The language sheet navigates away by submitting a form. It says so
+          first, so the cover does not paint over the page on the way back. --}}
+     @cover-seen.window="markSeen()">
     <template x-teleport="body">
         <div x-show="open" x-cloak
              @keydown.escape.window="dismiss()"

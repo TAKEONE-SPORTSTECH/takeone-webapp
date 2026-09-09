@@ -73,11 +73,7 @@
     /* The classification, the way the design says it: "JIU JITSU CHAMPIONSHIP".
        An event type usually names its sport already, so the sport is only
        prefixed when the type has not said it. */
-    $type    = trim($e['type'] ?? '');
-    $sport   = trim($e['sport_label'] ?? '');
-    $eyebrow = ($sport && ! Str::contains(Str::lower($type), Str::lower($sport)))
-        ? trim($sport.' '.$type)
-        : $type;
+    $eyebrow = \App\Events\Support\EventClassification::line($e['sport_label'] ?? null, $e['type'] ?? null);
 
     /* A flag-icons class for a 2-letter code, or null. Same helper the members'
        roster uses; the sheet is loaded by entry.layout. */
@@ -104,114 +100,52 @@
      again on that device. --}}
 @include('entry.public.partials.install-prompt')
 
+{{-- Every language the organiser's words can be read in. Opened from the
+     cover, and lives out here rather than inside it: the cover is itself
+     teleported to <body>, and nesting one teleport inside another is not a
+     thing to rely on. --}}
+@include('entry.public.partials.language-sheet')
+
 <div x-data="publicEvent()" class="-mx-4 -mt-4 pb-4">
 
     {{-- ===== The band =====
-         The design file's header (drafts/upper header.png), kept verbatim at
-         the user's request: the event's colour taken DOWN towards navy, a dash
-         and the classification in tracked caps, then the big title, then whose
-         it is, then the three facts that decide whether to read on.
+         `<x-event-poster-band>` — one copy, shared with the member event page
+         since 2026-09-08 so the two surfaces cannot drift apart. Only the
+         CONTROL ROW is this page's own: a stranger's poster reopens the cover,
+         opens the gear, shares, and carries the account control. --}}
+    @php
+        $hchips = [];
+        if ($pPaid)      $hchips[] = ['bi-cash-coin', __('personal.event_show_paid_entry')];
+        if ($ticketPaid) $hchips[] = ['bi-ticket-perforated', __('personal.event_show_ticketed')];
+        if ($e['capped'] ?? false) $hchips[] = ['bi-people', trans_choice('events.public_spots', max(0, $e['cap'] - $e['going']), ['n' => max(0, $e['cap'] - $e['going'])])];
+    @endphp
+    <x-event-poster-band :color="$e['color']" :eyebrow="$eyebrow"
+                         :title="$e['title']" :owner="$e['club']" :chips="$hchips">
+        <x-slot:controls>
+            {{-- ONE control row, shared with /me/events/{uuid} — see
+                 partials/event-band-controls for what this replaced and why.
+                 This page's own copy drew the same 40px control in inline
+                 styles at a different alpha, with a chevron on the leading
+                 edge that reopened the poster cover rather than going back
+                 anywhere, and `bi-gear` for the job /me called `bi-sliders`.
 
-         This is the ONE page that departs from Design Rule #6's hero band, and
-         deliberately — it is a poster a stranger was sent, not a screen inside
-         the app. Every other page, the four section pages included, keeps the
-         standard band. --}}
-    <header class="relative overflow-hidden text-white"
-            style="padding: 22px 24px 72px; background: {{ \App\Support\Palette::eventBand($e['color']) }};">
+                 Account + sign-out is no longer a fourth control: the gear
+                 beside it already IS the way in for whoever is running this,
+                 and signing OUT is a once-in-a-while act that belongs behind
+                 the ⋯ with a name on it, not a permanent glyph competing with
+                 Share. `<x-event-account>` therefore no longer renders here.
 
-        <div class="absolute rounded-full" style="right:-56px; top:-56px; width:190px; height:190px; background:rgba(255,255,255,.07);"></div>
-        <div class="absolute rounded-full" style="right:22px; bottom:26px; width:96px; height:96px; background:rgba(255,255,255,.06);"></div>
-
-        {{-- Control row. No back pill: a stranger arrived from a link, and there
-             is nothing behind this page to go back TO. --}}
-        <div class="relative flex items-center justify-between">
-            <span class="flex items-center" style="gap:10px;">
-                <span class="flex-none" style="width:38px; height:3px; border-radius:2px; background:rgba(255,255,255,.85);"></span>
-                @if($eyebrow)
-                    <span class="uppercase" style="font-size:11px; font-weight:600; letter-spacing:.2em; color:rgba(255,255,255,.85);">{{ $eyebrow }}</span>
-                @endif
-            </span>
-
-            {{-- 12px between the three controls. It went 8 → 12 → 18 and 18 was
-                 too far: at 40px round each they stopped reading as one cluster
-                 of controls belonging to this header and started looking like
-                 three loose buttons. 12 separates them without scattering them. --}}
-            <span class="flex items-center flex-none" style="gap:12px;">
-                {{-- Back to the poster. The cover is dismissed once per tab, which
-                     left no way to see the artwork again without opening a new
-                     tab; this is it. Dispatched on `window` because the cover is
-                     its own Alpine root, teleported to <body>.
-
-                     FIRST in the row, and a back ARROW: it is the one control
-                     here that goes BACKWARDS, and back always sits on the
-                     leading edge. `rtl:rotate-180` because an arrow is
-                     direction, not decoration. --}}
-                <button type="button" @click="window.dispatchEvent(new CustomEvent('reopen-cover'))"
-                        aria-label="{{ __('events.public_cover_reopen') }}"
-                        title="{{ __('events.public_cover_reopen') }}"
-                        class="m-press ev-ico grid place-items-center flex-none"
-                        style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.14); font-size:15px;">
-                    <i class="bi bi-chevron-left"></i>
-                </button>
-
-                {{-- The gear: the way IN for whoever is running this.
-                     A link, not a button, and offered to every reader —
-                     showing it only to organisers would tell a stranger who
-                     the organisers are. It lands on the event's own sign-in
-                     (PublicEventController@manage), so the person running
-                     the competition never has to leave it to sign in — and
-                     STRAIGHT to the console when they already run it, so the
-                     sign-in page never enters the history stack for them. That
-                     page no longer redirects either; the two together are what
-                     un-trapped the Back button. --}}
-                <a href="{{ $console ?? route('events.public.manage', $e['key']) }}"
-                   aria-label="{{ __('events.public_manage_title') }}"
-                   title="{{ __('events.public_manage_title') }}"
-                   class="m-press ev-ico grid place-items-center flex-none"
-                   style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.14); font-size:15px;">
-                    <i class="bi bi-gear"></i>
-                </a>
-
-                <button type="button" @click="share()" aria-label="{{ __('events.public_share') }}"
-                        class="m-press ev-ico grid place-items-center flex-none"
-                        style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.14); font-size:15px;">
-                    <i class="bi bi-share"></i>
-                </button>
-
-                {{-- Account + sign-out. See the component for why it must be in
-                     the HEADER: the gear beside it takes a manager straight to
-                     the console, so they never see the sign-in page where this
-                     first lived. --}}
-                <x-event-account :event="$e['key']" :color="$e['color']"
-                    style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.14); font-size:15px;" />
-            </span>
-        </div>
-
-        <h1 class="relative" style="margin:26px 0 0; font-size:27px; line-height:1.18; font-weight:700; letter-spacing:-.01em;">{{ $e['title'] }}</h1>
-
-        @if($e['club'])
-            <p class="relative flex items-center" style="margin:10px 0 0; gap:8px; font-size:13px; color:rgba(255,255,255,.82);">
-                <i class="bi bi-building"></i>{{ $e['club'] }}
-            </p>
-        @endif
-
-        {{-- The three poster facts. A head COUNT is one of them; WHO is entered
-             is the Participants door further down. --}}
-        <div class="relative flex flex-wrap" style="gap:6px; margin-top:14px;">
-            @php
-                $hchips = [];
-                if ($pPaid)      $hchips[] = ['bi-cash-coin', __('personal.event_show_paid_entry')];
-                if ($ticketPaid) $hchips[] = ['bi-ticket-perforated', __('personal.event_show_ticketed')];
-                if ($e['capped'] ?? false) $hchips[] = ['bi-people', trans_choice('events.public_spots', max(0, $e['cap'] - $e['going']), ['n' => max(0, $e['cap'] - $e['going'])])];
-            @endphp
-            @foreach($hchips as [$ic, $label])
-                <span class="inline-flex items-center uppercase"
-                      style="gap:6px; padding:5px 11px; border-radius:999px; font-size:10px; font-weight:600; letter-spacing:.08em; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22);">
-                    <i class="bi {{ $ic }}"></i>{{ $label }}
-                </span>
-            @endforeach
-        </div>
-    </header>
+                 `share()` is this page's own, from partials/page-script. --}}
+            @include('partials.event-band-controls', [
+                'mode' => 'public',
+                'e' => $e,
+                'console' => $console ?? null,
+                'signedIn' => auth()->check(),
+                'signedInName' => auth()->user()?->full_name ?? auth()->user()?->name,
+                'signOutUrl' => route('events.public.sign-out', ['event' => $e['key']]),
+            ])
+        </x-slot:controls>
+    </x-event-poster-band>
 
     {{-- ===== The three facts, riding up over the band =====
          The design file's card, kept verbatim: a white panel with a hairline of
@@ -223,14 +157,39 @@
          Each fact is still a door to its fuller answer further down: when → the
          run-of-show, how much → the way in, where → the map. --}}
     <div class="relative" style="padding:0 18px; margin-top:-46px;">
-        <div class="m-in"
-             style="background:#fff; border-radius:18px; border-top:3px solid {{ $ev }};
+        {{-- ⚠️ NO `m-in` here — removed 2026-09-08, the same reason
+             `mobile-stagger` came off entry/layout on the same day.
+
+             `m-in` starts the card at opacity 0 and rises it in over half a
+             second, so the band and everything under it paint first and this
+             card arrives separately a beat later. On a first arrival that runs
+             behind the cover and nobody sees it; on the RELOAD that follows
+             choosing a language on the cover it plays in full view, and the
+             page reads as loading a second time. Reported exactly that way.
+
+             The member page's copy of this card has never animated. The card
+             simply arrives; the entrance the visitor sees is the cover lifting. --}}
+        <div style="background:#fff; border-radius:18px; border-top:3px solid {{ $ev }};
                     box-shadow:0 22px 60px rgba(30,44,79,.13), 0 2px 6px rgba(30,44,79,.06);
                     padding:18px 16px 16px;">
 
             <div class="grid text-center" style="grid-template-columns:1fr 1fr 1fr;">
+                {{-- ⚠️ The two dividing rules belong to the MIDDLE column, on
+                     both of its sides — never one physical `border-right` per
+                     column.
+
+                     `border-right` is a PHYSICAL side, and this page is read in
+                     Arabic as often as in English. In RTL the columns flow
+                     right-to-left, so a right border on the first column landed
+                     on the card's outer edge, the second column's landed in the
+                     right-hand gap, and the left-hand gap had no rule at all —
+                     three columns with the separators in two wrong places.
+                     Hanging both rules off the middle cell is direction-proof:
+                     the middle column is the middle column either way, and its
+                     two sides ARE the two internal gaps. (The member card next
+                     door has always done it this way with `border-x`.) --}}
                 <button type="button" @click="jump(['run-start','how-it-runs'])"
-                        class="m-press" style="border-right:1px solid #eef1f6; padding:2px 6px;"
+                        class="m-press" style="padding:2px 6px;"
                         aria-label="{{ __('personal.event_show_how_it_runs') }}">
                     <i class="bi bi-calendar3" style="font-size:17px; color:{{ $ev }};"></i>
                     <p style="margin:7px 0 0; font-size:12.5px; font-weight:700; color:#1e2c4f;">{{ $e['wday'] }} {{ $e['day'] }} {{ $e['mon'] }}</p>
@@ -238,7 +197,8 @@
                 </button>
 
                 <button type="button" @click="jump(['fees','enter'])"
-                        class="m-press" style="border-right:1px solid #eef1f6; padding:2px 6px;"
+                        class="m-press"
+                        style="border-left:1px solid #eef1f6; border-right:1px solid #eef1f6; padding:2px 6px;"
                         aria-label="{{ __('personal.event_show_to_join') }}">
                     <i class="bi bi-cash-coin" style="font-size:17px; color:{{ $ev }};"></i>
                     <p style="margin:7px 0 0; font-size:12.5px; font-weight:700; color:#1e2c4f;">{{ $e['participant_fee'] }}</p>

@@ -110,10 +110,10 @@
                                 {{-- The date column: a calendar leaf, so the eye can
                                      run down the dates without reading a word. --}}
                                 <div class="w-11 shrink-0 text-center pt-0.5">
-                                    <span class="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ $pdate ? $pdate->locale(app()->getLocale())->translatedFormat('M') : '' }}</span>
+                                    <span class="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ \App\Support\Cldr::skeleton($pdate, 'MMM', 'M') }}</span>
                                     <span class="block text-[22px] font-black leading-none mt-0.5 {{ $active ? '' : 'text-foreground' }}"
                                           style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $pdate ? $pdate->format('j') : '—' }}</span>
-                                    <span class="block text-[10px] font-semibold text-muted-foreground mt-0.5">{{ $pdate ? $pdate->locale(app()->getLocale())->translatedFormat('D') : '' }}</span>
+                                    <span class="block text-[10px] font-semibold text-muted-foreground mt-0.5">{{ \App\Support\Cldr::skeleton($pdate, 'EEE', 'D') }}</span>
                                 </div>
 
                                 {{-- The rail --}}
@@ -263,18 +263,50 @@
                     // by AbstractCombatSport::divisionName(), so they parse back
                     // reliably. Anything that does not match is kept whole rather
                     // than mangled.
+                    /* ⚠️ Group on the SOURCE name; show the TRANSLATED one.
+                     *
+                     * The parse looks for the English "Men"/"Women" that
+                     * AbstractCombatSport::divisionName() writes. Run it
+                     * against a TRANSLATED name and it never matches, so every
+                     * division falls into one unlabelled group and the gendered
+                     * headings vanish in every language but English — which is
+                     * what happened the moment divisions started being
+                     * translated. `divisions_source` is the same list,
+                     * untranslated and in the same order (see PublicEvent).
+                     *
+                     * The trade, stated: in English nothing changes at all —
+                     * the heading is still "Cadet Men". In another language the
+                     * heading is the translated GENDER alone ("Homens"), and
+                     * the full translated name carries the rest. The age word
+                     * is dropped from the heading rather than shown in English,
+                     * because "Cadet Homens" is worse than either language on
+                     * its own, and there is no reliable way to cut a translated
+                     * name into the same three pieces the English one had.
+                     */
+                    $divSource = $e['divisions_source'] ?? $e['divisions'];
                     $divGroups = [];
-                    foreach ($e['divisions'] as $d) {
-                        if (preg_match('/^(.*?)\s*\b(Men|Women)\b\s*(.*)$/i', $d, $m)) {
-                            $age    = trim($m[1]);
+
+                    foreach (array_values($e['divisions']) as $i => $d) {
+                        $src = $divSource[$i] ?? $d;
+                        $isTranslated = $src !== $d;
+
+                        if (preg_match('/^(.*?)\s*\b(Men|Women)\b\s*(.*)$/i', $src, $m)) {
                             $female = strcasecmp($m[2], 'Women') === 0;
-                            $weight = trim($m[3]) !== '' ? trim($m[3]) : $d;
-                            $label  = trim($age.' '.($female ? __('personal.event_show_women') : __('personal.event_show_men')));
+                            $gender = $female ? __('personal.event_show_women') : __('personal.event_show_men');
+
+                            if ($isTranslated) {
+                                $label  = $gender;
+                                $weight = $d;                       // the whole translated name
+                            } else {
+                                $label  = trim(trim($m[1]).' '.$gender);
+                                $weight = trim($m[3]) !== '' ? trim($m[3]) : $d;
+                            }
                         } else {
                             $female = false;
                             $weight = $d;
                             $label  = __('personal.event_show_divisions');
                         }
+
                         $key = ($female ? 'f' : 'm').'|'.$label;
                         $divGroups[$key]['label']  = $label;
                         $divGroups[$key]['female'] = $female;

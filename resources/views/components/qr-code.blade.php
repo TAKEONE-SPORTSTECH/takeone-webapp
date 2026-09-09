@@ -63,7 +63,15 @@
      out inside a `w-10 h-10` box and spilled straight out of it. The label is not
      dropped when it is hidden — it becomes the button's ACCESSIBLE NAME, because
      a bare icon says nothing to a screen reader, and "QR" is not a word a button
-     can be identified by out loud. --}}
+     can be identified by out loud.
+
+     `<x-slot:trigger>` replaces the icon-and-label INSIDE the button when a
+     caller needs the QR to sit in a row of controls it did not design — a tile
+     whose siblings carry a tinted icon plate above their label, say. Only the
+     contents change; the button, its click handler and the whole modal are
+     untouched, and a caller that passes no slot gets exactly the markup it
+     always got. `buttonClass` was not enough on its own: it styles the button
+     but cannot put a wrapper around the glyph. --}}
 <div x-data="qrCode(@js([
         'uid'          => $uid,
         'items'        => $jsItems,
@@ -71,8 +79,12 @@
         'searchUrl'    => route('messages.search-users'),
      ]))" class="inline-block">
     <button type="button" @click="open = true" class="m-press {{ $btn }}"
-            @if($iconOnly && ($label || $title)) aria-label="{{ $label ?: $title }}" @endif>
-        <i class="bi {{ $icon }}"></i>@unless($iconOnly) {{ $label }}@endunless
+            @if(($iconOnly || isset($trigger)) && ($label || $title)) aria-label="{{ $label ?: $title }}" @endif>
+        @isset($trigger)
+            {{ $trigger }}
+        @else
+            <i class="bi {{ $icon }}"></i>@unless($iconOnly) {{ $label }}@endunless
+        @endisset
     </button>
 
     <template x-teleport="body">

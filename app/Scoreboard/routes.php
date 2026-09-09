@@ -447,23 +447,44 @@ Route::post('/karate/court/{token}/cameras/{camera}', [\App\Scoreboard\Sports\Ka
     ->name('karate-scoreboard.token-cameras.command')->where('token', '[A-Za-z0-9]{40}')->whereNumber('camera')
     ->middleware('throttle:120,1');
 
-// Personal (member) mobile experience — shared mobile shell
-Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')->group(function () {
+// Personal (member) mobile experience — shared mobile shell.
+//
+// `BrandEventPage` is on the whole group rather than route-by-route, so an
+// event page added here tomorrow is branded with nothing to remember. It is
+// inert on every route that carries no `{event}` (and on every event whose
+// package has not opted in), so the /me pages that are not an event are
+// untouched — see the middleware's own notes.
+Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandEventPage::class])
+    ->prefix('me')->name('me.')->group(function () {
 // The /me member surfaces (home, feed, schedule, family tree, profile,
 // packages, payments, videos, people, settings, locale) live in the Members
 // module: app/Members/routes-member.php, registered by ModuleServiceProvider
 // under /me with the `me.` prefix and the same middleware stack.
+    /*
+     * ⚠️ `source-text` on the EDITING routes only.
+     *
+     * Reading `$event->title` now returns the READER's language
+     * (App\Traits\TranslatesAttributes). On a form that is a source-destroying
+     * bug: an organiser who switched the event to Chinese to check it, then
+     * tapped Edit, would be shown the machine's Chinese in the box and would
+     * save it over their own Arabic — irrecoverably. See
+     * App\Http\Middleware\ReadsSourceContent for the full note.
+     *
+     * The console, the poster and the bracket deliberately do NOT carry it:
+     * they display, and an organiser reading their own competition in Chinese
+     * should see Chinese.
+     */
     // Events — real, DB-backed (club_events).
     Route::get('/events', [App\Http\Controllers\PersonalEventController::class, 'index'])->name('events');
-    Route::get('/events/create', [App\Http\Controllers\PersonalEventController::class, 'create'])->name('events.create');
-    Route::post('/events', [App\Http\Controllers\PersonalEventController::class, 'store'])->name('events.store')->middleware('throttle:member-write');
+    Route::get('/events/create', [App\Http\Controllers\PersonalEventController::class, 'create'])->name('events.create')->middleware('source-text');
+    Route::post('/events', [App\Http\Controllers\PersonalEventController::class, 'store'])->name('events.store')->middleware(['throttle:member-write', 'source-text']);
     Route::get('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'show'])->name('events.show');
     // The organiser's console. `show` is what a visitor came to read; this is
     // what the people running the event came to do. Organiser or an appointed
     // official only — the action refuses everyone else.
     Route::get('/events/{event:uuid}/manage', [App\Http\Controllers\PersonalEventController::class, 'manage'])->name('events.manage');
-    Route::get('/events/{event:uuid}/edit', [App\Http\Controllers\PersonalEventController::class, 'edit'])->name('events.edit');
-    Route::put('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'update'])->name('events.update')->middleware('throttle:member-write');
+    Route::get('/events/{event:uuid}/edit', [App\Http\Controllers\PersonalEventController::class, 'edit'])->name('events.edit')->middleware('source-text');
+    Route::put('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'update'])->name('events.update')->middleware(['throttle:member-write', 'source-text']);
     Route::patch('/events/{event:uuid}/cancel', [App\Http\Controllers\PersonalEventController::class, 'cancelEvent'])->name('events.cancel-event')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/results', [App\Http\Controllers\PersonalEventController::class, 'setResults'])->name('events.results')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'destroy'])->name('events.destroy')->middleware('throttle:member-write');
@@ -493,10 +514,11 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     // coach note is written without reloading the whole bout.
     Route::get('/events/{event:uuid}/bout/{matchNo}/video/data', [App\Http\Controllers\BoutVideoController::class, 'matchData'])
         ->whereNumber('matchNo')->name('events.bout.video.data');
-    // Deleting the footage itself — platform staff only, enforced in the
-    // controller. Throttled like any other destructive write: competition video
-    // cannot be filmed again, so this is the one button on the page with no
-    // undo behind it.
+    // Deleting the footage itself — whoever may MANAGE the event, enforced in
+    // the controller (EventAccess::canManage, so the jury is outside it).
+    // Throttled like any other destructive write: competition video cannot be
+    // filmed again, so this is the one button on the page with no undo behind
+    // it.
     Route::delete('/events/{event:uuid}/bout/{matchNo}/video', [App\Http\Controllers\BoutVideoController::class, 'destroyVideo'])
         ->whereNumber('matchNo')->name('events.bout.video.destroy')->middleware('throttle:admin-write');
     Route::post('/events/{event:uuid}/bout/{matchNo}/notes', [App\Http\Controllers\BoutVideoController::class, 'storeNote'])
@@ -643,9 +665,9 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
      */
     // The weight-classes PAGE. Same URI as the store endpoint, different verb —
     // the list and the thing that adds to it are one resource.
-    Route::get('/events/{event:uuid}/divisions', [App\Http\Controllers\PersonalEventController::class, 'divisions'])->name('events.divisions')->middleware('throttle:60,1');
-    Route::post('/events/{event:uuid}/divisions', [App\Http\Controllers\PersonalEventController::class, 'storeDivision'])->name('events.divisions.store')->middleware('throttle:admin-write');
-    Route::patch('/events/{event:uuid}/divisions/{division}', [App\Http\Controllers\PersonalEventController::class, 'updateDivision'])->name('events.divisions.update')->whereNumber('division')->middleware('throttle:admin-write');
+    Route::get('/events/{event:uuid}/divisions', [App\Http\Controllers\PersonalEventController::class, 'divisions'])->name('events.divisions')->middleware(['throttle:60,1', 'source-text']);
+    Route::post('/events/{event:uuid}/divisions', [App\Http\Controllers\PersonalEventController::class, 'storeDivision'])->name('events.divisions.store')->middleware(['throttle:admin-write', 'source-text']);
+    Route::patch('/events/{event:uuid}/divisions/{division}', [App\Http\Controllers\PersonalEventController::class, 'updateDivision'])->name('events.divisions.update')->whereNumber('division')->middleware(['throttle:admin-write', 'source-text']);
     Route::delete('/events/{event:uuid}/divisions/{division}', [App\Http\Controllers\PersonalEventController::class, 'destroyDivision'])->name('events.divisions.destroy')->whereNumber('division')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/divisions/{division}/candidates', [App\Http\Controllers\PersonalEventController::class, 'divisionCandidates'])->name('events.divisions.candidates')->whereNumber('division')->middleware('throttle:120,1');
     Route::put('/events/{event:uuid}/divisions/{division}/members', [App\Http\Controllers\PersonalEventController::class, 'updateDivisionMembers'])->name('events.divisions.members')->whereNumber('division')->middleware('throttle:admin-write');

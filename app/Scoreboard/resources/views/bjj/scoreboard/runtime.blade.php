@@ -64,6 +64,10 @@
         'end' => __('scoreboard::bjj_messages.ctl_end'),
         'reset' => __('scoreboard::bjj_messages.ctl_reset'),
         'commit' => __('scoreboard::bjj_messages.ctl_commit'),
+        'over_result' => __('scoreboard::bjj_messages.ctl_over_result'),
+        'over_next' => __('scoreboard::bjj_messages.ctl_over_next'),
+        'over_undecided' => __('scoreboard::bjj_messages.ctl_over_undecided'),
+        'over_by' => __('scoreboard::bjj_messages.ctl_over_by'),
         'decision' => __('scoreboard::bjj_messages.ctl_decision'),
         'overtime' => __('scoreboard::bjj_messages.ctl_overtime'),
         'penalties' => __('scoreboard::bjj_messages.penalties'),
@@ -125,7 +129,8 @@
   var recvAt = Date.now();
   var stall = null;         // {side, until} — private to this console
   var locked = false;       // the 400ms one-tap-one-event lockout
-  var lastEntry = null;     // what the 5s toast would undo
+  var overShownFor = null;  // the match whose end panel has already been offered
+  var bellSentFor = null;   // the match whose expiry has already been reported
 
   function el(id) { return document.getElementById(id); }
   function text(id, v) { var e = el(id); if (e) e.textContent = v == null ? '' : v; }
@@ -173,21 +178,14 @@
     fn();
   }
 
-  /* ── The 5-second UNDO toast ───────────────────────────────────────────
-     Not a delayed write: the point is ALREADY recorded and already on the wall.
-     The toast is a fast path to the reversal that would otherwise take a hold
-     on the log row — the same append, with a reason filled in for you. */
+  /* ── The toast ─────────────────────────────────────────────────────────
+     A NOTICE, and only that. It used to carry an Undo for five seconds after
+     every point, which is where the offer came from that popped up on each
+     score — removed 2026-09-08 at the user's request. Undo now lives in the
+     score log, on the row it undoes, where an official goes when something
+     actually needs putting right rather than being asked to second-guess a
+     call they have just made while the fight carries on. */
   var toastTimer = null;
-
-  function offerUndo(entryId, label) {
-    lastEntry = entryId;
-    var toast = el('toast');
-    if (!toast) return;
-    text('toastText', label);
-    toast.hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { toast.hidden = true; lastEntry = null; }, 5000);
-  }
 
   function flash(message) {
     if (!message) return;
@@ -196,11 +194,9 @@
     var toast = el('toast');
     if (!toast) return;
     text('toastText', message);
-    var undo = el('toastUndo');
-    if (undo) undo.hidden = true;
     toast.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { toast.hidden = true; if (undo) undo.hidden = false; }, 4000);
+    toastTimer = setTimeout(function () { toast.hidden = true; }, 4000);
   }
 
   /* ── Modals: the friction the spec asks for ───────────────────────────── */
@@ -291,6 +287,21 @@
 
   function paintClock() {
     var r = remaining();
+
+    /* The bell, reported once.
+       The server stores the clock as "remaining as of a moment" and only
+       settles it when a command arrives — so a match that has run out of time
+       is not yet OVER on the server, and this console would go on showing 0:00
+       against a live match until somebody pressed something. The hall has
+       already heard the buzzer by then (the board plays it off its own clock),
+       which is the worst version: the mat knows and the table does not.
+       One `bell` on the way down settles it, and the engine then does what it
+       always does — finish the match, or raise a referee decision. */
+    if (S.matchId && S.running && r <= 0 && bellSentFor !== S.matchId) {
+      bellSentFor = S.matchId;
+      send('bell');
+    }
+    if (r > 0) bellSentFor = null;
     var warn = S.status === 'live' && r > 0 && r <= ((S.rules && S.rules.warning) || 60);
     var v = el('clockVal');
     if (v) { v.textContent = clock(r); v.className = 'num' + (warn ? ' warn' : ''); }
@@ -357,6 +368,8 @@
     if (el('btnEnd')) el('btnEnd').disabled = !loaded || over;
     if (el('btnReset')) el('btnReset').disabled = !loaded;
     if (el('btnCommit')) el('btnCommit').disabled = !loaded || !over;
+    // The way back to the end-of-match panel once it has been dismissed.
+    if (el('btnFinalize')) el('btnFinalize').disabled = !loaded || !over;
 
     // A level match at 0:00 is not a result — IBJJF sends it to the referee, so
     // the console surfaces that rather than leaving an official to guess.
@@ -370,6 +383,57 @@
     document.querySelectorAll('[data-penalty],[data-stall]').forEach(function (b) {
       b.disabled = !loaded || over;
     });
+  }
+
+  /* ── The end of a match ────────────────────────────────────────────────
+     A finished match is a decision waiting to be taken, so the console OFFERS
+     it rather than leaving an official to find a button: the moment the state
+     says finished — whether the clock ran out, a submission was called or the
+     table pressed End — this opens with the result, what is about to be written
+     and what is next on the mat.
+
+     Offered ONCE per match. Dismissing it is "not yet", not "never": the
+     Finalize button in the centre column opens the same panel again, because a
+     table that has dismissed this must still be able to record the result.
+
+     It closes itself when the match is no longer finished — which is every way
+     out of here at once: recording (the server loads the next bout), a reset,
+     or somebody loading a different match from another console. */
+  function paintOver() {
+    var panel = el('overPanel');
+    if (!panel) return;
+
+    if (!S.finished) { panel.hidden = true; overShownFor = null; return; }
+
+    var win = S.winner === 'blue' ? (S.blue || {}) : S.winner === 'white' ? (S.white || {}) : null;
+    var sc = S.score || {};
+
+    // The result in one line: who won, how, and the two point totals. Never a
+    // sum — points, advantages and penalties are separate ladders in this sport.
+    text('overWho', win ? (win.name || T.tbd) : T.over_undecided);
+    text('overHow', win
+      ? [(S.winMethod ? (METHODS[S.winMethod] || S.winMethod) : null), S.winNote || null]
+          .filter(Boolean).join(' · ')
+      : '');
+    text('overScore', win ? (sc.bluePoints || 0) + ' — ' + (sc.whitePoints || 0) : '');
+
+    // What the mat runs next, read from the SAME queue the wall announces, so
+    // this cannot promise a bout the board is not expecting.
+    var next = (QUEUE || []).filter(function (b) { return b.runnable && b.id !== S.matchId; })[0];
+    text('overNext', next
+      ? '#' + (next.no || '?') + '  ' + (next.blue && next.blue.name || T.tbd)
+        + '  vs  ' + (next.white && next.white.name || T.tbd)
+      : T.no_queue);
+
+    // A level match has no winner to record. The referee's decision comes
+    // first — the Decision button is already up in the centre column.
+    var record = el('btnCommit');
+    if (record) record.hidden = !win;
+
+    if (overShownFor !== S.matchId) {
+      overShownFor = S.matchId;
+      panel.hidden = false;
+    }
   }
 
   function paintLog() {
@@ -789,6 +853,7 @@
     paintCorners();
     paintTransport();
     paintClock();
+    paintOver();
     paintLog();
     paintQueue();
     paintBouts();
@@ -828,21 +893,15 @@
     });
   }
 
-  // Scoring: no confirmation at all, a 400ms lockout, and the undo toast.
+  // Scoring: no confirmation, a 400ms lockout, and nothing else. The entry is
+  // already on the wall and already in the score log — which is where it is
+  // undone, on its own row, if it has to be. Press and carry on watching.
   document.addEventListener('click', function (e) {
     var b = e.target.closest('[data-cmd]');
     if (!b || b.disabled) return;
 
-    var cmd = b.dataset.cmd;
     guarded(function () {
-      send(cmd, { side: b.dataset.side, source: b.dataset.source }, function (body) {
-        if (cmd !== 'point' && cmd !== 'advantage') return;
-        var last = (body.log || [])[0];
-        if (last) {
-          offerUndo(last.id, (b.dataset.side === 'blue' ? T.blue : T.white) + ' · '
-            + (cmd === 'point' ? '+' + last.value : T.undo_hint));
-        }
-      });
+      send(b.dataset.cmd, { side: b.dataset.side, source: b.dataset.source });
     });
   });
 
@@ -1043,11 +1102,6 @@
   if (el('modalCancel')) el('modalCancel').addEventListener('click', closeModal);
   if (el('modalOk')) el('modalOk').addEventListener('click', function () { if (modalOk) modalOk(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
-
-  if (el('toastUndo')) el('toastUndo').addEventListener('click', function () {
-    if (lastEntry) askReverse(lastEntry);
-    el('toast').hidden = true;
-  });
 
   setInterval(paintClock, 200);
   paint();

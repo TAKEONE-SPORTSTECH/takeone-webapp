@@ -21,6 +21,13 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
 <meta charset="utf-8">
+    {{-- Dark by design (a scoreboard console / wall board). Declared so a
+         browser's auto-dark and Dark Reader both leave it alone — the same
+         reasoning as the light pages, opposite value. --}}
+    <meta name="color-scheme" content="dark">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: dark; }</style>
+
 {{-- A fixed console rather than a document. Same exemption as the wall board:
      this surface is sized to the glass and has nothing to zoom into, and a
      pinch mid-match hides the row of controls along the bottom. --}}

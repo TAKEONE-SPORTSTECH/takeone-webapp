@@ -141,7 +141,7 @@ class WizardRegistrationController extends Controller
         Cache::put($this->otpKey($user->id), ['code' => $code, 'attempts' => 0], now()->addMinutes(10));
 
         try {
-            Mail::to($user->email)->queue(new WizardOtpMail($code, $user));
+            Mail::to($user)->queue(new WizardOtpMail($code, $user));
         } catch (\Exception $e) {
             \Log::error('Wizard OTP email failed: '.$e->getMessage());
 
@@ -481,7 +481,7 @@ class WizardRegistrationController extends Controller
             // club isn't verifying (it would just be undeliverable noise).
             if ($parentUser->email && ! $skipVerification) {
                 try {
-                    Mail::to($parentUser->email)->queue(new WelcomeEmail($parentUser, $parentUser, null, $intended));
+                    Mail::to($parentUser)->queue(new WelcomeEmail($parentUser, $parentUser, null, $intended));
                 } catch (\Exception $e) {
                     \Log::error('Wizard welcome email failed: '.$e->getMessage());
                 }

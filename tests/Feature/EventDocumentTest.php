@@ -19,6 +19,26 @@ use Tests\TestCase;
  */
 class EventDocumentTest extends TestCase
 {
+    /**
+     * Keep the uploads off the real disk.
+     *
+     * `RefreshDatabase` rolls the rows back, but an upload lands on the
+     * filesystem and stays there — this suite writes a 30 MB document, so
+     * without a fake disk every run left another `storage/app/events/{uuid}/`
+     * behind. 998 orphan directories (3.2 GB, all of it zeroes) had built up
+     * before anyone noticed, and each one then rode into every nightly
+     * `uploads-*.tar.gz`.
+     *
+     * Safe to fake: both DocumentUpload and the download route reach the file
+     * only through `Storage::disk('local')`, never a real path.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('local');
+    }
+
     private function clubFor(User $user, array $attrs = []): Tenant
     {
         $club = $this->createClub($user, array_merge(['country' => 'BH'], $attrs));

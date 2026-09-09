@@ -75,20 +75,33 @@
 >
     {{-- Division switcher — one draw on screen at a time keeps the bracket readable. --}}
     @if($showDivisions)
-    <div x-show="divisions.length > 1" x-cloak class="mb-3 -mx-1 px-1 overflow-x-auto">
+    <div x-show="divisions.filter(d => ! d.is_heading).length > 1" x-cloak class="mb-3 -mx-1 px-1 overflow-x-auto">
         <div class="flex items-center gap-2 w-max">
             <template x-for="d in divisions" :key="d.id">
-                <button type="button"
-                        @click="window.BracketBoard.show(d.id)"
-                        :class="d.id === division
-                            ? 'bg-primary text-white border-primary shadow-sm'
-                            : 'bg-white text-foreground border-gray-200 hover:bg-muted/60'"
-                        class="flex items-center gap-2 px-3.5 py-2 rounded-full border text-xs font-bold transition-colors whitespace-nowrap">
-                    <span x-text="d.name"></span>
-                    <span :class="d.id === division ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'"
-                          class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold"
-                          x-text="d.entrants"></span>
-                </button>
+                <div class="flex items-center">
+                    {{-- A HEADING: the organiser's own title for the divisions
+                         that follow it in this strip. Not a button — there is no
+                         draw behind it — so it reads as a label between groups
+                         of pills rather than a tab that does nothing. --}}
+                    <span x-show="d.is_heading" x-cloak
+                          class="ps-2 pe-3 text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground
+                                 whitespace-nowrap flex items-center gap-1.5">
+                        <i class="bi bi-bookmark-fill text-[10px] text-primary/70"></i>
+                        <span x-text="d.name"></span>
+                    </span>
+
+                    <button type="button" x-show="! d.is_heading"
+                            @click="window.BracketBoard.show(d.id)"
+                            :class="d.id === division
+                                ? 'bg-primary text-white border-primary shadow-sm'
+                                : 'bg-white text-foreground border-gray-200 hover:bg-muted/60'"
+                            class="flex items-center gap-2 px-3.5 py-2 rounded-full border text-xs font-bold transition-colors whitespace-nowrap">
+                        <span x-text="d.name"></span>
+                        <span :class="d.id === division ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'"
+                              class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold"
+                              x-text="d.entrants"></span>
+                    </button>
+                </div>
             </template>
         </div>
     </div>

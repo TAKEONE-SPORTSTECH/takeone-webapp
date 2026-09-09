@@ -1035,6 +1035,8 @@
 
                 /** Create (or find) this mat's browser stream. Its payload, or null. */
                 async reserveStream(mat) {
+                    if (! this.liveStoreUrl) return null;   // see reloadLive()
+
                     const row = this.liveMats.find(x => String(x.court) === String(mat));
 
                     try {
@@ -1067,6 +1069,15 @@
 
                 /** What is on air on this event, and which mats have a stream. */
                 async reloadLive() {
+                    // ⚠️ Live broadcasting was removed from this server, so
+                    // `liveUrl` is deliberately null (see the x-data above).
+                    // Without this guard `fetch(null)` requests the literal
+                    // string "null" RELATIVE to the current page — which inside
+                    // the sealed event app is `/e/{uuid}/admin/null`, a 404 on
+                    // every console open. Never fetch a URL that is allowed to
+                    // be null; ask first.
+                    if (! this.liveUrl) return;
+
                     try {
                         const res = await fetch(this.liveUrl, {
                             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -1092,7 +1103,7 @@
 
                 /** Stop one broadcast, wherever this panel is showing it. */
                 async cutStream(on) {
-                    if (! on || this.busy) return;
+                    if (! on || this.busy || ! this.liveBase) return;   // see reloadLive()
 
                     const ok = await window.confirmAction({
                         title: @js(__('personal.event_live_stop_confirm')),
@@ -1157,6 +1168,8 @@
 
                 /** Create (or find) this mat's stream. Returns its payload, or null. */
                 async reserveStream(mat) {
+                    if (! this.liveStoreUrl) return null;   // see reloadLive()
+
                     const row = this.liveMats.find(x => String(x.court) === String(mat));
 
                     try {
@@ -1189,6 +1202,15 @@
 
                 /** What is on air, and which mats have a phone waiting. */
                 async reloadLive() {
+                    // ⚠️ Live broadcasting was removed from this server, so
+                    // `liveUrl` is deliberately null (see the x-data above).
+                    // Without this guard `fetch(null)` requests the literal
+                    // string "null" RELATIVE to the current page — which inside
+                    // the sealed event app is `/e/{uuid}/admin/null`, a 404 on
+                    // every console open. Never fetch a URL that is allowed to
+                    // be null; ask first.
+                    if (! this.liveUrl) return;
+
                     try {
                         const res = await fetch(this.liveUrl, {
                             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },

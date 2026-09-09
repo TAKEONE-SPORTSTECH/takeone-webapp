@@ -36,93 +36,130 @@
 <div @include('partials.event-show-script')
      class="-mx-4 -mt-4 pb-4">
 
-    {{-- ===== Cover ===== --}}
-    <header class="m-hero px-5 pt-5 pb-16 text-white relative overflow-hidden"
-            style="background: linear-gradient(150deg, {{ $e['color'] }}, {{ $e['color'] }}b0);">
-        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
-        <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+    {{-- ===== The entry cover =====
+         The same full-screen cover a shared link opens onto — the artwork, the
+         name, the day, the hall — tapped away to reveal the page. One partial,
+         shared with `/e/{uuid}`.
 
-        {{-- top bar (z-50 so the manage dropdown paints above the title block below) --}}
-        <div class="flex items-center justify-between relative z-50">
-{{-- ⚠️ AN ADDRESS, NOT A GESTURE.
+         Only on the BRANDED surface: it is a cover for an event that is its own
+         app, and over a page still wearing the platform's top bar and bottom
+         tabs it would be a full-screen overlay inside somebody else's chrome.
+         `isset($shell)` is the "am I chrome-less" question (never `$sealed`,
+         which is about ADDRESSES).
 
-                 `history.back()` was here, and on a surface people reach from a
-                 shared link it is never safe: a link opened from WhatsApp has an
-                 EMPTY history, and the `history.length > 1` guard does not save
-                 it — a redirect earlier in the session makes the length pass and
-                 the gesture then falls into whatever the browser remembers,
-                 which inside the sealed event app was sometimes the platform.
-                 Back now names where it goes (Design Rule #6) and gets there by
-                 address. --}}
+         FAIL-SAFE, and the property to preserve: the partial is `x-cloak`ed and
+         teleported, so it paints only once Alpine is running. If Alpine fails,
+         the cover never appears and the reader gets the page directly — the
+         failure mode is "no cover", never "no page". --}}
+    @if(isset($shell))
+        @include('entry.public.partials.cover')
+    @endif
+
+    {{-- ===== The band =====
+         The SAME `<x-event-poster-band>` the public poster wears — one copy,
+         so an event has one face whichever door was used to reach it (asked for
+         2026-09-08). It replaced this page's own `m-hero` band, which was
+         Design Rule #6's standard header; the poster band is the documented
+         exception to that rule, and the point of this change is that the member
+         page IS the poster now.
+
+         Back sits FIRST in the trailing cluster rather than on the leading
+         edge, because the band's leading edge carries the dash and the
+         classification — exactly as the poster's own reopen-cover arrow does.
+         Same band, same shape, different business in the cluster. --}}
             @php
                 /* Inside the sealed event app the root is the POSTER — the page
                    that was actually shared. On the platform it is the member's
                    events list, as before. */
                 /* `key` is this payload's public identifier — the same one every
                    other route() call on this page uses. There is no `uuid` key. */
-                $backHref = isset($shell) ? url('/e/'.$e['key']) : route('me.events');
-                $backLabel = isset($shell) ? __('events.public_enrol_back_event') : __('personal.event_show_events');
+                /* ⚠️ `$sealed`, not `isset($shell)`. Both surfaces are dressed
+                   in the event's skin now, but only the MIRRORED one lives under
+                   /e/{uuid} — where the poster is guaranteed to exist, because
+                   SealEventPage will not serve a page without it. On the member
+                   address the poster may not exist at all (the organiser's
+                   public switch is off), and sending Back there would leave a
+                   chrome-less page whose only way out is a 404. */
+                $backHref = ($sealed ?? false) ? url('/e/'.$e['key']) : route('me.events');
+                $backLabel = ($sealed ?? false) ? __('events.public_enrol_back_event') : __('personal.event_show_events');
             @endphp
-            <a href="{{ $backHref }}"
-               class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
-           aria-label="{{ $backLabel }}" title="{{ $backLabel }}">
-                <i class="bi bi-chevron-left"></i>
-            </a>
-            <div class="flex items-center gap-2">
-                {{-- The door to the console. Running the event is a different job
-                     from reading this page, so it is one button out, not a set of
-                     organiser tools threaded through the content. --}}
-                @if(($canManage ?? false) || ($canOfficiate ?? false))
-                    <a href="{{ route('me.events.manage', $e['key']) }}" data-shell-link data-route="me.events"
-                       class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('personal.event_manage_title') }}">
-                        <i class="bi bi-sliders text-base"></i>
-                    </a>
-                @endif
-                <x-qr-code
-                    :url="$shareUrl ?? route('me.events.show', ['event' => $e['key']])"
-                    :title="$e['title'] . ' — ' . __('personal.event_show_event')"
-                    caption="{{ __('personal.event_show_qr_caption') }}"
-                    :filename="'qr-event-' . $e['key']"
-                    label=""
-                    icon="bi-qr-code"
-                    :poster-url="route('qr.event', ['event' => $e['key']])"
-                    button-class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center text-white" />
-                <button type="button" @click="$dispatch('share-event')"
-                        class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('personal.event_show_share') }}">
-                    <i class="bi bi-share text-base"></i>
-                </button>
-            </div>
-        </div>
+    @php
+        /* The classification, the way the poster says it: "JIU JITSU
+           CHAMPIONSHIP". An event type usually names its sport already, so the
+           sport is only prefixed when the type has not said it. Same rule, same
+           words, as entry/public/mobile. */
+        /* The package's own name where there is one — see the controller. */
+        $eyebrow = \App\Events\Support\EventClassification::line(
+            $e['sport_label'] ?? null,
+            $e['type_package'] ?? $e['type'] ?? null,
+        );
 
-        {{-- cancelled banner --}}
-        <div x-show="cancelled" x-cloak class="relative z-10 mt-4 -mb-2 rounded-xl bg-white/20 backdrop-blur px-3 py-2 text-xs font-bold flex items-center gap-2">
-            <i class="bi bi-exclamation-triangle-fill"></i> {{ __('personal.event_show_cancelled_banner') }}
-        </div>
+        /* The chips the poster does not derive from the eyebrow. Type and sport
+           are IN the eyebrow now, so repeating them as chips would say the same
+           thing twice. */
+        $mchips = [];
+        if (($e['scope'] ?? 'internal') !== 'internal' && ! empty($e['scope_label'])) {
+            $mchips[] = ['bi-broadcast', $e['scope_label']];
+        }
+        if ($pPaid || $byQual)  $mchips[] = ['bi-cash-coin', __('personal.event_show_paid_entry')];
+        if ($ticketPaid)        $mchips[] = ['bi-ticket-perforated', __('personal.event_show_ticketed')];
+    @endphp
+    @if(isset($shell))
+        {{-- BRANDED: the same `<x-event-poster-band>` the public poster wears —
+             one copy, so an event has one face whichever door was used to reach
+             it (asked for 2026-09-08). Back sits first in the trailing cluster
+             rather than on the leading edge, because the band's leading edge
+             carries the dash and the classification — exactly as the poster's
+             own reopen-cover arrow does. --}}
+        <x-event-poster-band :color="$e['color']" :eyebrow="$eyebrow"
+                             :title="$e['title']" :owner="$e['club']" :chips="$mchips">
+            <x-slot:controls>
+                @include('partials.event-band-controls')
+            </x-slot:controls>
 
-        <div class="relative z-10 mt-6">
-            <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
-                    <i class="bi {{ $e['icon'] }}"></i> {{ $e['type'] }}
-                </span>
-                @if(!empty($e['sport_label']))
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi {{ $e['sport_icon'] ?? 'bi-dribbble' }}"></i> {{ $e['sport_label'] }}</span>
-                @endif
-                @if(($e['scope'] ?? 'internal') !== 'internal' && !empty($e['scope_label']))
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi bi-broadcast"></i> {{ $e['scope_label'] }}</span>
-                @endif
-                @if($pPaid || $byQual)
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi bi-cash-coin"></i> {{ __('personal.event_show_paid_entry') }}</span>
-                @endif
-                @if($ticketPaid)
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi bi-ticket-perforated"></i> {{ __('personal.event_show_ticketed') }}</span>
-                @endif
+            <x-slot:banner>
+                <div x-show="cancelled" x-cloak class="relative z-10 mt-4 -mb-2 rounded-xl bg-white/20 backdrop-blur px-3 py-2 text-xs font-bold flex items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill"></i> {{ __('personal.event_show_cancelled_banner') }}
+                </div>
+            </x-slot:banner>
+        </x-event-poster-band>
+    @else
+        {{-- EVERY OTHER TYPE: the standard Design Rule #6 hero band, unchanged.
+             Sparring, Open Mat and the generic bucket were never part of the
+             poster decision and must not be redesigned by it. --}}
+        <header class="m-hero px-5 pt-5 pb-16 text-white relative overflow-hidden"
+                style="background: linear-gradient(150deg, {{ $e['color'] }}, {{ $e['color'] }}b0);">
+            <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+            <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+            {{-- z-50 so the manage dropdown paints above the title block below --}}
+            <div class="flex items-center justify-between relative z-50">
+                @include('partials.event-band-controls')
             </div>
-            <h1 class="text-2xl font-black mt-3 leading-tight">{{ $e['title'] }}</h1>
-            <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
-                <i class="bi bi-building"></i>{{ $e['club'] }}
-            </p>
-        </div>
-    </header>
+
+            <div x-show="cancelled" x-cloak class="relative z-10 mt-4 -mb-2 rounded-xl bg-white/20 backdrop-blur px-3 py-2 text-xs font-bold flex items-center gap-2">
+                <i class="bi bi-exclamation-triangle-fill"></i> {{ __('personal.event_show_cancelled_banner') }}
+            </div>
+
+            <div class="relative z-10 mt-6">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                        <i class="bi {{ $e['icon'] }}"></i> {{ $e['type'] }}
+                    </span>
+                    @if(!empty($e['sport_label']))
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi {{ $e['sport_icon'] ?? 'bi-dribbble' }}"></i> {{ $e['sport_label'] }}</span>
+                    @endif
+                    @foreach($mchips as [$ic, $label])
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi {{ $ic }}"></i> {{ $label }}</span>
+                    @endforeach
+                </div>
+                <h1 class="text-2xl font-black mt-3 leading-tight">{{ $e['title'] }}</h1>
+                <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
+                    <i class="bi bi-building"></i>{{ $e['club'] }}
+                </p>
+            </div>
+        </header>
+    @endif
 
     {{-- ===== Quick facts card (overlaps cover) ===== --}}
     <div class="px-4 -mt-10 relative z-10">
@@ -337,10 +374,31 @@
                 </a>
             @endforeach
 
-            {{-- Participants — the roster, on its own page. Bound to this page's
-                 Alpine counters, so joining or removing someone updates the row
-                 without a reload. --}}
-            <a href="{{ route('me.events.people', $e['key']) }}" data-shell-link data-route="me.events"
+            {{-- ===== Participants =====
+                 The door goes to the event's OWN entry list — `/e/{uuid}/participants`
+                 — not to the organiser's roster, asked for on 2026-09-08.
+
+                 They are two different pages for two different jobs, and this
+                 tile belongs to the first: a reader wants to know WHO IS IN,
+                 which is a published fact about a competition. The roster is
+                 organiser work — moderation, payment state, contact details —
+                 and it stays exactly where that belongs, as its own row of the
+                 CONSOLE (`personal/{mobile,desktop}/event-manage`), so nobody
+                 loses it.
+
+                 Falls back to the member roster when there is no public page to
+                 send anybody to: `/e/{uuid}/participants` refuses everybody
+                 while `entry_mode` is `members`, and a tile that lands on a
+                 refusal is a dead end (Navigation Integrity). --}}
+            @php
+                $peopleHref = ! empty($publicUrl ?? null)
+                    ? route('events.public.section', ['event' => $e['key'], 'section' => 'participants', 'from' => 'me'])
+                    : route('me.events.people', $e['key']);
+            @endphp
+            {{-- `data-shell-link` only while the destination is still a platform
+                 page: the mobile shell navigator swaps content in place, and the
+                 public surface is a different shell. --}}
+            <a href="{{ $peopleHref }}" @if(empty($publicUrl ?? null)) data-shell-link data-route="me.events" @endif
                class="m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5"
                style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
                 <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>

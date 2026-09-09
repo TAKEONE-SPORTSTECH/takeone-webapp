@@ -113,6 +113,17 @@
 })();
 </script>
 <title>{{ __('events.screen_title') }}</title>
+{{-- Hands off, extensions. `color-scheme: dark` below tells a BROWSER not to
+     auto-darken this page; it says nothing to Dark Reader and friends, which
+     analyse the document a moment after first paint and lay their own filter
+     over it. That is why this page flashes white and then goes grey: not our
+     paint, theirs. `darkreader-lock` is Dark Reader's own documented way for a
+     page that already HAS a dark theme to be left alone.
+
+     A page whose entire job is to be photographed by a stranger's phone cannot
+     let a viewer's theming decide the polarity of its symbol. Harmless
+     everywhere else: an unknown meta name is ignored. --}}
+<meta name="darkreader-lock">
 {{-- The mark, as the tab icon. Served by US, like the fonts and the QR above:
      a venue's wifi is captive or filtered as often as not, so nothing here may
      depend on the open internet. `asset()` rather than a written path, so it
@@ -152,6 +163,14 @@
 @endforeach
 
   * { box-sizing: border-box; }
+  /* This page paints its own darkness, so SAY SO. Without a color-scheme the
+     browser reads a page whose colours it has not been told about, decides it
+     is a light one, and applies its own force-dark filter (Chrome's Auto Dark
+     Theme, and Android WebView with force-dark on). It leaves the near-black
+     alone and hits the one lit island on the glass — the QR card — greying the
+     white field and laying a dark wash over the symbol. Which breaks the only
+     way into a screen. */
+  html { color-scheme: dark; }
   html, body { margin: 0; padding: 0; background: oklch(0.15 0.015 20); }
   body { min-height: 100vh; color: oklch(0.96 0.005 20); font-family: 'Space Grotesk', sans-serif; }
   a { color: oklch(0.62 0.21 25); text-decoration: none; }
@@ -228,8 +247,12 @@
   .corner.tr { top: 0; right: 0; border-top-width: 4px; border-right-width: 4px; border-top-right-radius: 14px; }
   .corner.bl { bottom: 0; left: 0; border-bottom-width: 4px; border-left-width: 4px; border-bottom-left-radius: 14px; }
   .corner.br { bottom: 0; right: 0; border-bottom-width: 4px; border-right-width: 4px; border-bottom-right-radius: 14px; }
+  /* And the symbol itself opts out by name, belt-and-braces: this card is
+     deliberately the one light thing on a dark page, it is what a phone points
+     a decoder at, and no client-side theming may touch its polarity. */
   .qr-card { background: #fff; padding: clamp(10px, min(1.4vw, 2.4vh), 24px); border-radius: 16px;
-             box-shadow: 0 16px 50px rgba(0,0,0,0.5); }
+             box-shadow: 0 16px 50px rgba(0,0,0,0.5);
+             color-scheme: only light; forced-color-adjust: none; }
   .qr-card svg { display: block; width: clamp(150px, min(22vw, 40vh), 400px); height: auto;
                  shape-rendering: crispEdges; }
   .scan-pill { margin-top: clamp(10px, 2vh, 20px); display: flex; align-items: center; gap: 10px;

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -108,6 +109,9 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
     vsync: this,
     duration: const Duration(milliseconds: 1200),
   );
+  /// The competition this camera is on, so a clip can be stamped with it and a
+  /// retry can never file last month's bout against this morning's event.
+  String? _eventUuid;
   int? _batteryPercent;
   int? _storageFree;
   int? _storageTotal;
@@ -138,6 +142,7 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
     _timer?.cancel();
     _tick?.cancel();
     _railTimer?.cancel();
+    _noticeTimer?.cancel();
     _recPulse.dispose();
     _link?.close();
     _recorder.close();
@@ -154,6 +159,22 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
 
   Future<void> _boot() async {
     _clips = await ClipLog.load();
+
+    /*
+     * Nothing is uploading at the moment the app starts.
+     *
+     * `uploading` is persisted with the clip so the drawer survives a rebuild,
+     * and a phone that was killed mid-upload came back showing a progress bar
+     * for a transfer that no longer existed — with the button disabled, so
+     * there was no way to start it again either. The status is a fact about a
+     * request in flight, and there are none yet.
+     */
+    for (final clip in _clips) {
+      if (clip.playStatus == 'uploading') {
+        clip.playStatus = null;
+        clip.uploadProgress = 0;
+      }
+    }
 
     final prefs = await SharedPreferences.getInstance();
 
@@ -296,11 +317,18 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
   }
 
   /// The operator turning automatic uploading on or off, from the drawer.
-  Future<void> _setAutoUpload(bool on) async {
+  ///
+  /// `report` sends a telemetry beat straight after, so a change made HERE
+  /// reaches the scoring table's panel at once rather than up to twenty seconds
+  /// later. It is off when the change came FROM the mat, because that path
+  /// beats once on its own — see _adoptSettings.
+  Future<void> _setAutoUpload(bool on, {bool report = false}) async {
     if (_autoUpload == on) return;
 
     setState(() => _autoUpload = on);
     await _rememberSetup();
+
+    if (report) unawaited(_beatTelemetry(CameraApi(_token)));
 
     // Turning it ON is also a decision about the bouts already filmed: they are
     // what the operator was looking at when they reached for the switch. Nothing
@@ -334,28 +362,55 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
   ///
   /// Nothing here is trusted blindly: every value is range-checked exactly as
   /// the on-screen controls are, because this arrives over a network.
-  Future<void> _adoptSettings(dynamic raw) async {
+  Future<void> _adoptSettings(dynamic raw, {bool report = false}) async {
     if (raw is! Map) return;
+
+    var changed = false;
 
     final fps = raw['fps'];
     if (fps is num && (fps == 30 || fps == 60) && fps != _recorder.fps && !_recorder.rolling) {
       await _setFps(fps.toInt());
+      changed = true;
     }
 
     final zoom = raw['zoom'];
     if (zoom is num) {
       final wanted = zoom.toDouble().clamp(1.0, _recorder.maxZoom);
-      if ((wanted - _recorder.zoom).abs() > 0.05) await _setZoom(wanted);
+      if ((wanted - _recorder.zoom).abs() > 0.05) {
+        await _setZoom(wanted);
+        changed = true;
+      }
     }
 
     final exposure = raw['exposure'];
     if (exposure is num) {
       final wanted = exposure.toDouble().clamp(-4.0, 4.0);
-      if ((wanted - _recorder.exposure).abs() > 0.05) await _setExposure(wanted);
+      if ((wanted - _recorder.exposure).abs() > 0.05) {
+        await _setExposure(wanted);
+        changed = true;
+      }
     }
 
     final auto = raw['auto_upload'];
-    if (auto is bool && auto != _autoUpload) await _setAutoUpload(auto);
+    if (auto is bool && auto != _autoUpload) {
+      // Deliberately NOT awaited past the switch itself: turning auto upload on
+      // starts sending every bout already on the phone, and the operator at the
+      // mat is waiting for the switch to answer, not for the footage to arrive.
+      await _setAutoUpload(auto);
+      changed = true;
+    }
+
+    /*
+     * Say so immediately.
+     *
+     * The console draws a control it has pressed as "asked · waiting" until the
+     * camera reports the value back — which is right, and was unusable: the
+     * report only rode the 20-second beat, so a switch took up to half a minute
+     * to stop looking broken. An order that has been OBEYED is worth a beat of
+     * its own; it costs one small request, and only when something actually
+     * changed.
+     */
+    if (changed && report) unawaited(_beatTelemetry(CameraApi(_token)));
   }
 
   void _schedule() {
@@ -393,6 +448,7 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
       _code = config['code'] as String?;
       _claimUrl = config['claim_url'] as String?;
       _eventTitle = (config['event'] as Map<String, dynamic>?)?['title'] as String?;
+      _eventUuid = (config['event'] as Map<String, dynamic>?)?['uuid'] as String?;
       _court = config['court'] as String?;
       _angle = config['angle'] as int?;
     });
@@ -449,6 +505,10 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
     } else if (!shouldRoll && _recorder.rolling) {
       await _stopRolling();
     }
+
+    // Anything filmed but never filed, tried again before the beat — so the
+    // beat's inventory and the event's index describe the same clips.
+    await _fileUnfiled();
 
     await _beatTelemetry(api);
   }
@@ -559,6 +619,13 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
         unawaited(_commandDelete(command['clip'] as String?));
         break;
 
+      // Stop an upload that is running. The bytes already accepted stay with
+      // the server, so asking again later continues rather than restarts.
+      case 'cancel':
+        final target = _clipRef(command['clip'] as String?);
+        if (target != null) _cancelUpload(target);
+        break;
+
       // Clear the phone. `scope: uploaded` (the default, and what "free space"
       // sends) can only take what the server holds; `scope: all` is the
       // deliberate, confirmed one and takes everything.
@@ -569,7 +636,7 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
       // How to film, from the mat. Applied through the same setters the
       // on-screen controls use — see _adoptSettings.
       case 'settings':
-        unawaited(_adoptSettings(command['settings']));
+        unawaited(_adoptSettings(command['settings'], report: true));
         break;
 
       // "Tell me how you are, now." A camera beats every thirty seconds, which
@@ -701,6 +768,7 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
       blue: bout?['blue'] as String?,
       court: _court,
       angle: _angle,
+      eventUuid: _eventUuid,
     );
 
     setState(() {
@@ -748,21 +816,11 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
 
       // Told to the server AFTER the file is closed and on disk. If this fails
       // the clip is still here, still named for its bout, and still listed on
-      // this screen — which is the record that matters.
-      final ack = await CameraApi(_token).reportClip(
-        localRef: clip.ref,
-        matchId: clip.matchId,
-        startedAt: clip.startedAt,
-        endedAt: clip.endedAt,
-        durationSeconds: clip.length.inSeconds,
-        bytes: clip.bytes,
-      );
+      // this screen — which is the record that matters, and _fileUnfiled()
+      // tries again on the next beat.
+      final filed = await _fileClip(clip);
 
-      if (ack != null && mounted) {
-        clip.reported = true;
-        clip.serverId = ack['id'] as int?;
-        setState(() {});
-        await ClipLog.save(_clips);
+      if (filed && mounted) {
 
         /*
          * On hall wifi, the bout goes up by itself — but ONLY if this camera
@@ -801,6 +859,109 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
     }
   }
 
+  /*
+   * ── Filing a clip with the event ────────────────────────────────────────
+   *
+   * One path, used by the end of a bout AND by the retry sweep below, because
+   * the two used to differ in the only way that mattered: there WAS no retry.
+   * A report that failed — a phone in a dead spot for the ten seconds after
+   * hajime ended — left the clip filed nowhere, and nothing ever asked again.
+   * The video sat on the phone, invisible to the console, and could not be
+   * uploaded either, because the upload address is built from the row's id.
+   * That is how two recordings existed on a phone and none on the mat's panel.
+   */
+
+  /// Tell the event about one clip. True once it has a row.
+  ///
+  /// Idempotent at the server on (camera, local_ref), so calling it again for a
+  /// clip that was already filed simply corrects the row rather than creating a
+  /// second one — which is exactly what makes the retry safe.
+  Future<bool> _fileClip(CameraClip clip) async {
+    if (_token == null) return false;
+
+    /*
+     * Measure the file, do not trust what was measured at stop().
+     *
+     * A recorder that reported zero bytes — a muxer still flushing, a stop that
+     * raced the file being closed — filed a row saying the bout is empty. The
+     * server takes the declared size as the CEILING for the upload, so a clip
+     * filed at 0 bytes can never be sent, and nothing in the app said why.
+     */
+    final measured = await _measure(clip);
+
+    if (measured != null && measured > 0 && measured != clip.bytes) {
+      clip.bytes = measured;
+      await ClipLog.save(_clips);
+    }
+
+    final ack = await CameraApi(_token).reportClip(
+      localRef: clip.ref,
+      matchId: clip.matchId,
+      startedAt: clip.startedAt,
+      endedAt: clip.endedAt,
+      durationSeconds: clip.length.inSeconds,
+      bytes: clip.bytes,
+    );
+
+    if (ack == null) return false;
+
+    clip.reported = true;
+    clip.serverId = ack['id'] as int?;
+
+    if (mounted) setState(() {});
+    await ClipLog.save(_clips);
+
+    return clip.serverId != null;
+  }
+
+  /// The size of a clip's file on disk, or null when it cannot be read.
+  Future<int?> _measure(CameraClip clip) async {
+    try {
+      final direct = File(clip.file);
+
+      if (await direct.exists()) return await direct.length();
+    } catch (_) {
+      // A path that cannot be read is not worth taking the camera down for.
+    }
+
+    return clip.bytes;
+  }
+
+  /// Anything this phone filmed and never managed to file, tried again.
+  ///
+  /// Runs on the ordinary sync, so it costs nothing on a camera that is up to
+  /// date and quietly repairs one that was not. Bounded on purpose:
+  ///
+  ///  · only clips for the event this camera is on NOW. The server files a
+  ///    clip against the camera's CURRENT event, so re-reporting an old one
+  ///    would hang last month's bout off this morning's competition.
+  ///  · a clip recorded before the app stamped its event (an older build) is
+  ///    allowed only while it is fresh — twelve hours, which covers a
+  ///    competition day and not the one before it.
+  ///  · three at a time, so a phone that spent a day offline does not open
+  ///    twenty requests the moment the wifi returns.
+  Future<void> _fileUnfiled() async {
+    if (_token == null || !_claimed) return;
+
+    final cutoff = DateTime.now().subtract(const Duration(hours: 12));
+
+    final pending = _clips.where((c) {
+      if (c.isFiled) return false;
+
+      if (c.eventUuid != null) return c.eventUuid == _eventUuid;
+
+      return (c.endedAt ?? c.startedAt).isAfter(cutoff);
+    }).take(3);
+
+    for (final clip in pending) {
+      final filed = await _fileClip(clip);
+
+      // Filed at last, and the operator asked for automatic uploads: send it
+      // now, exactly as the end of a bout would have.
+      if (filed && _autoUpload) unawaited(_uploadClip(clip));
+    }
+  }
+
   /// Which clip is being handed to the gallery right now, if any.
   String? _publishing;
 
@@ -829,15 +990,54 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
   /// knows which bout this camera was filming, and attaches the competitors,
   /// clubs, corners, officials, division, result and officiating timeline once
   /// the file lands. That is why this is one press rather than a form.
+  /*
+   * Uploads in flight, by the clip's own file path.
+   *
+   * Held so one can be STOPPED. Without this an upload was a thing you started
+   * and then waited out: a 400MB bout on a hall's wifi held the row at
+   * "uploading" for as long as it took, the drawer's own button was disabled
+   * while it ran, and an app that restarted mid-upload came back showing a clip
+   * uploading that nothing was uploading at all.
+   */
+  final Map<String, ClipUploader> _uploads = {};
+
+  /// Stop an upload that is running, and put the clip back where it was.
+  ///
+  /// The bytes already accepted are not thrown away — the server's offset is
+  /// authoritative, so pressing upload again continues from there rather than
+  /// starting over.
+  void _cancelUpload(CameraClip clip) {
+    final live = _uploads.remove(clip.file);
+
+    if (live == null) return;
+
+    live.cancel();
+
+    if (mounted) {
+      setState(() {
+        clip.playStatus = clip.playVideoKey != null ? clip.playStatus : null;
+        clip.uploadProgress = 0;
+      });
+    }
+  }
+
   Future<void> _uploadClip(CameraClip clip) async {
-    if (clip.playStatus == 'uploading' || clip.playVideoKey != null) return;
+    // Pressing it again while it runs means STOP — the same button, because
+    // that is what a person at a mat reaches for.
+    if (clip.playStatus == 'uploading') {
+      _cancelUpload(clip);
+
+      return;
+    }
+
+    if (clip.playVideoKey != null) return;
 
     setState(() {
       clip.playStatus = 'uploading';
       clip.uploadProgress = 0;
     });
 
-    final fault = await ClipUploader(
+    final uploader = ClipUploader(
       token: _token!,
       clip: clip,
       onProgress: (fraction) {
@@ -848,13 +1048,23 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
           setState(() => clip.uploadProgress = fraction);
         }
       },
-    ).send();
+    );
+
+    _uploads[clip.file] = uploader;
+
+    final fault = await uploader.send();
+
+    _uploads.remove(clip.file);
 
     if (!mounted) return;
 
+    // Cancelled: the clip goes back to sitting on the phone, not to "failed" —
+    // nothing failed, somebody stopped it.
+    final cancelled = fault != null && fault.contains('cancelled');
+
     setState(() {
-      clip.playStatus = fault == null ? 'processing' : 'failed';
-      clip.uploadProgress = fault == null ? 1 : clip.uploadProgress;
+      clip.playStatus = fault == null ? 'processing' : (cancelled ? null : 'failed');
+      clip.uploadProgress = fault == null ? 1 : 0;
     });
 
     await ClipLog.save(_clips);
@@ -887,7 +1097,13 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
   /// describes nothing; the console's row is best-effort last, since a stale
   /// row is a nuisance and a half-deleted clip is a lie.
   Future<void> _deleteClips(List<CameraClip> clips) async {
+    var stranded = 0;
+
     for (final clip in clips) {
+      // An upload in flight would go on writing to a file that is being
+      // removed, and would hold the row open behind it. Stop it first.
+      _cancelUpload(clip);
+
       final outcome = await Recorder.deleteVideo(uri: clip.uri, path: clip.file);
 
       /*
@@ -906,23 +1122,64 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
        * video itself stays in the phone's gallery, where the person holding it
        * can delete it like any other video.
        */
-      final strand = outcome.denied && clip.isSafelyUploaded;
-
-      if (!outcome.gone && !strand) continue;
+      /*
+       * THE ROW GOES EITHER WAY.
+       *
+       * Delete used to give up here — `continue` — whenever Android refused to
+       * remove the file, which left the entry in the drawer for ever: pressed,
+       * nothing happens, pressed again, nothing happens, no reason anywhere.
+       * That is the bug. Android refuses for one ordinary reason: the video was
+       * published to the gallery by a PREVIOUS install of this app and is not
+       * this one's to remove. The OS is now asked for consent first
+       * (MainActivity.askUserToDelete), which handles it whenever somebody is
+       * standing at the phone to tap Allow.
+       *
+       * When even that does not free it, the entry still goes. Somebody ASKED
+       * for this clip to be gone — this is not the app silently forgetting
+       * footage, which is what the old guard existed to prevent — and a row the
+       * app can neither play, upload nor delete is worse than no row at all.
+       * The video itself, if it is still there, is in the phone's own gallery
+       * where any video can be deleted, and the count below says so out loud.
+       */
+      if (!outcome.gone) stranded++;
 
       _clips.removeWhere((c) => c.file == clip.file);
 
       final serverId = clip.serverId;
 
-      // Only when the file really went. A stranded row is being forgotten by
-      // this phone, not withdrawn from the event — the organiser's gallery has
-      // the bout and must keep it.
+      // Only when the file really went. A row we are merely forgetting is not
+      // withdrawn from the event — the organiser's gallery has the bout and
+      // must keep it.
       if (outcome.gone && serverId != null) await CameraApi(_token).deleteClip(serverId);
     }
 
     await ClipLog.save(_clips);
 
+    if (stranded > 0) {
+      _say(stranded == 1
+          ? 'Removed from the list. Android would not delete the file — it belongs to an older install; delete it from the phone\'s gallery.'
+          : '$stranded files were removed from the list but not from storage — they belong to an older install. Delete them from the phone\'s gallery.');
+    }
+
     if (mounted) setState(() {});
+  }
+
+  /// A short-lived line for the operator, shown over the preview.
+  ///
+  /// Not a fault: nothing is broken and the camera keeps filming. It is for the
+  /// handful of moments where an action did something other than what the
+  /// person pressing it would assume.
+  String? _notice;
+  Timer? _noticeTimer;
+
+  void _say(String message) {
+    if (!mounted) return;
+
+    setState(() => _notice = message);
+    _noticeTimer?.cancel();
+    _noticeTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted) setState(() => _notice = null);
+    });
   }
 
   /// The one place the app sends somebody out to Android's own settings: the
@@ -1034,7 +1291,7 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
                 onUpload: _uploadClip,
                 onDelete: _deleteClips,
                 autoUpload: _autoUpload,
-                onAutoUpload: (on) => unawaited(_setAutoUpload(on)),
+                onAutoUpload: (on) => unawaited(_setAutoUpload(on, report: true)),
               ),
             ),
           ],
@@ -1355,6 +1612,28 @@ class _CameraStationState extends State<CameraStation> with WidgetsBindingObserv
               warning: true,
               pulse: true,
               dotColor: Cam.gold,
+            ),
+          ),
+        ),
+
+      // A thing that just happened and did not do what pressing it implies —
+      // a delete Android would not carry out, most of all. Amber, brief, and
+      // never over the picture being aimed.
+      if (_notice != null)
+        Positioned(
+          bottom: 74,
+          left: _keepOut,
+          right: _keepOut,
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 620),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Cam.ink.withValues(alpha: 0.86),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Cam.gold.withValues(alpha: 0.55)),
+              ),
+              child: Text(_notice!, textAlign: TextAlign.center, style: Cam.body(13, color: Cam.paper)),
             ),
           ),
         ),

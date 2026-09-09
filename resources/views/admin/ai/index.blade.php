@@ -11,7 +11,7 @@
 @endphp
 
 @section('admin-content')
-<div class="space-y-6" x-data="aiSettings(@js($providers))">
+<div class="space-y-6" x-data="aiSettings(@js($providers), @js($translationPrimary), @js($translationChain))">
 
     <x-admin-hero title="AI Providers" eyebrow="Settings" icon="bi-robot"
         subtitle="Connect any AI service — local or cloud — for text, voice, and image. Keys are stored encrypted and never leave the server.">
@@ -22,6 +22,82 @@
             </button>
         </x-slot:actions>
     </x-admin-hero>
+
+    {{-- ===== Which model writes the translations =====
+
+         Separate from the "default" flag on a provider, and deliberately so:
+         the default is what the Copilot talks to, and an operator may want
+         Claude answering the coach while a local model does the translating —
+         or the reverse the month the bill arrives. One click, effective on the
+         next translation, reversible with the same click.
+
+         The list under it is the FALLBACK ORDER. It is shown because the
+         honest thing about a chain is that the reader should be able to see
+         what happens when the first one is down. --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div class="flex items-start gap-3 mb-4">
+            <span class="w-11 h-11 rounded-2xl bg-accent text-primary grid place-items-center flex-shrink-0">
+                <i class="bi bi-translate text-lg"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+                <h3 class="text-sm font-bold text-foreground">Which model translates events</h3>
+                <p class="text-xs text-muted-foreground mt-0.5">
+                    An organiser writes an event once; this model rewrites it into every language a reader asks for.
+                    Switch at any time — it takes effect on the next translation, and nothing already written changes.
+                </p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {{-- Automatic: follow whichever provider is marked default. --}}
+            <button type="button" @click="setTranslator(null)" :disabled="switching"
+                    class="text-start rounded-xl border-2 p-3 transition-colors disabled:opacity-60"
+                    :class="translationPrimary === null ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'">
+                <div class="flex items-center gap-2">
+                    <i class="bi bi-magic text-primary"></i>
+                    <span class="text-sm font-bold text-foreground">Automatic</span>
+                    <span x-show="translationPrimary === null" class="ms-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary text-white">IN USE</span>
+                </div>
+                <p class="text-[11px] text-muted-foreground mt-1">Follow the default provider below.</p>
+            </button>
+
+            <template x-for="p in providersFor('text')" :key="'tr-' + p.id">
+                <button type="button" @click="setTranslator(p.id)" :disabled="switching || !p.enabled"
+                        class="text-start rounded-xl border-2 p-3 transition-colors disabled:opacity-40"
+                        :class="translationPrimary === p.id ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'">
+                    <div class="flex items-center gap-2">
+                        <i class="bi text-primary" :class="p.driver === 'ollama' ? 'bi-hdd-network' : 'bi-cloud'"></i>
+                        <span class="text-sm font-bold text-foreground truncate" x-text="p.name"></span>
+                        <span x-show="translationPrimary === p.id" class="ms-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary text-white flex-shrink-0">IN USE</span>
+                    </div>
+                    <p class="text-[11px] text-muted-foreground mt-1 truncate">
+                        <span x-text="p.model || p.driver"></span>
+                        <span x-show="p.driver === 'ollama'"> · runs on your own hardware</span>
+                    </p>
+                </button>
+            </template>
+        </div>
+
+        {{-- The order, so "what happens when it is down" has a visible answer. --}}
+        <div class="mt-4 pt-3 border-t border-gray-100">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Tried in this order</p>
+            <div class="flex flex-wrap items-center gap-1.5">
+                <template x-for="(link, i) in translationChain" :key="'chain-' + i">
+                    <span class="inline-flex items-center gap-1.5">
+                        <span x-show="i > 0" class="text-muted-foreground/40 text-xs"><i class="bi bi-chevron-right"></i></span>
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                              :class="i === 0 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'">
+                            <span x-text="link.label"></span>
+                        </span>
+                    </span>
+                </template>
+            </div>
+            <p class="text-[11px] text-muted-foreground mt-2">
+                If the first cannot answer — a key expires, a service is down, a server is rebooting — the next one writes it instead.
+                The reader still gets their language.
+            </p>
+        </div>
+    </div>
 
     @foreach($modalities as $modality)
         <div>
@@ -175,13 +251,46 @@
 
 @push('scripts')
 <script>
-function aiSettings(providers) {
+function aiSettings(providers, translationPrimary, translationChain) {
     return {
         providers: providers || [],
         showForm: false,
         editing: null,
         saving: false,
         form: {},
+
+        // Which model writes the translations, and the fallback order behind it.
+        translationPrimary: translationPrimary ?? null,
+        translationChain: translationChain || [],
+        switching: false,
+
+        /* Switch the translator. Optimistic on the card so the click feels
+           immediate, rolled back if the server refuses. */
+        async setTranslator(id) {
+            if (this.switching || this.translationPrimary === id) return;
+
+            const previous = this.translationPrimary;
+            this.translationPrimary = id;
+            this.switching = true;
+
+            try {
+                const res = await fetch(@js(route('admin.ai.translation-primary')), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ provider_id: id }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok || !d.success) throw new Error(d.message || 'Could not switch.');
+
+                this.translationPrimary = d.primary ?? null;
+                this.translationChain = d.chain || [];
+                window.showToast('success', d.message);
+            } catch (e) {
+                this.translationPrimary = previous;
+                window.showToast('error', e.message);
+            } finally { this.switching = false; }
+        },
 
         init() { this.form = this.blank(); },
         blank() {

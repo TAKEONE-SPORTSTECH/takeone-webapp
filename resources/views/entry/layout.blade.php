@@ -28,9 +28,24 @@
     ground (`--pg`), declared in the <style> block below.
 --}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ config('locales.' . app()->getLocale() . '.dir', 'ltr') }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" {{-- Direction from EITHER list: the interface speaks two languages, the
+     content is readable in sixty, and Persian, Urdu and Hebrew are
+     right-to-left whether or not the buttons are. --}}dir="{{ config('locales.' . app()->getLocale() . '.dir') ?? config('content_locales.' . app()->getLocale() . '.dir', 'ltr') }}">
 <head>
     <meta charset="utf-8">
+    {{-- This document is LIGHT by design. Say so, or a browser decides for us:
+         Chrome's Auto Dark Theme and Android WebView's force-dark invert what
+         they take for a light page, and Dark Reader re-paints it after first
+         paint. The result is not a dark theme — this product has none — it is
+         the palette inside out: a black ground behind white cards, tinted
+         tiles gone navy with their icons left bright. `only light` is the
+         explicit opt-out (plain `light` is not enough) and `darkreader-lock`
+         is that extension's own. Both, because they answer to different
+         things; an unknown meta name is ignored everywhere else. --}}
+    <meta name="color-scheme" content="light">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: only light; }</style>
+
     {{-- viewport-fit=cover is load-bearing: without it every env(safe-area-inset-*)
          in the page resolves to 0 and the safe-area padding silently does nothing. --}}
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -122,7 +137,21 @@
     {{-- The page wrapper the member event page renders inside
          (layouts/personal-mobile's <main>), minus the shell's bottom-tab
          clearance — there is no bottom bar here to clear. --}}
-    <main class="ev-app ev-app-top mobile-stagger px-4 py-4 min-h-[60vh]">
+    {{-- ⚠️ NO `mobile-stagger` here — removed 2026-09-08.
+
+         That class sets `opacity: 0` on every direct child and rises them in
+         with delays up to .47s, so the content area is BLANK at first paint and
+         fills in piece by piece over about a second. On this surface that was
+         the worst of both worlds: on a first arrival the animation runs behind
+         the full-screen poster cover and is over before anybody dismisses it,
+         and on every RETURN — choosing a language on the cover, coming back
+         from a section or the entry form — it plays in full view and reads as
+         the page reloading itself. Reported exactly that way ("it blinks, it
+         loads back again").
+
+         The entrance the visitor actually sees is the cover lifting. Individual
+         cards keep their own motion; the page itself simply arrives. --}}
+    <main class="ev-app ev-app-top px-4 py-4 min-h-[60vh]">
         @yield('body')
     </main>
 
@@ -130,6 +159,25 @@
          belongs to. A platform logo here would be the first thing telling a
          visitor they are on somebody else's website. --}}
     @include('entry.partials.footer')
+
+    {{-- The two shell helpers the event screens actually use, and nothing else
+         from the app shell. Added 2026-09-08, when the organiser's own event
+         screens moved onto this standalone document: between them they call
+         window.showToast 61 times and window.confirmAction 15 times, and both
+         used to come from layouts/app.blade.php, which this page never loads.
+
+         The toast host is the SAME file layouts/app.blade.php includes — one
+         renderer, one copy (CLAUDE.md → Shared Stays Shared). The confirm
+         dialog is the shared component, and it is what keeps this surface free
+         of native browser dialogs.
+
+         Deliberately still NOT here: jQuery, select2, Chart.js, the Bootstrap
+         bridge, the drawer and the navbar. Nothing on an event page uses them
+         — verified by grep across every event blade — and this document exists
+         precisely so a stranger opening a poster does not download the
+         platform. --}}
+    @include('partials.toast-host')
+    <x-confirm-dialog />
 
     @stack('scripts')
 

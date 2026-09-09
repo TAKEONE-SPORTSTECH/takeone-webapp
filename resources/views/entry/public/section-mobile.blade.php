@@ -61,7 +61,12 @@
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
         <div class="flex items-center justify-between gap-2 relative z-50">
-            <a href="{{ route('events.public', ['event' => $e['key']]) }}"
+            {{-- The poster, or the platform event page when the reader came
+                 from there (`?from=me`, decided in PublicEventController::
+                 section() — a KEY, never a URL). Back has to name where it goes
+                 and get there by address, and on this surface "where I came
+                 from" is a real question: these pages are entered from both. --}}
+            <a href="{{ $backUrl ?? route('events.public', ['event' => $e['key']]) }}"
                class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
            aria-label="{{ __('personal.event_show_event') }}" title="{{ __('personal.event_show_event') }}">
                 <i class="bi bi-chevron-left"></i>
@@ -99,12 +104,16 @@
 
     {{-- The body rides up over the band's tail, like every other page's does.
 
-         Most sections are ONE panel: a block of prose, a board, a grid of
-         clips. The entry list is not — it is a list of PEOPLE, and a person on
-         this platform is drawn as a card. Cards inside a card is a card with
-         cards on it, so a section may opt out of the panel and lay out its own
-         surface. It keeps the page's gutters either way. --}}
-    @php $ownSurface = in_array($section, ['participants'], true); @endphp
+         Most sections are ONE panel: a block of prose or a board. The entry
+         list is not — it is a list of PEOPLE, and a person on this platform is
+         drawn as a card. Neither is the GALLERY: since it came onto the
+         standalone template it is a column of broadcast cards, each with its
+         own gold edge and shadow, and the panel's `overflow-hidden` clipped
+         those shadows while the white ground swallowed the card edges. Cards
+         inside a card is a card with cards on it, so a section may opt out of
+         the panel and lay out its own surface. It keeps the page's gutters
+         either way. --}}
+    @php $ownSurface = in_array($section, ['participants', 'gallery'], true); @endphp
     <div class="px-4 -mt-8 relative z-10">
         @if($ownSurface)
             @include('entry.public.sections.'.$section.'-mobile')

@@ -168,7 +168,7 @@
                    they may open the organiser's list at all. This used to
                    hardcode /admin/people and drop everybody there. */
                 $backHref = $sealedBack
-                    ?? (isset($shell)
+                    ?? (($sealed ?? false)
                         ? url('/e/'.request()->route('event')?->uuid.'/admin/people')
                         /* The page they actually came from, validated same-origin
                            by the controller, falling back to Find People when the

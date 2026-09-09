@@ -29,83 +29,207 @@
     appears here with no edit to this file.
 --}}
 @php
+    use App\Translation\Translations;
+
     $current = app()->getLocale();
+    $contentLocales = Translations::locales();
 
-    /* The row never mirrors. English sits on the LEFT and Arabic on the RIGHT
-       at all times — in an Arabic page as much as an English one — because the
-       language buttons are the one control on this page whose POSITION is how
-       people find them. A visitor who learned "mine is the right-hand one"
-       must not have that swap under them the moment they use it, and somebody
-       handed a phone already in the wrong language is looking for a fixed
-       landmark, not reading the layout.
+    /* THE ORDER IS FIXED AND DOES NOT MIRROR.
+     *
+     * English first, Arabic second, then every other language the organiser's
+     * words can be read in, alphabetically by its English name.
+     *
+     * English and Arabic are pinned to the front rather than sorted with the
+     * rest because they are the two the whole INTERFACE speaks — picking one of
+     * them gives a completely translated product, and picking any other gives a
+     * translated EVENT inside an English app. That is a real difference and the
+     * first two positions are how it is signalled without a paragraph.
+     *
+     * The strip never reverses under <html dir="rtl">: a visitor who learned
+     * "mine is the second one" must not have it move the moment they use it,
+     * and somebody handed a phone in a language they cannot read is looking for
+     * a fixed landmark, not reading the layout. `direction: ltr` on the
+     * scroller pins it; each tile carries its own `dir` so its own name still
+     * reads correctly.
+     */
+    $pinned = ['en', 'ar'];
+    $rows = [];
 
-       Ordered by the language's own script rather than by a hardcoded 'en'
-       first: left-to-right languages first, right-to-left last. config/locales
-       stays the single source of truth, and a third language lands on the
-       correct side with no edit here. */
-    $locales = collect(config('locales', []))
-        ->sortBy(fn ($meta) => ($meta['dir'] ?? 'ltr') === 'rtl' ? 1 : 0)
+    foreach ($pinned as $code) {
+        if ($contentLocales->has($code)) {
+            $rows[$code] = $contentLocales->meta($code);
+        }
+    }
+
+    $others = collect($contentLocales->all())
+        ->except($pinned)
+        ->sortBy(fn ($meta) => $meta['name'])
         ->all();
+
+    $rows = $rows + $others;
+
+    /* Re-checked here rather than taken from the including cover: it lands in a
+       `style` attribute, it is organiser-supplied, and the two covers name it
+       differently ($coverColor / $dColor). Every other partial that paints an
+       organiser's colour re-checks it at the point of use. */
+    $coverCtaColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($e['color'] ?? ''))
+        ? $e['color']
+        : '#7c3aed';
 @endphp
 
-@if(count($locales) > 1)
-    <div class="m-in-fade" style="margin-top:26px;">
+@if(count($rows) > 1)
+    {{-- `@click.stop` — using a control here never means "take me in".
+
+         Belt and braces since the artwork's own tap-to-dismiss was removed
+         (see partials/cover.blade.php). It stays because this block is
+         included by both covers and must be safe wherever it is dropped: if
+         anything above it ever becomes a tap target again, choosing a language
+         still cannot double as leaving the cover — which is exactly the fault
+         reported on 2026-09-09.
+
+         `.stop` ends the CLICK's journey; a form's `submit` is a separate
+         event, so the language forms still post normally. --}}
+    <div class="m-in-fade" style="margin-top:26px;" @click.stop="">
 
         <p style="font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.18em;
                   color:rgba(255,255,255,.55); margin:0 0 12px; text-align:center;">
             {{ __('shared.language') }}
         </p>
 
-        {{-- Two small tiles side by side and CENTRED, rather than two half-width
-             columns: this is a choice between two things, not a menu, and a
-             pair of buttons stretched across the frame read as the poster's
-             main event when they are its footnote.
+        {{-- The strip.
 
-             `direction: ltr` pins the ORDER — a flex row lays its items out
-             along the writing direction, so without it the pair reverses under
-             <html dir="rtl"> and English and Arabic trade places. Each button
-             carries its own `dir` from config, so the text inside still reads
-             in its own script. --}}
-        {{-- 28px apart. It went 12 → 18 → 28: the pair is two separate
-             answers, and until there is real air between them they read as one
-             two-part control. Wide enough to be obvious, still narrow enough
-             that both stay in the middle of the frame rather than drifting to
-             its edges. --}}
-        <div style="display:flex; justify-content:center; gap:28px; direction:ltr;">
-            @foreach($locales as $code => $meta)
-                @php
-                    $isOn = $code === $current;
-                    /* From config, never from a request — but stripped anyway,
-                       because it lands in a class name. */
-                    $flag = preg_replace('/[^a-z]/', '', strtolower($meta['flag'] ?? ''));
-                @endphp
-                <form method="POST" action="{{ route('locale.set') }}" style="display:block; margin:0;">
-                    @csrf
-                    @method('PUT')
-                    <input type="hidden" name="locale" value="{{ $code }}">
-                    {{-- A square: the flag big enough to be read across a room,
-                         the language under it in its own script, and nothing
-                         else. The English gloss under the native name was the
-                         redundancy — "العربية / Arabic" tells an Arabic reader
-                         nothing they did not already know from the first word,
-                         and the arrow said "this is a button" to a thing that
-                         is plainly a button. --}}
-                    <button type="submit" @click="markSeen()"
-                            @if($isOn) aria-current="true" @endif
-                            class="cover-lang{{ $isOn ? ' is-on' : '' }}"
-                            @if($meta['dir'] ?? null) dir="{{ $meta['dir'] }}" @endif>
-                        <span class="cover-lang-flag fi fi-{{ $flag }}"></span>
-                        <span class="cover-lang-name">{{ $meta['native'] ?? strtoupper($code) }}</span>
-                    </button>
-                </form>
-            @endforeach
+             A scroller rather than a grid because there are sixty of these and
+             a poster has room for three: the first two are the answer for
+             almost everybody, and the rest are a flick away for the visitor
+             they are not the answer for. Scroll-snap so a flick lands on a
+             tile rather than between two.
+
+             `cover-strip` hides the scrollbar and fades both edges, which is
+             what says "there is more this way" without a caption. --}}
+        <div style="position:relative;">
+
+            {{-- Desktop nudges. Hidden on touch, where the flick IS the
+                 control and an arrow is clutter. --}}
+            <button type="button" class="cover-strip-nudge cover-strip-prev" aria-label="Scroll left"
+                    onclick="this.parentNode.querySelector('.cover-strip').scrollBy({left:-260,behavior:'smooth'})">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <button type="button" class="cover-strip-nudge cover-strip-next" aria-label="Scroll right"
+                    onclick="this.parentNode.querySelector('.cover-strip').scrollBy({left:260,behavior:'smooth'})">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+
+            <div class="cover-strip">
+                @foreach($rows as $code => $meta)
+                    @php
+                        $isOn = $code === $current;
+                        /* From config, never from a request — but stripped
+                           anyway, because it lands in a class name. */
+                        $flag = preg_replace('/[^a-z]/', '', strtolower($meta['flag'] ?? ''));
+                        $native = $meta['native'] ?? strtoupper($code);
+                    @endphp
+
+                    {{-- Still a plain <form> per language, so a visitor with no
+                         JavaScript at all can still choose one. When Alpine IS
+                         running it intercepts and runs the "preparing your
+                         language" flow first (partials/language-sheet); when it
+                         is not, this posts and the page comes back in that
+                         language, translated or not. Degrades, never breaks. --}}
+                    <form method="POST" action="{{ route('locale.set') }}" style="display:block; margin:0; flex:none;"
+                          @submit.prevent="window.dispatchEvent(new CustomEvent('cover-pick-language', {
+                              detail: { code: @js($code), native: @js($native) }
+                          }))">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="locale" value="{{ $code }}">
+                        {{-- ⚠️ Scopes the choice to THIS EVENT. Without it the
+                             pick becomes the reader's platform-wide language —
+                             and for a signed-in member, their saved preference
+                             on every device. A poster is a public door, not a
+                             settings screen. See App\Translation\EventLocale. --}}
+                        <input type="hidden" name="event" value="{{ $e['key'] }}">
+                        <input type="hidden" name="back" value="{{ route('events.public', ['event' => $e['key']], false) }}">
+
+                        <button type="submit" @click="markSeen()"
+                                @if($isOn) aria-current="true" @endif
+                                class="cover-lang{{ $isOn ? ' is-on' : '' }}"
+                                title="{{ $meta['name'] ?? $code }}"
+                                @if($meta['dir'] ?? null) dir="{{ $meta['dir'] }}" @endif>
+                            @if($flag)
+                                <span class="cover-lang-flag fi fi-{{ $flag }}"></span>
+                            @else
+                                {{-- A language with no honest flag gets its own
+                                     code on a plate, never a borrowed country. --}}
+                                <span class="cover-lang-flag cover-lang-code">{{ strtoupper(substr($code, 0, 2)) }}</span>
+                            @endif
+                            <span class="cover-lang-name">{{ $native }}</span>
+                        </button>
+                    </form>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Sixty tiles is a flick too far when you know what you want. The
+             search sheet is the same list with a box on top. --}}
+        <div style="text-align:center; margin-top:16px;">
+            <button type="button"
+                    @click="window.dispatchEvent(new CustomEvent('open-language-sheet'))"
+                    class="m-press"
+                    style="display:inline-flex; align-items:center; gap:7px; padding:8px 15px; border-radius:9999px;
+                           background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18);
+                           font-size:12px; font-weight:700; color:rgba(255,255,255,.85);">
+                <i class="bi bi-search" style="font-size:11px;"></i>{{ __('translation::messages.search_languages') }}
+            </button>
         </div>
     </div>
 @endif
 
+{{-- ===== The way in =====
+
+     ⚠️ OUTSIDE the language block's `@if` on purpose, and that is the whole
+     safety of this change.
+
+     Tapping the artwork used to enter the event. It was removed on 2026-09-09
+     at the user's instruction — "when I click anywhere away from the language
+     selection it takes me in, this is wrong" — because the cover asks one
+     question and an accidental tap answered it for you, mid-flick through sixty
+     languages.
+
+     Which leaves this as the ONLY deliberate way past the cover for somebody
+     happy with the language they already have. It must therefore render even
+     when the language strip does not: that block is behind `count($rows) > 1`,
+     and an event served in a single language would otherwise have a cover with
+     no exit at all — a poster nobody can get past, on a public link. --}}
+<div style="text-align:center; margin-top:22px;" class="m-in-fade">
+    <button type="button" @click="dismiss()" class="cover-cta m-press"
+            style="background: {{ $coverCtaColor }};">
+        {{ __('events.public_cover_cta') }}
+        <i class="bi bi-arrow-right rtl:rotate-180" style="font-size:12px;"></i>
+    </button>
+</div>
+
 @once
 @push('styles')
 <style>
+    /* The cover's way in. A real rule, not Tailwind utilities: the compiled
+       bundle carries no CSS for a class nobody has used before, so a utility
+       invented here renders as nothing at all. */
+    .cover-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-width: 210px;
+        padding: 13px 26px;
+        border: 0;
+        border-radius: 9999px;
+        font-size: 13.5px;
+        font-weight: 800;
+        color: #fff;
+        cursor: pointer;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, .35);
+    }
+
     /* The cover's language buttons. Defined here rather than as utilities
        because the compiled bundle has no CSS for a class nobody used before. */
     .cover-lang {
@@ -168,6 +292,68 @@
         line-height: 1.15;
         letter-spacing: -.01em;
     }
+
+    /* ===== The scroller =====
+
+       Horizontal, snapping, scrollbar hidden, both edges faded so the strip
+       says "there is more this way" without a caption. `direction: ltr` pins
+       the ORDER — a flex row lays out along the writing direction, and without
+       it the whole strip reverses under <html dir="rtl">. */
+    .cover-strip {
+        display: flex;
+        gap: 12px;
+        direction: ltr;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        /* Room for the tile's own lift on hover, and for the edge fade. */
+        padding: 4px 40px;
+        justify-content: safe center;
+        -webkit-mask-image: linear-gradient(to right, transparent, #000 34px, #000 calc(100% - 34px), transparent);
+        mask-image: linear-gradient(to right, transparent, #000 34px, #000 calc(100% - 34px), transparent);
+    }
+    .cover-strip::-webkit-scrollbar { display: none; }
+    .cover-strip > form { scroll-snap-align: center; }
+
+    /* The nudges. Pointer devices only: on a phone the flick is the control
+       and an arrow sitting on top of the tiles is in the way. */
+    .cover-strip-nudge {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+        width: 30px;
+        height: 30px;
+        border-radius: 9999px;
+        display: none;
+        place-items: center;
+        color: #fff;
+        background: rgba(255, 255, 255, .14);
+        border: 1px solid rgba(255, 255, 255, .22);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+        transition: background-color .2s ease;
+    }
+    .cover-strip-nudge:hover { background: rgba(255, 255, 255, .26); }
+    .cover-strip-prev { left: 0; }
+    .cover-strip-next { right: 0; }
+    @media (hover: hover) and (pointer: fine) {
+        .cover-strip-nudge { display: grid; }
+    }
+
+    /* A language with no flag of its own. Same box as a flag so the row of
+       tiles keeps one rhythm. */
+    .cover-lang-code {
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, .16);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .04em;
+        color: #fff;
+    }
+    .cover-lang.is-on .cover-lang-code { background: rgba(11, 18, 32, .08); color: #0b1220; }
 
     /* Tight windows — a small phone in landscape, the 520px desktop column at
        its narrowest — where a true square would push the pair off the fold. */

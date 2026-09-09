@@ -169,13 +169,29 @@
          from a console tile on a phone. In an installed home-screen app, with
          no address bar and no reliable back gesture, the only exit was
          force-quitting (the *Unattended Devices* rule: a screen must never
-         reach a state it cannot leave). A hall screen renders its own board on
-         its own route, so everybody who reaches THIS one is a signed-in
-         organiser and the control costs a paired display nothing. --}}
+         reach a state it cannot leave).
+
+         ⚠️ And the way out must be a door THIS reader can open. It used to go
+         to the console unconditionally, on the assumption — written here — that
+         "everybody who reaches this one is a signed-in organiser". They are
+         not: `board()` is `assertVisible` only, so any member who can see the
+         event can open it, and for them the console answers 403, which the
+         handler turns into a bounce to the platform home. One control, and it
+         threw them off the event. So the destination follows the PERMISSION:
+         the console for somebody who runs the event, the event page for
+         everybody else — and the label follows the destination, because a
+         control that says "Console" and lands on the event page is its own
+         small lie. --}}
     @php
-        $boardBack = isset($shell)
-            ? url('/e/'.$e['key'].'/admin/manage')
-            : route('me.events.manage', $e['key']);
+        $boardCanManage = $canManage ?? false;
+
+        $boardBack = ($sealed ?? false)
+            ? ($boardCanManage ? url('/e/'.$e['key'].'/admin/manage') : url('/e/'.$e['key']))
+            : ($boardCanManage ? route('me.events.manage', $e['key']) : route('me.events.show', $e['key']));
+
+        $boardBackLabel = $boardCanManage
+            ? __('personal.event_manage_title')
+            : __('personal.event_show_event');
     @endphp
 
     {{-- ===== The band ===== the poster's, at hall scale --}}
@@ -186,7 +202,7 @@
         <div class="relative flex items-center justify-between gap-3">
             <a href="{{ $boardBack }}"
                class="ev-ico inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline flex-shrink-0 hover:bg-white/25 transition-colors"
-           aria-label="{{ __('personal.event_manage_title') }}" title="{{ __('personal.event_manage_title') }}">
+           aria-label="{{ $boardBackLabel }}" title="{{ $boardBackLabel }}">
                 <i class="bi bi-chevron-left"></i>
             </a>
 

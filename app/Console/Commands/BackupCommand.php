@@ -304,7 +304,17 @@ class BackupCommand extends Command
         $removed = 0;
 
         foreach (['db-*', 'uploads-*'] as $pattern) {
-            $files = glob($dir.'/'.$pattern) ?: [];
+            // Look one level down as well as in $dir itself. An earlier layout
+            // wrote into `{$dir}/backups/`, and a bare `glob($dir.'/db-*')`
+            // cannot see it — so 6.6 GB of artifacts from that era could never
+            // age out, however old they got. Retention that silently skips a
+            // directory is worse than no retention: the disk fills anyway and
+            // the command still reports success.
+            $files = array_merge(
+                glob($dir.'/'.$pattern) ?: [],
+                glob($dir.'/*/'.$pattern) ?: [],
+            );
+
             usort($files, fn ($a, $b) => filemtime($b) <=> filemtime($a));   // newest first
 
             foreach (array_slice($files, $keep) as $file) {

@@ -44,7 +44,7 @@
      * the mirrored routes, so the platform form is untouched.
      */
     $submitUrl   = $isEdit
-        ? (isset($shell) ? url('/e/'.$ev->uuid.'/admin') : route('me.events.update', $ev->uuid))
+        ? (($sealed ?? false) ? url('/e/'.$ev->uuid.'/admin') : route('me.events.update', $ev->uuid))
         : route('me.events.store');
     $submitMethod = $isEdit ? 'PUT' : 'POST';
     // belt range parsed out of `level` ("White → Brown")

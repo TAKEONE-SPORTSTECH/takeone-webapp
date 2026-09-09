@@ -13,23 +13,18 @@
     $age = $member->age;
     $ageGroup = 'Adult';
     if ($age !== null) {
-        if ($age < 2) {
-            $ageGroup = 'Infant';
-        } elseif ($age < 4) {
-            $ageGroup = 'Toddler';
-        } elseif ($age < 6) {
-            $ageGroup = 'Preschooler';
-        } elseif ($age < 13) {
-            $ageGroup = 'Child';
-        } elseif ($age < 20) {
-            $ageGroup = 'Teenager';
-        } elseif ($age < 40) {
-            $ageGroup = 'Young Adult';
-        } elseif ($age < 60) {
-            $ageGroup = 'Adult';
-        } else {
-            $ageGroup = 'Senior';
-        }
+        /* Lang keys, not literals — see App\Members\Models\User::lifeStage().
+           These eight words were unreachable by either translator. */
+        $ageGroup = match (true) {
+            $age < 2 => __('platform.age_infant'),
+            $age < 4 => __('platform.age_toddler'),
+            $age < 6 => __('platform.age_preschooler'),
+            $age < 13 => __('platform.age_child'),
+            $age < 20 => __('platform.age_teenager'),
+            $age < 40 => __('platform.age_young_adult'),
+            $age < 60 => __('platform.age_adult'),
+            default => __('platform.age_senior'),
+        };
     }
 
     $horoscopeSymbols = [

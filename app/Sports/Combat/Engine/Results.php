@@ -2,6 +2,7 @@
 
 namespace App\Sports\Combat\Engine;
 
+use App\Support\Cldr;
 use App\Models\ClubEvent;
 
 /** Derives medalists and the public lifecycle timeline from the bracket data. */
@@ -128,7 +129,7 @@ class Results
             'label' => __('events.timeline_weigh_in'),
             'date' => $wi->toDateString(),
             // translatedFormat: an Arabic reader gets ص/م, not AM/PM.
-            'time' => $event->weigh_in_at ? $wi->locale(app()->getLocale())->translatedFormat('g:i A') : null,
+            'time' => $event->weigh_in_at ? Cldr::time($wi) : null,
             'note' => __('events.timeline_weigh_in_note')
                 .($event->location ? ' · '.$event->location : ''),
             'icon' => 'bi-clipboard-data',
@@ -184,7 +185,7 @@ class Results
                 'label' => __('events.timeline_finish'),
                 'date' => $lastCompetitionDay->toDateString(),
                 'time' => $event->end_time
-                    ? \Carbon\Carbon::parse($event->end_time)->locale(app()->getLocale())->translatedFormat('g:i A')
+                    ? Cldr::time(\Carbon\Carbon::parse($event->end_time))
                     : null,
                 'note' => __('events.timeline_finish_note')
                     .($event->prize ? ' · '.$event->prize : '')
@@ -287,9 +288,8 @@ class Results
     {
         $mins = ((int) $mins % 1440 + 1440) % 1440;
 
-        // translatedFormat, so an Arabic reader gets ص/م rather than AM/PM.
-        return \Carbon\Carbon::createFromTime(intdiv($mins, 60), $mins % 60)
-            ->locale(app()->getLocale())
-            ->translatedFormat('g:i A');
+        // Cldr, so an Arabic reader gets ص/م, a Chinese one gets a 24-hour
+        // clock, and neither gets English word order. See App\Support\Cldr.
+        return Cldr::time(\Carbon\Carbon::createFromTime(intdiv($mins, 60), $mins % 60));
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TranslatesAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -21,6 +22,7 @@ use Illuminate\Support\Str;
 class EventFeeOption extends Model
 {
     use HasFactory;
+    use TranslatesAttributes;
 
     protected $table = 'event_fee_options';
 
@@ -65,5 +67,31 @@ class EventFeeOption extends Model
     public function scopeForRole($query, string $role)
     {
         return $query->where('role', $role);
+    }
+
+    /**
+     * The option's name, in the reader's language.
+     *
+     * ⚠️ This one line is the fix for the bug that started all of this: the
+     * public poster printed these three labels in Chinese (it went through
+     * PublicEvent::payload(), which remembered to translate) while the entry
+     * form two taps away printed the organiser's Arabic (it read the column).
+     * The same stored translation, two answers, decided by which file the
+     * reader's click landed in.
+     *
+     * The words live on the EVENT's document under `fees.{id}` — see
+     * ClubEvent::translatableDocument() for why they travel together.
+     *
+     * @return array<string, string>
+     */
+    protected function translatedAttributes(): array
+    {
+        return ['label' => 'fees.'.$this->getKey()];
+    }
+
+    /** The event whose document holds this line's words. */
+    protected function translationOwner(): ?Model
+    {
+        return $this->translationOwnerVia('event', ClubEvent::class, $this->getAttributeValue('event_id'));
     }
 }

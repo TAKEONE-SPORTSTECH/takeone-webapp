@@ -654,7 +654,7 @@ class MemberController extends Controller
         $emailed = false;
         if (! empty($member->email)) {
             try {
-                \Illuminate\Support\Facades\Mail::to($member->email)
+                \Illuminate\Support\Facades\Mail::to($member)
                     ->send(new \App\Mail\GeneratedPasswordEmail($member, $newPassword));
                 $emailed = true;
             } catch (\Throwable $e) {

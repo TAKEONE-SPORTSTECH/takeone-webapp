@@ -19,6 +19,19 @@ class AnthropicTextDriver implements TextDriver
         private string $model,
         private int $maxTokens = 4096,
         private int $timeout = 120,
+        /*
+         * Optional, and only needed for an ORGANISATION-level key.
+         *
+         * A key created inside a workspace in the Anthropic console already
+         * knows which workspace it belongs to. A key created at the
+         * organisation level does not, and every request from it is rejected
+         * with HTTP 400 "This API key is not scoped to a workspace, so this
+         * request must include the anthropic-workspace-id header" — which reads
+         * like an authentication failure and is not one. Set this and the same
+         * key works; leave it null and nothing changes for the keys that
+         * already worked.
+         */
+        private ?string $workspaceId = null,
     ) {}
 
     public function chat(array $messages, array $tools = [], array $options = []): array
@@ -33,6 +46,31 @@ class AnthropicTextDriver implements TextDriver
         if ($system !== '') {
             $payload['system'] = $system;
         }
+
+        /*
+         * How hard to think about it.
+         *
+         * ⚠️ On current Claude models thinking is ON by default and effort
+         * defaults to `high`, so a request that says nothing is asking for the
+         * most expensive reasoning the model can do. That is right for a coach
+         * reasoning about a club, and absurd for rewriting seventeen short
+         * strings into Portuguese: measured, the prompt is ~1,200 tokens and
+         * the answer ~800, yet 2,000-3,000 tokens were being generated — the
+         * rest was deliberation nobody asked for, at ~25 seconds a language.
+         *
+         * `effort` is GA and needs no beta header. Absent, behaviour is exactly
+         * what it was, so no existing caller changes.
+         *
+         * Deliberately NOT `thinking: {type: "disabled"}`: on Opus 5 that is
+         * accepted only at effort ≤ high and carries two documented failure
+         * modes — the model can write a tool call, or a <thinking> tag, into
+         * the VISIBLE text. For a caller that parses the reply as JSON that is
+         * silent corruption. Low effort with thinking on is nearly as fast and
+         * cannot do that.
+         */
+        if (! empty($options['effort'])) {
+            $payload['output_config'] = ['effort' => (string) $options['effort']];
+        }
         if ($tools !== []) {
             $payload['tools'] = array_map(fn ($t) => [
                 'name' => $t['function']['name'] ?? '',
@@ -41,11 +79,17 @@ class AnthropicTextDriver implements TextDriver
             ], $tools);
         }
 
+        $headers = [
+            'x-api-key' => $this->apiKey,
+            'anthropic-version' => '2023-06-01',
+        ];
+
+        if (filled($this->workspaceId)) {
+            $headers['anthropic-workspace-id'] = $this->workspaceId;
+        }
+
         $response = Http::timeout($this->timeout)
-            ->withHeaders([
-                'x-api-key' => $this->apiKey,
-                'anthropic-version' => '2023-06-01',
-            ])
+            ->withHeaders($headers)
             ->acceptJson()
             ->asJson()
             ->post(rtrim($this->baseUrl, '/').'/v1/messages', $payload);

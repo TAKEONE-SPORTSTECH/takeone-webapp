@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->append(\App\Http\Middleware\StructuredLogging::class);
+        // Counts (after the response, so it costs the visitor nothing) how many
+        // interface strings this page had to resolve from English. See
+        // App\Http\Middleware\ReportUntranslated.
+        $middleware->append(\App\Http\Middleware\ReportUntranslated::class);
         $middleware->web(append: [
             \App\Http\Middleware\DetectDevice::class,
             \App\Http\Middleware\SetLocale::class,
@@ -50,11 +54,6 @@ return Application::configure(basePath: dirname(__DIR__))
             // not consult proxy headers, which are attacker-controlled.
             'api/live/auth',
             'api/live/hook',
-            // The measurement harness on a phone: a native client with no
-            // session and no cookie. Guarded by a key it must present on every
-            // request, and non-existent unless that key is configured.
-            'api/lab/live',
-            'api/lab/telemetry',
             // The same, for the sport-neutral waiting room a browser screen
             // enrols into: a television opening one address, with no session and
             // no cookie to forge against. What it grants is a row that can
@@ -86,6 +85,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant'     => \App\Http\Middleware\SetCurrentTenant::class,
             'two-factor' => \App\Http\Middleware\RequiresTwoFactor::class,
             'business'   => \App\Http\Middleware\EnsureHasBusiness::class,
+            // ⚠️ This request EDITS the organiser's own words, so it must read
+            // them rather than the reader's translation of them. Without it an
+            // edit form pre-filled from the model saves a machine translation
+            // over the source. See App\Http\Middleware\ReadsSourceContent.
+            'source-text' => \App\Http\Middleware\ReadsSourceContent::class,
             // Override the default `verified` gate so impersonation can bypass it.
             'verified'   => \App\Http\Middleware\EnsureEmailIsVerifiedOrImpersonating::class,
             // Sanctum token-ability gates. Needed so a token minted for one
@@ -210,10 +214,39 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            // back() resolves to the referer; fall back to home for a direct hit
-            // (no referer). The fallback also prevents a redirect loop if the
-            // missing URL were somehow its own referer.
-            return redirect()->back(fallback: '/')
+            /*
+             * back() resolves to the referer; fall back to home for a direct
+             * hit (no referer).
+             *
+             * ⚠️ AND NEVER TO THIS PAGE. The comment here used to claim the
+             * fallback "prevents a redirect loop if the missing URL were
+             * somehow its own referer". It does not: `back()` returns the
+             * referer whenever there IS one, and a RELOAD sends the failing
+             * page as its own referer — so the answer to a 404 was a redirect
+             * to the 404, forever.
+             *
+             * That is not hypothetical. An organiser sitting on
+             * `/e/{uuid}/admin/manage` who switches the public page OFF (one
+             * tap, in the console's own sheet) makes every address under
+             * `/e/{uuid}` 404 from that moment — including the page they are
+             * on. Reloading it then looped. In an installed home-screen app,
+             * with no address bar, that is unrecoverable
+             * (CLAUDE.md → *Unattended Devices Must Always Recover*: "every
+             * redirect chain must terminate. Prove it.").
+             *
+             * App\Support\SealedRequest::home() has always guarded its own
+             * self-bounce for exactly this reason; this path simply never got
+             * the same guard. Found by a navigation audit, 2026-09-08.
+             */
+            $back = url()->previous('/');
+
+            $sameUrl = fn (string $a, string $b) => rtrim($a, '/') === rtrim($b, '/');
+
+            if ($sameUrl($back, $request->fullUrl()) || $sameUrl($back, $request->url())) {
+                $back = '/';
+            }
+
+            return redirect()->to($back)
                 ->with('error', "That page doesn't exist or is no longer available.");
         });
 

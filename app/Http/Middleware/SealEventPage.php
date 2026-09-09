@@ -104,11 +104,28 @@ class SealEventPage
             'shell' => View::shared('shell'),
             'contentSection' => View::shared('contentSection'),
             'skin' => View::shared('skin'),
+            'sealed' => View::shared('sealed'),
         ];
 
         View::share('shell', 'entry.shell');
         View::share('contentSection', 'personal-content');
         View::share('skin', $skin);
+
+        /*
+         * ⚠️ `$sealed` is the ADDRESS SPACE; `$shell` is only the DRESSING.
+         *
+         * They used to be the same flag, and a dozen blades read `isset($shell)`
+         * to decide whether to write `/e/{uuid}/admin/…` instead of
+         * `/me/events/{uuid}/…`. That held while the sealed mirror was the only
+         * thing that ever dressed a page — and stopped holding the moment
+         * BrandEventPage started dressing the member pages too, because those
+         * keep their own addresses and the mirror 404s while the organiser's
+         * public switch is off.
+         *
+         * So a blade asks `$sealed ?? false` for an ADDRESS and `isset($shell)`
+         * for a MARGIN. Only this middleware ever sets it true.
+         */
+        View::share('sealed', true);
 
         try {
             $response = $next($request);

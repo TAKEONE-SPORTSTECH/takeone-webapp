@@ -82,6 +82,9 @@
         'female' => __('events.divisions_gender_female'),
         'untitled' => __('events.divisions_untitled'),
         'needs_name' => __('events.divisions_needs_name'),
+        'heading' => __('events.divisions_heading'),
+        'heading_hint' => __('events.divisions_heading_hint'),
+        'heading_name' => __('events.divisions_heading_name'),
         'delete_ask' => __('events.divisions_delete_ask'),
         'delete' => __('events.divisions_delete'),
         'failed' => __('events.divisions_failed'),
@@ -127,18 +130,35 @@
     {{-- ===== The list =====
          Name, one summary line, a chevron. Everything else is one tap away. --}}
     <template x-for="(d, i) in rows()" :key="rowKey(d, i)">
-        <button type="button" @click="openEdit(d, i)" :disabled="! canManage"
-                class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
-            <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
-                  style="background: {{ $c }}">
-                <i class="bi bi-diagram-3-fill bracket-icon text-lg"></i>
-            </span>
-            <span class="min-w-0 flex-1">
-                <span class="block text-sm font-bold text-foreground truncate" x-text="d.name || words.untitled"></span>
-                <span class="block text-[11px] text-muted-foreground mt-0.5 truncate" x-text="summary(d)"></span>
-            </span>
-            <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180" x-show="canManage"></i>
-        </button>
+        <div>
+            {{-- A HEADING: the organiser's own title for the divisions under it.
+                 Drawn as a band rather than a card on purpose — it has to read
+                 as a label ABOVE things, not as another thing in the list. Still
+                 tappable, because renaming and deleting it happen in the same
+                 sheet everything else uses. --}}
+            <button type="button" x-show="d.is_heading" x-cloak
+                    @click="openEdit(d, i)" :disabled="! canManage"
+                    class="m-press w-full text-start rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-white"
+                    style="background: linear-gradient(135deg, {{ $c }}, {{ $c }}b0);">
+                <i class="bi bi-bookmark-fill text-[13px] opacity-90"></i>
+                <span class="flex-1 min-w-0 text-[12px] font-black uppercase tracking-[0.14em] truncate"
+                      x-text="d.name || words.untitled"></span>
+                <i class="bi bi-chevron-right text-white/70 text-xs flex-shrink-0 rtl:rotate-180" x-show="canManage"></i>
+            </button>
+
+            <button type="button" x-show="! d.is_heading" @click="openEdit(d, i)" :disabled="! canManage"
+                    class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
+                <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
+                      style="background: {{ $c }}">
+                    <i class="bi bi-diagram-3-fill bracket-icon text-lg"></i>
+                </span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-bold text-foreground truncate" x-text="d.name || words.untitled"></span>
+                    <span class="block text-[11px] text-muted-foreground mt-0.5 truncate" x-text="summary(d)"></span>
+                </span>
+                <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180" x-show="canManage"></i>
+            </button>
+        </div>
     </template>
 
     <p x-show="! rows().length" x-cloak class="text-[11px] text-muted-foreground text-center py-3">
@@ -159,6 +179,14 @@
             <button type="button" @click="openNew()"
                     class="m-press flex-1 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground flex items-center justify-center gap-2 transition-colors hover:bg-muted/60">
                 <i class="bi bi-plus-lg"></i> {{ __('events.divisions_add') }}
+            </button>
+            {{-- A title for the divisions that follow it. Beside Add rather than
+                 under it, because the two are alternatives — one adds a thing
+                 people compete in, the other adds a label over several. --}}
+            <button type="button" @click="openNew(true)"
+                    class="m-press py-2.5 px-3.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground flex items-center justify-center gap-2 transition-colors hover:bg-muted/60">
+                <i class="bi bi-bookmark-plus"></i>
+                <span class="hidden sm:inline">{{ __('events.divisions_add_heading') }}</span>
             </button>
             {{ $actions ?? '' }}
         </div>
@@ -187,13 +215,17 @@
                     <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3 sm:hidden"></div>
                     <div class="relative flex items-start gap-3">
                         <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
-                            <i class="bi bi-diagram-3-fill bracket-icon text-xl"></i>
+                            <i class="bi text-xl" x-show="! form.is_heading"
+                               :class="'bi-diagram-3-fill bracket-icon'"></i>
+                            <i class="bi bi-bookmark-fill text-xl" x-show="form.is_heading" x-cloak></i>
                         </span>
                         <div class="min-w-0 flex-1">
                             <h3 class="text-lg font-black leading-tight"
-                                x-text="editing === null
-                                    ? @js(__('events.divisions_new'))
-                                    : @js(__('events.divisions_edit'))"></h3>
+                                x-text="form.is_heading
+                                    ? words.heading
+                                    : (editing === null
+                                        ? @js(__('events.divisions_new'))
+                                        : @js(__('events.divisions_edit')))"></h3>
                             <p class="text-[12px] text-white/85 mt-0.5 truncate"
                                x-text="form.name || @js(__('events.divisions_hint'))"></p>
                         </div>
@@ -216,6 +248,20 @@
                                :class="errors.name ? 'border-red-400' : 'border-gray-200'">
                         <p x-show="errors.name" x-cloak class="mt-1 text-xs text-red-500" x-text="errors.name"></p>
                     </div>
+
+                    {{-- A HEADING stops here: a name is all it is.
+                         Everything below belongs to a division — a capacity, a
+                         range, a schedule — and none of it would ever be read
+                         on a title. The endpoint drops these fields for a
+                         heading too (headingSafe), so the form and the contract
+                         agree rather than one trusting the other. --}}
+                    <div x-show="form.is_heading" x-cloak
+                         class="rounded-xl bg-muted/60 border border-gray-100 p-3 flex items-start gap-2.5">
+                        <i class="bi bi-bookmark-fill text-primary text-sm mt-0.5"></i>
+                        <p class="text-[11px] text-muted-foreground leading-relaxed" x-text="words.heading_hint"></p>
+                    </div>
+
+                    <div x-show="! form.is_heading" x-cloak class="space-y-4">
 
                     {{-- Capacity. Blank is the normal answer: a division is
                          capped to keep a mat's day finite, not because a
@@ -381,6 +427,9 @@
                     </button>
                 </div>
 
+
+                    </div>{{-- /division-only fields --}}
+
                 {{-- Sticky footer, safe-area padded, so Save is always reachable. --}}
                 <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100"
                      style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
@@ -451,6 +500,9 @@
             const val = (v) => (v === null || v === undefined ? '' : v);
             return {
                 name: d.name || '',
+                // A title in the list rather than a division. Sticky across an
+                // edit: what a row IS cannot change by opening it.
+                is_heading: !! d.is_heading,
                 capacity: val(d.capacity),
                 format: d.format || 'knockout',
                 gender: val(r.gender),
@@ -516,11 +568,11 @@
 
         /* ── The sheet ───────────────────────────────────────────────────── */
 
-        openNew() {
+        openNew(heading = false) {
             if (! this.canManage) return;
             this.editing = null;
             this.errors = {};
-            this.form = this.flat({});
+            this.form = this.flat({ is_heading: heading });
             this.open = true;
         },
 
@@ -547,8 +599,16 @@
         payload() {
             const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
             const int = (v) => (v === '' || v === null || v === undefined ? null : parseInt(v, 10));
+            // A heading carries a name and nothing else — the same shape the
+            // endpoint enforces (PersonalEventController::headingSafe), so the
+            // two cannot disagree about what a heading is.
+            if (this.form.is_heading) {
+                return { name: String(this.form.name || '').trim(), is_heading: true };
+            }
+
             return {
                 name: String(this.form.name || '').trim(),
+                is_heading: false,
                 capacity: int(this.form.capacity),
                 // Always knockout: the only format RUNNABLE_FORMATS allows and
                 // the only one DrawEngine can cut. See the sheet's comment.

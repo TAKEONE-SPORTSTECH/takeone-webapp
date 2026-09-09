@@ -65,7 +65,7 @@
     {{-- Hero band: full-bleed. -mx-4 -mt-4 cancels the shell's px-4 py-4, so the
          band meets the screen edges while the cards below keep their inset. --}}
     <header class="m-hero -mx-4 -mt-4 px-5 pt-5 pb-20 text-white relative overflow-hidden"
-            style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
+            style="background: {{ \App\Support\Palette::pageBand($color, isset($shell)) }};">
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 

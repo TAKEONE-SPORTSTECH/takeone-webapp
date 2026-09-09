@@ -2,6 +2,7 @@
 
 namespace App\Events\Support;
 
+use App\Support\Cldr;
 use App\Models\ClubEvent;
 use App\Models\EventOfficial;
 use App\Members\Models\User;
@@ -137,6 +138,35 @@ class EventAccess
      * is gated by canArrange() and by the package's own started-event rule, and
      * neither is loosened or tightened by anything here.
      */
+    /**
+     * When the draw opens, said in one sentence.
+     *
+     * Lives beside `drawVisible()` because it is the same decision read out
+     * loud: one place decides whether a draw may be seen, so one place says why
+     * it cannot be. FOUR surfaces print it now — the board's veil, the bout
+     * redirect, the console row, and (since 2026-09-08) the entrant's own
+     * panel, which is the one reader for whom "not yet" is most frustrating and
+     * most necessary.
+     *
+     * It was private to PersonalEventController, whose own note already said
+     * "one place, because three surfaces say it — and a message that exists
+     * three times will eventually say three different things". The fourth
+     * surface is in another module and cannot reach a controller
+     * (ModuleBoundaryTest), so the sentence came here rather than being copied.
+     *
+     * `hidden` gets no date because there is none: it opens when the organiser
+     * says so, and inventing "soon" would be a promise the platform cannot
+     * keep.
+     */
+    public function drawHiddenMessage(ClubEvent $event): string
+    {
+        if (($event->draw_reveal ?? ClubEvent::DRAW_ALWAYS) === ClubEvent::DRAW_START_DAY && $event->date) {
+            return __('events.draw_hidden_until', ['date' => Cldr::skeleton($event->date, 'EEEdMMM', 'D j M')]);
+        }
+
+        return __('events.draw_hidden_msg');
+    }
+
     public function drawVisible(ClubEvent $event, ?User $user = null): bool
     {
         if ($event->drawRevealed()) {

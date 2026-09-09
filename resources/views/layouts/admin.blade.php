@@ -227,6 +227,7 @@
         'System' => [
             ['route'=>'admin.platform.activities',    'pattern'=>['admin.platform.activities*'],'icon'=>'bi-lightning-charge','label'=>'Activities'],
             ['route'=>'admin.ai.index',               'pattern'=>['admin.ai.*'],                'icon'=>'bi-robot',         'label'=>'AI Providers'],
+            ['route'=>'admin.languages.index',        'pattern'=>['admin.languages.*'],         'icon'=>'bi-translate',     'label'=>'Languages'],
             ['route'=>'admin.storage.index',          'pattern'=>['admin.storage.*'],           'icon'=>'bi-hdd-stack',     'label'=>'Storage'],
             ['route'=>'admin.platform.settings',      'pattern'=>['admin.platform.settings*'],  'icon'=>'bi-gear',          'label'=>__('nav.layouts_admin_nav_settings')],
             ['route'=>'admin.platform.backup',        'pattern'=>['admin.platform.backup*'],    'icon'=>'bi-database',      'label'=>__('nav.layouts_admin_nav_backup')],

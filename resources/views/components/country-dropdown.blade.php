@@ -122,7 +122,7 @@
                        @click.stop
                        x-ref="searchInput"
                        class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                       placeholder="Search country...">
+                       placeholder="{{ __('events.entry_country_search') }}">
             </div>
             <div class="max-h-60 overflow-y-auto">
                 <template x-for="item in filteredItems" :key="item.iso2">
@@ -133,7 +133,7 @@
                     </div>
                 </template>
                 <div x-show="filteredItems.length === 0" class="px-4 py-2 text-gray-500 text-sm">
-                    No countries found
+                    {{ __('events.entry_country_none') }}
                 </div>
             </div>
         </div>

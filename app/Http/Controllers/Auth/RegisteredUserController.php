@@ -145,7 +145,7 @@ class RegisteredUserController extends Controller
             if (! $skipVerification) {
                 try {
                     $intended = session('url.intended');
-                    Mail::to($user->email)->queue(new WelcomeEmail($user, $user, null, $intended));
+                    Mail::to($user)->queue(new WelcomeEmail($user, $user, null, $intended));
                 } catch (\Exception $e) {
                     // Log the error but don't stop the registration process
                     \Log::error('Failed to send welcome email: '.$e->getMessage());

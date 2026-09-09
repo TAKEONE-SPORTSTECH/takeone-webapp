@@ -28,6 +28,14 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
+    {{-- This document is DARK by design — a wall board, a console, a review
+         screen. Declared so a browser's auto-dark does not try to "help" and
+         invert the one light thing on it, and so Dark Reader leaves it alone.
+         Same reasoning as the light pages, opposite value. --}}
+    <meta name="color-scheme" content="dark">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: dark; }</style>
+
 {{-- A screen is not a document: it is authored at one size and scaled to fit
      the glass, so there is nothing here to zoom INTO — magnifying it can only
      push part of the surface off the edge, which on a wall nobody can undo and

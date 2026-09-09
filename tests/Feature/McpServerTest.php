@@ -1019,4 +1019,188 @@ class McpServerTest extends TestCase
         $this->assertStringContainsString('Match log not found', $result['error']);
     }
 
+    // -------------------------------------------------------------------------
+    // Translation — reading an event in any language, and correcting it
+    // -------------------------------------------------------------------------
+
+    /** An event with one division and one priced entry line, ready to translate. */
+    private function translatableEvent(\App\Members\Models\User $organiser): \App\Models\ClubEvent
+    {
+        $club = $this->createClub($organiser, ['country' => 'BH']);
+        $organiser->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+
+        $event = \App\Models\ClubEvent::create([
+            'tenant_id' => $club->id, 'created_by' => $organiser->id,
+            'title' => 'Spring Open', 'description' => 'Come and compete.',
+            'location' => 'Isa Sports City', 'event_type' => 'championship',
+            'sport' => 'taekwondo', 'scope' => 'internal',
+            'date' => now()->addWeeks(2)->toDateString(), 'start_time' => '09:00',
+            'status' => 'active', 'is_archived' => false, 'source_locale' => 'en',
+        ]);
+
+        \App\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'Adult Black', 'sort_order' => 1]);
+
+        return $event;
+    }
+
+    public function test_get_event_translation_lists_languages_then_reads_one(): void
+    {
+        $organiser = $this->createUser();
+        $event = $this->translatableEvent($organiser);
+        $this->actingAs($organiser->fresh());
+
+        // With no locale: what exists, and what it was written in.
+        $listed = $this->callTool(\App\Mcp\Tools\GetEventTranslationTool::class, ['event' => $event->uuid]);
+        $this->assertSame('en', $listed['source_locale']);
+        $this->assertSame([], $listed['available']);
+
+        // One JSON document per record holds every language (2026-09-09).
+        \App\Translation\Models\TranslationDocument::mutate('club_event', $event->id, function ($doc) {
+            [$doc] = \App\Translation\Models\TranslationDocument::mergeMachine(
+                $doc, 'pt',
+                ['title' => 'Abertura da Primavera'],
+                ['title' => \App\Translation\Translations::hash('Spring Open')],
+                'test', 'test-model',
+            );
+
+            return \App\Translation\Models\TranslationDocument::setStatus($doc, 'pt', 'ready');
+        });
+
+        $read = $this->callTool(\App\Mcp\Tools\GetEventTranslationTool::class, [
+            'event' => $event->uuid, 'locale' => 'pt',
+        ]);
+
+        $this->assertSame('Abertura da Primavera', $read['fields']['title']);
+        // Anything not translated yet comes back in the source language, and is
+        // NAMED so a caller knows what it is about to send.
+        $this->assertSame('Come and compete.', $read['fields']['about']);
+        $this->assertContains('about', $read['untranslated_fields']);
+        $this->assertNotContains('title', $read['untranslated_fields']);
+    }
+
+    public function test_get_event_translation_refuses_an_unserved_language_and_an_unseen_event(): void
+    {
+        $organiser = $this->createUser();
+        $event = $this->translatableEvent($organiser);
+
+        $this->actingAs($organiser->fresh());
+        $bad = $this->callTool(\App\Mcp\Tools\GetEventTranslationTool::class, [
+            'event' => $event->uuid, 'locale' => 'klingon',
+        ]);
+        $this->assertStringContainsString('not a language this platform serves', $bad['error']);
+
+        // A stranger gets "not found" — never confirmation that the uuid is real.
+        $this->actingAs($this->createUser());
+        $denied = $this->callTool(\App\Mcp\Tools\GetEventTranslationTool::class, ['event' => $event->uuid]);
+        $this->assertSame('Event not found.', $denied['error']);
+    }
+
+    public function test_translate_event_queues_work_and_skips_what_is_pointless(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+
+        $organiser = $this->createUser();
+        $event = $this->translatableEvent($organiser);
+        $this->actingAs($organiser->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\TranslateEventTool::class, [
+            'event' => $event->uuid,
+            'locales' => ['pt', 'en', 'klingon'],
+        ]);
+
+        $this->assertSame(['pt'], array_column($result['queued'], 'locale'));
+        $this->assertSame(['en', 'klingon'], array_column($result['skipped'], 'locale'));
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Translation\Jobs\TranslateContent::class, 1);
+    }
+
+    public function test_translate_event_denies_someone_who_does_not_run_the_event(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+
+        $organiser = $this->createUser();
+        $event = $this->translatableEvent($organiser);
+
+        $this->actingAs($this->createUser());
+        $result = $this->callTool(\App\Mcp\Tools\TranslateEventTool::class, [
+            'event' => $event->uuid, 'locales' => ['pt'],
+        ]);
+
+        $this->assertSame('Event not found.', $result['error']);
+        \Illuminate\Support\Facades\Queue::assertNothingPushed();
+    }
+
+    public function test_set_event_translation_is_permanent_and_scoped_to_real_fields(): void
+    {
+        $organiser = $this->createUser();
+        $event = $this->translatableEvent($organiser);
+        $this->actingAs($organiser->fresh());
+
+        $saved = $this->callTool(\App\Mcp\Tools\SetEventTranslationTool::class, [
+            'event' => $event->uuid, 'locale' => 'pt', 'field' => 'title',
+            'value' => 'Nome Oficial da Federação',
+        ]);
+
+        $this->assertSame('human', $saved['origin']);
+        $held = \App\Translation\Models\TranslationDocument::forRecord('club_event', $event->id)['pt']['fields']['title'];
+        $this->assertSame('human', $held['o']);
+        $this->assertSame('Nome Oficial da Federação', $held['v']);
+
+        // A machine run may not take it back.
+        $this->assertArrayNotHasKey(
+            'title',
+            \App\Translation\Translations::pending($event->fresh(), 'pt'),
+        );
+
+        // A field the event does not publish is not a place to write.
+        $bogus = $this->callTool(\App\Mcp\Tools\SetEventTranslationTool::class, [
+            'event' => $event->uuid, 'locale' => 'pt', 'field' => 'is_admin', 'value' => 'yes',
+        ]);
+        $this->assertStringContainsString('has no field', $bogus['error']);
+        $this->assertArrayNotHasKey(
+            'is_admin',
+            \App\Translation\Models\TranslationDocument::forRecord('club_event', $event->id)['pt']['fields'],
+        );
+
+        // Nor is the language it was written in.
+        $source = $this->callTool(\App\Mcp\Tools\SetEventTranslationTool::class, [
+            'event' => $event->uuid, 'locale' => 'en', 'field' => 'title', 'value' => 'x',
+        ]);
+        $this->assertStringContainsString('written in', $source['error']);
+    }
+
+    public function test_set_event_translation_denies_a_stranger(): void
+    {
+        $organiser = $this->createUser();
+        $event = $this->translatableEvent($organiser);
+
+        $this->actingAs($this->createUser());
+        $result = $this->callTool(\App\Mcp\Tools\SetEventTranslationTool::class, [
+            'event' => $event->uuid, 'locale' => 'pt', 'field' => 'title', 'value' => 'HACK',
+        ]);
+
+        $this->assertSame('Event not found.', $result['error']);
+        $this->assertSame([], \App\Translation\Models\TranslationDocument::forRecord('club_event', $event->id));
+    }
+
+    public function test_translation_writes_are_blocked_when_writes_are_disabled(): void
+    {
+        config(['takeone-mcp.allow_writes' => false]);
+
+        $organiser = $this->createUser();
+        $event = $this->translatableEvent($organiser);
+        $this->actingAs($organiser->fresh());
+
+        foreach ([
+            \App\Mcp\Tools\TranslateEventTool::class => ['event' => $event->uuid, 'locales' => ['pt']],
+            \App\Mcp\Tools\SetEventTranslationTool::class => ['event' => $event->uuid, 'locale' => 'pt', 'field' => 'title', 'value' => 'x'],
+        ] as $tool => $args) {
+            $result = $this->callTool($tool, $args);
+            $this->assertStringContainsString('Write operations are disabled', $result['error']);
+        }
+
+        // The READ tool still works — the kill-switch is about writes.
+        $read = $this->callTool(\App\Mcp\Tools\GetEventTranslationTool::class, ['event' => $event->uuid]);
+        $this->assertSame('en', $read['source_locale']);
+    }
 }

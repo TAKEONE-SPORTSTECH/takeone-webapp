@@ -14,9 +14,9 @@
      * The delete endpoint for this bout's footage, or null for no menu.
      *
      * Null by default and passed only where the viewer may actually use it:
-     * `me.events.bout.video.destroy` is super-admin only and enforces that
-     * itself, so rendering the menu for anybody else would be a control that
-     * exists to return 403 (Navigation Integrity — no dead ends).
+     * `me.events.bout.video.destroy` asks EventAccess::canManage and enforces
+     * that itself, so rendering the menu for anybody else would be a control
+     * that exists to return 403 (Navigation Integrity — no dead ends).
      */
     'deleteUrl' => null,
 ])

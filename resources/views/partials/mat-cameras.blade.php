@@ -164,6 +164,7 @@
 .mc-chip.is-failed{color:var(--mc-red);}
 .mc-chip.is-phone{color:var(--mc-faint);}
 .mc-chip.is-gone{color:var(--mc-faint);opacity:.6;}
+.mc-chip.is-unfiled{color:var(--mc-gold);}
 .mc-act{width:36px;height:36px;border-radius:10px;background:transparent;border:1px solid var(--mc-line);
         color:var(--mc-text);cursor:pointer;font-size:15px;line-height:1;flex:0 0 auto;}
 .mc-act:hover{border-color:var(--mc-gold);color:var(--mc-gold);}
@@ -221,6 +222,7 @@
     'clip' => __('events.mat_cameras_clip'),
     'play' => __('events.mat_cameras_play'),
     'upload' => __('events.mat_cameras_upload'),
+    'stop' => __('events.mat_cameras_stop_upload'),
     'del' => __('events.mat_cameras_delete'),
     'del_confirm' => __('events.mat_cameras_delete_confirm'),
     'del_only' => __('events.mat_cameras_delete_only_copy'),
@@ -230,6 +232,8 @@
     's_vault' => __('events.mat_cameras_state_vault'),
     's_failed' => __('events.mat_cameras_state_failed'),
     's_gone' => __('events.mat_cameras_state_gone'),
+    's_unfiled' => __('events.mat_cameras_state_unfiled'),
+    'unfiled_hint' => __('events.mat_cameras_unfiled_hint'),
     'asked' => __('events.mat_cameras_asked_report'),
     ];
 @endphp
@@ -347,9 +351,49 @@
         // whose answer arrives on the phone's next beat.
         if (d.camera) { replace(d.camera); }
         note(said || d.message || '', 'good');
+
+        // Then WATCH for the phone's answer, rather than waiting out the poll.
+        //
+        // An obeyed order is reported immediately by the camera, but "reported"
+        // means one more HTTP round trip from a phone on hall wifi — so the
+        // panel checks a few times over the next few seconds instead of leaving
+        // a pressed switch reading "asked · waiting" until the next tick. It
+        // stops as soon as nothing is pending, so an order a camera never
+        // received costs three reads and then falls back to the ordinary poll.
+        chase(id);
       })
       .catch(function (e) { note(e.message || 'Failed', 'bad'); })
       .finally(function () { busy = false; paint(); });
+  }
+
+  /*
+   * Re-read a few times, quickly, after an order.
+   *
+   * 1.2s / 3s / 6s: fast enough that a switch feels answered, few enough that a
+   * console at a mat is not hammering the endpoint. Guarded so two orders in a
+   * row do not stack two chases.
+   */
+  var chasing = 0;
+
+  function chase(id) {
+    clearTimeout(chasing);
+
+    var delays = [1200, 3000, 6000];
+    var step = 0;
+
+    (function next() {
+      chasing = setTimeout(function () {
+        load().then(function () {
+          var cam = null;
+          for (var i = 0; i < cameras.length; i++) { if (cameras[i].id === id) cam = cameras[i]; }
+
+          // Nothing outstanding — the camera has answered, and the ordinary
+          // poll is enough from here.
+          if (cam && cam.pending && Object.keys(cam.pending).length === 0) return;
+          if (++step < delays.length) next();
+        });
+      }, delays[step]);
+    })();
   }
 
   function replace(camera) {
@@ -644,6 +688,11 @@
   }
 
   function state(f) {
+    // On the phone, and this event has never been told about it — a camera that
+    // was at another competition, or that missed the one call that files a
+    // clip. Said plainly, because the alternative is a panel that shows nothing
+    // while the phone visibly holds two recordings.
+    if (f.unfiled) return { k: 'is-unfiled', t: T.s_unfiled };
     if (f.on_device === false && !f.uploaded) return { k: 'is-gone', t: T.s_gone };
     if (f.uploaded) return { k: 'is-vault', t: T.s_vault };
     if (f.status === 'uploading') return { k: 'is-sending', t: T.s_sending };
@@ -661,11 +710,16 @@
 
     var title = document.createElement('div');
     title.className = 'mc-clip-t';
-    title.textContent = f.bout ? fill(T.bout, '%n%', f.bout) : (T.clip + ' ' + (f.at || ''));
+    // An unfiled clip has no bout and no numbers — only the phone's own file
+    // name, which is exactly what somebody standing at the phone will look for.
+    title.textContent = f.bout ? fill(T.bout, '%n%', f.bout)
+      : (f.unfiled ? f.ref : (T.clip + ' ' + (f.at || '')));
 
     var sub = document.createElement('div');
     sub.className = 'mc-clip-s';
-    sub.textContent = [f.at, clock(f.seconds), size(f.bytes)].filter(Boolean).join(' · ');
+    sub.textContent = f.unfiled
+      ? T.unfiled_hint
+      : [f.at, clock(f.seconds), size(f.bytes)].filter(Boolean).join(' · ');
 
     meta.appendChild(title);
     meta.appendChild(sub);
@@ -683,9 +737,19 @@
       send(c.id, { do: 'play', clip: f.ref });
     }, busy || gone));
 
-    el.appendChild(act('↑', T.upload, function () {
-      send(c.id, { do: 'upload', clip: f.ref });
-    }, busy || gone || f.uploaded));
+    // Upload is the one action an unfiled clip does not get: there is no bout on
+    // THIS event to attach it to, and the phone refuses to hang an old
+    // competition's footage off today's. Play and delete are questions about the
+    // phone's own disk, so they work on anything the phone is holding.
+    //
+    // While it IS uploading the same button stops it — the bytes already
+    // accepted are kept, so starting again continues from the server's offset
+    // rather than from zero.
+    var sending = f.status === 'uploading';
+
+    el.appendChild(act(sending ? '■' : '↑', sending ? T.stop : T.upload, function () {
+      send(c.id, { do: sending ? 'cancel' : 'upload', clip: f.ref });
+    }, busy || (!sending && (gone || f.uploaded || f.unfiled))));
 
     // Two presses, never one, and the second says what is being lost when the
     // recording has never left the phone.

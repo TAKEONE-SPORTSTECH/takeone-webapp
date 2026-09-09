@@ -61,6 +61,15 @@
                         <i class="bi bi-sliders text-base"></i>
                     </a>
                 @endif
+                {{-- The public page, as a stranger opens it. Same position and
+                     same reasoning as the mobile band — see the note there. --}}
+                @if(! empty($publicUrl ?? null))
+                    <a href="{{ $publicUrl }}" target="_blank" rel="noopener"
+                       class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center text-white no-underline hover:bg-white/25 transition-colors"
+                       aria-label="{{ __('personal.event_show_open_public') }}" title="{{ __('personal.event_show_open_public') }}">
+                        <i class="bi bi-box-arrow-up-right text-base"></i>
+                    </a>
+                @endif
                 <x-qr-code
                     :url="$shareUrl ?? route('me.events.show', ['event' => $e['key']])"
                     :title="$e['title'] . ' — ' . __('personal.event_show_event')"
@@ -463,14 +472,21 @@
                             </div>
                         </a>
 
-                        {{-- Who's joined — the full roster, and the only door to it.
-                             There was a second card here ("Verification desk") that
-                             opened a screen listing these same people with buttons
-                             on them; the buttons now live on the roster rows, so one
-                             card is the whole answer. Counts are bound to this page's
-                             Alpine state, so joining or removing someone updates the
-                             card without a reload. --}}
-                        <a href="{{ route('me.events.people', $e['key']) }}"
+                        {{-- Who's joined. Goes to the event's own entry list
+                             (`/e/{uuid}/participants`) — see the note on the
+                             mobile card, same reasoning and same fallback. The
+                             organiser's roster, with the verification buttons on
+                             its rows, is a row of the console.
+
+                             Counts stay bound to this page's Alpine state, so
+                             joining or removing someone still updates the card
+                             without a reload. --}}
+                        @php
+                            $peopleHref = ! empty($publicUrl ?? null)
+                                ? route('events.public.section', ['event' => $e['key'], 'section' => 'participants', 'from' => 'me'])
+                                : route('me.events.people', $e['key']);
+                        @endphp
+                        <a href="{{ $peopleHref }}"
                            class="block rounded-2xl p-4 text-white relative overflow-hidden shadow-md hover:shadow-lg transition-shadow"
                            style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
                             <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>

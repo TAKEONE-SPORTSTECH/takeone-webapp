@@ -2,6 +2,7 @@
 
 namespace App\Members\Models;
 
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -34,7 +35,7 @@ use App\Models\EventOfficial;
 use App\Trainers\Models\InstructorReview;
 use App\Models\Invoice;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\Members\Models\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
@@ -309,17 +310,27 @@ class User extends Authenticatable implements MustVerifyEmail
 
                 $age = Carbon::parse($this->birthdate)->age;
 
-                if ($age >= 0 && $age <= 3) {
-                    return 'Toddler';
-                } elseif ($age >= 4 && $age <= 12) {
-                    return 'Child';
-                } elseif ($age >= 13 && $age <= 19) {
-                    return 'Teenager';
-                } elseif ($age >= 20 && $age <= 59) {
-                    return 'Adult';
-                } else {
-                    return 'Senior';
-                }
+                /*
+                 * ⚠️ Lang keys, not literals.
+                 *
+                 * These were five hardcoded English words, which put them
+                 * beyond BOTH translators: `__()` never saw them, so no lang
+                 * file could carry them, and they are not organiser content, so
+                 * App\Translation could not either. A Chinese reader was shown
+                 * "Adult" on a page that was otherwise Chinese, and there was no
+                 * key anywhere to fix it with. `lang/en/platform.php` already
+                 * had the words — nothing had ever been wired to them.
+                 *
+                 * This is a DISPLAY value. Nothing compares or stores it; the
+                 * age itself is the datum.
+                 */
+                return match (true) {
+                    $age <= 3 => __('platform.age_toddler'),
+                    $age <= 12 => __('platform.age_child'),
+                    $age <= 19 => __('platform.age_teenager'),
+                    $age <= 59 => __('platform.age_adult'),
+                    default => __('platform.age_senior'),
+                };
             }
         );
     }
@@ -1031,7 +1042,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function sendEmailVerificationNotification()
     {
-        Mail::to($this->email)->queue(new \App\Mail\WelcomeEmail($this));
+        Mail::to($this)->queue(new \App\Mail\WelcomeEmail($this));
     }
 
     public function sendPasswordResetNotification($token): void
@@ -1053,5 +1064,31 @@ class User extends Authenticatable implements MustVerifyEmail
     public function photos(): HasMany
     {
         return $this->hasMany(UserPhoto::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /**
+     * The language to render anything sent TO this person in.
+     *
+     * ⚠️ This is what makes mail obey a locale at all.
+     *
+     * Every email on this platform is QUEUED, and a queue worker has no
+     * request: no `Accept-Language`, no session, no `SetLocale` middleware. So
+     * a queued mailable rendered whatever `config('app.locale')` said — English
+     * — however carefully the member had set their language in /me/settings.
+     * The member changed a setting, the platform agreed, and their receipts
+     * kept arriving in English.
+     *
+     * Laravel reads this contract when a mailable is addressed to the MODEL:
+     *
+     *     Mail::to($user)          ← honours it
+     *     Mail::to($user->email)   ← cannot; a string has no preference
+     *
+     * which is why the send sites pass the model. Returns null for a member who
+     * has never chosen, and Laravel then uses the application default — the
+     * same behaviour as before, for everybody who never expressed a preference.
+     */
+    public function preferredLocale(): ?string
+    {
+        return $this->locale ?: null;
     }
 }

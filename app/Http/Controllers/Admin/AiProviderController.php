@@ -30,6 +30,10 @@ class AiProviderController extends Controller
             'providers' => $providers,
             'modalities' => AiProvider::MODALITIES,
             'drivers' => self::DRIVERS,
+            // Which model writes the event translations, and the order the
+            // rest are tried in if it cannot — see App\Translation.
+            'translationPrimary' => \App\Translation\Translations::translatorId(),
+            'translationChain' => \App\Translation\Translations::chain(),
         ]);
     }
 
@@ -81,6 +85,53 @@ class AiProviderController extends Controller
         $provider->delete();
 
         return response()->json(['success' => true, 'message' => 'Provider removed.']);
+    }
+
+    /**
+     * Choose which model writes the event translations.
+     *
+     * Separate from `is_default` on purpose: the default is what the Copilot
+     * uses, and an operator may perfectly well want Claude answering the coach
+     * while a local model does the translating — or the reverse when the bill
+     * arrives. One click, effective on the next translation, reversible with
+     * the same click.
+     *
+     * Sending no id (or 0) returns to automatic: the default provider first,
+     * then everything else enabled, then the built-in local model.
+     */
+    public function translationPrimary(Request $request)
+    {
+        $data = $request->validate([
+            'provider_id' => ['nullable', 'integer'],
+        ]);
+
+        $id = (int) ($data['provider_id'] ?? 0);
+
+        if ($id > 0) {
+            // Must be a real, enabled TEXT provider. Anything else would
+            // silently do nothing, which is worse than refusing.
+            $provider = AiProvider::query()->enabled()->modality('text')->find($id);
+
+            if (! $provider) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'That provider is not an enabled text provider.',
+                ], 422);
+            }
+        }
+
+        \App\Translation\Translations::useTranslator($id ?: null);
+
+        $chain = \App\Translation\Translations::chain();
+
+        return response()->json([
+            'success' => true,
+            'message' => $id > 0
+                ? 'Translations will use '.($chain[0]['label'] ?? 'that model').'.'
+                : 'Translations will follow the default provider.',
+            'primary' => $id ?: null,
+            'chain' => $chain,
+        ]);
     }
 
     /** Live connectivity check (text drivers only for now). */

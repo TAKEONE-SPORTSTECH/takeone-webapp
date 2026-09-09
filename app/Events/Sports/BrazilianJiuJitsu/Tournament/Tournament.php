@@ -192,6 +192,11 @@ class Tournament extends AbstractEventType
      */
     public function onEntrantsChanged(ClubEvent $event, ?EventCategory $category = null): void
     {
+        // A heading holds nobody and is never drawn (EventCategory::isHeading).
+        if ($category?->isHeading()) {
+            return;
+        }
+
         if ($event->hasStarted() || $event->hasEnded()) {
             $this->draws->ensure($event);   // locks the final draw once, then no-ops
 
@@ -808,6 +813,20 @@ class Tournament extends AbstractEventType
     public function views(): array
     {
         return [];
+    }
+
+    /**
+     * A championship is its own app, in the organiser's name.
+     *
+     * The person who was sent this competition — and the coach entering a
+     * squad, and the organiser running the mats — reads Brazilian Jiu-Jitsu on the
+     * club's mark in the event's colour, with no platform chrome around it.
+     * `/me/events/{uuid}` therefore wears the same skin `/e/{uuid}` does:
+     * one surface, whichever door was used to reach it.
+     */
+    public function brandedSurface(): bool
+    {
+        return true;
     }
 
     public function viewData(ClubEvent $event, User $viewer): array

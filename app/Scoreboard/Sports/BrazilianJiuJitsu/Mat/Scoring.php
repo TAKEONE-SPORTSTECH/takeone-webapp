@@ -78,6 +78,7 @@ class Scoring
         'dismiss',    // put the celebration away — on the table AND the wall
         'celebrate',  // bring it back
         'resync',     // tell every screen on this mat to reload itself
+        'bell',       // the clock reached zero — settle it and see what that means
         'corner',     // {side, name, club, country, flag} — fix what is announced
         'meta',       // {tournament, division, matchNo, courtLabel, stage, referee, ruleset}
         'rules',      // {warning, penalty_limit, penalty_warn_at, referee_decision, …}
@@ -94,7 +95,7 @@ class Scoring
     private const NEEDS_MATCH = [
         'start', 'pause', 'resume', 'point', 'advantage', 'penalty', 'reverse',
         'time', 'review', 'medical', 'overtime', 'stall', 'end', 'decision',
-        'reset', 'commit', 'board', 'intro',
+        'reset', 'commit', 'board', 'intro', 'bell',
     ];
 
     /**
@@ -205,6 +206,25 @@ class Scoring
             // publishes afterwards, which is the one recovery a screen with no
             // keyboard has.
             'resync' => null,
+            /*
+             * Also a no-op — and that is the whole point of it.
+             *
+             * The clock is stored as "remaining as of a moment", and it is
+             * settled at the top of THIS method before any command runs. So a
+             * match whose time has expired is not actually over on the server
+             * until something asks: settleClock() is what calls autoEnd(), and
+             * nothing was asking. The buzzer sounds in the hall (the board
+             * plays it off its own local clock) while the state still says the
+             * match is live, and the table only found out when it next pressed
+             * something.
+             *
+             * A console whose own clock reaches zero sends this once. It carries
+             * no opinion about the result — it just lets the engine notice the
+             * bell, which either finishes the match or raises a referee
+             * decision, exactly as it would have done later. Idempotent, so a
+             * second console at the same mat sending it too costs nothing.
+             */
+            'bell' => null,
             'corner' => $this->cornerEdit($state, $payload),
             'meta' => $this->meta($state, $payload),
             'rules' => $this->rules($state, $payload, $event),
@@ -1145,7 +1165,7 @@ class Scoring
      */
     private function worthRecording(string $command): bool
     {
-        return ! in_array($command, ['resync', 'theme', 'dismiss', 'celebrate'], true);
+        return ! in_array($command, ['resync', 'theme', 'dismiss', 'celebrate', 'bell'], true);
     }
 
     /** The camera fleet's own vocabulary, which is smaller than this one. */

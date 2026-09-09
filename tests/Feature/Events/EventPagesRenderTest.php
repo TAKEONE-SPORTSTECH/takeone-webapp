@@ -131,6 +131,14 @@ class EventPagesRenderTest extends TestCase
         EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
         $member = $this->member($club);
 
+        /* The DESKTOP blade is what mounts the board on a wide screen — and a
+           branded event has no desktop blade (it is the mobile app at every
+           width, App\Http\Middleware\BrandEventPage), so this half of the
+           contract is asserted with the branded surface off. That is not a
+           workaround: it is where the desktop bracket screen still lives, for
+           every type that has not opted in. */
+        config(['events.branded_surface' => false]);
+
         $desktop = $this->actingAs($member)->get("/me/events/{$event->uuid}/brackets")->assertOk();
         $desktop->assertSee('BracketBoard.mount', false);
         $desktop->assertSee('event-bracket-viewport', false);
@@ -140,6 +148,14 @@ class EventPagesRenderTest extends TestCase
             ->withHeaders(['User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'])
             ->get("/me/events/{$event->uuid}/brackets")->assertOk();
         $mobile->assertDontSee('event-bracket-viewport', false);
+
+        /* Branded, on a LAPTOP: the same mobile screen, so it still declines to
+           embed the board and still leads to the full-screen manager. */
+        config(['events.branded_surface' => true]);
+
+        $this->actingAs($member)->get("/me/events/{$event->uuid}/brackets")
+            ->assertOk()
+            ->assertDontSee('event-bracket-viewport', false);
 
         // The organiser's full-screen manager is where a phone arranges a draw.
         $manage = $this->actingAs($owner)
@@ -254,6 +270,13 @@ class EventPagesRenderTest extends TestCase
 
         $phone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
 
+        /* #shell-content and its navigator are the MEMBER shell's. A branded
+           event has neither — it is served chrome-less, so there is no
+           in-shell navigation to survive — and this trap is asserted where it
+           exists, for every type still inside the member shell. The branded
+           console is checked below on its own terms. */
+        config(['events.branded_surface' => false]);
+
         $html = $this->actingAs($owner->fresh())
             ->withHeaders(['User-Agent' => $phone])
             ->get("/me/events/{$event->uuid}/manage")
@@ -273,5 +296,15 @@ class EventPagesRenderTest extends TestCase
             $swapped,
             'eventChecklist() is defined outside #shell-content — an in-shell navigation will not re-run it'
         );
+
+        /* And on the branded console, where there is no swap: the factory still
+           has to be on the page, or the checklist is dead there instead. */
+        config(['events.branded_surface' => true]);
+
+        $this->actingAs($owner->fresh())
+            ->withHeaders(['User-Agent' => $phone])
+            ->get("/me/events/{$event->uuid}/manage")
+            ->assertOk()
+            ->assertSee('window.eventChecklist', false);
     }
 }

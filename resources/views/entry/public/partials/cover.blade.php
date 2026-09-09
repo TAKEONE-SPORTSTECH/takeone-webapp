@@ -51,36 +51,60 @@
     would size itself to a wrapper instead of the viewport.
 --}}
 @php
+    use App\Events\Support\CoverLanguages;
+
     /* Belt and braces on the one value that lands in a `style` attribute.
        `App\Events\Support\PublicEvent::color()` already refuses anything but
        six hex digits, so nothing can reach here to be injected — but every
        other surface that paints an organiser-supplied colour re-checks it at
-       the point of use (`event-public-link`, `event-section-band`,
-       `event-cover`), and a partial should not be the one place that trusts its
-       caller to have done it. */
+       the point of use, and a partial should not be the one place that trusts
+       its caller to have done it. */
     $coverColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($e['color'] ?? ''))
         ? $e['color']
-        : '#7c3aed';
+        : '#1677FF';
 
-    /* The eyebrow is the classification, the way the design says it:
-       "JIU JITSU CHAMPIONSHIP" — the sport, then what kind of event it is.
-       An event type often NAMES its sport already ("Karate Championship"), so
-       prefixing blindly gives "Karate Karate Championship". Only add the sport
-       when the type has not said it. */
-    $coverType  = trim($e['type'] ?? '');
-    $coverSport = trim($e['sport_label'] ?? '');
-    $coverEyebrow = ($coverSport && ! Str::contains(Str::lower($coverType), Str::lower($coverSport)))
-        ? trim($coverSport . ' ' . $coverType)
-        : $coverType;
+    /* Every language the carousel offers, already rendered into every language
+       — see App\Events\Support\CoverLanguages for why the whole set has to
+       arrive with the page rather than be fetched per scroll. */
+    $coverEvent = \App\Models\ClubEvent::where('uuid', $e['uuid'] ?? $e['key'])->first();
+    $coverLangs = $coverEvent ? CoverLanguages::for($coverEvent, $e) : [];
 
-    /* "Fri 18 Sep · Isa Sports City, Hall 2" — one line, day then place. A
-       competition running over more than one day says so as a range. */
-    $coverWhen = trim("{$e['wday']} {$e['day']} {$e['mon']}");
-    if (($e['end_date'] ?? null) && $e['end_date'] !== ($e['date'] ?? null)) {
-        $coverWhen .= ' — ' . \Illuminate\Support\Carbon::parse($e['end_date'])->format('j M');
-    }
+    /* ===== Where the strip starts =====
+
+       ENGLISH, unless this reader has explicitly chosen a language for THIS
+       event (asked for 2026-09-09).
+
+       ⚠️ Not `app()->getLocale()`, which was the bug. That resolves through the
+       whole chain — a signed-in member's saved account language, and failing
+       that the browser's `Accept-Language` header — so a visitor whose phone
+       happens to be set to Turkish opened the cover with the Turkish card
+       centred and the whole screen already in Turkish, having chosen nothing.
+       A browser header is a hint about what somebody CAN read, not a decision
+       they made, and the cover exists to ask for the decision.
+
+       `EventLocale::get()` returns a value only when a person actually picked a
+       language on this event, in this session — so an explicit choice is still
+       honoured when the cover is reopened from the poster's band, and
+       everything else starts where a stranger should: English. */
+    $coverChosen = \App\Translation\EventLocale::get(request(), (string) ($e['uuid'] ?? $e['key']));
+    $coverActive = $coverChosen ?: 'en';
+
+    /* ⚠️ A DIFFERENT QUESTION from where the strip starts: what language the
+       page underneath is actually rendered in. Enter needs both — it reloads
+       only when the two differ, so confirming the language you are already
+       reading costs nothing. */
+    $coverServing = app()->getLocale();
 @endphp
-<div x-data="eventCover()" x-cloak @reopen-cover.window="reopen()">
+
+<div x-data="eventCover()" x-cloak @reopen-cover.window="reopen()"
+     {{-- The language sheet navigates away by submitting a form. It says so
+          first, so the cover does not paint over the page on the way back. --}}
+     @cover-seen.window="markSeen()"
+     {{-- The carousel is plain JS and has no Alpine scope of its own, so this
+          is how it asks the cover to close — when Enter is pressed on the
+          language the page is ALREADY being served in and there is nothing to
+          reload. See partials/cover-carousel. --}}
+     @cover-dismiss.window="dismiss()">
     <template x-teleport="body">
         <div x-show="open" x-cloak
              @keydown.escape.window="dismiss()"
@@ -90,112 +114,122 @@
              class="ev-app-fixed fixed inset-x-0 top-0 z-[80] overflow-hidden text-white select-none"
              {{-- NOT `inset-0`. On a phone that resolves against the LAYOUT
                   viewport, which is the tall one — the height the page has when
-                  the URL bar is hidden. With the bar showing, the overlay is
-                  taller than what you can actually see and its top slides up
-                  behind the browser chrome, which ate the top of the artwork.
-                  `100dvh` is the DYNAMIC viewport: exactly the visible area,
-                  re-measured as the bar shows and hides. `100vh` first, so a
-                  browser too old for dvh still gets a full screen. --}}
-             style="background: #070b14; height: 100vh; height: 100dvh;">
+                  the URL bar is hidden. `100dvh` is the DYNAMIC viewport:
+                  exactly the visible area, re-measured as the bar shows and
+                  hides. `100vh` first, so a browser too old for dvh still gets
+                  a full screen. --}}
+             style="background:#070b14; height:100vh; height:100dvh;">
 
-            {{-- ===== The ground behind the poster =====
+            {{-- ===== The frame, exactly as the draft measures it =====
+                 520px maximum, centred, the artwork full-bleed behind it. --}}
+            <div style="position:relative; width:100%; max-width:520px; min-height:100%; height:100%; margin:0 auto; overflow:hidden; background:#070b14; color:#ffffff; user-select:none;">
 
-                 A competition poster is a composed thing — its own title, its
-                 own margins. It was shown WHOLE and centred for that reason,
-                 with a blurred copy carried to the edges behind it — and that is
-                 no longer what this is. At the user's instruction (2026-09-02)
-                 THE ARTWORK IS THE SCREEN: full-bleed, `object-cover`, centred
-                 and sharp, with the type laid across its base.
-
-                 The trade that buys: `object-cover` crops to fill, so a poster
-                 whose own title runs close to its edges can lose a little of it.
-                 A portrait poster in a portrait phone barely crops at all, which
-                 is the common case here; the uncropped artwork is on the page
-                 underneath either way. --}}
-            @if($e['photo'])
-                <img src="{{ $e['photo'] }}" alt=""
-                     class="absolute inset-0 w-full h-full object-cover"
-                     {{-- `center top`: a poster puts its name at the TOP, so when
-                          `object-cover` has to crop, it must take the
-                          slack off the bottom and never off the title. --}}
-                     style="object-position: center top;">
-            @else
-                <div class="absolute inset-0"
-                     style="background:
+                @if($e['photo'])
+                    {{-- `center top`: a poster puts its name at the TOP, so when
+                         `object-cover` has to crop it takes the slack off the
+                         bottom and never off the title. --}}
+                    <img src="{{ $e['photo'] }}" alt=""
+                         style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top;">
+                @else
+                    <div style="position:absolute; inset:0; background:
                         radial-gradient(120% 80% at 82% -10%, {{ $coverColor }}cc 0%, {{ $coverColor }}44 42%, transparent 72%),
                         radial-gradient(90% 70% at -15% 42%, {{ $coverColor }}66 0%, transparent 68%);"></div>
-                <div class="absolute inset-0 opacity-[.55]"
-                     style="background: linear-gradient(118deg, transparent 34%, rgba(255,255,255,.06) 46%, transparent 58%);"></div>
-                <div class="absolute -right-16 -top-20 w-72 h-72 rounded-full bg-white/10"></div>
-                <div class="absolute -left-12 bottom-28 w-48 h-48 rounded-full bg-white/[.06]"></div>
-            @endif
+                @endif
 
-            {{-- The scrim: clear at the top, near-opaque by the bottom, so the
-                 type block sits on a known ground whatever was uploaded. --}}
-            <div class="absolute inset-0"
-                 style="background: linear-gradient(180deg, rgba(7,11,20,0) 0%, rgba(7,11,20,0) 46%, rgba(7,11,20,.55) 70%, rgba(7,11,20,.90) 88%, rgba(7,11,20,.97) 100%);"></div>
+                {{-- The scrim: clear at the top, near-opaque by the bottom, so
+                     the type sits on a known ground whatever was uploaded. --}}
+                <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(7,11,20,0) 0%, rgba(7,11,20,0) 40%, rgba(7,11,20,.55) 62%, rgba(7,11,20,.92) 82%, rgba(7,11,20,.98) 100%);"></div>
 
-            {{-- One tap anywhere opens the page — the whole cover is the
-                 control, with the CTA below as the visible affordance. It is a
-                 real <button>, so it is reachable by keyboard and announced as
-                 what it is; the CTA inside is therefore a <span>, never a
-                 nested button. --}}
-            {{-- Tap anywhere still opens the page, but this is a DIV now, not one
-                 screen-sized <button>: the cover carries a real <a> to the entry
-                 form, and an anchor may not nest inside a button. The two CTAs
-                 below are the focusable controls, which is better for a keyboard
-                 than one unlabelled giant target ever was. --}}
-            <div @click="dismiss()"
-                    x-transition:leave="transition ease-in duration-300"
-                    x-transition:leave-start="opacity-100 scale-100"
-                    x-transition:leave-end="opacity-0 scale-[1.03]"
-                    class="relative z-10 w-full h-full flex flex-col text-start
-                           px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
+                <div style="position:relative; z-index:1; min-height:100%; height:100%; display:flex; flex-direction:column; padding:24px 0 max(28px, env(safe-area-inset-bottom));">
 
-                {{-- ===== The poster, whole and centred =====
-                     `flex-1 min-h-0` gives it whatever room the type block
-                     leaves, and `object-contain` fits the artwork inside that
-                     box without cropping a pixel off any edge. --}}
-                {{-- A spacer, not a picture: the artwork is the BACKGROUND now, so
-                     all this does is push the type block down to the foot of the
-                     frame. --}}
-                <span class="flex-1 min-h-0"></span>
+                    {{-- The artwork gets whatever room the type block leaves. --}}
+                    <div style="flex:1 1 auto;"></div>
 
-                {{-- ===== Rule, eyebrow, rule =====
-                     Centred, with a stroke on BOTH sides. One stroke pointed at
-                     the type and made the line look like it had been pushed to
-                     the left; a matching one closes it, and the classification
-                     reads as a caption on the poster rather than a label stuck
-                     to its edge. --}}
-                <div class="flex items-center justify-center gap-3.5 m-in" style="animation-delay:.06s">
-                    <span class="h-1 w-[38px] rounded-full flex-shrink-0"
-                          style="background: {{ $coverColor }};"></span>
-                    @if($coverEyebrow)
-                        <span class="text-[10.5px] font-bold uppercase tracking-[.12em] text-white/85">
-                            {{ $coverEyebrow }}
-                        </span>
-                        <span class="h-1 w-[38px] rounded-full flex-shrink-0"
-                              style="background: {{ $coverColor }};"></span>
-                    @endif
+                    {{-- ===== Rule · classification · rule ===== --}}
+                    <div style="display:flex; align-items:center; justify-content:center; gap:14px; padding:0 24px; animation:rise .5s ease both;">
+                        <span style="height:4px; width:38px; border-radius:9999px; background:{{ $coverColor }}; flex:none;"></span>
+                        <span data-cover-tag style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:rgba(255,255,255,.9); text-align:center;"></span>
+                        <span style="height:4px; width:38px; border-radius:9999px; background:{{ $coverColor }}; flex:none;"></span>
+                    </div>
+
+                    <h1 data-cover-title style="font-size:26px; line-height:31px; font-weight:800; margin:18px 16px 0; text-align:center; animation:rise .5s .06s ease both;"></h1>
+                    <p data-cover-date style="font-size:15px; color:rgba(255,255,255,.7); margin:11px 0 0; text-align:center; animation:rise .5s .12s ease both;"></p>
+
+                    {{-- ===== The language carousel ===== --}}
+                    <div style="margin-top:24px; animation:rise .5s .18s ease both;">
+                        <p data-cover-langlabel style="font-size:13px; line-height:18px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.7); margin:0; text-align:center;"></p>
+
+                        <div style="position:relative;">
+                            <button type="button" data-cover-prev aria-label="{{ __('events.cover_language') }}"
+                                    style="position:absolute; left:8px; top:50%; transform:translateY(-50%); z-index:2; width:30px; height:30px; border-radius:9999px; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); cursor:pointer;">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <button type="button" data-cover-next aria-label="{{ __('events.cover_language') }}"
+                                    style="position:absolute; right:8px; top:50%; transform:translateY(-50%); z-index:2; width:30px; height:30px; border-radius:9999px; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); cursor:pointer;">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+
+                            <div class="ps-strip" data-cover-strip tabindex="0"
+                                 style="display:flex; align-items:center; gap:14px; direction:ltr; overflow-x:auto; scroll-snap-type:x mandatory; padding:26px calc(50% - 52px) 26px; outline:none; -webkit-mask-image:linear-gradient(to right, transparent, #000 30px, #000 calc(100% - 30px), transparent); mask-image:linear-gradient(to right, transparent, #000 30px, #000 calc(100% - 30px), transparent);">
+                                {{-- THREE copies of the list: the strip loops by
+                                     silently jumping one copy-width when the
+                                     scroll settles near an edge, so it can be
+                                     flicked for ever in either direction. --}}
+                                @for($copy = 0; $copy < 3; $copy++)
+                                    @foreach($coverLangs as $i => $lang)
+                                        <button type="button" class="ps-card" data-index="{{ $copy * count($coverLangs) + $i }}"
+                                                title="{{ $lang['title'] }}"
+                                                style="scroll-snap-align:center; flex:none; width:104px; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; padding:10px; border-radius:20px; background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.2); color:#fff; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); transition:background-color .28s ease, border-color .28s ease, box-shadow .28s ease, color .28s ease; will-change:transform;">
+                                            @if($lang['flag'])
+                                                <span class="fi fi-{{ $lang['flag'] }}" style="width:44px; height:33px; border-radius:8px; background-size:cover; flex:none; box-shadow:0 6px 18px rgba(0,0,0,.45); outline:1px solid rgba(255,255,255,.35); outline-offset:-1px;"></span>
+                                            @else
+                                                {{-- A language with no honest flag gets its own code on a
+                                                     plate, never a borrowed country. --}}
+                                                <span style="width:44px; height:33px; border-radius:8px; flex:none; display:grid; place-items:center; font-size:12px; font-weight:800; background:rgba(255,255,255,.16); outline:1px solid rgba(255,255,255,.35); outline-offset:-1px;">{{ strtoupper(substr($lang['code'], 0, 2)) }}</span>
+                                            @endif
+                                            <span dir="{{ $lang['dir'] }}" style="font-size:12px; font-weight:800; line-height:1.15; letter-spacing:-.01em; max-width:94px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ $lang['native'] }}</span>
+                                        </button>
+                                    @endforeach
+                                @endfor
+                            </div>
+                        </div>
+
+                        <div style="text-align:center; height:18px; margin-top:-5px;">
+                            <span data-cover-seltitle style="font-size:13px; line-height:18px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.7); display:inline-block;"></span>
+                        </div>
+                    </div>
+
+                    {{-- ===== Search · Enter ===== --}}
+                    <div style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:20px; padding:0 20px; animation:rise .5s .24s ease both;">
+                        @if(count($coverLangs) > 1)
+                            <button type="button" data-cover-search
+                                    style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:170px; height:54px; padding:0; border-radius:9999px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); font-size:16px; font-weight:700; color:rgba(255,255,255,.85); cursor:pointer;">
+                                <i class="bi bi-search" style="font-size:13px;"></i><span data-cover-searchlabel></span>
+                            </button>
+                        @endif
+
+                        {{-- ⚠️ The ONLY deliberate way past the cover for somebody
+                             happy with the language they are already reading in.
+                             Tapping the artwork does NOT enter — removed
+                             2026-09-09 at the user's instruction, because the
+                             gestures of CHOOSING a language and of giving up and
+                             going in were the same gesture. --}}
+                        <button type="button" data-cover-enter
+                                style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:170px; height:54px; padding:0; border:0; border-radius:9999px; font-size:16px; font-weight:800; color:#fff; cursor:pointer; background:{{ $coverColor }}; box-shadow:0 10px 26px rgba(0,0,0,.35);">
+                            <span data-cover-enterlabel></span>
+                            <i class="bi bi-arrow-right rtl:rotate-180" style="font-size:12px;"></i>
+                        </button>
+                    </div>
                 </div>
-
-                {{-- ===== The name of the thing ===== --}}
-                <h1 class="text-[21px] leading-[25px] font-bold mt-[18px] m-in text-center" style="animation-delay:.12s">
-                    {{ $e['title'] }}
-                </h1>
-
-                {{-- ===== When, and where ===== --}}
-                <p class="text-[12.5px] text-white/60 mt-[11px] m-in text-center" style="animation-delay:.18s">
-                    {{ $coverWhen }}@if($e['location'] && $e['location'] !== 'TBA') · {{ $e['location'] }}@endif
-                </p>
-
-                {{-- ===== Language, then the two doors =====
-                     One shared block, so the flags and the tiles cannot drift
-                     between the two covers (partials/cover-actions). --}}
-                @include('entry.public.partials.cover-actions')
             </div>
         </div>
     </template>
 </div>
+
+@include('entry.public.partials.cover-carousel', [
+    'coverLangs' => $coverLangs,
+    'coverActive' => $coverActive,
+    'coverServing' => $coverServing,
+])
 
 @include('entry.public.partials.cover-script')

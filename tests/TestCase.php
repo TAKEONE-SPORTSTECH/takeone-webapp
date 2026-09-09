@@ -34,6 +34,16 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->assertRealtimeIsSilenced();
+
+        /*
+         * ⚠️ The interface-string loader memoises what it has read, in a STATIC
+         * — it has to, because the store forgets a file after a write and has
+         * no handle on the loader instance. A static has no request boundary,
+         * so in a suite (hundreds of "requests", one process) `RefreshDatabase`
+         * rolls the rows back while the memo keeps serving them: one test's
+         * correction leaks into the next, which is exactly how this was found.
+         */
+        \App\Translation\Translations::flushInterfaceCache();
     }
 
     private function assertSafeTestDatabase(): void

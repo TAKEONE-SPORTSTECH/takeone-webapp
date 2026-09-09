@@ -49,7 +49,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'business'])->prefix('busin
 // Market item creators — PREVIEW of the reusable product/category form
 // components (form UI only, no DB yet). Drop the components into club admin /
 // seller area / personal mobile when wiring the real backend.
-Route::middleware(['auth', 'verified'])->get('/market/forms-preview', function () {
+Route::middleware(['auth', 'verified', 'role:super-admin'])->get('/market/forms-preview', function () {
     return view('market.forms-preview');
 })->name('market.forms-preview');
 
@@ -63,7 +63,7 @@ Route::middleware(['auth', 'verified'])->get('/market/forms-preview', function (
 | so the address cannot be used to discover which events exist.
 */
 Route::get('/e/{event:uuid}', [App\Http\Controllers\PublicEventController::class, 'show'])
-    ->name('events.public')->middleware('throttle:60,1')->whereUuid('event');
+    ->name('events.public')->middleware('throttle:public-event')->whereUuid('event');
 
 /*
 | Phase C — enrolling from that page. The ONE place on the platform where a
@@ -77,9 +77,9 @@ Route::get('/e/{event:uuid}', [App\Http\Controllers\PublicEventController::class
 // App\Events\Support\PublicBrand decides what it is branded as; both doors
 // 404 for an event nobody published, like every other public surface.
 Route::get('/e/{event:uuid}/app.webmanifest', [App\Http\Controllers\PublicEventController::class, 'manifest'])
-    ->name('events.public.manifest')->middleware('throttle:60,1')->whereUuid('event');
+    ->name('events.public.manifest')->middleware('throttle:public-event')->whereUuid('event');
 Route::get('/e/{event:uuid}/icon-{size}.png', [App\Http\Controllers\PublicEventController::class, 'icon'])
-    ->name('events.public.icon')->middleware('throttle:120,1')->whereUuid('event')->whereNumber('size');
+    ->name('events.public.icon')->middleware('throttle:public-event')->whereUuid('event')->whereNumber('size');
 
 // The event's attached files — rulebook, entry form, schedule. Open only while
 // the organiser has the public page ON, and throttled: a download is cheap to
@@ -94,7 +94,7 @@ Route::get('/e/{event:uuid}/documents/{document:uuid}', [App\Http\Controllers\Pu
 // auth stack and its organiser's view untouched. Throttled a little above the
 // page itself because the board re-fetches when a division is switched.
 Route::get('/e/{event:uuid}/draw/data', [App\Http\Controllers\PublicEventController::class, 'drawData'])
-    ->name('events.public.draw.data')->middleware('throttle:120,1')->whereUuid('event');
+    ->name('events.public.draw.data')->middleware('throttle:public-event')->whereUuid('event');
 
 // The four doors out of the public event page — the draw, the officiating
 // sheet, the footage and the entry list, each on its own page exactly as the
@@ -103,7 +103,7 @@ Route::get('/e/{event:uuid}/draw/data', [App\Http\Controllers\PublicEventControl
 // allowlist means an unknown section 404s at the router instead of reaching a
 // view name built from user input.
 Route::get('/e/{event:uuid}/{section}', [App\Http\Controllers\PublicEventController::class, 'section'])
-    ->name('events.public.section')->middleware('throttle:60,1')->whereUuid('event')
+    ->name('events.public.section')->middleware('throttle:public-event')->whereUuid('event')
     ->whereIn('section', ['draw', 'officials', 'gallery', 'participants']);
 
 /*
@@ -615,7 +615,7 @@ Route::get('/lab/activity-video', function () {
     $activity = \App\Models\ActivityCatalog::where('uuid', '7c4afd25-1a69-48c1-8ba2-c1b136af0cea')->first();
 
     return view('lab.activity-video', ['activity' => $activity]);
-})->middleware('throttle:60,1')->name('lab.activity-video');
+})->middleware(['auth', 'verified', 'role:super-admin', 'throttle:60,1'])->name('lab.activity-video');
 
 // PUBLIC viewer for a global-directory activity — rich, shareable content page
 // (QR-linked). No auth: general sport knowledge, no tenant/personal data. Bound
@@ -656,6 +656,25 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::put('/ai/providers/{provider}', [App\Http\Controllers\Admin\AiProviderController::class, 'update'])->name('ai.update')->middleware('throttle:admin-write');
     Route::delete('/ai/providers/{provider}', [App\Http\Controllers\Admin\AiProviderController::class, 'destroy'])->name('ai.destroy')->middleware('throttle:admin-write');
     Route::post('/ai/providers/{provider}/test', [App\Http\Controllers\Admin\AiProviderController::class, 'test'])->name('ai.test')->middleware('throttle:admin-write');
+
+    /*
+     * The platform's own languages. Super-admin only, and inside this group's
+     * existing role gate — these are the PRODUCT's words, not a tenant's, and
+     * a run spends money at a paid provider.
+     */
+    Route::get('/languages', [App\Http\Controllers\Admin\LanguageController::class, 'index'])->name('languages.index');
+    Route::get('/languages/{locale}/strings', [App\Http\Controllers\Admin\LanguageController::class, 'show'])->name('languages.strings');
+    Route::get('/languages/{locale}/status', [App\Http\Controllers\Admin\LanguageController::class, 'status'])->name('languages.status');
+    Route::put('/languages/{locale}', [App\Http\Controllers\Admin\LanguageController::class, 'update'])->name('languages.update')->middleware('throttle:admin-write');
+    // Starts work at a paid provider, so it carries the translate ceiling on
+    // top of the admin-write one — the same guard the public door has.
+    Route::post('/languages/{locale}/translate', [App\Http\Controllers\Admin\LanguageController::class, 'translate'])
+        ->name('languages.translate')->middleware(['throttle:admin-write', 'throttle:translate']);
+
+    // Which model writes the event translations — Claude, a local Ollama, or
+    // anything else configured above. Separate from the Copilot's default on
+    // purpose; see AiProviderController::translationPrimary().
+    Route::post('/ai/translation-primary', [App\Http\Controllers\Admin\AiProviderController::class, 'translationPrimary'])->name('ai.translation-primary')->middleware('throttle:admin-write');
 
     // Storage — the media vaults video is kept on. None attached is the default
     // and a complete configuration; attaching one moves new media onto it.

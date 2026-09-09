@@ -61,4 +61,30 @@ final class EnrolmentDecision
     {
         return self::deny($code, $message, deferrable: true);
     }
+
+    /**
+     * The same verdict, routed into a division somebody chose by hand.
+     *
+     * An organiser placing a competitor into a named division — Gi rather than
+     * No-Gi, this weight group rather than the one their profile implies — is
+     * exercising the same authority that arranges a draw. So the division is
+     * replaced and NOTHING else is: `allowed`, the code, the message, the
+     * recorded weight and `deferrable` all survive, because the gate's answer
+     * about the PERSON is not the organiser's to overrule.
+     *
+     * Returns a new decision rather than mutating this one — every property
+     * here is readonly, and a gate's verdict is a fact about one question.
+     */
+    public function intoCategory(EventCategory $category): self
+    {
+        return new self(
+            allowed: $this->allowed,
+            code: $this->code,
+            message: $this->message,
+            category: $category,
+            weight: $this->weight,
+            offerSpectator: $this->offerSpectator,
+            deferrable: $this->deferrable,
+        );
+    }
 }

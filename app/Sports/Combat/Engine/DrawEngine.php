@@ -30,6 +30,12 @@ class DrawEngine
         $changed = false;
 
         foreach ($event->categories()->withCount('matches')->get() as $cat) {
+            // A heading is a title in the organiser's list of divisions, not a
+            // division: nothing is entered in it and there is nothing to draw.
+            if ($cat->isHeading()) {
+                continue;
+            }
+
             if ($cat->draw_state === null && $cat->matches_count > 0) {
                 continue; // hand-built bracket
             }

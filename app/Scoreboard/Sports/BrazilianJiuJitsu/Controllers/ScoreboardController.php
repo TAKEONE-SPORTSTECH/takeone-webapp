@@ -96,22 +96,35 @@ class ScoreboardController extends Controller
      * two drift and a mat behaves differently depending on how somebody opened
      * it. Only the addresses it posts to differ.
      *
-     * Desktop and mobile are SEPARATE files (CLAUDE.md → Mobile / Desktop
-     * Separation): the ten-inch tablet a referee holds beside the mat and the
-     * laptop at the table are not the same screen with different breakpoints —
-     * one is a thumb-reachable pair of scoring columns, the other is the full
-     * three-column panel with the event log along the bottom.
+     * ONE console, on every device — decided by the user 2026-09-08.
+     *
+     * This used to pick a thumb-first tablet console off DetectDevice's
+     * $isMobile, and it was wrong in both halves. The detection was wrong:
+     * DetectDevice only excuses `iPad|Tablet`, and an Android tablet — Chrome
+     * and the WebView in the `tab` APK alike — announces "Android" with no
+     * tablet token, so the ten-inch table at the mat resolved as a PHONE. And
+     * the premise was wrong: an official who has learnt this instrument at the
+     * table must not find a differently-shaped one when they pick up the
+     * tablet. A console that changes shape with the device is a console you
+     * have to learn twice, mid-event, at the mat.
+     *
+     * So the device is not asked. The console is authored at 1920x1080 and
+     * SCALES — `min(w/1920, h/1080)`, centred and letterboxed (see the `fit()`
+     * in desktop/control.blade.php) — so a laptop, a 10" tablet in either
+     * orientation and a phone all get the same layout at the size their glass
+     * allows. Same reading order, same muscle memory, same everything.
+     *
+     * Kept as `desktop/` rather than renamed: the file is untouched and moving
+     * it would rewrite every reference for no behavioural gain (RULE #1).
+     * mobile/control.blade.php, react/control-mobile.blade.php and
+     * console-mobile-styles.blade.php are now unreferenced and are registered
+     * in Documentation/HOUSE-CLEANING.md — NOT deleted here, so this is one
+     * line to reverse if a referee ever does want the thumb console back.
      */
     private function consoleView(ClubEvent $event, $mats, string $court, array $urls)
     {
         $state = MatState::forMat($event, $court);
         $state->setRelation('event', $event);
-
-        // The shared flag the DetectDevice middleware sets (`is_mobile` on the
-        // request, `isMobile` in views). Read from the request rather than the
-        // view bag so a token-paired console — which renders outside a normal
-        // page context — resolves the same way an organiser's laptop does.
-        $isMobile = (bool) request()->attributes->get('is_mobile', view()->shared('isMobile', false));
 
         // Phase M3: the React console, when the flag is on. It is a REPLACEMENT
         // for the document, not an addition to it — only one of the two ever
@@ -119,11 +132,11 @@ class ScoreboardController extends Controller
         // below. Turning the flag off restores this page exactly, mid-event.
         $react = (bool) config('features.react_scoreboard');
 
+        // No device branch, on purpose — see the note above. The console scales
+        // itself to whatever glass it is opened on.
         $view = $react
-            ? ($isMobile ? 'scoreboard::bjj.scoreboard.react.control-mobile'
-                         : 'scoreboard::bjj.scoreboard.react.control')
-            : ($isMobile ? 'scoreboard::bjj.scoreboard.mobile.control'
-                         : 'scoreboard::bjj.scoreboard.desktop.control');
+            ? 'scoreboard::bjj.scoreboard.react.control'
+            : 'scoreboard::bjj.scoreboard.desktop.control';
 
         return view($view, [
             'event' => $event,

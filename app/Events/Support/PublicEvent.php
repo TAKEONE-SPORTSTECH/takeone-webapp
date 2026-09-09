@@ -5,6 +5,9 @@ namespace App\Events\Support;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\EventAccess;
 use App\Models\ClubEvent;
+use App\Support\Cldr;
+use App\Translation\TranslatedDocument;
+use App\Translation\Translations;
 use App\Models\ClubEventRegistration;
 use Carbon\Carbon;
 
@@ -62,6 +65,22 @@ class PublicEvent
         $end = $event->end_time ? strtotime($event->end_time) : null;
         $going = $event->participantRegistrations()->count();
 
+        /*
+         * The organiser's own words, in the language this reader picked.
+         *
+         * ⚠️ READ ONLY. This never starts a translation — a page render must
+         * not be able to spend money, or a crawler walking sixty ?lang values
+         * would queue sixty jobs per event. Starting one is an explicit act
+         * with a rate limit on it (TranslationController::prepare), reached by
+         * a person choosing a language.
+         *
+         * Every accessor below falls back to the source text, so an event with
+         * no translations, a locale we do not serve, a missing provider or a
+         * dead queue all render exactly the page that rendered before this
+         * module existed (RULE #1).
+         */
+        $tr = Translations::of($event);
+
         // The SAME keys the member page's payload uses
         // (PersonalEventController::eventView). Not a coincidence and not
         // convenience: the two pages render from the same partials, so they
@@ -76,8 +95,8 @@ class PublicEvent
             'key' => $event->uuid,
             'uuid' => $event->uuid,
 
-            'title' => $event->title,
-            'about' => $event->description ?? '',
+            'title' => $tr->get('title', $event->title),
+            'about' => $tr->get('about', $event->description ?? ''),
             'club' => $event->tenant?->club_name ?? '',
             'host' => $event->tenant?->club_name,
             'host_logo' => $event->tenant?->logo ? file_url($event->tenant->logo) : null,
@@ -90,39 +109,73 @@ class PublicEvent
             'icon' => $this->icon($event->icon ?: 'bi-trophy'),
             'type' => $type->label(),
             'sport' => $event->sport,
-            'sport_label' => $event->sport ? ucfirst($event->sport) : null,
+            /*
+             * The sport's own NAME, from the schema — not `ucfirst` of the
+             * column.
+             *
+             * `ucfirst('bjj')` is "Bjj", and the poster's classification line
+             * prefixes the sport onto the type unless the type already says it:
+             * "Bjj" is not a substring of "Jiu-Jitsu Championship", so the
+             * poster read **"Bjj Jiu-Jitsu Championship"** while the member page
+             * — which has always read the schema — read "Brazilian Jiu-Jitsu
+             * Championship". One event, two names, on the two faces this work
+             * exists to keep in step. Found 2026-09-08 by diffing the cover
+             * across both surfaces.
+             *
+             * Same source as the member payload now (`config/event_schema.php`),
+             * falling back to the old behaviour for a sport the schema does not
+             * list, so nothing that renders today can start rendering blank.
+             */
+            // Through App\Support\SportLabel, so the sport's name is in the
+            // reader's language too. The schema keeps deciding WHICH sports
+            // exist; only the words are translatable now.
+            'sport_label' => \App\Support\SportLabel::for(
+                $event->sport,
+                $event->sport ? (config('event_schema.sports.'.$event->sport.'.label') ?: ucfirst($event->sport)) : null,
+            ),
             'sport_icon' => 'bi-dribbble',
             'scope' => $event->scope ?? 'internal',
             'scope_label' => null,   // an internal audience word; not a poster fact
             'photo' => $this->photo($event),
 
-            /* ⚠️ translatedFormat, never format.
+            /* ⚠️ App\Support\Cldr, never `format()` and no longer
+             * `translatedFormat()` either.
              *
-             * `format()` is locale-BLIND: it prints "Fri 18 Sep" whatever the
+             * `format()` is locale-BLIND: it printed "Fri 18 Sep" whatever the
              * page's language, so the poster's date chip stayed English inside
              * an otherwise Arabic column (reported 2026-09-04). Carbon's
-             * `translatedFormat()` takes the same pattern and renders the month
-             * and weekday in the active locale, which SetLocale has already
-             * put in place by the time this payload is built.
+             * `translatedFormat()` fixed the WORDS and was still wrong, which
+             * took until 2026-09-09 to see: it keeps the pattern, so a Chinese
+             * reader got Chinese tokens in English order —
+             *
+             *     周五 18 9月      instead of   9月18日星期五
+             *     3:00 下午        instead of   15:00
+             *
+             * — and no single pattern string can be right for sixty-eight
+             * languages. `Cldr` asks for the FIELDS (a day, a short month) and
+             * lets CLDR decide the order, the separators, the digits and
+             * whether this language even uses a 12-hour clock. See
+             * App\Support\Cldr.
              *
              * `date_iso` and `day` keep raw values on purpose: one is a machine
-             * string, the other a bare number with nothing to translate. The
-             * TIME goes through Carbon too, so its AM/PM is the locale's own
-             * (ص / م in Arabic) — parsed from the same wall clock rather than
-             * a timestamp, so no timezone maths creeps into a display string.
+             * string, the other a bare number with nothing to translate.
              */
             'day' => $date->format('d'),
-            'mon' => $date->translatedFormat('M'),
-            'wday' => $date->translatedFormat('D'),
+            'mon' => Cldr::skeleton($date, 'MMM', 'M'),
+            'wday' => Cldr::skeleton($date, 'EEE', 'D'),
             'date_iso' => $date->toDateString(),
-            'date' => $event->date?->translatedFormat('l, j F Y'),
-            'end_date' => $event->end_date?->translatedFormat('l, j F Y'),
-            'time' => $start ? Carbon::parse(date('Y-m-d H:i:s', $start))->translatedFormat('g:i A') : __('events.tba'),
-            'end' => $end ? Carbon::parse(date('Y-m-d H:i:s', $end))->translatedFormat('g:i A') : '',
-            'deadline' => $event->enrollment_ends_at?->translatedFormat('l, j F'),
+            'date' => $event->date ? Cldr::fullDate($event->date) : null,
+            'end_date' => $event->end_date ? Cldr::fullDate($event->end_date) : null,
+            // The same day, short, for the cover's "18 — 19 Sep" range. Built
+            // here because it is a DATE here and only a sentence by the time a
+            // template sees `end_date`.
+            'end_date_short' => $event->end_date ? Cldr::shortDate($event->end_date) : null,
+            'time' => $start ? Cldr::time(Carbon::parse(date('Y-m-d H:i:s', $start))) : __('events.tba'),
+            'end' => $end ? Cldr::time(Carbon::parse(date('Y-m-d H:i:s', $end))) : '',
+            'deadline' => $event->enrollment_ends_at ? Cldr::dayMonth($event->enrollment_ends_at) : null,
 
-            'location' => $event->location ?: 'TBA',
-            'address' => $event->location ?: '',
+            'location' => $tr->get('location', $event->location) ?: 'TBA',
+            'address' => $tr->get('location', $event->location) ?: '',
             // An organiser TYPES this, and it lands in an href on a page a
             // stranger opens. A `javascript:` (or `data:`) URI there is script
             // execution, and Blade's escaping does not help in a URL context —
@@ -161,7 +214,7 @@ class PublicEvent
             'fee_is_paid' => EventFee::chargesAnything($event, 'participant'),
 
             // The list behind the headline — what the fee chip jumps DOWN to.
-            'fees' => self::feeLines($event),
+            'fees' => self::feeLines($event, $tr),
 
             'spectator' => $event->spectator_enabled
                 ? ['fee' => EventFee::headline($event, 'spectator')]
@@ -169,13 +222,32 @@ class PublicEvent
             'spectator_fee' => $event->spectator_enabled
                 ? EventFee::headline($event, 'spectator')
                 : null,
-            'prize' => $event->prize,
+            'prize' => $tr->get('prize', $event->prize),
 
             // The rules and the shape of the day — what a competitor needs
             // before deciding, and what the packages already publish. The
             // run-of-show carries times and phases, never a name.
             'phases' => $type->timeline($event),
-            'divisions' => $event->categories()->orderBy('sort_order')->pluck('name')->all(),
+            /* Keyed by the division's own id, so a reordered list keeps each
+             * translation attached to the division it belongs to. */
+            'divisions' => $event->categories()->orderBy('sort_order')->get(['id', 'name'])
+                ->map(fn ($c) => $tr->get('divisions.'.$c->id, (string) $c->name))
+                ->all(),
+            /*
+             * The SAME divisions, untranslated, in the same order.
+             *
+             * ⚠️ Not redundancy. `partials/event-detail-card-mobile` groups the
+             * list by parsing "{Age} {Men|Women} {weight}" out of the NAME —
+             * the shape AbstractCombatSport::divisionName() writes. Once the
+             * name is translated that parse fails, and every division collapses
+             * into one unlabelled group: the gender grouping silently
+             * disappears in every language but the one it was written in.
+             *
+             * So the STRUCTURE is read from the source and the WORDS are taken
+             * from the translation. A reader gets "Adulto Homens −60 kg" under
+             * a heading that still knows it means men.
+             */
+            'divisions_source' => $event->categories()->orderBy('sort_order')->pluck('name')->all(),
 
             // The draw, once one exists — a count and a flag here, the bracket
             // itself fetched by the board from `events.public.draw.data`, so a
@@ -189,9 +261,9 @@ class PublicEvent
             // narrowed HERE and nowhere else — see the methods below for what
             // is left out of each and why.
             'officials' => $this->officials($event),
-            'participants' => $this->participants($event),
+            'participants' => $this->participants($event, $tr),
             'gallery' => $this->gallery($event),
-            'requirements' => array_values($event->requirements ?: []),
+            'requirements' => $tr->list('requirements', array_values($event->requirements ?: [])),
             'tags' => array_values($event->tags ?: []),
 
             // What this link is branded AS. A shared competition wears its own
@@ -428,7 +500,7 @@ class PublicEvent
      *
      * @return array{count: int, clubs: int, rows: array<int, array<string, mixed>>}
      */
-    private function participants(ClubEvent $event): array
+    private function participants(ClubEvent $event, TranslatedDocument $tr): array
     {
         $rows = $event->participantRegistrations()
             ->with([
@@ -440,7 +512,7 @@ class PublicEvent
 
         $people = $rows
             ->filter(fn (ClubEventRegistration $r) => $r->user !== null)
-            ->map(function (ClubEventRegistration $r) {
+            ->map(function (ClubEventRegistration $r) use ($tr) {
                 $club = $r->representedTenantId() ? $r->representingTenant : null;
 
                 return [
@@ -448,8 +520,17 @@ class PublicEvent
                     /* The GROUP, not the raw weight class — the two lists must
                        agree, and the group's own name already carries the range
                        it covers ("Group D (80+)"). Falls back to the weight
-                       class for an event whose categories are unnamed. */
-                    'division' => $r->category?->name ?: $r->category?->weight_class,
+                       class for an event whose categories are unnamed.
+                       
+                       ⚠️ TRANSLATED, through the same key the divisions list
+                       uses. It read `$r->category?->name` raw, so a Chinese
+                       reader saw "B组（60+）" in the Divisions section and
+                       "Group B (60+)" against every athlete on the Participants
+                       page — the same division, named twice, in two languages,
+                       on one event. */
+                    'division' => $r->category
+                        ? $tr->get('divisions.'.$r->category->id, (string) ($r->category->name ?: $r->category->weight_class))
+                        : null,
                     'club' => $club?->club_name,
                     'club_logo' => $club?->logo ? file_url($club->logo) : null,
                     'country' => $r->countryCode() ? strtoupper($r->countryCode()) : null,
@@ -569,7 +650,23 @@ class PublicEvent
 
         $divisions = array_map(function (array $d) {
             $d['bouts'] = array_map(function (array $b) {
-                unset($b['url'], $b['arena']);
+                /*
+                 * `url` goes: it is `me.events.bout.video`, which sits behind
+                 * auth + verified + 2FA. A public card that linked there would
+                 * send a signed-out reader to a login form (Navigation
+                 * Integrity), so the public card plays in place instead.
+                 *
+                 * `arena` STAYS. It is what draws the card — the two fighters,
+                 * their clubs and flags, the stage, the weight, the mat, and
+                 * the scoring the ticker replays — and every value in it is
+                 * already public by construction: a face appears only when the
+                 * athlete set `profile_picture_is_public` (BoutArena::corner),
+                 * the clubs and countries are on the roster this same page
+                 * publishes, and the scoring is the officiating log the draw
+                 * and the wall boards already show. Nothing here is narrowed
+                 * per viewer, so it needs no per-viewer branch.
+                 */
+                unset($b['url']);
 
                 return $b;
             }, $d['bouts'] ?? []);
@@ -636,13 +733,16 @@ class PublicEvent
      *
      * @return array<string, mixed>
      */
-    private static function feeLines(ClubEvent $event): array
+    private static function feeLines(ClubEvent $event, TranslatedDocument $tr): array
     {
         $currency = EventFee::currency($event);
 
         $lines = fn (string $role) => EventFee::options($event, $role)
             ->map(fn ($o) => [
-                'label' => (string) $o->label,
+                // The line's own words — "Gi entry", "Late entry" — in the
+                // reader's language; the AMOUNT beside it never goes near a
+                // translator.
+                'label' => $tr->get('fees.'.$o->id, (string) $o->label),
                 'amount' => EventFee::display((float) $o->amount, $currency),
             ])->values()->all();
 
@@ -653,8 +753,9 @@ class PublicEvent
         $late = $lateAmount > 0 && $event->late_fee_from !== null
             ? [
                 'amount' => EventFee::display($lateAmount, $currency),
-                // The moment it starts applying, in the reader's own language.
-                'from' => $event->late_fee_from->translatedFormat('l, j F'),
+                // The moment it starts applying, in the reader's own language
+                // AND their own date order — see the Cldr note above.
+                'from' => Cldr::dayMonth($event->late_fee_from),
             ]
             : null;
 
@@ -705,7 +806,14 @@ class PublicEvent
             ->all();
     }
 
-    private function photo(ClubEvent $event): ?string
+    /**
+     * The event's own artwork — the first image the organiser uploaded.
+     *
+     * PUBLIC since 2026-09-08: the member event page wears the poster's cover
+     * now, and the cover IS this picture. One implementation, called from both,
+     * rather than the same two lines written twice (Shared Stays Shared).
+     */
+    public function photo(ClubEvent $event): ?string
     {
         $images = is_array($event->images) ? $event->images : [];
 

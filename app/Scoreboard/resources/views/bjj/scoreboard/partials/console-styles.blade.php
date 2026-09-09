@@ -263,6 +263,10 @@
 
   /* ── The event log ───────────────────────────────────────────────────── */
   #log{flex:1;min-height:0;overflow:auto;}
+  /* An untouched mat says so, out of the element's own data-empty. Kept in CSS
+     rather than JS so the runtime has one less element to remember to hide. */
+  #log:empty::before{content:attr(data-empty);display:block;padding:60px 14px;text-align:center;
+       font-size:22px;letter-spacing:.06em;color:var(--faint);}
   .logRow{display:flex;align-items:center;gap:16px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:22px;}
   .logRow:last-child{border-bottom:0;}
   /* Nothing is erased: a reversal leaves the row it reversed on the record. */
@@ -290,6 +294,12 @@
 
   /* ── Every pop-up on this console: one scrim, one card, one head ─────── */
   #scrim,.scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:30px;z-index:40;}
+  /* ⚠️ The SHARED dialog sits above every standing panel. It is opened FROM
+     them — undo asks for a reason from inside the score log, recording asks for
+     the match number from inside the end-of-match panel — and those panels are
+     41 and 42, so at the shared 40 the question would be raised behind the card
+     that asked it, with the mat unable to answer either one. */
+  #scrim{z-index:50;}
   /* ⚠️ A pop-up is authored in CANVAS pixels, like everything else on this
      console, but it lives OUTSIDE #stage — a scrim that only covered the
      letterboxed board would leave the rest of the glass live. So it does not

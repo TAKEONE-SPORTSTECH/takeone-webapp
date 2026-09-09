@@ -52,6 +52,33 @@ class BracketView
     /** One division: its rounds, its unplaced entrants, its podium. */
     public function division(EventCategory $c): array
     {
+        /*
+         * A heading is a TITLE in the organiser's list, not a division: it
+         * holds nobody and there is nothing to draw. It still travels in this
+         * payload, in its own position, because that position is the whole
+         * point of it — the reader needs "GI" to appear above the five Gi
+         * brackets, and the client cannot know where it belongs unless it
+         * arrives in order with them.
+         *
+         * Returned in a shape every consumer can already read: empty rounds,
+         * an empty bench, no entrants. A client that has not been taught about
+         * headings therefore draws nothing for one rather than breaking.
+         */
+        if ($c->isHeading()) {
+            return [
+                'id' => $c->id,
+                'name' => $c->name,
+                'is_heading' => true,
+                'weight_class' => null,
+                'status' => $c->status,
+                'draw_state' => null,
+                'entrants' => 0,
+                'rounds' => [],
+                'bench' => [],
+                'podium' => [],
+            ];
+        }
+
         $matches = $c->matches->sortBy('slot')->values();
 
         // Competitors only — a division's registrations also hold spectators and
@@ -70,6 +97,7 @@ class BracketView
         return [
             'id' => $c->id,
             'name' => $c->name,
+            'is_heading' => false,
             'weight_class' => $c->weight_class ?: null,
             'status' => $c->status,
             'draw_state' => $c->draw_state,           // provisional | final | manual | null
