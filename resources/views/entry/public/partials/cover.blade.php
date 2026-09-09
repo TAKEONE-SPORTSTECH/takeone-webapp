@@ -159,12 +159,31 @@
                     <div style="margin-top:24px; animation:rise .5s .18s ease both;">
                         <p data-cover-langlabel style="font-size:13px; line-height:18px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.7); margin:0; text-align:center;"></p>
 
-                        <div style="position:relative;">
-                            <button type="button" data-cover-prev aria-label="{{ __('events.cover_language') }}"
+                        {{-- ⚠️ THE STRIP'S ARROWS NEVER MIRROR — `dir="ltr"`, and no
+                             `rtl:rotate-180` on either chevron.
+
+                             Every other chevron on this platform flips in RTL,
+                             because it points along the reading order — back,
+                             forward, next page. These two do not point along
+                             anything a language decides. They point at the ENDS
+                             OF A PHYSICAL STRIP that is itself pinned
+                             `direction:ltr` (below, from the draft), so the
+                             cards sit in the same order for an Arabic reader as
+                             for an English one. Mirroring the arrows would aim
+                             them away from the card they move you to.
+
+                             The rule in the stylesheet enforces it, because
+                             this convention is unusual here and the obvious
+                             "fix" is to add the flip back (stated 2026-09-09).
+                             The Enter button's arrow is NOT exempt: that one
+                             does mean "forward", and forward is leftwards in
+                             Arabic. --}}
+                        <div style="position:relative;" dir="ltr">
+                            <button type="button" dir="ltr" data-cover-prev aria-label="{{ __('events.cover_language') }}"
                                     style="position:absolute; left:8px; top:50%; transform:translateY(-50%); z-index:2; width:30px; height:30px; border-radius:9999px; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); cursor:pointer;">
                                 <i class="bi bi-chevron-left"></i>
                             </button>
-                            <button type="button" data-cover-next aria-label="{{ __('events.cover_language') }}"
+                            <button type="button" dir="ltr" data-cover-next aria-label="{{ __('events.cover_language') }}"
                                     style="position:absolute; right:8px; top:50%; transform:translateY(-50%); z-index:2; width:30px; height:30px; border-radius:9999px; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); cursor:pointer;">
                                 <i class="bi bi-chevron-right"></i>
                             </button>

@@ -43,6 +43,13 @@
     @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
     .ps-strip { scrollbar-width:none; }
     .ps-strip::-webkit-scrollbar { display:none; }
+    /* ⚠️ The strip's arrows never mirror. They point at the ends of a physical
+       strip, not along a reading order, so an RTL page must not turn them
+       around — see the note in cover.blade.php. Pinned rather than merely
+       omitted, because every other chevron on this platform DOES flip and the
+       obvious edit here is to make these match. */
+    [data-cover-prev] .bi, [data-cover-next] .bi { transform: none !important; }
+
     @media (prefers-reduced-motion: reduce) {
         .ps-card { transition:none !important; }
         [style*="animation:rise"] { animation:none !important; }
