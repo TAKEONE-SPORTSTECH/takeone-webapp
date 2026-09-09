@@ -107,10 +107,22 @@
              on this same page governs it. No picture is not a bug, and the
              absence is silent. --}}
     <div x-show="tab === 'athletes'" x-cloak class="mt-2.5 space-y-2.5">
-        {{-- No profile-URL branching here any more: every card links to
-             route('people.show'), which SealEventPage rewrites to the sealed
-             mirror when the reader is inside the event app, so the white-label
-             surface is never left. --}}
+        {{-- ⚠️ THE CARDS DO NOT LINK OUT. Corrected 2026-09-08.
+             This block used to carry a comment claiming that every card linked
+             to route('people.show') "which SealEventPage rewrites to the sealed
+             mirror, so the white-label surface is never left". That was FALSE,
+             and it was the one hole in an otherwise sealed surface.
+             `events.public.section` — the route that serves this page — is not
+             one of the mirrored `me/events/…` routes, so SealEventPage never
+             runs over this response and PublicEventSkin::rewriteBody() never
+             touched the URL. Any SIGNED-IN reader (which is every competitor,
+             since entering creates an account) got a live link to
+             /people/{uuid}, rendered in the FULL platform layout, whose own
+             back button, sign-in link, "message" form and "challenge" button
+             then lead further into the platform. One tap out of the event app.
+             The public entry list therefore states a name, a club and a flag,
+             and stops there — which is all a stranger reading an entry list
+             needs. A reader who wants a profile can find it on the platform. --}}
 
         @forelse($pRows as $i => $person)
                 @php
@@ -124,7 +136,6 @@
                                       entrants are minors or came through the
                                       public door with discovery off. */
                     $pUuid = $person['uuid'] ?? null;
-                    $pOpens = ($signedIn ?? false) || ($person['public_profile'] ?? false);
                     /* Straight to the PUBLIC profile, for everybody including an
                        organiser. This used to hand a manager a sheet asking
                        which of two profiles they meant — but this is the public
@@ -134,9 +145,11 @@
 
                        `from=participants` so the profile's back control returns
                        HERE rather than to the organiser's entry list. */
-                    $pHref = ($pUuid && $pOpens)
-                        ? route('people.show', $pUuid).'?from=participants'
-                        : null;
+                    // Nothing to open — see the note above. Kept as a named
+                    // variable rather than deleted so the card component's
+                    // contract is unchanged and a future public person-door can
+                    // be dropped in here in one line.
+                    $pHref = null;
 
                     /* ⚠️ EVERY value the component tag uses is computed HERE, as
                        a plain variable. Blade's component-tag parser is not the

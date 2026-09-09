@@ -252,6 +252,29 @@ interface EventType
     public function views(): array;
 
     /**
+     * Does this type's own surface wear the ORGANISER's brand, with the
+     * platform's frame taken away?
+     *
+     * A competition is not a page inside somebody else's product. An event
+     * that says yes here is served — on `/me/events/{uuid}` exactly as on
+     * `/e/{uuid}` — with no top bar, no side drawer, no bottom tabs and no
+     * platform footer: the club's mark on the event's colour, and nothing that
+     * names the platform behind it. It is the same decision the public poster
+     * already made (App\Events\Support\PublicEventSkin), extended to the
+     * people who ENTER and RUN the competition rather than only those who were
+     * sent the link.
+     *
+     * Says nothing about authorization, and grants nothing. The route keeps its
+     * middleware stack, the controller re-runs the same checks; only the
+     * dressing changes (App\Http\Middleware\BrandEventPage).
+     *
+     * Defaults FALSE in AbstractEventType — a type opts in. Sparring, Open Mat
+     * and everything still in the generic bucket keep the member shell they
+     * have always had.
+     */
+    public function brandedSurface(): bool;
+
+    /**
      * Extra view data this type's screens need beyond the shared event payload.
      *
      * @return array<string, mixed>

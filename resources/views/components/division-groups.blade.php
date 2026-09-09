@@ -116,6 +116,9 @@
             'reg_copy'    => __('personal.division_reg_copy'),
             'reg_copied'  => __('personal.division_reg_copied'),
             'birthdate'   => __('personal.division_birthdate'),
+            'also'        => __('personal.division_also'),
+            'also_on'     => __('personal.division_also_on'),
+            'also_hint'   => __('personal.division_also_hint'),
         ]),
      })"
      @bracket:loaded.window="sync($event.detail)"
@@ -699,12 +702,19 @@
 
                     <div class="space-y-2" x-show="!loading">
                         <template x-for="p in visible" :key="p.competitor_id">
-                            <button type="button" @click="toggle(p)"
-                                    :class="isIn(p)
-                                        ? 'border-primary bg-primary/5'
-                                        : 'border-gray-100 bg-white hover:bg-muted/40'"
-                                    class="w-full rounded-2xl border p-2.5 flex items-center gap-3 text-start
-                                           transition-colors shadow-sm">
+                            {{-- A DIV, not a button, since 2026-09-08: a row can now
+                                 carry a second action ("Also here") and a button
+                                 inside a button is not valid markup. Same classes,
+                                 same look; the keyboard path is spelled out because
+                                 a div does not come with one. --}}
+                            <div role="button" tabindex="0" @click="toggle(p)"
+                                 @keydown.enter.prevent="toggle(p)" @keydown.space.prevent="toggle(p)"
+                                 :class="isIn(p)
+                                     ? 'border-primary bg-primary/5'
+                                     : (isAlso(p) ? 'border-amber-300 bg-amber-50/60'
+                                                  : 'border-gray-100 bg-white hover:bg-muted/40')"
+                                 class="w-full rounded-2xl border p-2.5 flex items-center gap-3 text-start
+                                        transition-colors shadow-sm cursor-pointer">
 
                                 <span class="w-9 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
                                     <img :src="p.photo || avatars[p.gender === 'Female' ? 'Female' : 'Male']"
@@ -731,6 +741,11 @@
                                                      truncate" style="max-width:10rem"
                                               x-text="words.elsewhere + ': ' + p.division_name"></span>
 
+                                        {{-- Entered here as well, once it is picked. --}}
+                                        <span x-show="isAlso(p)" x-cloak
+                                              class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"
+                                              x-text="words.also_on"></span>
+
                                         {{-- The exception, kept visible. --}}
                                         <span x-show="p.fit === 'out'" x-cloak
                                               class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-600"
@@ -741,11 +756,30 @@
                                     </span>
                                 </span>
 
+                                {{-- The second action, and the whole point of it: an
+                                     athlete who competes in two divisions of one event
+                                     (Gi and No-Gi) must be able to join this one WITHOUT
+                                     leaving the other. Tapping the row moves them; this
+                                     enters them here as well.
+
+                                     Only offered to somebody who is actually somewhere
+                                     else — there is nothing to keep otherwise. --}}
+                                <button type="button" x-show="p.division_name && !isIn(p)" x-cloak
+                                        @click.stop="toggleAlso(p)"
+                                        :title="words.also_hint"
+                                        :class="isAlso(p) ? 'bg-amber-500 border-amber-500 text-white'
+                                                          : 'bg-white border-amber-300 text-amber-700 hover:bg-amber-50'"
+                                        class="flex-shrink-0 text-[10px] font-bold px-2 py-1.5 rounded-lg border
+                                               transition-colors inline-flex items-center gap-1">
+                                    <i class="bi" :class="isAlso(p) ? 'bi-check-lg' : 'bi-plus-lg'"></i>
+                                    <span x-text="words.also"></span>
+                                </button>
+
                                 <span class="w-6 h-6 rounded-full border-2 grid place-items-center flex-shrink-0"
                                       :class="isIn(p) ? 'border-primary bg-primary text-white' : 'border-gray-300'">
                                     <i class="bi bi-check-lg text-xs" x-show="isIn(p)"></i>
                                 </span>
-                            </button>
+                            </div>
                         </template>
                     </div>
                 </div>
@@ -807,6 +841,11 @@ document.addEventListener('alpine:init', () => {
         people: [],
         range: {},
         picked: {},              // competitor_id => true|false, the PENDING state
+        /* Entries to ALSO enter here, keeping the division they are in.
+           A separate set from `picked` on purpose: `picked` answers "should this
+           entry be in this division", which is a move, and there is no value of
+           it that means "and stay where it is" too. */
+        alsoPicked: {},
         filters: {},
 
         init() {
@@ -970,10 +1009,26 @@ document.addEventListener('alpine:init', () => {
             const now = this.isIn(p);
             if (now === p.here) this.picked[p.competitor_id] = !now;
             else delete this.picked[p.competitor_id];       // back to where it started
+
+            // Moving and also-entering are alternatives, so choosing one drops
+            // the other rather than sending the server a contradiction.
+            delete this.alsoPicked[p.competitor_id];
+        },
+
+        /** Picked to be entered here AS WELL as where they already are. */
+        isAlso(p) {
+            return !! this.alsoPicked[p.competitor_id];
+        },
+
+        toggleAlso(p) {
+            if (this.alsoPicked[p.competitor_id]) delete this.alsoPicked[p.competitor_id];
+            else this.alsoPicked[p.competitor_id] = true;
+
+            delete this.picked[p.competitor_id];
         },
 
         get pendingCount() {
-            return Object.keys(this.picked).length;
+            return Object.keys(this.picked).length + Object.keys(this.alsoPicked).length;
         },
 
         get inGroupCount() {
@@ -1096,12 +1151,14 @@ document.addEventListener('alpine:init', () => {
             for (const [id, wanted] of Object.entries(this.picked)) {
                 (wanted ? add : remove).push(Number(id));
             }
-            if (!add.length && !remove.length) return;
+            const also = Object.keys(this.alsoPicked).map(Number);
+
+            if (!add.length && !remove.length && !also.length) return;
 
             this.saving = true;
             try {
                 const res = await this.send(
-                    `${this.urls.base}/${this.division}/members`, 'PUT', { add, remove }
+                    `${this.urls.base}/${this.division}/members`, 'PUT', { add, remove, also }
                 );
                 if (!res) return;
 
@@ -1110,6 +1167,7 @@ document.addEventListener('alpine:init', () => {
                 this.people = res.people || [];
                 this.range = res.division?.range || this.range;
                 this.picked = {};
+                this.alsoPicked = {};
 
                 window.showToast('success', this.words.apply);
                 await this.redraw();

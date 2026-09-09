@@ -86,6 +86,25 @@ class RouteIntegrityTest extends TestCase
      * offered a language is the PUBLIC event cover, before any of that. Same
      * controller, one route added on purpose.
      */
+    /*
+     * ⚠️ 2026-09-08 — this tripwire is ALREADY FIRING, and not only for the
+     * work that wrote this note.
+     *
+     * The table stands at 727 against the 680 recorded here. Six of those are
+     * the content-translation module (App\Translation), added deliberately and
+     * named below; the other forty-one pre-date it and belong to work still
+     * uncommitted in this tree. The number is deliberately NOT bumped to 727
+     * here, because doing so would bless forty-one routes this change never
+     * reviewed — which is the exact thing the tripwire exists to prevent.
+     *
+     * Whoever commits this branch reconciles it: confirm all the additions,
+     * then set the constant once, with the reasons.
+     *
+     * The six from App\Translation:
+     *   events.public.language.prepare / .status   the visitor picking a language
+     *   me.events.translations{,.update,.retranslate,.destroy}
+     *                                             the organiser's review screen
+     */
     private const EXPECTED_ROUTE_COUNT = 680;   // +4: events.public.draw.data, events.public.section, events.public.enter.mine, events.public.enter.clubs; +5: me.events.divisions.*; +1: locale.set
 
     /** Routes handled by a Closure rather than a controller action. */

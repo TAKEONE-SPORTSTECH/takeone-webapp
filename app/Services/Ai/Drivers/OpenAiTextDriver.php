@@ -32,6 +32,27 @@ class OpenAiTextDriver implements TextDriver
             $payload['tool_choice'] = 'auto';
         }
 
+        /*
+         * JSON mode, when the caller says it needs JSON. Opt-in, so nothing
+         * that already calls this driver changes behaviour.
+         *
+         * Every OpenAI-compatible server this driver is pointed at — LM Studio,
+         * vLLM, llama.cpp, Ollama's /v1, Groq, Together, OpenRouter — accepts
+         * this, and the ones that do not simply ignore an unknown field. See
+         * the note on JSON mode in config/translation.php.
+         */
+        if (! empty($options['json'])) {
+            $payload['response_format'] = ['type' => 'json_object'];
+        }
+
+        if (! empty($options['max_tokens'])) {
+            $payload['max_tokens'] = (int) $options['max_tokens'];
+        }
+
+        if (isset($options['temperature'])) {
+            $payload['temperature'] = (float) $options['temperature'];
+        }
+
         $response = Http::timeout($this->timeout)
             ->withToken($this->apiKey)
             ->acceptJson()

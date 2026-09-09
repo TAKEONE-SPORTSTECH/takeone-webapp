@@ -966,6 +966,9 @@ return [
     'event_show_schedule' => 'Schedule',
     'event_show_set_winners' => 'Set winners',
     'event_show_share' => 'Share',
+    /* The band's fourth control — the poster as a stranger opens it. Only
+       rendered when the organiser has actually published one. */
+    'event_show_open_public' => 'Open the public page',
     'event_show_share_text' => 'Join me at :title!',
     'event_show_show_results' => 'Show results',
     'event_show_spectator' => 'Spectator',
@@ -1159,6 +1162,9 @@ return [
     'division_only_fitting' => 'Hide who does not fit',
     'division_in_group' => 'In this group',
     'division_elsewhere' => 'In',
+    'division_also' => 'Also here',
+    'division_also_on' => 'Entered here too',
+    'division_also_hint' => 'Keeps the division they are already in and enters them in this one as well — for an athlete competing in both, such as Gi and No-Gi. Tapping the row instead MOVES them.',
     'division_unassigned' => 'No group',
     'division_outside' => 'Outside',
     'division_unknown' => 'Not known',

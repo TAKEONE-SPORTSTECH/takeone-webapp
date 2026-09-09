@@ -161,13 +161,13 @@
                 return { sign: 'Pisces', symbol: '♓' };
             },
             getAgeGroup(age) {
-                if (age <= 2) return { label: 'Infant', style: 'color:#0284c7;background:#f0f9ff;' };
-                if (age <= 12) return { label: 'Child', style: 'color:#16a34a;background:#f0fdf4;' };
-                if (age <= 17) return { label: 'Teenager', style: 'color:#ca8a04;background:#fefce8;' };
-                if (age <= 25) return { label: 'Young Adult', style: 'color:#9333ea;background:#faf5ff;' };
-                if (age <= 45) return { label: 'Adult', style: 'color:#4f46e5;background:#eef2ff;' };
+                if (age <= 2) return { label: @json(__('platform.age_infant')), style: 'color:#0284c7;background:#f0f9ff;' };
+                if (age <= 12) return { label: @json(__('platform.age_child')), style: 'color:#16a34a;background:#f0fdf4;' };
+                if (age <= 17) return { label: @json(__('platform.age_teenager')), style: 'color:#ca8a04;background:#fefce8;' };
+                if (age <= 25) return { label: @json(__('platform.age_young_adult')), style: 'color:#9333ea;background:#faf5ff;' };
+                if (age <= 45) return { label: @json(__('platform.age_adult')), style: 'color:#4f46e5;background:#eef2ff;' };
                 if (age <= 64) return { label: 'Middle Aged', style: 'color:#ea580c;background:#fff7ed;' };
-                return { label: 'Senior', style: 'color:#dc2626;background:#fef2f2;' };
+                return { label: @json(__('platform.age_senior')), style: 'color:#dc2626;background:#fef2f2;' };
             }
         }"
         : "birthdateDropdown_{$id}()";
@@ -393,13 +393,13 @@
             },
 
             getAgeGroup(age) {
-                if (age <= 2)  return { label: 'Infant',      style: 'color:#0284c7;background:#f0f9ff;' };
-                if (age <= 12) return { label: 'Child',       style: 'color:#16a34a;background:#f0fdf4;' };
-                if (age <= 17) return { label: 'Teenager',    style: 'color:#ca8a04;background:#fefce8;' };
-                if (age <= 25) return { label: 'Young Adult', style: 'color:#9333ea;background:#faf5ff;' };
-                if (age <= 45) return { label: 'Adult',       style: 'color:#4f46e5;background:#eef2ff;' };
+                if (age <= 2)  return { label: @json(__('platform.age_infant')),      style: 'color:#0284c7;background:#f0f9ff;' };
+                if (age <= 12) return { label: @json(__('platform.age_child')),       style: 'color:#16a34a;background:#f0fdf4;' };
+                if (age <= 17) return { label: @json(__('platform.age_teenager')),    style: 'color:#ca8a04;background:#fefce8;' };
+                if (age <= 25) return { label: @json(__('platform.age_young_adult')), style: 'color:#9333ea;background:#faf5ff;' };
+                if (age <= 45) return { label: @json(__('platform.age_adult')),       style: 'color:#4f46e5;background:#eef2ff;' };
                 if (age <= 64) return { label: 'Middle Aged', style: 'color:#ea580c;background:#fff7ed;' };
-                return                { label: 'Senior',      style: 'color:#dc2626;background:#fef2f2;' };
+                return                { label: @json(__('platform.age_senior')),      style: 'color:#dc2626;background:#fef2f2;' };
             }
         }
     }

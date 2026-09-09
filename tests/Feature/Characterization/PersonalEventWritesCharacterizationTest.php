@@ -32,6 +32,17 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
     {
         parent::setUp();
         $this->seedRoles();
+
+        /* These scenarios are all TAEKWONDO CHAMPIONSHIPS, and that package
+           opted into the branded event surface on 2026-09-08 — which serves the
+           MOBILE blade at every width and drops the platform's chrome
+           (App\Http\Middleware\BrandEventPage). This file pins what the
+           CONTROLLER does, so the dressing is switched off here and asserted
+           where it belongs, in tests/Feature/Events/BrandedEventSurfaceTest.php.
+           Without this the device-split assertions below would be measuring the
+           middleware rather than the controller. One test at the end of the file
+           pins the branded outcome so the two cannot drift apart unnoticed. */
+        config(['events.branded_surface' => false]);
     }
 
     private function scenario(array $eventAttrs = []): array
@@ -753,5 +764,27 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
 
         $stranger = $this->createUser();
         $this->actingAs($stranger)->getJson(route('me.events.claims', $event->uuid))->assertForbidden();
+    }
+    /**
+     * The other half of the setUp() note: with the branded surface ON — which
+     * is how a championship is actually served — a DESKTOP browser gets the
+     * MOBILE blade, because the event is one app at every width.
+     *
+     * Pinned here so that turning the dressing off for the rest of this file
+     * can never quietly become "the split is back".
+     */
+    public function test_a_branded_championship_serves_the_mobile_blade_at_every_width(): void
+    {
+        config(['events.branded_surface' => true]);
+
+        [$organiser, , $event] = $this->scenario();
+
+        foreach ([
+            'me.events.next-up' => 'personal.mobile.event-next-up',
+        ] as $name => $view) {
+            $this->asDesktop($organiser)->get(route($name, $event->uuid))
+                ->assertOk()
+                ->assertViewIs($view);
+        }
     }
 }

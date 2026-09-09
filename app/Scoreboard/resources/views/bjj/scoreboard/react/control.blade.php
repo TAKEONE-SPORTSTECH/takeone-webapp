@@ -11,6 +11,13 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
+    {{-- Dark by design (a scoreboard console / wall board). Declared so a
+         browser's auto-dark and Dark Reader both leave it alone — the same
+         reasoning as the light pages, opposite value. --}}
+    <meta name="color-scheme" content="dark">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: dark; }</style>
+
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <style>

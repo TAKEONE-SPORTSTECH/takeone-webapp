@@ -32,7 +32,7 @@
 <div class="{{ isset($shell) ? '-mx-4 -mt-4' : '' }}">
 
     <header class="m-hero px-5 pt-5 pb-8 text-white relative overflow-hidden"
-            style="background: linear-gradient(150deg, {{ $e['color'] }}, {{ $e['color'] }}b0);">
+            style="background: {{ \App\Support\Palette::pageBand($e['color'], isset($shell)) }};">
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
@@ -40,7 +40,7 @@
              (Design Rule #6); the destination travels in its aria-label. It
              points at the CONSOLE, which is the screen this is opened from. --}}
         <div class="flex items-center justify-between gap-2 relative z-50">
-            <a href="{{ isset($shell) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.manage', $e['key']) }}"
+            <a href="{{ ($sealed ?? false) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.manage', $e['key']) }}"
                data-shell-link data-route="me.events"
                class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
                aria-label="{{ __('personal.event_manage_title') }}" title="{{ __('personal.event_manage_title') }}">

@@ -128,10 +128,15 @@
            aria-label="{{ __('personal.event_show_event') }}" title="{{ __('personal.event_show_event') }}">
                 <i class="bi bi-chevron-left"></i>
             </a>
-            <a href="{{ route('me.events.show', $e['key']) }}"
-               class="h-10 px-4 rounded-full bg-white/15 border border-white/25 backdrop-blur inline-flex items-center gap-2 text-xs font-bold hover:bg-white/25 transition-colors">
-                <i class="bi bi-eye"></i>{{ __('personal.event_manage_view_public') }}
-            </a>
+            {{-- The public page, not the organiser's own — see the note on the
+                 mobile console. Shown only when a poster exists, and opened
+                 beside the console rather than instead of it. --}}
+            @if(($isPublic ?? false) && ! empty($publicUrl))
+                <a href="{{ $publicUrl }}" target="_blank" rel="noopener"
+                   class="h-10 px-4 rounded-full bg-white/15 border border-white/25 backdrop-blur inline-flex items-center gap-2 text-xs font-bold hover:bg-white/25 transition-colors">
+                    <i class="bi bi-eye"></i>{{ __('personal.event_manage_view_public') }}
+                </a>
+            @endif
         </div>
 
         <div class="relative z-10 mt-6">
@@ -296,6 +301,15 @@
                                              :date="$drawRevealDate ?? null"
                                              :color="$mgColor ?? $e['color']" :title="$e['title']" />
                 @endif
+
+                {{-- Every language this event is read in, and the organiser's
+                     power to correct any of it. It appears here rather than in
+                     the edit form because a translation is not a field of the
+                     event — it is a copy of the whole thing, and it arrives on
+                     its own when a visitor asks for it. --}}
+                <x-event-languages :event="$e['key']" :color="$mgColor" :title="$e['title']"
+                                   :source-locale="$sourceLocale ?? null" />
+
 
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-2">
                     <h2 class="text-sm font-bold text-gray-900 flex items-center gap-2 mb-3">

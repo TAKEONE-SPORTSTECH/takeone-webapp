@@ -15,6 +15,14 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ in_array(app()->getLocale(), ['ar']) ? 'rtl' : 'ltr' }}">
 <head>
 <meta charset="utf-8">
+    {{-- This document is DARK by design — a wall board, a console, a review
+         screen. Declared so a browser's auto-dark does not try to "help" and
+         invert the one light thing on it, and so Dark Reader leaves it alone.
+         Same reasoning as the light pages, opposite value. --}}
+    <meta name="color-scheme" content="dark">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: dark; }</style>
+
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{{ __('personal.event_live_web_camera') }}</title>
 <style>

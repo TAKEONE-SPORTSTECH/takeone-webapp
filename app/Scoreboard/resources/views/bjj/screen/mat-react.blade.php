@@ -17,6 +17,13 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
+    {{-- Dark by design (a scoreboard console / wall board). Declared so a
+         browser's auto-dark and Dark Reader both leave it alone — the same
+         reasoning as the light pages, opposite value. --}}
+    <meta name="color-scheme" content="dark">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: dark; }</style>
+
 {{-- A screen is not a document: it is authored at one size and scaled to fit
      the glass, so there is nothing here to zoom INTO. The one place the house
      rule against `user-scalable=no` does not apply — this is signage. --}}

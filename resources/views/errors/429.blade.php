@@ -17,6 +17,19 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ in_array(app()->getLocale(), ['ar']) ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="utf-8">
+    {{-- This document is LIGHT by design. Say so, or a browser decides for us:
+         Chrome's Auto Dark Theme and Android WebView's force-dark invert what
+         they take for a light page, and Dark Reader re-paints it after first
+         paint. The result is not a dark theme — this product has none — it is
+         the palette inside out: a black ground behind white cards, tinted
+         tiles gone navy with their icons left bright. `only light` is the
+         explicit opt-out (plain `light` is not enough) and `darkreader-lock`
+         is that extension's own. Both, because they answer to different
+         things; an unknown meta name is ignored everywhere else. --}}
+    <meta name="color-scheme" content="light">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: only light; }</style>
+
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ __('errors.429_title') }}</title>
     <style>

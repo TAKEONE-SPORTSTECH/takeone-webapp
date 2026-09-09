@@ -149,7 +149,7 @@
          on top, then chips · title · owner beneath. Never a small rounded card
          with the title squeezed beside a back arrow. --}}
     <header class="m-hero -mx-4 -mt-4 px-5 pt-5 pb-8 text-white relative overflow-hidden"
-            style="background: linear-gradient(150deg, {{ $mgColor }}, {{ $mgColor }}b0);">
+            style="background: {{ \App\Support\Palette::pageBand($mgColor, isset($shell)) }};">
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
@@ -160,19 +160,30 @@
                 <i class="bi bi-chevron-left"></i>
             </a>
             <div class="flex items-center gap-2">
-                {{-- ⚠️ It said "View public page" and opened the MEMBER page —
-                     `me.events.show`, which the seal rewrites to
-                     /e/{uuid}/admin. Inside the event app the public page is the
-                     POSTER, so that is where it goes now, and it is a round 40px
-                     action rather than a pill (Design Rule #6: the pill is for
-                     back, round controls are for the actions on the right). --}}
-                <a href="{{ isset($shell) ? url('/e/'.$e['key']) : route('me.events.show', $e['key']) }}"
-                   @if(! isset($shell)) data-shell-link data-route="me.events" @endif
-                   title="{{ __('personal.event_manage_view_public') }}"
-                   aria-label="{{ __('personal.event_manage_view_public') }}"
-                   class="m-press ev-ico w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center no-underline">
-                    <i class="bi bi-eye"></i>
-                </a>
+                {{-- ⚠️ "View public page" must open THE PUBLIC PAGE.
+                     It said that and opened the MEMBER page (`me.events.show`).
+                     The sealed branch was fixed; the platform branch was left
+                     doing exactly what the note said was wrong, so an organiser
+                     on /me/events/{uuid}/manage tapped "view public page" and
+                     got their own admin view back. And it rendered with no
+                     guard at all, so on a members-only event it offered a
+                     preview of a page that does not exist. Both halves found by
+                     a navigation audit, 2026-09-08.
+
+                     One address now, for both surfaces — `$publicUrl` IS the
+                     poster — shown only when there is a poster to show. On the
+                     platform it opens BESIDE the console (the organiser is
+                     mid-job and wants to keep their place); inside the event app
+                     the poster is the app's own home, so it opens in place. --}}
+                @if(($isPublic ?? false) && ! empty($publicUrl))
+                    <a href="{{ $publicUrl }}"
+                       @unless($sealed ?? false) target="_blank" rel="noopener" @endunless
+                       title="{{ __('personal.event_manage_view_public') }}"
+                       aria-label="{{ __('personal.event_manage_view_public') }}"
+                       class="m-press ev-ico w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center no-underline">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                @endif
             </div>
         </div>
 
@@ -394,6 +405,15 @@
                 @endif
 
 
+
+
+                {{-- Every language this event is read in, and the organiser's
+                     power to correct any of it. It appears here rather than in
+                     the edit form because a translation is not a field of the
+                     event — it is a copy of the whole thing, and it arrives on
+                     its own when a visitor asks for it. --}}
+                <x-event-languages :event="$e['key']" :color="$mgColor" :title="$e['title']"
+                                   :source-locale="$sourceLocale ?? null" />
 
                 <button type="button" @click="goEdit()"
                         class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">

@@ -115,6 +115,20 @@ $eventsJson = $events->map(function($e) {
 
                         {{-- Actions --}}
                         <div class="flex gap-2 flex-shrink-0" @click.stop>
+{{-- The event's OWN page — where every event screen now lives.
+                            
+                                 A club's events list is a CLUB page and stays one: it lists many events, so
+                                 there is no single event whose brand it could wear. But the work of running
+                                 one event belongs to that event's own surface, which since 2026-09-08 is
+                                 served chrome-less in the organiser's brand — so from here an event OPENS
+                                 rather than being managed through a second set of screens inside the club
+                                 panel. Additive on purpose: the club-panel participants screen beside this
+                                 still works for anyone who relies on it (registered in
+                                 Documentation/HOUSE-CLEANING.md as superseded). --}}
+                            <a href="{{ route('me.events.show', $event->uuid) }}"
+                               class="btn btn-sm btn-outline-secondary" title="{{ __('personal.event_show_event') }}">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
                             <a href="{{ route('admin.club.events.participants', [$club->slug, $event->id]) }}"
                                class="btn btn-sm btn-outline-secondary" title="{{ __('admin.evt_participants') }}">
                                 <i class="bi bi-people"></i>

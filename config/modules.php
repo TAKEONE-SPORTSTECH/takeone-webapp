@@ -33,6 +33,10 @@ return [
         \App\Trainers\Trainers::class,
         \App\Scoreboard\Scoreboard::class,
         \App\Media\Media::class,
+        // The organiser writes once, in their own language; everyone else
+        // reads it in theirs. Last in the list because it serves the other
+        // modules' content rather than owning a vertical of its own.
+        \App\Translation\Translation::class,
     ],
 
     /*

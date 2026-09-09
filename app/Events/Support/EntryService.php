@@ -2,6 +2,7 @@
 
 namespace App\Events\Support;
 
+use App\Support\Cldr;
 use App\Events\EventTypeRegistry;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
@@ -77,10 +78,28 @@ class EntryService
     /**
      * Enter one athlete, applying every rule self-entry applies.
      *
+     * ── Entering a NAMED division ──────────────────────────────────────────
+     * `$categoryId` is how an athlete comes to hold more than one entry in one
+     * event. Jiu-jitsu is the case that forced it: Gi and No-Gi are separate
+     * divisions, drawn separately, and an athlete routinely enters both — the
+     * fee side already sold it that way ("Gi", "No-Gi", "Gi + No-Gi") while
+     * the entry side allowed one row per event, so somebody who had PAID for
+     * both could be drawn in only one.
+     *
+     * Passing null keeps the original behaviour EXACTLY: the athlete's single
+     * existing entry is found and updated, and the package's own gate decides
+     * the division. Every caller that predates this passes nothing and is
+     * unaffected.
+     *
+     * Naming a division changes only WHICH entry is resolved: theirs in THAT
+     * division, or a new one. It grants nothing — every rule above still runs,
+     * in the same order, against the same athlete.
+     *
      * @param  array<int, string>  $optionKeys  fee-option UUIDs the coach ticked for THIS athlete
+     * @param  int|null  $categoryId  the division to enter them into, or null to let the gate decide
      * @return array{ok: bool, row: array}
      */
-    public function enter(ClubEvent $event, User $actor, User $athlete, array $optionKeys = []): array
+    public function enter(ClubEvent $event, User $actor, User $athlete, array $optionKeys = [], ?int $categoryId = null): array
     {
         $name = $athlete->full_name ?? $athlete->name ?? 'Member';
         $reject = fn (string $code, string $message) => [
@@ -109,8 +128,40 @@ class EntryService
             return $reject('ended', __('events.entry_event_ended'));
         }
 
+        // The division being entered, if the caller named one — and only if it
+        // belongs to THIS event. A category id from anywhere else is ignored
+        // rather than trusted; nothing here takes an id on faith.
+        $target = $categoryId
+            ? $event->categories()->whereKey($categoryId)->first()
+            : null;
+
+        if ($categoryId && ! $target) {
+            return $reject('no_division', __('events.division_not_found'));
+        }
+
+        // A heading is a title in the list, not a division. Refused by name
+        // rather than left to fail oddly further down.
+        if ($target?->isHeading()) {
+            return $reject('is_heading', __('events.division_is_heading'));
+        }
+
+        // THEIR entry in the division being entered — or, when no division was
+        // named, their one entry in this event, which is what every caller
+        // before this asked for.
         $existing = ClubEventRegistration::where('event_id', $event->id)
-            ->where('user_id', $athlete->id)->first();
+            ->where('user_id', $athlete->id)
+            ->when($target, fn ($q) => $q->where('category_id', $target->id))
+            ->first();
+
+        // Do they already stand in this event at all, in any division? This is
+        // a different question from $existing and it decides the MONEY: a
+        // second division is a second entry, but it is not a second purchase.
+        // The event sells "Gi + No-Gi" as one option, so the fee lines stay on
+        // the entry that carries the purchase and the sibling carries none.
+        $alreadyInEvent = $existing
+            ?: ClubEventRegistration::where('event_id', $event->id)
+                ->where('user_id', $athlete->id)
+                ->first();
 
         // Once the competition is UNDERWAY the entry list is the thing being
         // run: the draw is cut from it, mats are assigned off it, and a name
@@ -125,10 +176,10 @@ class EntryService
 
         $today = now()->startOfDay();
         if ($event->enrollment_starts_at && $today->lt($event->enrollment_starts_at)) {
-            return $reject('not_open', __('events.entry_not_open', ['date' => $event->enrollment_starts_at->format('M j')]));
+            return $reject('not_open', __('events.entry_not_open', ['date' => Cldr::shortDate($event->enrollment_starts_at)]));
         }
         if ($event->enrollment_ends_at && $today->gt($event->enrollment_ends_at)) {
-            return $reject('closed', __('events.entry_closed', ['date' => $event->enrollment_ends_at->format('M j')]));
+            return $reject('closed', __('events.entry_closed', ['date' => Cldr::shortDate($event->enrollment_ends_at)]));
         }
 
         // 5. Capacity — checked per athlete, so a squad fills the last places in
@@ -149,6 +200,16 @@ class EntryService
         //    EventType::classifyEntry(). Self-entry still gets the refusal, so a
         //    member is asked to complete their own profile.
         $decision = $this->registry->for($event)->enrolmentGate($event, $athlete, $existing);
+
+        // A named division OUTRANKS the gate's classification, because naming
+        // one is an organiser placing a competitor by hand — the same authority
+        // that arranges a draw. The gate still runs: its refusals, its weight
+        // and belt rules and its deferral all stand, and only the division it
+        // would have chosen is replaced.
+        if ($target) {
+            $decision = $decision->intoCategory($target);
+        }
+
         if (! $decision->allowed && ! $decision->deferrable) {
             return $reject($decision->code ?? 'not_eligible', $decision->message ?? __('events.entry_not_eligible', ['name' => $name]));
         }
@@ -160,8 +221,12 @@ class EntryService
         // "10-15 BHD" no longer quietly means 10.
         $paidFee = EventFee::isPaid($event, 'participant');
 
+        // Keyed by DIVISION as well as athlete since 2026-09-08, which is what
+        // lets the second entry be created instead of overwriting the first.
         $registration = ClubEventRegistration::updateOrCreate(
-            ['event_id' => $event->id, 'user_id' => $athlete->id],
+            $target
+                ? ['event_id' => $event->id, 'user_id' => $athlete->id, 'category_id' => $target->id]
+                : ['event_id' => $event->id, 'user_id' => $athlete->id],
             [
                 'role' => 'participant',
                 'status' => 'joined',
@@ -193,7 +258,7 @@ class EntryService
         // must not quietly wipe an option somebody already agreed to pay for,
         // and re-pricing an old entry at today's clock would hand it a late
         // penalty it never incurred — hence the entry's own moment as `$at`.
-        if (! $existing || $optionKeys !== []) {
+        if ((! $alreadyInEvent && ! $existing) || $optionKeys !== []) {
             EventFee::commit($registration, EventFee::quote(
                 $event,
                 'participant',
@@ -207,7 +272,7 @@ class EntryService
 
         // Tell the athlete they were entered — they did not do this themselves,
         // so they must find out from us and not on the day.
-        if (! $existing) {
+        if (! $alreadyInEvent) {
             $this->notifyEntered($event, $athlete, $actor, $decision->category?->name);
         }
 
@@ -417,10 +482,10 @@ class EntryService
             return ['open' => false, 'note' => __('events.entry_event_started')];
         }
         if ($event->enrollment_starts_at && $today->lt($event->enrollment_starts_at)) {
-            return ['open' => false, 'note' => __('events.entry_not_open', ['date' => $event->enrollment_starts_at->format('M j')])];
+            return ['open' => false, 'note' => __('events.entry_not_open', ['date' => Cldr::shortDate($event->enrollment_starts_at)])];
         }
         if ($event->enrollment_ends_at && $today->gt($event->enrollment_ends_at)) {
-            return ['open' => false, 'note' => __('events.entry_closed', ['date' => $event->enrollment_ends_at->format('M j')])];
+            return ['open' => false, 'note' => __('events.entry_closed', ['date' => Cldr::shortDate($event->enrollment_ends_at)])];
         }
 
         return ['open' => true, 'note' => null];
@@ -537,7 +602,7 @@ class EntryService
                 'club' => $r->representingTenant?->club_name,
                 'division' => $r->category?->name,
                 'disowned' => $r->isDisowned(),
-                'at' => $r->registered_at?->format('M j'),
+                'at' => $r->registered_at ? Cldr::shortDate($r->registered_at) : null,
             ])->values()->all();
     }
 
@@ -833,6 +898,22 @@ class EntryService
 
     private function notifyEntered(ClubEvent $event, User $athlete, User $actor, ?string $division): void
     {
+        /*
+         * Somebody else put them in — a coach entering a squad, an organiser
+         * working off a paper list. They may not have asked to be entered and
+         * may not know they have been, so the email matters MORE here than on a
+         * self-entry, not less. `EntryMail` declines quietly when there is no
+         * inbox, which is the common case for a paper entry.
+         */
+        app(EntryMail::class)->send(
+            $event,
+            $athlete,
+            \App\Mail\EventEntryEmail::ENTERED,
+            $division,
+            \App\Models\ClubEventRegistration::where('event_id', $event->id)
+                ->where('user_id', $athlete->id)->first(),
+        );
+
         rescue(fn () => UserNotification::notifyUser($athlete->id, 'event', __('events.entry_notify_title', [
             'title' => $event->title,
         ]), [

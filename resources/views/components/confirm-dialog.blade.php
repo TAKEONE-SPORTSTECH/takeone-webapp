@@ -26,7 +26,7 @@
                     <button type="button"
                             id="confirmDialogCancel"
                             class="px-5 py-2.5 text-sm font-medium text-foreground bg-white border border-border rounded-lg hover:bg-muted/50 transition-colors">
-                        Cancel
+                        {{ __('shared.cancel') }}
                     </button>
                     {{-- Colours are set per type in JS (see `types` below); this
                          class list is replaced wholesale on open. --}}
@@ -43,12 +43,19 @@
 @push('scripts')
 <script>
 window.confirmAction = function(options = {}) {
+    /* ⚠️ Lang keys, not literals.
+       This dialog is included in every layout, so these four words were English
+       on EVERY page of the platform in EVERY language — including Arabic, which
+       is otherwise 99.8% translated. Found by `translate:parity` on 2026-09-09,
+       which reported the same single leak on all six public event routes in both
+       Arabic and Chinese; a leak that appears in a fully-translated locale is
+       always a hardcoded string, never a missing key. */
     const defaults = {
-        title: 'Are you sure?',
-        message: 'This action cannot be undone.',
+        title: @js(__('shared.confirm_title')),
+        message: @js(__('shared.confirm_message')),
         type: 'danger',
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
+        confirmText: @js(__('shared.delete')),
+        cancelText: @js(__('shared.cancel')),
         // Informational use: one button to dismiss. A message that only tells
         // you something has nothing to cancel.
         hideCancel: false,

@@ -207,6 +207,39 @@ class PublicEventSkin
             '"/openmat"' => '"'.route('events.public', ['event' => $uuid]).'"',
         ];
 
+        /*
+         * ⚠️ THE SAME MAP AGAIN, WITH THE SLASHES ESCAPED.
+         *
+         * `@js(route(…))` and `json_encode` write a URL as
+         * `http:\/\/host\/me\/events\/{uuid}\/checklist` — Laravel escapes
+         * forward slashes by default — and a fixed-string map keyed on the
+         * plain form cannot see a single one of them. Sixteen platform
+         * addresses were surviving inside the sealed console on one event:
+         * the checklist, the cover, the documents, the cameras, the draw
+         * reveal, the public-page toggle and the entry accept/decline calls.
+         *
+         * The middleware's own note above predicted exactly this — "these
+         * screens build URLs in hrefs, form actions, fetch() calls and
+         * @js(route(…)) blobs, and one of those was always going to be missed".
+         * It was the @js one. Found by a navigation audit, 2026-09-08.
+         *
+         * Derived from `$map` rather than written out a second time, so the two
+         * can never drift: a rule added above is escaped here automatically.
+         * Applied FIRST, because escaping is unambiguous and the plain pass
+         * would otherwise leave the escaped copies behind untouched.
+         */
+        $escaped = [];
+
+        foreach ($map as $from => $to) {
+            $ef = str_replace('/', '\\/', $from);
+
+            if ($ef !== $from) {
+                $escaped[$ef] = str_replace('/', '\\/', $to);
+            }
+        }
+
+        $html = str_replace(array_keys($escaped), array_values($escaped), $html);
+
         $html = str_replace(array_keys($map), array_values($map), $html);
 
         /*

@@ -41,7 +41,7 @@ class SendClubNotification implements ShouldQueue
                 ]);
 
                 // Queue email
-                Mail::to($recipient->email)->queue(
+                Mail::to($recipient)->queue(
                     new ClubNotificationEmail($this->notification, $recipient)
                 );
 

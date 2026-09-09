@@ -26,4 +26,30 @@ return [
 
     'match_log' => env('EVENT_MATCH_LOG', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | The branded event surface
+    |--------------------------------------------------------------------------
+    |
+    | An event is a place you enter, not a page inside somebody else's product.
+    | With this on, every page of an event whose package opts in
+    | (EventType::brandedSurface() — the karate, taekwondo and jiu-jitsu
+    | tournaments) is served in the ORGANISER's brand with the platform's frame
+    | taken away: no top bar, no side drawer, no bottom tabs, no platform
+    | footer, and the mobile app at every width. That is what `/e/{uuid}` has
+    | always done for a stranger; this extends it to `/me/events/{uuid}`, so
+    | one competition has one face whichever door was used to reach it.
+    |
+    | Defaults ON — it is what was asked for. It is a KILL SWITCH, not a
+    | feature flag: turning it off restores the member shell on those pages
+    | exactly as it shipped, and changes nothing else. Nothing about
+    | authorization, routing or data passes through it
+    | (App\Http\Middleware\BrandEventPage grants nothing and never aborts).
+    |
+    | Set EVENT_BRANDED_SURFACE=false in .env, then `php artisan config:clear`.
+    |
+    */
+
+    'branded_surface' => (bool) env('EVENT_BRANDED_SURFACE', true),
+
 ];

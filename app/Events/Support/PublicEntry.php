@@ -5,6 +5,7 @@ namespace App\Events\Support;
 use App\Events\EventTypeRegistry;
 use App\Members\Models\User;
 use App\Members\Models\UserNotification;
+use App\Mail\EventEntryEmail;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventPublicEntry;
@@ -302,6 +303,7 @@ class PublicEntry
         }
 
         $this->notifyOrganiser($event, $entry);
+        $this->notifyAthleteReceived($event, $entry);
 
         return [
             'ok' => true,
@@ -426,6 +428,7 @@ class PublicEntry
             }
 
             $this->notifyOrganiser($event, $entry);
+        $this->notifyAthleteReceived($event, $entry);
 
             return [
                 'ok' => true,
@@ -469,6 +472,7 @@ class PublicEntry
         }
 
         $this->notifyOrganiser($event, $entry);
+        $this->notifyAthleteReceived($event, $entry);
 
         return [
             'ok' => true,
@@ -888,5 +892,48 @@ class PublicEntry
             'subject_id' => $event->id,
             'tenant_id' => $event->tenant_id,
         ]), null, false);
+
+        /*
+         * And out of the building. The notification above lands in a tray this
+         * person may never open — they entered from a link on a phone and may
+         * have no reason to visit the platform again until the day. The email
+         * is the only thing that reaches them where they are, and it carries
+         * the way back to their own entry.
+         */
+        // ⚠️ `athlete`, not `user` — the relation on EventPublicEntry is named
+        // for what the row is about. Guessing `user` returns null silently, and
+        // this whole email quietly did nothing until a test caught it.
+        if ($entry->athlete) {
+            app(EntryMail::class)->send(
+                $event,
+                $entry->athlete,
+                $accepted ? EventEntryEmail::ENTERED : EventEntryEmail::DECLINED,
+                $division,
+                // The registration the accept just created, so the email can
+                // name what this entrant was actually charged.
+                $accepted
+                    ? ClubEventRegistration::where('event_id', $event->id)
+                        ->where('user_id', $entry->user_id)->first()
+                    : null,
+            );
+        }
+    }
+
+    /**
+     * Tell the entrant their request arrived.
+     *
+     * The organiser was told (`notifyOrganiser`); the person who just typed
+     * their name into a stranger's link was told nothing at all, and had no
+     * address to come back to. Silence after entering a competition reads as
+     * "did that work?", which is the question the organiser's phone then rings
+     * to ask.
+     */
+    private function notifyAthleteReceived(ClubEvent $event, EventPublicEntry $entry): void
+    {
+        if (! $entry->athlete) {
+            return;
+        }
+
+        app(EntryMail::class)->send($event, $entry->athlete, EventEntryEmail::RECEIVED);
     }
 }

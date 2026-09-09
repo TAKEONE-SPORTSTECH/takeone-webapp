@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Events\Support\EventAccess;
+use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
 use App\Members\Models\TournamentEvent;
@@ -119,6 +120,79 @@ class BoutHistory
         return $out;
     }
 
+    /**
+     * This athlete's bouts at ONE event, from their corner.
+     *
+     * `forTournaments()` above answers a profile question — "what has this
+     * member competed in?" — and has to match a self-claimed tournament to a
+     * registration by day and title. Here the event is known, so none of that
+     * guesswork applies; what IS shared is the shaping, the opponent faces and
+     * the video lookup, which is why this lives beside it rather than in a
+     * service of its own (CLAUDE.md → *Shared Stays Shared*).
+     *
+     * Returns null when this person is not entered. Says nothing about whether
+     * the draw may be SHOWN — that is `EventAccess::drawVisible()`, and the
+     * caller asks it: a competitor may not read a withheld draw just because
+     * they are in it.
+     *
+     * @return array{entry: array<string, mixed>, bouts: array<int, array<string, mixed>>}|null
+     */
+    public function forEvent(ClubEvent $event, User $member, ?User $viewer = null): ?array
+    {
+        $reg = ClubEventRegistration::query()
+            ->where('event_id', $event->id)
+            ->where('user_id', $member->id)
+            ->with('category:id,name,weight_class')
+            ->first();
+
+        if (! $reg) {
+            return null;
+        }
+
+        /*
+         * ⚠️ BYES ARE KEPT HERE, unlike in the history above.
+         *
+         * A bye is a draw row with one competitor and a winner already recorded
+         * so the bracket can advance somebody. In a PROFILE that is a win over
+         * nobody and `contested()` is right to drop it. On the athlete's own
+         * entry it is the opposite: "you have a bye, you start in the next
+         * round" is one of the things they most need to be told, and dropping it
+         * left a drawn competitor looking at an empty list.
+         */
+        $bouts = EventMatch::query()
+            ->where('event_id', $event->id)
+            ->where(fn ($q) => $q->where('a_competitor_id', $reg->id)->orWhere('b_competitor_id', $reg->id))
+            ->with(['event:id,uuid,title,date', 'category:id,name,weight_class'])
+            ->orderBy('match_no')
+            ->orderBy('id')
+            ->get();
+
+        $faces = $this->opponentFaces($bouts);
+        $videos = $this->videos($bouts);
+
+        $canOpen = $viewer !== null && app(EventAccess::class)->visible($event, $viewer);
+
+        return [
+            'entry' => [
+                'weight' => $reg->weight !== null ? (float) $reg->weight : null,
+                'weighed_in' => $reg->weighed_in_at !== null,
+                'division' => $reg->category?->weight_class,
+                'category' => $reg->category?->name,
+            ],
+            'bouts' => $bouts->map(function (EventMatch $b) use ($reg, $faces, $videos, $canOpen) {
+                $shaped = $this->shape($b, $reg, $faces, $videos, $canOpen);
+
+                // No opponent in the row at all: the bracket is walking this
+                // competitor through. Said as a bye rather than as a bout
+                // against "TBD", which would have them waiting for a fight that
+                // is never going to be called.
+                $shaped['bye'] = $b->a_competitor_id === null || $b->b_competitor_id === null;
+
+                return $shaped;
+            })->values()->all(),
+        ];
+    }
+
     /** Same day, and one title contains the other once normalised. */
     private function matchRegistration(TournamentEvent $t, Collection $registrations): ?ClubEventRegistration
     {
@@ -174,6 +248,24 @@ class BoutHistory
             'division' => $b->category?->weight_class ?: $b->category?->name,
             'round' => $b->phase ?: $b->round,
             'match_no' => $b->match_no,
+            /*
+             * WHERE and WHEN — added 2026-09-08 for the entrant's own panel,
+             * which had to answer "when do I fight?" and had nothing to answer
+             * it with.
+             *
+             * Both are frequently NULL, and that is not a defect: an organiser
+             * publishes a draw long before mats are assigned or a running order
+             * exists. The reader is told what is known and told plainly what is
+             * not — the same choice `<x-draw-veil>` makes by naming WHEN a draw
+             * opens instead of saying nothing at all.
+             *
+             * Additive keys: the member profile's tournament history reads this
+             * same shape and simply ignores them.
+             */
+            'mat' => $b->court ?: null,
+            'at' => $b->scheduled_time ? \Carbon\Carbon::parse($b->scheduled_time)->format('g:i A') : null,
+            'phase' => $b->phase ?: null,
+            'live' => $b->status === 'live',
             'video_url' => $videos[$b->id] ?? null,
             'bout_url' => ($canOpen && $b->event && $b->match_no !== null)
                 ? route('me.events.bout', ['event' => $b->event->uuid, 'matchNo' => $b->match_no])

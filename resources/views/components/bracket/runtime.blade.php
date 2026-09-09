@@ -224,18 +224,25 @@ window.BracketBoard = window.BracketBoard || (function () {
             S.canArrange = !!data.can_arrange;
             if (!S.canArrange) { S.arrange = false; S.pick = null; }
 
-            const stillThere = S.divisions.some(d => d.id === S.division);
+            const stillThere = S.divisions.some(d => d.id === S.division && !d.is_heading);
             if (!stillThere) {
                 // Nothing selected yet (first load), or the selection is gone.
                 // The host may have asked for a particular division — a bout's
                 // "View draw" names the bout's own — otherwise the first.
-                const wanted = S.divisions.find(d => String(d.id) === String(S.cfg.initialDivision ?? ''));
-                S.division = wanted ? wanted.id : (S.divisions[0] ? S.divisions[0].id : null);
+                //
+                // A HEADING is never selected: it is the organiser's title for
+                // the divisions beneath it, with no entrants and no draw, so
+                // landing on one would draw an empty bracket and read as "the
+                // draw is not out yet".
+                const drawable = S.divisions.filter(d => !d.is_heading);
+                const wanted = drawable.find(d => String(d.id) === String(S.cfg.initialDivision ?? ''));
+                S.division = wanted ? wanted.id : (drawable[0] ? drawable[0].id : null);
             }
 
             render(keepView);
             emit('bracket:loaded', {
-                divisions: S.divisions.map(d => ({ id: d.id, name: d.name, entrants: d.entrants, bench: d.bench.length })),
+                divisions: S.divisions.map(d => ({ id: d.id, name: d.name, entrants: d.entrants,
+                                              bench: d.bench.length, is_heading: !!d.is_heading })),
                 division: S.division, canArrange: S.canArrange, locked: S.locked,
             });
         } catch (e) {
@@ -253,6 +260,8 @@ window.BracketBoard = window.BracketBoard || (function () {
     function show(id) {
         const d = S.divisions.find(x => String(x.id) === String(id));
         if (!d) return;
+        // A heading is a label, not a draw — see the note in load().
+        if (d.is_heading) return;
         S.division = d.id;
         S.pick = null;
         render();
@@ -1043,7 +1052,8 @@ window.BracketBoard = window.BracketBoard || (function () {
             arrange: S.arrange && S.canArrange,
             picked: S.pick ? S.pick.name : null,
             division: S.division,
-            divisions: S.divisions.map(d => ({ id: d.id, name: d.name, entrants: d.entrants, bench: d.bench.length })),
+            divisions: S.divisions.map(d => ({ id: d.id, name: d.name, entrants: d.entrants,
+                                              bench: d.bench.length, is_heading: !!d.is_heading })),
         });
     }
 

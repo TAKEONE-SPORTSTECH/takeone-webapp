@@ -5,6 +5,9 @@ return [
     'language_updated' => 'Language updated',
     'save'             => 'Save',
     'cancel'           => 'Cancel',
+    // The global confirmation dialog's own defaults (<x-confirm-dialog>).
+    'confirm_title'    => 'Are you sure?',
+    'confirm_message'  => 'This action cannot be undone.',
     'close'            => 'Close',
     'zoom_in'          => 'Zoom in',
     'zoom_out'         => 'Zoom out',
@@ -918,6 +921,7 @@ return [
     'share'            => 'Share',
     'link_copied'      => 'Link copied',
     'something_went_wrong' => 'Something went wrong',
+    'saved' => 'Saved',
     'components_profile_modal_tab_security' => 'Security',
     'components_profile_modal_tab_docs' => 'Docs',
     'saving' => 'Saving',

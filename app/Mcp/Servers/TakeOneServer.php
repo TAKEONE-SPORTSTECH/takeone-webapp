@@ -14,6 +14,7 @@ use App\Mcp\Tools\GetBoutVideoTool;
 use App\Mcp\Tools\GetBjjScoreboardTool;
 use App\Mcp\Tools\GetEventBracketTool;
 use App\Mcp\Tools\GetEventReadinessTool;
+use App\Mcp\Tools\GetEventTranslationTool;
 use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
@@ -28,6 +29,8 @@ use App\Mcp\Tools\ManageMemberPhotoTool;
 use App\Mcp\Tools\NotifyMemberTool;
 use App\Mcp\Tools\RecordTransactionTool;
 use App\Mcp\Tools\SearchPeopleTool;
+use App\Mcp\Tools\SetEventTranslationTool;
+use App\Mcp\Tools\TranslateEventTool;
 use App\Mcp\Tools\VerifyAchievementTool;
 use App\Mcp\Tools\WhoAmITool;
 use Laravel\Mcp\Server;
@@ -54,7 +57,8 @@ Getting started:
   6. `list_event_documents` lists files attached to an event (rulebook, entry form, schedule) with download links.
   7. `get_event_bracket` reads an event's knockout draw — divisions, rounds, bouts, scores, podium.
   8. `search_people` finds discoverable members who share a confirmed club membership with the acting user (never platform-wide; safe public fields only).
-  9. `list_event_videos` lists the bouts of an event that were filmed, grouped by division; `get_bout_video` reads one bout's camera angles, its scoring timeline (derived from the officiating log — timestamps are seconds into the video) and its coach notes. An athlete always reaches their OWN bout, whatever the event's scope and after it is archived.
+  9. `get_event_translation` reads an event in ANY language — its title, description, location, prize, requirements, divisions and fee lines, as the public page shows them. An organiser writes an event once in their own language and the platform rewrites it into the reader's; call this rather than sending English to somebody who does not read it. Omit `locale` to see which languages an event already has. It never starts a translation.
+ 10. `list_event_videos` lists the bouts of an event that were filmed, grouped by division; `get_bout_video` reads one bout's camera angles, its scoring timeline (derived from the officiating log — timestamps are seconds into the video) and its coach notes. An athlete always reaches their OWN bout, whatever the event's scope and after it is archived.
 
 Write tools (may be globally disabled via server config):
   • `record_transaction` — log manual income/expense for a club (admins only).
@@ -62,6 +66,8 @@ Write tools (may be globally disabled via server config):
   • `enroll_members` — batch-enroll active members into a package, marked as already paid (admins only).
   • `add_certification` — add a self-managed certification to a member (super-admin/self/guardian).
   • `add_work_history` — add a self-managed work/coaching history entry to a member (super-admin/self/guardian).
+  • `translate_event` — write an event into one or more languages ahead of anybody asking (organiser only). Queues and returns; each language costs money at the AI provider, so it is capped per call.
+  • `set_event_translation` — correct one field's wording in one language (organiser only). Marked human-written and never overwritten by a later automatic run — this is how a federation's official name for a division is made to stick.
   • `arrange_event_bracket` — move a competitor within a division's first round, or in/out of the draw (organiser only, before the event starts).
 
 Identifiers: clubs accept a numeric id OR a slug; members accept a uuid (preferred)
@@ -93,6 +99,9 @@ class TakeOneServer extends Server
         ListBjjMatchEventsTool::class,
         ListCourtScreensTool::class,
         ArrangeEventBracketTool::class,
+        GetEventTranslationTool::class,
+        TranslateEventTool::class,
+        SetEventTranslationTool::class,
         ListActivityCatalogTool::class,
         VerifyAchievementTool::class,
         AddCertificationTool::class,

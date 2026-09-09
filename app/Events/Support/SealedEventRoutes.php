@@ -70,7 +70,11 @@ class SealedEventRoutes
 
             if ($uri === self::FROM || str_starts_with($uri, self::FROM.'/')) {
                 $originals[] = $route;
+
+                continue;
             }
+
+            self::refuseStrangerInThisSpace($uri);
         }
 
         foreach ($originals as $route) {
@@ -87,6 +91,43 @@ class SealedEventRoutes
         // router is already matching), so the lookup table has to know about
         // everything just added.
         $router->getRoutes()->refreshNameLookups();
+    }
+
+    /**
+     * A route under `me/events/` that this mirror cannot see.
+     *
+     * ⚠️ The prefix match above is LITERAL — `me/events/{event}` — so a route
+     * declared with any other parameter name silently fails to mirror while
+     * every link to it is still rewritten into the sealed space by
+     * SealEventPage. The result is a 404 that looks like a broken feature
+     * rather than a routing mistake, and it cost a day: the translation routes
+     * shipped as `me/events/{uuid}/translations` and were the only four of a
+     * hundred and sixteen that the organiser could not reach from inside an
+     * event.
+     *
+     * So a stranger in this space is refused at boot, loudly, in local and
+     * testing — where the person who just wrote it is standing — and merely
+     * recorded in production, because a mirror that cannot register a route is
+     * never a reason to take the platform down (RULE #1).
+     *
+     * `me/events/create` and its siblings are not strangers: a literal segment
+     * is not a parameter, and they are correctly outside the mirror.
+     */
+    private static function refuseStrangerInThisSpace(string $uri): void
+    {
+        if (! str_starts_with($uri, 'me/events/{') || str_starts_with($uri, self::FROM)) {
+            return;
+        }
+
+        $message = "SealedEventRoutes: `{$uri}` lives under me/events/ but does not use the `{event}` "
+            .'parameter, so it will NOT be mirrored into /e/{uuid}/admin while links to it still are. '
+            .'Rename the route parameter to {event}.';
+
+        if (app()->environment(['local', 'testing'])) {
+            throw new \LogicException($message);
+        }
+
+        \Illuminate\Support\Facades\Log::warning($message);
     }
 
     private static function mirror(Router $router, Route $route): void

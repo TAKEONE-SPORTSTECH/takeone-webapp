@@ -7,7 +7,7 @@
     $loc = app()->getLocale();
     $achMonths = [];
     for ($i = 1; $i <= 12; $i++) {
-        $achMonths[] = ['v' => sprintf('%02d', $i), 'l' => \Illuminate\Support\Carbon::create(2000, $i, 1)->locale($loc)->translatedFormat('F')];
+        $achMonths[] = ['v' => sprintf('%02d', $i), 'l' => \App\Support\Cldr::skeleton(\Illuminate\Support\Carbon::create(2000, $i, 1), 'MMMM', 'F')];
     }
 @endphp
 

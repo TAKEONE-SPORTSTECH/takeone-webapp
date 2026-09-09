@@ -27,11 +27,13 @@
         and the wall learns about it only if a penalty is actually given. It
         is STARTED from the corner it is against and COUNTED in the centre
         beside the match clock (2026-09-05) — one clock, one place to look.
-      · the event log opens as a modal from the centre column, because it is a
+      · the score log opens as a modal from the centre column, because it is a
         correction tool read when something has to be put right, not a running
-        commentary worth a band of the console. Nothing in this sport is ever
-        erased — an undo APPENDS a reversal with a reason and the row it
-        reversed stays, struck through.
+        commentary worth a band of the console. It is also the ONLY undo:
+        scoring no longer offers a five-second toast, which asked the official
+        to reconsider every single point instead of getting on with the fight.
+        Nothing in this sport is ever erased — an undo APPENDS a reversal with
+        a reason and the row it reversed stays, struck through.
 
     ── It decides NOTHING about the score ─────────────────────────────────────
     Every button posts an INTENTION: "blue passed the guard", never "blue now
@@ -40,16 +42,25 @@
     has fallen behind cannot overwrite the truth.
 
     ── Graduated friction, exactly as the design spec sets it out ─────────────
-      score                    · no confirmation, 400ms lockout, 5s undo toast
-      undo past the toast      · 1s hold on the log row
+      score                    · no confirmation, 400ms lockout, NO toast
+      undo                     · 1s hold on that row in the score log
       pause / resume / review  · single tap
       end · reset · correction · modal
       DQ · finalize            · modal AND the match number typed in
+      match over               · the end panel offers itself, once, and
+                                 recording carries the mat to the next bout
 --}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="utf-8">
+    {{-- Dark by design (a scoreboard console / wall board). Declared so a
+         browser's auto-dark and Dark Reader both leave it alone — the same
+         reasoning as the light pages, opposite value. --}}
+    <meta name="color-scheme" content="dark">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: dark; }</style>
+
 {{-- A fixed console, not a document: it is authored at one size and scaled to
      the glass, so there is nothing to zoom INTO — magnifying it can only push
      the row of controls along the bottom off the edge. The one place the house
@@ -211,6 +222,13 @@
            Pause here, exactly as on the karate table. --}}
       <button id="btnStart" class="bigbtn bout" style="color:#000;"></button>
 
+      {{-- A level match at the bell is not a result — IBJJF sends it to the
+           referee. The runtime unhides this the moment that happens, and it
+           had no home on this console at all before (2026-09-08), so a level
+           bout could be neither decided nor recorded from the table. --}}
+      <button id="btnDecision" class="cbtn bout" hidden
+              style="width:100%;color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::bjj_messages.ctl_decision') }}</button>
+
       <div style="width:100%;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         {{-- Introduction ⇄ scoreboard. Labelled and coloured for what it will
              do NEXT, from the state rather than from a flag this page keeps:
@@ -221,8 +239,21 @@
              dialog, so it carries the runtime's own #btnEnd id rather than a
              second copy of that flow. --}}
         <button id="btnEnd" class="cbtn bout" style="color:var(--alarm);border:1px solid rgba(255,59,71,.5);">{{ __('scoreboard::bjj_messages.ctl_finish') }}</button>
+        {{-- Recording the result. Full width because it is the one decisive
+             act on this panel, and enabled only once the match is over. It
+             does not record anything itself — it re-opens the end-of-match
+             panel, which is where the confirmation lives, so a table that
+             dismissed that panel can still finish the bout. --}}
+        <button id="btnFinalize" class="cbtn bout" style="grid-column:1/-1;color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::bjj_messages.ctl_commit') }}</button>
         <button id="btnSettings" class="cbtn" style="color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::bjj_messages.ctl_settings') }}</button>
-        <button id="btnHardware" class="cbtn" style="color:var(--text);border:1px solid var(--line-2);">{{ __('scoreboard::bjj_messages.ctl_hardware') }}</button>
+        {{-- The score log. This slot used to hold "Hardware", which opened a
+             panel saying nothing was connected — and the log, which the styles
+             below have always been written for, had no way in at all on this
+             console. The undo toast was standing in for it, and being offered
+             a five-second window after every point is not a correction tool,
+             it is an interruption. Now the log is a door you open when
+             something needs putting right (asked for 2026-09-08). --}}
+        <button id="btnLog" class="cbtn" style="color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::bjj_messages.ctl_score_log') }}</button>
         <button id="btnReset" class="cbtn bout" style="background:transparent;color:#ff6b78;border:1px solid rgba(255,107,120,.5);">{{ __('scoreboard::bjj_messages.ctl_reset') }}</button>
         {{-- Deliberately NOT disabled with the rest of the match controls: a
              hung screen is most likely to need this when the mat is empty, and
@@ -398,7 +429,75 @@
   </div>
 </div>
 
-{{-- ── Hardware ──────────────────────────────────────────────────────────
+{{-- ── The end of a match ────────────────────────────────────────────────
+     Opens ITSELF the moment the match is over — however it ended — with the
+     result, what recording will write, and what runs next on this mat. Asked
+     for 2026-09-08: ending a bout used to leave the table with nothing to
+     press, because neither Finalize nor Decision existed on this console.
+
+     `#btnCommit` is the runtime's own id, so the confirmation it already
+     carries (the match number typed in, because a recorded result cannot be
+     taken back) applies here unchanged. Painted by paintOver(). --}}
+<div id="overPanel" class="scrim" hidden style="z-index:42;">
+  <div class="modal" style="width:840px;gap:18px;">
+    <div class="mhead">
+      <div class="mtitle" style="font-size:26px;color:var(--gold);">{{ __('scoreboard::bjj_messages.ctl_over_title') }}</div>
+      <button data-close="overPanel" class="mclose" aria-label="{{ __('scoreboard::bjj_messages.ctl_cancel') }}">✕</button>
+    </div>
+
+    {{-- The result. The winner's name is the headline because it is what the
+         official is checking before committing it to the bracket. --}}
+    <div style="border:1px solid var(--line-2);border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;gap:8px;">
+      <div style="font-size:18px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);">{{ __('scoreboard::bjj_messages.ctl_over_result') }}</div>
+      <div id="overWho" style="font-family:'Anton',sans-serif;font-size:52px;line-height:1.05;color:var(--text);"></div>
+      <div id="overHow" style="font-size:22px;color:var(--muted);letter-spacing:.04em;"></div>
+      <div id="overScore" style="font-family:'Anton',sans-serif;font-size:34px;color:var(--muted);font-variant-numeric:tabular-nums;"></div>
+    </div>
+
+    {{-- What the mat runs next, so "and off to the next match" is a thing the
+         table can see before it presses, not a surprise afterwards. --}}
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="font-size:18px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);">{{ __('scoreboard::bjj_messages.ctl_over_next') }}</div>
+      <div id="overNext" style="font-size:26px;color:var(--text);"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <button data-close="overPanel" class="cbtn" style="color:var(--muted);border:1px solid var(--line-2);">{{ __('scoreboard::bjj_messages.ctl_over_later') }}</button>
+      <button id="btnCommit" style="font-size:24px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--gold);color:#000;border:none;border-radius:14px;padding:16px 0;cursor:pointer;">{{ __('scoreboard::bjj_messages.ctl_over_record') }}</button>
+    </div>
+    <div style="font-size:17px;color:var(--faint);letter-spacing:.04em;">{{ __('scoreboard::bjj_messages.ctl_over_hint') }}</div>
+  </div>
+</div>
+
+{{-- ── The score log ─────────────────────────────────────────────────────
+     Every entry this mat has recorded, newest first, each one reversible on a
+     1s hold — which is the ONLY undo on this console now. Painted by the
+     runtime's paintLog(); `#log`, `.logRow` and the gold hold-sweep have been
+     in console-styles all along, waiting for a host element.
+
+     Sized like the running order next door, and for the same reason: the card
+     is transform-scaled by --popup-scale, so a plain pixel width is drawn and
+     THEN shrunk. See the long note on the queue panel above. --}}
+<div id="logScrim" class="scrim" hidden style="z-index:41;">
+  <div class="modal"
+       style="width:calc((100vw - 72px) / var(--popup-scale));max-width:none;flex-shrink:0;height:900px;gap:16px;">
+    <div class="mhead">
+      <div class="mtitle" style="font-size:26px;color:var(--gold);">{{ __('scoreboard::bjj_messages.ctl_score_log') }}</div>
+      <button data-close="logScrim" class="mclose" aria-label="{{ __('scoreboard::bjj_messages.ctl_cancel') }}">✕</button>
+    </div>
+    {{-- The empty state rides on the element itself (`#log:empty::before` reads
+         this attribute), so an untouched mat says so without the runtime
+         needing to know about a second element it might forget to hide. --}}
+    <div id="log" data-empty="{{ __('scoreboard::bjj_messages.ctl_log_empty') }}"></div>
+    <div style="font-size:20px;color:var(--faint);">{{ __('scoreboard::bjj_messages.ctl_log_hint') }}</div>
+  </div>
+</div>
+
+{{-- ── Hardware — NO LONGER REACHABLE ────────────────────────────────────
+     Its button became the score log above. The markup is left in place rather
+     than deleted in passing (CLAUDE.md → House Cleaning) and is registered in
+     Documentation/HOUSE-CLEANING.md; it is `hidden`, so it costs a reader
+     nothing. Give it an opener again and it works exactly as it did.
      Honest emptiness. Nothing on this mat is wired yet, and this says so
      rather than being a dead "Connect" button beside a live scoring grid. --}}
 <div id="hardware" hidden class="scrim" style="z-index:41;">
@@ -427,9 +526,10 @@
   </div>
 </div>
 
+{{-- The toast is a NOTICE now, not a decision: no Undo button on it. Undo
+     lives in the score log, on the row it belongs to. --}}
 <div id="toast" hidden>
   <span id="toastText"></span>
-  <button class="btn small" id="toastUndo">{{ __('scoreboard::bjj_messages.ctl_undo') }}</button>
 </div>
 
 <script>
@@ -466,11 +566,13 @@
 
   document.getElementById('btnBouts').addEventListener('click', function () { open('queueScrim', true); });
   document.getElementById('queueClose').addEventListener('click', function () { open('queueScrim', false); });
-  document.getElementById('btnHardware').addEventListener('click', function () { open('hardware', true); });
+  document.getElementById('btnLog').addEventListener('click', function () { open('logScrim', true); });
+  {{-- Re-opens the offer; it never records anything itself. --}}
+  document.getElementById('btnFinalize').addEventListener('click', function () { open('overPanel', true); });
 
   // A card closes on its own scrim, never on a click inside it: adjusting two
   // rules is one visit, not two.
-  ['queueScrim', 'settings', 'hardware'].forEach(function (id) {
+  ['queueScrim', 'settings', 'logScrim', 'overPanel', 'hardware'].forEach(function (id) {
     var p = panel(id);
     if (p) p.addEventListener('click', function (e) { if (e.target === p) open(id, false); });
   });
@@ -487,7 +589,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    ['queueScrim', 'settings', 'hardware'].forEach(function (id) { open(id, false); });
+    ['queueScrim', 'settings', 'logScrim', 'overPanel', 'hardware'].forEach(function (id) { open(id, false); });
   });
 })();
 </script>

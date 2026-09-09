@@ -296,7 +296,7 @@
                         </span>
                         <span class="min-w-0 flex-1">
                             <span class="block text-[13px] font-medium text-foreground truncate">{{ $t->description ?: ($t->category ?: $t->type) }}</span>
-                            <span class="block text-[10px] text-muted-foreground truncate">{{ $payer ? $payer . ' · ' : '' }}{{ optional($t->transaction_date)->translatedFormat('d M') }}</span>
+                            <span class="block text-[10px] text-muted-foreground truncate">{{ $payer ? $payer . ' · ' : '' }}{{ \App\Support\Cldr::shortDate($t->transaction_date) }}</span>
                         </span>
                         <span class="text-[13px] font-bold tabular-nums flex-shrink-0 {{ $isIncome ? 'text-emerald-600' : 'text-foreground' }}">{{ $isIncome ? '+' : '−' }}{{ number_format((float) $t->amount, 0) }}</span>
                     </a>

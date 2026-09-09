@@ -79,6 +79,49 @@ class EntryPanelController extends Controller
         $permissions = $this->editor->permissions($event, $registration, $me);
         $pending = $this->withdrawals->pendingFor($event, $me);
 
+        /*
+         * ===== "When do I fight?" =====
+         *
+         * The one question this panel could not answer. It said what the entry
+         * WAS — name, division, fee, receipt — and nothing about competing: no
+         * division placing, no opponent, no mat, not even whether the draw had
+         * been made. Everything needed already existed (the draw, the bracket,
+         * `BoutHistory` shaping a bout from a competitor's own corner); it had
+         * simply never been shown to the person it is about. Added 2026-09-08.
+         *
+         * Two gates, in this order:
+         *
+         *   1. `drawVisible()` — a competitor may NOT read a withheld draw just
+         *      because they are in it. When it is withheld the panel says WHEN
+         *      it opens (the same sentence the board's veil uses) rather than
+         *      going quiet, because a reader who cannot tell "not published" from
+         *      "nobody entered" telephones the organiser.
+         *   2. Only then are their own bouts fetched at all — nothing about the
+         *      draw is loaded for somebody who may not see it.
+         */
+        $access = app(EventAccess::class);
+        $drawOpen = $access->drawVisible($event, $me);
+
+        /*
+         * ⚠️ The DIVISION is not the draw.
+         *
+         * Which category this athlete is entered in is a fact about their own
+         * entry — the organiser placed them there, it is on their registration,
+         * and it is known long before any bracket exists. Gating the whole
+         * payload on `drawVisible()` made the panel tell an entrant "not placed
+         * in a division yet" while the division was sitting on the row, which is
+         * worse than saying nothing: it is wrong.
+         *
+         * So the entry half is always read and the BOUTS are emptied when the
+         * draw is withheld — nothing about the bracket reaches the view, and
+         * the athlete still learns where they were placed.
+         */
+        $myBouts = app(\App\Support\BoutHistory::class)->forEvent($event, $me, $me);
+
+        if ($myBouts !== null && ! $drawOpen) {
+            $myBouts['bouts'] = [];
+        }
+
         return view('entry.public.my-entry', [
             'event' => $event,
             'entry' => $this->editor->present($event, $registration, $me),
@@ -87,6 +130,9 @@ class EntryPanelController extends Controller
             'withdrawal' => $pending ? $this->withdrawals->present($pending) : null,
             'clubs' => $this->entries->representableClubs($me),
             'belts' => BeltRank::ladder(),
+            'drawOpen' => $drawOpen,
+            'drawNote' => $drawOpen ? null : $access->drawHiddenMessage($event),
+            'myBouts' => $myBouts,
         ]);
     }
 
@@ -444,13 +490,23 @@ class EntryPanelController extends Controller
         ], $result['ok'] ? 200 : 422);
     }
 
-    /** Their own participant row for this event, or null. */
+    /**
+     * Their own participant row for this event, or null.
+     *
+     * An athlete may hold one entry per division — Gi and No-Gi are two
+     * entries in one event — so "their row" is no longer a single fact. The
+     * earliest is taken, deterministically: it is the entry that carries the
+     * purchase (fee lines stay on the entry that made them), which is what
+     * this panel is about. Order matters more than which one wins; a panel
+     * that shows a different entry on each load is the failure to avoid.
+     */
     private function myRegistration(ClubEvent $event, $me): ?ClubEventRegistration
     {
         return ClubEventRegistration::with('user')
             ->where('event_id', $event->id)
             ->where('user_id', $me->id)
             ->where('role', 'participant')
+            ->orderBy('id')
             ->first();
     }
 }

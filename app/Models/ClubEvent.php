@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use App\Traits\TranslatesAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,9 +11,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use App\Clubs\Models\Tenant;
+use App\Translation\Contracts\TranslatableContent;
 
-class ClubEvent extends Model
+class ClubEvent extends Model implements TranslatableContent
 {
+    use TranslatesAttributes;
     use BelongsToTenant, HasFactory, LogsActivity;
 
     protected static function booted(): void
@@ -20,6 +23,24 @@ class ClubEvent extends Model
         static::creating(function (self $event) {
             if (empty($event->uuid)) {
                 $event->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+
+            /*
+             * The language the organiser was writing in.
+             *
+             * Recorded HERE rather than in each of the four forms that create
+             * an event, because a translator that guesses the source language
+             * does not fail loudly — it produces fluent nonsense, confidently.
+             * The interface language they were using is the best available
+             * guess and the organiser can correct it.
+             *
+             * Only ever a CONTENT locale (config/content_locales.php); an app
+             * locale we do not translate from is left null, which falls back to
+             * the app default exactly as before. See App\Translation.
+             */
+            if (empty($event->source_locale)) {
+                $event->source_locale = \App\Translation\Translations::locales()
+                    ->normalise(app()->getLocale());
             }
         });
 
@@ -141,6 +162,8 @@ class ClubEvent extends Model
         'draw_reveal',
         'notify_countries',
         'uuid',
+        // The language the organiser wrote this event IN — see App\Translation.
+        'source_locale',
         'is_archived',
         // mobile Events extensions
         'event_type',
@@ -310,7 +333,7 @@ class ClubEvent extends Model
 
     public function categories(): HasMany
     {
-        return $this->hasMany(EventCategory::class, 'event_id')->orderBy('sort_order');
+        return $this->hasMany(EventCategory::class, 'event_id')->orderBy('sort_order')->chaperone();
     }
 
     public function matches(): HasMany
@@ -328,7 +351,7 @@ class ClubEvent extends Model
     public function checklistItems(): HasMany
     {
         return $this->hasMany(EventChecklistItem::class, 'event_id')
-            ->orderBy('sort_order')->orderBy('id');
+            ->orderBy('sort_order')->orderBy('id')->chaperone();
     }
 
     /**
@@ -368,5 +391,196 @@ class ClubEvent extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(EventDocument::class, 'event_id')->orderBy('sort_order');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Readable in any language — App\Translation
+    |--------------------------------------------------------------------------
+    |
+    | The organiser writes the event once, in their own language. Everything
+    | below is what that means concretely: which of this row's strings are
+    | WORDS (as opposed to a colour, a uuid, a status or a price), what a
+    | translator needs to know to render them well, and which language they
+    | arrived in.
+    |
+    | Nothing here changes how the event is stored, validated or displayed
+    | today. A record with no translations answers every read with its own
+    | text, exactly as before.
+    */
+
+    /**
+     * This event's words, keyed for storage.
+     *
+     * ⚠️ The keys are an API. A stored translation is filed under its key, so
+     * renaming one orphans every translation of that field in every language.
+     *
+     * List keys are dotted with the child's own DATABASE ID, never its position
+     * — `divisions.418`, not `divisions.0`. Divisions and fee lines are
+     * reorderable, and position-keyed translations would silently swap places
+     * with each other the first time an organiser dragged a row: the Portuguese
+     * for "Adult Black Belt" appearing under "Juvenile Blue". `requirements` is
+     * the one list keyed by position, because it is a plain JSON array with no
+     * ids to key by — reordering it re-translates it, which is the cheap,
+     * correct failure.
+     *
+     * @return array<string, string>
+     */
+    public function translatableDocument(): array
+    {
+        /*
+         * ⚠️ `translationSource()`, never `$this->title`.
+         *
+         * These columns translate on read now, and PHP will not re-enter
+         * `__get()` for a key whose `__get()` is already on the stack — so
+         * `{{ $event->title }}` reaching this method and finding `$this->title`
+         * raises "Undefined property", the trait catches it, and the page
+         * silently renders the source language having done all the work. The
+         * full note is on App\Traits\TranslatesAttributes::translationSource().
+         */
+        $document = [
+            'title' => $this->translationSource('title'),
+            'about' => $this->translationSource('description'),
+            // A venue is often a NAME ("Isa Sports City, Hall 2") and the agent
+            // is told to leave names alone — but it is just as often a
+            // described place ("the small hall behind the pool"), so it is
+            // offered and the agent decides.
+            'location' => $this->translationSource('location'),
+            'level' => $this->translationSource('level'),
+            'prize' => $this->translationSource('prize'),
+            'cta_text' => $this->translationSource('cta_text'),
+            'ribbon_label' => $this->translationSource('ribbon_label'),
+        ];
+
+        foreach (array_values((array) ($this->requirements ?: [])) as $i => $line) {
+            if (is_string($line)) {
+                $document['requirements.'.$i] = $line;
+            }
+        }
+
+        /*
+         * Divisions and fee lines live in their own tables but are read as part
+         * of THIS page, so they travel in this document: one translation job
+         * per event rather than one per row, and — the reason that matters —
+         * the agent sees the divisions and the description together, so the
+         * words it picks for a belt rank in one match the words it picks in the
+         * other.
+         *
+         * `relationLoaded` guards keep this cheap on a page that already
+         * eager-loaded them, and correct on one that did not.
+         */
+        foreach ($this->categories as $category) {
+            if (! $category->is_heading && filled($category->translationSource('name'))) {
+                $document['divisions.'.$category->id] = $category->translationSource('name');
+            }
+        }
+
+        foreach ($this->feeOptions as $option) {
+            if (filled($option->translationSource('label'))) {
+                $document['fees.'.$option->id] = $option->translationSource('label');
+            }
+        }
+
+        /*
+         * The readiness list. Not a poster fact — an official reads it at the
+         * venue on the morning — but it is the organiser's own words all the
+         * same, and it was the last piece of event text with no way to be read
+         * in anything but the language it was typed in.
+         */
+        foreach ($this->checklistItems as $item) {
+            if (filled($item->translationSource('label'))) {
+                $document['checklist.'.$item->id] = $item->translationSource('label');
+            }
+        }
+
+        return $document;
+    }
+
+    /**
+     * What the translator needs to know that the text alone does not say.
+     *
+     * The `keep` list is the important half. Everything in it is a NAME, and a
+     * name that gets translated is not a cosmetic error: a competitor who
+     * cannot find the venue because it was rendered into their language has
+     * been sent to the wrong building by this feature.
+     *
+     * @return array{summary: string, keep: array<int, string>}
+     */
+    public function translationContext(): array
+    {
+        $sport = $this->sport
+            ? (config('event_schema.sports.'.$this->sport.'.label') ?: $this->sport)
+            : null;
+
+        $summary = trim(implode(' ', array_filter([
+            'The public page of a'.($sport ? ' '.$sport : '').' competition',
+            $this->tenant?->club_name ? 'hosted by '.$this->tenant->club_name : null,
+            $this->tenant?->country ? 'in '.$this->tenant->country : null,
+            '— read by athletes, coaches and their families deciding whether to enter.',
+        ])));
+
+        $keep = array_filter([
+            $this->tenant?->club_name,
+            // Source, for the same __get re-entrancy reason as above.
+            $this->translationSource('location'),
+            $this->fee_currency,
+        ]);
+
+        // A division's name carries the sport's own vocabulary and its rank
+        // ladder; showing them to the agent as names-in-context stops "Brown
+        // Belt" being rendered as a description of a belt's colour.
+        foreach ($this->categories as $category) {
+            if (filled($category->weight_class)) {
+                $keep[] = (string) $category->weight_class;
+            }
+        }
+
+        return [
+            'summary' => $summary,
+            'keep' => array_values(array_unique(array_map('strval', $keep))),
+        ];
+    }
+
+    /** The language this event was written in. */
+    public function sourceLocale(): string
+    {
+        return $this->source_locale ?: config('app.fallback_locale', 'en');
+    }
+
+    /** The priced entry lines — "Gi entry", "Late entry" — whose labels are words. */
+    public function feeOptions(): HasMany
+    {
+        return $this->hasMany(EventFeeOption::class, 'event_id')->orderBy('sort')->chaperone();
+    }
+
+    /**
+     * The columns that hold WORDS, and where each one's translation lives in
+     * this event's document.
+     *
+     * Reading any of them now returns the reader's language (App\Traits\
+     * TranslatesAttributes). To get the organiser's own text — an edit form,
+     * a comparison, the translator itself — say so:
+     * `Translations::source(fn () => $event->title)`.
+     *
+     * `requirements` is a JSON array and is not listed here: an attribute
+     * accessor returns one value, and the list is resolved as a list by
+     * `TranslatedDocument::list()`, which keeps the ORIGINAL's length and order.
+     *
+     * @return array<string, string>
+     */
+    protected function translatedAttributes(): array
+    {
+        return [
+            'title' => 'title',
+            // ⚠️ The column is `description`; the document calls it `about`.
+            // They have always differed, and conflating them would silently
+            // translate nothing.
+            'description' => 'about',
+            'location' => 'location',
+            'level' => 'level',
+            'prize' => 'prize',
+            'cta_text' => 'cta_text',
+            'ribbon_label' => 'ribbon_label',
+        ];
     }
 }

@@ -95,10 +95,10 @@
                                     {{-- The date column: a calendar leaf, so the eye can
                                          run down the dates without reading a word. --}}
                                     <div class="w-11 shrink-0 text-center pt-0.5">
-                                        <span class="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ $pdate ? $pdate->locale(app()->getLocale())->translatedFormat('M') : '' }}</span>
+                                        <span class="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ \App\Support\Cldr::skeleton($pdate, 'MMM', 'M') }}</span>
                                         <span class="block text-[22px] font-black leading-none mt-0.5 {{ $active ? '' : 'text-foreground' }}"
                                               style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $pdate ? $pdate->format('j') : '—' }}</span>
-                                        <span class="block text-[10px] font-semibold text-muted-foreground mt-0.5">{{ $pdate ? $pdate->locale(app()->getLocale())->translatedFormat('D') : '' }}</span>
+                                        <span class="block text-[10px] font-semibold text-muted-foreground mt-0.5">{{ \App\Support\Cldr::skeleton($pdate, 'EEE', 'D') }}</span>
                                     </div>
 
                                     {{-- The rail --}}

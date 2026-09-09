@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Cldr;
 use App\Events\Contracts\EventType;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\EntryClaim;
@@ -230,6 +231,41 @@ class PersonalEventController extends Controller
         $myReg = $this->myRegistrations($me->id, collect([$event->id]));
         $e = $this->eventView($event, $me->id, $myReg, full: true);
         $e['cancelled'] = $event->status === 'cancelled';
+        /*
+         * What the POSTER COVER needs, and nothing else does.
+         *
+         * The member event page opens on the same tap-away cover the shared
+         * link does (`entry.public.partials.cover`), and that partial reads the
+         * event's artwork and its long-form dates. Added HERE rather than in
+         * eventView() on purpose: that runs once per row on the events LIST,
+         * and three more values per card there buy nothing.
+         *
+         * `photo` comes from PublicEvent, so the cover shows the same picture on
+         * both surfaces by construction rather than by two people remembering
+         * to. Computed for EVERY event, not only a published one — this is the
+         * member's own page, and an event with the public switch off still has
+         * a cover worth opening on.
+         */
+        /*
+         * The PACKAGE's own name for this kind of event — "Karate
+         * Championship", not the generic schema's "Tournament".
+         *
+         * The two payloads disagreed about `type`: the poster prints the
+         * EventType's `label()` while eventView() prints
+         * `config('event_schema')`'s, so one event's classification line read
+         * "Karate Championship" on the poster and "Karate Tournament" on the
+         * member page — the same two-faces problem the shared band was built to
+         * end. Added as its OWN key rather than by changing `type`, because
+         * `type` is printed on every card of the events LIST and re-wording all
+         * of it is not this change's business (RULE #1).
+         *
+         * The band prefers this and falls back to `type`, so a type with no
+         * package keeps exactly the words it has today.
+         */
+        $e['type_package'] = $type->label();
+        $e['photo'] = app(\App\Events\Support\PublicEvent::class)->photo($event);
+        $e['date'] = $event->date ? Cldr::fullDate($event->date) : null;
+        $e['end_date'] = $event->end_date ? Cldr::fullDate($event->end_date) : null;
         // Just the number, for the Officials tile. Counted here rather than in
         // eventView() because that runs once per row on the events LIST, and one
         // more query per card there buys nothing.
@@ -273,6 +309,26 @@ class PersonalEventController extends Controller
                 ? $event->checklistItems()->with('checker:id,full_name,name')->get()
                     ->map(fn ($i) => $this->checklistItemView($i))->all()
                 : [],
+            /*
+             * The public page's own address — null unless the organiser has
+             * actually put one up.
+             *
+             * The band's "open the public page" control hangs off this, and it
+             * has to be NULL-or-real rather than a URL that might 404: while
+             * `entry_mode` is `members` there IS no poster, and a round control
+             * in the header that lands on a refusal is a dead end (Navigation
+             * Integrity). `$shareUrl` cannot answer this — it falls back to the
+             * member page precisely so a share never breaks — so the question is
+             * asked of the one class that decides it.
+             *
+             * Shown to EVERY viewer, not just organisers: a page anyone in the
+             * world may open is not a thing to hide from a competitor, and the
+             * QR and share controls beside it already point at this same
+             * address once it exists.
+             */
+            'publicUrl' => app(\App\Events\Support\PublicEvent::class)->isPublic($event)
+                ? route('events.public', ['event' => $event->uuid])
+                : null,
             // How to pay, for the join sheet.
             'payment' => $this->paymentInstructions($event),
             // Entering a squad: offered only to someone who holds the grant for
@@ -379,7 +435,7 @@ class PersonalEventController extends Controller
             // decision, though an official always reads it (EventAccess::
             // drawVisible).
             'drawReveal' => $event->draw_reveal ?: \App\Models\ClubEvent::DRAW_ALWAYS,
-            'drawRevealDate' => $event->date?->translatedFormat('D j M'),
+            'drawRevealDate' => $event->date ? Cldr::skeleton($event->date, 'EEEdMMM', 'D j M') : null,
             // Strangers who followed the public link and are waiting to be let
             // in. Rendered by the organiser's console only — accepting one is
             // the gate, and it is not an official's to open.
@@ -3914,6 +3970,28 @@ class PersonalEventController extends Controller
             // poster uses — so the payload has to carry it.
             'e' => ['key' => $event->uuid, 'title' => $event->title, 'color' => $event->color ?: '#7c3aed'],
             'mats' => $mats,
+            /*
+             * Whether this reader may open the CONSOLE — which decides where the
+             * board's one control goes, and nothing else.
+             *
+             * ⚠️ The board is `assertVisible` only, so ANY member who can see
+             * the event can open it (it is exactly the sort of "here is the live
+             * running order" link a coach forwards). The blade used to send its
+             * back control to the console unconditionally, on the stated
+             * assumption that "everybody who reaches THIS one is a signed-in
+             * organiser". They are not: a competitor tapped the only control on
+             * a chrome-less page and was thrown to the platform home by the 403
+             * handler — a dead end with no tab bar and no drawer to escape
+             * through (CLAUDE.md → *Unattended Devices Must Always Recover*, and
+             * Navigation Integrity). Found by a navigation audit, 2026-09-08.
+             *
+             * The organiser's behaviour is unchanged; everybody else now gets a
+             * door that opens.
+             */
+            'canManage' => $me !== null && (
+                $this->canManage($event, $me)
+                || app(EventAccess::class)->canOfficiate($event, $me)
+            ),
         ];
 
         return $request->expectsJson()
@@ -4241,7 +4319,7 @@ class PersonalEventController extends Controller
         $me = Auth::user();
         $this->assertCanManage($event, $me);
 
-        $data = $this->validateDivision($request, $event);
+        $data = $this->headingSafe($this->validateDivision($request, $event));
 
         $division = EventCategory::create($data + [
             'event_id' => $event->id,
@@ -4266,7 +4344,7 @@ class PersonalEventController extends Controller
         $this->assertCanManage($event, $me);
 
         $category = $this->divisionOf($event, $division);
-        $category->update($this->validateDivision($request, $event, $category));
+        $category->update($this->headingSafe($this->validateDivision($request, $event, $category), $category));
 
         $this->redrawDivision($event, $category->fresh());
         $this->pushDivisionsChanged($event);
@@ -4428,6 +4506,12 @@ class PersonalEventController extends Controller
         $this->assertCanArrange($event, $me);
 
         $category = $this->divisionOf($event, $division);
+
+        // A heading is a title in the list, not a division: there is nobody to
+        // list because nobody can be in it.
+        if ($category->isHeading()) {
+            return response()->json(['success' => false, 'message' => __('events.division_is_heading')], 422);
+        }
         $range = $category->range();
 
         $names = $event->categories()->pluck('name', 'id');
@@ -4487,6 +4571,27 @@ class PersonalEventController extends Controller
      * Moving someone between groups takes them out of the bracket they were in:
      * a bout cannot keep a competitor the division no longer holds. The draw is
      * re-cut from what is left, by the package.
+     *
+     * ── `add` MOVES · `also` ADDS ──────────────────────────────────────────
+     * Those are two different jobs and conflating them was the bug. Correcting
+     * a weight group — this athlete belongs in B, not A — is a MOVE, and it is
+     * what `add` has always done. Entering the same athlete in a SECOND
+     * competition inside one event is not: Gi and No-Gi are separate divisions,
+     * drawn separately, and this event sells them as one "Gi + No-Gi" option
+     * that sixteen athletes had already paid for. `add` took them out of the
+     * Gi bracket the moment they were put in the No-Gi one, so a paid-for
+     * entry silently vanished.
+     *
+     * `also` gives them a second ENTRY in this division and leaves the first
+     * alone. Their existing entry is replicated — same weight, belt, photo,
+     * club and payment — so the two are the same athlete to every screen that
+     * reads them, and no fee lines are copied: one purchase, however many
+     * divisions it covers.
+     *
+     * Authority is this page's own (`assertCanArrange`), not EntryService's.
+     * Nobody is being brought INTO the event here — they are already an
+     * entrant, and which divisions an entrant is drawn in is exactly what
+     * arranging a draw means.
      */
     public function updateDivisionMembers(Request $request, ClubEvent $event, int $division): JsonResponse
     {
@@ -4499,11 +4604,18 @@ class PersonalEventController extends Controller
 
         $category = $this->divisionOf($event, $division);
 
+        if ($category->isHeading()) {
+            return response()->json(['success' => false, 'message' => __('events.division_is_heading')], 422);
+        }
+
         $data = $request->validate([
             'add' => ['nullable', 'array', 'max:256'],
             'add.*' => ['integer'],
             'remove' => ['nullable', 'array', 'max:256'],
             'remove.*' => ['integer'],
+            // Enter them here AS WELL — see the note above.
+            'also' => ['nullable', 'array', 'max:256'],
+            'also.*' => ['integer'],
         ]);
 
         // Scoped to THIS event's participants — an id from another event, or a
@@ -4514,10 +4626,15 @@ class PersonalEventController extends Controller
 
         $add = $scope($data['add'] ?? []);
         $remove = $scope($data['remove'] ?? []);
+        $also = $scope($data['also'] ?? []);
+
+        // An entry cannot be both moved and duplicated in one request, and a
+        // duplicate of an entry already in THIS division is just that entry.
+        $also = array_values(array_diff($also, $add, $remove));
 
         $touched = collect();
 
-        DB::transaction(function () use ($add, $remove, $category, $event, &$touched) {
+        DB::transaction(function () use ($add, $remove, $also, $category, $event, &$touched) {
             if ($add) {
                 // The divisions they are leaving, so their old brackets are
                 // re-cut too — not just the one they arrive in.
@@ -4533,7 +4650,43 @@ class PersonalEventController extends Controller
                     ->update(['category_id' => null]);
             }
 
+            /*
+             * A second entry in this division, for an athlete who keeps the one
+             * they already have.
+             *
+             * replicate() rather than a hand-built array (CLAUDE.md → the
+             * event-copy note): every column the entry carries travels — weight,
+             * belt, the desk's photo, the club it represents, and the payment
+             * that has already been verified — so the sibling is the same
+             * athlete to the board, the bracket and the roster. Only the
+             * division differs.
+             *
+             * Fee lines are NOT copied. They hang off the registration id, and
+             * the purchase stays on the entry that made it.
+             */
+            foreach (ClubEventRegistration::whereIn('id', $also)->get() as $entry) {
+                if ((int) $entry->category_id === (int) $category->id) {
+                    continue;
+                }
+
+                // Already got one here? Then there is nothing to add. The unique
+                // index would refuse it anyway; this refuses it in words.
+                $held = ClubEventRegistration::where('event_id', $event->id)
+                    ->where('user_id', $entry->user_id)
+                    ->where('category_id', $category->id)
+                    ->exists();
+
+                if ($held) {
+                    continue;
+                }
+
+                $sibling = $entry->replicate();
+                $sibling->category_id = $category->id;
+                $sibling->save();
+            }
+
             // A competitor who has left a division cannot stay in its draw.
+            // `also` is not in this list on purpose: nobody left anything.
             $moved = array_merge($add, $remove);
 
             if ($moved) {
@@ -4563,6 +4716,43 @@ class PersonalEventController extends Controller
 
     /* ---------------- Group plumbing ---------------- */
 
+    /**
+     * A heading carries a NAME and nothing else.
+     *
+     * The form stops offering the rest, but the endpoint is the contract: a
+     * heading that arrived with a weight range, a capacity or a format would
+     * be a division wearing a title's clothes, and every guard that refuses to
+     * draw it or put people in it would then be arguing with data that says
+     * otherwise. So the fields are dropped here, once, on the way in — and
+     * cleared on a division that is being TURNED INTO a heading, so nothing is
+     * left behind from what it used to be.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function headingSafe(array $data, ?EventCategory $existing = null): array
+    {
+        $heading = (bool) ($data['is_heading'] ?? $existing?->is_heading ?? false);
+
+        if (! $heading) {
+            return $data + ['is_heading' => false];
+        }
+
+        return [
+            'name' => $data['name'],
+            'is_heading' => true,
+            'weight_class' => null,
+            'capacity' => null,
+            'gender' => null,
+            'min_age' => null,
+            'max_age' => null,
+            'min_weight' => null,
+            'max_weight' => null,
+            'schedule' => [],
+            'note' => $data['note'] ?? null,
+        ];
+    }
+
     /** This event's division, or 404 — never another event's. */
     private function divisionOf(ClubEvent $event, int $division): EventCategory
     {
@@ -4586,6 +4776,11 @@ class PersonalEventController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:80'],
+            // A title in the list rather than a division. Everything below is
+            // still ACCEPTED when it is set — the form simply stops offering
+            // it — and the write path drops it, so a heading can never carry a
+            // weight range that nothing would ever read.
+            'is_heading' => ['nullable', 'boolean'],
             'weight_class' => ['nullable', 'string', 'max:40'],
             'gender' => ['nullable', Rule::in(['Male', 'Female'])],
             'min_age' => ['nullable', 'integer', 'min:2', 'max:100'],
@@ -4784,6 +4979,9 @@ class PersonalEventController extends Controller
         return [
             'id' => $category->id,
             'name' => $category->name,
+            // A title, not a division. The list draws it as a band and offers
+            // none of a division's actions on it.
+            'is_heading' => $category->isHeading(),
             'weight_class' => $category->weight_class ?: null,
             'status' => $category->status,
             'entrants' => $category->registrations()->where('role', 'participant')->count(),
@@ -5096,11 +5294,11 @@ class PersonalEventController extends Controller
      */
     private function drawHiddenMessage(ClubEvent $event): string
     {
-        if (($event->draw_reveal ?? ClubEvent::DRAW_ALWAYS) === ClubEvent::DRAW_START_DAY && $event->date) {
-            return __('events.draw_hidden_until', ['date' => $event->date->translatedFormat('D j M')]);
-        }
-
-        return __('events.draw_hidden_msg');
+        // The sentence itself moved to App\Events\Support\EventAccess, beside
+        // the rule that decides whether the draw may be seen at all — a fourth
+        // surface (the entrant's panel) needed it and lives in another module.
+        // This stays as the local name its three callers already use.
+        return app(EventAccess::class)->drawHiddenMessage($event);
     }
 
     /**
@@ -5196,9 +5394,28 @@ class PersonalEventController extends Controller
             return response()->json(['success' => false, 'message' => 'You can’t moderate yourself.'], 422);
         }
 
-        $reg = ClubEventRegistration::where('event_id', $event->id)->where('user_id', $user->id)->first();
-        $catId = $reg?->category_id;
-        $reg?->delete();
+        /*
+         * EVERY entry this person holds in the event, not the first one found.
+         *
+         * Since an athlete may hold one entry per division (Gi and No-Gi are
+         * two entries in one event), taking the first row would have removed
+         * them from one bracket and left them standing in the other — and for
+         * `block` and `blacklist` that is not a cosmetic miss: a moderated
+         * competitor would still have been called to a mat.
+         *
+         * Every division they were in is collected first, so each of their
+         * draws is re-cut, not just one.
+         */
+        $regs = ClubEventRegistration::where('event_id', $event->id)
+            ->where('user_id', $user->id)->get();
+        $catIds = $regs->pluck('category_id')->filter()->unique()->values();
+
+        foreach ($regs as $reg) {
+            // One at a time, so any model events on the row still fire — a
+            // mass delete would skip them (CLAUDE.md → Delete Files Before
+            // Records).
+            $reg->delete();
+        }
 
         if ($data['action'] === 'block') {
             EventParticipantBan::updateOrCreate(
@@ -5213,8 +5430,18 @@ class PersonalEventController extends Controller
         }
 
         // The entrant set changed — the owning package re-derives whatever
-        // depended on it (for a championship, the affected division's draw).
-        $this->typeFor($event)->onEntrantsChanged($event, $catId ? EventCategory::find($catId) : null);
+        // depended on it (for a championship, the affected divisions' draws).
+        // Once per division they were in, and once with nothing when they were
+        // in none, which is what the packages expect for an unclassified entry.
+        $type = $this->typeFor($event);
+
+        if ($catIds->isEmpty()) {
+            $type->onEntrantsChanged($event, null);
+        } else {
+            foreach ($catIds as $id) {
+                $type->onEntrantsChanged($event, EventCategory::find($id));
+            }
+        }
 
         // Best-effort realtime nudge to the affected member (DB stays source of truth).
         rescue(fn () => \Realtime()->publishToUser($user->id, 'events', [
@@ -5265,11 +5492,25 @@ class PersonalEventController extends Controller
 
     /* ===================== Mappers ===================== */
 
+    /**
+     * My entry per event, for the "am I in this?" badge on a list of events.
+     *
+     * One row per event, and WHICH row now matters: an athlete may hold an
+     * entry in several divisions of one event, so keyBy() alone would keep
+     * whichever came back last. Ordered so a participant row always wins over
+     * a spectator one, and the earliest entry wins between equals — the badge
+     * then answers "how am I in this event" the same way on every load instead
+     * of flickering between two true answers.
+     */
     private function myRegistrations(int $meId, $eventIds)
     {
         return ClubEventRegistration::where('user_id', $meId)
             ->whereIn('event_id', $eventIds)
-            ->get()->keyBy('event_id');
+            ->orderByRaw("case when role = 'participant' then 0 else 1 end")
+            ->orderBy('id')
+            ->get()
+            ->reverse()          // keyBy keeps the LAST of a duplicate key
+            ->keyBy('event_id');
     }
 
     /**
@@ -5300,6 +5541,17 @@ class PersonalEventController extends Controller
 
         $going = $e->participant_registrations_count ?? $e->participantRegistrations()->count();
         $spectators = $e->spectator_enabled ? $e->registrations()->where('role', 'spectator')->count() : 0;
+
+        /*
+         * The organiser's own words in the reader's language — the SAME lookup
+         * the public poster does (App\Events\Support\PublicEvent::payload).
+         *
+         * One event, one face: a member reading /me/events/{uuid} and a
+         * stranger reading /e/{uuid} render from the same partials, so if only
+         * one of them translated, the two would disagree about what the event
+         * says. Read-only here too — nothing on a page render starts a job.
+         */
+        $tr = \App\Translation\Translations::of($e);
         $reg = $myReg->get($e->id);
 
         // Detail page: full classified, weighed-only roster. List cards: a light teaser.
@@ -5332,23 +5584,23 @@ class PersonalEventController extends Controller
             // two views of one event must not disagree about its date. `day` is
             // a bare number with nothing to translate.
             'day' => $date->format('d'),
-            'mon' => $date->translatedFormat('M'),
-            'wday' => $date->translatedFormat('D'),
+            'mon' => Cldr::skeleton($date, 'MMM', 'M'),
+            'wday' => Cldr::skeleton($date, 'EEE', 'D'),
             // Comparable form of the same day. The run-of-show timeline uses it
             // to find which of its phases IS the start of the event, so the
             // date chip can jump straight to that row rather than the section.
             'date_iso' => $date->toDateString(),
-            'title' => $e->title,
+            'title' => $tr->get('title', $e->title),
             'club' => $e->tenant?->club_name ?? 'TAKEONE',
-            'location' => $e->location ?? 'TBA',
-            'address' => $e->location ?? '',
+            'location' => $tr->get('location', $e->location) ?? 'TBA',
+            'address' => $tr->get('location', $e->location) ?? '',
             'location_url' => $e->location_url,
             'lat' => $e->gps_lat ? (float) $e->gps_lat : ($e->tenant?->gps_lat ? (float) $e->tenant->gps_lat : null),
             'lng' => $e->gps_long ? (float) $e->gps_long : ($e->tenant?->gps_long ? (float) $e->tenant->gps_long : null),
-            'time' => $start ? $start->translatedFormat('g:i A') : __('events.tba'),
-            'end' => $end ? $end->translatedFormat('g:i A') : '',
+            'time' => $start ? Cldr::time($start) : __('events.tba'),
+            'end' => $end ? Cldr::time($end) : '',
             'duration' => $this->duration($start, $end),
-            'level' => $e->level ?? 'All',
+            'level' => $tr->get('level', $e->level) ?? 'All',
             'tag' => $this->typeLabel($e->event_type),
             'type' => $this->typeLabel($e->event_type),
             'scope' => $e->scope ?? 'internal',
@@ -5356,7 +5608,8 @@ class PersonalEventController extends Controller
             'host_club' => $e->tenant?->club_name,
             'sections' => $this->typeSections($e->event_type),
             'sport' => $e->sport,
-            'sport_label' => $e->sport ? ($this->sports()[$e->sport]['label'] ?? null) : null,
+            // Translatable, same as the public poster — see App\Support\SportLabel.
+            'sport_label' => \App\Support\SportLabel::for($e->sport, $e->sport ? ($this->sports()[$e->sport]['label'] ?? null) : null),
             'sport_icon' => $e->sport ? ($this->sports()[$e->sport]['icon'] ?? null) : null,
             'division_label' => $e->sport ? ($this->sports()[$e->sport]['division_label'] ?? 'Category') : 'Category',
 
@@ -5410,7 +5663,8 @@ class PersonalEventController extends Controller
                 'options' => EventFee::options($e, 'participant')
                     ->map(fn ($o) => [
                         'key' => $o->uuid,
-                        'label' => $o->label,
+                        // The words, translated; the amount beside them never is.
+                        'label' => $tr->get('fees.'.$o->id, (string) $o->label),
                         'amount' => (float) $o->amount,
                         'display' => EventFee::display((float) $o->amount, EventFee::currency($e)),
                     ])->values()->all(),
@@ -5419,7 +5673,7 @@ class PersonalEventController extends Controller
                     ? EventFee::options($e, 'spectator')
                         ->map(fn ($o) => [
                             'key' => $o->uuid,
-                            'label' => $o->label,
+                            'label' => $tr->get('fees.'.$o->id, (string) $o->label),
                             'amount' => (float) $o->amount,
                             'display' => EventFee::display((float) $o->amount, EventFee::currency($e)),
                         ])->values()->all()
@@ -5432,18 +5686,23 @@ class PersonalEventController extends Controller
                 'late_amount' => (float) ($e->late_fee_amount ?? 0),
                 'late_from' => $e->late_fee_from?->toIso8601String(),
             ],
-            'prize' => $e->prize,
+            'prize' => $tr->get('prize', $e->prize),
             'results' => array_values($e->results ?? []),
-            'about' => $e->description ?? '',
+            'about' => $tr->get('about', $e->description ?? ''),
             'tags' => $e->tags ?: [],
-            'requirements' => $e->requirements ?: [],
+            'requirements' => $tr->list('requirements', array_values($e->requirements ?: [])),
             // Timeline, run-of-show and final standings all come from the owning
             // package — a bracketed championship derives them from its draw, a
             // simple event just replays what the organiser typed.
             'phases' => $type->timeline($e),
             'agenda' => $e->agenda ?: [],
             'bracket_results' => ($full && ! $type->allowsManualResults()) ? $type->results($e) : [],
-            'divisions' => $e->categories()->orderBy('sort_order')->pluck('name')->all(),
+            'divisions' => $e->categories()->orderBy('sort_order')->get(['id', 'name'])
+                ->map(fn ($c) => $tr->get('divisions.'.$c->id, (string) $c->name))
+                ->all(),
+            // Untranslated, same order — the detail card groups by parsing the
+            // source shape. See PublicEvent::payload() for why.
+            'divisions_source' => $e->categories()->orderBy('sort_order')->pluck('name')->all(),
             'participants' => $participants,
             'participants_total' => $participantsTotal,
             'spectators_list' => $spectatorRows,

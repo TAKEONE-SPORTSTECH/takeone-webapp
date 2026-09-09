@@ -925,6 +925,157 @@ function myEntryPhoto() {
                 </template>
             </div>
 
+            {{-- ===== When you fight =====
+                 The question this panel could not answer.
+
+                 It said what the ENTRY was — name, division, fee, receipt — and
+                 nothing about competing. A competitor's own draw position, their
+                 opponent, the mat and whether the draw had even been made were
+                 all in the system and none of it was ever shown to the person it
+                 is about.
+
+                 DESIGN, and the order is the argument: the reader wants "am I
+                 in" (above), then "when do I fight", then "what do I owe". So
+                 this sits between the entry and the fee, in the panel's own row
+                 idiom rather than as a board — three compact states, never a
+                 blank.
+
+                 The WITHHELD state deliberately does NOT use `<x-draw-veil>`,
+                 even though it says the same sentence: the veil is a centred
+                 p-6 card built to stand in for a whole bracket, and dropped in
+                 here it reads as "this page is blocked" instead of "one fact is
+                 not out yet". The SENTENCE is what must be shared, and it is —
+                 `EventAccess::drawHiddenMessage()`, the same words the board's
+                 veil, the bout redirect and the console row use. --}}
+            <div class="mt-5">
+                <h2 class="text-[11px] font-bold uppercase text-muted-foreground px-1 mb-2" style="letter-spacing:.1em;">
+                    {{ __('events.entry_bouts_title') }}
+                </h2>
+
+                <div class="m-card rounded-2xl overflow-hidden">
+
+                    {{-- The division always leads: it is the fact that makes
+                         every row beneath it mean something, and it is known
+                         long before the draw is. --}}
+                    @php
+                        $myDivision = ($myBouts['entry']['division'] ?? null) ?: ($myBouts['entry']['category'] ?? null);
+                    @endphp
+                    <div class="px-4 py-3.5 flex items-center gap-3">
+                        <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0"
+                              style="color: {{ $ev }}; background: {{ Palette::alpha($ev, .1) }};">
+                            <i class="bi bi-people-fill"></i>
+                        </span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-[10px] font-bold uppercase text-muted-foreground" style="letter-spacing:.08em;">{{ __('events.entry_bouts_division') }}</span>
+                            <span class="block text-sm font-bold text-foreground truncate">
+                                {{ $myDivision ?: __('events.entry_bouts_unplaced') }}
+                            </span>
+                            @unless($myDivision)
+                                <span class="block text-[11.5px] text-muted-foreground mt-0.5">{{ __('events.entry_bouts_unplaced_sub') }}</span>
+                            @endunless
+                        </span>
+                    </div>
+
+                    @if(! ($drawOpen ?? false))
+                        {{-- Withheld. Says WHEN, never nothing. --}}
+                        <div class="px-4 py-3.5 flex items-center gap-3 border-t border-gray-100">
+                            <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 text-muted-foreground" style="background: rgba(0,0,0,.05);">
+                                <i class="bi bi-lock-fill"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-foreground">{{ $drawNote }}</span>
+                                <span class="block text-[11.5px] text-muted-foreground mt-0.5">{{ __('events.draw_hidden_sub') }}</span>
+                            </span>
+                        </div>
+                    @elseif(empty($myBouts['bouts'] ?? []))
+                        {{-- Drawn, but not this competitor yet. --}}
+                        <div class="px-4 py-3.5 flex items-center gap-3 border-t border-gray-100">
+                            <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 text-muted-foreground" style="background: rgba(0,0,0,.05);">
+                                <i class="bi bi-hourglass-split"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-foreground">{{ __('events.entry_bouts_none') }}</span>
+                                <span class="block text-[11.5px] text-muted-foreground mt-0.5">{{ __('events.entry_bouts_none_sub') }}</span>
+                            </span>
+                        </div>
+                    @else
+                        @php
+                            /* The NEXT bout is the first one not yet decided —
+                               the one row a competitor is actually looking for,
+                               so it is the only one that carries the event's
+                               colour. Everything above it is history. */
+                            $nextKey = null;
+                            foreach ($myBouts['bouts'] as $i => $b) {
+                                if (! ($b['decided'] ?? false)) { $nextKey = $i; break; }
+                            }
+                        @endphp
+                        @foreach($myBouts['bouts'] as $i => $b)
+                            @php
+                                $isNext = $i === $nextKey;
+                                $done = (bool) ($b['decided'] ?? false);
+                                $won = (bool) ($b['won'] ?? false);
+                                $bye = (bool) ($b['bye'] ?? false);
+                            @endphp
+                            <div class="px-4 py-3.5 flex items-center gap-3 border-t border-gray-100"
+                                 @if($isNext) style="background: {{ Palette::alpha($ev, .05) }};" @endif>
+                                <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0"
+                                      @if($bye)
+                                          style="color: #6b7689; background: rgba(0,0,0,.05);"
+                                      @elseif($done)
+                                          style="color: {{ $won ? '#059669' : '#b91c1c' }}; background: {{ $won ? 'rgba(5,150,105,.1)' : 'rgba(185,28,28,.08)' }};"
+                                      @else
+                                          style="color: {{ $ev }}; background: {{ Palette::alpha($ev, .1) }};"
+                                      @endif>
+                                    <i class="bi {{ $bye ? 'bi-fast-forward-fill' : ($done ? ($won ? 'bi-trophy-fill' : 'bi-x-lg') : 'bi-hourglass-split') }}"></i>
+                                </span>
+
+                                <span class="min-w-0 flex-1">
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="text-[10px] font-bold uppercase text-muted-foreground" style="letter-spacing:.08em;">{{ $b['round'] ?: $b['phase'] }}</span>
+                                        @if($isNext && ! $done)
+                                            <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+                                                  style="letter-spacing:.08em; color: {{ $ev }}; background: {{ Palette::alpha($ev, .12) }};">{{ __('events.entry_bouts_next') }}</span>
+                                        @endif
+                                    </span>
+
+                                    <span class="block text-sm font-bold text-foreground truncate">
+                                        {{ $bye ? __('events.entry_bouts_bye') : $b['opponent'] }}
+                                    </span>
+
+                                    {{-- Only what is actually known. A draw is
+                                         published long before mats and times
+                                         exist, and printing an empty "Mat —"
+                                         would read as information. --}}
+                                    @php
+                                        $facts = [];
+                                        /* The court VERBATIM. Organisers name
+                                           their own mats — "Mat 1", "Tatami A"
+                                           — so wrapping it in a "Mat :mat"
+                                           label produced "Mat Mat 1". The name
+                                           on the wall is the name to print. */
+                                        if (! empty($b['mat']))      $facts[] = $b['mat'];
+                                        if (! empty($b['at']))       $facts[] = $b['at'];
+                                        if (! empty($b['match_no'])) $facts[] = '#'.$b['match_no'];
+                                        if ($done && ! $bye)         $facts[] = ($won ? __('events.entry_bouts_won') : __('events.entry_bouts_lost')).' '.$b['my_score'].'–'.$b['their_score'];
+                                        if (! $done && ! $bye)       $facts[] = __('events.entry_bouts_upcoming');
+                                    @endphp
+                                    @if($facts)
+                                        <span class="block text-[11.5px] text-muted-foreground mt-0.5">{{ implode(' · ', $facts) }}</span>
+                                    @endif
+                                </span>
+
+                                @if(! empty($b['video_url']))
+                                    <a href="{{ $b['video_url'] }}"
+                                       class="text-[11px] font-bold flex-shrink-0 no-underline" style="color: {{ $ev }};">
+                                        {{ __('events.entry_bouts_watch') }}
+                                    </a>
+                                @endif
+                            </div>
+                        @endforeach
+                    @endif
+                </div>
+            </div>
+
             {{-- ===== The fee =====
                  What is owed, whether it has landed, and the way to settle it —
                  none of which this screen used to say. The organiser could

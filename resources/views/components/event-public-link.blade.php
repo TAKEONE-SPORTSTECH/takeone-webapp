@@ -146,7 +146,12 @@
                     </div>
                 </div>
 
-                <div class="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                {{-- The body is the LAST element: Design Rule #8 — the band's ✕
+                     is the close control, and a sheet with nothing to submit
+                     gets no footer repeating it under a scroll. So the safe
+                     area is padded here instead. --}}
+                <div class="flex-1 overflow-y-auto px-5 pt-4 space-y-3"
+                     style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
 
                     {{-- what turning it on MEANS. Said plainly, because it is the
                          one control on the platform that shows something to
@@ -177,22 +182,40 @@
                         </div>
                     </div>
 
-                    {{-- exactly what a stranger will see, so nobody has to guess --}}
-                    <div class="rounded-2xl bg-muted/50 p-4">
-                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">{{ __('events.public_shows') }}</p>
-                        <ul class="space-y-1.5">
-                            @foreach ([
-                                ['bi-check-lg', 'text-green-600', __('events.public_shows_poster')],
-                                ['bi-check-lg', 'text-green-600', __('events.public_shows_rules')],
-                                ['bi-check-lg', 'text-green-600', __('events.public_shows_draw')],
-                                ['bi-x-lg', 'text-red-500', __('events.public_hides_names')],
-                                ['bi-x-lg', 'text-red-500', __('events.public_hides_money')],
-                            ] as [$i, $tone, $label])
-                                <li class="text-[12px] text-foreground flex items-start gap-2">
-                                    <i class="bi {{ $i }} {{ $tone }} text-[11px] mt-0.5 flex-shrink-0"></i>{{ $label }}
-                                </li>
-                            @endforeach
-                        </ul>
+                    {{-- Exactly what a stranger will see, so nobody has to guess.
+                         GROUPED rather than one mixed list: the question an
+                         organiser is actually asking before they flip the
+                         switch is "what gets out?", and a flat column of five
+                         rows with two icon colours makes them read each line to
+                         find out. Two headed groups answer it at a glance. --}}
+                    <div class="rounded-2xl bg-muted/50 p-4 space-y-3.5">
+                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('events.public_shows') }}</p>
+
+                        @foreach ([
+                            ['bi-check-lg', 'text-green-600', 'bg-green-100', __('events.public_shows_yes'), [
+                                __('events.public_shows_poster'),
+                                __('events.public_shows_rules'),
+                                __('events.public_shows_draw'),
+                            ]],
+                            ['bi-x-lg', 'text-red-500', 'bg-red-100', __('events.public_shows_no'), [
+                                __('events.public_hides_names'),
+                                __('events.public_hides_money'),
+                            ]],
+                        ] as [$icon, $tone, $plate, $heading, $rows])
+                            <div>
+                                <p class="flex items-center gap-1.5 mb-1.5">
+                                    <span class="w-4 h-4 rounded-full {{ $plate }} grid place-items-center flex-shrink-0">
+                                        <i class="bi {{ $icon }} {{ $tone }} text-[9px]"></i>
+                                    </span>
+                                    <span class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ $heading }}</span>
+                                </p>
+                                <ul class="space-y-1 ps-5">
+                                    @foreach ($rows as $label)
+                                        <li class="text-[12px] text-foreground leading-snug">{{ $label }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endforeach
                     </div>
 
                     {{-- Who says yes. Off means the organiser looks at every
@@ -220,51 +243,98 @@
                         </div>
                     </div>
 
-                    {{-- the link, only when there is one to give --}}
-                    <div x-show="isPublic" x-cloak x-transition class="space-y-2.5">
-                        <p class="text-[11px] font-mono break-all bg-white rounded-xl border border-gray-200 px-3 py-2.5 text-muted-foreground"
-                           x-text="url"></p>
+                    {{-- ===== The link, and what to do with it =====
+                         Only rendered once there IS one to give.
 
+                         It was four controls in three shapes: a URL printed as
+                         dead text, three grey chips in a row, a QR chip floating
+                         on its own centre line, and the preview as borderless
+                         blue text. Nothing said which one to reach for, and the
+                         thing an organiser opens this sheet to do — take the
+                         link — was the smallest target on it.
+
+                         Now: the LINK PLATE is the copy button (the whole row,
+                         so it is the biggest thing here), three equal tiles are
+                         the ways to hand it on, and one outline button ends the
+                         sheet. Nothing was added and nothing was dropped. --}}
+                    <div x-show="isPublic" x-cloak x-transition class="space-y-2.5 pt-0.5">
+
+                        {{-- The plate IS the copy control. `type="button"` and a
+                             real <button>, so it is reachable by keyboard as
+                             well as thumb — the old <p> was neither. --}}
+                        <button type="button" @click="copy()"
+                                class="m-press w-full text-start rounded-2xl border-2 p-2.5 flex items-center gap-3 transition-colors"
+                                style="border-color: {{ $c }}33; background: {{ $c }}0d;"
+                                aria-label="{{ __('events.public_copy') }}">
+                            <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 text-white"
+                                  style="background: {{ $c }};">
+                                <i class="bi bi-link-45deg text-lg"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ __('events.public_link_label') }}</span>
+                                <span class="block text-[11.5px] font-mono text-foreground truncate mt-0.5" x-text="url"></span>
+                            </span>
+                            <span class="w-9 h-9 rounded-xl bg-white border border-gray-200 grid place-items-center flex-shrink-0 text-muted-foreground">
+                                <i class="bi bi-clipboard text-sm"></i>
+                            </span>
+                        </button>
+
+                        <p class="text-[10.5px] text-muted-foreground text-center">{{ __('events.public_copy_hint') }}</p>
+
+                        {{-- The three ways to hand it on, at equal weight —
+                             including the QR, which is how most people meet an
+                             event on a wall and had no business floating alone
+                             under the row. Its component is dropped straight
+                             into the third cell: a grid item is blockified, so
+                             its `inline-block` wrapper fills the track. --}}
                         <div class="grid grid-cols-3 gap-2">
-                            <button type="button" @click="copy()"
-                                    class="m-press py-2.5 rounded-xl border border-gray-200 text-[11.5px] font-bold flex items-center justify-center gap-1.5">
-                                <i class="bi bi-clipboard"></i>{{ __('events.public_copy') }}
-                            </button>
                             <a :href="'https://wa.me/?text=' + encodeURIComponent(@js($title) + ' — ' + url)"
                                target="_blank" rel="noopener"
-                               class="m-press py-2.5 rounded-xl border border-gray-200 text-[11.5px] font-bold flex items-center justify-center gap-1.5">
-                                <i class="bi bi-whatsapp text-green-600"></i>{{ __('events.public_whatsapp') }}
+                               class="m-press flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl border border-gray-200 bg-white no-underline">
+                                <span class="w-9 h-9 rounded-xl bg-green-50 text-green-600 grid place-items-center">
+                                    <i class="bi bi-whatsapp text-base"></i>
+                                </span>
+                                <span class="text-[11px] font-bold text-foreground">{{ __('events.public_whatsapp') }}</span>
                             </a>
-                            <button type="button" @click="share()"
-                                    class="m-press py-2.5 rounded-xl border border-gray-200 text-[11.5px] font-bold flex items-center justify-center gap-1.5">
-                                <i class="bi bi-share"></i>{{ __('events.public_share_btn') }}
-                            </button>
-                        </div>
 
-                        {{-- a poster on a wall is how most people meet an event --}}
-                        <div class="flex justify-center pt-1">
+                            <button type="button" @click="share()"
+                                    class="m-press flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl border border-gray-200 bg-white w-full">
+                                <span class="w-9 h-9 rounded-xl grid place-items-center"
+                                      style="background: {{ $c }}1a; color: {{ $c }};">
+                                    <i class="bi bi-share-fill text-base"></i>
+                                </span>
+                                <span class="text-[11px] font-bold text-foreground">{{ __('events.public_share_btn') }}</span>
+                            </button>
+
                             <x-qr-code :url="$url"
                                        :title="$title"
                                        :caption="__('events.public_qr_caption')"
                                        :filename="'qr-event-public-'.$event"
                                        :label="__('events.public_qr')"
                                        icon="bi-qr-code"
-                                       button-class="m-press inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-[12px] font-bold text-foreground" />
+                                       button-class="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl border border-gray-200 bg-white w-full text-foreground">
+                                {{-- The same tile as its two siblings: plate,
+                                     then label. The slot only replaces what is
+                                     inside the button. --}}
+                                <x-slot:trigger>
+                                    <span class="w-9 h-9 rounded-xl bg-muted text-foreground grid place-items-center">
+                                        <i class="bi bi-qr-code text-base"></i>
+                                    </span>
+                                    <span class="text-[11px] font-bold text-foreground">{{ __('events.public_qr') }}</span>
+                                </x-slot:trigger>
+                            </x-qr-code>
                         </div>
 
+                        {{-- The end of the sheet: see it the way a stranger
+                             will. Outline, not filled — a filled button at the
+                             foot of a sheet reads as Save, and there is nothing
+                             here to save (both switches wrote when they moved). --}}
                         <a :href="url" target="_blank" rel="noopener"
-                           class="m-press w-full py-2.5 rounded-xl text-[12px] font-bold text-primary flex items-center justify-center gap-1.5">
+                           class="m-press w-full py-3 rounded-2xl border-2 text-[12px] font-black flex items-center justify-center gap-2 no-underline"
+                           style="border-color: {{ $c }}40; color: {{ $c }};">
                             <i class="bi bi-box-arrow-up-right"></i>{{ __('events.public_preview') }}
                         </a>
                     </div>
-                </div>
-
-                <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100"
-                     style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
-                    <button type="button" @click="open = false"
-                            class="w-full py-2.5 text-[12px] font-semibold text-muted-foreground">
-                        {{ __('shared.close') }}
-                    </button>
                 </div>
             </div>
         </div>

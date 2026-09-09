@@ -30,7 +30,7 @@
          colour+b0, two soft circles, a control row on top, then chips · title ·
          owner beneath. --}}
     <header class="m-hero -mx-4 -mt-4 px-5 pt-5 pb-8 text-white relative overflow-hidden"
-            style="background: linear-gradient(150deg, {{ $ev }}, {{ $ev }}b0);">
+            style="background: {{ \App\Support\Palette::pageBand($ev, isset($shell)) }};">
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 

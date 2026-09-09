@@ -96,10 +96,11 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         @php
-    /* Deleting footage is super-admin only and the controller enforces it,
-       so anybody else must not be shown the control at all (Navigation
-       Integrity: no dead ends). Computed once per shelf, not per card. */
-    $mayDelete = (bool) auth()->user()?->hasRole('super-admin');
+    /* Deleting footage belongs to whoever may MANAGE the event — the same
+       answer the controller re-checks (EventAccess::canManage), so anybody
+       else must not be shown the control at all (Navigation Integrity: no
+       dead ends). Computed once per shelf, not per card. */
+    $mayDelete = (bool) ($canManage ?? false);
 @endphp
                         @foreach ($d['bouts'] as $b)
                             <div x-show="showBout(@js($b['stage']))" x-cloak>

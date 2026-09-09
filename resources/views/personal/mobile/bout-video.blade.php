@@ -117,6 +117,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    {{-- This document is DARK by design — a wall board, a console, a review
+         screen. Declared so a browser's auto-dark does not try to "help" and
+         invert the one light thing on it, and so Dark Reader leaves it alone.
+         Same reasoning as the light pages, opposite value. --}}
+    <meta name="color-scheme" content="dark">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: dark; }</style>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $boutTitle }} | {{ $e['title'] }}</title>

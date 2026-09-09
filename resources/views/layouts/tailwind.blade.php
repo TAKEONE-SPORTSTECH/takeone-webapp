@@ -3,6 +3,28 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    {{-- ── This product is LIGHT. Say so, twice. ────────────────────────────
+         A browser that is not told what a page's colours are decides for
+         itself: Chrome's Auto Dark Theme (and Android WebView with force-dark
+         on) inverts what it takes to be a light page, and Dark Reader and its
+         kind re-paint the document a moment after first paint. What comes out
+         is not our dark theme — we do not have one — it is the palette turned
+         inside out: a black page behind white cards, `bg-accent` tiles gone
+         navy while the icon on them stays purple, an event that reads as
+         broken.
+
+         `only light` is the explicit opt-out and `light` alone is not enough;
+         `darkreader-lock` is that extension's own documented way to be left
+         alone. Both are needed — they answer to different things — and an
+         unknown meta name is ignored everywhere else.
+
+         ⚠️ The two documents that ARE dark by design (the scoreboard console
+         and the wall board) declare `color-scheme: dark` in their own heads
+         for the same reason. Do not copy this pair into those. --}}
+    <meta name="color-scheme" content="light">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: only light; }</style>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ config('app.name', 'TakeOne') }}</title>

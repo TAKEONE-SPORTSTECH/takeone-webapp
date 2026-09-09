@@ -19,8 +19,37 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        /*
+         * ⚠️ Before anything resolves the translator. The interface's own words
+         * live in the database now (see the interface_translations migration);
+         * this lays them over the lang files. An empty table is a no-op.
+         */
+        \App\Translation\Translations::useDatabaseStrings($this->app);
 
-        //
+        $this->watchUntranslatedStrings();
+    }
+
+    /**
+     * Make Laravel's silent fallback to English audible.
+     *
+     * ⚠️ WHAT THIS DOES NOT DO: change what any string resolves to. A key with
+     * no entry in the reader's locale still falls back to `lang/en` and the
+     * page still renders — that is what keeps a half-generated language a
+     * cosmetic problem rather than an outage (RULE #1).
+     *
+     * What it adds is a count. Laravel's fallback is invisible by design, and
+     * that invisibility is why nobody knew the Chinese interface was 2.7%
+     * translated until a page was read and counted by hand. One aggregated log
+     * line per request, never one per string.
+     *
+     * The machinery lives behind the translation module's own front door —
+     * `Translations::watchInterface()` — because it is built from that module's
+     * private internals, and nothing outside a module may name those
+     * (tests/Feature/Modules/ModuleBoundaryTest).
+     */
+    private function watchUntranslatedStrings(): void
+    {
+        \App\Translation\Translations::watchInterface($this->app);
     }
 
     /**
@@ -161,6 +190,41 @@ class AppServiceProvider extends ServiceProvider
         });
 
         /*
+         * READING a public event — the poster, its four section pages, the
+         * draw's JSON, and the brand assets (icon, manifest) the page pulls.
+         *
+         * NAMED for a reason that is not cosmetic. An inline `throttle:60,1`
+         * builds its counter key from `sha1($user->id)` — or, for a stranger,
+         * `sha1($domain.'|'.$request->ip())` — and puts NOTHING about the route
+         * in it (Illuminate\Routing\Middleware\ThrottleRequests::
+         * resolveRequestSignature). So every inline-throttled route in the
+         * application shared ONE bucket per visitor, and the effective ceiling
+         * was the lowest max among all of them applied to the sum of all of
+         * them. A named limiter gets its own key (`md5($name.$key)`), so this
+         * surface can only ever starve itself.
+         *
+         * That mattered here more than anywhere else, because ONE view of the
+         * poster is about four requests — the page, two icons, the manifest —
+         * and a venue is a single NAT'd address. At sixty a minute shared, a
+         * hall got roughly fifteen page views per MINUTE between everybody in
+         * it, and then the shared link every spectator had been sent started
+         * answering "just a moment". The same lesson as `public-entry` and
+         * `screen-token` above, on the page most likely to be opened by a
+         * crowd at once.
+         *
+         * Generous because a read here is genuinely cheap: it writes nothing,
+         * the payload is built by App\Events\Support\PublicEvent from one
+         * event row, and the assets are served `immutable` so a returning
+         * device asks for them once. Bulk extraction is not what this bounds —
+         * PublicEvent deciding what may be said is (there is no roster, no
+         * money and nobody's contact details on the page to extract), and an
+         * unguessable uuid means there is no neighbouring event to walk to.
+         */
+        RateLimiter::for('public-event', function (Request $request) {
+            return Limit::perMinute(300)->by($request->user()?->id ?: $request->ip());
+        });
+
+        /*
          * Committing an entry. This one WRITES — it creates a person and an
          * entry — so it stays far tighter than the page around it, but it is
          * lifted off 5 for the same NAT reason: five entries a minute for an
@@ -170,6 +234,28 @@ class AppServiceProvider extends ServiceProvider
          * person per event, and a competitor who must supply what only they
          * know.
          */
+        /*
+         * Asking for a language that does not exist yet.
+         *
+         * The one door on this platform that is cheap to knock on and expensive
+         * to answer: each admitted request can start a job that spends real
+         * money at an AI provider. Two ceilings, because the two abuses are
+         * different shapes — a burst (a script cycling sixty languages in a
+         * second) and a grind (one request every ten seconds, all day).
+         *
+         * Generous enough for a real hall: a family passing one phone around
+         * picking three languages never sees it. The lock in
+         * Translator::ensure() sits behind this and collapses duplicates for
+         * the SAME event and language, so a crowd all choosing Portuguese at
+         * once costs one job, not one each.
+         */
+        RateLimiter::for('translate', function (Request $request) {
+            return [
+                Limit::perMinute(8)->by($request->user()?->id ?: $request->ip()),
+                Limit::perHour(60)->by($request->user()?->id ?: $request->ip()),
+            ];
+        });
+
         RateLimiter::for('public-entry-write', function (Request $request) {
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
         });

@@ -65,6 +65,37 @@ final class Palette
      * older than Chrome 111 drops that declaration whole and would leave the
      * header with no background at all — and this is the member's APK.
      */
+    /**
+     * The band a PAGE of an event wears — the two families, chosen by surface.
+     *
+     * An event's screens come in two dressings and always have:
+     *
+     *   POSTER family  the event's colour taken DOWN towards navy
+     *                  (`eventBand()`), worn by `/e/{uuid}` and its section
+     *                  pages — a competition presented to a stranger.
+     *   PAGE family    the colour merely lightened (`colour → colour+b0`),
+     *                  Design Rule #6's standard hero band, worn by every
+     *                  screen inside the platform.
+     *
+     * They were picked per-file, so the SAME event's draw was deep navy at
+     * `/e/{uuid}/draw` and pale at `/me/events/{uuid}/brackets`. Once the
+     * member pages started wearing the organiser's brand (2026-09-08) that
+     * became the visible seam between an event's two faces — which is the one
+     * thing that work exists to remove.
+     *
+     * So the choice is made HERE, from one question: is this the branded,
+     * chrome-less surface? Pass `isset($shell)`. A type that has not opted into
+     * the branded surface keeps the page band it has always had, unchanged.
+     */
+    public static function pageBand(?string $hex, bool $poster, string $angle = '150deg'): string
+    {
+        $c = self::safe($hex);
+
+        return $poster
+            ? self::eventBand($c, $angle)
+            : 'linear-gradient('.$angle.', '.$c.', '.$c.'b0)';
+    }
+
     public static function eventBand(?string $hex, string $angle = '155deg'): string
     {
         $c = self::safe($hex);

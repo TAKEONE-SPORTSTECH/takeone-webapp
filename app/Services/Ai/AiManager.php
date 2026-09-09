@@ -170,6 +170,8 @@ class AiManager
                 $p->model ?: 'claude-sonnet-5',
                 (int) ($o['max_tokens'] ?? 4096),
                 (int) ($o['timeout'] ?? 120),
+                // Only an organisation-level key needs this; see the driver.
+                isset($o['workspace_id']) ? (string) $o['workspace_id'] : null,
             ),
             'gemini' => new GeminiTextDriver(
                 $p->base_url ?: 'https://generativelanguage.googleapis.com/v1beta',

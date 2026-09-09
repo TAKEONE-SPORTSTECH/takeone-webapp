@@ -192,6 +192,41 @@ class PublicEventController extends Controller
          */
         $me = Auth::user();
 
+        /*
+         * Where BACK goes — the poster, unless the reader arrived from the
+         * PLATFORM.
+         *
+         * These four pages are the event's own section pages, and the member
+         * event page sends readers straight into them (the Participants tile).
+         * Back went to the poster unconditionally, so that crossing was a
+         * ONE-WAY DOOR: somebody reading their own event at
+         * /me/events/{uuid} tapped one tile and could not get back — the
+         * branded surface has no tab bar and no drawer to escape through.
+         * Found by a navigation audit, 2026-09-08.
+         *
+         * `?from=` names the surface with a KEY, never a URL — the same rule,
+         * and the same reason, as the sealed person profile's own back
+         * destination (`PeopleController::sealedBackUrl()`, in the members
+         * module): a destination taken from the query string is an open
+         * redirect with extra steps. One key is understood, anything else falls
+         * through to the poster.
+         *
+         * (Named without its namespace on purpose. `ModuleBoundaryTest` scans
+         * these files as TEXT for another module's private `Controllers\`
+         * namespace, and it is right to — the rule is that nothing outside a
+         * module names its internals, and a docblock that spells one out reads
+         * to the scanner exactly like a call. Pointing at it in prose keeps the
+         * cross-reference useful without teaching the next person that the
+         * namespace is fair game.)
+         *
+         * And the key is only honoured for somebody who can actually open the
+         * page it names: `me.events.show` sits behind auth, so handing a
+         * stranger that address would answer a Back tap with a login form.
+         */
+        $fromPlatform = $request->query('from') === 'me'
+            && $me !== null
+            && app(EventAccess::class)->visible($event, $me);
+
         return view('entry.public.section-mobile', [
             'canManage' => $me !== null && app(EventAccess::class)->canManage($event, $me),
             'signedIn' => $me !== null,
@@ -199,6 +234,12 @@ class PublicEventController extends Controller
             'section' => $section,
             'sectionIcon' => $meta[0],
             'sectionLabel' => $meta[1],
+            /* Both destinations ARE "the event", so the label does not change
+               with them — only the address does. That is the same shape the
+               console's back control already has on its two addresses. */
+            'backUrl' => $fromPlatform
+                ? route('me.events.show', ['event' => $event->uuid])
+                : route('events.public', ['event' => $event->uuid]),
         ]);
     }
 
@@ -391,9 +432,30 @@ class PublicEventController extends Controller
      * once per event and cached, and served with a long immutable lifetime
      * because the URL carries a version that changes when the mark does.
      */
-    public function icon(ClubEvent $event, int $size, PublicEvent $publisher, PublicBrand $brand)
+    public function icon(Request $request, ClubEvent $event, int $size, PublicEvent $publisher, PublicBrand $brand)
     {
-        abort_if(! $publisher->isPublic($event), 404);
+        /*
+         * The mark is served while the poster is up — and, since 2026-09-07, to
+         * somebody who may already open the event on the platform.
+         *
+         * The member event pages wear the organiser's brand now
+         * (App\Http\Middleware\BrandEventPage), and their tab icon is THIS
+         * one. Gated on the public switch alone, an event still set to
+         * `members` had a broken mark in the tab of a page it was branding —
+         * the one thing a white-labelled surface must not get wrong.
+         *
+         * The widening is by AUTHORIZATION, not by removal: `visible()` is the
+         * same check the event page itself runs, so nobody sees a mark for an
+         * event they could not already open, and a stranger holding a uuid
+         * still gets the same 404 as before. Anti-enumeration is untouched.
+         */
+        $viewer = $request->user();
+
+        abort_if(
+            ! $publisher->isPublic($event)
+            && ! ($viewer && app(EventAccess::class)->visible($event, $viewer)),
+            404
+        );
 
         return response($brand->icon($event, $size))
             ->header('Content-Type', 'image/png')

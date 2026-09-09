@@ -154,7 +154,7 @@
             {{-- The one thing there IS to do from here: go and score the bouts. --}}
             <div class="flex-shrink-0 border-t border-gray-100 bg-background px-5 pt-3"
                  style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
-                <a href="{{ isset($shell) ? url('/e/'.$e['key'].'/admin/brackets/manage') : route('me.events.bracket.manage', $e['key']) }}"
+                <a href="{{ ($sealed ?? false) ? url('/e/'.$e['key'].'/admin/brackets/manage') : route('me.events.bracket.manage', $e['key']) }}"
                    class="m-press w-full h-12 rounded-xl text-white text-sm font-bold no-underline flex items-center justify-center gap-2"
                    style="background: #b45309;">
                     <i class="bi bi-diagram-3 bracket-icon"></i>{{ __('personal.event_podium_open_draw') }}

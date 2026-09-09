@@ -13,7 +13,7 @@
 
     {{-- ── Hero band ───────────────────────────────────────────────────── --}}
     <header class="m-hero px-5 pt-5 pb-14 text-white relative overflow-hidden"
-            style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
+            style="background: {{ \App\Support\Palette::pageBand($color, isset($shell)) }};">
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
@@ -22,9 +22,9 @@
                      CONSOLE — the screen it was opened from. On the platform it
                      still means the event page. Same pill, honest label either
                      way (the audit: "'Event' means two different pages"). --}}
-                <a href="{{ isset($shell) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
+                <a href="{{ ($sealed ?? false) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
                class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
-           aria-label="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}" title="{{ isset($shell) ? __('personal.event_manage_title') : __('personal.event_show_event') }}">
+           aria-label="{{ ($sealed ?? false) ? __('personal.event_manage_title') : __('personal.event_show_event') }}" title="{{ ($sealed ?? false) ? __('personal.event_manage_title') : __('personal.event_show_event') }}">
                 <i class="bi bi-chevron-left"></i>
             </a>
 
@@ -111,10 +111,11 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     @php
-    /* Deleting footage is super-admin only and the controller enforces it,
-       so anybody else must not be shown the control at all (Navigation
-       Integrity: no dead ends). Computed once per shelf, not per card. */
-    $mayDelete = (bool) auth()->user()?->hasRole('super-admin');
+    /* Deleting footage belongs to whoever may MANAGE the event — the same
+       answer the controller re-checks (EventAccess::canManage), so anybody
+       else must not be shown the control at all (Navigation Integrity: no
+       dead ends). Computed once per shelf, not per card. */
+    $mayDelete = (bool) ($canManage ?? false);
 @endphp
                         @foreach ($d['bouts'] as $b)
                         <div x-show="showBout(@js($b['stage']))" x-cloak>

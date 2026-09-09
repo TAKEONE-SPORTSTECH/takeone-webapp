@@ -560,7 +560,7 @@
          riding its bottom edge. pb-12 leaves exactly the tray's half-height of
          colour beneath the counts, so nothing sits on a strip of empty gradient. --}}
     <header class="m-hero px-5 pt-5 pb-12 text-white relative overflow-hidden"
-            style="background: linear-gradient(150deg, {{ $e['color'] }}, {{ $e['color'] }}b0);">
+            style="background: {{ \App\Support\Palette::pageBand($e['color'], isset($shell)) }};">
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
@@ -569,7 +569,7 @@
                      CONSOLE — the screen it was opened from. On the platform it
                      still means the event page. Same pill, honest label either
                      way (the audit: "'Event' means two different pages"). --}}
-                <a href="{{ isset($shell) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
+                <a href="{{ ($sealed ?? false) ? url('/e/'.$e['key'].'/admin/manage') : route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
                class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline flex-shrink-0"
                aria-label="{{ $e['title'] }}">
                 <i class="bi bi-chevron-left"></i>

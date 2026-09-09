@@ -175,6 +175,21 @@ class FileAccess
             ->exists();
     }
 
+    /**
+     * Is this exact path the crest of a club written down for THIS event?
+     *
+     * Asked of the row, like its two neighbours: the event has to own the club
+     * and the club has to name the file. Scoped to the event the path itself
+     * claims, so one event's uuid can never open another's folder.
+     */
+    private static function isEventClubCrest(ClubEvent $event, string $path): bool
+    {
+        return \App\Models\EventClub::query()
+            ->where('event_id', $event->id)
+            ->where('logo', $path)
+            ->exists();
+    }
+
     /** An event's files follow the event's own visibility rules. */
     private static function event(array $segments, ?User $viewer): bool
     {
@@ -218,6 +233,38 @@ class FileAccess
          */
         if (($segments[2] ?? '') === 'competitors'
             && self::isPublicEntryPhoto(implode('/', $segments))) {
+            return true;
+        }
+
+        /*
+         * The CREST of a club an organiser wrote down at the desk.
+         *
+         * A club that is not on the platform is typed in with a name and a
+         * logo, and that logo is written to `events/{uuid}/clubs/…` — while a
+         * platform club's crest sits in `clubs/{ISO3}/{slug}/branding/`, which
+         * is public without condition. Same kind of object, two shapes, and
+         * only one of them was reachable: everything that reads a competition
+         * WITHOUT a session showed a blank where the crest should be.
+         *
+         * The hall board is the case that made it obvious. A wall screen is
+         * authorised by its pairing TOKEN, not by a session, so it is anonymous
+         * here — the introduction drew the names, the flags and the faces (which
+         * have their own exception above) and left the crests empty. It looked
+         * correct in a browser purely because the person checking was logged in.
+         * The public event page had the same hole for every visitor.
+         *
+         * Deliberately NOT gated on the event's public mode, unlike the poster
+         * and the entry photo either side of this. Those two are somebody's
+         * competition being advertised and somebody's face; a club crest is a
+         * logo its owner publishes, of the same class as the `branding/` folder
+         * that is open to everyone — and it was supplied expressly to be put on
+         * a wall in front of a hall.
+         *
+         * Still path-proven, like its neighbours: an `event_clubs` row for THIS
+         * event has to name this exact file. A guessed filename proves nothing.
+         */
+        if (($segments[2] ?? '') === 'clubs'
+            && self::isEventClubCrest($event, implode('/', $segments))) {
             return true;
         }
 

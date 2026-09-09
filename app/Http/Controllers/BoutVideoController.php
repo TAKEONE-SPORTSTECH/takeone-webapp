@@ -508,48 +508,72 @@ class BoutVideoController extends Controller
     }
 
     /**
-     * Delete a bout's footage. Platform staff only.
+     * Delete a bout's footage.
      *
-     * Not an organiser's button and not a coach's: a club admin can already
-     * remove a bout's video from view by other means, and competition footage
-     * is the one thing on this platform that cannot be regenerated — the fight
-     * happened once. So the control belongs to the person who answers for the
-     * platform, and nobody else sees it.
+     * The organiser's button now, not only platform staff's: whoever may MANAGE
+     * the event may remove what was filmed at it — the person who created it,
+     * the host club's owner or admin, an appointed organiser, and super-admin.
+     * `EventAccess::canManage` is the same rule that gates editing the event,
+     * its results and its money. The jury is deliberately outside it:
+     * officiating a bout is not owning the record of it.
+     *
+     * There is nothing behind this button. Competition footage is the one thing
+     * on this platform that cannot be regenerated — the fight happened once — so
+     * the card asks for a confirmation before the request is ever made, and the
+     * deletion is written to the activity log with the person who asked for it.
      *
      * Bytes first, row second, through MediaVaults: the source file, the HLS
      * ladder built from it, the cached local copy and the folders they leave
      * behind, and only then the media row. A row deleted before its bytes is
      * how a vault fills with footage nothing points at any more.
      *
-     * The recording row is kept when it still carries an outbound `play_url` —
-     * a handful of bouts were published to the old video platform before the
-     * split, and those links are all that is left of them. A husk with neither
-     * media nor link is removed, because a gallery entry that plays nothing is
-     * worse than no entry.
+     * The RECORDING row SURVIVES, marked `unlinked` — the state the model
+     * documents as "the record that a video once existed". It keeps `anchor_at`,
+     * so a bout re-filmed or re-ingested later lines its highlights bar up
+     * against the officiating log exactly as before, and it keeps the outbound
+     * `play_url` of the handful of bouts published to the old video platform
+     * before the split. Nothing mistakes it for footage: BoutFilm asks for
+     * `linked` rows with media attached, so the gallery and the bout page go
+     * quiet on their own.
      */
     public function destroyVideo(Request $request, ClubEvent $event, int $matchNo): JsonResponse
     {
         $me = Auth::user();
         $match = $this->boutOr404($event, $matchNo);
 
-        // Deliberately not mayWatch/mayAnnotate. This is the one action on the
-        // page that destroys something nobody can film again.
-        abort_unless($me && $me->hasRole('super-admin'), 403);
+        // Deliberately not mayWatch/mayAnnotate: being allowed to watch a bout
+        // and being allowed to destroy it are not the same permission.
+        abort_unless($me && $this->access->canManage($event, $me), 403);
 
         $vaults = app(\App\Media\MediaVaults::class);
         $deleted = 0;
+        $uuids = [];
 
         foreach (\App\Models\EventRecording::where('match_id', $match->id)->with('mediaFile')->get() as $recording) {
             if ($recording->mediaFile) {
+                $uuids[] = $recording->mediaFile->uuid;
                 $vaults->delete($recording->mediaFile);
                 $deleted++;
             }
 
-            $recording->refresh();
+            // The foreign key nulls the reference by itself; writing it here too
+            // means the row is correct whether or not there were bytes to lose.
+            $recording->forceFill([
+                'media_file_id' => null,
+                'status' => \App\Models\EventRecording::STATUS_UNLINKED,
+            ])->save();
+        }
 
-            if (blank($recording->play_url)) {
-                $recording->delete();
-            }
+        // Unrecoverable and done by hand, so it is attributable: who, which
+        // bout, and which media rows stopped existing.
+        rescue(fn () => activity()
+            ->performedOn($event)
+            ->causedBy($me)
+            ->withProperties(['match_no' => $matchNo, 'angles' => $deleted, 'media' => $uuids])
+            ->log('bout_video_deleted'), null, false);
+
+        if ($deleted > 0) {
+            $this->pushGalleryChanged($event);
         }
 
         return response()->json([
@@ -558,6 +582,37 @@ class BoutVideoController extends Controller
             'message' => __('events.bout_video_deleted'),
             'redirect' => route('me.events.gallery', ['event' => $event->uuid]),
         ]);
+    }
+
+    /**
+     * Tell every other open gallery that a bout has left it.
+     *
+     * A refresh signal rather than the tile itself, because what each viewer may
+     * see differs — and deliberately the SAME channel and the same `gallery`
+     * action IngestClipMedia publishes when a bout ARRIVES, so the gallery's
+     * existing listener handles a removal with no client change at all.
+     *
+     * Best-effort, like every push: the database is the source of truth and an
+     * organiser's own page has already patched itself in place.
+     */
+    private function pushGalleryChanged(ClubEvent $event): void
+    {
+        rescue(function () use ($event) {
+            if (! \Realtime()->enabled()) {
+                return;
+            }
+
+            $ids = app(\App\Events\Support\AudienceResolver::class)->forEvent($event);
+
+            if (! $ids) {
+                return;
+            }
+
+            \Realtime()->publishMany(array_map(fn (int $uid) => [
+                'topic' => \Realtime()->userTopic($uid, 'events'),
+                'payload' => ['action' => 'gallery', 'event' => $event->uuid],
+            ], $ids));
+        }, null, false);
     }
 
     public function destroyNote(Request $request, ClubEvent $event, int $matchNo, BoutCoachNote $note): JsonResponse

@@ -105,7 +105,7 @@ class FamilyService
 
         // Send welcome email if dependent has an email address
         if (! empty($dependent->email)) {
-            Mail::to($dependent->email)->queue(new WelcomeEmail($dependent, $guardian, $relationship));
+            Mail::to($dependent)->queue(new WelcomeEmail($dependent, $guardian, $relationship));
         }
 
         return $dependent;

@@ -94,7 +94,7 @@
              Inside the sealed event app the console is /e/{uuid}/admin/manage;
              on the platform it is the member console. --}}
         @php
-            $drawBack = isset($shell)
+            $drawBack = ($sealed ?? false)
                 ? url('/e/'.$e['key'].'/admin/manage')
                 : route('me.events.manage', $e['key']);
         @endphp

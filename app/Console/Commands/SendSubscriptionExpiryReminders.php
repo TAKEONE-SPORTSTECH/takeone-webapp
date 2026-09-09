@@ -70,7 +70,7 @@ class SendSubscriptionExpiryReminders extends Command
             ]);
 
             // Queue email
-            Mail::to($user->email)->queue(
+            Mail::to($user)->queue(
                 new SubscriptionExpiryEmail($subscription, $user)
             );
 

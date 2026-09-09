@@ -399,6 +399,7 @@ app/
 ├── Challenges/   member-vs-member: challenges, duels, witnesses
 ├── Trainers/     personal training: profiles, rates, reviews, sessions
 ├── Media/        footage: ingest, vaults, transcode, streaming
+├── Translation/  the organiser writes once, everyone reads it in their own
 └── Support/Modules/   the module system itself
 ```
 
@@ -861,7 +862,16 @@ Every page that introduces a subject (an event, a club, a member, a console) ope
 - **Round 40px controls**: `w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center`.
 - **Back is a ROUND 40px CONTROL holding a TAIL-LESS ARROW, and nothing else** — `w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur inline-flex items-center justify-center text-white`, holding `<i class="bi bi-chevron-left rtl:rotate-180"></i>`. **`bi-chevron-left`, never `bi-arrow-left`** — the tailed arrow is out everywhere on the platform (decided 2026-09-04). No label: the destination travels in `aria-label` + `title` so a pointer and a screen reader still name it. This REPLACED the labelled pill this rule used to require; the pill's own classes (`gap-2 h-10 ps-3 pe-4`) must not come back. Back therefore looks like the action controls opposite it, and is told apart by its position: back is always the leading edge, actions the trailing one.
   - The two places a back arrow may still carry words: a **wizard step** button paired with a Next ("Previous", "Back" inside a multi-step modal), and a **Cancel** that happens to wear an arrow. Those are form controls, not page navigation.
-- **Actions cluster on the right**, in this order where they exist: console (`bi-sliders`, only when the viewer may manage) → `<x-qr-code>` (`button-class` set to the round-control classes) → share. Nothing else lives in that row.
+- **Actions cluster on the right**, in this order where they exist: console
+  (`bi-sliders`, only when the viewer may manage) → open the public page
+  (`bi-box-arrow-up-right`, `target="_blank"`, only when the organiser has
+  actually published one) → `<x-qr-code>` (`button-class` set to the
+  round-control classes) → share. **Nothing else lives in that row.**
+  The four fall into two jobs, which is what fixes the order: *manage the
+  event* · *go and look at it*, then *hand it to somebody* · *hand it to
+  somebody*. A control that would land on a 404 is not rendered at all — the
+  open-page control hangs off a NULL-or-real url, never off a guess (added
+  2026-09-08 at the user's request; reference: `personal/{mobile,desktop}/event-show`).
 - **The subject's chips carry its identity**, not the control row: a screen's own label ("Draw", "Officials") is a chip in the identity block, not a badge floating opposite the back button.
 
 > **This band is the standard header for EVERY page that introduces a subject** — event, draw, roster, officiating sheet, club, member, console. Reference implementations: `personal/mobile/event-show.blade.php` and `personal/mobile/event-bracket.blade.php` (and `personal/desktop/event-show.blade.php` for the desktop measurements). A new screen copies that band; it does not invent a header of its own.
@@ -1134,9 +1144,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-club-modal>` | Create/edit club — multi-tab (basic-info, contact, location, branding, finance) | `mode` (`create`\|`edit`), `club` |
 | `<x-confirm-dialog>` | Async JS confirmation dialog — include once per layout; invoke via `window.confirmAction({title, message, type, confirmText})` → returns `Promise<bool>` | _(no props)_ |
 | `<x-expense-modal>` | Record an expense/transaction | `club` |
-| `<x-image-upload-modal>` | Standalone crop-and-upload image modal (Alpine) | `aspectRatio`, `maxSize`, `title`, `uploadUrl` |
 | `<x-income-modal>` | Record manual income | `club`, `currency` |
-| `<x-member-create-modal>` | Create new member with optional guardian/family (Alpine) | _(no required props)_ |
 | `<x-profile-modal>` | Full user profile edit/create modal — tabs: photo, personal, social, additional | `user`, `formAction`, `formMethod`, `mode` (`edit`\|`create`), `cancelUrl`, `showRelationshipFields`, `relationship`, `title`, `subtitle`, `submitText`, `submitIcon`, `eventName`, `showPasswordFields`, `showEmailField` |
 | `<x-registration-walkin>` | Multi-step walk-in member registration | `club`, `packages`, `eventName` |
 | `<x-user-picker-modal>` | Search and select a platform user (Alpine) | _(no required props)_ |
@@ -1164,6 +1172,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-event-section-band>` | Full-bleed dark gradient band that announces a section of the event detail card (About / How the event runs / Divisions / Requirements / Location) and doubles as the divider between them. Two modes: **heading** (icon + title) or **value** (icon + eyebrow + a big value line — pass `value`; this is what the prize band is). Render it as a direct child of the card, **outside** the padded content wrapper, so it meets both edges. `color`/`icon` are whitelisted inside the component (hex + `bi-*`) since they are organiser-supplied and land in a `style` attribute / class name. Used by both `personal/{mobile,desktop}/event-show`. | `color`, `icon` (bi-*), `title`, `value` |
 | `<x-court-screens>` | **Hall screens panel for the event console** — the wall displays showing an event's mats. Lists each paired screen (mat plate, live/last-seen, unpair) and owns the whole pairing flow in a teleported bottom sheet: **scan the QR** (opens the shared `partials/qr-scanner` in hand-back mode via `qr-scan:open` with `{emit:'court-screens:scanned'}` — it returns the value instead of navigating) **or type the 6-character code** printed under it, then pick a mat from selection cards (the mats come from the draw; "Another mat" is the escape hatch). Writes patch in place and other organisers are nudged over `realtime:events` `{action:'screens'}` — a refresh signal, so each console re-fetches what it may see. Rendered only when `EventType::hallScreens()` returns non-null, so a type with no wall boards has no section. **Unpair ≠ revoke:** it unclaims the device so the screen returns to a fresh pairing code (revoking would kill the token and strand a screen the agent can never re-enrol). | `event` (uuid), `mats`, `screens`, `color` |
 | `<x-media-lightbox>` | **Full-screen single-file viewer — black tint, zoom + pan.** Include once per page; open it from any element by adding `data-media-lightbox data-src="…" data-label="…"` (delegated off `document`, so innerHTML-rebuilt rows work), or dispatch `open-media-lightbox` with `{src, label, kind}`. Images get pinch / wheel / double-tap zoom and drag-to-pan and are fitted to the stage on load; a PDF is handed to the browser's own viewer inside the same dark surface. `src` is refused unless it resolves to an http(s) URL. Teleported to `<body>`, safe-area padded, Escape/+/-/0 keys. Used by the member profile's identity documents (mobile + desktop). | `eventName` |
+| `<x-event-languages>` | **Every language an event is read in, and the organiser's power to correct any of it** — one console row opening a hub-and-spoke sheet: the list of languages, drilling into one language's fields with the organiser's own words above each editable translation. Saves on blur to `me.events.translations.update`, which marks the row `human` — and **no machine run ever overwrites a human row** (`TranslateContent::store`), so a correction is permanent. Also re-translate and remove-language. Loads lazily on open; `Alpine.data()`-registered because it lives inside a teleported template. Content itself is translated by `App\Translation`, whose store is ONE JSON record per event holding every language (`translation_documents`). | `event` (uuid), `color`, `title`, `source-locale` |
 | `<x-event-draw-visibility>` | **When an event's draw becomes readable** — the organiser's switch, as one row of the event console opening a sheet. Three selection cards: *Visible now* (`always`), *On the day* (`start_day` — opens on the event's own date, or the moment it is started), *Hidden* (`hidden` — no clock; the organiser puts it up). Writes to `me.events.draw-reveal` (organiser only), patches itself in place and dispatches `event-draw-reveal-changed`. Disclosure only: it never changes who may ARRANGE a draw, and the organiser and their appointed officials read the bracket at every setting. The rule itself is `App\Events\Support\EventAccess::drawVisible()` — one place, obeyed by the board's JSON door, the bout page, the public event page and the MCP tool. | `event` (uuid), `reveal`, `date`, `color`, `title` |
 | `<x-draw-veil>` | The card shown in place of a withheld draw — padlock, the sentence saying WHEN it opens, and the event's own colour. Says *when* rather than nothing on purpose: a reader who cannot tell "not published yet" from "nobody entered" phones the organiser. | `message`, `color` |
 | `<x-prose-text>` | **Textarea prose → real markup, with the small slice of Markdown people type by reflex.** The default way to render any free-text field an author typed in a `<textarea>` (an event's About, notes, a description). Blank line = `<p>`, single newline = `<br>`; `#`–`######` headings, `- `/`* `/`• ` bullets, `1. ` numbered lists, `> ` quotes, `---` rules, `**bold**`, `*italic*`, `` `code` ``, `[label](url)`. Never use `whitespace-pre-line` for this — it honours newlines but leaves one undifferentiated wall, and shows `##`/`**` as literal punctuation. **Safe on untrusted input by construction:** `App\Support\PlainProse::toHtml()` escapes every character BEFORE a tag is added and emits only tags it writes itself; link schemes are whitelisted to http(s)/mailto and Markdown images are downgraded to links (no author-chosen fetch on a public page). Deliberately a SUBSET, not a Markdown library — no raw-HTML passthrough, images or tables. Last block never carries the gap class (`last:mb-0` is not in the prebuilt bundle), and `list-decimal` is set inline for the same reason. | `text`, `textClass`, `gapClass` (+ any attributes, applied to the wrapper) |
@@ -1827,6 +1836,88 @@ So authorization tests must assert `assertRedirect('/')` for a `get()` and `asse
 
 ### Tenant resolution in `role:`/`permission:` middleware
 `CheckRole`/`CheckPermission` resolve the tenant via `resolveTenantId()` (bound `{club}` model → numeric id → `slug` lookup). Do not reintroduce the old inline `$a ?? $b ? c : d` expression — `??` binds tighter than `?:`, so it always resolved by slug and returned `null` under a `{club}` binding, silently defeating any club-scoped role/permission check.
+
+---
+
+## House Cleaning — Nothing Is Deleted In Passing, Nothing Is Left Forever — STRICT
+
+**Everything this project accumulates — code, packages, tables, routes, views,
+components, uploads, docs, generated files, keys, memories — is either IN USE or ON
+THE LIST.** There is no third state, and "I'll remember it's dead" is not one.
+
+The register is **`Documentation/HOUSE-CLEANING.md`**. When something stops being
+needed, you **write it there** — you do not delete it in the same breath.
+
+**Why both halves matter**
+
+- **Deleting in passing breaks RULE #1.** "Nothing uses this any more" is a belief
+  until it is verified, and the verification is a job of its own: a table still read
+  by one report, a component still rendered by one mobile view, a package still
+  autoloaded by one command. A removal done as a side effect of unrelated work is
+  exactly how a live event day breaks.
+- **Never deleting rots the project.** Unused packages are supply-chain surface
+  (Part 3 §15). Dead routes and views are read as live by the next person and by the
+  next audit. Orphan tables get migrated, backed up and carried forever. Fifty-two
+  one-off documents in `Documentation/` make the six real ones unfindable.
+
+**What gets registered** — anything that has become unnecessary, and anything added
+"just for now":
+
+- **Dependencies** — a composer/npm package no longer required, a CDN script, a
+  library added for one feature that has since gone. A package added for a TRIAL is
+  registered the day it is added, so temporary never silently becomes permanent.
+- **Code** — routes, controllers, services, commands, Blade views and components
+  nothing renders or calls; duplicated implementations awaiting consolidation
+  (*Shared Stays Shared* debt); code paths left behind after a parallel migration
+  cut over (RULE #1's "retire the old one" step is a house-cleaning entry).
+- **Schema** — tables and columns nothing reads. **Name them; never drop one in
+  passing.** `event_recordings.play_*` and `play_timeline_*` are the worked examples.
+- **Storage** — legacy upload trees, derived `cache/` roots, demo media, scratch
+  folders, orphaned proof images.
+- **Data** — demo/seed datasets, trial rows, test accounts.
+- **Artefacts** — generated files, `drafts/`, one-off progress documents, dead
+  configuration, feature flags that have fully landed or were abandoned.
+- **Secrets and access** — tokens, keys, keystores, service accounts and SSH access
+  that must be revoked rather than merely unused. These get a date and a NAMED owner:
+  an unrevoked key is not clutter, it is an open door.
+- **Memories** — index entries and memory files that are no longer true.
+
+**An entry says enough to act on without re-deriving it:** what it is, where it
+lives, why it is no longer needed, **what was checked to prove that**, the date it
+was registered, and the gate on removing it (a backup, a go-ahead, a prerequisite
+like "after the last `play_url` row is gone").
+
+**The pass itself — deliberate, never opportunistic**
+
+1. Only on an explicit go-ahead. A house-cleaning pass is its own task.
+2. **Backup first** and verify it (RULE #2). Every deletion is destructive by
+   definition.
+3. One category at a time, smallest first, verifying between steps.
+4. Files before rows for anything file-bearing (*Delete Files Before Records*).
+5. Re-verify after: route table count, the pages that touched it, the test suite.
+6. **Tick the entry off with a date in a Done section** — never erase it. What was
+   removed and when is the only defence against "where did that go?".
+
+### The memory index is the same rule, with numbers
+
+`MEMORY.md` is a table of contents, not a document: one line per memory
+(`- [Title](file.md) — hook`), under ~200 characters, no code, no route or column
+names, no multi-line warnings. Detail belongs in the memory file the line points at,
+which may be as long as it likes — only the index is rationed.
+
+**Keep it under 20 KB (~120 lines).** The loader's ceiling is 24.4 KB and it
+**truncates** past that, so entries below the cut silently stop existing and the
+things written down in order to be remembered are the first casualties. It happened:
+the index passed the limit in September 2026 at 28 KB, carrying paragraph-length
+entries with feature specs and column names inline.
+
+Before appending, check whether an entry already covers the subsystem and update
+that line instead. Near the budget, **compact rather than append** — merge siblings,
+retire what is no longer true, push detail down into topic files — and say what was
+merged or retired. A memory dropped quietly is a memory lost.
+
+> This governs the project's own accumulation. `CLAUDE.md` is a different document
+> with a different job: it is read as instructions, not recalled as notes.
 
 ---
 

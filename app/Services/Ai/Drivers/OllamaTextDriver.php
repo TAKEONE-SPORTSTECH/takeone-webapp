@@ -31,6 +31,45 @@ class OllamaTextDriver implements TextDriver
             $payload['tools'] = $tools;
         }
 
+        /*
+         * Constrained decoding, when the caller says it needs JSON.
+         *
+         * Opt-in and absent by default, so nothing that already calls this
+         * driver changes behaviour. It matters most for the models people
+         * actually self-host: a 7B or 30B model asked politely for JSON will
+         * often wrap it in prose or a code fence, and while the caller can
+         * salvage that, `format: json` makes Ollama enforce the grammar during
+         * generation so there is nothing to salvage. This is the difference
+         * between a local model being usable for structured work and not.
+         */
+        if (! empty($options['json'])) {
+            $payload['format'] = 'json';
+        }
+
+        /*
+         * Keep the weights resident between calls.
+         *
+         * Ollama unloads a model five minutes after its last request, so on a
+         * quiet day EVERY call pays a full cold load first — for a 19 GB model
+         * that is ten to fifteen seconds before a single token is generated.
+         * The server was measured with nothing loaded at all.
+         *
+         * Opt-in, because it holds VRAM on a machine we may not own.
+         */
+        if (! empty($options['keep_alive'])) {
+            $payload['keep_alive'] = (string) $options['keep_alive'];
+        }
+
+        // Let the caller raise the ceiling; Ollama caps generation at 128
+        // tokens by default, which silently truncates anything substantial.
+        if (! empty($options['max_tokens'])) {
+            $payload['options']['num_predict'] = (int) $options['max_tokens'];
+        }
+
+        if (isset($options['temperature'])) {
+            $payload['options']['temperature'] = (float) $options['temperature'];
+        }
+
         $response = Http::timeout($this->timeout)
             ->acceptJson()
             ->asJson()

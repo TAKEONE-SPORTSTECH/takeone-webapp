@@ -713,7 +713,7 @@ x-data="{
                  the sealed app, and the poster answers GET only — so the
                  DELETE has to name the mirrored admin root itself. See the
                  note in personal/event-create.blade.php. --}}
-            const d = await this.req('{{ isset($shell) ? url('/e/'.$e['key'].'/admin') : route('me.events.destroy', $e['key']) }}', 'DELETE');
+            const d = await this.req('{{ ($sealed ?? false) ? url('/e/'.$e['key'].'/admin') : route('me.events.destroy', $e['key']) }}', 'DELETE');
             if (d) { window.showToast('success', d.message); setTimeout(() => { window.location.href = d.redirect || '{{ route('me.events') }}'; }, 500); }
         },
         // ----- Results / winners -----
