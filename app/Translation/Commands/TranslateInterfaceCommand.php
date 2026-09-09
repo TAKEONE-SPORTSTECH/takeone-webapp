@@ -402,11 +402,12 @@ class TranslateInterfaceCommand extends Command
      * retry usually succeeds where the first pass did not.
      *
      * @param  array<string, string>  $todo
-     * @return array{values: array<string, string>}
+     * @return array{values: array<string, string>, model: string}
      */
     private function translateWithRetries(InterfaceAgent $agent, array $todo, string $locale, string $id): array
     {
         $values = [];
+        $model = '';
         $outstanding = $todo;
 
         for ($attempt = 1; $attempt <= 3 && $outstanding !== []; $attempt++) {
@@ -415,6 +416,8 @@ class TranslateInterfaceCommand extends Command
             $result = $agent->translate($outstanding, $locale, self::CONTEXT, function ($done, $total) use ($label) {
                 $this->getOutput()->write("\r  ".str_pad('', 40)."\r  ".str_pad($label, 34)." {$done}/{$total}\r");
             });
+
+            $model = $result['model'] ?: $model;
 
             foreach ($result['values'] as $key => $value) {
                 if (isset($outstanding[$key])) {
@@ -425,7 +428,7 @@ class TranslateInterfaceCommand extends Command
             $outstanding = array_diff_key($outstanding, $values);
         }
 
-        return ['values' => $values];
+        return ['values' => $values, 'model' => $model];
     }
 
     private function generate(
@@ -521,8 +524,14 @@ class TranslateInterfaceCommand extends Command
                         $this->error('  Stopping: no AI provider is answering.');
 
                         if (str_contains($e->getMessage(), 'credit balance')) {
-                            $this->line('  <fg=yellow>The Anthropic account is out of credit.</> Top it up, or make a local');
-                            $this->line('  model the translator under Admin → AI Providers → "Which model translates".');
+                            $this->line('  <fg=yellow>The Anthropic account is out of credit.</> Top it up, or point');
+                            $this->line('  translation at another model under Admin → AI Providers.');
+                            $this->line('');
+                            $this->line('  <fg=yellow>It must be a model that can WRITE THE LANGUAGE.</> A code model');
+                            $this->line('  answers fluently and wrongly — that is how sixty-seven languages');
+                            $this->line('  were filled with broken text on 2026-09-09 without one error being');
+                            $this->line('  raised. Code models are refused now (config/translation.php →');
+                            $this->line('  unfit_models), which is why this stopped instead of carrying on.');
                         }
 
                         $this->line('');
@@ -566,7 +575,17 @@ class TranslateInterfaceCommand extends Command
                  * `putMany()` also carries the invariant the files could not: a
                  * string a PERSON wrote is skipped, never overwritten.
                  */
-                $written = $store->putMany($locale, $id, $good, 'translate:interface');
+                /*
+                 * ⚠️ The model that ANSWERED, not the name of this command.
+                 *
+                 * This column said "translate:interface" for every row, which
+                 * meant that when sixty-seven languages turned out to have been
+                 * written by a code model, nothing in the database could say so
+                 * — the evidence was in a log line that had already rotated.
+                 * Quality is a per-model question and this is the only place
+                 * the answer can be kept.
+                 */
+                $written = $store->putMany($locale, $id, $good, $result['model'] ?: 'unknown');
                 $write = ['written' => $written, 'error' => null];
 
                 /*

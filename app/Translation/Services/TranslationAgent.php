@@ -244,6 +244,25 @@ class TranslationAgent
         $lines[] = '';
         $lines[] = "You are localising the page for a real sports competition. Your job is NOT word-for-word translation. Write what a native {$target} writer would have written to say the same thing to the same reader: restructure a sentence, split or join clauses, choose the idiom {$target} actually uses, and follow {$target} grammar, punctuation, capitalisation and number formatting conventions. The result must read as though it was written in {$target} first — never as though it was translated.";
         $lines[] = '';
+        /*
+         * ⚠️ The quality bar, stated rather than assumed. Added
+         * 2026-09-09 after a native Albanian speaker read the site and said the
+         * letters were wrong and the grammar was broken. The proximate cause
+         * was a CODE model doing the translating once the AI account ran out of
+         * credit (now refused outright — InterfaceAgent::fitToTranslate),
+         * but this prompt had never actually asked for correct spelling,
+         * diacritics or agreement either. It asked for tone and for facts.
+         *
+         * Nobody on this team can proofread most of these languages, so
+         * fluent-and-wrong is the failure mode to design against.
+         */
+        $lines[] = 'QUALITY — the part that matters most:';
+        $lines[] = '• Spelling and orthography must be correct by the standard written norm of '.$target.'. Use its alphabet in full, including every diacritic and special letter — never an ASCII approximation, never a letter that merely looks similar. Where '.$target.' has more than one accepted orthography, use the standard/literary one.';
+        $lines[] = '• Grammar must be correct: agreement, case, gender, number, definiteness, verb form and word order as '.$target.' requires them, not as '.$source.' arranges them.';
+        $lines[] = '• Use real words. Never coin a word, transliterate one, or leave a half-translated form. If you do not know the established '.$target.' term, write a plain correct phrase in '.$target.' rather than inventing one.';
+        $lines[] = '• Get the MEANING right before the style. Colours, metals, directions and states of a thing are facts — gold is the metal gold, not a colour associated with it.';
+        $lines[] = '• Typography follows '.$target.': its own quotation marks, separators and spacing around punctuation.';
+        $lines[] = '';
         $lines[] = 'Hold to these, without exception:';
         $lines[] = '• Never add, drop, soften or "improve" a fact. You are translating an announcement, not editing it. If the source is blunt, be blunt.';
         $lines[] = '• Never alter numbers, dates, times, weights, ages, prices or currency codes. Translate the words around them and reformat them the way '.$target.' writes them, but the values themselves do not change.';

@@ -133,6 +133,40 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Models that must never translate
+    |--------------------------------------------------------------------------
+    |
+    | Matched against a provider's model name. A match is dropped from the chain
+    | for TRANSLATION work — the run then fails loudly rather than quietly
+    | producing text from the wrong kind of model.
+    |
+    | ⚠️ Why this list exists. On 2026-09-09 the Anthropic account ran out of
+    | credit; every Claude call returned HTTP 400, the chain fell through as
+    | designed, and `qwen3-coder:30b` translated 19,666 interface strings into
+    | sixty-seven languages without a single error being raised. In Albanian it
+    | rendered the GOLD medal as "Medalja e zezë" — the black medal — and SILVER
+    | as "the white medal". A native speaker reading the site is how it was
+    | found.
+    |
+    | A code model is not a translator. It will answer anyway, fluently and
+    | wrongly, which is the worst possible failure mode for text nobody on the
+    | team can proofread.
+    |
+    | This is a FLOOR, not a quality bar: passing it only means a model is not
+    | obviously the wrong tool. Whether a model writes GOOD Albanian is a
+    | question only an Albanian speaker can answer — which is why every stored
+    | string now records the model that wrote it.
+    */
+    'unfit_models' => [
+        '/coder/i',
+        '/(^|[-_\/])code(-|_|$)/i',
+        '/starcoder|codellama|codegemma|codestral|deepseek-coder|qwen[\w.]*-coder/i',
+        '/embed(ding)?/i',
+        '/whisper|tts|stable-diffusion|flux/i',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Refusals a person has looked at and accepted
     |--------------------------------------------------------------------------
     |

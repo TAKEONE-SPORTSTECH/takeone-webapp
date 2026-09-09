@@ -42,7 +42,7 @@ class InterfaceAgent
      */
     public function translate(array $strings, string $locale, string $context, ?callable $progress = null): array
     {
-        $links = $this->chain->links();
+        $links = $this->fitToTranslate($this->chain->links());
 
         if ($links === []) {
             throw new \RuntimeException('No AI provider is configured. Add one under Admin → AI Providers.');
@@ -84,6 +84,67 @@ class InterfaceAgent
     }
 
     /**
+     * Only the models that have any business translating a language.
+     *
+     * ⚠️ THE FAILURE THIS EXISTS TO STOP, and it was not hypothetical.
+     *
+     * On 2026-09-09 the Anthropic account ran out of credit. Every call to
+     * Claude returned HTTP 400 "Your credit balance…", the chain fell through
+     * exactly as designed, and `qwen3-coder:30b` — a CODE model — translated
+     * 19,666 interface strings across sixty-seven languages. Nothing failed.
+     * The command reported success. A native speaker read the result and said
+     * the letters were wrong and the grammar was broken, which is how anybody
+     * found out. In Albanian it had rendered the GOLD medal as "Medalja e
+     * zezë" (the black medal) and SILVER as "Medalja e bardhë" (the white
+     * one) — on a competition platform.
+     *
+     * A fallback is right for RENDERING, where a page must never fail. It is
+     * wrong for GENERATION: silently swapping the translator produces
+     * confident, plausible, wrong text that is then stored and served for
+     * months. Better to translate nothing and say so.
+     *
+     * A code model is refused by name, because that is the one property that is
+     * legible from the outside. This is a floor, not a quality bar — passing it
+     * only means the model is not obviously the wrong tool.
+     *
+     * @param  array<int,Link>  $links
+     * @return array<int,Link>
+     */
+    private function fitToTranslate(array $links): array
+    {
+        $unfit = (array) config('translation.unfit_models', []);
+
+        $kept = [];
+
+        foreach ($links as $link) {
+            $reason = null;
+
+            foreach ($unfit as $pattern) {
+                if (@preg_match($pattern, $link->model) === 1) {
+                    $reason = $pattern;
+
+                    break;
+                }
+            }
+
+            if ($reason === null) {
+                $kept[] = $link;
+
+                continue;
+            }
+
+            Log::warning('translation.model_refused', [
+                'model' => $link->model,
+                'label' => $link->label,
+                'matched' => $reason,
+                'why' => 'not a translation model — see InterfaceAgent::fitToTranslate()',
+            ]);
+        }
+
+        return $kept;
+    }
+
+    /**
      * One batch, down the provider chain until something answers.
      *
      * @param  array<string,string>  $indexed
@@ -121,7 +182,17 @@ class InterfaceAgent
 
                 $failures[] = $link->describe().': nothing usable';
             } catch (\Throwable $e) {
-                $failures[] = $link->describe().': '.mb_substr($e->getMessage(), 0, 100);
+                /*
+                 * ⚠️ Long enough to keep the sentence that says WHY.
+                 *
+                 * At 100 characters "Anthropic request failed: HTTP 400
+                 * {"type":"error","error":{"type":"invalid_request_error"…"
+                 * used the whole budget and cut off "Your credit balance is too
+                 * low" — the one phrase the command greps for to tell an
+                 * operator to top the account up. The diagnosis was in the
+                 * message and the truncation threw it away.
+                 */
+                $failures[] = $link->describe().': '.mb_substr($e->getMessage(), 0, 300);
             }
         }
 
@@ -157,8 +228,30 @@ class InterfaceAgent
         $lines[] = '';
         $lines[] = 'What this software is about: '.$context;
         $lines[] = '';
+        /*
+         * ⚠️ THE QUALITY BLOCK COMES FIRST, and it is here because a native
+         * speaker read the Albanian and said the letters were wrong and the
+         * grammar was broken (2026-09-09). The proximate cause was a code model
+         * doing the translating — now refused outright, see fitToTranslate() —
+         * but the prompt never actually ASKED for correct language either. It
+         * asked for the right register, the right length, intact placeholders,
+         * and said nothing about spelling, diacritics or agreement.
+         *
+         * These strings are read by people who cannot check them against the
+         * English, in languages nobody on this team speaks. Fluent-and-wrong is
+         * the failure mode, so the standard has to be stated, not assumed.
+         */
+        $lines[] = 'QUALITY — this is the part that matters most:';
+        $lines[] = '• Write as an educated native speaker of '.$target.' writing for publication. A reader must not be able to tell it was translated.';
+        $lines[] = '• Spelling and orthography must be correct by the standard written norm of '.$target.'. Use the language\'s own alphabet in full, including every diacritic and special letter it requires — never an ASCII approximation, never a letter that merely looks similar. If '.$target.' has more than one accepted orthography, use the standard/literary one.';
+        $lines[] = '• Grammar must be correct: agreement, case, gender, number, definiteness, verb form and word order as '.$target.' actually requires them, not as English arranges them.';
+        $lines[] = '• Use real words. Never coin a word, transliterate an English one, or leave a half-translated form. If you do not know the established '.$target.' term for something, use a plain, correct, ordinary phrase in '.$target.' rather than inventing one.';
+        $lines[] = '• Get the MEANING right before the style. Colours, metals, directions, numbers and states of a thing are facts — gold is the metal gold, not a colour you associate with it.';
+        $lines[] = '• Typography follows '.$target.': its own quotation marks, its own decimal and thousands separators, its own spacing around punctuation.';
+        $lines[] = '• If a string is ambiguous in English, choose the reading that fits a sports-club interface, and still return correct '.$target.'.';
+        $lines[] = '';
         $lines[] = 'Rules:';
-        $lines[] = '• Write what a '.$target.' product would actually put on that control. Match the register and the LENGTH of a UI label — a button says "Save", not "Please save your changes now".';
+        $lines[] = '• Write what a product in '.$target.' would actually put on that control. Match the register and the LENGTH of a UI label — a button says "Save", not "Please save your changes now".';
         $lines[] = '• Use the conventional '.$target.' term for common software actions (save, cancel, delete, back, search, settings, sign in). Do not invent a literal translation where the language already has a standard one.';
         $lines[] = '• ⚠️ `:word` tokens like :name, :count, :club, :date are PLACEHOLDERS that the software replaces with real values. Reproduce each one exactly, unchanged, in a position that reads naturally. Never translate, rename or drop one. (Inside a plural form you may omit one where that form does not need the number — Arabic\'s dual, for example.)';
         $lines[] = '• ⚠️ Strings containing `|` are PLURAL forms — `{1}one thing|[2,*]:count things`. Give the forms '.$target.' actually needs, each with its own `{n}` or `[n,*]` range label, even if that is more forms than the English has. Never return a plural string as a single form.';
