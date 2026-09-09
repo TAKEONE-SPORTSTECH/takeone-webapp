@@ -178,6 +178,14 @@ return [
     | correction is validated before it is kept, and a failed edit pass leaves
     | the first translation exactly as it was — see InterfaceAgent::refine().
     */
+    /*
+    | Strings per request. Throughput varies enormously between models and an
+    | over-large batch does not degrade gracefully — it times out at the proxy
+    | (HTTP 524) and stops the run. Sixty suits a frontier model; a small
+    | self-hosted one needs far fewer.
+    */
+    'interface_batch' => (int) env('TRANSLATION_BATCH', 60),
+
     'refine' => (bool) env('TRANSLATION_REFINE', true),
 
     // Editing is not a creative task; a warm model rewrites instead of

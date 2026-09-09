@@ -79,7 +79,17 @@ class DiscardInterfaceCommand extends Command
         $affected = (clone $query)->selectRaw('locale, COUNT(*) n')->groupBy('locale')->pluck('n', 'locale');
         $total = $affected->sum();
 
-        if ($total === 0) {
+        /*
+         * ⚠️ Rows and FILES are two stores, and either can outlive the other.
+         *
+         * "Nothing to discard" used to be decided on rows alone, so a locale
+         * whose rows were already gone but whose exported lang files remained
+         * was reported as clean — and those files went on being served through
+         * the loader's fallback, and told the next generation run the language
+         * was complete. Naming a locale explicitly now clears its files too,
+         * whether or not a single row matched.
+         */
+        if ($total === 0 && $wanted === []) {
             $this->info('Nothing to discard.');
 
             return self::SUCCESS;
@@ -96,7 +106,7 @@ class DiscardInterfaceCommand extends Command
                 $human ? '  ('.$human.' human corrections kept)' : ''));
         }
 
-        if (! $this->option('force')) {
+        if ($total > 0 && ! $this->option('force')) {
             $this->line('');
             $this->warn('  Nothing deleted. Re-run with --force.');
             $this->line('');
@@ -106,20 +116,55 @@ class DiscardInterfaceCommand extends Command
 
         $query->delete();
 
-        foreach (array_keys($affected->all()) as $locale) {
+        $failed = false;
+
+        // Explicitly named locales are cleaned even where no row matched —
+        // their files may still be on disk. See the note above.
+        $clean = array_values(array_unique(array_merge(
+            array_map('strval', array_keys($affected->all())),
+            $wanted !== [] ? array_diff($codes ?? [], self::PROTECTED) : [],
+        )));
+
+        foreach ($clean as $locale) {
             DatabaseTranslationLoader::forgetLocale((string) $locale);
 
             if ($this->option('keep-files')) {
                 continue;
             }
 
-            // The exported mirror. Leaving it would keep serving the text this
-            // command just deleted, through the loader's file fallback.
+            /*
+             * The exported mirror. Leaving it would keep serving the text this
+             * command just deleted, through the loader's file fallback.
+             *
+             * ⚠️ SAY SO WHEN IT CANNOT. `File::delete()` returns false on a
+             * permission error and this loop ignored it — so on 2026-09-09 the
+             * rows went, the files stayed (a root-owned lang/sq that www-data
+             * could not touch), and the very next generation run read those
+             * files, decided the language was already complete, and wrote
+             * nothing. The discard reported success and changed nothing a
+             * reader could see.
+             */
+            $stuck = [];
+
             foreach ((array) glob(lang_path($locale.'/*.php')) as $file) {
-                File::delete($file);
+                if (! File::delete($file)) {
+                    $stuck[] = basename((string) $file);
+                }
             }
 
             @rmdir(lang_path((string) $locale));
+
+            if ($stuck !== []) {
+                $this->error(sprintf(
+                    '  %-6s could NOT delete %d file(s) in lang/%s — %s',
+                    $locale, count($stuck), $locale, implode(', ', array_slice($stuck, 0, 4)),
+                ));
+                $this->line('         They will keep being served through the file fallback, and the');
+                $this->line('         next run will read them and conclude the language is complete.');
+                $this->line('         Check ownership: they must be writable by the web user.');
+
+                $failed = true;
+            }
         }
 
         $this->line('');
@@ -127,6 +172,8 @@ class DiscardInterfaceCommand extends Command
         $this->line('    php artisan translate:interface <locale> --tier=event');
         $this->line('');
 
-        return self::SUCCESS;
+        // A discard that left files behind has not discarded anything the
+        // reader will notice, and must not report success.
+        return $failed ? self::FAILURE : self::SUCCESS;
     }
 }

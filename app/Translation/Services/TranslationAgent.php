@@ -262,6 +262,7 @@ class TranslationAgent
         $lines[] = '• Use real words. Never coin a word, transliterate one, or leave a half-translated form. If you do not know the established '.$target.' term, write a plain correct phrase in '.$target.' rather than inventing one.';
         $lines[] = '• Get the MEANING right before the style. Colours, metals, directions and states of a thing are facts — gold is the metal gold, not a colour associated with it.';
         $lines[] = '• Typography follows '.$target.': its own quotation marks, separators and spacing around punctuation.';
+        $lines[] = '• Write the language the way it is ORDINARILY WRITTEN, not the way it is taught: no full Arabic tashkeel, no Hebrew niqqud, no Japanese furigana, no pinyin, no Russian stress accents. Optional teaching marks look wrong to a native reader.';
         $lines[] = '';
         $lines[] = 'Hold to these, without exception:';
         $lines[] = '• Never add, drop, soften or "improve" a fact. You are translating an announcement, not editing it. If the source is blunt, be blunt.';

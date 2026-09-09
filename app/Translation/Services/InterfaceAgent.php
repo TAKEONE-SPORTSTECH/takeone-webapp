@@ -28,8 +28,18 @@ use Illuminate\Support\Facades\Log;
  */
 class InterfaceAgent
 {
-    /** Strings per request. Small enough to retry cheaply, big enough for context. */
-    private const BATCH = 60;
+    /**
+     * Strings per request. Small enough to retry cheaply, big enough for context.
+     *
+     * ⚠️ Configurable because throughput varies by an order of magnitude between
+     * models, and too large a batch does not fail gracefully — it times out at
+     * the proxy (HTTP 524) and the whole run stops. A frontier model is
+     * comfortable with sixty; a small self-hosted one needs far fewer.
+     */
+    private function batchSize(): int
+    {
+        return max(5, min(200, (int) config('translation.interface_batch', 60)));
+    }
 
     public function __construct(
         private ProviderChain $chain,
@@ -57,7 +67,7 @@ class InterfaceAgent
         $done = 0;
         $total = count($strings);
 
-        foreach (array_chunk($strings, self::BATCH, true) as $batch) {
+        foreach (array_chunk($strings, $this->batchSize(), true) as $batch) {
             $keys = array_keys($batch);
             $indexed = [];
 
@@ -248,6 +258,7 @@ class InterfaceAgent
         $lines[] = '1. Correct the '.$target.' itself — everything a word-by-word rendering misses. Whichever of these '.$target.' has: agreement, case, gender, number, definiteness, verb form and tense, particles, classifiers/counters, honorifics and politeness level, and word order. A UI label must be in the register a '.$target.' product actually uses for that control.';
         $lines[] = '2. Correct spelling and orthography to the standard written norm of '.$target.', in its own writing system — the right script and script mixture, and every diacritic, vowel mark or special character it requires. Never an ASCII approximation, never a character that merely resembles the right one, never a transliteration where the native script is used.';
         $lines[] = '3. Correct typography to '.$target.' convention: its own quotation marks, separators and spacing around punctuation.';
+        $lines[] = '   Remove optional teaching marks the language does not use in running text — full Arabic tashkeel, Hebrew niqqud, Japanese furigana, pinyin, Russian stress accents. Keep marks that are part of normal spelling.';
         $lines[] = '4. Replace any coined, transliterated or half-translated word with the ordinary '.$target.' one. If there is no established term, use a plain correct phrase.';
         $lines[] = '5. Only if the translation states something the English does not, or misses something it does, correct the meaning.';
         $lines[] = '';
@@ -435,6 +446,7 @@ class InterfaceAgent
         $lines[] = '• Use real words. Never coin a word, transliterate an English one, or leave a half-translated form. If you do not know the established '.$target.' term for something, use a plain, correct, ordinary phrase in '.$target.' rather than inventing one.';
         $lines[] = '• Get the MEANING right before the style. Colours, metals, directions, numbers and states of a thing are facts — gold is the metal gold, not a colour you associate with it.';
         $lines[] = '• Typography follows '.$target.': its own quotation marks, its own decimal and thousands separators, its own spacing around punctuation.';
+        $lines[] = '• ⚠️ Write the language the way it is ORDINARILY WRITTEN, not the way it is taught. Include the marks running text uses and leave out the ones it does not: no full Arabic tashkeel, no Hebrew niqqud, no Japanese furigana, no pinyin beside the characters, no stress accents on Russian. Optional teaching marks in a button label look wrong to a native reader.';
         $lines[] = '• If a string is ambiguous in English, choose the reading that fits a sports-club interface, and still return correct '.$target.'.';
         $lines[] = '';
         $lines[] = 'Rules:';
