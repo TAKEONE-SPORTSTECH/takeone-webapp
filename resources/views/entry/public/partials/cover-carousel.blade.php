@@ -48,7 +48,7 @@
        around — see the note in cover.blade.php. Pinned rather than merely
        omitted, because every other chevron on this platform DOES flip and the
        obvious edit here is to make these match. */
-    [data-cover-prev] .bi, [data-cover-next] .bi { transform: none !important; }
+    [data-cover-prev] .bi, [data-cover-next] .bi, [data-cover-enter] .bi { transform: none !important; }
 
     @media (prefers-reduced-motion: reduce) {
         .ps-card { transition:none !important; }

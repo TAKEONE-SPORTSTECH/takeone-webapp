@@ -218,8 +218,23 @@
                         </div>
                     </div>
 
-                    {{-- ===== Search · Enter ===== --}}
-                    <div style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:20px; padding:0 20px; animation:rise .5s .24s ease both;">
+                    {{-- ===== Search · Enter =====
+
+                         ⚠️ `dir="ltr"`, so the two never swap sides.
+
+                         A flex row reverses its MAIN AXIS under `dir="rtl"`, so
+                         in Arabic, Hebrew, Persian and Urdu these two changed
+                         places: Search jumped right, Enter jumped left. Their
+                         positions are not a reading-order question — Enter is
+                         the primary action and sits where the design put it, on
+                         the trailing edge of a fixed 520px frame, in every
+                         language (stated 2026-09-09).
+
+                         Pinning the ROW rather than each button is what fixes
+                         the order; the labels inside still render in their own
+                         script, because bidi resolves a word on its own merits
+                         whatever the surrounding base direction is. --}}
+                    <div dir="ltr" style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:20px; padding:0 20px; animation:rise .5s .24s ease both;">
                         @if(count($coverLangs) > 1)
                             <button type="button" data-cover-search
                                     style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:170px; height:54px; padding:0; border-radius:9999px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); font-size:16px; font-weight:700; color:rgba(255,255,255,.85); cursor:pointer;">
@@ -236,7 +251,16 @@
                         <button type="button" data-cover-enter
                                 style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:170px; height:54px; padding:0; border:0; border-radius:9999px; font-size:16px; font-weight:800; color:#fff; cursor:pointer; background:{{ $coverColor }}; box-shadow:0 10px 26px rgba(0,0,0,.35);">
                             <span data-cover-enterlabel></span>
-                            <i class="bi bi-arrow-right rtl:rotate-180" style="font-size:12px;"></i>
+                            {{-- ⚠️ No `rtl:rotate-180`, and that CHANGED on
+                                 2026-09-09. It used to flip, on the reasoning
+                                 that a forward arrow points along the reading
+                                 order — right in English, left in Arabic. That
+                                 stopped being true the moment the row above was
+                                 pinned `dir="ltr"`: the arrow now trails its
+                                 label on the right in every language, so
+                                 turning it around would point it back at the
+                                 word it follows. --}}
+                            <i class="bi bi-arrow-right" style="font-size:12px;"></i>
                         </button>
                     </div>
                 </div>
