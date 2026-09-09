@@ -157,6 +157,33 @@ return [
     | question only an Albanian speaker can answer — which is why every stored
     | string now records the model that wrote it.
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Proofread every batch after translating it
+    |--------------------------------------------------------------------------
+    |
+    | A second call that hands the batch back to the model with the English
+    | beside it and one instruction: correct the language, change nothing else.
+    |
+    | ⚠️ Why this is on by default. A Japanese speaker read the generated
+    | interface and said it was "precise but wrong grammar"; an Albanian speaker
+    | said the same in different words. That is what a bulk pass produces, and
+    | it is not a sign of a bad model — sixty disconnected UI labels arrive with
+    | no sentence around them, so the model spends its attention choosing the
+    | right WORD for each and what suffers is everything that lives between
+    | words: Japanese particles and politeness, Albanian definiteness and case,
+    | German gender, Arabic construct state.
+    |
+    | It doubles the calls, which is the honest cost of the quality bar. Every
+    | correction is validated before it is kept, and a failed edit pass leaves
+    | the first translation exactly as it was — see InterfaceAgent::refine().
+    */
+    'refine' => (bool) env('TRANSLATION_REFINE', true),
+
+    // Editing is not a creative task; a warm model rewrites instead of
+    // correcting, which is the one way this pass can make things worse.
+    'refine_temperature' => (float) env('TRANSLATION_REFINE_TEMPERATURE', 0.1),
+
     'unfit_models' => [
         '/coder/i',
         '/(^|[-_\/])code(-|_|$)/i',

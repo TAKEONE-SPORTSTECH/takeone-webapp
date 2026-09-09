@@ -31,7 +31,11 @@ class InterfaceAgent
     /** Strings per request. Small enough to retry cheaply, big enough for context. */
     private const BATCH = 60;
 
-    public function __construct(private ProviderChain $chain, private ContentLocales $locales) {}
+    public function __construct(
+        private ProviderChain $chain,
+        private ContentLocales $locales,
+        private LangFileValidator $validator,
+    ) {}
 
     /**
      * Translate a group of strings into one language.
@@ -63,6 +67,27 @@ class InterfaceAgent
 
             $answer = $this->ask($indexed, $locale, $context, $links, $model);
 
+            /*
+             * ⚠️ SECOND PASS. Asked for on 2026-09-09 after a Japanese speaker
+             * read the result and said it was "precise but wrong grammar" —
+             * the same verdict, in different words, as the Albanian one.
+             *
+             * That is exactly what a bulk pass produces and it is not a sign of
+             * a bad model. Sixty disconnected labels arrive with no sentence
+             * around them, and the model spends its attention on choosing the
+             * right WORD for each. What suffers is everything that only exists
+             * between words: Japanese particles and politeness level, Albanian
+             * definiteness and case, German gender, Arabic construct state.
+             * Meaning right, morphology wrong.
+             *
+             * So the batch goes back for editing, with the English beside it
+             * and one instruction: fix the language, change nothing else. It is
+             * a different task from translating and gets a different prompt,
+             * for the same reason this class exists separately from
+             * TranslationAgent at all.
+             */
+            $answer = $this->refine($indexed, $answer, $locale, $context, $links);
+
             foreach ($answer as $index => $text) {
                 $position = (int) $index - 1;
 
@@ -81,6 +106,168 @@ class InterfaceAgent
         }
 
         return ['values' => $values, 'model' => $model, 'refused' => []];
+    }
+
+    /**
+     * Hand the batch back for proofreading, and keep only what survives.
+     *
+     * ⚠️ AN EDIT PASS, NOT A SECOND TRANSLATION. The editor sees its own
+     * output next to the English and is asked to correct the language — never
+     * to reconsider the wording. That distinction is the whole value: asked to
+     * translate again, a model produces a different translation and the
+     * meaning drifts; asked to edit, it fixes agreement and leaves the choice
+     * of words alone.
+     *
+     * ⚠️ EVERY CORRECTION IS CHECKED BEFORE IT IS KEPT. An editor that
+     * "tidies" `:count` into `:number`, drops a plural form or changes a price
+     * has broken the string, and the un-edited version is better. Each returned
+     * value is put through the same validator the command uses, against the
+     * same English source, and anything it refuses is discarded in favour of
+     * the first pass.
+     *
+     * Failing entirely is not an error either: the first pass is a usable
+     * translation, so a refusal, a timeout or an unparseable reply leaves the
+     * batch exactly as it was.
+     *
+     * @param  array<string,string>  $indexed   index => English
+     * @param  array<string,string>  $draft     index => first-pass translation
+     * @param  array<int,Link>  $links
+     * @return array<string,string>
+     */
+    private function refine(array $indexed, array $draft, string $locale, string $context, array $links): array
+    {
+        if (! config('translation.refine', true) || $draft === []) {
+            return $draft;
+        }
+
+        // Only what we actually asked about, paired for the editor.
+        $pairs = [];
+
+        foreach ($draft as $index => $text) {
+            if (isset($indexed[$index]) && is_string($text) && trim($text) !== '') {
+                $pairs[$index] = ['en' => $indexed[$index], $locale => $text];
+            }
+        }
+
+        if ($pairs === []) {
+            return $draft;
+        }
+
+        foreach ($links as $link) {
+            try {
+                $reply = $link->driver->chat(
+                    [
+                        ['role' => 'system', 'content' => $this->editor($locale, $context)],
+                        ['role' => 'user', 'content' => json_encode($pairs, JSON_UNESCAPED_UNICODE)],
+                    ],
+                    [],
+                    [
+                        'max_tokens' => (int) config('translation.max_tokens', 8000),
+                        // Lower than the translation pass: editing is not a
+                        // creative task and a warm model rewrites rather than
+                        // corrects.
+                        'temperature' => (float) config('translation.refine_temperature', 0.1),
+                        'json' => config('translation.json_mode', true) && $link->supportsJsonMode(),
+                        'effort' => config('translation.effort', 'low'),
+                    ],
+                );
+
+                $edited = $this->decode((string) ($reply['content'] ?? ''));
+
+                if (! is_array($edited) || $edited === []) {
+                    continue;
+                }
+
+                $kept = $draft;
+                $changed = 0;
+
+                foreach ($edited as $index => $text) {
+                    if (! isset($indexed[$index]) || ! is_string($text) || trim($text) === '') {
+                        continue;
+                    }
+
+                    $text = trim($text);
+
+                    if ($text === $draft[$index]) {
+                        continue;
+                    }
+
+                    // The guard: an edit that breaks the string is not an edit.
+                    if ($this->validator->reject((string) $index, $indexed[$index], $text) !== null) {
+                        continue;
+                    }
+
+                    $kept[$index] = $text;
+                    $changed++;
+                }
+
+                if ($changed > 0) {
+                    Log::info('translation.refined', [
+                        'locale' => $locale,
+                        'corrected' => $changed,
+                        'of' => count($pairs),
+                        'model' => $link->model,
+                    ]);
+                }
+
+                return $kept;
+            } catch (\Throwable $e) {
+                // Fall to the next link; the draft stands if none answer.
+                continue;
+            }
+        }
+
+        return $draft;
+    }
+
+    /**
+     * The editor's instruction — a different job from the translator's.
+     */
+    private function editor(string $locale, string $context): string
+    {
+        $target = $this->locales->name($locale);
+        $native = $this->locales->native($locale);
+        $rtl = $this->locales->dir($locale) === 'rtl';
+
+        $lines = [];
+
+        $lines[] = "You are a native {$target} ({$native}) editor proofreading the user interface of a sports-club platform.";
+        $lines[] = '';
+        $lines[] = 'Each entry gives you the English source and a proposed '.$target.' translation of it. The translation was produced in bulk and is usually right about MEANING and often wrong about GRAMMAR.';
+        $lines[] = '';
+        $lines[] = 'What this software is about: '.$context;
+        $lines[] = '';
+        $lines[] = 'Your job, in this order:';
+        /*
+         * ⚠️ Deliberately named rather than listed as "grammar". A generic
+         * instruction gets generic attention; naming the machinery is what
+         * makes a model check it. The list spans language families on purpose —
+         * whichever items do not apply to this language cost nothing, and the
+         * ones that do are exactly what a bulk pass got wrong.
+         */
+        $lines[] = '1. Correct the '.$target.' itself — everything a word-by-word rendering misses. Whichever of these '.$target.' has: agreement, case, gender, number, definiteness, verb form and tense, particles, classifiers/counters, honorifics and politeness level, and word order. A UI label must be in the register a '.$target.' product actually uses for that control.';
+        $lines[] = '2. Correct spelling and orthography to the standard written norm of '.$target.', in its own writing system — the right script and script mixture, and every diacritic, vowel mark or special character it requires. Never an ASCII approximation, never a character that merely resembles the right one, never a transliteration where the native script is used.';
+        $lines[] = '3. Correct typography to '.$target.' convention: its own quotation marks, separators and spacing around punctuation.';
+        $lines[] = '4. Replace any coined, transliterated or half-translated word with the ordinary '.$target.' one. If there is no established term, use a plain correct phrase.';
+        $lines[] = '5. Only if the translation states something the English does not, or misses something it does, correct the meaning.';
+        $lines[] = '';
+        $lines[] = 'What you must NOT do:';
+        $lines[] = '• Do not retranslate. If a line is already correct '.$target.', return it unchanged.';
+        $lines[] = '• Do not restyle, lengthen, shorten, or make it more formal or friendly for its own sake. These are UI labels and their length matters.';
+        $lines[] = '• Do not touch `:word` placeholders (:name, :count, :date). Same spelling, same number of them.';
+        $lines[] = '• Do not touch plural syntax: `{1}…|[2,*]…` forms and their range labels stay.';
+        $lines[] = '• Do not change any number, and do not change HTML tags.';
+        $lines[] = '• Do not translate: TAKEONE, Gi, No-Gi, ippon, wazari, kata, kumite, poomsae, dan, kyu, currency codes, WhatsApp, IBAN, CPR, QR, PDF, GPS, BMI, BMR, VAT.';
+
+        if ($rtl) {
+            $lines[] = '• '.$target.' is right-to-left. Do not insert directional marks or reorder numbers by hand.';
+        }
+
+        $lines[] = '';
+        $lines[] = 'Reply with a JSON object and nothing else: the SAME keys you were given, each mapped to the corrected '.$target.' string only (not the pair).';
+        $lines[] = 'Return every key. No code fences, no commentary.';
+
+        return implode("\n", $lines);
     }
 
     /**
