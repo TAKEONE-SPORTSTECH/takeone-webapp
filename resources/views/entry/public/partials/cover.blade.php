@@ -190,11 +190,28 @@
 
                             <div class="ps-strip" data-cover-strip tabindex="0"
                                  style="display:flex; align-items:center; gap:14px; direction:ltr; overflow-x:auto; scroll-snap-type:x mandatory; padding:26px calc(50% - 52px) 26px; outline:none; -webkit-mask-image:linear-gradient(to right, transparent, #000 30px, #000 calc(100% - 30px), transparent); mask-image:linear-gradient(to right, transparent, #000 30px, #000 calc(100% - 30px), transparent);">
-                                {{-- THREE copies of the list: the strip loops by
-                                     silently jumping one copy-width when the
-                                     scroll settles near an edge, so it can be
-                                     flicked for ever in either direction. --}}
-                                @for($copy = 0; $copy < 3; $copy++)
+                                {{-- ⚠️ THE STRIP ONLY LOOPS WHEN THERE IS ENOUGH TO LOOP.
+                                     Three copies of the list is what makes it
+                                     flickable for ever — it jumps one copy-width
+                                     when the scroll settles near an edge — but
+                                     with a short list those copies ARE the
+                                     problem: an organiser offering two languages
+                                     saw six flags cycling past and read it as the
+                                     setting having been ignored (reported
+                                     2026-09-10).
+
+                                     Under five languages there is nothing to
+                                     flick through, so the list is rendered ONCE
+                                     and the strip is an ordinary row: two
+                                     languages, two boxes. The threshold is here,
+                                     and it is handed to the runtime as `COPIES` —
+                                     it must not be guessed at in two places.
+
+                                     The runtime needs no other change: loopCheck()
+                                     already refuses to act unless it is looking at
+                                     exactly three copies. --}}
+                                @php $coverCopies = count($coverLangs) >= 5 ? 3 : 1; @endphp
+                                @for($copy = 0; $copy < $coverCopies; $copy++)
                                     @foreach($coverLangs as $i => $lang)
                                         <button type="button" class="ps-card" data-index="{{ $copy * count($coverLangs) + $i }}"
                                                 title="{{ $lang['title'] }}"

@@ -157,7 +157,10 @@ abstract class AbstractEventType implements EventType
         if ($event->hasStarted()) {
             return 'running';
         }
-        if ($event->enrollment_starts_at && now()->startOfDay()->lt($event->enrollment_starts_at)) {
+        // Same day boundary as the entry gate itself (EntryWindow): an event
+        // must not read as 'draft' on a console while its entry door is open,
+        // or the other way round.
+        if (\App\Events\Support\EntryWindow::hasNotOpened($event)) {
             return 'draft';
         }
 
@@ -291,7 +294,10 @@ abstract class AbstractEventType implements EventType
                 key: 'enrolment_closed',
                 title: __('events.notify_enrolment_closed_title', ['title' => $event->title]),
                 body: __('events.notify_enrolment_closed_body'),
-                at: $event->enrollment_ends_at->copy()->endOfDay(),
+                // The moment the door actually shuts, from EntryWindow — so the
+                // "entries have closed" notice never lands hours before or after
+                // the gate it is announcing.
+                at: \App\Events\Support\EntryWindow::closesAt($event),
                 audience: Milestone::AUDIENCE_REGISTRANTS,
                 icon: 'bi-door-closed',
             );

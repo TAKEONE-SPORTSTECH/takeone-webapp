@@ -264,23 +264,29 @@
       // is on it, and not while it waits for the next one. It could not draw
       // this payload if it tried: a queue and a bout are different shapes.
       if (board().pinned === 'bout') return;
-      // A screen currently showing a BOUT must not be dragged back to the
-      // queue by a running-order nudge — the scoring table owns the screen
-      // until it releases it. The mat screen advertises that by exposing
-      // `mode`; the queue board does not.
-      //
-      // ⚠️ EXCEPT when this screen draws BOTH in one document, which is what
-      // this package does (`pinned === 'both'`). Karate and Taekwondo cross
-      // between queue and bout by reloading the page, so they re-fetch the
-      // running order on the way; BJJ never reloads. Dropping the nudge here
-      // therefore did not defer the update, it DISCARDED it — and since
-      // `commit` publishes the queue first and the mat second, every single
-      // bout ended with the wall showing a running order that still listed the
-      // finished bout at the top and still said "to be decided" for the
-      // winner's next slot, until somebody loaded another match or cut the
-      // power. Accept it and cache it; the queue is not drawn until the mat
-      // releases the screen, so there is nothing to be dragged away from.
-      if (board().pinned !== 'both' && board().mode && board().mode() !== 'upcoming') return;
+      /* A screen currently showing a BOUT must not be dragged back to the
+         queue by a running-order nudge — the scoring table owns the screen
+         until it releases it.
+
+         ⚠️ That is true of ONE kind of screen: an unpinned one, which follows
+         the mat and crosses between the two surfaces. It is not true of a
+         screen that is pinned, and asking it of a pinned screen is a bug that
+         has now been fixed twice.
+
+         The test used to be `pinned !== 'both'`, which let the combined board
+         through and dropped the nudge for everything else. But every screen
+         here exposes `mode()`, and `mode()` reports the MAT's mode — so a
+         screen pinned to `queue`, which draws the running order all day and
+         never shows a bout at all, was told it was "showing a bout" the moment
+         a match was loaded on the mat, and every running-order update after
+         that was discarded. Load bout 3, load bout 4: the corridor board sat
+         there showing whatever it had when the mat was last idle, and the only
+         thing that moved it was somebody pressing Resync.
+
+         So the question is asked of the screen that can actually be dragged:
+         an UNPINNED one. 'queue' and 'both' take the update; 'bout' and
+         'console' were already answered above. */
+      if (!board().pinned && board().mode && board().mode() !== 'upcoming') return;
       if (msg.payload) { board().update(msg.payload); } else { resync(); }
       return;
     }

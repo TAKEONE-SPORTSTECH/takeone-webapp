@@ -104,8 +104,6 @@ return [
     'discoverable_on' => 'あなたは今、発見可能になりました — 他の人があなたを見つけたり、メッセージを送ったりできます。',
     'division_add' => '追加',
     'division_age' => '年齢',
-    'division_also' => 'ここにも',
-    'division_also_hint' => '既に所属する区分を保持し、この区分にも登録します — たとえばGiとNo-Giの両方で競技する選手向けです。行をタップすると移動します。',
     'division_also_on' => 'ここでも登録済み',
     'division_any' => 'すべて',
     'division_apply' => '変更を保存',

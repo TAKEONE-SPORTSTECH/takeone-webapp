@@ -88,20 +88,20 @@
     </button>
 
     <template x-teleport="body">
-        <div x-show="open" x-cloak class="fixed inset-0 z-[80] flex items-end sm:items-center justify-center">
+        <div x-show="open" x-cloak class="fixed inset-0 z-[80] flex items-end justify-center">
             {{-- Backdrop --}}
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"
                  x-show="open" x-transition.opacity @click="open = false"></div>
 
             {{-- Sheet / dialog --}}
-            <div class="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col"
+            <div class="relative w-full sm:max-w-sm bg-white rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col"
                  x-show="open" x-cloak
                  x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="translate-y-full sm:translate-y-4 opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
+                 x-transition:enter-start="translate-y-full opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
                  x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-4 opacity-0">
+                 x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full opacity-0">
 
-                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
                      style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
                     <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
                     <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>

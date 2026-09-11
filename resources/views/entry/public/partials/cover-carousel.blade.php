@@ -47,8 +47,25 @@
        strip, not along a reading order, so an RTL page must not turn them
        around — see the note in cover.blade.php. Pinned rather than merely
        omitted, because every other chevron on this platform DOES flip and the
-       obvious edit here is to make these match. */
-    [data-cover-prev] .bi, [data-cover-next] .bi, [data-cover-enter] .bi { transform: none !important; }
+       obvious edit here is to make these match.
+
+       ⚠️⚠️ AND THE `::before` IS WHERE IT HAS TO BE PINNED.
+       The platform's RTL rule does not transform the icon element — it
+       transforms the icon's pseudo-element:
+
+           [dir="rtl"] :is(… .bi-chevron-left, .bi-chevron-right …)::before
+               { display: inline-block; transform: scaleX(-1); }
+
+       A bootstrap icon IS its `::before` (the glyph is `content` on the
+       pseudo), so pinning the element left that mirroring completely
+       untouched and both arrows still turned round in Arabic — reported
+       2026-09-10. The element is pinned as well, because `rtl:rotate-180`
+       could be added to one of these buttons by hand at any time and it
+       belongs to the element. */
+    [data-cover-prev] .bi, [data-cover-next] .bi, [data-cover-enter] .bi,
+    [data-cover-prev] .bi::before, [data-cover-next] .bi::before, [data-cover-enter] .bi::before {
+        transform: none !important;
+    }
 
     @media (prefers-reduced-motion: reduce) {
         .ps-card { transition:none !important; }
@@ -72,6 +89,11 @@
     if (! LANGS.length) return;
 
     var N = LANGS.length;
+    /* How many copies of the list the strip actually rendered. Three when it
+       loops, one when the list is too short to be worth looping — the decision
+       and the threshold live in cover.blade.php, next to the markup that acts
+       on them. */
+    var COPIES = @js($coverLangs ? (count($coverLangs) >= 5 ? 3 : 1) : 1);
     var CENTER_SCALE = 1.18;
     var SIDE_SCALE   = 0.72;
     var R            = 190;
@@ -122,6 +144,23 @@
             if (d < bd) { bd = d; best = i; }
         });
         return best;
+    }
+
+    /* One card left or right. A looping strip wraps; a single-copy strip stops
+       at its ends instead of scrolling to nothing. */
+    function step(by) {
+        var i = nearest() + by;
+
+        if (COPIES > 1) return centerOn(i, true);
+
+        centerOn(Math.max(0, Math.min(cards.length - 1, i)), true);
+    }
+
+    function paintArrows() {
+        var i = nearest();
+        var p = el('[data-cover-prev]'), n = el('[data-cover-next]');
+        if (p) p.style.visibility = i <= 0 ? 'hidden' : 'visible';
+        if (n) n.style.visibility = i >= cards.length - 1 ? 'hidden' : 'visible';
     }
 
     function centerOn(i, smooth) {
@@ -232,8 +271,8 @@
         strip.addEventListener('scroll', onScroll, { passive: true });
 
         strip.addEventListener('keydown', function (e) {
-            if (e.key === 'ArrowLeft')  { e.preventDefault(); centerOn(nearest() - 1, true); }
-            if (e.key === 'ArrowRight') { e.preventDefault(); centerOn(nearest() + 1, true); }
+            if (e.key === 'ArrowLeft')  { e.preventDefault(); step(-1); }
+            if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
         });
 
         cards.forEach(function (c) {
@@ -249,8 +288,16 @@
         });
 
         var prev = el('[data-cover-prev]'), next = el('[data-cover-next]');
-        if (prev) prev.addEventListener('click', function () { centerOn(nearest() - 1, true); });
-        if (next) next.addEventListener('click', function () { centerOn(nearest() + 1, true); });
+        if (prev) prev.addEventListener('click', function () { step(-1); });
+        if (next) next.addEventListener('click', function () { step(1); });
+
+        /* With one copy the strip has ends, so the arrows are hidden at them
+           rather than being controls that do nothing. A looping strip has no
+           ends and they always work. */
+        if (COPIES === 1) {
+            strip.addEventListener('scroll', paintArrows, { passive: true });
+            paintArrows();
+        }
 
         var search = el('[data-cover-search]');
         if (search) search.addEventListener('click', function () {
@@ -294,7 +341,11 @@
         if (idx < 0) idx = LANGS.findIndex(function (l) { return l.code === 'en'; });
         if (idx < 0) idx = 0;
 
-        var from = N + idx;   /* the middle copy, so it can be flicked both ways */
+        /* The MIDDLE copy when the strip loops, so it can be flicked both ways.
+           With a single copy there is no middle and no room either side —
+           opening at `N + idx` would land past the last card and centre
+           nothing. */
+        var from = COPIES > 1 ? N + idx : idx;
 
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {

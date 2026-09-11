@@ -53,6 +53,11 @@
   @keyframes timerPulse { 0%,100% { color:#ff3b47; text-shadow:0 0 60px rgba(255,59,71,.6); } 50% { color:#ffc2c6; text-shadow:0 0 100px rgba(255,59,71,1); } }
   @keyframes cellIn { 0% { transform:scale(.3); opacity:0; } 60% { transform:scale(1.15); opacity:1; } 100% { transform:scale(1); opacity:1; } }
   @keyframes winnerGlow { 0%,100% { opacity:.4; } 50% { opacity:1; } }
+  /* The stalling badge breathes rather than flashes: it sits on a wall for
+     up to a minute at a time, and a hard blink at that size is punishing to
+     watch. One second, the same beat the console's own count keeps. */
+  @keyframes stallPulse { 0%,100% { opacity:.72; transform:scale(1); }
+                          50%     { opacity:1;   transform:scale(1.04); } }
   @keyframes calloutIn { 0% { transform:translate(-50%,-50%) scale(.2) rotate(-8deg); opacity:0; } 22% { transform:translate(-50%,-50%) scale(1.18) rotate(2deg); opacity:1; } 40% { transform:translate(-50%,-50%) scale(1) rotate(0); } 78% { opacity:1; transform:translate(-50%,-50%) scale(1.02); } 100% { transform:translate(-50%,-50%) scale(1.08); opacity:0; } }
   @keyframes ringBurst { 0% { transform:translate(-50%,-50%) scale(.15); opacity:.95; } 100% { transform:translate(-50%,-50%) scale(3.4); opacity:0; } }
   @keyframes vignettePulse { 0%,100% { opacity:.22; } 50% { opacity:.6; } }

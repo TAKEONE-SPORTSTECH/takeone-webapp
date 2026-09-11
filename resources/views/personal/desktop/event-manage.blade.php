@@ -251,6 +251,20 @@
 
 
     @if($canManage)
+        {{-- Putting somebody on the list by hand. Organiser (and the platform
+             team) only — every other door into the entry list belongs to
+             somebody else: the athlete, their coach, or a stranger following
+             the public link. Same component as the mobile console. --}}
+        <div class="mb-6">
+            <x-event-add-person :event="$e['key']"
+                                :divisions="$entryDivisions ?? []"
+                                :fees="$e['fees'] ?? []"
+                                :color="$mgColor"
+                                :title="$e['title']" />
+        </div>
+    @endif
+
+    @if($canManage)
         {{-- Clubs standing behind the event — the ported sandbox feature's one
              way in on desktop. Without this tile the page existed and nothing
              linked to it. --}}

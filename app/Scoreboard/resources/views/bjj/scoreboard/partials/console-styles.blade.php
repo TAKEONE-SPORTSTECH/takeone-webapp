@@ -196,6 +196,21 @@
   #whiteScoreGrid .btn.score{background:#fff;color:#000;}
   #whiteScoreGrid .btn.score .l{color:rgba(0,0,0,.72);}
 
+  /* ── The take-back column ───────────────────────────────────────────────
+     Same size and same reach as the button beside it — a wrong number has to
+     come off the wall as fast as it went on — but hollow rather than filled,
+     in the corner's own colour on the console's ground. So the grid reads as
+     three AMOUNTS, each with a solid give and an outlined take, and a hand
+     moving down the panel cannot mistake one column for the other.
+
+     Deliberately NOT alarm-red: red on this console means a penalty and the
+     end of a match, and a score correction is neither. */
+  .btn.score.minus{background:var(--inset);border:2px solid var(--line-2);}
+  #blueScoreGrid .btn.score.minus{background:var(--inset);color:var(--blue-ink);border-color:rgba(138,180,255,.5);}
+  #whiteScoreGrid .btn.score.minus{background:var(--inset);color:var(--text);border-color:rgba(255,255,255,.42);}
+  #whiteScoreGrid .btn.score.minus .l{color:var(--muted);}
+  .btn.score.minus .l{color:var(--muted);}
+
   .scoreGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 
   /* Every other button on the console: one box, colour from the caller. */
@@ -215,7 +230,8 @@
   .btn.small{min-height:44px;font-size:21px;letter-spacing:.06em;padding:6px 14px;}
 
   /* The two ladders, as plates rather than counters: they are separate ways to
-     win, and reading them as one number is the mistake this layout prevents. */
+     win, and they keep their own plates: each one also moves the score now
+     (see Tally), but the reader is still shown three numbers, not a sum. */
   .counters{display:flex;gap:14px;}
   .counters .c{flex:1;display:flex;align-items:center;justify-content:space-between;gap:12px;
        background:var(--inset);border:1px solid var(--line);border-radius:12px;padding:10px 18px;}
@@ -278,6 +294,9 @@
   .logChip.advantage{color:var(--adv);}
   .logChip.penalty{color:var(--alarm);}
   .logChip.reverse{color:var(--muted);}
+  /* A correction TOOK points, so it reads in the alarm ink a penalty does —
+     the log is scanned, and the two rows that subtract should look alike. */
+  .logChip.correction{color:var(--alarm);}
   .logChip.other{color:var(--text);}
   .logRow .d{flex:1;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* Hold-to-confirm: a 1s gold sweep, and releasing cancels it. */

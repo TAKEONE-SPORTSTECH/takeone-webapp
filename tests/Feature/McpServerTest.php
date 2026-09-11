@@ -959,9 +959,12 @@ class McpServerTest extends TestCase
         $this->assertSame('Ana Costa', $mat['blue']['name']);
         $this->assertSame('Bia Souza', $mat['white']['name']);
 
-        // Mount is four, and an advantage is never folded into the points.
-        $this->assertSame(4, $mat['score']['bluePoints']);
-        $this->assertSame(0, $mat['score']['whitePoints']);
+        // Mount is four, plus one for the penalty against white. White's own
+        // advantage is worth a point to white. The three counters are still
+        // reported SEPARATELY, which is what this test is really about — the
+        // ladders move the score but are never folded away into it.
+        $this->assertSame(5, $mat['score']['bluePoints']);
+        $this->assertSame(1, $mat['score']['whitePoints']);
         $this->assertSame(1, $mat['score']['whiteAdvantages']);
         $this->assertSame(1, $mat['score']['whitePenalties']);
         $this->assertSame('blue', $mat['score']['leader']);
@@ -994,8 +997,10 @@ class McpServerTest extends TestCase
         $this->assertSame(4242, $result['match_id']);
         $this->assertCount(3, $result['entries']);
 
-        // The log and the score must never tell two different stories.
-        $this->assertSame(4, $result['score']['bluePoints']);
+        // The log and the score must never tell two different stories: three
+        // rows in, and blue's five is the mount plus the point white's penalty
+        // handed over.
+        $this->assertSame(5, $result['score']['bluePoints']);
 
         // Newest first, and the corners are named rather than the neutral a/b
         // the column stores.

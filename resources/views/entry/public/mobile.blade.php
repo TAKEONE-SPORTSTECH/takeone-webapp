@@ -121,6 +121,19 @@
     @endphp
     <x-event-poster-band :color="$e['color']" :eyebrow="$eyebrow"
                          :title="$e['title']" :owner="$e['club']" :chips="$hchips">
+        {{-- HOME, at the head of the classification line, where the dash was
+             (asked for 2026-09-09). It is the poster's one way back to the
+             cover — which is this app's front page and where the language is
+             chosen — and on the poster there is nothing else to go "back" to,
+             so it never belonged in the control cluster opposite. --}}
+        <x-slot:lead>
+            <button type="button" @click="window.dispatchEvent(new CustomEvent('reopen-cover'))"
+                    class="m-press ev-ctl flex-none"
+                    aria-label="{{ __('events.band_home') }}" title="{{ __('events.band_home') }}">
+                <i class="bi bi-house-door-fill"></i>
+            </button>
+        </x-slot:lead>
+
         <x-slot:controls>
             {{-- ONE control row, shared with /me/events/{uuid} — see
                  partials/event-band-controls for what this replaced and why.

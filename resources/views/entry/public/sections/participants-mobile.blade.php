@@ -163,7 +163,18 @@
                     $pGender = $person['gender'] ?? null;
                     $pCountry = $person['country'] ?? null;
                     $pAge = $person['age'] ?? null;
-                    $pDivisions = array_filter([$person['division'] ?? null]);
+                    /* Every division they are entered in. An athlete in two
+                       groups is ONE card wearing two chips — see
+                       PublicEvent::participants(). `division` is the fallback
+                       for a payload cached before that. */
+                    $pDivisions = array_values(array_filter(
+                        $person['divisions'] ?? [$person['division'] ?? null]
+                    ));
+                    /* Gi, No-Gi, or both — the activity of the event they are
+                       entered in, derived from those division names by
+                       App\Events\Support\ActivityTag. Absent for an event that
+                       runs a single activity. */
+                    $pActivity = $person['activity'] ?? \App\Events\Support\ActivityTag::label($pDivisions);
                     $pClub = $person['club'] ?? null;
                     /* The crest, not just the club's name. `PublicEvent::participants`
                        has published it all along and this card was the one reader that
@@ -186,6 +197,7 @@
                      a door for whoever may open it, a plain card otherwise. --}}
                 <x-entrant-card :name="$pName" :photo="$pPhoto" :gender="$pGender"
                                 :country="$pCountry" :age="$pAge" :divisions="$pDivisions"
+                                :activity="$pActivity"
                                 :club-name="$pClub" :club-logo="$pClubLogo" :chevron="$pChevron"
                                 :belt="$person['belt'] ?? null"
                                 :href="$pLink" :pick="$pRun" :show="$pShow" />

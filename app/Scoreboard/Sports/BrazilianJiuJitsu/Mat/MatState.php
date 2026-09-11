@@ -63,6 +63,7 @@ class MatState extends Model
         'points',      // the score at regulation time
         'decision',    // level at 0:00; the referee decides (IBJJF)
         'dq',          // disqualification — the fourth penalty, or on the spot
+        'advantages',  // the advantage limit reached, where a mat sets one
         'walkover',    // the opponent never came to the mat
         'medical',     // stopped by the doctor
         'forfeit',     // withdrawn
@@ -82,6 +83,18 @@ class MatState extends Model
         // The fourth penalty disqualifies; the third warns that it will.
         'penalty_limit' => 4,
         'penalty_warn_at' => 3,
+        /*
+         * How many advantages END the match in that corner's favour.
+         *
+         * ZERO — no limit — and that is the default on purpose. There is no
+         * such rule in jiu-jitsu as it is normally run: advantages break a tie
+         * and nothing more, and a mat that suddenly stopped bouts at four of
+         * them would be running a competition nobody entered. A mat that wants
+         * the cap turns it on and types the number (Settings → Rules), and the
+         * rule then lives in the state like every other, so the console, the
+         * wall and the engine cannot disagree about it.
+         */
+        'advantage_limit' => 0,
         // A tie at 0:00 goes to a referee decision rather than to a draw.
         'referee_decision' => true,
         // A buzzer at 0:00, and a stall countdown of ten seconds.
@@ -320,7 +333,9 @@ class MatState extends Model
             'blue' => $this->announced((array) $this->blue),
             'white' => $this->announced((array) $this->white),
 
-            // The three counters, separately — never summed. See Tally.
+            // The three counters, separately. Each ladder also moves the
+            // points line since 2026-09-12, but it is still ITS OWN number on
+            // every screen — the reader is never handed one total. See Tally.
             'score' => $tally->toArray(),
 
             'remaining' => round($remaining, 1),
@@ -345,9 +360,29 @@ class MatState extends Model
             'rules' => ($this->rules ?? []) + self::DEFAULT_RULES,
             'theme' => $this->theme === 'venue' ? 'venue' : 'arena',
 
-            // Deliberately NOT here: the stalling countdown. It is the
-            // referee's own, it is private to the console until it is applied,
-            // and the public board learns about it only as an ordinary penalty.
+            /*
+             * The stalling count — ON the board since 2026-09-12.
+             *
+             * ⚠️ This was deliberately absent until then, and the reason was a
+             * real one: a hall that can see a count running knows a penalty is
+             * coming before the referee has decided to give one, and a crowd
+             * that starts counting down at a man is pressure the referee did
+             * not ask for. The organiser asked for it anyway, on the grounds
+             * that the count is part of the officiating the hall is entitled
+             * to see, and that is their call to make.
+             *
+             * Sent as a REMAINDER, never as a deadline, for the same reason
+             * `remaining` above is: a wall screen's clock is frequently wrong,
+             * and only the delta from arrival matters.
+             *
+             * `side` is 'blue', 'white' or 'both'. Null whenever no count is
+             * running, so a board that has never been told about stalling
+             * simply draws nothing.
+             */
+            'stall' => $this->stall_side && $this->stall_until?->isFuture() ? [
+                'side' => $this->stall_side,
+                'seconds' => round(max(0, $this->stall_until->getTimestampMs() - now()->getTimestampMs()) / 1000, 2),
+            ] : null,
         ];
     }
 

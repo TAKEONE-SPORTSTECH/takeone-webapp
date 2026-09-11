@@ -83,6 +83,19 @@ class EventTranslationController extends Controller
                 'source' => $text,
             ])->values()->all(),
             'languages' => $languages,
+            /*
+             * Which languages the POSTER offers, and whether the organiser has
+             * narrowed that at all.
+             *
+             * Two values rather than one, because "all of them" and "these
+             * sixty-eight, listed" are different states to a reader: the first
+             * is the default nobody has touched, and a checklist that arrived
+             * fully ticked would make un-ticking one look like a change of
+             * sixty-seven. `offered` is the effective answer either way, so the
+             * client never has to reproduce the rule.
+             */
+            'offered' => Translations::offered($event),
+            'offered_limited' => $event->offeredLocales() !== null,
             // Everything on offer, for the "add a language" picker.
             'available' => collect($this->locales->all())
                 ->map(fn ($m, $code) => [
@@ -178,6 +191,64 @@ class EventTranslationController extends Controller
      * which is why it is a separate act with its own confirmation rather than
      * something bundled into "re-translate".
      */
+    /**
+     * Choose which languages the poster OFFERS.
+     *
+     * The organiser's shorter list. Asked for 2026-09-10, and the point of it
+     * is what it does NOT do: it hides languages without deleting a word of
+     * them, so every hand correction survives being taken off the poster and
+     * comes back the moment the language is ticked again. `destroy()` next door
+     * is the other thing — it throws the words away.
+     *
+     * An empty list (or the flag turned off) restores the default, which is
+     * every language we serve. See LimitsOfferedLocales for why empty and null
+     * are the same answer.
+     *
+     * ⚠️ Every code is normalised against the SERVED list before it is stored.
+     * This column decides what a public page will hand out, so an arbitrary
+     * string reaching it is a string that reaches a cache key and a directory
+     * name. Unknown codes are dropped rather than refused: a client sending one
+     * stale code should not lose the organiser's other twenty choices.
+     */
+    public function offered(Request $request, string $event): JsonResponse
+    {
+        $event = $this->event($event);
+
+        $data = $request->validate([
+            'limited' => ['required', 'boolean'],
+            'locales' => ['array', 'max:200'],
+            // Long enough for any tag we could ever serve (`zh-Hant-TW` is the
+            // shape), short enough that this is still a bounded field. NOT
+            // tight enough to refuse an unrecognised code: normalise() drops
+            // those, because one stale code in a payload must not cost the
+            // organiser their other twenty choices.
+            'locales.*' => ['string', 'max:32'],
+        ]);
+
+        $clean = null;
+
+        if ($data['limited']) {
+            $clean = array_values(array_unique(array_filter(array_map(
+                fn ($code) => $this->locales->normalise($code),
+                (array) ($data['locales'] ?? []),
+            ))));
+
+            // Un-ticking everything is not a poster nobody can read — it is the
+            // default, said the long way round.
+            $clean = $clean === [] ? null : $clean;
+        }
+
+        $event->offered_locales = $clean;
+        $event->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('translation::messages.offered_saved'),
+            'offered' => Translations::offered($event),
+            'offered_limited' => $event->offeredLocales() !== null,
+        ]);
+    }
+
     public function destroy(Request $request, string $event): JsonResponse
     {
         $event = $this->event($event);

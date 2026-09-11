@@ -104,8 +104,6 @@ return [
     'discoverable_on' => 'Vous êtes maintenant visible — les autres peuvent vous trouver et vous envoyer un message.',
     'division_add' => 'Ajouter',
     'division_age' => 'Âge',
-    'division_also' => 'Également ici',
-    'division_also_hint' => 'Conserve la division déjà assignée et l\'inscrit également dans celle-ci — pour un athlète compétant dans les deux, comme Gi et No-Gi. Toucher la ligne déplace plutôt.',
     'division_also_on' => 'Inscrit ici aussi',
     'division_any' => 'Tout',
     'division_apply' => 'Enregistrer les modifications',

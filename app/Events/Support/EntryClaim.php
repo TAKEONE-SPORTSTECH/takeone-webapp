@@ -8,8 +8,10 @@ use App\Members\Models\User;
 use App\Members\Models\UserRelationship;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
+use App\Models\EventCategory;
 use App\Models\EventEntryClaim;
 use App\Members\Models\UserNotification;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -53,6 +55,20 @@ class EntryClaim
      * committed and does not wait on the claim link being opened. Optional, and
      * empty by default, so an event with no options behaves exactly as before.
      *
+     * ── THE SAME PERSON, A SECOND ACTIVITY ────────────────────────────────
+     * `$categoryId` names the activity being entered. One event may hold
+     * several — Gi and No-Gi at one jiu-jitsu championship — and a paper
+     * entrant enters as many as the club is paying for (owner's ruling,
+     * 2026-09-11). So a name already on the list is no longer refused outright
+     * when an activity is named: the person who ALREADY EXISTS gets a second
+     * registration, and no second account is minted. That distinction is the
+     * whole reason this is handled here rather than by relaxing the duplicate
+     * check — two accounts for one human, both claimable, is a far worse bug
+     * than a duplicate in a draw.
+     *
+     * Passing null keeps the original behaviour exactly, including the
+     * duplicate-name refusal.
+     *
      * @param  array<int, string>  $optionKeys  fee-option UUIDs
      * @return array{ok: bool, message: string, claim?: array}
      */
@@ -64,6 +80,7 @@ class EntryClaim
         ?string $phone = null,
         array $details = [],
         array $optionKeys = [],
+        ?int $categoryId = null,
     ): array {
         $fullName = trim(preg_replace('/\s+/u', ' ', $fullName));
 
@@ -84,7 +101,10 @@ class EntryClaim
         // The same gate that closes the join button and the coach's roster —
         // one answer, so they can never disagree about whether a place is still
         // available. Asked BEFORE anything is created.
-        $state = $this->entries->entriesState($event);
+        // The actor's own view of it: the closing date the organiser set is
+        // not a rule against the organiser at the desk (EntryService::
+        // entriesState). Started, ended and full still refuse them.
+        $state = $this->entries->entriesState($event, $actor);
         if (! $state['open']) {
             return ['ok' => false, 'message' => $state['note'] ?? __('events.entry_closed_generic')];
         }
@@ -93,11 +113,31 @@ class EntryClaim
             return ['ok' => false, 'message' => __('events.entry_full')];
         }
 
+        // The activity being entered, and only if it belongs to THIS event. A
+        // category id from anywhere else is ignored rather than trusted.
+        $target = $categoryId
+            ? $event->categories()->competing()->whereKey($categoryId)->first()
+            : null;
+
+        if ($categoryId && ! $target) {
+            return ['ok' => false, 'message' => __('events.division_not_found')];
+        }
+
         // Two people of the same name in one competition is nearly always the
         // same person entered twice. Refuse it and say so — a duplicate in a
         // draw is discovered on the mat, which is the worst place to find it.
-        if ($this->nameAlreadyEntered($event, $fullName)) {
-            return ['ok' => false, 'message' => __('events.claim_duplicate_name', ['name' => $fullName])];
+        //
+        // UNLESS an activity was named: then it is the ordinary case of the
+        // same athlete entering the event's other activity, and what is wanted
+        // is a second ENTRY for the person who already exists.
+        $entered = $this->enteredAs($event, $fullName);
+
+        if ($entered->isNotEmpty()) {
+            if (! $target) {
+                return ['ok' => false, 'message' => __('events.claim_duplicate_name', ['name' => $fullName])];
+            }
+
+            return $this->alsoEnter($event, $actor, $fullName, $entered, $target, $optionKeys);
         }
 
         $tenantId = $this->issuingClub($actor, $clubIds, $event);
@@ -110,7 +150,7 @@ class EntryClaim
         // chase the same athlete twice.
         $tenantId = $this->representedClub($details, $clubIds, $tenantId);
 
-        $result = DB::transaction(function () use ($event, $actor, $fullName, $email, $phone, $tenantId, $details, $optionKeys) {
+        $result = DB::transaction(function () use ($event, $actor, $fullName, $email, $phone, $tenantId, $details, $optionKeys, $target) {
             $athlete = $this->makeUnclaimedPerson($fullName, $details);
 
             $registration = ClubEventRegistration::create([
@@ -132,6 +172,10 @@ class EntryClaim
                 'entry_state' => 'incomplete',
                 'weight' => $details['weight'] ?? null,
                 'belt_colour' => $details['belt_colour'] ?? null,
+                // The activity, when the desk named one. Without it the entry
+                // is unplaced and the package's own gate (or the weigh-in)
+                // decides later, exactly as before.
+                'category_id' => $target?->id,
             ]);
 
             // What the club is committing to pay, frozen onto the entry the
@@ -197,9 +241,22 @@ class EntryClaim
             $athlete = $claim->athlete;
             $claim->update(['revoked_at' => now()]);
             $claim->registration?->delete();
-            // Only ever a person nobody has claimed. A real member entered by
-            // name and later matched is never touched.
-            if ($athlete && $athlete->is_unclaimed) {
+
+            /*
+             * Only ever a person nobody has claimed — and only when nothing
+             * else stands in their name.
+             *
+             * One paper entrant may hold an entry in each activity the event
+             * runs (alsoEnter()), and deleting the person out from under a
+             * sibling entry would leave a nameless competitor in a draw. The
+             * link and its own entry are withdrawn either way; the person
+             * survives as long as one entry does.
+             */
+            $elsewhere = $athlete
+                ? ClubEventRegistration::where('user_id', $athlete->id)->exists()
+                : false;
+
+            if ($athlete && $athlete->is_unclaimed && ! $elsewhere) {
                 $athlete->delete();
             }
         });
@@ -342,6 +399,42 @@ class EntryClaim
             $registration->entry_state = 'complete';
             $registration->save();
 
+            /*
+             * EVERY entry this person holds in this event, not only the one the
+             * link was minted against.
+             *
+             * The claim completes the PERSON, and one person may hold an entry
+             * in each activity the event runs (alsoEnter()). The siblings would
+             * otherwise stay `incomplete` for ever — a claimed athlete showing
+             * as waiting on themselves — and carry no weight, which is the one
+             * fact the desk needed from them.
+             */
+            ClubEventRegistration::where('event_id', $registration->event_id)
+                ->where('user_id', $athlete->id)
+                ->where('role', 'participant')
+                ->whereKeyNot($registration->id)
+                ->get()
+                ->each(function (ClubEventRegistration $sibling) use ($data) {
+                    /*
+                     * One body, one weight. What the athlete says about
+                     * themselves lands on every entry they hold — two entries
+                     * disagreeing about the same person's weight is how one of
+                     * them ends up in the wrong division.
+                     *
+                     * The exception is a SIGNED weigh-in: an official standing
+                     * at the scale outranks anything typed, so an entry that
+                     * has been weighed keeps its reading.
+                     */
+                    $signed = $sibling->weighed_in_by !== null;
+
+                    $sibling->fill(array_filter([
+                        'weight' => $signed ? null : ($data['weight'] ?: null),
+                        'belt_colour' => $signed ? null : ($data['belt'] ?: null),
+                    ]));
+                    $sibling->entry_state = 'complete';
+                    $sibling->save();
+                });
+
             $claim->update(['claimed_at' => now(), 'claimed_ip' => $ip]);
         });
 
@@ -395,9 +488,12 @@ class EntryClaim
     {
         $window = now()->addDays(self::TTL_DAYS);
 
-        foreach ([$event->enrollment_ends_at, $event->date] as $limit) {
+        // The entry deadline, read where the COMPETITION is (EntryWindow) so a
+        // link cannot outlive the door it leads to — nor die three hours before
+        // it, which is what `endOfDay()` in UTC did for a Bahrain event.
+        foreach ([EntryWindow::closesAt($event), $event->date?->copy()->endOfDay()] as $limit) {
             if ($limit && $limit->lt($window)) {
-                $window = $limit->copy()->endOfDay();
+                $window = $limit->copy();
             }
         }
 
@@ -454,12 +550,136 @@ class EntryClaim
 
     private function nameAlreadyEntered(ClubEvent $event, string $fullName): bool
     {
+        return $this->enteredAs($event, $fullName)->isNotEmpty();
+    }
+
+    /**
+     * The entries already standing in this event under exactly this name.
+     *
+     * The same query the duplicate check has always made, returning the ROWS
+     * instead of a boolean — because "this name is already here" and "here is
+     * the person it belongs to" are the same lookup, and a second activity
+     * needs the second answer.
+     *
+     * @return Collection<int, ClubEventRegistration>
+     */
+    private function enteredAs(ClubEvent $event, string $fullName): Collection
+    {
         $needle = mb_strtolower($fullName);
 
         return ClubEventRegistration::where('event_id', $event->id)
             ->where('role', 'participant')
             ->whereHas('user', fn ($q) => $q->whereRaw('lower(trim(full_name)) = ?', [$needle]))
-            ->exists();
+            ->get(['id', 'user_id', 'category_id', 'representing_tenant_id', 'weight', 'belt_colour', 'entry_state']);
+    }
+
+    /**
+     * The same athlete, the event's OTHER activity.
+     *
+     * Reached only from issue(), and only when the desk named an activity for a
+     * name that is already on the list. It creates a second REGISTRATION
+     * against the person who already exists and mints no person and no new
+     * claim link: the claim completes the PERSON, so the one already issued
+     * (or the account they have since claimed) covers both entries.
+     *
+     * Three refusals, and they are all about not guessing:
+     *   · two different people share the name — which of them is entering?
+     *   · they already hold this activity — there is nothing to add.
+     *   · the entry is somebody a different club brought — not this desk's.
+     *
+     * @param  Collection<int, ClubEventRegistration>  $entered
+     * @param  array<int, string>  $optionKeys
+     * @return array{ok: bool, message: string, claim?: array}
+     */
+    private function alsoEnter(
+        ClubEvent $event,
+        User $actor,
+        string $fullName,
+        Collection $entered,
+        EventCategory $target,
+        array $optionKeys,
+    ): array {
+        $userIds = $entered->pluck('user_id')->unique();
+
+        if ($userIds->count() > 1) {
+            return ['ok' => false, 'message' => __('events.claim_duplicate_name', ['name' => $fullName])];
+        }
+
+        if ($entered->contains(fn (ClubEventRegistration $r) => (int) $r->category_id === (int) $target->id)) {
+            return ['ok' => false, 'message' => __('events.claim_already_in_activity', [
+                'name' => $fullName,
+                'activity' => $target->name,
+            ])];
+        }
+
+        /*
+         * The WHOLE row, re-read. `enteredAs()` selects a handful of columns
+         * for the duplicate check, and `replicate()` copies only what was
+         * loaded — a partial model produced a sibling with no event_id, role or
+         * status, which the NOT NULL constraint caught.
+         */
+        $first = ClubEventRegistration::find($entered->first()->id);
+
+        if (! $first) {
+            return ['ok' => false, 'message' => __('events.claim_dead')];
+        }
+
+        $registration = DB::transaction(function () use ($event, $actor, $first, $target, $optionKeys) {
+            /*
+             * A copy of the entry they already hold, in the other activity —
+             * the same shape `updateDivisionMembers()` writes when an organiser
+             * puts an existing entrant into a second group, so the two doors
+             * produce identical rows.
+             *
+             * ⚠️ replicate(), never getAttributes(): the latter hands back RAW
+             * json for cast columns, which the model then encodes a second time.
+             */
+            $sibling = $first->replicate();
+            $sibling->category_id = $target->id;
+            $sibling->registered_at = now();
+            $sibling->entered_by = $actor->id;
+            $sibling->entry_channel = 'club';
+            // The money is this entry's own: nothing has been paid for it, and
+            // whatever the first entry settled says nothing about this one.
+            $sibling->paid = ! EventFee::isPaid($event, 'participant');
+            $sibling->paid_at = null;
+            $sibling->paid_by = null;
+            $sibling->payment_proof = null;
+            // A weigh-in is signed per entry. The weight itself is the same
+            // body and is carried over; the SIGNATURE is not.
+            $sibling->weighed_in_at = null;
+            $sibling->weighed_in_by = null;
+            $sibling->save();
+
+            /* What this activity costs, frozen onto its own entry — the second
+               activity IS a second purchase (the owner's model: "paid for
+               separately"), priced from the event's own rows. */
+            EventFee::commit($sibling, EventFee::quote($event, 'participant', $optionKeys));
+
+            return $sibling;
+        });
+
+        $this->registry->for($event)->onEntrantsChanged($event, $target);
+
+        /*
+         * The claim link is NOT re-minted. It belongs to the person, it may
+         * already have been used, and a link's secret is shown once — so the
+         * answer carries the entry that was made and nothing that looks like a
+         * fresh credential.
+         */
+        return [
+            'ok' => true,
+            'message' => __('events.claim_also_entered', [
+                'name' => $fullName,
+                'activity' => $target->name,
+            ]),
+            'claim' => [
+                'competitor_id' => $registration->id,
+                'name' => $fullName,
+                'division' => $target->name,
+                'url' => null,
+            ],
+        ];
     }
 
     /**
@@ -492,7 +712,7 @@ class EntryClaim
      * The coach sees his own. The organiser running the event sees every one,
      * because "who is still incomplete" is the checklist the day depends on.
      */
-    private function issuerScope(ClubEvent $event, User $actor): \Illuminate\Support\Collection
+    private function issuerScope(ClubEvent $event, User $actor): Collection
     {
         if (app(EventAccess::class)->canManage($event, $actor)) {
             return EventEntryClaim::where('event_id', $event->id)->distinct()->pluck('created_by');

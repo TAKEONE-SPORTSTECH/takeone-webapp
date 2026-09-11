@@ -141,6 +141,14 @@ Route::get('/bjj/screen/{token}/console-state', [ScoreboardController::class, 't
     ->name('bjj-scoreboard.token-console-state')->where('token', '[A-Za-z0-9]{40}')
     ->middleware('throttle:screen-token');
 
+// The event's WHOLE draw — every bout, every division and the entrant roster —
+// so the console's Weight class, Member and Arcade tabs can answer a question
+// the twelve-deep mat queue cannot. A READ, nothing else: it writes nothing and
+// loading one of its bouts is the ordinary `load` command above.
+Route::get('/bjj/screen/{token}/catalogue', [ScoreboardController::class, 'tokenCatalogue'])
+    ->name('bjj-scoreboard.token-catalogue')->where('token', '[A-Za-z0-9]{40}')
+    ->middleware('throttle:screen-token');
+
 Route::post('/bjj/screen/{token}/photo/{side}', [ScoreboardController::class, 'tokenPhoto'])
     ->name('bjj-scoreboard.token-photo')
     ->where('token', '[A-Za-z0-9]{40}')->where('side', 'blue|white')
@@ -164,6 +172,11 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     // what normally calls it.
     Route::get('/bjj/control/{event:uuid}/state', [ScoreboardController::class, 'consoleState'])
         ->name('bjj-scoreboard.console-state')->middleware('throttle:120,1');
+
+    // The same whole-draw catalogue as the token door beside it, through the
+    // organiser's own session. One console, two front doors.
+    Route::get('/bjj/control/{event:uuid}/catalogue', [ScoreboardController::class, 'catalogueRead'])
+        ->name('bjj-scoreboard.catalogue')->middleware('throttle:120,1');
 
     Route::post('/bjj/control/{event:uuid}/photo/{side}', [ScoreboardController::class, 'photo'])
         ->name('bjj-scoreboard.photo')->where('side', 'blue|white')
@@ -667,6 +680,11 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
     // the list and the thing that adds to it are one resource.
     Route::get('/events/{event:uuid}/divisions', [App\Http\Controllers\PersonalEventController::class, 'divisions'])->name('events.divisions')->middleware(['throttle:60,1', 'source-text']);
     Route::post('/events/{event:uuid}/divisions', [App\Http\Controllers\PersonalEventController::class, 'storeDivision'])->name('events.divisions.store')->middleware(['throttle:admin-write', 'source-text']);
+    // The ORDER of the list. Declared before the {division} routes for
+    // readability only — `order` is not a number, so it could never have
+    // matched them. Organiser-only: this is arranging the event's own
+    // structure, not arranging a draw.
+    Route::put('/events/{event:uuid}/divisions/order', [App\Http\Controllers\PersonalEventController::class, 'reorderDivisions'])->name('events.divisions.order')->middleware('throttle:admin-write');
     Route::patch('/events/{event:uuid}/divisions/{division}', [App\Http\Controllers\PersonalEventController::class, 'updateDivision'])->name('events.divisions.update')->whereNumber('division')->middleware(['throttle:admin-write', 'source-text']);
     Route::delete('/events/{event:uuid}/divisions/{division}', [App\Http\Controllers\PersonalEventController::class, 'destroyDivision'])->name('events.divisions.destroy')->whereNumber('division')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/divisions/{division}/candidates', [App\Http\Controllers\PersonalEventController::class, 'divisionCandidates'])->name('events.divisions.candidates')->whereNumber('division')->middleware('throttle:120,1');
@@ -736,6 +754,12 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
     // someone will try to hammer.
     Route::get('/events/{event:uuid}/entry-roster', [App\Http\Controllers\PersonalEventController::class, 'entryRoster'])->name('events.entry-roster')->middleware('throttle:60,1');
     Route::post('/events/{event:uuid}/entries', [App\Http\Controllers\PersonalEventController::class, 'storeEntries'])->name('events.entries')->middleware('throttle:admin-write');
+    // The organiser's own lookup: anyone on the platform they may add to THIS
+    // event. Separate from the roster above because the authority is different
+    // (running this event, not administering a club) and because it reaches
+    // wider — so it needs a query, honours the member's discovery opt-out, and
+    // is throttled hard. See EntryService::searchPeople().
+    Route::get('/events/{event:uuid}/entry-search', [App\Http\Controllers\PersonalEventController::class, 'entrySearch'])->name('events.entry-search')->middleware('throttle:30,1');
     // ...and taking them back out. Organiser only — entering an athlete is a
     // club's act, striking a name off the list is the competition's. Every rule
     // about whether an entry MAY go lives in EntryService::remove().

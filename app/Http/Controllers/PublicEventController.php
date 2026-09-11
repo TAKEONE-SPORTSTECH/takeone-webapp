@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Events\Support\EventAccess;
+use App\Events\Support\EventVisitors;
 use App\Events\Support\PublicBrand;
 use App\Events\Support\PublicEvent;
 use App\Events\Support\PublicEventSkin;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Models\ClubEvent;
 use App\Models\EventDocument;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -68,9 +70,27 @@ class PublicEventController extends Controller
          * be trapped (see the note in manage()).
          */
         $me = Auth::user();
-        $console = ($me && app(EventAccess::class)->canManage($event, $me))
+        $canManage = $me !== null && app(EventAccess::class)->canManage($event, $me);
+        $console = $canManage
             ? app(PublicEventSkin::class)->payload($event)['console']
             : null;
+
+        /*
+         * How many PEOPLE have opened this page.
+         *
+         * The COUNT is public (asked for 2026-09-10) — it is the page's own
+         * social proof, and a competition nobody has looked at reads as one
+         * nobody should enter. The BREAKDOWN is not, and the difference is
+         * enforced here rather than in the view: a public viewer's page carries
+         * the single number and nothing else, so there is no participant
+         * tally, no returning count and no excluded figure in the HTML for
+         * anybody to read out of the source.
+         *
+         * The DETAIL — who they were — stays organiser-only behind its own
+         * endpoint, which 404s for everybody else.
+         */
+        $summary = app(EventVisitors::class)->summary($event);
+        $visitors = $canManage ? $summary : ['people' => $summary['people']];
 
         /*
          * Does the person reading this already have an entry here?
@@ -100,7 +120,8 @@ class PublicEventController extends Controller
             $mine = $entered ? 'entered' : ($asked ? 'pending' : null);
         }
 
-        return view('entry.public.mobile', ['e' => $e, 'console' => $console, 'mine' => $mine]);
+        return view('entry.public.mobile', ['e' => $e, 'console' => $console, 'mine' => $mine,
+            'visitors' => $visitors, 'visitorsCanDrill' => $canManage]);
     }
 
     /**
@@ -230,6 +251,16 @@ class PublicEventController extends Controller
         return view('entry.public.section-mobile', [
             'canManage' => $me !== null && app(EventAccess::class)->canManage($event, $me),
             'signedIn' => $me !== null,
+            /*
+             * Where the band's gear goes, resolved exactly as show() resolves
+             * it: the console for whoever runs this event, and otherwise null
+             * so the shared row falls back to the event's own sign-in. The
+             * glyph itself is shown to EVERYONE either way — rendering it only
+             * for organisers would tell a stranger who the organisers are.
+             */
+            'console' => ($me && app(EventAccess::class)->canManage($event, $me))
+                ? app(PublicEventSkin::class)->payload($event)['console']
+                : null,
             'e' => $e,
             'section' => $section,
             'sectionIcon' => $meta[0],
@@ -460,5 +491,34 @@ class PublicEventController extends Controller
         return response($brand->icon($event, $size))
             ->header('Content-Type', 'image/png')
             ->header('Cache-Control', 'public, max-age=1209600, immutable');
+    }
+
+    /**
+     * Who has opened this event's page.
+     *
+     * ORGANISER ONLY, re-checked here rather than inferred from the poster
+     * being public: the page is open to the world and the list of people who
+     * read it is not. A viewer who may not manage the event gets the same 404
+     * an unknown uuid gets — never a 403, which would confirm that an event
+     * exists and that it has visitors worth hiding.
+     *
+     * Bounded and read-only. The rule, the roles and what may be shown about a
+     * visitor all live in App\Events\Support\EventVisitors.
+     */
+    public function visitors(Request $request, ClubEvent $event, PublicEvent $publisher): JsonResponse
+    {
+        abort_if($publisher->payload($event) === null, 404);
+
+        $me = Auth::user();
+
+        abort_unless($me !== null && app(EventAccess::class)->canManage($event, $me), 404);
+
+        $visitors = app(EventVisitors::class);
+
+        return response()->json([
+            'success' => true,
+            'summary' => $visitors->summary($event),
+            'people' => $visitors->details($event),
+        ]);
     }
 }

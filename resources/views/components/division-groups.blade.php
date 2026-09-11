@@ -116,9 +116,9 @@
             'reg_copy'    => __('personal.division_reg_copy'),
             'reg_copied'  => __('personal.division_reg_copied'),
             'birthdate'   => __('personal.division_birthdate'),
-            'also'        => __('personal.division_also'),
             'also_on'     => __('personal.division_also_on'),
-            'also_hint'   => __('personal.division_also_hint'),
+            'also_in'     => __('personal.division_also_in'),
+            'more'        => __('personal.division_more'),
         ]),
      })"
      @bracket:loaded.window="sync($event.detail)"
@@ -701,18 +701,24 @@
                          class="py-10 text-center text-muted-foreground text-sm" x-text="words.nobody"></div>
 
                     <div class="space-y-2" x-show="!loading">
-                        <template x-for="p in visible" :key="p.competitor_id">
-                            {{-- A DIV, not a button, since 2026-09-08: a row can now
-                                 carry a second action ("Also here") and a button
-                                 inside a button is not valid markup. Same classes,
-                                 same look; the keyboard path is spelled out because
-                                 a div does not come with one. --}}
+                        <template x-for="p in visible" :key="p.person_id">
+                            {{-- One row per PERSON, not per entry (see
+                                 divisionCandidates): an athlete competing in Gi
+                                 and No-Gi holds two entries, and listing both
+                                 put the same name in the picker twice with
+                                 nothing to tell them apart.
+
+                                 ONE control: the tick. It says whether this
+                                 person is in this group, and it changes nothing
+                                 anywhere else — so there is no second action
+                                 beside it to mistake it for, and nothing here
+                                 asks the organiser to confirm anything. Save
+                                 changes is the gate. --}}
                             <div role="button" tabindex="0" @click="toggle(p)"
                                  @keydown.enter.prevent="toggle(p)" @keydown.space.prevent="toggle(p)"
-                                 :class="isIn(p)
-                                     ? 'border-primary bg-primary/5'
-                                     : (isAlso(p) ? 'border-amber-300 bg-amber-50/60'
-                                                  : 'border-gray-100 bg-white hover:bg-muted/40')"
+                                 :aria-pressed="isIn(p) ? 'true' : 'false'"
+                                 :class="isIn(p) ? 'border-primary bg-primary/5'
+                                                 : 'border-gray-100 bg-white hover:bg-muted/40'"
                                  class="w-full rounded-2xl border p-2.5 flex items-center gap-3 text-start
                                         transition-colors shadow-sm cursor-pointer">
 
@@ -734,16 +740,26 @@
                                                  : (p.gender === 'Male' ? 'bi-gender-male text-blue-500'
                                                  : 'bi-question-circle text-muted-foreground')"></i>
 
-                                        {{-- Where they are now. Moving somebody out of another
-                                             bracket is the common case and must never be silent. --}}
-                                        <span x-show="p.division_name" x-cloak
-                                              class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700
-                                                     truncate" style="max-width:10rem"
-                                              x-text="words.elsewhere + ': ' + p.division_name"></span>
+                                        {{-- Where else they are competing. INFORMATION, in the
+                                             same neutral grey as the age and the weight beside
+                                             it: an athlete entered in two groups is doing the
+                                             ordinary thing this feature exists for, not
+                                             something the organiser needs warning about.
 
-                                        {{-- Entered here as well, once it is picked. --}}
-                                        <span x-show="isAlso(p)" x-cloak
-                                              class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"
+                                             Every group is named. Two fit on the row and the
+                                             rest become "+N more", with the full list on the
+                                             tooltip — never one name standing in for four. --}}
+                                        <span x-show="p.other_divisions.length" x-cloak
+                                              class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground
+                                                     truncate" style="max-width:16rem"
+                                              :title="otherTitle(p)" x-text="otherWords(p)"></span>
+
+                                        {{-- Deliberately double-entered, said out loud, so it
+                                             reads at a glance rather than being worked out from
+                                             the badge above. Tinted like the tick that put them
+                                             here — never like a fault. --}}
+                                        <span x-show="isIn(p) && p.other_divisions.length" x-cloak
+                                              class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary"
                                               x-text="words.also_on"></span>
 
                                         {{-- The exception, kept visible. --}}
@@ -755,25 +771,6 @@
                                               x-text="words.unknown"></span>
                                     </span>
                                 </span>
-
-                                {{-- The second action, and the whole point of it: an
-                                     athlete who competes in two divisions of one event
-                                     (Gi and No-Gi) must be able to join this one WITHOUT
-                                     leaving the other. Tapping the row moves them; this
-                                     enters them here as well.
-
-                                     Only offered to somebody who is actually somewhere
-                                     else — there is nothing to keep otherwise. --}}
-                                <button type="button" x-show="p.division_name && !isIn(p)" x-cloak
-                                        @click.stop="toggleAlso(p)"
-                                        :title="words.also_hint"
-                                        :class="isAlso(p) ? 'bg-amber-500 border-amber-500 text-white'
-                                                          : 'bg-white border-amber-300 text-amber-700 hover:bg-amber-50'"
-                                        class="flex-shrink-0 text-[10px] font-bold px-2 py-1.5 rounded-lg border
-                                               transition-colors inline-flex items-center gap-1">
-                                    <i class="bi" :class="isAlso(p) ? 'bi-check-lg' : 'bi-plus-lg'"></i>
-                                    <span x-text="words.also"></span>
-                                </button>
 
                                 <span class="w-6 h-6 rounded-full border-2 grid place-items-center flex-shrink-0"
                                       :class="isIn(p) ? 'border-primary bg-primary text-white' : 'border-gray-300'">
@@ -840,12 +837,18 @@ document.addEventListener('alpine:init', () => {
         freshClaim: null,
         people: [],
         range: {},
-        picked: {},              // competitor_id => true|false, the PENDING state
-        /* Entries to ALSO enter here, keeping the division they are in.
-           A separate set from `picked` on purpose: `picked` answers "should this
-           entry be in this division", which is a move, and there is no value of
-           it that means "and stay where it is" too. */
-        alsoPicked: {},
+        /* The pending state, keyed by PERSON — the roster is one row per
+           person (see divisionCandidates), so this is too, and the registration
+           ids are resolved from the row at Save.
+
+               true   in this group
+               false  out of this group
+               absent untouched
+
+           One map, because there is one question. It briefly took two, while
+           adding and moving were separate acts; removing the move collapsed it
+           back. */
+        picked: {},
         filters: {},
 
         init() {
@@ -1000,35 +1003,67 @@ document.addEventListener('alpine:init', () => {
 
         clearFilters() { this.filters = this.blankFilters(); },
 
+        /** The row for a person id, after a reload has replaced the objects. */
+        person(id) {
+            return this.people.find(p => String(p.person_id) === String(id)) ?? null;
+        },
+
         /** Is this person in the group, counting unsaved changes? */
         isIn(p) {
-            return this.picked[p.competitor_id] ?? p.here;
+            return this.picked[p.person_id] ?? p.here;
         },
 
+        /**
+         * The one interaction on the row.
+         *
+         * In, or out of, THIS group — and nothing anywhere else. An athlete
+         * already competing in another group is an ordinary tick: it does not
+         * prompt, does not warn, and does not offer an alternative, because
+         * entering somebody in Gi and No-Gi is the normal thing this feature
+         * exists to do.
+         *
+         * Moving somebody from one group to another is therefore two ordinary
+         * steps: tick them in the new one, untick them in the old one. Both
+         * reversible, both the same control, no special path.
+         */
         toggle(p) {
+            const pid = p.person_id;
             const now = this.isIn(p);
-            if (now === p.here) this.picked[p.competitor_id] = !now;
-            else delete this.picked[p.competitor_id];       // back to where it started
 
-            // Moving and also-entering are alternatives, so choosing one drops
-            // the other rather than sending the server a contradiction.
-            delete this.alsoPicked[p.competitor_id];
+            if (now === p.here) this.picked[pid] = !now;
+            else delete this.picked[pid];           // back to where it started
         },
 
-        /** Picked to be entered here AS WELL as where they already are. */
-        isAlso(p) {
-            return !! this.alsoPicked[p.competitor_id];
+        /**
+         * The other groups this person is competing in.
+         *
+         * Two names on the row and the rest counted, so a long name can never
+         * push the others out of sight without saying so. The full list is on
+         * the tooltip — see otherTitle().
+         */
+        otherWords(p) {
+            const names = this.otherNames(p);
+            if (!names.length) return '';
+
+            const shown = names.slice(0, 2);
+            const rest = names.length - shown.length;
+
+            return this.words.also_in + ': ' + shown.join(' · ')
+                + (rest ? ' · ' + this.words.more.replace(':count', rest) : '');
         },
 
-        toggleAlso(p) {
-            if (this.alsoPicked[p.competitor_id]) delete this.alsoPicked[p.competitor_id];
-            else this.alsoPicked[p.competitor_id] = true;
+        otherTitle(p) {
+            const names = this.otherNames(p);
 
-            delete this.picked[p.competitor_id];
+            return names.length ? this.words.also_in + ': ' + names.join(' · ') : '';
+        },
+
+        otherNames(p) {
+            return (p.other_divisions || []).map(d => d.name).filter(Boolean);
         },
 
         get pendingCount() {
-            return Object.keys(this.picked).length + Object.keys(this.alsoPicked).length;
+            return Object.keys(this.picked).length;
         },
 
         get inGroupCount() {
@@ -1108,6 +1143,13 @@ document.addEventListener('alpine:init', () => {
                     gender: this.newPerson.gender || null,
                     birthdate: this.newPerson.birthdate || null,
                     weight: this.newPerson.weight === '' ? null : (this.newPerson.weight ?? null),
+                    /* The group this sheet is open on. It places the entry
+                       straight away — and it is what tells the server that a
+                       name already on the list is this athlete's SECOND
+                       activity (Gi and No-Gi at one championship) rather than
+                       somebody typed twice: the person who already exists gets
+                       a second entry, and no second account is minted. */
+                    category_id: this.division ?? null,
                 });
                 if (!res) return;
 
@@ -1117,9 +1159,13 @@ document.addEventListener('alpine:init', () => {
                 // Back into the roster, with the new person already ticked for
                 // this group. They are not saved into it until Save changes —
                 // the same one confirmation everything else on this sheet takes.
+                // The claim answers with a REGISTRATION id; the roster is
+                // keyed by person, so find the row that entry belongs to.
                 const id = res.claim?.competitor_id ?? null;
                 await this.reloadPeople();
-                if (id) this.picked[id] = true;
+
+                const row = id ? this.people.find(p => (p.entry_ids || []).includes(id)) : null;
+                if (row) this.picked[row.person_id] = true;
 
                 this.newPerson = this.blankPerson();
             } finally {
@@ -1145,20 +1191,35 @@ document.addEventListener('alpine:init', () => {
             this.range = res.division?.range || this.range;
         },
 
+        /**
+         * Save.
+         *
+         * The pending state is keyed by person; the endpoint speaks in
+         * registration ids. Resolving here — at the last moment, off the row —
+         * is what keeps the sheet honest about WHICH entry each act touches: a
+         * removal takes the entry they hold in THIS group, and an entry uses
+         * the one the row nominated.
+         */
         async applyMembers() {
             const add = [], remove = [];
 
-            for (const [id, wanted] of Object.entries(this.picked)) {
-                (wanted ? add : remove).push(Number(id));
-            }
-            const also = Object.keys(this.alsoPicked).map(Number);
+            for (const [pid, wanted] of Object.entries(this.picked)) {
+                const p = this.person(pid);
+                if (!p) continue;
 
-            if (!add.length && !remove.length && !also.length) return;
+                if (wanted) {
+                    if (p.enter_id) add.push(p.enter_id);
+                } else if (p.entry_here_id) {
+                    remove.push(p.entry_here_id);
+                }
+            }
+
+            if (!add.length && !remove.length) return;
 
             this.saving = true;
             try {
                 const res = await this.send(
-                    `${this.urls.base}/${this.division}/members`, 'PUT', { add, remove, also }
+                    `${this.urls.base}/${this.division}/members`, 'PUT', { add, remove }
                 );
                 if (!res) return;
 
@@ -1167,7 +1228,6 @@ document.addEventListener('alpine:init', () => {
                 this.people = res.people || [];
                 this.range = res.division?.range || this.range;
                 this.picked = {};
-                this.alsoPicked = {};
 
                 window.showToast('success', this.words.apply);
                 await this.redraw();

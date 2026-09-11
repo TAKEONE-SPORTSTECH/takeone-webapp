@@ -604,8 +604,8 @@
         <x-takeone-cropper id="clubLogoSquare" mode="form" :inline="true"
                            :width="512" :height="512" shape="rectangle" :canvasHeight="300"
                            folder="events" filename="club-logo" inputName="club_logo_square"
-                           sheetMaxWidth="100%" sheetClass="rounded-t-3xl shadow-2xl bg-background"
-                           :showControls="false" :showCancel="false"
+                           sheetMaxWidth="100%" sheetClass="rounded-t-3xl overflow-hidden shadow-2xl bg-background"
+                           :showControls="false" :showCancel="false" editorAlign="items-end"
                            :uploadAsIs="true"
                            saveText="{{ __('events.club_logo_crop') }}"
                            uploadAsIsText="{{ __('events.club_logo_as_is') }}" />
@@ -613,8 +613,8 @@
         <x-takeone-cropper id="clubLogoCircle" mode="form" :inline="true"
                            :width="512" :height="512" shape="circle" :canvasHeight="300"
                            folder="events" filename="club-logo" inputName="club_logo_circle"
-                           sheetMaxWidth="100%" sheetClass="rounded-t-3xl shadow-2xl bg-background"
-                           :showControls="false" :showCancel="false"
+                           sheetMaxWidth="100%" sheetClass="rounded-t-3xl overflow-hidden shadow-2xl bg-background"
+                           :showControls="false" :showCancel="false" editorAlign="items-end"
                            :uploadAsIs="true"
                            saveText="{{ __('events.club_logo_crop') }}"
                            uploadAsIsText="{{ __('events.club_logo_as_is') }}" />

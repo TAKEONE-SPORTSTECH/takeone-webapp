@@ -71,11 +71,18 @@ return [
     'match_not_found' => 'That match is not part of this event.',
     'match_over' => 'This match is over. Reverse an entry to correct it, or reset the match to run it again.',
     'intro_running' => 'Stop the clock before putting the introduction back up — the hall cannot see the score behind it.',
-    'unknown_point' => 'That is not a scoring action. Pick a takedown, sweep, knee-on-belly, guard pass, mount or back control.',
+    'unknown_point' => 'That is not a score this mat can give. Points are 2, 3 or 4 — or a named action: takedown, sweep, knee-on-belly, guard pass, mount or back control.',
+    // Stamped on the row a "-2" writes. The console asks for no sentence — the
+    // reach is the point of that button — so the record supplies one itself.
+    'correction_reason' => 'Score corrected at the table',
     'unknown_side' => 'Pick a corner — blue or white.',
     'nothing_to_reverse' => 'That entry cannot be reversed. It is not part of this match, or it has already been undone.',
     'reason_required' => 'Say why. A correction goes onto the record, and the record has to say what happened.',
     'no_stall_running' => 'No stalling count is running.',
+    // The mat may be rehearsed on before the day; it may not file a result.
+    'event_not_started' => 'The competition has not been started, so no result can be recorded yet. Run the mat as much as you like — then start the event when the day begins.',
+    'bad_stall_award' => 'A stalling award is :values points.',
+    'or' => 'or',
     'end_level' => 'The two are level on points, advantages and penalties. Somebody has to be given it — enter the referee decision.',
     'end_method_needs_winner' => 'Choose the corner that won by :method — an ending like that names somebody, so it cannot be filed on the score alone.',
     'commit_level' => 'This match has no winner yet. End it first, or enter the referee decision.',
@@ -88,6 +95,30 @@ return [
     'ctl_title' => 'Scoring table',
     'ctl_queue' => 'Bouts',
     'ctl_bouts_hint' => 'Click a match to load it onto the board.',
+
+    /* The bouts card's four tabs. "Arranged" is the running order; the other
+       three read the whole draw, because a mat queue cannot answer "where is
+       this man's bout". */
+    'ctl_tab_arranged' => 'Arranged',
+    'ctl_tab_division' => 'Weight class',
+    'ctl_tab_member' => 'Member',
+    'ctl_tab_arcade' => 'Arcade',
+    'ctl_division_hint' => 'Pick a weight class to see its bouts.',
+    'ctl_all_divisions' => 'All weight classes',
+    'ctl_find_member' => 'Type a name…',
+    'ctl_find_hint' => 'Type a competitor\'s name to find every bout they are in.',
+    'ctl_fight' => 'Fight',
+    'ctl_arcade_hint' => 'Pick a competitor on each side.',
+    'ctl_bout_done' => 'Already fought — the result is recorded.',
+    'ctl_no_bouts' => 'No bouts here.',
+    'ctl_find_none' => 'No competitor of that name is in the draw.',
+    'ctl_reading_draw' => 'Reading the draw…',
+    'ctl_draw_failed' => 'Could not read the draw. Try again.',
+    'ctl_arc_none' => 'The draw has no bout between these two.',
+    'ctl_arc_done' => 'They have already fought — bout #:no.',
+    'ctl_arc_found' => 'Bout #:no · :stage',
+    'ctl_arc_swapped' => 'The draw has them the other way round — the board will follow the draw.',
+    'ctl_arc_same' => 'Pick two different competitors.',
     'ctl_no_queue' => 'Nothing left to run on this mat.',
     'ctl_waiting_feeder' => 'Waiting on an earlier bout — both competitors are not known yet.',
     'ctl_log' => 'Event log',
@@ -104,6 +135,14 @@ return [
     'ctl_winner_required' => 'Choose the corner that won.',
     'ctl_reset' => 'Reset',
     'ctl_commit' => 'Finalize',
+    // The Finish dialog — the draft's Match result card. The eyebrow says
+    // WHY it opened: the clock ran out, or an official pressed Finish.
+    'ctl_end_title' => 'Match result',
+    'ctl_end_time_up' => 'Time is up',
+    'ctl_end_now' => 'Ending the match',
+    'ctl_end_corner' => ':corner corner',
+    'ctl_end_winning_type' => 'Winning type',
+    'ctl_end_declare' => 'Declare winner',
     'ctl_over_title' => 'Match over',
     'ctl_over_result' => 'Result',
     'ctl_over_next' => 'Next on this mat',
@@ -120,6 +159,22 @@ return [
     'ctl_stall' => 'Stalling',
     'ctl_stall_cancel' => 'Cancel',
     'ctl_stall_apply' => 'Apply penalty',
+    // The countdown has run out and the referee is asked, once, on a card
+    // that appears on its own. `:corner` is Blue or White.
+    'ctl_stall_threshold' => 'Stalling threshold reached',
+    'ctl_stall_prompt' => ':corner corner stalling',
+    'ctl_stall_penalty_to' => 'Penalty to :corner',
+    'ctl_stall_dismiss' => 'Dismiss',
+    // The count against BOTH men — neither of them working. One count, not
+    // two: applying it gives each corner a stalling penalty.
+    'ctl_stall_both' => 'Double stalling',
+    'ctl_stall_prompt_both' => 'Neither corner working',
+    'ctl_stall_penalty_both' => 'Penalty to both corners',
+    'corner_both' => 'Both',
+    'stall_award_needs_one_corner' => 'A double stall has no corner to award points to — give the penalties, or dismiss it.',
+    // The other way out of the count: points to the corner being stalled
+    // against. `:corner` is Blue or White.
+    'ctl_stall_award_to' => 'Points to :corner',
     'ctl_decision' => 'Referee decision',
     'ctl_reason' => 'Reason',
     'ctl_confirm' => 'Confirm',
@@ -169,8 +224,16 @@ return [
     'points' => 'Points',
     'advantages' => 'Advantages',
     'penalties' => 'Penalties',
+    // The two columns of the scoring grid: give points, and take them back.
+    'ctl_award' => 'Award',
+    'ctl_correct' => 'Correct',
+    'ctl_nothing_to_deduct' => 'Nothing to take back there.',
     'adv_short' => 'ADV',
     'pen_short' => 'PEN',
+    'source_stalling_award' => 'Stalling award',
+    // A point given by amount rather than by action: the console's grid names
+    // the number, so the log and the wall board say "POINTS" over the +N.
+    'source_points' => 'Points',
     'source_takedown' => 'Takedown',
     'source_sweep' => 'Sweep',
     'source_knee_on_belly' => 'Knee on belly',
@@ -209,6 +272,9 @@ return [
     'method_points' => 'points',
     'method_decision' => 'referee decision',
     'method_dq' => 'disqualification',
+    'method_advantages' => 'Advantages',
+    'ctl_rule_advantage_limit' => 'Advantage limit',
+    'ctl_rule_advantage_limit_hint' => 'Advantages that end the match in that corner’s favour. 0 = no limit.',
     'method_walkover' => 'walkover',
     'method_medical' => 'medical stoppage',
     'method_forfeit' => 'forfeit',

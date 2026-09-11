@@ -35,12 +35,35 @@ trait SyncsDivisions
             $names[] = $name;
 
             $cat = EventCategory::firstOrNew(['event_id' => $event->id, 'name' => $name]);
-            $cap = $d['capacity'] ?? null;
-            $cat->capacity = ($cap === null || $cap === '') ? null : (int) $cap;
             $cat->sort_order = $i + 1;
             if (! $cat->exists) {
                 $cat->status = 'enrolling';
             }
+
+            /*
+             * A heading carries a NAME and nothing else — the same shape
+             * PersonalEventController::headingSafe() enforces on the editor's
+             * own endpoint, so the two ways into this table cannot disagree
+             * about what a heading is.
+             *
+             * Read from the form rather than from the row: the create form is
+             * where a heading can be added, and an existing one that arrived
+             * with `is_heading` false has been deliberately turned back into a
+             * division. Everything a heading may not hold is cleared, so it can
+             * never be left carrying a weight range nothing would ever read.
+             */
+            $cat->is_heading = (bool) ($d['is_heading'] ?? false);
+
+            if ($cat->is_heading) {
+                $cat->capacity = null;
+                $cat->schedule = [];
+                $cat->save();
+
+                continue;
+            }
+
+            $cap = $d['capacity'] ?? null;
+            $cat->capacity = ($cap === null || $cap === '') ? null : (int) $cap;
             if (! empty($d['schedule']) && is_array($d['schedule'])) {
                 $cat->schedule = $this->normalizePhaseSchedule($d['schedule']);
             }
@@ -70,6 +93,8 @@ trait SyncsDivisions
         return [
             'divisions' => ['nullable', 'array', 'max:64'],
             'divisions.*.name' => ['nullable', 'string', 'max:80'],
+            // A title in the list rather than a division. See sync().
+            'divisions.*.is_heading' => ['nullable', 'boolean'],
             'divisions.*.capacity' => ['nullable', 'integer', 'min:2', 'max:512'],
             'divisions.*.schedule' => ['nullable', 'array'],
             'divisions.*.schedule.preliminary' => ['nullable', 'integer', 'min:1', 'max:60'],

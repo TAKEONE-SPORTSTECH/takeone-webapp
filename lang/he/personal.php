@@ -104,8 +104,6 @@ return [
     'discoverable_on' => 'אתה עכשיו גלוי – אחרים יכולים למצוא ולשלוח לך הודעות.',
     'division_add' => 'הוסף',
     'division_age' => 'גיל',
-    'division_also' => 'גם כאן',
-    'division_also_hint' => 'שומר את ההפצה שהם כבר בפנים ומכניס אותם גם לקבוצה הזו — לאתלט שמתחרה בשני טיפוסים, כמו Gi ו-No-Gi. הקשה על השורה מעבירה אותם במקום.',
     'division_also_on' => 'הוזן גם כאן',
     'division_any' => 'כל',
     'division_apply' => 'שמור שינויים',

@@ -17,6 +17,21 @@
              ink (var(--ink-2)). --}}
         <div style="height:1px; max-width:220px; margin:0 auto 22px; background:linear-gradient(90deg, transparent, var(--on-pg-line), transparent);"></div>
 
+        {{-- ===== How many people have opened this page =====
+             Above the organiser's mark, at the foot: it is the last thing read
+             rather than a claim made before the event has been described, which
+             is where a visitor counter belongs and how every site that has ever
+             had one has placed it.
+
+             `$visitors` is in scope on the POSTER only — the sealed management
+             shell includes this same footer and is handed none, so the guard is
+             what keeps a counter off the organiser's own admin screens. --}}
+        @if (isset($visitors))
+            <div style="margin:0 0 20px;">
+                @include('entry.public.partials.visitors')
+            </div>
+        @endif
+
         @if($__evHostLogo)
             {{-- A logo is a transparent PNG of its own shape: a sizing box and
                  object-contain, never a filled tile. The design draws a white

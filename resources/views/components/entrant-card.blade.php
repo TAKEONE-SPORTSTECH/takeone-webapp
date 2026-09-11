@@ -8,6 +8,15 @@
     'country' => null,          // ISO-2; drawn as a flag
     'age' => null,
     'divisions' => [],          // strings: a category, a weight class, a belt
+    /* WHICH ACTIVITY of the event they are in — "Gi", "No-Gi", "Gi + No-Gi".
+       One event may run several, each drawn and paid for separately, and an
+       athlete may enter more than one; this is the scannable version of that,
+       drawn as a filled chip beside the name. Built by
+       App\Events\Support\ActivityTag from the organiser's own division names,
+       so it is their word in their language. Null for an event with one
+       activity — then the chip is simply absent, which is every card that
+       existed before this. */
+    'activity' => null,
     /* The scale reading, when the caller is allowed to show one, plus where it
        came from: 'self' (the athlete declared it — amber) or 'official' (a
        weigh-in official signed for it — green). Printed bold beside the
@@ -222,6 +231,18 @@
         <span class="flex items-center gap-1.5">
             <span class="font-bold text-foreground truncate text-[15px]">{{ $name }}</span>
             @if($flagEmoji)<span class="text-sm leading-none">{{ $flagEmoji }}</span>@endif
+
+            {{-- The activity, beside the name rather than down in the meta row:
+                 on a list where half the field is in one and half in the other,
+                 it is read WITH the person, not with their weight class. Filled
+                 rather than tinted so it never reads as one more division
+                 chip — those say where they fight, this says what in. --}}
+            @if($activity)
+                <span class="ms-auto flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                             text-[10px] font-bold bg-foreground text-white whitespace-nowrap">
+                    <i class="bi bi-collection text-[9px]"></i>{{ $activity }}
+                </span>
+            @endif
         </span>
 
         <span class="flex items-center gap-1.5 mt-1 flex-wrap">

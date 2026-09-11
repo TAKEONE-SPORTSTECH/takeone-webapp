@@ -38,36 +38,94 @@
             // rendered row can bind to it. Built ONLY from rows the controller
             // decided this viewer may officiate (they carry reg_id); everyone
             // else gets an empty map and none of the controls below render.
-            $gates = collect($e['participants'] ?? [])
-                ->filter(fn ($p) => ($p['reg_id'] ?? null) && ($p['id'] ?? null))
-                ->mapWithKeys(fn ($p) => [$p['id'] => [
+            // ===== ONE GATE PER ENTRY, keyed by the REGISTRATION =====
+            //
+            // It used to be keyed by user id, which meant an athlete entered in
+            // two divisions had ONE gate: the desk could sign for a weight and
+            // approve a fee on one entry and had no door at all to the other,
+            // silently. A fee, a receipt and a weigh-in signature all belong to
+            // one entry, so each entry is its own gate — and the sheet carries
+            // a switcher between the entries of the same person.
+            //
+            // The card, by contrast, is one per PERSON
+            // (RosterPeople::byPerson). That is the whole
+            // split: people on the list, entries at the desk.
+            $entryGates = function (array $p): array {
+                // The per-entry payloads the controller attached. A row it knew
+                // nothing about falls back to the one flattened entry, which is
+                // the shape every reader had before.
+                if (! empty($p['entry_gates'])) {
+                    return $p['entry_gates'];
+                }
+
+                return ($p['reg_id'] ?? null) ? [[
                     'reg_id' => $p['reg_id'],
-                    'name' => $p['name'],
-                    // The same identity line the row shows, so the sheet opens
-                    // on the person you tapped rather than on a bare name.
-                    'meta' => implode(' · ', array_filter([
-                        $p['gender'] ?? null, $p['category'] ?? null, $p['weight_class'] ?? null,
-                    ])) ?: ($p['meta'] ?? ''),
-                    // Both roles get the signed/not-signed pair — that is what
-                    // the "cleared for the draw" badge is made of.
+                    'division' => $p['category'] ?? $p['weight_class'] ?? null,
                     'weigh_verified' => (bool) ($p['weighed_verified'] ?? false),
                     'pay_verified' => (bool) ($p['paid_verified'] ?? false),
-                ] + ($canWeigh ? [
                     'weight' => $p['weight'] ?? null,
-                ] : []) + ($canPay ? [
-                    // No stored payment method: a member who paid online uploads
-                    // a receipt, a member paying cash has nothing to upload. So
-                    // the presence of a proof file IS how they paid, and the
-                    // sheet asks the official a different question for each.
                     'has_proof' => (bool) ($p['has_proof'] ?? false),
                     'proof_url' => $p['proof_url'] ?? null,
-                    // WHAT they are paying for. `fee_recorded` false means no
-                    // amount was ever quoted for this entry — the case the
-                    // picker below exists to fix.
                     'fee_options' => $p['fee_options'] ?? [],
                     'fee_recorded' => (bool) ($p['fee_recorded'] ?? false),
                     'fee_charged' => $p['fee_charged'] ?? null,
-                ] : [])])->all();
+                ]] : [];
+            };
+
+            $gates = collect($e['participants'] ?? [])
+                ->filter(fn ($p) => ($p['id'] ?? null))
+                // ⚠️ mapWithKeys, NOT flatMap: flatMap collapses, and collapsing
+                // re-indexes the keys — the whole map came out as a plain ARRAY
+                // and every gate lookup missed. mapWithKeys merges the several
+                // pairs one person returns and keeps them keyed.
+                ->mapWithKeys(function ($p) use ($entryGates, $canWeigh, $canPay) {
+                    $entries = $entryGates($p);
+
+                    // Every entry this person holds, for the switcher. Only when
+                    // there is more than one — a single entry needs no chooser,
+                    // and the sheet then looks exactly as it always did.
+                    $siblings = count($entries) > 1
+                        ? collect($entries)->map(fn ($en) => [
+                            'reg' => $en['reg_id'],
+                            'label' => $en['division'] ?: __('personal.event_people_action_verify'),
+                        ])->values()->all()
+                        : [];
+
+                    return collect($entries)->mapWithKeys(fn ($en) => [$en['reg_id'] => [
+                        'reg_id' => $en['reg_id'],
+                        // Moderation acts on the PERSON, so the gate carries
+                        // their id as a field now that it is no longer the key.
+                        'user_id' => $p['id'],
+                        'name' => $p['name'],
+                        // The same identity line the row shows, so the sheet opens
+                        // on the person you tapped rather than on a bare name. The
+                        // division is THIS ENTRY's, which is how the sheet says
+                        // which of the two you are signing for.
+                        'meta' => implode(' · ', array_filter([
+                            $p['gender'] ?? null, $en['division'] ?? null,
+                        ])) ?: ($p['meta'] ?? ''),
+                        'entries' => $siblings,
+                        // Both roles get the signed/not-signed pair — that is what
+                        // the "cleared for the draw" badge is made of.
+                        'weigh_verified' => (bool) ($en['weigh_verified'] ?? false),
+                        'pay_verified' => (bool) ($en['pay_verified'] ?? false),
+                    ] + ($canWeigh ? [
+                        'weight' => $en['weight'] ?? null,
+                    ] : []) + ($canPay ? [
+                        // No stored payment method: a member who paid online uploads
+                        // a receipt, a member paying cash has nothing to upload. So
+                        // the presence of a proof file IS how they paid, and the
+                        // sheet asks the official a different question for each.
+                        'has_proof' => (bool) ($en['has_proof'] ?? false),
+                        'proof_url' => $en['proof_url'] ?? null,
+                        // WHAT they are paying for. `fee_recorded` false means no
+                        // amount was ever quoted for this entry — the case the
+                        // picker below exists to fix.
+                        'fee_options' => $en['fee_options'] ?? [],
+                        'fee_recorded' => (bool) ($en['fee_recorded'] ?? false),
+                        'fee_charged' => $en['fee_charged'] ?? null,
+                    ] : [])])->all();
+                })->all();
         @endphp
         {{-- No card around the whole list: each person is their own card, so the
              roster reads as a stack of people rather than one long slab. Only the
@@ -161,11 +219,16 @@
                      REGISTRATION rather than the user id (a numeric user id is
                      not a public key). Same sheet, same gate: a registration
                      with no gate for this viewer opens nothing. --}}
+                {{-- The gates are keyed by the registration, so the id the
+                     entry list hands over IS the key. --}}
                 openEntry(reg) {
-                    const uid = Object.keys(this.gates).find(u => String(this.gates[u].reg_id) === String(reg));
-                    if (uid) this.openPerson(Number(uid));
+                    if (this.gates[reg]) this.openPerson(reg);
                 },
 
+                {{-- `uid` is now an ENTRY key (a registration id), not a user
+                     id. The name is left alone because every caller and every
+                     row below reads the same way — what changed is which thing
+                     one sheet is about: one entry, not one person's several. --}}
                 openPerson(uid) {
                     this.sel = uid;
                     this.draft = this.gates[uid]?.weight ?? '';
@@ -362,10 +425,12 @@
                      before. The sheet just has to get out of the way first —
                      its subject is about to leave the list. --}}
                 async moderateFromSheet(action) {
-                    const uid = this.sel, g = this.current;
+                    const g = this.current;
                     if (! g) return;
                     this.closePerson();
-                    await this.moderate(uid, g.name, action);
+                    {{-- Moderation is about the PERSON, and the gate key is an
+                         entry — so the user id travels on the gate itself. --}}
+                    await this.moderate(g.user_id, g.name, action);
                 },
                 @else
                 {{-- Everyone else: the roster is a list of names. `passes()` is
@@ -513,7 +578,12 @@
                     @php $initials = collect(explode(' ', $pp['name']))->map(fn($p) => mb_substr($p, 0, 1))->take(2)->implode(''); @endphp
                     @php
                         $uid = $pp['id'] ?? null;
-                        $hasGate = $officiating && ($pp['reg_id'] ?? false) && $uid;
+                        /* The gate's key is the ENTRY (see the $gates note
+                           above), so every gate call below asks about this
+                           entry; `$uid` stays for the row's own DOM id, which
+                           is about the person. */
+                        $gkey = $pp['reg_id'] ?? null;
+                        $hasGate = $officiating && $gkey && $uid;
                         // One tap target per person. The row stays a single line
                         // whatever your role; everything you can DO to this
                         // person lives in the sheet it opens. A viewer with no
@@ -524,13 +594,13 @@
                         $tappable = $hasGate;
                     @endphp
                     <div class="m-card rounded-2xl p-3 @if($tappable) cursor-pointer m-press hover:bg-muted/30 transition-colors @endif"
-                         x-show="match(@js($pp['name'])) @if($hasGate) && passes({{ $uid }}) @endif"
-                         @if($hasGate) :class="isReady({{ $uid }}) && 'border-green-200'" @endif
+                         x-show="match(@js($pp['name'])) @if($hasGate) && passes({{ $gkey }}) @endif"
+                         @if($hasGate) :class="isReady({{ $gkey }}) && 'border-green-200'" @endif
                          @if($tappable)
                              role="button" tabindex="0"
-                             @click="openPerson({{ $uid }})"
-                             @keydown.enter.prevent="openPerson({{ $uid }})"
-                             @keydown.space.prevent="openPerson({{ $uid }})"
+                             @click="openPerson({{ $gkey }})"
+                             @keydown.enter.prevent="openPerson({{ $gkey }})"
+                             @keydown.space.prevent="openPerson({{ $gkey }})"
                              aria-haspopup="dialog"
                          @endif
                          @if($uid) id="prow-{{ $uid }}" @endif
@@ -590,8 +660,8 @@
                                  decides it — so an official never has to hold the
                                  answer and the buttons on two different screens. --}}
                             <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black self-start"
-                                  :class="isReady({{ $uid }}) ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'"
-                                  x-text="isReady({{ $uid }}) ? @js(__('personal.event_verify_in_draw')) : @js(__('personal.event_verify_held'))"></span>
+                                  :class="isReady({{ $gkey }}) ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'"
+                                  x-text="isReady({{ $gkey }}) ? @js(__('personal.event_verify_in_draw')) : @js(__('personal.event_verify_held'))"></span>
                         @endif
                         @if($tappable)
                             {{-- Affordance only — the whole card is the target. --}}
@@ -687,21 +757,21 @@
                      safe-area footer. --}}
                 <template x-teleport="body" data-teleport-template="true">
                     <div x-show="sel !== null" x-cloak
-                         class="fixed inset-0 z-[70] flex items-end sm:items-center sm:justify-center sm:p-4"
+                         class="fixed inset-0 z-[70] flex items-end justify-center"
                          @keydown.escape.window="closePerson()" role="dialog" aria-modal="true" style="display:none;">
                         <div x-show="sel !== null" x-transition.opacity class="absolute inset-0 bg-black/50" @click="closePerson()"></div>
 
                         <div x-show="sel !== null"
                              x-transition:enter="transition ease-out duration-300"
-                             x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0"
-                             x-transition:enter-end="translate-y-0 sm:opacity-100"
+                             x-transition:enter-start="translate-y-full"
+                             x-transition:enter-end="translate-y-0"
                              x-transition:leave="transition ease-in duration-200"
-                             x-transition:leave-start="translate-y-0 sm:opacity-100"
-                             x-transition:leave-end="translate-y-full sm:translate-y-4 sm:opacity-0"
-                             class="relative w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl">
+                             x-transition:leave-start="translate-y-0"
+                             x-transition:leave-end="translate-y-full"
+                             class="relative w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
 
                             {{-- Who --}}
-                            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
                                  style="background: linear-gradient(150deg, {{ $e['color'] }}, {{ $e['color'] }}b0);">
                                 <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
                                 <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
@@ -724,6 +794,41 @@
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold"
                                           x-text="isReady(sel) ? @js(__('personal.event_verify_in_draw')) : @js(__('personal.event_verify_held'))"></span>
                                 </div>
+
+                                {{-- ===== The same athlete's OTHER entries =====
+
+                                     One person, two entries — a Gi group and a
+                                     No-Gi group at the same championship. The
+                                     list outside shows them as ONE card, because
+                                     they are one person; the desk signs for one
+                                     ENTRY at a time, because that is what a fee
+                                     and a scale reading belong to.
+
+                                     So the entries are chips here: tapping one
+                                     re-opens the sheet on it. A tick on a chip
+                                     is that entry already cleared, so an
+                                     official can see at a glance which half of
+                                     the work is left. Rendered only when there
+                                     is more than one — a single entry needs no
+                                     chooser and the sheet is unchanged. --}}
+                                <template x-if="(current?.entries || []).length > 1">
+                                    <div class="relative mt-3">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-white/70">{{ __('personal.event_verify_entries') }}</p>
+                                        <div class="mt-1.5 flex flex-wrap gap-1.5">
+                                            <template x-for="en in current.entries" :key="en.reg">
+                                                <button type="button" @click="openPerson(en.reg)"
+                                                        class="m-press inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors"
+                                                        :class="String(en.reg) === String(sel)
+                                                            ? 'bg-white text-foreground border-white'
+                                                            : 'bg-white/15 text-white border-white/30 hover:bg-white/25'">
+                                                    <i class="bi text-[10px]"
+                                                       :class="isReady(en.reg) ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+                                                    <span x-text="en.label"></span>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
 
                             <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">

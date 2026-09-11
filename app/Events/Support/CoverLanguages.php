@@ -46,7 +46,19 @@ class CoverLanguages
      */
     public static function for(ClubEvent $event, array $payload): array
     {
-        $key = 'cover-langs:'.$event->id.':'.optional($event->updated_at)->timestamp;
+        /*
+         * ⚠️ The offered list is part of the key, not just `updated_at`.
+         *
+         * `updated_at` has SECOND resolution, so two saves inside one second
+         * share a key and the second one serves the first one's cards — for an
+         * hour. That is not theoretical: narrowing an event's languages is
+         * exactly the kind of edit that arrives alongside another save, and the
+         * symptom is a picker that ignores the setting. Keying on the list
+         * itself makes a changed list a changed key whatever the clock did.
+         */
+        $key = 'cover-langs:'.$event->id
+            .':'.optional($event->updated_at)->timestamp
+            .':'.substr(md5(implode(',', Translations::offered($event))), 0, 8);
 
         try {
             return Cache::remember($key, now()->addHour(), fn () => self::build($event, $payload));
@@ -79,10 +91,31 @@ class CoverLanguages
          */
         $type = app(EventTypeRegistry::class)->for($event);
 
+        /*
+         * Only the languages the ORGANISER offers.
+         *
+         * The carousel IS the cover's language picker, so this is the list that
+         * actually decides what a visitor can choose — filtering the sheet
+         * underneath it and leaving sixty-eight cards spinning past up here
+         * would be a control that contradicts itself. One rule,
+         * Translations::offered(), same as every other door.
+         *
+         * ⚠️ The cache key above keys on the event's `updated_at`, and the
+         * endpoint that writes the allow-list does so with `$event->save()` —
+         * so a narrowed list shows up on the next render rather than in an
+         * hour. Anything that ever writes `offered_locales` with the query
+         * builder would have to bust this itself.
+         */
+        $offered = array_flip(Translations::offered($event));
+
         $rows = [];
 
         try {
             foreach ($locales->all() as $code => $meta) {
+                if (! isset($offered[$code])) {
+                    continue;
+                }
+
                 app()->setLocale($code);
 
                 $tr = Translations::of($event, $code);

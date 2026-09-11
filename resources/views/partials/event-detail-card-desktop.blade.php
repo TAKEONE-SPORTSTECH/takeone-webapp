@@ -1,3 +1,4 @@
+@include('partials.event-now-glow')
 {{--
     THE EVENT, IN ONE CARD — DESKTOP.
 
@@ -90,7 +91,7 @@
                                       that has not — the agenda is a record as much as a plan, and
                                       fading the finished half makes a completed event look broken. --}}
                                  class="flex gap-3.5 rounded-xl"
-                                     style="--m-attn-color: {{ $e['color'] }}80;">
+                                     style="--m-attn-color: {{ $e['color'] }}80; --ev-now: {{ $e['color'] }};">
 
                                     {{-- The date column: a calendar leaf, so the eye can
                                          run down the dates without reading a word. --}}
@@ -103,7 +104,7 @@
 
                                     {{-- The rail --}}
                                     <div class="flex flex-col items-center pt-1.5">
-                                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 {{ $active ? 'ring-4' : '' }}"
+                                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 {{ $active ? 'ev-now-dot' : '' }}"
                                               style="background: {{ $done ? '#10b981' : ($active ? $e['color'] : '#d1d5db') }};{{ $active ? ' box-shadow: 0 0 0 4px '.$e['color'].'26;' : '' }}"></span>
                                         @if(!$loop->last)
                                             <span class="w-px flex-1 my-1.5" style="background: {{ $done ? '#10b98159' : '#e5e7eb' }};"></span>
@@ -115,10 +116,10 @@
                                          under the timeline. --}}
                                     <div class="min-w-0 flex-1 {{ $loop->last ? '' : 'pb-6' }}">
                                         <div class="flex items-center gap-2 flex-wrap">
-                                            <p class="text-[15px] font-bold leading-tight {{ $active ? '' : 'text-foreground' }}"
+                                            <p class="text-[15px] font-bold leading-tight {{ $active ? 'ev-now-text' : 'text-foreground' }}"
                                                style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $ph['label'] }}</p>
                                             @if($active)
-                                                <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide" style="background: {{ $e['color'] }};">{{ __('personal.event_show_now') }}</span>
+                                                <span class="ev-now px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide" style="background: {{ $e['color'] }};">{{ __('personal.event_show_now') }}</span>
                                             @elseif($done)
                                                 {{-- A phase that has already happened says so. The rows are no longer
                                                      dimmed (a finished event is not a broken one), so "when did this
@@ -234,52 +235,60 @@
                      competitor checks — never appeared at all. --}}
                 @if(!empty($e['divisions']))
                     @php
-                        // Division names are generated as "{Age} {Men|Women} {label} kg"
-                        // by AbstractCombatSport::divisionName(), so they parse back
-                        // reliably. Anything that does not match is kept whole rather
-                        // than mangled.
-                        $divGroups = [];
-                        foreach ($e['divisions'] as $d) {
-                            if (preg_match('/^(.*?)\s*\b(Men|Women)\b\s*(.*)$/i', $d, $m)) {
-                                $age    = trim($m[1]);
-                                $female = strcasecmp($m[2], 'Women') === 0;
-                                $weight = trim($m[3]) !== '' ? trim($m[3]) : $d;
-                                $label  = trim($age.' '.($female ? __('personal.event_show_women') : __('personal.event_show_men')));
-                            } else {
-                                $female = false;
-                                $weight = $d;
-                                $label  = __('personal.event_show_divisions');
-                            }
-                            $key = ($female ? 'f' : 'm').'|'.$label;
-                            $divGroups[$key]['label']  = $label;
-                            $divGroups[$key]['female'] = $female;
-                            $divGroups[$key]['items'][] = $weight;
-                        }
-                        // No sort: PHP keeps insertion order, which is the divisions'
-                        // own sort_order — the sequence the organiser arranged them in.
-                        // Imposing an alphabetical order here would quietly override it.
+                        /* One shared reading of the list — headings, sections and
+                         * the gender grouping — in App\Events\Support\DivisionSections.
+                         *
+                         * ⚠️ This block used to carry its own copy of the parse and
+                         * had DRIFTED from the mobile one: it read $e['divisions']
+                         * (the TRANSLATED names) where the parse only matches the
+                         * English "Men"/"Women", so the gender captions silently
+                         * collapsed into one group in every other language. The
+                         * shared helper groups on the source and shows the
+                         * translation, which is what mobile already did.
+                         */
+                        $divSections = $e['division_sections'] ?? [['heading' => null, 'groups' => []]];
                     @endphp
                     <x-event-section-band :color="$e['color']" icon="bi-diagram-3-fill"
                                           :title="__('personal.event_show_divisions')" />
-                    <div class="p-6">
-                        {{-- Desktop has the width mobile does not: run the gender/age
-                             groups two-up instead of stacking them. --}}
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                            @foreach($divGroups as $g)
-                                @php $tint = $g['female'] ? '#ec4899' : '#3b82f6'; @endphp
-                                <div>
-                                    <p class="flex items-center gap-1.5 text-[12px] font-black mb-2" style="color: {{ $tint }};">
-                                        <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}"></i>{{ $g['label'] }}
+                    <div class="p-6 space-y-5">
+                        @foreach($divSections as $sec)
+                            <div>
+                                @if($sec['heading'])
+                                    {{-- The organiser's caption over the divisions that
+                                         follow it — spanning the columns, because it
+                                         labels all of them. Never a chip, never a link
+                                         to a draw. --}}
+                                    <p class="flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.1em] mb-3"
+                                       style="color: #3b82f6;">
+                                        <i class="bi bi-bookmark-fill"></i>{{ $sec['heading'] }}
                                     </p>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach($g['items'] as $w)
-                                            <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
-                                                  style="background: {{ $tint }}14;">{{ $w }}</span>
-                                        @endforeach
-                                    </div>
+                                @endif
+                                {{-- Desktop has the width mobile does not: run the
+                                     gender/age groups two-up instead of stacking them. --}}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4"
+                                     @class(['ps-3' => (bool) $sec['heading']])>
+                                    @foreach($sec['groups'] as $g)
+                                        @php $tint = $g['female'] ? '#ec4899' : '#3b82f6'; @endphp
+                                        <div>
+                                            {{-- Under a heading the fallback caption is the
+                                                 word "Divisions" — the section's own title —
+                                                 so it is not drawn twice. --}}
+                                            @if(! ($sec['heading'] && $g['fallback']))
+                                                <p class="flex items-center gap-1.5 text-[12px] font-black mb-2" style="color: {{ $tint }};">
+                                                    <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}"></i>{{ $g['label'] }}
+                                                </p>
+                                            @endif
+                                            <div class="flex flex-wrap gap-1.5">
+                                                @foreach($g['items'] as $w)
+                                                    <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
+                                                          style="background: {{ $tint }}14;">{{ $w }}</span>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endforeach
                                 </div>
-                            @endforeach
-                        </div>
+                            </div>
+                        @endforeach
                     </div>
                 @endif
 

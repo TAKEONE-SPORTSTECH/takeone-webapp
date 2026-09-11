@@ -56,7 +56,19 @@
     $interface = [];
     $rest = [];
 
+    /* Only the languages the ORGANISER offers. Null-safe on purpose: a caller
+       that predates the setting (a cached payload, a partial rendered from a
+       different builder) gets the full list, which is what it got before. The
+       rule is Translations::offered(); this only draws its answer. */
+    $offered = isset($e['offered_locales']) && is_array($e['offered_locales'])
+        ? array_flip($e['offered_locales'])
+        : null;
+
     foreach ($locales->all() as $code => $meta) {
+        if ($offered !== null && ! isset($offered[$code])) {
+            continue;
+        }
+
         $row = [
             'code' => $code,
             'name' => $meta['name'],

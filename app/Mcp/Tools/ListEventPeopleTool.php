@@ -53,8 +53,14 @@ class ListEventPeopleTool extends BaseTool
             return Response::error('Event not found.');
         }
 
-        $rows = app(EventTypeRegistry::class)->for($event)->rosterRows($event);
-        $people = app(RosterPeople::class)->build($rows, $event);
+        $roster = app(RosterPeople::class);
+
+        /* One row per PERSON, as the "Who's joined" screen reads it: an athlete
+           entered in two activities of one event (Gi and No-Gi) is one
+           competitor with two divisions, not two competitors. Folded by the
+           shared roster so this tool and the screen cannot drift. */
+        $rows = $roster->byPerson(app(EventTypeRegistry::class)->for($event)->rosterRows($event));
+        $people = $roster->build($rows, $event);
 
         return Response::json([
             'event' => ['uuid' => $event->uuid, 'title' => $event->title],
@@ -67,7 +73,10 @@ class ListEventPeopleTool extends BaseTool
                 'uuid' => $p['uuid'],
                 'name' => $p['name'],
                 'gender' => $p['gender'],
+                // The first of their divisions, kept for consumers that read
+                // one; `divisions` is the whole answer.
                 'division' => $p['category'],
+                'divisions' => $p['divisions'] ?: array_values(array_filter([$p['category']])),
                 'weight_class' => $p['weight_class'],
                 'country' => $p['country'],
                 'club' => $p['club']['name'] ?? null,

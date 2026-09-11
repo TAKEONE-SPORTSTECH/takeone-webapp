@@ -130,7 +130,7 @@
                              method: 'POST',
                              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
                              credentials: 'same-origin',
-                             body: JSON.stringify({ user_ids: this.picked, fee_options: map }),
+                             body: JSON.stringify({ user_ids: this.picked, fee_options: map, divisions: this.divisionsPayload() }),
                          });
                          d = await res.json().catch(() => ({}));
                          if (! res.ok || ! d.success) throw new Error(d.message || '{{ __('personal.event_show_action_failed') }}');
@@ -253,6 +253,42 @@
                                     class="text-[11px] font-bold text-primary">{{ __('personal.event_show_squad_select_all') }}</button>
                         </div>
 
+                        {{-- ---- WHICH ACTIVITIES the squad is entering ----
+
+                             An event may run several activities and an athlete
+                             enters as many as they are paying for, each its own
+                             entry (owner's ruling, 2026-09-11). Chips, not a
+                             dropdown: a short known list inside a scrolling
+                             sheet, where an absolutely positioned panel would
+                             be clipped (Mobile Pattern Language).
+
+                             Drawn only when there is a CHOICE to make — an
+                             event with one activity (or none named yet) leaves
+                             the division to the package's own gate, exactly as
+                             before, and this tray never appears. --}}
+                        <div x-show="picked.length && squadDivisions.length > 1" x-cloak
+                             class="rounded-xl border border-gray-200 p-3 space-y-2">
+                            <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
+                                {{ __('events.entry_activities') }}
+                            </p>
+                            <p class="text-[11px] text-muted-foreground leading-snug">{{ __('events.entry_activities_hint') }}</p>
+
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="d in squadDivisions" :key="d.id">
+                                    <button type="button" @click="toggleTemplateDivision(d.id)"
+                                            :class="divTemplate.includes(d.id) ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 text-muted-foreground'"
+                                            class="m-press px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition-colors">
+                                        <span x-text="d.name"></span>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <button type="button" @click="applyDivisionsToAll()"
+                                    class="m-press w-full py-2 rounded-xl border border-gray-200 text-[11.5px] font-bold text-foreground flex items-center justify-center gap-1.5">
+                                <i class="bi bi-check2-all"></i>{{ __('events.fee_apply_all') }}
+                            </button>
+                        </div>
+
 @if($squadHasFees)
                         {{-- ---- What the squad is entering ----
                              Chips rather than a dropdown: a short, known list
@@ -296,15 +332,18 @@
 @endif
 
                         <template x-for="a in (squadLoading ? [] : athletes)" :key="a.id">
-{{-- The row keeps its own element as the loop root when there is nothing to
-     price, so an event that sells no options renders byte for byte what it
-     rendered before. With options, the row gains a wrapper that can carry the
-     athlete's own chips underneath it. --}}
-@if($squadHasFees)
+{{-- The row is wrapped so it can carry the athlete's own chips underneath it —
+     the priced options, and which activities they are entering. The wrapper is
+     unconditional since 2026-09-11: the activities tray belongs to every event
+     that runs more than one, whether or not it sells anything. --}}
                           <div>
-@endif
-                            <button type="button" @click="a.can_enter && ! a.entered ? togglePick(a.id) : null"
-                                    :disabled="a.entered || ! a.can_enter"
+                            {{-- An athlete already entered is STILL pickable
+                                 when the event runs an activity they are not in
+                                 yet — that is how a second entry is added. With
+                                 one activity, or none left, the row is done and
+                                 says so. --}}
+                            <button type="button" @click="canPickAthlete(a) ? togglePick(a.id) : null"
+                                    :disabled="! canPickAthlete(a)"
                                     :class="picked.includes(a.id) ? 'border-primary bg-primary/5' : 'border-gray-200'"
                                     class="w-full rounded-xl border-2 p-3 flex items-center gap-3 text-start transition-colors disabled:opacity-70">
                                 <span class="w-5 h-5 rounded-md border-2 grid place-items-center flex-shrink-0"
@@ -322,12 +361,36 @@
                                     <span class="block text-[11px] leading-snug truncate"
                                           :class="! a.can_enter ? 'text-amber-600' : (a.pending_weigh_in ? 'text-primary' : 'text-muted-foreground')"
                                           x-text="a.entered
-                                                ? '{{ __('personal.event_show_squad_entered') }}' + (a.division ? ' · ' + a.division : '{{ __('personal.event_show_squad_at_weigh_in') }}')
+                                                ? '{{ __('personal.event_show_squad_entered') }}' + ((a.divisions && a.divisions.length) ? ' · ' + a.divisions.join(' · ') : (a.division ? ' · ' + a.division : '{{ __('personal.event_show_squad_at_weigh_in') }}'))
                                                 : (a.can_enter ? (a.pending_weigh_in ? (a.reason || '') : (a.division || '')) : (a.reason || ''))"></span>
                                 </span>
                                 <span x-show="a.entered" x-cloak
                                       class="text-[10px] font-bold text-green-600 flex-shrink-0">{{ __('personal.event_show_squad_in') }}</span>
                             </button>
+                            {{-- This athlete's own activities, revealed once
+                                 they are picked (progressive disclosure) and
+                                 only where the event runs more than one. An
+                                 activity they already hold shows as done: a
+                                 second entry in the same division is the
+                                 duplicate this whole change exists to prevent. --}}
+                            <div x-show="picked.includes(a.id) && squadDivisions.length > 1" x-cloak
+                                 class="mt-1.5 mb-1 ps-8 pe-1">
+                                <div class="flex flex-wrap gap-1.5">
+                                    <template x-for="d in squadDivisions" :key="d.id">
+                                        <button type="button"
+                                                @click="athleteInDivision(a, d.id) ? null : toggleAthleteDivision(a.id, d.id)"
+                                                :disabled="athleteInDivision(a, d.id)"
+                                                :class="athleteInDivision(a, d.id)
+                                                    ? 'border-green-200 bg-green-50 text-green-700'
+                                                    : (athleteHasDivision(a.id, d.id) ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 text-muted-foreground')"
+                                                class="m-press px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition-colors disabled:opacity-80">
+                                            <i class="bi bi-check2 me-1" x-show="athleteInDivision(a, d.id)" x-cloak></i>
+                                            <span x-text="d.name"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
 @if($squadHasFees)
                             {{-- One athlete's own answer, revealed only once
                                  they are picked (progressive disclosure): a
@@ -351,9 +414,7 @@
                                 </p>
                             </div>
 @endif
-@if($squadHasFees)
                           </div>
-@endif
                         </template>
 
                         <div x-show="! athletes.length && ! squadLoading" x-cloak class="py-10 text-center">

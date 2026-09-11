@@ -194,6 +194,72 @@ x-data="{
         squadTotal: 0,
         squadShown: 0,
         _squadSearch: null,
+
+        /* ---------------- WHICH ACTIVITIES they are entering ----------------
+         *
+         * One event may hold several activities to compete in — Gi and No-Gi at
+         * one jiu-jitsu championship — and an athlete enters as many as they
+         * are paying for, each becoming its own entry, drawn and signed off
+         * separately (owner's ruling, 2026-09-11). So the coach names them per
+         * athlete, exactly as they name the priced options.
+         *
+         * The list comes from the roster payload (EntryService::roster), not
+         * from the page: the divisions are the organiser's and change while
+         * this sheet is closed.
+         */
+        squadDivisions: [],
+        divSel: {},          /* athlete id => division ids */
+        divTemplate: [],     /* what apply-to-all pours over the squad */
+
+        divisionsFor(id) { return this.divSel[id] || []; },
+        athleteHasDivision(id, did) { return this.divisionsFor(id).indexOf(did) !== -1; },
+        /* Already entered in it: offered as done rather than as a choice, so a
+           coach cannot re-enter somebody into the activity they are in. */
+        athleteInDivision(a, did) { return (a.division_ids || []).indexOf(did) !== -1; },
+
+        toggleAthleteDivision(id, did) {
+            const cur = this.divisionsFor(id).slice();
+            const i = cur.indexOf(did);
+            if (i === -1) cur.push(did); else cur.splice(i, 1);
+            this.divSel[id] = cur;
+        },
+        toggleTemplateDivision(did) {
+            const i = this.divTemplate.indexOf(did);
+            if (i === -1) this.divTemplate.push(did); else this.divTemplate.splice(i, 1);
+        },
+        /* Is there an activity left for somebody already entered? That is what
+           makes an entered athlete pickable again: they hold Gi, No-Gi is still
+           open to them, and the sheet must let the coach add it. */
+        hasFreeActivity(a) {
+            return this.squadDivisions.length > 1
+                && this.squadDivisions.some(d => ! this.athleteInDivision(a, d.id));
+        },
+        /* May this row be picked at all — entries open and the gate happy, and
+           either they are not in yet or there is another activity to add. */
+        canPickAthlete(a) {
+            return !! a.can_enter && (! a.entered || this.hasFreeActivity(a));
+        },
+
+        applyDivisionsToAll() {
+            this.picked.forEach(id => { this.divSel[id] = this.divTemplate.slice(); });
+            window.showToast('success', '{{ __('events.entry_activities_applied_all') }}');
+        },
+
+        /* Only athletes who were actually given activities — an empty map means
+           what it always meant: one entry, the event's own rules choosing the
+           division. */
+        divisionsPayload() {
+            const map = {};
+            this.picked.forEach(id => {
+                const chosen = this.divisionsFor(id).filter(did => {
+                    const a = this.athletes.find(x => x.id === id);
+                    return ! (a && this.athleteInDivision(a, did));
+                });
+                if (chosen.length) map[id] = chosen;
+            });
+
+            return map;
+        },
         async openSquad() {
             this.squadOpen = true;
             this.squadTab = 'roster';
@@ -230,6 +296,7 @@ x-data="{
                 }
                 const [roster, claims] = await Promise.all(requests);
                 this.athletes = roster.athletes || [];
+                this.squadDivisions = roster.divisions || [];
                 this.squadTotal = roster.total || 0;
                 this.squadShown = roster.shown || 0;
                 if (claims) this.claims = claims.claims || [];
@@ -262,7 +329,7 @@ x-data="{
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
                     credentials: 'same-origin',
-                    body: JSON.stringify({ user_ids: this.picked }),
+                    body: JSON.stringify({ user_ids: this.picked, divisions: this.divisionsPayload() }),
                 });
                 d = await res.json().catch(() => ({}));
                 if (! res.ok || ! d.success) throw new Error(d.message || '{{ __('personal.event_show_action_failed') }}');
@@ -274,7 +341,16 @@ x-data="{
             this.goingCount = d.going ?? this.goingCount;
             (d.entered || []).forEach(row => {
                 const a = this.athletes.find(x => x.id === row.user_id);
-                if (a) { a.entered = true; a.division = row.division || a.division; }
+                if (! a) return;
+                a.entered = true;
+                a.division = row.division || a.division;
+                /* One athlete can come back in this list once per activity, so
+                   the row accumulates rather than being overwritten. */
+                a.divisions = [...new Set((a.divisions || []).concat(row.division ? [row.division] : []))];
+                if (row.division_id) {
+                    a.division_ids = [...new Set((a.division_ids || []).concat([row.division_id]))];
+                }
+                delete this.divSel[row.user_id];
             });
             (d.rejected || []).forEach(row => {
                 const a = this.athletes.find(x => x.id === row.user_id);

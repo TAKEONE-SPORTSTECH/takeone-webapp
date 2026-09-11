@@ -63,7 +63,20 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])->get('/market/forms-
 | so the address cannot be used to discover which events exist.
 */
 Route::get('/e/{event:uuid}', [App\Http\Controllers\PublicEventController::class, 'show'])
-    ->name('events.public')->middleware('throttle:public-event')->whereUuid('event');
+    ->name('events.public')
+    // Counts the PEOPLE who open it — machines recognised and left out. Runs
+    // after the response and cannot delay or break the page; see the class.
+    ->middleware(['throttle:public-event', App\Http\Middleware\RecordEventVisit::class])
+    ->whereUuid('event');
+
+/*
+| Who came. ORGANISER ONLY — the count and the detail both. A public page that
+| named its own visitors would be a leak, and one that let a stranger count them
+| tells a competitor how an event is selling. Re-checked inside the controller,
+| never inferred from the fact that the poster is public.
+*/
+Route::get('/e/{event:uuid}/visitors', [App\Http\Controllers\PublicEventController::class, 'visitors'])
+    ->name('events.public.visitors')->middleware('throttle:60,1')->whereUuid('event');
 
 /*
 | Phase C — enrolling from that page. The ONE place on the platform where a

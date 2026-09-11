@@ -104,8 +104,6 @@ return [
     'discoverable_on' => '您现在可被搜索到——其他人可以找到并联系您。',
     'division_add' => '添加',
     'division_age' => '年龄',
-    'division_also' => '也在这里',
-    'division_also_hint' => '保留他们已有的分组并同时将他们加入此组别——适用于如Gi和No-Gi同时参赛的运动员。点击行则会移动他们。',
     'division_also_on' => '也在这里报名',
     'division_any' => '任何',
     'division_apply' => '保存更改',

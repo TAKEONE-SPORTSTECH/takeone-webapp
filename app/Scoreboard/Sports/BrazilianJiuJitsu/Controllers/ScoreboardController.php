@@ -65,6 +65,8 @@ class ScoreboardController extends Controller
             // moved under it. Its own door, so the token console never has to
             // hold a session and this one never has to hold a token.
             'consoleStateUrl' => route('bjj-scoreboard.console-state', $event->uuid, false).'?mat='.rawurlencode($court),
+            // The whole draw, for the bouts card's browsing tabs. A read.
+            'catalogueUrl' => route('bjj-scoreboard.catalogue', $event->uuid, false),
             // A face for a corner, from the laptop as well as the tablet. The
             // console appends the side; the mat travels in the body, and the
             // endpoint refuses one this event does not run.
@@ -180,6 +182,7 @@ class ScoreboardController extends Controller
             // no camera panel rather than an undefined variable.
             'cameraUrl' => null,
             'cameraCommandBase' => null,
+            'catalogueUrl' => null,
         ]);
     }
 
@@ -219,6 +222,7 @@ class ScoreboardController extends Controller
         return $this->consoleView($event, $mats, $device->court, [
             'commandUrl' => route('bjj-scoreboard.token-command', $token),
             'consoleStateUrl' => route('bjj-scoreboard.token-console-state', $token, false),
+            'catalogueUrl' => route('bjj-scoreboard.token-catalogue', $token, false),
             // A paired console is a SCREEN, and the organiser's panel lists it
             // beside the boards with a live dot. Commands alone would show a mat
             // waiting twenty minutes for the next match as offline — the
@@ -270,11 +274,28 @@ class ScoreboardController extends Controller
         $data = $request->validate([
             'mat' => ['required', 'string', 'max:40'],
             'command' => ['required', 'string', 'in:'.implode(',', Scoring::COMMANDS)],
-            'side' => ['nullable', 'string', 'in:blue,white'],
+            // 'both' is the stalling count's third side — neither man working.
+            // Every other command that takes a side still resolves it through
+            // Scoring::side(), which knows only blue and white, so widening the
+            // vocabulary here cannot widen what a point or a penalty may name.
+            'side' => ['nullable', 'string', 'in:blue,white,'.Scoring::STALL_BOTH],
 
-            // NOT a point value. The console names the ACTION and the server
-            // prices it (Ledger::POINT_SOURCES) — see the note in Scoring.
+            // The ACTION a point is given for, where the caller names one —
+            // the wall board, an MCP tool, the React console. Priced by the
+            // server (Ledger::POINT_SOURCES), never by the caller.
             'source' => ['nullable', 'string', 'max:32', 'alpha_dash'],
+
+            // The AMOUNT, for the scoring grid's +N and -N. Still not the
+            // caller's arithmetic: it is held to the server's own closed list
+            // here AND again inside Scoring, because this endpoint is the
+            // contract and the console is only a convenience. A caller cannot
+            // post a five-point mount by editing its payload.
+            'value' => ['nullable', 'integer', 'in:'.implode(',', Ledger::POINT_VALUES)],
+
+            // WHICH of the three things a deduction takes back. Points, an
+            // advantage or a penalty — the same three the corner shows, and
+            // nothing else. Checked again inside Scoring.
+            'ladder' => ['nullable', 'string', 'in:point,advantage,penalty'],
 
             'match_id' => ['nullable', 'integer'],
             'ledger_id' => ['nullable', 'integer'],
@@ -285,7 +306,11 @@ class ScoreboardController extends Controller
             'minutes' => ['nullable', 'numeric', 'min:0.1', 'max:60'],
             'remaining' => ['nullable', 'numeric', 'min:0', 'max:3600'],
 
-            'phase' => ['nullable', 'string', 'in:start,cancel,apply'],
+            'phase' => ['nullable', 'string', 'in:start,cancel,apply,award'],
+            // The size of a stalling award. NOT a free point value — the
+            // closed list is the server's (Ledger::STALL_AWARDS) and Scoring
+            // checks it again, because this endpoint is the contract.
+            'points' => ['nullable', 'integer', 'in:'.implode(',', Ledger::STALL_AWARDS)],
 
             // The rules this mat runs. Validated here as well as inside Scoring
             // because this endpoint is the contract and the console is only a
@@ -294,6 +319,8 @@ class ScoreboardController extends Controller
             'warning' => ['nullable', 'numeric', 'min:0', 'max:3600'],
             'penalty_limit' => ['nullable', 'integer', 'min:1', 'max:10'],
             'penalty_warn_at' => ['nullable', 'integer', 'min:1', 'max:10'],
+            // 0 is a real value: no advantage limit, which is the default.
+            'advantage_limit' => ['nullable', 'integer', 'min:0', 'max:20'],
             'stall_seconds' => ['nullable', 'integer', 'min:3', 'max:60'],
             'referee_decision' => ['nullable', 'boolean'],
             'time_up_buzzer' => ['nullable', 'boolean'],
@@ -442,13 +469,35 @@ class ScoreboardController extends Controller
      * never reaches a wall — present() does not carry it, and this is only ever
      * returned to a surface entitled to score.
      *
-     * @return array{side: string, until: string}|null
+     * ⚠️ `seconds` is what the console counts down, and `until` is kept only for
+     * anything still reading the absolute form. The difference is the whole fix
+     * for a count that used to start one or two seconds in:
+     *
+     * An absolute timestamp is only as good as the agreement between two
+     * clocks. The console was computing `until - Date.now()`, so a table whose
+     * clock ran a second and a half ahead of this server — an ordinary amount
+     * for a tablet that has not synced — started a five second count at three,
+     * and beeped twice on the way in as the first, partial second expired
+     * almost immediately. The bout clock never had this problem because it is
+     * stored as "remaining as of a moment" and anchored to ARRIVAL; this now
+     * says the same thing the same way.
+     *
+     * Measured in milliseconds and rounded, not `diffInSeconds`, so the first
+     * second the referee sees is a whole one rather than whatever is left of it.
+     *
+     * @return array{side: string, until: string, seconds: float}|null
      */
     private function stallOf(MatState $state): ?array
     {
-        return $state->stall_side && $state->stall_until?->isFuture()
-            ? ['side' => $state->stall_side, 'until' => $state->stall_until->toIso8601String()]
-            : null;
+        if (! $state->stall_side || ! $state->stall_until?->isFuture()) {
+            return null;
+        }
+
+        return [
+            'side' => $state->stall_side,
+            'until' => $state->stall_until->toIso8601String(),
+            'seconds' => round(max(0, $state->stall_until->getTimestampMs() - now()->getTimestampMs()) / 1000, 2),
+        ];
     }
 
     /**
@@ -733,6 +782,39 @@ class ScoreboardController extends Controller
         $entryIds = $queue->flatMap(fn (EventMatch $m) => [$m->a_competitor_id, $m->b_competitor_id])
             ->filter()->unique()->values()->all();
 
+        $sideOf = $this->sideBuilder($event, $entryIds);
+
+        return $queue->map(function (EventMatch $m) use ($order, $sideOf) {
+            $blue = $sideOf($m->a_competitor_id);
+            $white = $sideOf($m->b_competitor_id);
+
+            return [
+                'id' => $m->id,
+                'number' => $m->match_no,
+                // The SAME two fields the wall board prints, or the operator and
+                // the hall read different things off the same match.
+                'stage' => $m->round ?: $m->phase,
+                'division' => $m->category?->weight_class ?: $m->category?->name,
+                'blue' => ['name' => $m->a_name ?: null] + $blue,
+                'white' => ['name' => $m->b_name ?: null] + $white,
+                'runnable' => $order->isRunnable($m),
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * One corner, as every list on this console prints it — ONE implementation.
+     *
+     * Extracted from queue() so the running order and the whole-event catalogue
+     * cannot disagree about whose face, club, crest and flag belong to an entry
+     * (CLAUDE.md → Shared Stays Shared). Nothing about the rules moved; this is
+     * the same closure, given a name.
+     *
+     * @param  array<int, int>  $entryIds
+     * @return callable(?int): array<string, mixed>
+     */
+    private function sideBuilder(ClubEvent $event, array $entryIds): callable
+    {
         $entries = $entryIds
             ? ClubEventRegistration::where('event_id', $event->id)
                 ->whereIn('id', $entryIds)
@@ -759,7 +841,7 @@ class ScoreboardController extends Controller
 
         // The club they COMPETE FOR, and its country — never the person's own
         // nationality. Same rule as the corners on the board.
-        $sideOf = function (?int $id) use ($entries, $written): array {
+        return function (?int $id) use ($entries, $written): array {
             $reg = $id ? $entries->get($id) : null;
             $club = $reg?->competingClub();
             $user = $reg?->user;
@@ -794,11 +876,6 @@ class ScoreboardController extends Controller
             return [
                 'club' => $named['name'] ?? '',
                 'logo' => $named['logo'] ?? null,
-                // The club's country first, then countryCode() — purely
-                // additive, so nobody who had a flag loses one. Each candidate
-                // is checked for a real ISO-2 code because a club's `country`
-                // is not always stored as one ("Bahrain" would ask flagcdn for
-                // /bahrain.png and get nothing).
                 'flag' => $iso,
                 'photo' => $reg?->photo
                     ? file_url($reg->photo)
@@ -808,23 +885,145 @@ class ScoreboardController extends Controller
                 'fallback' => \App\Support\Avatar::placeholder($user?->gender),
             ];
         };
+    }
 
-        return $queue->map(function (EventMatch $m) use ($order, $sideOf) {
-            $blue = $sideOf($m->a_competitor_id);
-            $white = $sideOf($m->b_competitor_id);
+    /**
+     * The WHOLE event, for the console's three browsing tabs — READ ONLY.
+     *
+     * The running order above answers "what is next on this mat", which is the
+     * question ninety-nine times in a hundred. The other one is an official
+     * standing at the table with a competitor in front of them asking to be
+     * fought now: their bout is on another mat, in a round that has not come
+     * up, or in one of fifty-one divisions. `queue()` cannot answer that — it
+     * is this mat, today, next twelve — so this door serves the draw entire and
+     * the console searches it locally.
+     *
+     * ── Shape, and why the roster is separate ──────────────────────────────
+     * A corner's face, club, crest and flag are ~600 bytes and an athlete
+     * fights up to five times, so repeating the corner inside every bout row
+     * multiplied the payload by the length of their run. The roster is
+     * therefore keyed ONCE by registration id and a bout carries only the two
+     * ids; the console rebuilds the corner from the two, using the same cell
+     * painter the running order uses.
+     *
+     * ── What it does NOT do ────────────────────────────────────────────────
+     * It writes nothing and it decides nothing. Loading one of these bouts is
+     * the existing `load` command, which already accepts any match of this
+     * event and re-reads the draw itself — so nothing here can put a corner on
+     * a wall that the mat did not agree to.
+     *
+     * Authorisation is the caller's: both doors below check the same thing the
+     * page and every command check, and the payload is exactly what an operator
+     * already sees one mat at a time.
+     */
+    private function catalogue(ClubEvent $event): array
+    {
+        $order = new RunningOrder;
 
-            return [
+        $matches = EventMatch::where('event_id', $event->id)
+            ->with('category:id,name,weight_class,is_heading,sort_order')
+            ->orderByRaw('CASE WHEN match_no IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('match_no')
+            ->orderBy('id')
+            ->get();
+
+        $entryIds = $matches->flatMap(fn (EventMatch $m) => [$m->a_competitor_id, $m->b_competitor_id])
+            ->filter()->unique()->values()->all();
+
+        $sideOf = $this->sideBuilder($event, $entryIds);
+
+        // The names live on the MATCH (a_name/b_name), because that is what the
+        // draw froze when the bout was made and what the wall prints. The
+        // roster's own name is only the fallback for an entry no bout has
+        // named yet.
+        $names = [];
+        foreach ($matches as $m) {
+            if ($m->a_competitor_id && ! isset($names[$m->a_competitor_id])) {
+                $names[$m->a_competitor_id] = $m->a_name;
+            }
+            if ($m->b_competitor_id && ! isset($names[$m->b_competitor_id])) {
+                $names[$m->b_competitor_id] = $m->b_name;
+            }
+        }
+
+        $roster = [];
+        foreach ($entryIds as $id) {
+            $roster[(string) $id] = ['name' => $names[$id] ?: null] + $sideOf($id);
+        }
+
+        // Only divisions that actually hold a bout, and never a HEADING — a
+        // heading is a title in the organiser's list, holds nobody and is never
+        // drawn (EventCategory::isHeading), so it is not something an operator
+        // can browse the bouts of.
+        $divisions = [];
+        foreach ($matches as $m) {
+            $c = $m->category;
+            if (! $c || $c->isHeading()) {
+                continue;
+            }
+
+            $key = (string) $c->id;
+            if (! isset($divisions[$key])) {
+                $divisions[$key] = [
+                    'id' => $c->id,
+                    // The same label the running order and the board print, or
+                    // the operator reads two names for one division.
+                    'label' => (string) ($c->weight_class ?: $c->name),
+                    'name' => (string) $c->name,
+                    'sort' => (int) ($c->sort_order ?? 0),
+                    'bouts' => 0,
+                    'done' => 0,
+                ];
+            }
+
+            $divisions[$key]['bouts']++;
+            if ($m->winner || $m->status === 'done') {
+                $divisions[$key]['done']++;
+            }
+        }
+
+        $divisions = collect($divisions)->sortBy([['sort', 'asc'], ['label', 'asc']])->values()->all();
+
+        return [
+            'divisions' => $divisions,
+            'roster' => $roster,
+            'bouts' => $matches->map(fn (EventMatch $m) => [
                 'id' => $m->id,
                 'number' => $m->match_no,
-                // The SAME two fields the wall board prints, or the operator and
-                // the hall read different things off the same match.
                 'stage' => $m->round ?: $m->phase,
+                'division_id' => $m->category?->id,
                 'division' => $m->category?->weight_class ?: $m->category?->name,
-                'blue' => ['name' => $m->a_name ?: null] + $blue,
-                'white' => ['name' => $m->b_name ?: null] + $white,
+                'court' => $m->court,
+                'a' => $m->a_competitor_id,
+                'b' => $m->b_competitor_id,
+                // A corner the draw named but has no entry row for — a written-in
+                // competitor — still has to read on the sheet.
+                'a_name' => $m->a_name ?: null,
+                'b_name' => $m->b_name ?: null,
+                'winner' => $m->winner,
+                'done' => (bool) ($m->winner || $m->status === 'done'),
                 'runnable' => $order->isRunnable($m),
-            ];
-        })->values()->all();
+            ])->values()->all(),
+        ];
+    }
+
+    /** The catalogue, through the organiser's own session. */
+    public function catalogueRead(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === self::SPORT, 404);
+
+        return response()->json($this->catalogue($event));
+    }
+
+    /** The same catalogue, through a paired table's own token. */
+    public function tokenCatalogue(Request $request, string $token): JsonResponse
+    {
+        abort_unless($this->canOpenControl($token), 403);
+
+        [, $event] = $this->controlDevice($token);
+
+        return response()->json($this->catalogue($event));
     }
 
     /* ── The event's sounds, uploaded from the table ─────────────────────────

@@ -239,7 +239,8 @@
                             :showControls="false"
                             :showCancel="false"
                             sheetMaxWidth="100%"
-                            sheetClass="rounded-t-3xl shadow-2xl bg-background"
+                            sheetClass="rounded-t-3xl overflow-hidden shadow-2xl bg-background"
+                            editorAlign="items-end"
                             :saveText="__('events.cover_save')"
                             :uploadAsIs="true"
                             :uploadAsIsText="__('events.cover_upload_as_is')" />

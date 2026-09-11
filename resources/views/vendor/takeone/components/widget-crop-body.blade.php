@@ -38,7 +38,7 @@
 {{-- Inline mode: the crop editor opens as its own focused overlay (a separate "adjust photo" --}}
 {{-- surface) above the form — not expanded in place. Hidden until a file/photo is chosen; --}}
 {{-- the JS moves it onto <body> so it escapes any transformed ancestor (mobile shell). --}}
-<div id="editor_{{ $id }}" class="cropper-editor-overlay fixed inset-0 z-[80] flex items-end sm:items-center justify-center" style="display:none;">
+<div id="editor_{{ $id }}" class="cropper-editor-overlay fixed inset-0 z-[80] flex {{ $editorAlign ?? 'items-end sm:items-center' }} justify-center" style="display:none;">
     <div class="absolute inset-0 bg-black/60" id="editorBackdrop_{{ $id }}"></div>
     <div class="relative w-full flex flex-col max-h-[92vh] {{ $sheetClass ?? 'rounded-t-3xl sm:rounded-2xl shadow-xl bg-white' }}"
          style="max-width: {{ $sheetMaxWidth ?? 'min(92vw, '.max(512, (int) $width + 96).'px)' }};">

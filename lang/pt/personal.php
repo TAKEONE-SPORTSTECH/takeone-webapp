@@ -104,8 +104,6 @@ return [
     'discoverable_on' => 'Está agora visível — outros podem encontrá-lo e enviar-lhe mensagens.',
     'division_add' => 'Adicionar',
     'division_age' => 'Idade',
-    'division_also' => 'Também aqui',
-    'division_also_hint' => 'Mantém a divisão em que já está e insere na outra também — para um atleta que competirá em ambas, como Gi e No-Gi. Toque na linha para MOVÊ-LO.',
     'division_also_on' => 'Inserido aqui também',
     'division_any' => 'Qualquer',
     'division_apply' => 'Salvar alterações',

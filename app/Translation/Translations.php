@@ -2,6 +2,7 @@
 
 namespace App\Translation;
 
+use App\Translation\Contracts\LimitsOfferedLocales;
 use App\Translation\Contracts\TranslatableContent;
 use App\Translation\Models\TranslationDocument;
 use App\Translation\Services\ContentLocales;
@@ -500,5 +501,48 @@ class Translations
     public static function locales(): ContentLocales
     {
         return app(ContentLocales::class);
+    }
+
+    /**
+     * Which languages this record may be READ in — the one place that decides.
+     *
+     * Every door that offers a language goes through here: the public picker,
+     * the two on-demand endpoints, the switch that remembers a visitor's
+     * choice, and the middleware that applies it. One rule, four callers, the
+     * same answer — the shape App\Events\Support\EventAccess::drawVisible()
+     * already sets for "when may this be seen".
+     *
+     * Ordered as `ContentLocales::all()` orders them, so a caller can render
+     * the result without re-sorting and two callers cannot disagree about the
+     * order.
+     *
+     * ⚠️ The SOURCE language is always offered, whatever the owner ticked.
+     * Its words are the event itself rather than a translation of it, and an
+     * allow-list that excluded it would leave a poster that cannot be read in
+     * the language it was written in — which is not a setting anybody means.
+     *
+     * @return array<int, string>
+     */
+    public static function offered(TranslatableContent&Model $record): array
+    {
+        $all = array_keys(static::locales()->all());
+
+        $limit = $record instanceof LimitsOfferedLocales ? $record->offeredLocales() : null;
+
+        // Null and empty both mean "no restriction" — see the contract.
+        if (! $limit) {
+            return $all;
+        }
+
+        $allowed = array_flip($limit);
+        $allowed[$record->sourceLocale()] = true;
+
+        return array_values(array_filter($all, fn ($code) => isset($allowed[$code])));
+    }
+
+    /** Whether this record is offered in this language. */
+    public static function offers(TranslatableContent&Model $record, ?string $locale): bool
+    {
+        return $locale !== null && in_array($locale, static::offered($record), true);
     }
 }

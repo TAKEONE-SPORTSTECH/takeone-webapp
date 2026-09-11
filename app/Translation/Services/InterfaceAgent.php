@@ -353,7 +353,25 @@ class InterfaceAgent
     {
         $failures = [];
 
+        /*
+         * ⚠️ Ask the SAME model again before giving up on it.
+         *
+         * "nothing usable" means the reply did not parse as JSON — a model
+         * trailing prose after the object, truncating, or simply having a bad
+         * roll. It is stochastic, not a fault, and the same request usually
+         * succeeds on the next attempt.
+         *
+         * Without this one flaky reply ended the entire run: the batch threw,
+         * the command read "every provider failed" as an outage and stopped,
+         * and a two-hour regeneration died forty strings in having written
+         * 110 of 5,514 (2026-09-09). A provider being DOWN and a provider
+         * fumbling one reply need different answers, and this is the one that
+         * tells them apart.
+         */
+        $attempts = max(1, (int) config('translation.batch_attempts', 3));
+
         foreach ($links as $link) {
+            for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             try {
                 $reply = $link->driver->chat(
                     [
@@ -378,7 +396,9 @@ class InterfaceAgent
                     return $decoded;
                 }
 
-                $failures[] = $link->describe().': nothing usable';
+                $failures[] = $link->describe().' (attempt '.$attempt.'): nothing usable';
+
+                continue;   // same model, fresh roll
             } catch (\Throwable $e) {
                 /*
                  * ⚠️ Long enough to keep the sentence that says WHY.
@@ -391,6 +411,16 @@ class InterfaceAgent
                  * message and the truncation threw it away.
                  */
                 $failures[] = $link->describe().': '.mb_substr($e->getMessage(), 0, 300);
+
+                /*
+                 * A refusal, a bad key or no credit will say the same thing
+                 * however many times it is asked. Only a transport hiccup is
+                 * worth another go.
+                 */
+                if (! preg_match('/timeout|timed out|curl|connection|500|502|503|504|524|529|overload/i', $e->getMessage())) {
+                    break;
+                }
+            }
             }
         }
 

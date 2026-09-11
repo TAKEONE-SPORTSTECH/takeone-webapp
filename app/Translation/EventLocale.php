@@ -97,6 +97,68 @@ class EventLocale
     {
         $uuid = self::uuidFor($request);
 
-        return $uuid ? self::get($request, $uuid) : null;
+        if ($uuid === null) {
+            return null;
+        }
+
+        $locale = self::get($request, $uuid);
+
+        if ($locale === null) {
+            return null;
+        }
+
+        /*
+         * The organiser's allow-list, applied to a choice already made.
+         *
+         * A session outlives a setting: somebody reading a poster in Farsi when
+         * the organiser takes Farsi off it would otherwise go on reading it —
+         * on their next page, tomorrow, and on whatever they shared the link
+         * into. So the choice is re-checked where it is APPLIED, not only where
+         * it is written, and a language no longer offered is forgotten rather
+         * than merely ignored: it is not coming back, and leaving it in the
+         * session means paying for this lookup on every request forever.
+         *
+         * ONE column read, on `/e/{uuid}` only, and only when a choice is
+         * actually stored — so a first-time visitor, and every URL on the rest
+         * of the platform, cost nothing. Memoised for the request because
+         * middleware and the page both ask.
+         */
+        if (! self::stillOffered($uuid, $locale)) {
+            self::forget($request, $uuid);
+
+            return null;
+        }
+
+        return $locale;
+    }
+
+    /** @var array<string, bool> uuid|locale → offered, for this request only */
+    private static array $checked = [];
+
+    private static function stillOffered(string $uuid, string $locale): bool
+    {
+        $key = $uuid.'|'.$locale;
+
+        if (array_key_exists($key, self::$checked)) {
+            return self::$checked[$key];
+        }
+
+        $event = \App\Models\ClubEvent::where('uuid', $uuid)->first(['id', 'uuid', 'source_locale', 'offered_locales']);
+
+        // No event, no opinion. An unknown uuid is somebody else's 404 to
+        // raise; forgetting a language here would be this class deciding
+        // something about a page it knows nothing about.
+        return self::$checked[$key] = $event === null
+            || \App\Translation\Translations::offers($event, $locale);
+    }
+
+    /** Drop this session's choice for one event. */
+    public static function forget(Request $request, string $uuid): void
+    {
+        $all = (array) $request->session()->get(self::KEY, []);
+
+        unset($all[strtolower($uuid)]);
+
+        $request->session()->put(self::KEY, $all);
     }
 }

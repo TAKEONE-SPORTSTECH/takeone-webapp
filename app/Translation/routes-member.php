@@ -47,6 +47,12 @@ Route::middleware('throttle:member-write')->group(function () {
         ->middleware('throttle:translate')
         ->name('events.translations.retranslate');
 
+    // Which languages the poster OFFERS. A setting, not a translation: it
+    // hides languages without touching a word of them, so it carries no
+    // translate ceiling — nothing here can start work at a provider.
+    Route::put('events/{event}/translations/offered', [EventTranslationController::class, 'offered'])
+        ->name('events.translations.offered');
+
     Route::delete('events/{event}/translations', [EventTranslationController::class, 'destroy'])
         ->name('events.translations.destroy');
 });

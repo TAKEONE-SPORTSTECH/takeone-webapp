@@ -31,6 +31,15 @@
     $saveText = $attributes->get('saveText', $mode === 'form' ? 'Crop & Apply' : 'Crop & Save Image');       // label for the crop/save button
     $showCancel = filter_var($attributes->get('showCancel', true), FILTER_VALIDATE_BOOLEAN);                 // show the footer Cancel button (inline mode)
     $showControls = filter_var($attributes->get('showControls', true), FILTER_VALIDATE_BOOLEAN);            // show zoom/rotation sliders; when false, touch pinch/rotate gestures drive the crop
+    /*
+     * How the inline editor sits in the viewport. The default is unchanged —
+     * a bottom sheet on a phone, a centred card from 640px up — so every
+     * existing cropper on the platform is untouched. Pass `items-end` to keep
+     * it a bottom sheet at EVERY width, which is what a caller whose own sheet
+     * rises from the bottom edge wants: a crop surface floating in the middle
+     * of the screen above it reads as unanchored.
+     */
+    $editorAlign = $attributes->get('editorAlign', 'items-end sm:items-center');
 @endphp
 
 <x-toast-notification />

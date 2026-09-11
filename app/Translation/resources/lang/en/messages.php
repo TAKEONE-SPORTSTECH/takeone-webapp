@@ -48,4 +48,27 @@ return [
     'field_division' => 'Division',
     'field_fee' => 'Fee line',
 
+
+    /*
+     |--------------------------------------------------------------------------
+     | Which languages the POSTER offers
+     |--------------------------------------------------------------------------
+     |
+     | A different question from which have been WRITTEN. Hiding a language
+     | takes it off the reader's picker and keeps every word of it, corrections
+     | included — see App\Translation\Contracts\LimitsOfferedLocales.
+     */
+    'on_the_poster' => 'On the poster',
+    'on_the_poster_sub' => 'Which languages readers may choose',
+    'offer_every_language' => 'Offer every language',
+    'offer_every_language_note' => 'Readers may pick any of the :count languages we translate into.',
+    'every_language' => 'All :count languages',
+    'n_languages' => ':count languages',
+    'save_poster_languages' => 'Save',
+    'offered_saved' => 'Poster languages saved.',
+    'hiding_keeps_words' => 'Hiding a language keeps its words — including anything you corrected by hand — ready for the moment you offer it again. To throw the words away instead, open that language and remove it.',
+    'always' => 'Always',
+    'written' => 'Written',
+    'not_on_poster' => 'Hidden',
+    'not_on_poster_note' => 'This language is not on the poster, so nobody can read it yet. Its words are safe — tap to put it back.',
 ];

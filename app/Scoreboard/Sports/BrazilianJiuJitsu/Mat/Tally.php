@@ -5,11 +5,21 @@ namespace App\Scoreboard\Sports\BrazilianJiuJitsu\Mat;
 /**
  * A jiu-jitsu score, as it stands after replaying the ledger.
  *
- * Three counters per corner, and they are NOT one number. Points decide the
- * match; advantages break a tie on points; penalties break a tie on advantages.
- * An advantage is never added to a points total, and neither is a penalty —
- * which is the single rule the whole design of both screens is built around
- * (points ≫ advantages/penalties, and ADV must never look added to points).
+ * Three counters per corner, and they are still read as three. Points decide
+ * the match; advantages break a tie on points; penalties break a tie on
+ * advantages (fewer wins).
+ *
+ * ⚠️ Changed 2026-09-12, at the organiser's instruction. An advantage now also
+ * adds ONE POINT to the man who earned it, and a penalty adds one point to his
+ * OPPONENT — so the points line is no longer scored actions alone. The ladders
+ * are still kept and still shown separately, because they remain the tiebreak
+ * and because a penalty count is what disqualifies; what changed is that each
+ * of them also moves the score.
+ *
+ * This is NOT the IBJJF convention and the code used to say so in several
+ * places. It is a rule-book decision, so it lives in this sport's package
+ * (CLAUDE.md → Shared Stays Shared) and is applied in exactly one line each,
+ * inside Ledger::tally(). Nothing else adds anything up.
  *
  * Immutable on purpose: it is derived, so there is nothing here to set.
  */

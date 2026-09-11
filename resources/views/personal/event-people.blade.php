@@ -71,6 +71,33 @@
         busy: false,
         athletes: {{ count($participants) }},
 
+        /* Every entry behind a card, keyed by the entry the card is named for.
+           One card can stand for two entries (the same athlete in a Gi and a
+           No-Gi group), and taking that athlete off the list means taking BOTH
+           off — the endpoint already accepts a list, and it answers per entry
+           for anything it refuses. */
+        entriesByReg: @js(collect($participants)->filter(fn ($p) => ! empty($p['registration']))->mapWithKeys(fn ($p) => [$p['registration'] => collect($p['entries'] ?? [])->pluck('registration')->filter()->values()->all() ?: [$p['registration']]])),
+
+        {{-- Which card an entry is drawn on. Itself, for the common case of
+             one entry per person. --}}
+        cardRegOf(reg) {
+            const own = Object.keys(this.entriesByReg)
+                .find((card) => (this.entriesByReg[card] || []).some((id) => String(id) === String(reg)));
+
+            return own || reg;
+        },
+
+        allEntriesOf(regs) {
+            const out = [];
+            (regs || []).forEach((r) => {
+                (this.entriesByReg[r] || [r]).forEach((id) => {
+                    if (out.indexOf(id) === -1) out.push(id);
+                });
+            });
+
+            return out;
+        },
+
         startSelecting() { this.selecting = true; this.picked = []; },
         stopSelecting()  { this.selecting = false; this.picked = []; },
 
@@ -93,7 +120,11 @@
         /* The card holds its own live picture (competitorPhoto), so the upload
            writes back into THAT card's scope rather than reloading the list. */
         cardScope(reg) {
-            const el = document.getElementById('entrant-' + reg);
+            {{-- A card stands for the person, and is named for the FIRST of
+                 their entries — so an update naming their second entry has to
+                 be walked back to the card that shows it, or a live photo
+                 change would silently patch nothing. --}}
+            const el = document.getElementById('entrant-' + this.cardRegOf(reg));
             return (el && window.Alpine) ? window.Alpine.$data(el) : null;
         },
 
@@ -146,7 +177,7 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
                     },
                     credentials: 'same-origin',
-                    body: JSON.stringify({ registration_ids: this.picked }),
+                    body: JSON.stringify({ registration_ids: this.allEntriesOf(this.picked) }),
                 });
                 const d = await res.json().catch(() => ({}));
                 if (! res.ok || ! d.success) throw new Error(d.message || @js(__('personal.event_show_action_failed')));
@@ -157,7 +188,11 @@
                 (d.removed || []).forEach(r => {
                     document.getElementById('entrant-' + r.registration_id)?.remove();
                 });
-                if (typeof d.going === 'number') this.athletes = d.going;
+                {{-- The card count is PEOPLE, so the number that follows a
+                     removal is too: `going` is entries, `going_people` is the
+                     list's own unit. --}}
+                if (typeof d.going_people === 'number') this.athletes = d.going_people;
+                else if (typeof d.going === 'number') this.athletes = d.going;
                 if (d.going_label) {
                     const el = document.getElementById('people-athlete-count');
                     if (el) el.textContent = d.going_label;
@@ -794,13 +829,29 @@
         <div x-show="tab === 'athletes'" x-cloak class="mt-6 space-y-5 mobile-stagger">
             @forelse($participants as $p)
                 @php
-                    /* ONE division chip, not two. The category is named for the
-                       range it covers — Group D (80+) — so printing the weight
-                       class beside it said the same thing twice, and the actual
-                       scale reading is already on this card. The weight class is
-                       kept only as a FALLBACK, for an event whose categories are
-                       unnamed: better one chip than none. */
-                    $division = array_filter([$p['category'] ?? $p['weight_class'] ?? null]);
+                    /* ONE chip per DIVISION THEY ARE IN, and nothing else. The
+                       category is named for the range it covers — Group D (80+)
+                       — so printing the weight class beside it said the same
+                       thing twice, and the actual scale reading is already on
+                       this card. The weight class is kept only as a FALLBACK,
+                       for an event whose categories are unnamed.
+
+                       An athlete entered in two groups (a Gi group and a No-Gi
+                       group at the same championship) has ONE card wearing both
+                       chips — the two entries live behind it, on the
+                       verification sheet, which is where a fee and a weigh-in
+                       belong. See RosterPeople::byPerson. */
+                    $division = array_values(array_filter(
+                        $p['divisions'] ?? [$p['category'] ?? $p['weight_class'] ?? null]
+                    ));
+
+                    /* Gi, No-Gi, or both — WHICH ACTIVITY of the event they are
+                       in, read off those division names by
+                       App\Events\Support\ActivityTag (RosterPeople::byPerson
+                       already put it on the row). The chip an organiser scans
+                       down the list for; absent for an event running one
+                       activity. */
+                    $pActivity = $p['activity'] ?? \App\Events\Support\ActivityTag::label($division);
 
                     /* Every value the component tag needs, as a plain variable:
                        Blade's component-tag compiler prints the whole tag as
@@ -902,7 +953,8 @@
                 @if($pManage)
                     <x-entrant-card
                         :name="$pName" :gender="$pGender" :country="$pCountry" :age="$pAge"
-                        :divisions="$division" :weight="$pWeight" :weight-tone="$pWeighState"
+                        :divisions="$division" :activity="$pActivity"
+                        :weight="$pWeight" :weight-tone="$pWeighState"
                         :belt="$p['belt'] ?? null" :belt-grade="$p['belt_grade'] ?? null"
                         :club-name="$pClubName" :club-logo="$pClubLogo"
                         :show="$pShow" :chevron="true"
@@ -968,6 +1020,7 @@
                     <x-entrant-card
                         :name="$pName" :photo="$p['photo']" :gender="$pGender"
                         :country="$pCountry" :age="$pAge" :divisions="$division"
+                        :activity="$pActivity"
                         :weight="$pWeight" :weight-tone="$pWeighState"
                         :club-name="$pClubName" :club-logo="$pClubLogo"
                         :href="$pHref" :show="$pShow" :chevron="(bool) $pUuid" />
@@ -1013,8 +1066,12 @@
                         id="fixPhoto" mode="form" :inline="true"
                         :width="600" :height="800" shape="rectangle" :canvasHeight="360"
                         folder="temp" filename="entrant" inputName="photo"
-                        sheetMaxWidth="100%" sheetClass="rounded-t-3xl shadow-2xl bg-background"
+                        sheetMaxWidth="100%" sheetClass="rounded-t-3xl overflow-hidden shadow-2xl bg-background"
                         :showControls="false" :showCancel="false"
+                        {{-- Bottom-anchored at every width, like every other
+                             sheet in the console: centred above 640px it
+                             floated in the middle of the screen. --}}
+                        editorAlign="items-end"
                         saveText="{{ __('shared.save') }}" />
                 </div>
 

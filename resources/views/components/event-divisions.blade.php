@@ -71,6 +71,10 @@
         // rename cannot leave two of the three behind.
         'store' => route('me.events.divisions.store', $event),
         'base' => route('me.events.divisions.store', $event),
+        // The order of the list, which is the only thing that gives a heading
+        // meaning. Its own endpoint because it writes one column and must never
+        // be confused with saving a division.
+        'order' => route('me.events.divisions.order', $event),
     ] : null;
 
     $words = [
@@ -104,6 +108,10 @@
         'bouts_many' => trans_choice('events.division_bouts_count', 2, ['count' => ':count']),
         'yrs' => __('events.divisions_yrs'),
         'kg' => __('events.divisions_kg'),
+        'move_up' => __('events.divisions_move_up'),
+        'move_down' => __('events.divisions_move_down'),
+        'drag' => __('events.divisions_drag'),
+        'order_saved' => __('events.divisions_order_saved'),
     ];
 @endphp
 
@@ -130,34 +138,81 @@
     {{-- ===== The list =====
          Name, one summary line, a chevron. Everything else is one tap away. --}}
     <template x-for="(d, i) in rows()" :key="rowKey(d, i)">
-        <div>
-            {{-- A HEADING: the organiser's own title for the divisions under it.
-                 Drawn as a band rather than a card on purpose — it has to read
-                 as a label ABOVE things, not as another thing in the list. Still
-                 tappable, because renaming and deleting it happen in the same
-                 sheet everything else uses. --}}
-            <button type="button" x-show="d.is_heading" x-cloak
-                    @click="openEdit(d, i)" :disabled="! canManage"
-                    class="m-press w-full text-start rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-white"
-                    style="background: linear-gradient(135deg, {{ $c }}, {{ $c }}b0);">
-                <i class="bi bi-bookmark-fill text-[13px] opacity-90"></i>
-                <span class="flex-1 min-w-0 text-[12px] font-black uppercase tracking-[0.14em] truncate"
-                      x-text="d.name || words.untitled"></span>
-                <i class="bi bi-chevron-right text-white/70 text-xs flex-shrink-0 rtl:rotate-180" x-show="canManage"></i>
-            </button>
+        {{-- The row, plus the controls that place it.
 
-            <button type="button" x-show="! d.is_heading" @click="openEdit(d, i)" :disabled="! canManage"
-                    class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
-                <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
-                      style="background: {{ $c }}">
-                    <i class="bi bi-diagram-3-fill bracket-icon text-lg"></i>
-                </span>
-                <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-bold text-foreground truncate" x-text="d.name || words.untitled"></span>
-                    <span class="block text-[11px] text-muted-foreground mt-0.5 truncate" x-text="summary(d)"></span>
-                </span>
-                <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180" x-show="canManage"></i>
-            </button>
+             ORDER IS THE WHOLE POINT OF A HEADING: it captions the divisions
+             BELOW it, until the next heading. Until these controls existed a
+             heading could be created but never placed — new rows append, so
+             every heading landed underneath the divisions it was written to
+             label, captioning nothing. --}}
+        <div :data-row-index="i" data-division-row
+             :class="dragging === i ? 'opacity-40' : ''"
+             class="flex items-stretch gap-1.5 transition-opacity">
+
+            <div class="min-w-0 flex-1">
+                {{-- A HEADING: the organiser's own title for the divisions under it.
+                     Drawn as a band rather than a card on purpose — it has to read
+                     as a label ABOVE things, not as another thing in the list. Still
+                     tappable, because renaming and deleting it happen in the same
+                     sheet everything else uses. --}}
+                <button type="button" x-show="d.is_heading" x-cloak
+                        @click="openEdit(d, i)" :disabled="! canManage"
+                        class="m-press w-full text-start rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-white"
+                        style="background: linear-gradient(135deg, {{ $c }}, {{ $c }}b0);">
+                    <i class="bi bi-bookmark-fill text-[13px] opacity-90"></i>
+                    <span class="flex-1 min-w-0 text-[12px] font-black uppercase tracking-[0.14em] truncate"
+                          x-text="d.name || words.untitled"></span>
+                    <i class="bi bi-chevron-right text-white/70 text-xs flex-shrink-0 rtl:rotate-180" x-show="canManage"></i>
+                </button>
+
+                <button type="button" x-show="! d.is_heading" @click="openEdit(d, i)" :disabled="! canManage"
+                        class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
+                    <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
+                          style="background: {{ $c }}">
+                        <i class="bi bi-diagram-3-fill bracket-icon text-lg"></i>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-foreground truncate" x-text="d.name || words.untitled"></span>
+                        <span class="block text-[11px] text-muted-foreground mt-0.5 truncate" x-text="summary(d)"></span>
+                    </span>
+                    <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180" x-show="canManage"></i>
+                </button>
+            </div>
+
+            {{-- Placing the row.
+
+                 Both a drag handle and up/down buttons, deliberately: drag is
+                 quicker on a short list and unusable on a long one, and it is
+                 not reachable from a keyboard at all. The buttons are the
+                 accessible path and the one that always works.
+
+                 `touch-action:none` on the handle is load-bearing — without it
+                 the browser claims the gesture and scrolls the page instead of
+                 starting the drag. --}}
+            @if($canManage)
+                <div class="flex flex-col items-center justify-center gap-0.5 flex-shrink-0 w-7">
+                    <button type="button" @click.stop="step(i, -1)" :disabled="! canMoveUp(i)"
+                            :aria-label="words.move_up" :title="words.move_up"
+                            class="w-7 h-6 rounded-md grid place-items-center text-muted-foreground
+                                   hover:bg-muted/70 disabled:opacity-25 transition-colors">
+                        <i class="bi bi-chevron-up text-[11px]"></i>
+                    </button>
+
+                    <span @pointerdown="grab(i, $event)"
+                          :aria-label="words.drag" :title="words.drag"
+                          class="w-7 h-5 grid place-items-center text-muted-foreground/60 cursor-grab active:cursor-grabbing"
+                          style="touch-action: none;">
+                        <i class="bi bi-grip-vertical text-[13px]"></i>
+                    </span>
+
+                    <button type="button" @click.stop="step(i, 1)" :disabled="! canMoveDown(i)"
+                            :aria-label="words.move_down" :title="words.move_down"
+                            class="w-7 h-6 rounded-md grid place-items-center text-muted-foreground
+                                   hover:bg-muted/70 disabled:opacity-25 transition-colors">
+                        <i class="bi bi-chevron-down text-[11px]"></i>
+                    </button>
+                </div>
+            @endif
         </div>
     </template>
 
@@ -197,19 +252,19 @@
          would make `fixed` resolve against a wrapper instead of the viewport
          and clip the form. --}}
     <template x-teleport="body" data-teleport-template="true">
-        <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-end sm:items-center sm:justify-center sm:p-4"
+        <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center"
              @keydown.escape.window="close()" style="display:none;">
             <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/40" @click="close()"></div>
 
             <div x-show="open"
                  x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0" x-transition:enter-end="translate-y-0 sm:opacity-100"
+                 x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="translate-y-0 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-4 sm:opacity-0"
-                 class="relative w-full sm:max-w-lg max-h-[92vh] flex flex-col bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl">
+                 x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="relative w-full sm:max-w-lg max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
 
                 {{-- Gradient header band (Design Rule #8). --}}
-                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
                      style="background: linear-gradient(150deg, {{ $c }}, {{ $c }}b0);">
                     <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
                     <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3 sm:hidden"></div>
@@ -491,6 +546,146 @@
 
         rowKey(d, i) {
             return this.server ? ('d' + (d && d.id ? d.id : 'n' + i)) : ('i' + i);
+        },
+
+        /* ── Placing a row ───────────────────────────────────────────────────
+           A heading captions the divisions BELOW it until the next heading, so
+           the list's ORDER is the only thing that gives a heading meaning.
+           These are what place it.
+
+           ── What moves, and what that does to sections ──
+           A DIVISION moves one row at a time. Crossing a heading changes which
+           section it is in — that is how a division is moved between sections,
+           and it is visible because the list redraws under your finger.
+
+           A HEADING moves as a BLOCK: itself plus every division under it, up
+           to the next heading, swapping with the whole block on the other side.
+           So a heading never leaves its divisions behind and never adopts
+           somebody else's: nothing is silently reassigned. The only membership
+           that changes is the one you dragged.
+
+           A division's own entrants, bouts and draw are untouched by any of
+           this — the endpoint writes `sort_order` and nothing else. */
+
+        dragging: null,      // index currently under the finger, or null
+        orderTimer: null,
+
+        /** Where the block containing row `j` starts. */
+        blockStart(j) {
+            const list = this.rows();
+            while (j > 0 && ! (list[j] && list[j].is_heading)) j--;
+            return j;
+        },
+
+        /** How many rows travel together: a heading takes its section, a division goes alone. */
+        blockLength(i) {
+            const list = this.rows();
+            if (! list[i] || ! list[i].is_heading) return 1;
+
+            let n = 1;
+            while (i + n < list.length && ! list[i + n].is_heading) n++;
+            return n;
+        },
+
+        canMoveUp(i) {
+            return this.canManage && i > 0;
+        },
+
+        canMoveDown(i) {
+            return this.canManage && (i + this.blockLength(i)) < this.rows().length;
+        },
+
+        /** One step up (-1) or down (1), in whole blocks where the row is a heading. */
+        step(i, dir) {
+            if (! this.canManage) return;
+
+            const list = this.rows();
+            const len = this.blockLength(i);
+            const heading = !! (list[i] && list[i].is_heading);
+
+            if (dir < 0) {
+                if (i === 0) return;
+                // A heading clears the whole block above it; a division steps
+                // over the single row above, heading or not.
+                const to = heading ? this.blockStart(i - 1) : i - 1;
+                list.splice(to, 0, ...list.splice(i, len));
+            } else {
+                const after = i + len;
+                if (after >= list.length) return;
+                const skip = heading ? this.blockLength(after) : 1;
+                list.splice(i + skip, 0, ...list.splice(i, len));
+            }
+
+            this.queueOrder();
+        },
+
+        /* ── Dragging ────────────────────────────────────────────────────────
+           Pointer events, no library (CLAUDE.md → don't add a dependency for a
+           trivial feature; the bracket and family-tree runtimes hand-roll the
+           same thing). The list reorders live under the finger rather than
+           dragging a ghost, which needs no measurement of anything but the row
+           the pointer is currently over. */
+
+        grab(i, ev) {
+            if (! this.canManage) return;
+
+            ev.preventDefault();
+            this.dragging = i;
+
+            const el = ev.currentTarget;
+            try { el.setPointerCapture(ev.pointerId); } catch (e) { /* not fatal */ }
+
+            const move = (e) => this.dragOver(e);
+            const drop = () => {
+                el.removeEventListener('pointermove', move);
+                el.removeEventListener('pointerup', drop);
+                el.removeEventListener('pointercancel', drop);
+                if (this.dragging !== null) { this.dragging = null; this.queueOrder(); }
+            };
+
+            el.addEventListener('pointermove', move);
+            el.addEventListener('pointerup', drop);
+            el.addEventListener('pointercancel', drop);
+        },
+
+        dragOver(ev) {
+            if (this.dragging === null) return;
+
+            const rows = Array.from(this.$el.querySelectorAll('[data-division-row]'));
+            const over = rows.findIndex((r) => {
+                const b = r.getBoundingClientRect();
+                return ev.clientY >= b.top && ev.clientY <= b.bottom;
+            });
+
+            if (over < 0 || over === this.dragging) return;
+
+            const list = this.rows();
+            const len = this.blockLength(this.dragging);
+
+            // Never drop a heading's block inside itself.
+            if (over > this.dragging && over < this.dragging + len) return;
+
+            const target = over > this.dragging ? over - len + 1 : over;
+            list.splice(target, 0, ...list.splice(this.dragging, len));
+            this.dragging = target;
+        },
+
+        /** Coalesce a run of taps into one write. */
+        queueOrder() {
+            if (! this.server) return;      // local mode: the host form posts the array itself
+
+            clearTimeout(this.orderTimer);
+            this.orderTimer = setTimeout(() => this.saveOrder(), 400);
+        },
+
+        async saveOrder() {
+            const order = this.rows().map((d) => d && d.id).filter(Boolean);
+            if (! order.length) return;
+
+            const data = await this.request('PUT', this.urls.order, { order });
+            if (! data) return;             // the toast has already said why
+
+            this.announce('reordered', null);
         },
 
         /** A division's fields, flat, whether they arrive nested in `range` or not. */

@@ -2,7 +2,10 @@
     The hero band's controls — ONE row, for BOTH event doors.
 
     ── The shape, identical on both ───────────────────────────────────────────
-        [home | back]  ·································  [role]  [⋯ menu]
+        [back | —]  ·····································  [role]  [⋯ menu]
+
+    Home is NOT in this row. On the poster it sits at the head of the
+    classification line, in the band's `lead` slot, where it replaced the dash.
 
     TWO controls on the trailing edge, never three (2026-09-08, at the user's
     request): the one control that matters for who is reading, and a menu that
@@ -30,15 +33,44 @@
     · Language is NOT here. It lives on the poster cover, which the Home button
       opens — one place to change it, on the screen that introduces the event.
 
+    ── Two axes, not one ──────────────────────────────────────────────────────
+    `$mode` is which DOOR this is — it decides the share verb, where the gear
+    goes, and whether sign-out is offered. `$leading` is which control sits on
+    the LEADING edge, and it is separate because the two are not the same
+    question: the public event's own SECTION pages (draw · officials · gallery ·
+    participants) are the public door in every respect and still need Back
+    rather than Home, because there is somewhere to go back TO.
+
+    Conflating them is why those four pages hand-rolled the row instead of
+    including this one — and the hand-rolled copy used `justify-between`, which
+    spreads THREE children across the whole width and leaves the middle one
+    stranded in the centre of the band. One spacer after the leading control is
+    the whole trick: back on the leading edge, everything else clustered on the
+    trailing one.
+
     ── Inputs ─────────────────────────────────────────────────────────────────
     $mode      'member' | 'public'
+    $leading   'back' | 'none'  — Back where there is somewhere to go back to
+               (the four section pages, and the member door), nothing on the
+               poster, whose Home lives in the band's `lead` slot instead.
     $e         the event view/payload — needs `key`, `title`, `color`
-    member:    $backHref, $backLabel, $canManage|$canOfficiate, $publicUrl, $shareUrl
+    back:      $backHref, $backLabel
+    member:    $canManage|$canOfficiate, $publicUrl, $shareUrl
     public:    $console (resolved by the caller), $signedIn, $signedInName, $signOutUrl
 --}}
 @php
     $mode = $mode ?? 'member';
     $isPublic = $mode === 'public';
+
+    /* Which control leads this row: 'back', or 'none' at all.
+
+       There is no 'home' any more. The poster's Home moved to the head of the
+       classification line on 2026-09-09 (the band's `lead` slot, where it
+       replaced the dash), so the one copy of that button lives there and this
+       row never draws it. */
+    $leading = in_array($leading ?? null, ['back', 'none'], true)
+        ? $leading
+        : ($isPublic ? 'none' : 'back');
 
     // Organiser-supplied, and it lands in a style attribute.
     $bandColor = preg_match('/^#[0-9A-Fa-f]{6}$/', (string) ($e['color'] ?? '')) ? $e['color'] : '#7c6bf5';
@@ -78,22 +110,20 @@
       @resize.window="menu && place()">
 
     {{-- ===== The leading edge ===== --}}
-    @if($isPublic)
-        <button type="button" @click="window.dispatchEvent(new CustomEvent('reopen-cover'))"
-                class="m-press ev-ctl"
-                aria-label="{{ __('events.band_home') }}" title="{{ __('events.band_home') }}">
-            {{-- HOME. On a public link there is nowhere "back" to, and the
-                 poster cover IS this app's front page — which is also where the
-                 language is chosen. --}}
-            <i class="bi bi-house-door-fill"></i>
-        </button>
-    @else
+    @if($leading === 'back')
         <a href="{{ $backHref }}" class="m-press ev-ctl"
            aria-label="{{ $backLabel }}" title="{{ $backLabel }}">
+            {{-- `rtl:rotate-180` is not decoration: a chevron that keeps
+                 pointing left in Arabic points AWAY from where it goes. The
+                 hand-rolled copy on the section pages was missing it. --}}
             <i class="bi bi-chevron-left rtl:rotate-180"></i>
         </a>
     @endif
 
+    {{-- The ONE spacer. It sits after the leading control and nowhere else, so
+         the leading edge holds one control and the trailing edge holds the rest
+         as a tight cluster. (A `justify-between` row with three children
+         spreads all three and strands the middle one mid-band.) --}}
     <span class="ev-ctl-spacer"></span>
 
     {{-- ===== 1 of 2: the role control =====

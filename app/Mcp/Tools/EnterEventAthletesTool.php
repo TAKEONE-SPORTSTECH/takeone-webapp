@@ -23,6 +23,8 @@ class EnterEventAthletesTool extends BaseTool
                 ->description('The event uuid (the unpredictable public id used in its URL).'),
             'athlete_ids' => $schema->array()->items($schema->integer())
                 ->description('Numeric user ids to enter. Each must be an active member of a club you own or administer. Omit to just list the roster and each athlete\'s eligibility.'),
+            'division_ids' => $schema->array()->items($schema->integer())
+                ->description('Which activities of this event to enter them into, as division ids from the roster\'s `divisions` list — one entry per activity, because an event may run several (Gi and No-Gi at one championship) and each is drawn and paid for separately. Applies to every athlete in this call; call again per group when a squad is mixed. Omit for one entry with the division decided by the event\'s own rules. An athlete who already holds more than one entry MUST be given a division, or they are refused rather than having an existing entry silently moved.'),
         ];
     }
 
@@ -40,6 +42,8 @@ class EnterEventAthletesTool extends BaseTool
             'event' => 'required|string',
             'athlete_ids' => 'nullable|array|max:200',
             'athlete_ids.*' => 'integer',
+            'division_ids' => 'nullable|array|max:'.EntryService::MAX_ACTIVITIES,
+            'division_ids.*' => 'integer',
         ]);
 
         $event = ClubEvent::where('uuid', $validated['event'])->with('tenant')->first();
@@ -61,7 +65,19 @@ class EnterEventAthletesTool extends BaseTool
             ]);
         }
 
-        $result = $entries->enterMany($event, $user, $validated['athlete_ids']);
+        /* One list of activities for this call, expanded per athlete — the
+           service takes the map shape so a mixed squad stays expressible from
+           the web sheet, and every id is still checked against THIS event
+           inside enter(). */
+        $divisions = $validated['division_ids'] ?? [];
+
+        $result = $entries->enterMany(
+            $event,
+            $user,
+            $validated['athlete_ids'],
+            [],
+            $divisions === [] ? [] : array_fill_keys($validated['athlete_ids'], $divisions),
+        );
 
         return Response::json([
             'event' => ['uuid' => $event->uuid, 'title' => $event->title],

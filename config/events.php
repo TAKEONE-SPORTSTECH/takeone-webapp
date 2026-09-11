@@ -52,4 +52,19 @@ return [
 
     'branded_surface' => (bool) env('EVENT_BRANDED_SURFACE', true),
 
+    /*
+     |--------------------------------------------------------------------------
+     | Which midnight an organiser means
+     |--------------------------------------------------------------------------
+     |
+     | `enrollment_starts_at` / `enrollment_ends_at` are calendar DATES. Turning
+     | one into an instant needs a timezone, and it must be the timezone the
+     | competition is actually in — not the app's storage zone. Entries used to
+     | close at 00:00 UTC, three hours after the named day had ended in Bahrain.
+     |
+     | Read ONLY by App\Events\Support\EntryWindow. See the note there before
+     | changing it, and never conflate it with `app.timezone`.
+     */
+    'entry_timezone' => env('EVENT_ENTRY_TIMEZONE', 'Asia/Bahrain'),
+
 ];

@@ -38,6 +38,15 @@ class BracketView
     public function divisions(ClubEvent $event): array
     {
         return $event->categories()
+            /*
+             * A heading is a caption in the organiser's list, not a division:
+             * nobody is entered in it and there is nothing to draw. Without
+             * this it arrived here as a division with zero rounds, and every
+             * reader of this one payload drew it — the manage board, the
+             * PUBLIC draw board and the MCP bracket tool all offered "Gi" as
+             * an empty bracket.
+             */
+            ->where('is_heading', false)
             ->with([
                 'matches',
                 'registrations' => fn ($q) => $q->where('role', 'participant')

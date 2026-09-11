@@ -1,3 +1,4 @@
+@include('partials.event-now-glow')
 {{--
     THE EVENT, IN ONE CARD — MOBILE.
 
@@ -105,7 +106,7 @@
                                       that has not — the agenda is a record as much as a plan, and
                                       fading the finished half makes a completed event look broken. --}}
                                  class="flex gap-3.5 rounded-xl"
-                                 style="--m-attn-color: {{ $e['color'] }}80;">
+                                 style="--m-attn-color: {{ $e['color'] }}80; --ev-now: {{ $e['color'] }};">
 
                                 {{-- The date column: a calendar leaf, so the eye can
                                      run down the dates without reading a word. --}}
@@ -118,7 +119,7 @@
 
                                 {{-- The rail --}}
                                 <div class="flex flex-col items-center pt-1.5">
-                                    <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 {{ $active ? 'ring-4' : '' }}"
+                                    <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 {{ $active ? 'ev-now-dot' : '' }}"
                                           style="background: {{ $done ? '#10b981' : ($active ? $e['color'] : '#d1d5db') }};{{ $active ? ' box-shadow: 0 0 0 4px '.$e['color'].'26;' : '' }}"></span>
                                     @if(!$loop->last)
                                         <span class="w-px flex-1 my-1.5" style="background: {{ $done ? '#10b98159' : '#e5e7eb' }};"></span>
@@ -130,10 +131,10 @@
                                      the timeline. --}}
                                 <div class="min-w-0 flex-1 {{ $loop->last ? '' : 'pb-6' }}">
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <p class="text-[15px] font-bold leading-tight {{ $active ? '' : 'text-foreground' }}"
+                                        <p class="text-[15px] font-bold leading-tight {{ $active ? 'ev-now-text' : 'text-foreground' }}"
                                            style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $ph['label'] }}</p>
                                         @if($active)
-                                            <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide" style="background: {{ $e['color'] }};">{{ __('personal.event_show_now') }}</span>
+                                            <span class="ev-now px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide" style="background: {{ $e['color'] }};">{{ __('personal.event_show_now') }}</span>
                                         @elseif($done)
                                             {{-- A phase that has already happened says so. The rows are no longer
                                                  dimmed (a finished event is not a broken one), so "when did this
@@ -259,62 +260,21 @@
                  competitor checks — never appeared at all. --}}
             @if(!empty($e['divisions']))
                 @php
-                    // Division names are generated as "{Age} {Men|Women} {label} kg"
-                    // by AbstractCombatSport::divisionName(), so they parse back
-                    // reliably. Anything that does not match is kept whole rather
-                    // than mangled.
-                    /* ⚠️ Group on the SOURCE name; show the TRANSLATED one.
+                    /* The list, cut into the sections its headings mean.
                      *
-                     * The parse looks for the English "Men"/"Women" that
-                     * AbstractCombatSport::divisionName() writes. Run it
-                     * against a TRANSLATED name and it never matches, so every
-                     * division falls into one unlabelled group and the gendered
-                     * headings vanish in every language but English — which is
-                     * what happened the moment divisions started being
-                     * translated. `divisions_source` is the same list,
-                     * untranslated and in the same order (see PublicEvent).
-                     *
-                     * The trade, stated: in English nothing changes at all —
-                     * the heading is still "Cadet Men". In another language the
-                     * heading is the translated GENDER alone ("Homens"), and
-                     * the full translated name carries the rest. The age word
-                     * is dropped from the heading rather than shown in English,
-                     * because "Cadet Homens" is worse than either language on
-                     * its own, and there is no reliable way to cut a translated
-                     * name into the same three pieces the English one had.
+                     * The parse that used to live here — and in the desktop
+                     * twin, in a copy that had already drifted — is now
+                     * App\Events\Support\DivisionSections, so both cards read
+                     * one structure. A HEADING is a caption, never a chip and
+                     * never a link to a draw; an empty one is already dropped
+                     * upstream. Divisions before the first heading arrive in a
+                     * section whose heading is null and render exactly as they
+                     * always did.
                      */
-                    $divSource = $e['divisions_source'] ?? $e['divisions'];
-                    $divGroups = [];
-
-                    foreach (array_values($e['divisions']) as $i => $d) {
-                        $src = $divSource[$i] ?? $d;
-                        $isTranslated = $src !== $d;
-
-                        if (preg_match('/^(.*?)\s*\b(Men|Women)\b\s*(.*)$/i', $src, $m)) {
-                            $female = strcasecmp($m[2], 'Women') === 0;
-                            $gender = $female ? __('personal.event_show_women') : __('personal.event_show_men');
-
-                            if ($isTranslated) {
-                                $label  = $gender;
-                                $weight = $d;                       // the whole translated name
-                            } else {
-                                $label  = trim(trim($m[1]).' '.$gender);
-                                $weight = trim($m[3]) !== '' ? trim($m[3]) : $d;
-                            }
-                        } else {
-                            $female = false;
-                            $weight = $d;
-                            $label  = __('personal.event_show_divisions');
-                        }
-
-                        $key = ($female ? 'f' : 'm').'|'.$label;
-                        $divGroups[$key]['label']  = $label;
-                        $divGroups[$key]['female'] = $female;
-                        $divGroups[$key]['items'][] = $weight;
-                    }
-                    // No sort: PHP keeps insertion order, which is the divisions'
-                    // own sort_order — the sequence the organiser arranged them in.
-                    // Imposing an alphabetical order here would quietly override it.
+                    $divSections = $e['division_sections'] ?? [[
+                        'heading' => null,
+                        'groups' => [],
+                    ]];
                 @endphp
                 <x-event-section-band :color="$e['color']" icon="bi-diagram-3-fill"
                                       :title="__('personal.event_show_divisions')"
@@ -325,35 +285,61 @@
                          list of divisions reads as one table rather than as
                          alternating pink and blue bands. --}}
                     <div class="flex flex-col" style="padding:16px 20px 22px; gap:16px;">
-                        @foreach($divGroups as $g)
-                            <div>
-                                <p class="flex items-center" style="margin:0 0 8px; font-size:11.5px; font-weight:700; gap:6px; color:#1e2c4f;">
-                                    <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}" style="color:#6b7689;"></i>{{ $g['label'] }}
+                        @foreach($divSections as $sec)
+                            @if($sec['heading'])
+                                <p class="flex items-center" style="margin:0; font-size:12px; font-weight:800; gap:6px; color:#1e2c4f; text-transform:uppercase; letter-spacing:0.08em;">
+                                    <i class="bi bi-bookmark-fill" style="color:#6b7689;"></i>{{ $sec['heading'] }}
                                 </p>
-                                <div class="flex flex-wrap" style="gap:6px;">
-                                    @foreach($g['items'] as $w)
-                                        <span style="padding:5px 12px; border-radius:10px; font-size:11.5px; font-weight:600; background:#eef1f6; color:#1e2c4f;">{{ $w }}</span>
-                                    @endforeach
+                            @endif
+                            @foreach($sec['groups'] as $g)
+                                <div @if($sec['heading']) style="padding-inline-start:10px;" @endif>
+                                    {{-- Under a heading the fallback caption is the
+                                         word "Divisions" — the section's own title —
+                                         so it is not drawn twice. --}}
+                                    @if(! ($sec['heading'] && $g['fallback']))
+                                        <p class="flex items-center" style="margin:0 0 8px; font-size:11.5px; font-weight:700; gap:6px; color:#1e2c4f;">
+                                            <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}" style="color:#6b7689;"></i>{{ $g['label'] }}
+                                        </p>
+                                    @endif
+                                    <div class="flex flex-wrap" style="gap:6px;">
+                                        @foreach($g['items'] as $w)
+                                            <span style="padding:5px 12px; border-radius:10px; font-size:11.5px; font-weight:600; background:#eef1f6; color:#1e2c4f;">{{ $w }}</span>
+                                        @endforeach
+                                    </div>
                                 </div>
-                            </div>
+                            @endforeach
                         @endforeach
                     </div>
                 @else
                 <div class="p-5">
                     <div class="space-y-3.5">
-                        @foreach($divGroups as $g)
-                            @php $tint = $g['female'] ? '#ec4899' : '#3b82f6'; @endphp
-                            <div>
-                                <p class="flex items-center gap-1.5 text-[12px] font-black mb-2" style="color: {{ $tint }};">
-                                    <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}"></i>{{ $g['label'] }}
+                        @foreach($divSections as $sec)
+                            @if($sec['heading'])
+                                {{-- The organiser's own caption over the divisions
+                                     that follow it. Blue, like the group captions,
+                                     because it is the same kind of thing — a label
+                                     over chips — one step stronger. --}}
+                                <p class="flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.1em]"
+                                   style="color: #3b82f6;">
+                                    <i class="bi bi-bookmark-fill"></i>{{ $sec['heading'] }}
                                 </p>
-                                <div class="flex flex-wrap gap-1.5">
-                                    @foreach($g['items'] as $w)
-                                        <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
-                                              style="background: {{ $tint }}14;">{{ $w }}</span>
-                                    @endforeach
+                            @endif
+                            @foreach($sec['groups'] as $g)
+                                @php $tint = $g['female'] ? '#ec4899' : '#3b82f6'; @endphp
+                                <div @class(['ps-3' => (bool) $sec['heading']])>
+                                    @if(! ($sec['heading'] && $g['fallback']))
+                                        <p class="flex items-center gap-1.5 text-[12px] font-black mb-2" style="color: {{ $tint }};">
+                                            <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}"></i>{{ $g['label'] }}
+                                        </p>
+                                    @endif
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach($g['items'] as $w)
+                                            <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
+                                                  style="background: {{ $tint }}14;">{{ $w }}</span>
+                                        @endforeach
+                                    </div>
                                 </div>
-                            </div>
+                            @endforeach
                         @endforeach
                     </div>
                 </div>

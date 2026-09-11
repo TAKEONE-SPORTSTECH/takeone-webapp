@@ -238,7 +238,10 @@ class Tournament extends AbstractEventType
         if ($event->categories()->where('draw_state', 'final')->exists()) {
             return 'drawn';
         }
-        if ($event->enrollment_starts_at && now()->startOfDay()->lt($event->enrollment_starts_at)) {
+        // Same day boundary as the entry gate itself (EntryWindow): an event
+        // must not read as 'draft' on a console while its entry door is open,
+        // or the other way round.
+        if (\App\Events\Support\EntryWindow::hasNotOpened($event)) {
             return 'draft';
         }
 
@@ -743,7 +746,12 @@ class Tournament extends AbstractEventType
         $byDivision = $paid->groupBy('category_id')
             ->map(fn ($rows) => $rows->sum(fn ($r) => $charged[$r->id] ?? 0.0));
 
-        $rows = $event->categories()->withCount([
+        $rows = $event->categories()
+            // A heading holds nobody, so it is not a division earning nothing —
+            // it is not a division at all, and a row of zeroes per heading made
+            // the breakdown look like a fault.
+            ->where('is_heading', false)
+            ->withCount([
             'registrations as entries_count' => fn ($q) => $q->where('role', 'participant'),
             'registrations as paid_count' => fn ($q) => $q->where('role', 'participant')->where('paid', true),
         ])->orderBy('sort_order')->get()

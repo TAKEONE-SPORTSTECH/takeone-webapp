@@ -104,8 +104,6 @@ return [
     'discoverable_on' => 'Artık keşfedilebilirsin — başkaları seni bulabilir ve sana mesaj gönderebilir.',
     'division_add' => 'Ekle',
     'division_age' => 'Yaş',
-    'division_also' => 'Ayrıca burada',
-    'division_also_hint' => 'Zaten bulunduğu bölümü korur ve aynı zamanda bu bölüme de girer — bir sporcu hem Gi hem de No-Gi\'de yarışıyorsa bunu kullanın. Satırı dokunmak onu taşır.',
     'division_also_on' => 'Aynı zamanda burada da girildi',
     'division_any' => 'Herhangi',
     'division_apply' => 'Değişiklikleri kaydet',

@@ -474,6 +474,7 @@ return [
     'event_verify_final_draw' => 'Cleared for the final draw',
     'event_verify_ready_hint' => 'Only entries with a signed weight and an approved payment are drawn.',
     'event_verify_pending' => 'Waiting',
+    'event_verify_entries' => 'Their entries',
     'event_verify_ready' => 'Cleared',
     'event_verify_all' => 'All',
     'event_verify_in_draw' => 'In the draw',
@@ -1162,9 +1163,11 @@ return [
     'division_only_fitting' => 'Hide who does not fit',
     'division_in_group' => 'In this group',
     'division_elsewhere' => 'In',
-    'division_also' => 'Also here',
     'division_also_on' => 'Entered here too',
-    'division_also_hint' => 'Keeps the division they are already in and enters them in this one as well — for an athlete competing in both, such as Gi and No-Gi. Tapping the row instead MOVES them.',
+    // Where else they are competing. A neutral fact beside the age and the
+    // weight, never a warning: an athlete in two groups is what this is for.
+    'division_also_in' => 'Also in',
+    'division_more' => '+:count more',
     'division_unassigned' => 'No group',
     'division_outside' => 'Outside',
     'division_unknown' => 'Not known',

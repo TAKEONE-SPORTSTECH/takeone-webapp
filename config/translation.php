@@ -186,6 +186,13 @@ return [
     */
     'interface_batch' => (int) env('TRANSLATION_BATCH', 60),
 
+    /*
+    | How many times to ask the SAME model for a batch before moving down the
+    | chain. A reply that does not parse is a bad roll, not a fault; without a
+    | retry, one of them ends the whole run.
+    */
+    'batch_attempts' => (int) env('TRANSLATION_BATCH_ATTEMPTS', 3),
+
     'refine' => (bool) env('TRANSLATION_REFINE', true),
 
     // Editing is not a creative task; a warm model rewrites instead of

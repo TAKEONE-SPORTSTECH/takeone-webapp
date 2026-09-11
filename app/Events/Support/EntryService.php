@@ -32,6 +32,19 @@ class EntryService
     /** Most athletes one roster page returns. Searching reaches the rest. */
     private const ROSTER_LIMIT = 60;
 
+    /** Most people one platform-wide organiser search returns. */
+    private const SEARCH_LIMIT = 25;
+
+    /** Shortest query that search will answer. Blank never lists the platform. */
+    private const SEARCH_MIN = 2;
+
+    /**
+     * How many activities of one event a single athlete may be entered into at
+     * once. A cap rather than a rule about the sport: it bounds one request,
+     * and no championship runs more than a handful of activities.
+     */
+    public const MAX_ACTIVITIES = 10;
+
     public function __construct(private EventTypeRegistry $registry) {}
 
     /**
@@ -44,12 +57,31 @@ class EntryService
      * An athlete missing from the map simply ticked nothing, which is why the
      * default is an empty array and every existing caller keeps its meaning.
      *
+     * ── ONE ATHLETE, SEVERAL ACTIVITIES ───────────────────────────────────
+     * `$divisionsByUser` is the other half of the same thought, and the reason
+     * this method exists in the shape it does: an event may hold more than one
+     * activity to enter — Gi and No-Gi at one jiu-jitsu championship — and an
+     * athlete enters as many as they are paying for (owner's ruling,
+     * 2026-09-11: "the person is one, the payment and activity he is paying
+     * for is multi"). So a coach names the divisions per athlete and each one
+     * becomes its own entry, drawn separately and signed off separately at the
+     * desk.
+     *
+     * An athlete with no divisions named keeps the old behaviour exactly: one
+     * entry, the package's gate choosing the division.
+     *
      * @param  array<int, int>  $userIds
      * @param  array<int|string, array<int, string>>  $optionsByUser  user id => option uuids
+     * @param  array<int|string, array<int, int>>  $divisionsByUser  user id => event_categories ids
      * @return array{entered: array<int, array>, rejected: array<int, array>, going: int}
      */
-    public function enterMany(ClubEvent $event, User $actor, array $userIds, array $optionsByUser = []): array
-    {
+    public function enterMany(
+        ClubEvent $event,
+        User $actor,
+        array $userIds,
+        array $optionsByUser = [],
+        array $divisionsByUser = [],
+    ): array {
         $entered = [];
         $rejected = [];
 
@@ -58,13 +90,34 @@ class EntryService
 
         foreach ($athletes as $athlete) {
             $chosen = $optionsByUser[$athlete->id] ?? $optionsByUser[(string) $athlete->id] ?? [];
+            $chosen = is_array($chosen) ? $chosen : [];
 
-            $verdict = $this->enter($event, $actor, $athlete, is_array($chosen) ? $chosen : []);
+            $divisions = $divisionsByUser[$athlete->id] ?? $divisionsByUser[(string) $athlete->id] ?? [];
+            $divisions = collect(is_array($divisions) ? $divisions : [$divisions])
+                ->map(fn ($id) => (int) $id)->filter()->unique()->take(self::MAX_ACTIVITIES)->values();
 
-            if ($verdict['ok']) {
-                $entered[] = $verdict['row'];
-            } else {
-                $rejected[] = $verdict['row'];
+            // No activity named: one entry, gate's choice — unchanged.
+            $targets = $divisions->isEmpty() ? collect([null]) : $divisions;
+
+            foreach ($targets as $i => $target) {
+                /*
+                 * ⚠️ The ticked options ride on the FIRST entry only.
+                 *
+                 * `enter()` re-prices whenever it is handed a non-empty
+                 * selection, so passing the same list to the second activity
+                 * would freeze the same charge onto it and bill the athlete
+                 * twice for one purchase. What an activity costs is the fee
+                 * options' business (an event sells "Gi", "No-Gi" and
+                 * "Gi + No-Gi" as three prices), and the desk reads the lines
+                 * per entry — see the note in enter().
+                 */
+                $verdict = $this->enter($event, $actor, $athlete, $i === 0 ? $chosen : [], $target);
+
+                if ($verdict['ok']) {
+                    $entered[] = $verdict['row'];
+                } else {
+                    $rejected[] = $verdict['row'];
+                }
             }
         }
 
@@ -107,14 +160,34 @@ class EntryService
             'row' => ['user_id' => $athlete->id, 'name' => $name, 'code' => $code, 'message' => $message],
         ];
 
+        /*
+         * Whoever RUNS this competition, as opposed to a coach entering their
+         * own club's squad.
+         *
+         * Two of the checks below exist to stop a coach reaching past their
+         * club — "not your athlete" and "your athlete is out of this event's
+         * scope" — and neither question means anything asked of the organiser:
+         * the entry list IS theirs, and the scope setting is their own decision
+         * about who may enter THEMSELVES, not a rule binding the person who
+         * wrote it. Before this, an organiser could only add somebody by typing
+         * their name again, minting a second unclaimed person beside the
+         * TAKEONE account that athlete already had.
+         *
+         * It widens nothing else. Every rule that protects the COMPETITION —
+         * bans, the entry window, capacity, an event already underway, the
+         * package's own gate — is asked of the organiser exactly as it is asked
+         * of everybody else, below.
+         */
+        $runsThisEvent = app(EventAccess::class)->canManage($event, $actor);
+
         // 1. May the actor act for this athlete at all?
-        if (! $this->mayEnter($actor, $athlete)) {
+        if (! $runsThisEvent && ! $this->mayEnter($actor, $athlete)) {
             return $reject('not_yours', __('events.entry_not_your_athlete', ['name' => $name]));
         }
 
         // 2. Does the event's scope reach them? (An athlete from another club
         //    can only be entered into an event open to them.)
-        if (! $this->isEligible($event, $athlete)) {
+        if (! $runsThisEvent && ! $this->isEligible($event, $athlete)) {
             return $reject('out_of_scope', __('events.entry_out_of_scope', ['name' => $name]));
         }
 
@@ -158,10 +231,28 @@ class EntryService
         // second division is a second entry, but it is not a second purchase.
         // The event sells "Gi + No-Gi" as one option, so the fee lines stay on
         // the entry that carries the purchase and the sibling carries none.
-        $alreadyInEvent = $existing
-            ?: ClubEventRegistration::where('event_id', $event->id)
-                ->where('user_id', $athlete->id)
-                ->first();
+        $held = ClubEventRegistration::where('event_id', $event->id)
+            ->where('user_id', $athlete->id)
+            ->get(['id', 'category_id', 'role']);
+
+        $alreadyInEvent = $existing ?: $held->first();
+
+        /*
+         * They already stand in SEVERAL activities and the caller named none.
+         *
+         * `updateOrCreate` on (event, user) would find whichever row came first
+         * and re-classify it — moving an athlete's Gi entry into the division
+         * the gate happens to pick today, silently, while their No-Gi entry
+         * sat untouched beside it. That is not a decision a caller can be
+         * assumed to have made, so it is refused and the caller is asked which
+         * activity it means (2026-09-11).
+         *
+         * One entry is unchanged: that is every caller that predates
+         * multi-activity entry, and "the entry" is unambiguous.
+         */
+        if (! $target && $held->count() > 1) {
+            return $reject('choose_division', __('events.entry_choose_division', ['name' => $name]));
+        }
 
         // Once the competition is UNDERWAY the entry list is the thing being
         // run: the draw is cut from it, mats are assigned off it, and a name
@@ -174,11 +265,13 @@ class EntryService
             return $reject('started', __('events.entry_event_started'));
         }
 
-        $today = now()->startOfDay();
-        if ($event->enrollment_starts_at && $today->lt($event->enrollment_starts_at)) {
+        // The window, resolved where the COMPETITION is — see EntryWindow. The
+        // day an organiser names runs to its own local midnight, not to UTC's.
+        // It is not asked of the organiser themselves: see entriesState().
+        if (! $runsThisEvent && EntryWindow::hasNotOpened($event)) {
             return $reject('not_open', __('events.entry_not_open', ['date' => Cldr::shortDate($event->enrollment_starts_at)]));
         }
-        if ($event->enrollment_ends_at && $today->gt($event->enrollment_ends_at)) {
+        if (! $runsThisEvent && EntryWindow::hasClosed($event)) {
             return $reject('closed', __('events.entry_closed', ['date' => Cldr::shortDate($event->enrollment_ends_at)]));
         }
 
@@ -283,6 +376,10 @@ class EntryService
                 'name' => $name,
                 'registration_id' => $registration->id,
                 'division' => $decision->category?->name,
+                // The id as well as the name, so a caller that offered a choice
+                // of activities can mark the one it just filled without
+                // matching on a translated name.
+                'division_id' => $decision->category?->id,
                 'paid' => (bool) $registration->paid,
                 // What this entry was actually charged, read back from its own
                 // frozen lines — so a coach who ticked two options sees the two
@@ -339,9 +436,16 @@ class EntryService
             ->limit(max(1, min($limit, self::ROSTER_LIMIT)))
             ->get(['id', 'full_name', 'name', 'gender', 'birthdate', 'profile_picture', 'updated_at']);
 
+        /*
+         * Grouped, not keyed: an athlete may hold an entry in each activity the
+         * event runs, and keyBy('user_id') kept one of them — the sheet then
+         * told a coach "already in: Gi" for somebody in both, and offered to
+         * enter them into the one they already held.
+         */
         $registered = ClubEventRegistration::where('event_id', $event->id)
             ->whereIn('user_id', $members->pluck('id'))
-            ->get()->keyBy('user_id');
+            ->with('category:id,name')
+            ->get()->groupBy('user_id');
 
         $type = $this->registry->for($event);
 
@@ -349,33 +453,183 @@ class EntryService
         // row that is not already in shows as closed rather than pickable.
         $entries = $this->entriesState($event);
 
-        $athletes = $members->map(function (User $m) use ($event, $type, $registered, $entries) {
-            $existing = $registered->get($m->id);
-            $gate = $type->enrolmentGate($event, $m, $existing);
-            $banned = $this->isBanned($event, $m->id);
+        $athletes = $members->map(fn (User $m) => $this->presentAthlete(
+            $event, $type, $m, $registered->get($m->id) ?? collect(), $entries
+        ))->values()->all();
 
-            return [
-                'id' => $m->id,
-                'name' => $m->full_name ?? $m->name ?? 'Member',
-                'gender' => $m->gender,
-                'entered' => (bool) $existing && $existing->role === 'participant',
-                'entered_by_them' => $existing && $existing->entered_by === null,
-                'division' => $existing?->category?->name ?? $gate->category?->name,
-                'weight' => $m->latestHealthRecord?->weight ? (float) $m->latestHealthRecord->weight : null,
-                // Enterable when the gate allows it — or when its refusal is one
-                // weigh-in settles, which is not the coach's problem today.
-                'can_enter' => ! $banned && $entries['open'] && ($gate->allowed || $gate->deferrable),
-                'pending_weigh_in' => ! $banned && $entries['open'] && ! $gate->allowed && $gate->deferrable,
-                'reason' => match (true) {
-                    $banned => __('events.entry_banned', ['name' => $m->full_name ?? $m->name]),
-                    ! $entries['open'] => $entries['note'],
-                    $gate->deferrable => __('events.entry_pending_weigh_in'),
-                    default => $gate->message,
-                },
-            ];
-        })->values()->all();
+        return [
+            'athletes' => $athletes,
+            'total' => $total,
+            'shown' => count($athletes),
+            // The activities this event runs, for the sheet's per-athlete
+            // picker. Headings are titles in the list, not things anybody
+            // competes in, so they are not offered.
+            'divisions' => $this->enterableDivisions($event),
+        ];
+    }
 
-        return ['athletes' => $athletes, 'total' => $total, 'shown' => count($athletes)];
+    /**
+     * Everyone on the PLATFORM this organiser may put into their event.
+     *
+     * The coach's roster above answers a different question — "which of MY
+     * club's athletes can I enter" — and deliberately never leaves that club,
+     * so it can never become a lookup for the platform's user table. An
+     * organiser running the competition has the opposite problem: the person
+     * standing at the desk holds a TAKEONE account and belongs to nobody the
+     * organiser administers, and until now the only way to enter them was to
+     * type their name again and mint a second, unclaimed person beside the
+     * account they already have.
+     *
+     * So this searches wider, and pays for it with three limits:
+     *
+     *  · The CALLER is checked first, and it is the narrow gate — whoever may
+     *    manage THIS event, or a super-admin. A coach with entry authority
+     *    still gets roster(), unchanged.
+     *  · A query is REQUIRED and at least two characters. There is no "list
+     *    everybody" call; a blank search returns nothing rather than the
+     *    directory.
+     *  · Who is reachable honours `users.is_discoverable` — the member's own
+     *    opt-out of being found — EXCEPT for people already standing in this
+     *    event's world: the host club's members, the members of clubs taking
+     *    part, and anyone already entered. Those are people the organiser is
+     *    already administering at this event, and a squad list the organiser
+     *    cannot search is a feature nobody can use. A super-admin sees all.
+     *
+     * The rows come back in the coach roster's exact shape, so one sheet
+     * renders either list and nothing downstream learns which search produced
+     * it (Shared Stays Shared).
+     *
+     * @return array{athletes: array<int, array>, total: int, shown: int, divisions: array<int, array>}
+     */
+    public function searchPeople(ClubEvent $event, User $actor, ?string $query = null, int $limit = self::SEARCH_LIMIT): array
+    {
+        $query = trim((string) $query);
+        $empty = ['athletes' => [], 'total' => 0, 'shown' => 0, 'divisions' => $this->enterableDivisions($event)];
+
+        if (mb_strlen($query) < self::SEARCH_MIN) {
+            return $empty;
+        }
+
+        $base = User::query()
+            ->where(fn ($w) => $w
+                ->where('full_name', 'like', "%{$query}%")
+                ->orWhere('name', 'like', "%{$query}%")
+                ->orWhere('email', 'like', "%{$query}%")
+                ->orWhere('mobile', 'like', "%{$query}%"));
+
+        if (! $actor->isSuperAdmin()) {
+            $base->where(fn ($w) => $w
+                ->where('is_discoverable', true)
+                ->orWhereHas('memberClubs', fn ($q) => $q->whereIn('tenants.id', $this->eventClubIds($event)))
+                ->orWhereIn('id', ClubEventRegistration::where('event_id', $event->id)->select('user_id')));
+        }
+
+        $total = (clone $base)->count();
+
+        $members = $base
+            ->with('latestHealthRecord')
+            ->orderBy('full_name')
+            ->limit(max(1, min($limit, self::SEARCH_LIMIT)))
+            ->get(['id', 'full_name', 'name', 'gender', 'birthdate', 'profile_picture', 'updated_at']);
+
+        $registered = ClubEventRegistration::where('event_id', $event->id)
+            ->whereIn('user_id', $members->pluck('id'))
+            ->with('category:id,name')
+            ->get()->groupBy('user_id');
+
+        $type = $this->registry->for($event);
+        $entries = $this->entriesState($event, $actor);
+
+        $athletes = $members->map(fn (User $m) => $this->presentAthlete(
+            $event, $type, $m, $registered->get($m->id) ?? collect(), $entries
+        ))->values()->all();
+
+        return [
+            'athletes' => $athletes,
+            'total' => $total,
+            'shown' => count($athletes),
+            'divisions' => $this->enterableDivisions($event),
+        ];
+    }
+
+    /**
+     * The clubs whose members this event already administers: the host, and
+     * every club taking part in it.
+     *
+     * @return array<int, int>
+     */
+    private function eventClubIds(ClubEvent $event): array
+    {
+        $ids = DB::table('event_clubs')
+            ->where('event_id', $event->id)
+            ->whereNotNull('tenant_id')
+            ->pluck('tenant_id')->map('intval')->all();
+
+        if ($event->tenant_id) {
+            $ids[] = (int) $event->tenant_id;
+        }
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * One person, with the verdict already worked out — enterable, already in,
+     * and why not. Shared by the coach's roster and the organiser's search so
+     * the two lists can never disagree about whether somebody can be entered.
+     */
+    private function presentAthlete(ClubEvent $event, $type, User $m, $mine, array $entries): array
+    {
+        $existing = $mine->first();
+        $gate = $type->enrolmentGate($event, $m, $existing);
+        $banned = $this->isBanned($event, $m->id);
+
+        return [
+            'id' => $m->id,
+            'name' => $m->full_name ?? $m->name ?? 'Member',
+            'gender' => $m->gender,
+            'entered' => (bool) $existing && $existing->role === 'participant',
+            'entered_by_them' => $existing && $existing->entered_by === null,
+            /* EVERY activity they already hold — names to read, and ids so
+               the sheet can grey out an activity they are already in
+               rather than offering it twice. */
+            'divisions' => $mine->pluck('category.name')->filter()->unique()->values()->all(),
+            'division_ids' => $mine->pluck('category_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all(),
+            'entries' => $mine->where('role', 'participant')->count(),
+            'division' => $existing?->category?->name ?? $gate->category?->name,
+            'weight' => $m->latestHealthRecord?->weight ? (float) $m->latestHealthRecord->weight : null,
+            // Enterable when the gate allows it — or when its refusal is one
+            // weigh-in settles, which is not the coach's problem today.
+            'can_enter' => ! $banned && $entries['open'] && ($gate->allowed || $gate->deferrable),
+            'pending_weigh_in' => ! $banned && $entries['open'] && ! $gate->allowed && $gate->deferrable,
+            'reason' => match (true) {
+                $banned => __('events.entry_banned', ['name' => $m->full_name ?? $m->name]),
+                ! $entries['open'] => $entries['note'],
+                $gate->deferrable => __('events.entry_pending_weigh_in'),
+                default => $gate->message,
+            },
+        ];
+    }
+
+    /**
+     * The activities of this event an athlete can be entered into, in the
+     * organiser's own order.
+     *
+     * One place, so the coach's sheet, the MCP tool and anything else that
+     * offers a choice of activity offer the same list — and none of them has
+     * to remember that a heading is not a division.
+     *
+     * @return array<int, array{id: int, name: string}>
+     */
+    public function enterableDivisions(ClubEvent $event): array
+    {
+        return $event->categories()
+            // The model's own scope, so "a heading is not a division" is stated
+            // in exactly one place.
+            ->competing()
+            ->orderBy('sort_order')
+            ->get(['id', 'name'])
+            ->map(fn ($c) => ['id' => (int) $c->id, 'name' => (string) $c->name])
+            ->all();
     }
 
     /* ---------------- Authorization ---------------- */
@@ -467,9 +721,20 @@ class EntryService
      *
      * @return array{open: bool, note: ?string}
      */
-    public function entriesState(ClubEvent $event): array
+    public function entriesState(ClubEvent $event, ?User $actor = null): array
     {
-        $today = now()->startOfDay();
+        /*
+         * The enrolment WINDOW is the organiser's own instruction about when
+         * other people may enter themselves — so it does not answer back at
+         * the person who wrote it. A desk still taking walk-ins an hour after
+         * the closing date is the ordinary case, and refusing it there just
+         * moves the entry onto a paper sheet.
+         *
+         * Everything that protects the COMPETITION rather than the diary —
+         * ended, started, overdue to start — is asked of them exactly as it is
+         * asked of everybody else, below.
+         */
+        $runsThisEvent = $actor && app(EventAccess::class)->canManage($event, $actor);
 
         if ($event->hasEnded()) {
             return ['open' => false, 'note' => __('events.entry_event_ended')];
@@ -481,10 +746,10 @@ class EntryService
         if ($event->hasStarted() || $event->isOverdueToStart()) {
             return ['open' => false, 'note' => __('events.entry_event_started')];
         }
-        if ($event->enrollment_starts_at && $today->lt($event->enrollment_starts_at)) {
+        if (! $runsThisEvent && EntryWindow::hasNotOpened($event)) {
             return ['open' => false, 'note' => __('events.entry_not_open', ['date' => Cldr::shortDate($event->enrollment_starts_at)])];
         }
-        if ($event->enrollment_ends_at && $today->gt($event->enrollment_ends_at)) {
+        if (! $runsThisEvent && EntryWindow::hasClosed($event)) {
             return ['open' => false, 'note' => __('events.entry_closed', ['date' => Cldr::shortDate($event->enrollment_ends_at)])];
         }
 

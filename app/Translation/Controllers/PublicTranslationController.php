@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ClubEvent;
 use App\Translation\Services\ContentLocales;
 use App\Translation\Services\Translator;
+use App\Translation\Translations;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -51,6 +52,16 @@ class PublicTranslationController extends Controller
 
         $locale = $this->locales->normalise($request->input('locale'));
 
+        // A language this event does not OFFER is answered exactly like one we
+        // have never heard of. Two reasons, and the second is the expensive
+        // one: the picker's list is not a security boundary (anybody can post
+        // this endpoint by hand), and this is the door that starts paid work —
+        // so an organiser who took a language off their poster must not be
+        // billed for a stranger asking for it anyway. See Translations::offers.
+        if ($locale !== null && ! Translations::offers($event, $locale)) {
+            $locale = null;
+        }
+
         if ($locale === null) {
             // Deliberately the same shape as a success. Which languages exist
             // is not a secret, but there is no reason for this endpoint to be a
@@ -69,6 +80,12 @@ class PublicTranslationController extends Controller
         $this->assertPublic($event);
 
         $clean = $this->locales->normalise($locale);
+
+        // Same rule as prepare(), so a language cannot be polled into existence
+        // after it has been taken off the poster.
+        if ($clean !== null && ! Translations::offers($event, $clean)) {
+            $clean = null;
+        }
 
         if ($clean === null) {
             return $this->state($event, $locale, 'unavailable');

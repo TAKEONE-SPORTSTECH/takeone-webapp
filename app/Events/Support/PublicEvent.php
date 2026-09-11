@@ -10,6 +10,7 @@ use App\Translation\TranslatedDocument;
 use App\Translation\Translations;
 use App\Models\ClubEventRegistration;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Exactly what a stranger may see about an event, and nothing else.
@@ -81,6 +82,10 @@ class PublicEvent
          */
         $tr = Translations::of($event);
 
+        // Divisions, headings and the sections they describe — one place, read
+        // by both this payload and the console's (see DivisionSections).
+        $sections = (new DivisionSections)->build($event, $tr);
+
         // The SAME keys the member page's payload uses
         // (PersonalEventController::eventView). Not a coincidence and not
         // convenience: the two pages render from the same partials, so they
@@ -94,6 +99,20 @@ class PublicEvent
             'id' => substr($event->uuid, 0, 8),
             'key' => $event->uuid,
             'uuid' => $event->uuid,
+
+            /*
+             * The languages this poster OFFERS, in the served order — the
+             * organiser's own list where they have set one, every language we
+             * serve where they have not.
+             *
+             * Carried on the payload rather than looked up by the two partials
+             * that draw the picker (the cover's strip and the long sheet),
+             * because a page must not decide this twice and a Blade view must
+             * not query. The rule itself lives in one place,
+             * Translations::offered(), and the doors that ACT on a language
+             * re-check it there — a list on a page is not a boundary.
+             */
+            'offered_locales' => Translations::offered($event),
 
             'title' => $tr->get('title', $event->title),
             'about' => $tr->get('about', $event->description ?? ''),
@@ -229,10 +248,15 @@ class PublicEvent
             // run-of-show carries times and phases, never a name.
             'phases' => $type->timeline($event),
             /* Keyed by the division's own id, so a reordered list keeps each
-             * translation attached to the division it belongs to. */
-            'divisions' => $event->categories()->orderBy('sort_order')->get(['id', 'name'])
-                ->map(fn ($c) => $tr->get('divisions.'.$c->id, (string) $c->name))
-                ->all(),
+             * translation attached to the division it belongs to.
+             *
+             * ⚠️ HEADINGS ARE NOT IN HERE. A heading is a caption over the
+             * divisions below it, not a division — it holds nobody and has no
+             * draw — and until 2026-09-09 this query returned it anyway, so
+             * every reader downstream showed "Gi" and "No-Gi" as two more
+             * weight classes and counted them in totals. The structure they
+             * describe is in `division_sections`. */
+            'divisions' => $sections['divisions'],
             /*
              * The SAME divisions, untranslated, in the same order.
              *
@@ -247,7 +271,16 @@ class PublicEvent
              * from the translation. A reader gets "Adulto Homens −60 kg" under
              * a heading that still knows it means men.
              */
-            'divisions_source' => $event->categories()->orderBy('sort_order')->pluck('name')->all(),
+            'divisions_source' => $sections['divisions_source'],
+
+            /*
+             * The same divisions, still in the organiser's order, but cut into
+             * the sections their headings mean: each entry is a heading (null
+             * for the run before the first one) and the divisions under it.
+             * The detail card renders a heading as a caption line and its
+             * divisions as the chips beneath. See DivisionSections.
+             */
+            'division_sections' => $sections['sections'],
 
             // The draw, once one exists — a count and a flag here, the bracket
             // itself fetched by the board from `events.public.draw.data`, so a
@@ -590,6 +623,33 @@ class PublicEvent
                 ];
             })
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            /*
+             * ===== One entry per PERSON on the list, every division on the row
+             *
+             * An athlete may hold two entries in one event — a Gi group and a
+             * No-Gi group at the same championship — and read as a list of
+             * people that is the same face twice with nothing saying why
+             * (reported 2026-09-11). The entries fold into one row wearing both
+             * division chips; the organiser's own roster does the same thing
+             * (RosterPeople::byPerson), so a reader who
+             * looks at the public page and then at the desk sees one list.
+             *
+             * `division` stays as the first one so nothing that already reads
+             * this payload changes shape; `divisions` is the whole answer.
+             */
+            ->groupBy('uuid')
+            ->map(function (Collection $entries) {
+                $row = $entries->first();
+                $row['divisions'] = $entries->pluck('division')->filter()->unique()->values()->all();
+                /* WHICH ACTIVITIES — "Gi", "No-Gi", "Gi + No-Gi" — read off the
+                   organiser's own division names (App\Events\Support\ActivityTag).
+                   The one thing a reader scanning this list wants about an
+                   athlete who is in two of them. Null when the event runs a
+                   single activity, and the card then carries no badge. */
+                $row['activity'] = ActivityTag::label($row['divisions']);
+
+                return $row;
+            })
             ->values()->all();
 
         /*

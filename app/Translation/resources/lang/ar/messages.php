@@ -65,4 +65,18 @@ return [
     'source_language' => 'كُتب بـ:language',
     'translated_by_ai' => 'ترجمة آلية',
 
+
+    'on_the_poster' => 'على الملصق',
+    'on_the_poster_sub' => 'اللغات التي يمكن للقارئ اختيارها',
+    'offer_every_language' => 'إتاحة كل اللغات',
+    'offer_every_language_note' => 'يمكن للقارئ اختيار أي من :count لغة نترجم إليها.',
+    'every_language' => 'كل اللغات (:count)',
+    'n_languages' => ':count لغة',
+    'save_poster_languages' => 'حفظ',
+    'offered_saved' => 'تم حفظ لغات الملصق.',
+    'hiding_keeps_words' => 'إخفاء لغة يحفظ نصّها — بما في ذلك أي تصحيح كتبته بنفسك — جاهزًا لحين إتاحتها مرة أخرى. وللتخلّص من النص نهائيًا، افتح تلك اللغة واحذفها.',
+    'always' => 'دائمًا',
+    'written' => 'مكتوبة',
+    'not_on_poster' => 'مخفية',
+    'not_on_poster_note' => 'هذه اللغة ليست على الملصق، فلا يمكن لأحد قراءتها الآن. نصّها محفوظ — اضغط لإعادتها.',
 ];

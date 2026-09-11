@@ -101,7 +101,8 @@ class Scheduler
      * time-based suggestion; each division is placed on a mat (auto round-robin
      * unless pinned); within a mat, bouts run phase-by-phase (prelim→QF→finals)
      * interleaved across divisions, numbered PER MAT (Mat 1 · #1, #2 …).
-     * Byes/walkovers get no number.
+     * Byes and walkovers get no number — every bout already decided, whether
+     * one corner was empty or both.
      *
      * @return array<int,array{matches:int,capacity:int,suggested:int,courts:int}> per-day plan
      */
@@ -112,7 +113,32 @@ class Scheduler
         $capacity = $this->dailyCapacityPerCourt($event);
 
         $matches = EventMatch::where('event_id', $event->id)->orderBy('slot')->get();
-        $isBye = fn ($m) => $m->winner && ((($m->a_name === null) xor ($m->b_name === null)));
+
+        /*
+         * A bout that is already DECIDED gets no number, because the running
+         * order is the list of what is still to be fought and a number in it
+         * that nobody will ever hear called is a hole an operator has to
+         * explain.
+         *
+         * ⚠️ This used to read `(a_name === null) XOR (b_name === null)` — one
+         * corner empty, exactly one. A bout with a winner and BOTH corners
+         * empty failed that test (false xor false is false), so it was numbered
+         * like a real bout and then hidden by RunningOrder::upcomingBouts(),
+         * which excludes anything decided. The mat's running order therefore
+         * started at #2, and #4 was missing too. Seen on the Victory BJJ
+         * Championship's Mat 1 (2026-09-10): eighteen ordinary byes were
+         * unnumbered correctly and two zero-corner walkovers were not.
+         *
+         * Zero-corner bouts are ordinary in a thin division: a bracket is drawn
+         * to a power of two and the draw resolves the slots nobody entered.
+         *
+         * A corner counts as EMPTY only when it has neither an entry nor a
+         * name — deliberately stricter than the name alone, so a bout that was
+         * genuinely fought can never lose its number on a re-schedule because
+         * a denormalised name happened to be missing.
+         */
+        $emptyCorner = fn ($m, string $side) => ! $m->{$side.'_competitor_id'} && $m->{$side.'_name'} === null;
+        $isBye = fn ($m) => $m->winner && ($emptyCorner($m, 'a') || $emptyCorner($m, 'b'));
 
         // Bucket contested bouts by day.
         $byDay = [];

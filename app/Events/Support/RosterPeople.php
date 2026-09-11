@@ -50,6 +50,74 @@ class RosterPeople
     }
 
     /**
+     * Fold a roster of ENTRIES into a roster of PEOPLE.
+     *
+     * One athlete may hold more than one entry in the same event — a Gi group
+     * and a No-Gi group at one championship is the ordinary case, and the owner
+     * settled the model on 2026-09-11: "the person is one, the payment and
+     * activity he is paying for is multi". The event types build their rosters
+     * per ENTRY because that is what the draw needs; every surface that reads
+     * as a list of PEOPLE folds them first, or the same face appears twice with
+     * nothing on either card saying why.
+     *
+     * The FIRST row a person appears on is kept whole, so nothing changes for
+     * the entrant who holds one entry. Two things are added:
+     *
+     *   · `divisions` — every group they are entered in, for the card's chips.
+     *   · `entries`   — each entry's own id and division, in roster order. This
+     *     is what keeps the money and the scale honest: a fee, a receipt and a
+     *     weigh-in signature belong to an ENTRY, and the verification desk
+     *     works one at a time.
+     *
+     * A row with no user behind it (a name typed at the desk, never linked to
+     * an account) is never merged with anything.
+     *
+     * Lives here rather than in a controller because it is the same question
+     * everywhere: the organiser's roster page, the public entry list and the
+     * MCP tool all answer it, and CLAUDE.md's *Shared Stays Shared* says that
+     * is one implementation.
+     *
+     * @param  array<int, array<string, mixed>>  $rows  rosterRows() output
+     * @return array<int, array<string, mixed>>
+     */
+    public function byPerson(array $rows): array
+    {
+        $merged = [];
+
+        foreach (array_values($rows) as $i => $row) {
+            $entry = [
+                'registration' => $row['registration'] ?? null,
+                'division' => $row['category'] ?? $row['weight_class'] ?? null,
+            ];
+
+            $key = ($row['id'] ?? null) !== null ? 'u'.$row['id'] : 'r'.$i;
+
+            if (! isset($merged[$key])) {
+                $row['entries'] = [$entry];
+                $row['divisions'] = array_values(array_filter([$entry['division']]));
+                $merged[$key] = $row;
+
+                continue;
+            }
+
+            $merged[$key]['entries'][] = $entry;
+
+            if ($entry['division'] && ! in_array($entry['division'], $merged[$key]['divisions'], true)) {
+                $merged[$key]['divisions'][] = $entry['division'];
+            }
+        }
+
+        /* WHICH ACTIVITIES each person is in — "Gi", "No-Gi", "Gi + No-Gi" —
+           read off the division names they hold (ActivityTag). Null for an
+           event that runs one activity, which is most of them. */
+        foreach ($merged as $key => $row) {
+            $merged[$key]['activity'] = ActivityTag::label($row['divisions'] ?? []);
+        }
+
+        return array_values($merged);
+    }
+
+    /**
      * The competitors, hydrated.
      *
      * Only fields that are already public to anyone standing in the hall. The
@@ -90,6 +158,14 @@ class RosterPeople
                 : null,
             'category' => $row['category'] ?? null,
             'weight_class' => $row['weight_class'] ?? null,
+            /* EVERY division this person is entered in, and every entry behind
+               them — passed through untouched from the row the caller built.
+               A roster of entries has one of each per row and needs neither;
+               a roster folded into one row per PERSON (the people page) carries
+               both, because one card then stands for two entries. */
+            'divisions' => $row['divisions'] ?? null,
+            'entries' => $row['entries'] ?? null,
+            'activity' => $row['activity'] ?? null,
             // The flag is the CLUB's country, not the person's passport. Someone
             // competing for a Bahraini club is on the sheet as Bahrain whatever
             // their nationality — their own is a fact about them, on their

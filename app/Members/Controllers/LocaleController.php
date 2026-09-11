@@ -57,6 +57,22 @@ class LocaleController extends Controller
 
         if (! empty($data['event'])) {
             /*
+             * The event's own allow-list, re-checked here because this is the
+             * WRITER: the picker only shows what the organiser offers, and a
+             * list on a page is not a rule. Refused quietly — the visitor is
+             * sent back to the page they were on, in the language it was
+             * already in, which is the same nothing-happened they would get
+             * from any other unavailable language.
+             */
+            $event = \App\Models\ClubEvent::where('uuid', $data['event'])->first();
+
+            if ($event && ! \App\Translation\Translations::offers($event, $data['locale'])) {
+                unset($data['locale']);
+            }
+        }
+
+        if (! empty($data['event']) && isset($data['locale'])) {
+            /*
              * ⚠️ Scoped, and deliberately narrow: no `session('locale')`, no
              * `users.locale`. A visitor reading one competition in Portuguese
              * is not asking for a Portuguese platform, and an organiser whose
@@ -64,7 +80,7 @@ class LocaleController extends Controller
              * their poster would rightly call that a bug. It was one.
              */
             \App\Translation\EventLocale::set($request, $data['event'], $data['locale']);
-        } else {
+        } elseif (empty($data['event'])) {
             $request->session()->put('locale', $data['locale']);
 
             if ($user = $request->user()) {
@@ -72,7 +88,9 @@ class LocaleController extends Controller
             }
         }
 
-        app()->setLocale($data['locale']);
+        if (isset($data['locale'])) {
+            app()->setLocale($data['locale']);
+        }
 
         // A browser, not a script. Send it back to the page it was on — but
         // only if that page is OURS: the Referer is attacker-controllable, so
@@ -116,12 +134,17 @@ class LocaleController extends Controller
             return redirect()->to($same ? $back : '/', 303);
         }
 
+        // A refused language answers as a success with the locale left as it
+        // was: the caller asked to read something in a language it is not
+        // offered in, which is nothing happening rather than an error to show.
+        $applied = $data['locale'] ?? app()->getLocale();
+
         return response()->json([
             'success' => true,
             'message' => __('shared.language_updated'),
-            'locale' => $data['locale'],
-            'dir' => config('locales.'.$data['locale'].'.dir')
-                ?? config('content_locales.'.$data['locale'].'.dir', 'ltr'),
+            'locale' => $applied,
+            'dir' => config('locales.'.$applied.'.dir')
+                ?? config('content_locales.'.$applied.'.dir', 'ltr'),
         ]);
     }
 }

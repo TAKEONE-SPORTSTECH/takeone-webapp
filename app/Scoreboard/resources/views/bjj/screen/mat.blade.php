@@ -114,6 +114,18 @@
       {{-- BLUE --}}
       <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(135deg,#1362d1 0%,#082a55 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbBlueWin" hidden style="position:absolute; inset:0; border:14px solid #ffd666; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
+        {{-- The referee's stalling count, on the wall.
+             Sits over the corner it is against — over BOTH when the count is a
+             double stall — and is drawn from the board's own clock, so it
+             ticks smoothly between server messages instead of jumping when one
+             happens to arrive. Hidden whenever no count is running. --}}
+        <div id="sbBlueStall" hidden style="position:absolute; top:44px; right: 30px; z-index:6;
+             display:flex; align-items:center; gap:18px; padding:12px 28px; border-radius:999px;
+             background:rgba(10,10,14,.82); border:3px solid #ffd666; color:#ffd666;
+             animation:stallPulse 1s ease-in-out infinite;">
+          <span style="font-size:32px; font-weight:700; letter-spacing:.2em; text-transform:uppercase;">{{ __('scoreboard::bjj_messages.ctl_stall') }}</span>
+          <span id="sbBlueStallNum" style="font-family:'Anton',sans-serif; font-size:52px; line-height:1; font-variant-numeric:tabular-nums;"></span>
+        </div>
         <div style="display:flex; align-items:center; gap:28px;">
           <img id="sbBlueFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.5);">
           <div style="display:flex; flex-direction:column;">
@@ -158,6 +170,18 @@
       {{-- WHITE --}}
       <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(225deg,#f4f7fb 0%,#9fadc0 100%); color:#0a0b10; position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbWhiteWin" hidden style="position:absolute; inset:0; border:14px solid #b3861f; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
+        {{-- The referee's stalling count, on the wall.
+             Sits over the corner it is against — over BOTH when the count is a
+             double stall — and is drawn from the board's own clock, so it
+             ticks smoothly between server messages instead of jumping when one
+             happens to arrive. Hidden whenever no count is running. --}}
+        <div id="sbWhiteStall" hidden style="position:absolute; top:44px; left: 30px; z-index:6;
+             display:flex; align-items:center; gap:18px; padding:12px 28px; border-radius:999px;
+             background:rgba(10,10,14,.82); border:3px solid #ffd666; color:#ffd666;
+             animation:stallPulse 1s ease-in-out infinite;">
+          <span style="font-size:32px; font-weight:700; letter-spacing:.2em; text-transform:uppercase;">{{ __('scoreboard::bjj_messages.ctl_stall') }}</span>
+          <span id="sbWhiteStallNum" style="font-family:'Anton',sans-serif; font-size:52px; line-height:1; font-variant-numeric:tabular-nums;"></span>
+        </div>
         <div style="display:flex; align-items:center; gap:28px; flex-direction:row-reverse;">
           <img id="sbWhiteFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.35);">
           <div style="display:flex; flex-direction:column; align-items:flex-end;">
@@ -345,6 +369,11 @@
       'guard_pass' => __('scoreboard::bjj_messages.source_guard_pass'),
       'mount' => __('scoreboard::bjj_messages.source_mount'),
       'back_control' => __('scoreboard::bjj_messages.source_back_control'),
+      // Not a pressable action — points awarded when a stalling count ran
+      // out (Ledger::STALL_AWARD_SOURCE). Listed here so the hall's notice
+      // has a word to print: an unknown source draws a bare "+2" over an
+      // empty line.
+      'stalling_award' => __('scoreboard::bjj_messages.source_stalling_award'),
     ];
 
     $penaltyWords = [
@@ -385,8 +414,17 @@
   var WON_BY = @json(__('scoreboard::bjj_messages.won_by'));
   var WINNER_LABEL = @json(__('scoreboard::bjj_messages.winner'));
   var ADVANTAGE_WORD = @json(__('scoreboard::bjj_messages.advantages'));
+  /* The word over a point the table gave by AMOUNT rather than by action —
+     which is every point the scoring grid sends since it stopped naming them
+     (Ledger::POINT_VALUES). Without it the hall's callout drew a bare "+2"
+     under an empty line. */
+  var POINTS_WORD = @json(__('scoreboard::bjj_messages.source_points'));
   var CORNER_BLUE = @json(__('sport-brazilianjiujitsu::messages.corner_blue'));
   var CORNER_WHITE = @json(__('sport-brazilianjiujitsu::messages.corner_white'));
+  /* Named on the ONE notice that can be about the pair: a double stalling count
+     running out penalises both men, and the hall is told once rather than
+     shown two four-second notices for one decision. */
+  var CORNER_BOTH = @json(__('scoreboard::bjj_messages.corner_both'));
   var TBD = @json(__('scoreboard::bjj_messages.court_tbd'));
   var GET_READY = @json(__('scoreboard::bjj_messages.get_ready'));
   var MATCH_WORD = @json(__('scoreboard::bjj_messages.court_match'));
@@ -495,6 +533,40 @@
     return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
   }
 
+  /*
+   * The referee's stalling count, as the wall shows it.
+   *
+   * Measured from ARRIVAL against the remainder the server sent, exactly like
+   * liveRemaining() above and for the same reason — a wall screen's clock is
+   * frequently wrong, and subtracting a server deadline from it would open the
+   * count one or two seconds in. `received` is the board's own stamp for the
+   * state it is holding, so a count carries on ticking smoothly between
+   * messages rather than jumping when one happens to arrive.
+   *
+   * Null whenever nothing is running, which is also what a board gets from a
+   * server that has not been taught to send this.
+   */
+  function stallLeft() {
+    if (!S || !S.stall || typeof S.stall.seconds !== 'number') return null;
+
+    return Math.max(0, Math.ceil(S.stall.seconds - (performance.now() - received) / 1000));
+  }
+
+  /** The badge over the corner (or corners) a count is running against. */
+  function paintStall() {
+    var left = stallLeft();
+    var side = left === null ? null : (S.stall.side || null);
+    // A count that has run out stays on the wall: the referee has a decision to
+    // make and the hall is watching the same moment they are. It clears when
+    // the count does — applied, awarded or dismissed.
+    ['Blue', 'White'].forEach(function (k) {
+      var on = side === 'both' || side === k.toLowerCase();
+      var box = el('sb' + k + 'Stall');
+      if (box) box.hidden = !on;
+      if (on) text('sb' + k + 'StallNum', left);
+    });
+  }
+
   // The bell, once per match. The board reaches zero on its own clock and the
   // hall should hear it THEN, not when the server gets round to saying so.
   var toldTimeUp = false;
@@ -516,6 +588,8 @@
     // one, the synthesised chirp when it does not.
     if (low && !toldAtoshi) { toldAtoshi = true; ping('atoshi'); }
     if (!low) toldAtoshi = false;
+
+    paintStall();
 
     text('sbTimer', clockWords(t));
     text('sbHoldClock', clockWords(t));
@@ -732,7 +806,7 @@
       'text-shadow:0 0 80px ' + colour + ', 0 8px 30px rgba(0,0,0,.7);';
     label.textContent = (ev.kind === 'advantage'
       ? ADVANTAGE_WORD
-      : (SOURCES[ev.source] || '')).toUpperCase();
+      : (SOURCES[ev.source] || POINTS_WORD)).toUpperCase();
     wrap.appendChild(label);
 
     if (ev.kind === 'point') {
@@ -756,10 +830,28 @@
   function notice(ev) {
     var n = el('sbNotice');
     if (!n) return;
+
+    /* The reason, only when there IS one.
+       The console stopped asking which kind of penalty it was on 2026-09-12,
+       so an ordinary penalty now arrives as `other` — and printing the word
+       "OTHER" across a hall in letters that size says less than nothing, it
+       invites the question it is standing in for. A penalty given without a
+       stated reason is announced as a penalty. `stalling` and the rest still
+       reach this notice in words when something does name them (the referee's
+       count applies one, and the retired thumb console still asks). */
+    var reason = ev.source && ev.source !== 'other'
+      ? (PENALTY_REASONS[ev.source] || '').toUpperCase() : '';
+
     n.textContent = PENALTY_NOTICE
-      .replace(':corner', ev.side === 'blue' ? CORNER_BLUE : CORNER_WHITE)
-      .replace(':reason', (PENALTY_REASONS[ev.source] || PENALTY_REASONS.other || '').toUpperCase())
-      .replace(':time', clockWords(liveRemaining()));
+      .replace(':corner', ev.side === 'blue' ? CORNER_BLUE
+        : ev.side === 'white' ? CORNER_WHITE : CORNER_BOTH)
+      .replace(':reason', reason)
+      .replace(':time', clockWords(liveRemaining()))
+      // The separator the empty reason left behind. Done on the finished
+      // string so the lang files keep ONE sentence with the words in their own
+      // order — Arabic reads this right to left and must not need a second
+      // template to say the same thing.
+      .replace(/·\s*·/, '·');
     n.hidden = false;
     n.style.animation = 'none'; void n.offsetWidth;
     n.style.animation = 'noticeIn 4.2s ease-out both';

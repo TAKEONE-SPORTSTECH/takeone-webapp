@@ -69,19 +69,19 @@
     </button>
 
     <template x-teleport="body" data-teleport-template="true">
-        <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-end sm:items-center sm:justify-center sm:p-4"
+        <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center"
              @keydown.escape.window="back()" style="display:none;">
             <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/40" @click="close()"></div>
 
             <div x-show="open"
                  x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0" x-transition:enter-end="translate-y-0 sm:opacity-100"
+                 x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="translate-y-0 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-4 sm:opacity-0"
-                 class="relative w-full sm:max-w-2xl max-h-[92vh] flex flex-col bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl">
+                 x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="relative w-full sm:max-w-2xl max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
 
                 {{-- ===== The gradient band (Design Rule #8) ===== --}}
-                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
                      style="background: linear-gradient(150deg, {{ $c }}, {{ $c }}b0);">
                     <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
                     <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3 sm:hidden"></div>
@@ -91,13 +91,13 @@
                              language, ✕ on the trailing one — the drill-down's
                              own way out, so the sheet never closes when the
                              organiser meant to go up one level. --}}
-                        <template x-if="! viewing">
+                        <template x-if="! viewing && ! picking">
                             <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
                                 <i class="bi bi-translate text-xl"></i>
                             </span>
                         </template>
-                        <template x-if="viewing">
-                            <button type="button" @click="viewing = null"
+                        <template x-if="viewing || picking">
+                            <button type="button" @click="back()"
                                     aria-label="{{ __('shared.back') }}"
                                     class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
                                 <i class="bi bi-chevron-left rtl:rotate-180 text-xl"></i>
@@ -106,9 +106,9 @@
 
                         <div class="min-w-0 flex-1">
                             <h3 class="text-lg font-black leading-tight"
-                                x-text="viewing ? viewing.native : @js(__('translation::messages.languages'))"></h3>
+                                x-text="picking ? @js(__('translation::messages.on_the_poster')) : (viewing ? viewing.native : @js(__('translation::messages.languages')))"></h3>
                             <p class="text-[12px] text-white/85 mt-0.5 truncate"
-                               x-text="viewing ? viewing.name : @js($title)"></p>
+                               x-text="picking ? @js(__('translation::messages.on_the_poster_sub')) : (viewing ? viewing.name : @js($title))"></p>
                         </div>
 
                         <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
@@ -136,7 +136,26 @@
                     </div>
 
                     {{-- ── LEVEL 1 — the languages ──────────────────────────── --}}
-                    <div x-show="! loading && ! viewing" class="px-5 py-4 space-y-2.5">
+                    <div x-show="! loading && ! viewing && ! picking" class="px-5 py-4 space-y-2.5">
+
+                        {{-- What the POSTER offers, which is a different
+                             question from what has been written. A reader can
+                             only pick from this list, and every language not on
+                             it keeps its words — including every correction
+                             typed by hand — for the moment it goes back on.
+                             (Asked for 2026-09-10.) --}}
+                        <button type="button" @click="openPicker()"
+                                class="m-press w-full text-start rounded-2xl border-2 border-gray-200 bg-white p-3.5 flex items-center gap-3">
+                            <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 text-white"
+                                  style="background: {{ $c }};">
+                                <i class="bi bi-eye text-sm"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-foreground">{{ __('translation::messages.on_the_poster') }}</span>
+                                <span class="block text-[11px] text-muted-foreground mt-0.5 truncate" x-text="posterSub()"></span>
+                            </span>
+                            <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
+                        </button>
 
                         <template x-if="languages.length === 0 && ! adding">
                             <div class="rounded-2xl border-2 border-dashed border-gray-200 px-5 py-8 text-center">
@@ -146,9 +165,18 @@
                             </div>
                         </template>
 
+                        {{-- ⚠️ This list is every language that has WORDS, which is
+                             deliberately not the same as the languages the poster
+                             offers — hiding one keeps its text. Without saying so on
+                             the row, an organiser who has just narrowed the poster to
+                             two languages opens this and sees twenty-three flags,
+                             which reads as the setting having been ignored. It was
+                             reported as exactly that (2026-09-10). So an off-poster
+                             language is dimmed and says why. --}}
                         <template x-for="lang in languages" :key="lang.locale">
                             <button type="button" @click="viewing = lang"
-                                    class="m-press w-full text-start rounded-2xl border-2 border-gray-200 bg-white p-3.5 flex items-center gap-3">
+                                    class="m-press w-full text-start rounded-2xl border-2 border-gray-200 bg-white p-3.5 flex items-center gap-3"
+                                    :class="onPoster(lang.locale) ? '' : 'opacity-60'">
                                 <template x-if="lang.flag">
                                     <span :class="'fi fi-' + lang.flag"
                                           class="flex-shrink-0"
@@ -164,6 +192,18 @@
                                     <span class="block text-sm font-bold text-foreground truncate" :dir="lang.dir" x-text="lang.native"></span>
                                     <span class="block text-[11px] text-muted-foreground mt-0.5 truncate" x-text="lang.name"></span>
                                 </span>
+
+                                {{-- Off the poster: said in words, not by the
+                                     dimming alone, and BEFORE the status chip —
+                                     "not readable by anybody" outranks "three
+                                     sentences need review". Tapping through still
+                                     works: the words are all there, and this is
+                                     where they are corrected. --}}
+                                <template x-if="! onPoster(lang.locale)">
+                                    <span class="flex-shrink-0 px-2 py-1 rounded-full text-[10px] font-bold bg-muted text-muted-foreground inline-flex items-center gap-1">
+                                        <i class="bi bi-eye-slash"></i>{{ __('translation::messages.not_on_poster') }}
+                                    </span>
+                                </template>
 
                                 {{-- One chip, saying the thing that most needs
                                      saying about this language right now. --}}
@@ -217,8 +257,116 @@
                         </template>
                     </div>
 
+                    {{-- ── LEVEL 2b — which languages the POSTER offers ─────
+                         A checklist, not a list of removals. Nothing in here
+                         deletes a word: un-ticking a language takes it off the
+                         reader's picker and leaves its translation exactly
+                         where it is, so a poster can be narrowed and widened
+                         again for nothing. Removing a language — which does
+                         throw the words away — stays where it was, inside that
+                         one language's own panel.
+
+                         The default is the honest one: OFFER EVERYTHING, shown
+                         as a switch rather than sixty-eight pre-ticked boxes,
+                         because un-ticking one of those would look like a
+                         change of sixty-seven. --}}
+                    <div x-show="picking" x-cloak class="m-panel-in px-5 py-4 space-y-3">
+
+                        <button type="button" @click="offeredLimited = ! offeredLimited"
+                                class="m-press w-full text-start rounded-2xl border-2 p-3.5 flex items-center gap-3"
+                                :class="offeredLimited ? 'border-gray-200 bg-white' : 'border-transparent'"
+                                :style="offeredLimited ? '' : 'background: {{ $c }}12; border-color: {{ $c }};'">
+                            <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0"
+                                  :class="offeredLimited ? 'bg-muted text-muted-foreground' : 'text-white'"
+                                  :style="offeredLimited ? '' : 'background: {{ $c }}'">
+                                <i class="bi bi-globe2 text-sm"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-foreground">{{ __('translation::messages.offer_every_language') }}</span>
+                                <span class="block text-[11px] text-muted-foreground leading-snug mt-0.5">{{ __('translation::messages.offer_every_language_note', ['count' => count(\App\Translation\Translations::locales()->all())]) }}</span>
+                            </span>
+                            <span class="w-6 h-6 rounded-full border-2 grid place-items-center flex-shrink-0"
+                                  :class="offeredLimited ? 'border-gray-300' : 'border-transparent text-white'"
+                                  :style="offeredLimited ? '' : 'background: {{ $c }}'">
+                                <i class="bi bi-check text-xs" x-show="! offeredLimited"></i>
+                            </span>
+                        </button>
+
+                        <template x-if="offeredLimited">
+                            <div class="space-y-3">
+                                {{-- Searchable, because sixty-eight rows is not
+                                     a choice, it is a wall — the same reasoning
+                                     as the reader's own sheet. --}}
+                                <div class="rounded-2xl border-2 border-gray-200 overflow-hidden">
+                                    <div class="relative border-b border-gray-100">
+                                        <i class="bi bi-search absolute inset-inline-start-0 ms-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"></i>
+                                        <input type="text" x-model="pq"
+                                               placeholder="{{ __('translation::messages.search_languages') }}"
+                                               autocomplete="off" spellcheck="false"
+                                               class="w-full ps-10 pe-4 py-3 text-sm outline-none">
+                                    </div>
+                                    <div style="max-height:340px; overflow-y:auto;">
+                                        <template x-for="row in pickable()" :key="row.code">
+                                            <button type="button" @click="togglePick(row.code)"
+                                                    class="m-press w-full text-start px-4 py-2.5 flex items-center gap-3 border-b border-gray-50">
+                                                <span class="w-5 h-5 rounded border-2 grid place-items-center flex-shrink-0"
+                                                      :class="isPicked(row.code) ? 'border-transparent text-white' : 'border-gray-300'"
+                                                      :style="isPicked(row.code) ? 'background: {{ $c }}' : ''">
+                                                    <i class="bi bi-check text-[10px]" x-show="isPicked(row.code)"></i>
+                                                </span>
+                                                <span class="min-w-0 flex-1">
+                                                    <span class="block text-sm font-semibold text-foreground truncate" :dir="row.dir" x-text="row.native"></span>
+                                                    <span class="block text-[11px] text-muted-foreground truncate" x-text="row.name"></span>
+                                                </span>
+                                                {{-- The language the organiser WROTE in is always offered:
+                                                     its words are the event itself, not a translation of
+                                                     it, and a poster that cannot be read in its own
+                                                     language is not a setting anybody means. --}}
+                                                <template x-if="row.code === sourceLocaleCode">
+                                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted text-muted-foreground flex-shrink-0">{{ __('translation::messages.always') }}</span>
+                                                </template>
+                                                {{-- Written already, so un-ticking it hides rather than
+                                                     wastes. Worth saying on the row. --}}
+                                                <template x-if="row.code !== sourceLocaleCode && written.has(row.code)">
+                                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 flex-shrink-0">{{ __('translation::messages.written') }}</span>
+                                                </template>
+                                            </button>
+                                        </template>
+                                        <p x-show="pickable().length === 0" class="px-4 py-6 text-center text-xs text-muted-foreground">
+                                            {{ __('translation::messages.no_language_found') }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <p class="text-[11.5px] text-muted-foreground leading-snug px-1">
+                                    <i class="bi bi-info-circle me-1"></i>{{ __('translation::messages.hiding_keeps_words') }}
+                                </p>
+                            </div>
+                        </template>
+
+                        <button type="button" @click="savePoster()" :disabled="working"
+                                class="m-press w-full rounded-2xl py-3.5 text-sm font-bold text-white disabled:opacity-50"
+                                style="background: {{ $c }};">
+                            <span x-show="! working">{{ __('translation::messages.save_poster_languages') }}</span>
+                            <span x-show="working">…</span>
+                        </button>
+                    </div>
+
                     {{-- ── LEVEL 2 — one language, field by field ───────────── --}}
-                    <div x-show="viewing" x-cloak class="m-panel-in px-5 py-4 space-y-3">
+                    <div x-show="viewing && ! picking" x-cloak class="m-panel-in px-5 py-4 space-y-3">
+
+                        {{-- Correcting a language nobody can currently read is a
+                             reasonable thing to be doing — getting it right before
+                             putting it up — but not something to discover
+                             afterwards. --}}
+                        <template x-if="viewing && ! onPoster(viewing.locale)">
+                            <button type="button" @click="openPicker()"
+                                    class="m-press w-full text-start rounded-xl bg-muted/50 border border-gray-200 px-3.5 py-3 flex items-center gap-2.5">
+                                <i class="bi bi-eye-slash text-muted-foreground text-sm flex-shrink-0"></i>
+                                <span class="text-[11.5px] leading-snug text-muted-foreground flex-1">{{ __('translation::messages.not_on_poster_note') }}</span>
+                                <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
+                            </button>
+                        </template>
 
                         {{-- Whatever went wrong, said plainly, with the fix. --}}
                         <template x-if="viewing && viewing.status === 'failed'">
@@ -313,6 +461,17 @@
             viewing: null,
             _loaded: false,
 
+            /* Which languages the POSTER offers. `offeredLimited` false means
+               "all of them", which is the default and is NOT the same as a
+               fully-ticked list — see the panel's own note. `offered` is only
+               meaningful while limited. */
+            picking: false,
+            pq: '',
+            offered: [],
+            offeredLimited: false,
+            sourceLocaleCode: sourceLocale,
+            written: new Set(),
+
             get needsReview() {
                 return this.languages.reduce((n, l) => n + (l.stale || 0), 0);
             },
@@ -356,12 +515,14 @@
             /* Escape goes UP one level before it closes the sheet — inside a
                language, the expected exit is back to the list. */
             back() {
+                if (this.picking) { this.picking = false; return; }
                 this.viewing ? (this.viewing = null) : this.close();
             },
 
             close() {
                 this.open = false;
                 this.adding = false;
+                this.picking = false;
             },
 
             async load(silent = false) {
@@ -376,6 +537,11 @@
                     this.languages = d.languages || [];
                     this.available = d.available || [];
                     this.sourceName = d.source_name || sourceLocale;
+                    this.offered = d.offered || [];
+                    this.offeredLimited = !! d.offered_limited;
+                    // Which languages already HAVE words, so the checklist can
+                    // say that un-ticking one hides rather than wastes.
+                    this.written = new Set(this.languages.map(l => l.locale));
                     this._loaded = true;
 
                     // Keep the open panel pointed at the refreshed copy of the
@@ -386,6 +552,74 @@
                 } catch (e) {
                     window.showToast('error', @js(__('personal.event_show_action_failed')));
                 } finally { this.loading = false; }
+            },
+
+            /* The closed row's summary. Counted from the EFFECTIVE list the
+               server sent, never from the local ticks, so a row read before
+               anything is saved says what the poster is actually doing. */
+            posterSub() {
+                if (! this._loaded) return '…';
+                if (! this.offeredLimited) {
+                    return @js(__('translation::messages.every_language', ['count' => ':n']))
+                        .replace(':n', this.available.length);
+                }
+
+                return @js(__('translation::messages.n_languages', ['count' => ':n']))
+                    .replace(':n', this.offered.length);
+            },
+
+            /* Whether a language is currently readable on the poster. Read off
+               the EFFECTIVE list the server sent, so it is right in both modes
+               — unrestricted, where everything is offered, and restricted,
+               where `offered` is the organiser's own list plus the source. */
+            onPoster(code) {
+                return ! this._loaded || ! this.offeredLimited || this.offered.includes(code);
+            },
+
+            openPicker() {
+                this.picking = true;
+                this.viewing = null;
+                this.adding = false;
+                this.pq = '';
+            },
+
+            pickable() {
+                const q = this.pq.trim().toLowerCase();
+
+                return this.available.filter(r =>
+                    ! q || r.name.toLowerCase().includes(q) || r.native.toLowerCase().includes(q)
+                );
+            },
+
+            /* The source language reads as ticked and cannot be un-ticked. The
+               server adds it back regardless (Translations::offered), so a box
+               that appeared to turn it off would be a control that lies. */
+            isPicked(code) {
+                return code === sourceLocale || this.offered.includes(code);
+            },
+
+            togglePick(code) {
+                if (code === sourceLocale) return;
+
+                this.offered = this.offered.includes(code)
+                    ? this.offered.filter(c => c !== code)
+                    : [...this.offered, code];
+            },
+
+            async savePoster() {
+                this.working = true;
+                try {
+                    const d = await this.request('PUT',
+                        @js(route('me.events.translations.offered', ['event' => $event])),
+                        { limited: this.offeredLimited, locales: this.offered });
+
+                    this.offered = d.offered || [];
+                    this.offeredLimited = !! d.offered_limited;
+                    this.picking = false;
+                    // request() has already raised the success toast.
+                } catch (e) {
+                    window.showToast('error', @js(__('personal.event_show_action_failed')));
+                } finally { this.working = false; }
             },
 
             addable() {

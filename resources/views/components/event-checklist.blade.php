@@ -102,20 +102,20 @@
          Teleported to <body> so a transformed ancestor (the mobile shell's
          stagger animation) can't clip a fixed overlay. --}}
     <template x-teleport="body">
-        <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex flex-col justify-end sm:items-center sm:justify-center sm:p-4">
+        <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex flex-col justify-end items-center">
             <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/50" @click="open = false"></div>
 
             <div x-show="open"
                  x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="translate-y-full sm:translate-y-4 sm:scale-95 sm:opacity-0"
-                 x-transition:enter-end="translate-y-0 sm:scale-100 sm:opacity-100"
+                 x-transition:enter-start="translate-y-full"
+                 x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="translate-y-0 sm:scale-100 sm:opacity-100"
-                 x-transition:leave-end="translate-y-full sm:translate-y-4 sm:scale-95 sm:opacity-0"
-                 class="relative max-h-[88vh] w-full sm:max-w-lg flex flex-col bg-background rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden">
+                 x-transition:leave-start="translate-y-0"
+                 x-transition:leave-end="translate-y-full"
+                 class="relative max-h-[88vh] w-full sm:max-w-lg flex flex-col bg-background rounded-t-3xl shadow-2xl overflow-hidden">
 
                 {{-- Header: the same standing, so opening the sheet never loses it --}}
-                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
                      style="background: linear-gradient(150deg, {{ $ckColor }}, {{ $ckColor }}b0);">
                     <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
                     <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>

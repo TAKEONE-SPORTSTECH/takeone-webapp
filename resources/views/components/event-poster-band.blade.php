@@ -26,6 +26,9 @@
     surfaces drift apart, which is the whole reason this work exists
     (CLAUDE.md → *Shared Stays Shared*).
 
+    Two optional slots sit on that top line: `lead`, at the head of the
+    classification (it REPLACES the dash), and `controls` on the trailing edge.
+
     What is NOT shared is the CONTROL ROW, and that is the point of the slot: a
     stranger's poster carries reopen-cover · gear · share · account, while the
     member page carries back · console · open-public-page · QR · share. Same
@@ -43,15 +46,37 @@
     <div class="absolute rounded-full" style="right:-56px; top:-56px; width:190px; height:190px; background:rgba(255,255,255,.07);"></div>
     <div class="absolute rounded-full" style="right:22px; bottom:26px; width:96px; height:96px; background:rgba(255,255,255,.06);"></div>
 
-    {{-- Control row: the dash and the classification on the leading edge, the
-         caller's controls on the trailing one. --}}
-    <div class="relative flex items-center justify-between">
-        <span class="flex items-center" style="gap:10px;">
+    {{-- Control row: the classification on the leading edge, the caller's
+         controls on the trailing one.
+
+         `lead` is what sits at the HEAD of the classification, and it replaces
+         the dash rather than joining it — the dash was the visual anchor of
+         that line, and two anchors read as one of them being a mistake. The
+         public poster puts its Home control there (asked for 2026-09-09); with
+         no `lead` slot the dash renders exactly as it always has, which is what
+         /me/events/{uuid} still does. --}}
+    {{-- Three columns, not two: the lead, the classification CENTRED between
+         the edges, and the controls. `justify-between` on two children put the
+         classification hard against the leading edge; giving it the middle
+         column and letting it grow is what centres it (asked for 2026-09-09).
+
+         It is centred between the two edge groups rather than on the band's
+         true midpoint. Those groups are different widths — one control leading,
+         two trailing — so an absolutely-centred line would sit correct on a
+         wide screen and run underneath the controls on a phone, where this
+         classification is thirty-odd tracked capitals and the space between
+         them is at its narrowest. --}}
+    <div class="relative flex items-center" style="gap:10px;">
+        @isset($lead)
+            {{ $lead }}
+        @else
             <span class="flex-none" style="width:38px; height:3px; border-radius:2px; background:rgba(255,255,255,.85);"></span>
-            @if($eyebrow)
-                <span class="uppercase" style="font-size:11px; font-weight:600; letter-spacing:.2em; color:rgba(255,255,255,.85);">{{ $eyebrow }}</span>
-            @endif
-        </span>
+        @endisset
+
+        {{-- Always present, even with no eyebrow to hold: it is what pushes the
+             controls to the trailing edge now that the row no longer does it. --}}
+        <span class="flex-1 min-w-0 text-center uppercase"
+              style="font-size:11px; font-weight:600; letter-spacing:.2em; color:rgba(255,255,255,.85);">{{ $eyebrow }}</span>
 
         {{-- 12px between the controls. It went 8 → 12 → 18 and 18 was too far:
              at 40px round each they stopped reading as one cluster belonging to

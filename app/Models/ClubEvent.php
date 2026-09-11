@@ -11,9 +11,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use App\Clubs\Models\Tenant;
+use App\Translation\Contracts\LimitsOfferedLocales;
 use App\Translation\Contracts\TranslatableContent;
 
-class ClubEvent extends Model implements TranslatableContent
+class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableContent
 {
     use TranslatesAttributes;
     use BelongsToTenant, HasFactory, LogsActivity;
@@ -210,6 +211,7 @@ class ClubEvent extends Model implements TranslatableContent
         'courts' => 'integer',
         'break_minutes' => 'integer',
         'day_courts' => 'array',
+        'offered_locales' => 'array',
         'scoreboard_settings' => 'array',
         'is_archived' => 'boolean',
         'spectator_enabled' => 'boolean',
@@ -545,6 +547,40 @@ class ClubEvent extends Model implements TranslatableContent
     public function sourceLocale(): string
     {
         return $this->source_locale ?: config('app.fallback_locale', 'en');
+    }
+
+    /**
+     * The languages this event's poster offers, or NULL for all of them.
+     *
+     * Deliberately NOT mass-assignable: it is written by one endpoint — the
+     * translation module's own `me.events.translations.offered` — which checks
+     * who is asking and validates every code against the served list. A
+     * language allow-list arriving through an event's own edit form would be a
+     * list of arbitrary strings landing in a column that decides what a public
+     * page will serve.
+     *
+     * (Named by ROUTE rather than by class on purpose: a module's controllers
+     * are private, and ModuleBoundaryTest reads comments too — correctly, since
+     * a comment naming an internal is the first step to code doing it.)
+     *
+     * The stored value is normalised on the way in, so this only has to hand
+     * back what is there — and hands back null rather than an empty array when
+     * the column is empty, because the contract makes those mean the same thing
+     * and one shape is easier to reason about than two.
+     *
+     * @return array<int, string>|null
+     */
+    public function offeredLocales(): ?array
+    {
+        $stored = $this->offered_locales;
+
+        if (! is_array($stored)) {
+            return null;
+        }
+
+        $clean = array_values(array_filter($stored, 'is_string'));
+
+        return $clean === [] ? null : $clean;
     }
 
     /** The priced entry lines — "Gi entry", "Late entry" — whose labels are words. */

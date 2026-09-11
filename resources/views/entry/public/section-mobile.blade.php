@@ -13,6 +13,9 @@
     BODY — and the body partials are the same ones the event page used when
     these were inline sections, so nothing was rewritten to move them here.
 
+    The band's controls are the shared row (partials/event-band-controls) with
+    `leading = back`, so this page and the poster differ by exactly one glyph.
+
     Expects, from App\Http\Controllers\PublicEventController:
       $e            the payload from App\Events\Support\PublicEvent
       $section      'draw' | 'officials' | 'gallery' | 'participants'
@@ -52,35 +55,39 @@
 @endphp
 <div x-data="publicEvent()" class="-mx-4 -mt-4 pb-4">
 
-    {{-- ===== The band (Design Rule #6) =====
-         Back is a LABELLED pill, not a bare arrow: on a screen this deep the
-         only thing the reader wants to know is what they are going back TO. --}}
+    {{-- ===== The band (Design Rule #6) ===== --}}
     <header class="m-hero px-5 pt-5 pb-14 text-white relative overflow-hidden"
             style="background: {{ \App\Support\Palette::eventBand($e['color'], '150deg') }};">
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
-        <div class="flex items-center justify-between gap-2 relative z-50">
-            {{-- The poster, or the platform event page when the reader came
-                 from there (`?from=me`, decided in PublicEventController::
-                 section() — a KEY, never a URL). Back has to name where it goes
-                 and get there by address, and on this surface "where I came
-                 from" is a real question: these pages are entered from both. --}}
-            <a href="{{ $backUrl ?? route('events.public', ['event' => $e['key']]) }}"
-               class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
-           aria-label="{{ __('personal.event_show_event') }}" title="{{ __('personal.event_show_event') }}">
-                <i class="bi bi-chevron-left"></i>
-            </a>
+        {{-- The SAME control row as the poster and /me/events/{uuid} — see
+             partials/event-band-controls.
 
-            <button type="button" @click="share()" aria-label="{{ __('events.public_share') }}"
-                    class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
-                <i class="bi bi-share text-base"></i>
-            </button>
+             This page drew its own until 2026-09-09, and it had all the drift
+             that predicts: `justify-between` across three children, which put
+             Share in the dead centre of the band instead of beside the other
+             trailing control; the 40px circle written out in Tailwind at a
+             different alpha to `.ev-ctl`; a back chevron missing its
+             `rtl:rotate-180`; `bi-share` where the poster used
+             `bi-share-fill`; and a full-screen account SHEET where the poster
+             had an anchored dropdown.
 
-            {{-- The same account control the poster carries, so signing out is
-                 reachable from every page a reader lands on, not just the one. --}}
-            <x-event-account :event="$e['key']" :color="$e['color']"
-                class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur text-base" />
+             Only the leading control differs from the poster now, which is
+             exactly what `leading` is for: there IS somewhere to go back to
+             from here. --}}
+        <div class="relative z-50">
+            @include('partials.event-band-controls', [
+                'mode' => 'public',
+                'leading' => 'back',
+                'backHref' => $backUrl ?? route('events.public', ['event' => $e['key']]),
+                'backLabel' => __('personal.event_show_event'),
+                'e' => $e,
+                'console' => $console ?? null,
+                'signedIn' => $signedIn ?? auth()->check(),
+                'signedInName' => auth()->user()?->full_name ?? auth()->user()?->name,
+                'signOutUrl' => route('events.public.sign-out', ['event' => $e['key']]),
+            ])
         </div>
 
         {{-- Identity: the section's own chip, then the event, then whose it is. --}}
