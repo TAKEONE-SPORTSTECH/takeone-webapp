@@ -240,7 +240,14 @@
     </div>
     <div style="position:absolute; top:-6%; bottom:-6%; left:50%; width:3px; margin-left:-1.5px; transform:rotate(10.15deg); pointer-events:none; background:linear-gradient(to bottom, transparent, rgba(253,196,54,0.9) 20%, rgba(253,196,54,0.9) 80%, transparent); filter:blur(1px);"></div>
 
-    <div style="position:absolute; left:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0; animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
+    {{-- ⚠️ `bottom` here is measured against the Match · Court · Referee strip
+         at the foot of this layer, not against the screen edge: the strip is
+         centred and ~830px wide, the two fighter blocks run 44% in from each
+         side, and they overlap horizontally — so whatever clears the strip is
+         as low as this can go. Lowered 2026-09-12 at the organiser's request;
+         the strip came down with it to buy the room. The canvas is a fixed
+         1920x1080, which is why these can be hand-measured at all. --}}
+    <div style="position:absolute; left:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; z-index:6; max-width:44%; min-width:0; animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1362d1; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_blue') }}</div>
       <div style="display:flex; align-items:center; gap:15.1px;">
         <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
@@ -254,7 +261,7 @@
       <div id="vsBlueChips" style="display:flex; flex-wrap:wrap; gap:9.7px; margin-top:5.4px;"></div>
     </div>
 
-    <div style="position:absolute; right:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right; animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; right:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-end; gap:10px; z-index:6; max-width:44%; min-width:0; text-align:right; animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#0a0b10; background:#e6ebf2; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
       <div style="display:flex; align-items:center; gap:15.1px; flex-direction:row-reverse;">
         <div id="vsWhiteFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
@@ -276,6 +283,36 @@
         <div style="height:2px; width:64.8px; background:linear-gradient(to right, #fdc436, transparent);"></div>
       </div>
       <div id="vsWeight" style="font-weight:600; font-size:28.1px; letter-spacing:0.3em; text-transform:uppercase; color:rgba(232,230,224,0.75);"></div>
+
+      {{-- Match · Court · Referee, moved up here 2026-09-12 so the two fighters
+           can have the whole bottom band.
+
+           It used to sit at the foot of the screen, centred and ~830px wide,
+           overlapping the two name blocks that run 44% in from each side — so
+           it, not the screen edge, was what stopped them going any lower. Up
+           here it costs nothing: this is the metadata corner already (event,
+           round, weight), and these three are the same kind of fact.
+
+           ⚠️ It is a FLOW child now, so it cannot keep riseC/dropIn — both of
+           those carry translate(-50%) for absolutely-positioned centred
+           elements and would shove it half a screen to the left. riseUp is the
+           translateY-only one. --}}
+  <div style="margin-top:6.5px; display:flex; gap:17.3px; align-items:center; flex-wrap:wrap; justify-content:center; max-width:100%; animation:riseUp 0.8s 1.3s cubic-bezier(0.22,1,0.36,1) both;">
+        <div style="display:flex; align-items:baseline; gap:8.6px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.45); padding:9px 22px; backdrop-filter:blur(6px);">
+          <span style="font-weight:600; font-size:23.8px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.court_match') }}</span>
+          <span id="vsMatchNo" style="font-family:'Anton',sans-serif; font-size:34.6px; color:#fff;"></span>
+        </div>
+        <div style="width:6px; height:6px; transform:rotate(45deg); background:#fdc436;"></div>
+        <div style="display:flex; align-items:baseline; gap:8.6px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.45); padding:9px 22px; backdrop-filter:blur(6px);">
+          <span style="font-weight:600; font-size:23.8px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.court_court') }}</span>
+          <span id="vsCourt" style="font-family:'Anton',sans-serif; font-size:34.6px; color:#fff;"></span>
+        </div>
+        <div style="width:6px; height:6px; transform:rotate(45deg); background:#fdc436;"></div>
+        <div id="vsRefWrap" style="display:flex; align-items:baseline; gap:8.6px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.45); padding:9px 22px; backdrop-filter:blur(6px);">
+          <span style="font-weight:600; font-size:23.8px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.vs_referee') }}</span>
+          <span id="vsReferee" style="font-weight:700; font-size:28.1px; letter-spacing:0.08em; color:#fff; text-transform:uppercase;"></span>
+        </div>
+      </div>
     </div>
 
     <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); z-index:7; pointer-events:none; display:flex; align-items:center; justify-content:center; animation:vsSlam 0.7s 1.1s cubic-bezier(0.22,1,0.36,1) both;">
@@ -287,22 +324,6 @@
     </div>
     <div style="position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:9; animation:flashOut 0.9s 1.5s ease-out both;"></div>
 
-    <div style="position:absolute; bottom:32.4px; left:50%; transform:translateX(-50%); display:flex; gap:17.3px; z-index:8; align-items:center; flex-wrap:wrap; justify-content:center; max-width:94%; animation:riseC 0.8s 1.3s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="display:flex; align-items:baseline; gap:8.6px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.45); padding:10.8px 23.8px; backdrop-filter:blur(6px);">
-        <span style="font-weight:600; font-size:23.8px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.court_match') }}</span>
-        <span id="vsMatchNo" style="font-family:'Anton',sans-serif; font-size:34.6px; color:#fff;"></span>
-      </div>
-      <div style="width:6px; height:6px; transform:rotate(45deg); background:#fdc436;"></div>
-      <div style="display:flex; align-items:baseline; gap:8.6px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.45); padding:10.8px 23.8px; backdrop-filter:blur(6px);">
-        <span style="font-weight:600; font-size:23.8px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.court_court') }}</span>
-        <span id="vsCourt" style="font-family:'Anton',sans-serif; font-size:34.6px; color:#fff;"></span>
-      </div>
-      <div style="width:6px; height:6px; transform:rotate(45deg); background:#fdc436;"></div>
-      <div id="vsRefWrap" style="display:flex; align-items:baseline; gap:8.6px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.45); padding:10.8px 23.8px; backdrop-filter:blur(6px);">
-        <span style="font-weight:600; font-size:23.8px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.vs_referee') }}</span>
-        <span id="vsReferee" style="font-weight:700; font-size:28.1px; letter-spacing:0.08em; color:#fff; text-transform:uppercase;"></span>
-      </div>
-    </div>
   </div>
 
   {{-- ── The running order ──────────────────────────────────────────────────
