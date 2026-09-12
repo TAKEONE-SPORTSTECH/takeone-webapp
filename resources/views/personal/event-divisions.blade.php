@@ -75,6 +75,7 @@
                            :divisions="$e['division_rows'] ?? []"
                            :phases="$e['phase_defs'] ?? []"
                            :days="$e['day_count'] ?? 1"
+                           :presets="$presets ?? []"
                            :color="$e['color']" :can-manage="true" />
     </div>
 </div>

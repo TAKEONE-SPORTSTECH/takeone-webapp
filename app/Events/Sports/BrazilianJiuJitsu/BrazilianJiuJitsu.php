@@ -33,9 +33,50 @@ class BrazilianJiuJitsu extends AbstractCombatSport
         return __('sport-brazilianjiujitsu::messages.sport_label');
     }
 
-    public function weightDivisions(): array
+    /** The rulesets this sport weighs in under, and the table each reads. */
+    public const RULESETS = ['gi' => 'bjj_divisions', 'nogi' => 'bjj_nogi_divisions'];
+
+    /**
+     * The weight table for a ruleset.
+     *
+     * Defaults to GI, which is what every existing caller meant when there was
+     * only one table — so nothing that already asks for weightDivisions() has
+     * to know a second one now exists.
+     */
+    public function weightDivisions(string $ruleset = 'gi'): array
     {
-        return config('bjj_divisions', []);
+        return config(self::RULESETS[$ruleset] ?? self::RULESETS['gi'], []);
+    }
+
+    /**
+     * The age each IBJJF band covers, as DATA rather than as a comment.
+     *
+     * classify() has always known these — they were a `match` inside it — but
+     * only well enough to answer "which band is this athlete in". Building a
+     * division needs the other direction: "what ages does Juvenile mean", so a
+     * preset can fill in min_age and max_age instead of an organiser typing 16
+     * and 17 and hoping they match what registration will decide.
+     *
+     * One source, so the two can never disagree: classify() reads this too.
+     *
+     * `null` for an open end — Master has no upper age, and a bracket that
+     * refused a 70-year-old would be a bug rather than a rule.
+     *
+     * ⚠️ Bands are federation property. These are IBJJF's; a national body
+     * running its own kids ladder edits HERE, and both directions follow.
+     *
+     * @return array<string, array{min: int, max: int|null}>
+     */
+    public static function ageBands(): array
+    {
+        return [
+            'Kids' => ['min' => 4, 'max' => 15],
+            'Juvenile' => ['min' => 16, 'max' => 17],
+            'Adult' => ['min' => 18, 'max' => 29],
+            // Master 1 opens at 30 and every band above it shares these
+            // weights, which is why they share one entry.
+            'Master' => ['min' => 30, 'max' => null],
+        ];
     }
 
     /**
@@ -50,29 +91,34 @@ class BrazilianJiuJitsu extends AbstractCombatSport
      *
      * @param  string  $gender  "male" or "female"
      * @param  int  $age  Age in years
-     * @param  float  $weight  Weight in kg, with the gi
+     * @param  float  $weight  Weight in kg, as weighed under $ruleset
+     * @param  string  $ruleset  'gi' (default) or 'nogi'
      * @return array{age_group: string, category: string, name: ?string, min: float, max: float}|null
      */
-    public function classify(string $gender, int $age, float $weight): ?array
+    public function classify(string $gender, int $age, float $weight, string $ruleset = 'gi'): ?array
     {
         $gender = strtolower($gender) === 'female' ? 'female' : 'male';
 
-        $group = match (true) {
-            $age >= 4 && $age <= 15 => 'Kids',
-            $age >= 16 && $age <= 17 => 'Juvenile',
-            $age >= 18 && $age <= 29 => 'Adult',
-            // Master 1 opens at 30 and the bands above it share these weights,
-            // so age alone cannot pick between them: an event that runs a
-            // specific Master band selects that division explicitly.
-            $age >= 30 => 'Master',
-            default => null,   // younger than 4
-        };
+        // Read from the one table, so placing an athlete and building a
+        // division can never disagree about what "Juvenile" means.
+        $group = null;
+
+        foreach (self::ageBands() as $band => $range) {
+            if ($age >= $range['min'] && ($range['max'] === null || $age <= $range['max'])) {
+                $group = $band;
+                break;
+            }
+        }
 
         if ($group === null) {
             return null;
         }
 
-        foreach (config('bjj_divisions.'.$group.'.'.$gender, []) as $class) {
+        // The same athlete is a different weight class with and without a gi,
+        // so the table is chosen before anybody is placed in it.
+        $table = $this->weightDivisions($ruleset);
+
+        foreach ($table[$group][$gender] ?? [] as $class) {
             if ($weight >= $class['min'] && $weight <= $class['max']) {
                 return [
                     'age_group' => $group,

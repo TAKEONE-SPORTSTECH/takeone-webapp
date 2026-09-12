@@ -4512,6 +4512,14 @@ class PersonalEventController extends Controller
 
         return view('personal.event-divisions', [
             'e' => $this->eventView($event, $me->id, $myReg, true),
+            /*
+             * The sport's own tables, so this page can offer the federation's
+             * weight classes instead of asking an organiser to type nine of
+             * them. Comes from the event's TYPE (formCatalog) — the controller
+             * never names a sport to fetch a table, and a type with no table
+             * simply offers no preset.
+             */
+            'presets' => rescue(fn () => $this->typeFor($event)->formCatalog(), [], false) ?: [],
         ]);
     }
 
@@ -4539,6 +4547,84 @@ class PersonalEventController extends Controller
         ]);
     }
 
+    /**
+     * Copy a division — its SETTINGS, and nothing that happened in it.
+     *
+     * An event is built out of near-identical divisions: the same age band and
+     * belt at six weights, the same six again without the gi. Typing each from
+     * scratch is how a name ends up spelled two ways and a schedule ends up
+     * pointing at the wrong day, and it is the slowest part of setting an event
+     * up. So this takes one and makes another exactly like it.
+     *
+     * What is copied: everything that says what the division is FOR — the
+     * range, the belts, the format, the capacity, the schedule, and whether it
+     * is a heading.
+     *
+     * What is NOT, and must never be: entrants, bouts, the draw, the podium, a
+     * status further along than "enrolling". A copy is a new, empty division
+     * that happens to be configured like its neighbour — it has not been
+     * entered by anyone and nothing has been fought in it. Copying a draw would
+     * put the same athlete in two brackets with no one having entered them.
+     *
+     * `replicate()` rather than a hand-built list of fields (the same reasoning
+     * as a second entry, below): a column added to divisions later is then
+     * copied automatically, and nothing silently stops being duplicated.
+     *
+     * It lands DIRECTLY BELOW the original rather than at the end, because the
+     * copy is nearly always the next thing in the sequence the organiser is
+     * building — and on a list ordered by hand, appending would put it a drag
+     * away from where it belongs.
+     */
+    public function duplicateDivision(Request $request, ClubEvent $event, int $division): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $source = $this->divisionOf($event, $division);
+
+        $copy = $source->replicate([
+            // Never carried over: what HAPPENED in the original.
+            'podium', 'draw_state', 'draw_count', 'created_at', 'updated_at',
+        ]);
+
+        $copy->status = 'enrolling';
+        $copy->podium = null;
+        $copy->draw_state = null;
+        $copy->draw_count = null;
+
+        // A name the organiser can see is a copy, and can type over. Kept
+        // inside the column's own limit rather than trusting the suffix to fit.
+        $copy->name = mb_substr(
+            trim(__('events.division_copy_name', ['name' => (string) $source->name])), 0, 80
+        );
+
+        DB::transaction(function () use ($event, $source, $copy) {
+            /*
+             * Room for it immediately below the original: everything after the
+             * source moves down one, and the copy takes the freed place. Done
+             * in the same transaction as the insert, so no other reader ever
+             * sees two divisions claiming one position.
+             */
+            EventCategory::where('event_id', $event->id)
+                ->where('sort_order', '>', (int) $source->sort_order)
+                ->orderByDesc('sort_order')
+                ->increment('sort_order');
+
+            $copy->sort_order = (int) $source->sort_order + 1;
+            $copy->save();
+        });
+
+        $this->pushDivisionsChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.division_copied'),
+            'division' => $this->divisionPayload($copy->fresh()),
+            // Where it went, so the list can drop it in without re-reading.
+            'after' => $source->id,
+        ]);
+    }
+
     /** Rename a group, or change what it is for. */
     public function updateDivision(Request $request, ClubEvent $event, int $division): JsonResponse
     {
@@ -4548,7 +4634,26 @@ class PersonalEventController extends Controller
         $category = $this->divisionOf($event, $division);
         $category->update($this->headingSafe($this->validateDivision($request, $event, $category), $category));
 
-        $this->redrawDivision($event, $category->fresh());
+        /*
+         * Re-cut the draw only when something the DRAW depends on changed.
+         *
+         * A division's name is a label: nothing in a bracket is derived from
+         * it. Re-cutting on every save meant renaming one rebuilt its matches
+         * — expensive on a real entry list, and published to every console as
+         * though the draw had moved. It became visible the day the list started
+         * renaming divisions by itself (the generated names re-letter after a
+         * drag), which could fire several re-cuts from one gesture.
+         *
+         * The range, the belts, the cap and the format DO decide who is in the
+         * bracket and how it is cut, so those still redraw exactly as before.
+         */
+        if ($category->wasChanged([
+            'gender', 'min_age', 'max_age', 'min_weight', 'max_weight',
+            'belts', 'capacity', 'format', 'is_heading', 'schedule',
+        ])) {
+            $this->redrawDivision($event, $category->fresh());
+        }
+
         $this->pushDivisionsChanged($event);
 
         return response()->json([
@@ -4792,6 +4897,108 @@ class PersonalEventController extends Controller
      * this group never takes anything from another one. See
      * updateDivisionMembers().
      */
+    /**
+     * Who this division WOULD hold, before it exists.
+     *
+     * An organiser building a weight class is answering one question — "is
+     * there anybody in this?" — and until now they could only answer it by
+     * saving the division, opening the entrant picker and counting. A range
+     * that catches nobody is worth knowing about while it is still being
+     * typed: it is either the wrong numbers, or a division the event should
+     * not run at all.
+     *
+     * Judged by the SAME rule the roster is judged by — a throwaway
+     * EventCategory carrying the proposed bounds, handed to DivisionRange. No
+     * second definition of "does this athlete fit", which is the only way the
+     * preview and the picker can be trusted to agree.
+     *
+     * ⚠️ The category is NEVER saved. It exists for the length of this request
+     * so the rule has something to read, and is not touched by any write path.
+     *
+     * Returns counts and a handful of faces, nothing else: this is a preview
+     * beside a form, not a roster. Names and photos only, photos only where the
+     * member made them public (Profile Pictures Are Portrait 3:4).
+     */
+    public function previewDivision(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate([
+            'gender' => ['nullable', Rule::in(['Male', 'Female'])],
+            'min_age' => ['nullable', 'integer', 'min:2', 'max:100'],
+            'max_age' => ['nullable', 'integer', 'min:2', 'max:100'],
+            'min_weight' => ['nullable', 'numeric', 'min:10', 'max:300'],
+            'max_weight' => ['nullable', 'numeric', 'min:10', 'max:300'],
+            'belts' => ['nullable', 'array', 'max:12'],
+            'belts.*' => ['string', Rule::in(array_column(\App\Sports\Combat\BeltRank::ladder(), 'value'))],
+            // The division being edited, so its own entrants read as "already
+            // here" rather than as strangers who happen to fit.
+            'division' => ['nullable', 'integer'],
+        ]);
+
+        // Bounds the wrong way round are not an error here — the organiser is
+        // mid-typing — they simply match nobody, which is what the preview will
+        // then say.
+        $probe = new EventCategory($data + ['event_id' => $event->id]);
+        $range = $probe->range();
+
+        $current = $data['division'] ?? null;
+
+        $people = ClubEventRegistration::where('event_id', $event->id)
+            ->where('role', 'participant')
+            ->with(['user:id,full_name,name,gender,birthdate,profile_picture,profile_picture_is_public,updated_at'])
+            ->get()
+            // One card per PERSON, not per entry: an athlete in three divisions
+            // is one human being and must be counted once.
+            ->groupBy('user_id');
+
+        $fits = [];
+        $unknown = 0;
+        $here = 0;
+
+        foreach ($people as $entries) {
+            $rep = $entries->first();
+            $judged = $range->judge($rep);
+
+            if ($judged['fit'] === 'out') {
+                continue;
+            }
+
+            if ($judged['fit'] === 'unknown') {
+                $unknown++;
+            }
+
+            if ($current && $entries->contains(fn (ClubEventRegistration $r) => (int) $r->category_id === (int) $current)) {
+                $here++;
+            }
+
+            $fits[] = [
+                'name' => $rep->user?->full_name ?: $rep->user?->name ?: __('events.athlete'),
+                'gender' => $rep->user?->gender ?: null,
+                'fit' => $judged['fit'],
+                'photo' => $rep->photo
+                    ? file_url($rep->photo)
+                    : (($rep->user?->profile_picture && $rep->user->profile_picture_is_public)
+                        ? file_url($rep->user->profile_picture).'?v='.($rep->user->updated_at?->timestamp ?? 0)
+                        : null),
+            ];
+        }
+
+        usort($fits, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        return response()->json([
+            'success' => true,
+            'total' => $people->count(),          // everybody entered in the event
+            'matched' => count($fits),            // who this range would hold
+            'unknown' => $unknown,                // matched, but something is missing
+            'here' => $here,                      // of those, already in this division
+            // A handful of faces. The rest are a number — a preview beside a
+            // form must not become a roster nobody asked to load.
+            'people' => array_slice($fits, 0, 12),
+        ]);
+    }
+
     public function divisionCandidates(Request $request, ClubEvent $event, int $division): JsonResponse
     {
         $me = Auth::user();
@@ -5080,6 +5287,7 @@ class PersonalEventController extends Controller
             'max_age' => null,
             'min_weight' => null,
             'max_weight' => null,
+            'belts' => null,
             'schedule' => [],
             'note' => $data['note'] ?? null,
         ];
@@ -5115,10 +5323,39 @@ class PersonalEventController extends Controller
             'is_heading' => ['nullable', 'boolean'],
             'weight_class' => ['nullable', 'string', 'max:40'],
             'gender' => ['nullable', Rule::in(['Male', 'Female'])],
+            /*
+             * ⚠️ `gte:` only where there IS something to compare against.
+             *
+             * A bare `gte:min_weight` fails when min_weight is absent — Laravel
+             * compares "70" against "" and refuses — so a division with only an
+             * upper bound could never be saved. That is "-70 kg": the commonest
+             * shape in the sport, and every weight class in the IBJJF table bar
+             * the heaviest. The error read "the heaviest weight cannot be lower
+             * than the lightest", which is nonsense when no lightest was given,
+             * so it looked like a mystery rather than a rule — and the weights
+             * ended up typed into division NAMES instead of into the columns.
+             *
+             * Only relaxed where it was impossible to satisfy: two bounds given
+             * the wrong way round are still refused, which is the rule's job.
+             */
             'min_age' => ['nullable', 'integer', 'min:2', 'max:100'],
-            'max_age' => ['nullable', 'integer', 'min:2', 'max:100', 'gte:min_age'],
+            'max_age' => ['nullable', 'integer', 'min:2', 'max:100',
+                Rule::when($request->filled('min_age'), ['gte:min_age'])],
             'min_weight' => ['nullable', 'numeric', 'min:10', 'max:300'],
-            'max_weight' => ['nullable', 'numeric', 'min:10', 'max:300', 'gte:min_weight'],
+            'max_weight' => ['nullable', 'numeric', 'min:10', 'max:300',
+                Rule::when($request->filled('min_weight'), ['gte:min_weight'])],
+            /*
+             * Which belts the division is for. A LIST, because a division is
+             * regularly opened to several grades at once ("Blue, Purple") to
+             * make a runnable bracket out of a small entry list; an empty list
+             * means ANY, like every other column here.
+             *
+             * Held to the sport's own ladder (BeltRank::ladder), lowercase, so
+             * the column can be read by the picker and by the generated name
+             * rather than being another free-text spelling.
+             */
+            'belts' => ['nullable', 'array', 'max:12'],
+            'belts.*' => ['string', Rule::in(array_column(\App\Sports\Combat\BeltRank::ladder(), 'value'))],
             // How many may enter. Null is "no cap", which is the normal case —
             // an organiser caps a division to keep a mat's day finite, not
             // because a bracket needs it.
@@ -5306,7 +5543,56 @@ class PersonalEventController extends Controller
     }
 
     /** One group, as the board and the picker read it. */
-    private function divisionPayload(EventCategory $category): array
+    /**
+     * The faces in each division, for a whole list, in ONE query.
+     *
+     * The list draws a stack of portraits per division, and asking per card
+     * would be a query per division on a page that already runs three of them
+     * per card. So every division's entrants are read together and handed back
+     * keyed by division.
+     *
+     * Only what a face needs — a name, a gender for the drawn fallback, and a
+     * photo the member made public (CLAUDE.md → Profile Pictures Are Portrait
+     * 3:4). A handful each: the card shows a stack and a remainder, never a
+     * roster.
+     *
+     * @param  array<int, int>  $categoryIds
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    private function facesFor(array $categoryIds, int $per = 8): array
+    {
+        if (! $categoryIds) {
+            return [];
+        }
+
+        $rows = ClubEventRegistration::whereIn('category_id', $categoryIds)
+            ->where('role', 'participant')
+            ->with(['user:id,full_name,name,gender,profile_picture,profile_picture_is_public,updated_at'])
+            ->orderBy('id')
+            ->get();
+
+        $out = [];
+
+        foreach ($rows->groupBy('category_id') as $categoryId => $entries) {
+            $out[(int) $categoryId] = $entries->take($per)->map(fn (ClubEventRegistration $r) => [
+                'name' => $r->user?->full_name ?: $r->user?->name ?: __('events.athlete'),
+                'gender' => $r->user?->gender ?: null,
+                'photo' => $r->photo
+                    ? file_url($r->photo)
+                    : (($r->user?->profile_picture && $r->user->profile_picture_is_public)
+                        ? file_url($r->user->profile_picture).'?v='.($r->user->updated_at?->timestamp ?? 0)
+                        : null),
+            ])->values()->all();
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>|null  $faces  preloaded for a whole
+     *         list (facesFor); null reads this one division's own.
+     */
+    private function divisionPayload(EventCategory $category, ?array $faces = null): array
     {
         return [
             'id' => $category->id,
@@ -5323,6 +5609,10 @@ class PersonalEventController extends Controller
             // before it asks a question whose answer is already no.
             'fought' => $category->matches()->contested()->count(),
             'range' => $category->range()->toArray(),
+            'belts' => $category->belts ?: [],
+            // Who is in it, as faces. The count is `entrants` above; this is
+            // the handful the card draws.
+            'people' => $faces ?? ($this->facesFor([$category->id])[$category->id] ?? []),
             'capacity' => $category->capacity,
             'format' => $category->format ?: EventCategory::FORMAT_KNOCKOUT,
             'schedule' => $category->schedule ?: [],
@@ -6111,8 +6401,14 @@ class PersonalEventController extends Controller
              * uses.
              */
             'division_rows' => ($full && $isOrganiser)
-                ? $e->categories()->orderBy('sort_order')->orderBy('id')->get()
-                    ->map(fn ($c) => $this->divisionPayload($c))->values()->all()
+                ? (function () use ($e) {
+                    $cats = $e->categories()->orderBy('sort_order')->orderBy('id')->get();
+                    // One query for every division's faces, rather than one per card.
+                    $faces = $this->facesFor($cats->pluck('id')->all());
+
+                    return $cats->map(fn ($c) => $this->divisionPayload($c, $faces[$c->id] ?? []))
+                        ->values()->all();
+                })()
                 : [],
             /*
              * The phases a division can be scheduled across, and how many days

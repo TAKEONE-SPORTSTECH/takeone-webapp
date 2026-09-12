@@ -38,6 +38,9 @@ class EventCategory extends Model
         // see App\Events\Support\DivisionRange, and the migration that added
         // them for why they are a guide rather than a gate.
         'gender', 'min_age', 'max_age', 'min_weight', 'max_weight',
+        // Which belts the division is for. A LIST — a division is regularly
+        // opened to several grades at once — and null means ANY.
+        'belts',
     ];
 
     protected $casts = [
@@ -49,6 +52,7 @@ class EventCategory extends Model
         'max_age' => 'integer',
         'min_weight' => 'float',
         'max_weight' => 'float',
+        'belts' => 'array',
     ];
 
     /**

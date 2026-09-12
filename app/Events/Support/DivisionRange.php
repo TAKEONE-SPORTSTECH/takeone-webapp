@@ -42,7 +42,14 @@ class DivisionRange
     {
         return $this->category->gender === null
             && $this->category->min_age === null && $this->category->max_age === null
-            && $this->category->min_weight === null && $this->category->max_weight === null;
+            && $this->category->min_weight === null && $this->category->max_weight === null
+            && $this->belts() === [];
+    }
+
+    /** The belts this division is for — an empty list meaning ANY. */
+    public function belts(): array
+    {
+        return array_values(array_filter((array) ($this->category->belts ?? [])));
     }
 
     /** The bounds, for the picker's controls and for display. */
@@ -54,6 +61,7 @@ class DivisionRange
             'max_age' => $this->category->max_age,
             'min_weight' => $this->category->min_weight,
             'max_weight' => $this->category->max_weight,
+            'belts' => $this->belts(),
             'open' => $this->isOpen(),
         ];
     }
@@ -107,6 +115,24 @@ class DivisionRange
             } elseif (($this->category->min_weight !== null && $weight < $this->category->min_weight)
                    || ($this->category->max_weight !== null && $weight > $this->category->max_weight)) {
                 $misses[] = 'weight';
+            }
+        }
+
+        /*
+         * Belt, resolved the one way every screen resolves it: the weigh-in
+         * desk first, then a dated certification, then what they say of
+         * themselves (BeltRank). An athlete whose rank nobody has recorded is
+         * 'unknown' and stays offered — most entrants at a club's first event
+         * have nothing on file, and hiding them would empty the picker.
+         */
+        if ($this->belts() !== []) {
+            $belt = app(\App\Sports\Combat\BeltRank::class)->for($entrant->user, $entrant);
+            $colour = $belt['colour'] ?? null;
+
+            if ($colour === null) {
+                $unknown = true;
+            } elseif (! in_array(strtolower($colour), $this->belts(), true)) {
+                $misses[] = 'belt';
             }
         }
 

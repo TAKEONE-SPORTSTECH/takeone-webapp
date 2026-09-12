@@ -684,9 +684,13 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
     // readability only — `order` is not a number, so it could never have
     // matched them. Organiser-only: this is arranging the event's own
     // structure, not arranging a draw.
+    // Who a proposed division would hold. A READ that writes nothing, but
+    // throttled like a lookup: it walks the whole entry list per call.
+    Route::post('/events/{event:uuid}/divisions/preview', [App\Http\Controllers\PersonalEventController::class, 'previewDivision'])->name('events.divisions.preview')->middleware('throttle:120,1');
     Route::put('/events/{event:uuid}/divisions/order', [App\Http\Controllers\PersonalEventController::class, 'reorderDivisions'])->name('events.divisions.order')->middleware('throttle:admin-write');
     Route::patch('/events/{event:uuid}/divisions/{division}', [App\Http\Controllers\PersonalEventController::class, 'updateDivision'])->name('events.divisions.update')->whereNumber('division')->middleware(['throttle:admin-write', 'source-text']);
     Route::delete('/events/{event:uuid}/divisions/{division}', [App\Http\Controllers\PersonalEventController::class, 'destroyDivision'])->name('events.divisions.destroy')->whereNumber('division')->middleware('throttle:admin-write');
+    Route::post('/events/{event:uuid}/divisions/{division}/duplicate', [App\Http\Controllers\PersonalEventController::class, 'duplicateDivision'])->name('events.divisions.duplicate')->whereNumber('division')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/divisions/{division}/candidates', [App\Http\Controllers\PersonalEventController::class, 'divisionCandidates'])->name('events.divisions.candidates')->whereNumber('division')->middleware('throttle:120,1');
     Route::put('/events/{event:uuid}/divisions/{division}/members', [App\Http\Controllers\PersonalEventController::class, 'updateDivisionMembers'])->name('events.divisions.members')->whereNumber('division')->middleware('throttle:admin-write');
     // Manager actions + outcome recording are owned by the event's TYPE PACKAGE

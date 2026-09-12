@@ -95,7 +95,14 @@ class Tournament extends AbstractEventType
     public function formCatalog(): array
     {
         return [
-            'weight_divisions' => $this->sport()->weightDivisions(),
+            'weight_divisions' => $this->sport()->weightDivisions('gi'),
+            /* The no-gi table, which is its own table and not the gi one with
+               a couple of kilos taken off — an athlete weighs in without a gi,
+               so the limits and the ladder both differ. */
+            'weight_divisions_nogi' => $this->sport()->weightDivisions('nogi'),
+            // What each band MEANS in years, so a division built from the table
+            // carries the same ages registration will place people by.
+            'age_bands' => \App\Events\Sports\BrazilianJiuJitsu\BrazilianJiuJitsu::ageBands(),
             'belts' => array_map(
                 fn (string $belt) => ['value' => $belt, 'label' => __('sport-brazilianjiujitsu::messages.belt_'.$belt)],
                 \App\Events\Sports\BrazilianJiuJitsu\BrazilianJiuJitsu::BELTS,
