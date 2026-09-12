@@ -129,6 +129,7 @@ return [
     'ctl_rule_buzzer' => 'جرس انتهاء الوقت',
     'ctl_rule_buzzer_hint' => 'تُصدر الشاشة صوت الجرس عند وصول الساعة إلى الصفر.',
     'ctl_rule_penalty_limit' => 'عدد العقوبات قبل الاستبعاد',
+    'ctl_rule_penalty_limit_hint' => 'عدد العقوبات التي تؤدي إلى استبعاد المخالف. ٠ = بلا حد.',
     'ctl_rule_penalty_warn' => 'تنبيه الطاولة عند',
     'ctl_rule_referee_decision' => 'قرار الحكم',
     'ctl_rule_referee_decision_hint' => 'النزال المتعادل عند 0:00 يُحال إلى الحكم بدل أن يُسجَّل تعادلًا.',

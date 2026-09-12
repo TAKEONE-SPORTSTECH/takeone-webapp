@@ -80,7 +80,14 @@ class MatState extends Model
     public const DEFAULT_RULES = [
         // Seconds left when the board goes to WARNING. The spec's final 60.
         'warning' => 60.0,
-        // The fourth penalty disqualifies; the third warns that it will.
+        /*
+         * The fourth penalty disqualifies; the third warns that it will.
+         *
+         * ZERO means NO LIMIT — penalties still count, still give the other
+         * man a point each and still break a tie, but no number of them ends
+         * the match. A mat running a ruleset that never disqualifies on the
+         * ladder types 0 here, exactly as it turns the advantage cap off.
+         */
         'penalty_limit' => 4,
         'penalty_warn_at' => 3,
         /*

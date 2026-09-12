@@ -969,13 +969,13 @@
       {{-- The numbers a rule book sets. Each carries its own value on the row
            it belongs to, rather than being a second place to look.
 
-           ⚠️ The advantage limit's floor is 0, not 1, and that is the whole
-           point of it: zero means NO limit, which is the default and is
-           jiu-jitsu as it is normally run. The other numbers have no such
-           reading — a penalty limit of zero would disqualify a man for
-           existing. --}}
+           ⚠️ The advantage and penalty limits both have a floor of 0, not 1,
+           and that is the whole point of them: zero means NO limit. For
+           advantages that is the default (jiu-jitsu as it is normally run);
+           for penalties it is the escape hatch for a ruleset that never
+           disqualifies on the ladder. --}}
       @foreach ([
-          ['penaltyLimit', __('scoreboard::bjj_messages.ctl_rule_penalty_limit'), '', 1, 10],
+          ['penaltyLimit', __('scoreboard::bjj_messages.ctl_rule_penalty_limit'), __('scoreboard::bjj_messages.ctl_rule_penalty_limit_hint'), 0, 10],
           ['penaltyWarnAt', __('scoreboard::bjj_messages.ctl_rule_penalty_warn'), '', 1, 10],
           ['advantageLimit', __('scoreboard::bjj_messages.ctl_rule_advantage_limit'), __('scoreboard::bjj_messages.ctl_rule_advantage_limit_hint'), 0, 20],
           ['stallSeconds', __('scoreboard::bjj_messages.ctl_rule_stall_seconds'), __('scoreboard::bjj_messages.ctl_rule_stall_seconds_hint'), 3, 60],
@@ -1508,10 +1508,21 @@
       if (tab) show(tab.getAttribute('data-btab'));
     });
 
-    // Every tab opens on the running order, which is the question ninety-nine
-    // times in a hundred — a card that reopens on whatever was last browsed
-    // would hide the next bout behind a search somebody ran an hour ago.
-    document.getElementById('btnBouts').addEventListener('click', function () { show('arranged'); });
+    /* The card opens where the operator LEFT it — the tab they last used, and
+       inside the weight-class tab the class they last opened (the runtime
+       remembers that half; see MEM_KEY there).
+
+       It used to open on the running order every time. That is the right
+       question ninety-nine times in a hundred at a mat working through a mixed
+       order, and the wrong one all morning at a mat running a single division:
+       the operator paid a tab press and a list press before every bout to
+       arrive back where they already were. Changed at the organiser's
+       request, 2026-09-12. The running order is still one press away, and it
+       is still what a console that has never been used opens on. */
+    document.getElementById('btnBouts').addEventListener('click', function () {
+      var want = typeof window.__bjjBoutsLastTab === 'function' ? window.__bjjBoutsLastTab() : 'arranged';
+      show(PANE[want] ? want : 'arranged');
+    });
 
     /* A bout pressed in ANY pane closes the card, exactly as one pressed in
        the running order does. Delegated on the card and gated on the runtime's

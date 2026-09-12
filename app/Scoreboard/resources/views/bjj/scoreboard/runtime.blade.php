@@ -661,10 +661,12 @@
       }
 
       // The third penalty warns that the next one disqualifies. Console only —
-      // the hall is not told what is about to happen to somebody.
+      // the hall is not told what is about to happen to somebody. Silent on a
+      // mat with no penalty limit: nothing is about to happen.
+      var penLimit = (S.rules && S.rules.penalty_limit) == null ? 4 : S.rules.penalty_limit;
       var warnAt = (S.rules && S.rules.penalty_warn_at) || 3;
       var w = el(k + 'WarnDq');
-      if (w) w.hidden = (sc[k + 'Penalties'] || 0) < warnAt;
+      if (w) w.hidden = penLimit <= 0 || (sc[k + 'Penalties'] || 0) < warnAt;
     });
   }
 
@@ -1202,9 +1204,50 @@
      owned here, which is the division of labour this card has always had. */
   var CAT = null;          // {divisions, roster, bouts} — the draw, as last read
   var catState = 'idle';   // idle | loading | ready | failed
-  var boutsTab = 'arranged';  // which pane of the bouts card is showing
-  var divOpen = null;      // the weight class being read, if any
   var arcPick = { a: null, b: null };
+
+  /* ── Where the operator was, kept ───────────────────────────────────────
+     The card used to open on the running order every single time, and to drop
+     an open weight class the moment anything repainted. On a mat that is
+     running one division all morning that is a tab press and a list press
+     before every bout, to arrive back where the operator already was.
+     Requested by the organiser, 2026-09-12.
+
+     Kept in localStorage rather than in a variable so it also survives the
+     console being reloaded — which is the reopening that costs the most,
+     because it is usually a laptop that has just been woken up. Keyed by MAT
+     so two mats in one browser do not fight over it, and read back through
+     validators: a tab name that is not one of the four, or a division that
+     this event does not have, falls back to the running order. Nothing here
+     reaches the server — it is where somebody was looking, not what the mat
+     is running. */
+  var MEM_KEY = 'bjj.bouts.' + MAT;
+  var BOUT_TABS = ['arranged', 'division', 'member', 'arcade'];
+
+  function memRead() {
+    try {
+      var raw = window.localStorage.getItem(MEM_KEY);
+      var m = raw ? JSON.parse(raw) : null;
+      return (m && typeof m === 'object') ? m : {};
+    } catch (e) { return {}; }
+  }
+
+  function memWrite(patch) {
+    try {
+      var m = memRead();
+      Object.keys(patch).forEach(function (k) { m[k] = patch[k]; });
+      window.localStorage.setItem(MEM_KEY, JSON.stringify(m));
+    } catch (e) { /* private mode, a full store — never worth an error here */ }
+  }
+
+  var boutsTab = (function () {
+    var t = memRead().tab;
+    return BOUT_TABS.indexOf(t) >= 0 ? t : 'arranged';
+  })();       // which pane of the bouts card is showing
+  var divOpen = (function () {
+    var d = memRead().division;
+    return (d === 0 || d) ? d : null;
+  })();       // the weight class being read, if any
 
   /** A corner, rebuilt from the roster the catalogue keyed once by entry id. */
   function catCorner(id, name) {
@@ -1260,8 +1303,9 @@
     var host = el('divList');
     if (!host) return;
 
-    // Coming back to the index closes whatever was open, so the tab is always
-    // entered at the top of the list.
+    // Coming back to the index closes whatever was open; a weight class the
+    // operator had open stays open, including across a repaint and across a
+    // reload — that is the whole point of remembering it.
     if (divOpen === null) {
       var idx = el('divIndex'), det = el('divDetail');
       if (idx) idx.hidden = false;
@@ -1316,10 +1360,30 @@
       row.onclick = function () { openDivision(d); };
       host.appendChild(row);
     });
+
+    /* …and if the operator left a weight class open, put them back in it.
+       Done here, after the index is built, so the Back button has a list to
+       return to. A remembered class the event no longer has — a different
+       event on the same mat, a division deleted since — is simply forgotten,
+       and the operator lands on the index as they always did. */
+    if (divOpen !== null) {
+      var want = null;
+      CAT.divisions.forEach(function (d) { if (d.id === divOpen) want = d; });
+
+      if (want) { openDivision(want); }
+      else {
+        divOpen = null;
+        memWrite({ division: null });
+        var i2 = el('divIndex'), d2 = el('divDetail');
+        if (i2) i2.hidden = false;
+        if (d2) d2.hidden = true;
+      }
+    }
   }
 
   function openDivision(d) {
     divOpen = d.id;
+    memWrite({ division: d.id });
 
     var idx = el('divIndex'), det = el('divDetail');
     if (idx) idx.hidden = true;
@@ -1542,15 +1606,25 @@
    */
   window.__bjjBoutsTab = function (name) {
     boutsTab = name;
+    memWrite({ tab: name });
 
     if (name === 'arranged') { paintBouts(); return; }
 
     catLoad(catRepaint);
   };
 
+  /**
+   * Which tab the card should open on: the one the operator last left it on.
+   *
+   * Read by the card's own button (control.blade.php), which is where the
+   * opening happens; guarded on that side, so a console rendered without these
+   * panes still opens on the running order.
+   */
+  window.__bjjBoutsLastTab = function () { return boutsTab; };
+
   /** Redraw whichever catalogue-backed pane is showing. */
   function catRepaint() {
-    if (boutsTab === 'division') { divOpen = null; paintDivisions(); }
+    if (boutsTab === 'division') paintDivisions();
     else if (boutsTab === 'member') paintFind();
     else if (boutsTab === 'arcade') paintArcade();
   }
@@ -1591,7 +1665,13 @@
   (function () {
     var back = el('divBack');
     if (back) {
-      back.addEventListener('click', function () { divOpen = null; paintDivisions(); });
+      back.addEventListener('click', function () {
+        // Going back is the operator saying they are done with that class, so
+        // it is forgotten rather than reopened next time.
+        divOpen = null;
+        memWrite({ division: null });
+        paintDivisions();
+      });
     }
 
     // Searching is DEBOUNCED, not because the list is expensive — it is a few
@@ -1646,7 +1726,10 @@
     var r = S.rules || {};
     var d = {};
     FLAGS.forEach(function (k) { d[k] = r[k] !== false; });
-    d.penalty_limit = r.penalty_limit || 4;
+    // ⚠️ NOT `|| 4` — zero is meaningful (no limit, so no disqualification)
+    // and would otherwise reappear in the field as the default. Same reading
+    // as the advantage limit below.
+    d.penalty_limit = r.penalty_limit == null ? 4 : r.penalty_limit;
     d.penalty_warn_at = r.penalty_warn_at || 3;
     // ⚠️ NOT `|| 0` — that reads the same for "unset" and "zero", and zero is
     // this one's meaningful value (no limit) as well as its default. A mat that
@@ -2005,7 +2088,9 @@
     });
   });
 
-  [['penaltyLimit', 'penalty_limit', 1, 10], ['penaltyWarnAt', 'penalty_warn_at', 1, 10],
+  // Floor of 0 on the penalty limit too: no limit, so the ladder never
+  // disqualifies. See the panel.
+  [['penaltyLimit', 'penalty_limit', 0, 10], ['penaltyWarnAt', 'penalty_warn_at', 1, 10],
    // Floor of 0 — no limit — which is this one's default. See the panel.
    ['advantageLimit', 'advantage_limit', 0, 20],
    ['stallSeconds', 'stall_seconds', 3, 60]].forEach(function (spec) {
@@ -2031,7 +2116,11 @@
     var rules = {
       warning: warningSeconds(),
       penalty_limit: draft.penalty_limit,
-      penalty_warn_at: Math.min(draft.penalty_warn_at, draft.penalty_limit),
+      // A warning cannot sit above a limit that exists; with no limit it is
+      // just the count the console starts flagging at.
+      penalty_warn_at: draft.penalty_limit > 0
+        ? Math.min(draft.penalty_warn_at, draft.penalty_limit)
+        : draft.penalty_warn_at,
       advantage_limit: draft.advantage_limit,
       stall_seconds: draft.stall_seconds,
     };

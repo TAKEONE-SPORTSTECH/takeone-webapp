@@ -214,6 +214,7 @@ return [
     'ctl_rule_buzzer' => 'Time-up buzzer',
     'ctl_rule_buzzer_hint' => 'The wall sounds the bell when the clock reaches zero.',
     'ctl_rule_penalty_limit' => 'Penalties before disqualification',
+    'ctl_rule_penalty_limit_hint' => 'Penalties that disqualify the offender. 0 = no limit.',
     'ctl_rule_penalty_warn' => 'Warn the table at',
     'ctl_rule_stall_seconds' => 'Stalling countdown',
     'ctl_rule_stall_seconds_hint' => 'How long the referee’s own count runs before it becomes a penalty.',

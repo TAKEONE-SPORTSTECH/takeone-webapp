@@ -317,7 +317,9 @@ class ScoreboardController extends Controller
             // convenience — anything else posting here is held to the same
             // vocabulary.
             'warning' => ['nullable', 'numeric', 'min:0', 'max:3600'],
-            'penalty_limit' => ['nullable', 'integer', 'min:1', 'max:10'],
+            // 0 is a real value here as well: no penalty limit, so the ladder
+            // never disqualifies.
+            'penalty_limit' => ['nullable', 'integer', 'min:0', 'max:10'],
             'penalty_warn_at' => ['nullable', 'integer', 'min:1', 'max:10'],
             // 0 is a real value: no advantage limit, which is the default.
             'advantage_limit' => ['nullable', 'integer', 'min:0', 'max:20'],

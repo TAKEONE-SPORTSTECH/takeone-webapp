@@ -878,10 +878,19 @@ class Scoring
             'ts' => (int) (microtime(true) * 1000),
         ];
 
-        // The top of the ladder is a disqualification: it hands the match to the
-        // other corner however the points stand. Ended here, on the server, so
-        // both consoles and the wall agree and the reason is on the record.
-        if ($count >= (int) $state->rule('penalty_limit')) {
+        /*
+         * The top of the ladder is a disqualification: it hands the match to
+         * the other corner however the points stand. Ended here, on the server,
+         * so both consoles and the wall agree and the reason is on the record.
+         *
+         * Unless the mat has set the limit to 0 — no limit — in which case
+         * penalties go on counting and go on costing a point each, and nothing
+         * ever ends the match on the ladder alone. Same reading as
+         * advantage_limit above, and the same reason for living in the state.
+         */
+        $limit = (int) $state->rule('penalty_limit');
+
+        if ($limit > 0 && $count >= $limit) {
             $this->autoEnd($state, winner: $side === 'blue' ? 'white' : 'blue', method: 'dq');
         }
 
@@ -1417,12 +1426,17 @@ class Scoring
             $rules['warning'] = round(max(0, min((float) $state->duration, (float) $payload['warning'])), 1);
         }
 
+        // Zero is meaningful here too: NO limit, so no number of penalties
+        // disqualifies. Hence a floor of 0 rather than 1.
         if (array_key_exists('penalty_limit', $payload)) {
-            $rules['penalty_limit'] = max(1, min(10, (int) $payload['penalty_limit']));
+            $rules['penalty_limit'] = max(0, min(10, (int) $payload['penalty_limit']));
         }
 
+        // The warning cannot sit above a limit that exists; where there is no
+        // limit it is simply the count at which the console starts flagging.
         if (array_key_exists('penalty_warn_at', $payload)) {
-            $rules['penalty_warn_at'] = max(1, min((int) $rules['penalty_limit'], (int) $payload['penalty_warn_at']));
+            $ceiling = ((int) $rules['penalty_limit']) > 0 ? (int) $rules['penalty_limit'] : 10;
+            $rules['penalty_warn_at'] = max(1, min($ceiling, (int) $payload['penalty_warn_at']));
         }
 
         // Zero is meaningful here and is the default: NO limit. So the floor is

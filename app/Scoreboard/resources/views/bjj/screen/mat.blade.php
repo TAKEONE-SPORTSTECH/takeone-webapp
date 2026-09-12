@@ -1007,7 +1007,11 @@
     // Three advantages is as far as the rung ladder is ever drawn; the penalty
     // ladder is as long as THIS mat's rules make it, because the limit is a
     // setting an official chose in the morning.
-    var limit = (S.rules && S.rules.penalty_limit) || 4;
+    // A mat with NO penalty limit still needs a ladder to draw them on, so it
+    // grows with the count and never shows fewer rungs than the usual four.
+    var penRule = (S.rules && S.rules.penalty_limit) == null ? 4 : S.rules.penalty_limit;
+    var limit = penRule > 0 ? penRule
+      : Math.max(4, sc.bluePenalties || 0, sc.whitePenalties || 0);
     cells('sbBlueAdv', sc.blueAdvantages || 0, 3, '#ffd666', '#000');
     cells('sbWhiteAdv', sc.whiteAdvantages || 0, 3, '#b3861f', '#fff');
     cells('sbBluePen', sc.bluePenalties || 0, limit, '#ff3b47', '#fff');

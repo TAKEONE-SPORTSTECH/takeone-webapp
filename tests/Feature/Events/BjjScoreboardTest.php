@@ -574,6 +574,44 @@ class BjjScoreboardTest extends TestCase
         $this->assertTrue($response->json('state.finished'));
     }
 
+    public function test_a_penalty_limit_of_zero_never_disqualifies(): void
+    {
+        [$owner, $event, $match] = $this->scenario();
+
+        $this->command($owner, $event, 'load', ['match_id' => $match->id]);
+
+        // Zero is not out of range on this ladder either — it is how a mat
+        // running a ruleset that never disqualifies turns the cap off.
+        $this->command($owner, $event, 'rules', ['penalty_limit' => 0])->assertOk();
+        $this->assertSame(0, $this->state($event)->rule('penalty_limit'));
+
+        $this->command($owner, $event, 'start');
+
+        // Well past the usual four, and the match is still live.
+        for ($i = 0; $i < 7; $i++) {
+            $this->command($owner, $event, 'penalty', ['side' => 'blue'])->assertOk();
+        }
+
+        $state = $this->state($event);
+        $this->assertFalse($state->isFinished());
+        $this->assertNull($state->win_method);
+
+        // They still COUNT, and still cost a point each to the other corner.
+        $tally = $this->tally($event);
+        $this->assertSame(7, $tally->bluePenalties);
+        $this->assertSame(7, $tally->whitePoints);
+    }
+
+    public function test_the_penalty_limit_is_held_to_the_servers_own_range(): void
+    {
+        [$owner, $event, $match] = $this->scenario();
+
+        $this->command($owner, $event, 'load', ['match_id' => $match->id]);
+
+        $this->command($owner, $event, 'rules', ['penalty_limit' => 99])->assertStatus(422);
+        $this->command($owner, $event, 'rules', ['penalty_limit' => -1])->assertStatus(422);
+    }
+
     /* ---------------- The double stalling count ---------------- */
 
     public function test_a_double_stall_runs_as_one_count_against_both_corners(): void
