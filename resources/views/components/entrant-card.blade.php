@@ -17,6 +17,15 @@
        activity — then the chip is simply absent, which is every card that
        existed before this. */
     'activity' => null,
+    /* ── What they ENTERED, one badge each ────────────────────────────────
+       `[['label' => 'Gi', 'paid' => true, 'verified' => true], …]`.
+
+       An event may run several activities and each is entered, drawn and PAID
+       FOR separately, so "what did this person pay for" is a question per
+       activity and not per person. Given this list, the card draws a badge for
+       each with its own money state; given nothing, it falls back to the single
+       `activity` chip and every existing caller is unchanged. */
+    'activities' => [],
     /* The scale reading, when the caller is allowed to show one, plus where it
        came from: 'self' (the athlete declared it — amber) or 'official' (a
        weigh-in official signed for it — green). Printed bold beside the
@@ -125,12 +134,13 @@
         default => __('platform.age_senior'),
     };
 
-    /* The flag as an emoji: no sprite sheet, no CSS class, and it survives a
-       screenshot. Built from the ISO-2 only when there IS one. */
-    $iso = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', (string) $country), 0, 2));
-    $flagEmoji = strlen($iso) === 2
-        ? implode('', array_map(fn ($ch) => mb_chr(ord($ch) + 127397), str_split($iso)))
-        : '';
+    /* ⚠️ The flag is a FILE, not an emoji.
+       It was built from the ISO-2 as a regional-indicator pair, which draws a
+       flag on iOS, Android and macOS and the bare LETTERS "BH" on Windows —
+       which has no flag glyphs in its emoji font and is what most scoring
+       tables run (reported 2026-09-12). `<x-flag>` serves a vendored SVG that
+       renders identically everywhere. */
+    $flagCode = trim((string) $country);
 
     $divisions = array_values(array_filter((array) $divisions));
 @endphp
@@ -217,7 +227,7 @@
                              class="absolute inset-0 w-full h-full" />
 
             @if($photo)
-                <img src="{{ $photo }}" alt="" onerror="this.remove()"
+                <img data-ec="photo" src="{{ $photo }}" alt="" onerror="this.remove()"
                      class="absolute inset-0 w-full h-full object-cover">
             @endif
         @endif
@@ -229,26 +239,34 @@
          portrait its height. --}}
     <span class="flex-1 min-w-0 py-3 self-center">
         <span class="flex items-center gap-1.5">
-            <span class="font-bold text-foreground truncate text-[15px]">{{ $name }}</span>
-            @if($flagEmoji)<span class="text-sm leading-none">{{ $flagEmoji }}</span>@endif
+            {{-- `data-ec` marks the facts that can CHANGE while the page is
+                 open, so a card can be patched in place after an edit instead
+                 of the reader being asked to reload (No Page Reload Rule).
+                 Attributes only — nothing here renders differently. --}}
+            <span data-ec="name" class="font-bold text-foreground truncate text-[15px]">{{ $name }}</span>
+            @if($flagCode !== '')<x-flag :code="$flagCode" :h="13" data-ec="flag" />@endif
 
             {{-- The activity, beside the name rather than down in the meta row:
                  on a list where half the field is in one and half in the other,
                  it is read WITH the person, not with their weight class. Filled
                  rather than tinted so it never reads as one more division
                  chip — those say where they fight, this says what in. --}}
-            @if($activity)
-                <span class="ms-auto flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-                             text-[10px] font-bold bg-foreground text-white whitespace-nowrap">
-                    <i class="bi bi-collection text-[9px]"></i>{{ $activity }}
-                </span>
-            @endif
         </span>
 
         <span class="flex items-center gap-1.5 mt-1 flex-wrap">
             <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $isMale ? 'bg-accent text-primary' : 'bg-pink-50 text-pink-600' }}">{{ $ageGroup }}</span>
-            <span class="text-[11px] text-muted-foreground flex items-center gap-1">
-                <i class="bi {{ $isMale ? 'bi-gender-male text-primary' : 'bi-gender-female text-pink-500' }}"></i>{{ $age !== null ? $age.' '.__('platform.years_short') : '—' }}
+            {{-- The age reads in the CARD'S GENDER COLOUR and bold, as one
+                 unit with the icon beside it. In muted grey at 11px it was the
+                 quietest thing in a row of bold facts and went unread (reported
+                 2026-09-12) — which matters on a roster where the age is what
+                 decides the division somebody belongs in.
+
+                 An UNKNOWN age stays muted and light: an em dash shouted in
+                 pink would draw the eye to the one thing there is nothing to
+                 say about. --}}
+            <span class="text-[11px] flex items-center gap-1 {{ $age !== null ? ($isMale ? 'text-primary font-bold' : 'text-pink-500 font-bold') : 'text-muted-foreground' }}"
+                  data-ec="age-wrap">
+                <i class="bi {{ $isMale ? 'bi-gender-male' : 'bi-gender-female' }}"></i><span data-ec="age">{{ $age !== null ? $age.' '.__('platform.years_short') : '—' }}</span>
             </span>
             {{-- The division reads BOLD (asked for on 2026-09-04, and again once
                  it was seen on the page): on a card carrying five facts it is the
@@ -266,11 +284,14 @@
                  word, green once an official has signed for it — the same two
                  colours as the weigh-in badge above, so the card says one
                  thing twice rather than two things. --}}
-            @if($weight !== null && $weight !== '')
-                <span class="text-[11px] font-bold flex items-center gap-1 {{ $weightTone === 'official' ? 'text-green-600' : 'text-amber-500' }}">
-                    <i class="bi bi-speedometer2"></i>{{ $weight }} {{ __('personal.division_kg') }}
-                </span>
-            @endif
+            {{-- Always rendered, hidden when there is no reading yet: a weight
+                 arrives at the weigh-in desk while this page is open, and a
+                 span that does not exist cannot be filled in. `hidden` renders
+                 exactly as the old `@if` did — nothing, taking no space. --}}
+            <span data-ec="weight" @if($weight === null || $weight === '') hidden @endif
+                  class="text-[11px] font-bold flex items-center gap-1 {{ $weightTone === 'official' ? 'text-green-600' : 'text-amber-500' }}">
+                <i class="bi bi-speedometer2"></i><span data-ec="weight-value">{{ $weight }}</span> {{ __('personal.division_kg') }}
+            </span>
         </span>
 
         <span class="flex items-center gap-1.5 mt-1 text-[12px] text-muted-foreground truncate">
@@ -278,7 +299,9 @@
                  because the club name beside it truncates and the belt is the
                  shorter, harder fact — a half-written rank is worse than a
                  half-written club. --}}
-            <x-belt-chip :belt="$belt" :grade="$beltGrade" class="flex-shrink-0" />
+            <span data-ec="belt" class="flex-shrink-0 inline-flex">
+                <x-belt-chip :belt="$belt" :grade="$beltGrade" class="flex-shrink-0" />
+            </span>
             @if($clubLogo)
                 {{-- Design Rule #5: the bare mark, never a white tile behind it. --}}
                 <span class="w-4 h-4 flex-shrink-0">
@@ -287,7 +310,62 @@
             @else
                 <i class="bi bi-buildings {{ $isMale ? 'text-primary/70' : 'text-pink-500/70' }}"></i>
             @endif
-            <span class="truncate">{{ $clubName ?: ($unattached ?? __('events.public_unattached')) }}</span>
+            <span data-ec="club" class="truncate">{{ $clubName ?: ($unattached ?? __('events.public_unattached')) }}</span>
+
+            @php $acts = array_values(array_filter((array) $activities, fn ($a) => ! empty($a['label']))); @endphp
+
+            @if($acts)
+                {{-- One badge per thing they signed up for, on the CARD'S LAST
+                     ROW beside the club — where the facts about the entry live,
+                     rather than competing with the name for the top line
+                     (moved 2026-09-12).
+
+                     BLUE, one colour for all of them: these say WHAT somebody
+                     entered, and the card already has two places that say
+                     whether it is settled — the readiness badges straddling the
+                     top edge, and the fee sheet itself. Colouring these by
+                     money as well made three payment signals on one card, and a
+                     badge that turns dark for "unpaid" reads as a different
+                     activity rather than the same one unpaid.
+
+                     The money is still HERE, said the way a card says a
+                     secondary fact: a tick for confirmed, a clock while it is
+                     only the athlete's word, and the plain tag when nothing has
+                     been paid — with the words on the tooltip. --}}
+                <span class="ms-auto flex-shrink-0 inline-flex items-center gap-1">
+                    @foreach($acts as $act)
+                        @php
+                            $aPaid = ! empty($act['paid']);
+                            $aOk = ! empty($act['verified']);
+                            /* ⚠️ `bg-gray-900`, not `bg-foreground`: the Tailwind
+                               bundle is PREBUILT and carries no `bg-foreground`
+                               rule at all — only `text-foreground`. The chip
+                               this replaced used it, so it has been drawing
+                               white text on no background since the day it
+                               shipped. Every class here was checked against the
+                               built CSS. */
+                            // One blue, whatever the money says. `bg-blue-600`
+                            // is in the prebuilt bundle; `bg-foreground` — what
+                            // the chip this replaced used — is not, and drew
+                            // white text on nothing.
+                            $aTone = 'bg-blue-600 text-white';
+                        @endphp
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap {{ $aTone }}"
+                              title="{{ $act['label'] }}{{ $aOk ? ' · '.__('events.people_paid_verified') : ($aPaid ? ' · '.__('events.people_paid_claimed') : ' · '.__('events.people_unpaid')) }}">
+                            <i class="bi {{ $aOk ? 'bi-check-circle-fill' : ($aPaid ? 'bi-clock-fill' : 'bi-tag-fill') }} text-[9px] {{ $aOk ? '' : 'opacity-70' }}"></i>{{ $act['label'] }}
+                        </span>
+                    @endforeach
+                </span>
+            @elseif($activity)
+                {{-- The single-chip fallback, for callers that pass a plain
+                     `activity` string (the public participants list). Same fix
+                     as above: `bg-foreground` has no rule in the built CSS. --}}
+                <span class="ms-auto flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                             text-[10px] font-bold bg-gray-900 text-white whitespace-nowrap">
+                    <i class="bi bi-collection text-[9px]"></i>{{ $activity }}
+                </span>
+            @endif
+
         </span>
     </span>
 

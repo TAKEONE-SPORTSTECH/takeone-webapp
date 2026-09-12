@@ -357,12 +357,29 @@ abstract class AbstractEventType implements EventType
     public function rosterRows(ClubEvent $event): array
     {
         return $event->participantRegistrations()
-            ->with(['user:id,full_name,name,gender', 'category:id,name,weight_class', 'representingTenant:id,country'])
+            ->with(['user:id,full_name,name,gender,birthdate', 'category:id,name,weight_class', 'representingTenant:id,country'])
             ->latest('registered_at')->get()
             ->map(fn ($r) => [
                 'id' => $r->user?->id,
                 'name' => $r->user?->full_name ?? $r->user?->name ?? 'Member',
                 'gender' => $r->user?->gender,
+                /*
+                 * Age ON THE DAY THE EVENT RUNS, not today — the same rule the
+                 * divisions judge by (DivisionRange::ageOf), so a card and the
+                 * weight class it sits in can never disagree about how old
+                 * somebody is. An event built in March for December must count
+                 * a borderline junior by the age they will BE.
+                 *
+                 * Null where no birthdate is on file, which is ordinary and not
+                 * a fault: staff entering somebody else are asked for a name and
+                 * nothing more (CLAUDE.md → Who Fills The Form Decides). The
+                 * card prints an em dash for it.
+                 */
+                'age' => $r->user?->birthdate
+                    ? (int) Carbon::parse($r->user->birthdate)->diffInYears(
+                        $event->date ? Carbon::parse($event->date) : Carbon::now()
+                    )
+                    : null,
                 'category' => $r->category?->name,
                 'weight_class' => $r->category?->weight_class,
                 'meta' => $r->meta ?: ($r->category?->name ?? ($r->paid ? 'Registered' : 'Pending payment')),

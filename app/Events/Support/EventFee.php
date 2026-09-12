@@ -356,6 +356,75 @@ class EventFee
      * and reporting them as free would be a worse answer than the one the
      * platform gave at the time.
      */
+    /**
+     * WHAT each entry was signed up for, as short badge words.
+     *
+     * The answer lives in the fee lines — the options an entrant ticked when
+     * they registered ("Registration Fee (Gi)", "رسوم التسجيل (Gi + No-Gi)") —
+     * and NOT in the division names. A division says which bracket somebody
+     * ended up in; the fee line says what they entered and what they owe for,
+     * which is the question an organiser at the door is actually asking.
+     *
+     * Only `option` lines: the base entry fee and the late penalty are money,
+     * not choices, and a badge saying "Entry fee" tells a reader nothing about
+     * what this person is competing in.
+     *
+     * The word shown is the LAST bracketed group of the label, falling back to
+     * the whole label — "Registration Fee (Gi + No-Gi)" reads as "Gi + No-Gi"
+     * on a card, and an option named without brackets still says something.
+     * Nothing is translated or matched against a vocabulary: the organiser's
+     * own wording is what a reader sees, in the language they wrote it.
+     *
+     * @param  iterable<int>  $registrationIds
+     * @return array<int, array<int, string>>  registration id => badge words
+     */
+    public static function optionLabelsForMany(iterable $registrationIds): array
+    {
+        $ids = collect($registrationIds)->map('intval')->filter()->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $out = [];
+
+        EventRegistrationFeeLine::whereIn('registration_id', $ids)
+            ->where('kind', EventRegistrationFeeLine::KIND_OPTION)
+            ->orderBy('id')
+            ->get(['registration_id', 'label'])
+            ->each(function (EventRegistrationFeeLine $line) use (&$out) {
+                $word = self::optionTag((string) $line->label);
+
+                if ($word === '') {
+                    return;
+                }
+
+                $reg = (int) $line->registration_id;
+
+                if (! in_array($word, $out[$reg] ?? [], true)) {
+                    $out[$reg][] = $word;
+                }
+            });
+
+        return $out;
+    }
+
+    /** "Registration Fee (Gi + No-Gi)" → "Gi + No-Gi"; anything else, whole. */
+    public static function optionTag(string $label): string
+    {
+        $label = trim($label);
+
+        if (preg_match_all('/\(([^()]{1,40})\)/u', $label, $m)) {
+            $tag = trim((string) end($m[1]));
+
+            if ($tag !== '') {
+                return $tag;
+            }
+        }
+
+        return $label;
+    }
+
     public static function charged(ClubEventRegistration $registration, ?ClubEvent $event = null): float
     {
         $lines = EventRegistrationFeeLine::where('registration_id', $registration->id)->sum('amount');

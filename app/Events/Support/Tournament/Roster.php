@@ -35,7 +35,7 @@ abstract class Roster
                 'category:id,name,weight_class',
             ])
             ->latest('registered_at')->get()
-            ->map(function ($r) {
+            ->map(function ($r) use ($event) {
                 $user = $r->user;
                 $weightOnFile = $r->weight ?: $user?->latestHealthRecord?->weight;
 
@@ -58,6 +58,25 @@ abstract class Roster
                     'registration' => $r->id,
                     'registration_photo' => $r->photo,
                     'gender' => $user?->gender ?: null,
+                    /*
+                     * Age ON THE DAY THE EVENT RUNS, which is the same rule the
+                     * divisions judge by (DivisionRange::ageOf) — so the number
+                     * on a card and the weight class it sits in can never
+                     * disagree. An event built in March for December counts a
+                     * borderline junior by the age they will BE.
+                     *
+                     * This shape carried no age at all, so every entrant card
+                     * on the roster — organiser page and public list alike —
+                     * printed an em dash for it (reported 2026-09-12). Null
+                     * stays null: no birthdate on file is the ordinary case and
+                     * not a fault, because staff entering somebody else are
+                     * asked for a name and nothing more.
+                     */
+                    'age' => $user?->birthdate
+                        ? (int) \Illuminate\Support\Carbon::parse($user->birthdate)->diffInYears(
+                            $event->date ? \Illuminate\Support\Carbon::parse($event->date) : \Illuminate\Support\Carbon::now()
+                        )
+                        : null,
                     'category' => $ageGroup,
                     'weight_class' => $weightClass,
                     'meta' => $user?->gender ?: ($ageGroup ? $this->t('roster_registered') : $this->t('roster_unclassified')),

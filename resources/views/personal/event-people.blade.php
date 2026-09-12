@@ -264,6 +264,120 @@
             }
         },
 
+        /* ── Putting the edit back on the card ───────────────────────────
+           The roster is rendered by Blade — there is no client-side copy of it
+           to re-render — so an edit has to be written into the card that is
+           already on screen. Without this the sheet saved, closed, and left the
+           old name and weight sitting there until the page was reloaded, which
+           is exactly what the No Page Reload Rule exists to prevent.
+
+           The card marks its changeable facts with `data-ec` (see
+           entrant-card). Anything not marked is not patched — and the one that
+           matters is GENDER: it tints the whole card, the rail, the age chip
+           and two icons, so a card whose gender changed is re-read from the
+           server rather than half-repainted here. */
+        patchEntrantCard(entry) {
+            const card = document.getElementById('entrant-' + (entry.registration || ''));
+            if (! card) return;
+
+            const set = (field, text) => {
+                {{-- ⚠️ Unquoted attribute selectors: this whole object is the
+                     value of an x-data ATTRIBUTE, and one double quote ends it
+                     and spills the rest of the script onto the page. It did:
+                     the page's own state stopped evaluating and every binding
+                     threw "selecting is not defined". --}}
+                const el = card.querySelector('[data-ec=' + field + ']');
+                if (el) el.textContent = text;
+            };
+
+            if (entry.name) set('name', entry.name);
+
+            set('club', (entry.club && entry.club.name) || @js(__('events.public_unattached')));
+
+            // Age is years on the day, which is what the card shows.
+            if (entry.birthdate) {
+                const b = new Date(entry.birthdate);
+                if (! isNaN(b)) {
+                    const now = new Date();
+                    let age = now.getFullYear() - b.getFullYear();
+                    const m = now.getMonth() - b.getMonth();
+                    if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+                    set('age', age + ' ' + @js(__('platform.years_short')));
+                    // It was an em dash until now, which is drawn muted — give
+                    // it the emphasis a known age carries.
+                    const wrap = card.querySelector('[data-ec=age-wrap]');
+                    if (wrap) {
+                        wrap.classList.remove('text-muted-foreground');
+                        wrap.classList.add('font-bold');
+                        // Which tint, read off the icon the card already drew:
+                        // the card knows the gender, this patch does not.
+                        const female = !! wrap.querySelector('.bi-gender-female');
+                        wrap.classList.add(female ? 'text-pink-500' : 'text-primary');
+                    }
+                }
+            }
+
+            /* The scale reading, and the colour that says who read it: amber
+               while it is the athlete's own word, green once an official has
+               signed for it — the same two the badge above the card uses. */
+            const weight = card.querySelector('[data-ec=weight]');
+            if (weight) {
+                const has = entry.weight !== null && entry.weight !== undefined && entry.weight !== '';
+                weight.hidden = ! has;
+                if (has) {
+                    set('weight-value', String(entry.weight));
+                    weight.classList.toggle('text-green-600', !! entry.weighed_in);
+                    weight.classList.toggle('text-amber-500', ! entry.weighed_in);
+                }
+            }
+
+            // The rank chip, rebuilt from the sport's own ladder.
+            const belt = card.querySelector('[data-ec=belt]');
+            if (belt) {
+                const row = this.beltLadder[String(entry.belt_colour || '').toLowerCase()];
+                if (! row) {
+                    belt.innerHTML = '';
+                } else {
+                    const digits = String(entry.belt_grade || '').match(/\d+/);
+                    const degree = Math.min(6, Math.max(0, parseInt((digits && digits[0]) || 0, 10)));
+                    const label = (row.label + (degree > 0 ? ' ' + degree : '')).trim();
+                    const dot = document.createElement('span');
+                    dot.className = 'w-2 h-2 rounded-full flex-shrink-0';
+                    dot.style.background = row.bg;
+                    if (row.pale) dot.style.boxShadow = 'inset 0 0 0 1px rgba(15,23,42,.35)';
+                    const chip = document.createElement('span');
+                    chip.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground flex-shrink-0';
+                    chip.title = label;
+                    chip.appendChild(dot);
+                    chip.appendChild(document.createTextNode(label));
+                    belt.innerHTML = '';
+                    belt.appendChild(chip);
+                }
+            }
+
+            // The desk photo. Drawn over the fallback portrait, never instead
+            // of it, so a file that 404s falls back to a face.
+            if (entry.photo) {
+                let img = card.querySelector('[data-ec=photo]');
+                if (! img) {
+                    const tile = card.querySelector('span');
+                    img = document.createElement('img');
+                    img.setAttribute('data-ec', 'photo');
+                    img.alt = '';
+                    img.className = 'absolute inset-0 w-full h-full object-cover';
+                    img.onerror = () => img.remove();
+                    if (tile) tile.appendChild(img);
+                }
+                if (img) img.src = entry.photo + (entry.photo.includes('?') ? '&' : '?') + 'v=' + Date.now();
+            }
+        },
+
+        /** The sport's belt ladder, for rebuilding a rank chip client-side. */
+        beltLadder: @js(collect(\App\Sports\Combat\BeltRank::ladder())->mapWithKeys(function ($b) {
+            $chip = \App\Sports\Combat\BeltRank::chip($b['value']);
+            return [$b['value'] => ['label' => $b['label'], 'bg' => $b['bg'], 'pale' => (bool) ($chip['pale'] ?? false)]];
+        })),
+
         seedFix(entry, perms) {
             const f = this.fix;
             if (! f || ! entry) return;
@@ -434,7 +548,12 @@
                 const d = await res.json().catch(() => ({}));
                 if (! res.ok || ! d.success) throw new Error(d.message || @js(__('personal.event_show_action_failed')));
 
-                if (d.entry) this.seedFix(d.entry);
+                if (d.entry) {
+                    this.seedFix(d.entry);
+                    // …and the card behind the sheet, which is what the
+                    // organiser is actually looking at (No Page Reload Rule).
+                    this.patchEntrantCard(d.entry);
+                }
                 window.showToast('success', d.message);
                 this.closeFix();
             } catch (e) {
@@ -826,6 +945,16 @@
              `mt-6` is the same clearance at the TOP of the list, where the
              first card's badges were touching the search box. Both gaps are the
              badge's overhang, so the three are set together. --}}
+        @php
+            /* What every entry on this page was signed up for, in ONE query —
+               the options ticked at registration, keyed by entry. Read here
+               rather than per card, which would be a query per athlete on a
+               list that runs to hundreds. */
+            $feeWords = \App\Events\Support\EventFee::optionLabelsForMany(
+                collect($participants)->flatMap(fn ($row) => collect($row['entries'] ?? [])->pluck('registration'))
+            );
+        @endphp
+
         <div x-show="tab === 'athletes'" x-cloak class="mt-6 space-y-5 mobile-stagger">
             @forelse($participants as $p)
                 @php
@@ -877,6 +1006,44 @@
                     $pShowStatus = (bool) ($p['show_status'] ?? false);
                     $pFeePaid = (bool) ($p['paid'] ?? false);
                     $pWeighState = $p['weigh_state'] ?? 'none';
+
+                    /* ── What they SIGNED UP FOR, one badge each ───────────
+                       Read from the fee lines — the options ticked at
+                       registration ("Registration Fee (Gi)", "رسوم التسجيل
+                       (Gi + No-Gi)") — and NOT from the division names.
+
+                       That distinction is the whole point: a division says
+                       which bracket somebody ended up in, and an entrant who
+                       has not been placed yet has none. The fee line says what
+                       they ENTERED and what they owe for, which is what an
+                       organiser at the door is asking (corrected 2026-09-12;
+                       the first version of this read the division names and
+                       showed nothing for anybody unplaced).
+
+                       Money is per ENTRY — each option is paid for separately —
+                       so a badge carries the payment state of the entry that
+                       bought it. Shown only to a reader entitled to see money
+                       ($pShowStatus, the gate the readiness badges use). */
+                    $pActivities = [];
+
+                    if ($pShowStatus) {
+                        foreach (($p['entries'] ?? []) as $pEntry) {
+                            foreach (($feeWords[$pEntry['registration'] ?? 0] ?? []) as $aLabel) {
+                                $aKey = mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $aLabel) ?: $aLabel);
+
+                                if (! isset($pActivities[$aKey])) {
+                                    $pActivities[$aKey] = ['label' => $aLabel, 'paid' => true, 'verified' => true];
+                                }
+
+                                // The stricter state wins: one badge cannot read
+                                // as settled while an entry that bought it is not.
+                                $pActivities[$aKey]['paid'] = $pActivities[$aKey]['paid'] && ! empty($pEntry['paid']);
+                                $pActivities[$aKey]['verified'] = $pActivities[$aKey]['verified'] && ! empty($pEntry['paid_verified']);
+                            }
+                        }
+                    }
+
+                    $pActivities = array_values($pActivities);
                     /* The reading itself, printed on the card. Same gate as the
                        badges: withheld rows carry no weight to print. */
                     $pWeight = $pShowStatus ? ($p['weight'] ?? null) : null;
@@ -954,7 +1121,7 @@
                     <x-entrant-card
                         :name="$pName" :gender="$pGender" :country="$pCountry" :age="$pAge"
                         :divisions="$division" :activity="$pActivity"
-                        :weight="$pWeight" :weight-tone="$pWeighState"
+                        :weight="$pWeight" :weight-tone="$pWeighState" :activities="$pActivities"
                         :belt="$p['belt'] ?? null" :belt-grade="$p['belt_grade'] ?? null"
                         :club-name="$pClubName" :club-logo="$pClubLogo"
                         :show="$pShow" :chevron="true"
@@ -1021,7 +1188,7 @@
                         :name="$pName" :photo="$p['photo']" :gender="$pGender"
                         :country="$pCountry" :age="$pAge" :divisions="$division"
                         :activity="$pActivity"
-                        :weight="$pWeight" :weight-tone="$pWeighState"
+                        :weight="$pWeight" :weight-tone="$pWeighState" :activities="$pActivities"
                         :club-name="$pClubName" :club-logo="$pClubLogo"
                         :href="$pHref" :show="$pShow" :chevron="(bool) $pUuid" />
                 @endif
@@ -1440,7 +1607,7 @@
                                                  window is what keeps a competitor's year sane. --}}
                                             <template x-if="fixEditable('birthdate')">
                                                 <div>
-                                                    <x-birthdate-dropdown model="fix.form.birthdate"
+                                                    <x-birthdate-dropdown model="fix.form.birthdate" :inline="true"
                                                                           id="fixBirthdate"
                                                                           label=""
                                                                           :min-age="3" :max-age="99" />

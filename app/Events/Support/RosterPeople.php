@@ -88,6 +88,15 @@ class RosterPeople
             $entry = [
                 'registration' => $row['registration'] ?? null,
                 'division' => $row['category'] ?? $row['weight_class'] ?? null,
+                /* Money belongs to an ENTRY, not to a person: an event may run
+                   several activities and each is entered, drawn and PAID FOR
+                   separately (owner's ruling, 2026-09-11). Someone who has paid
+                   for Gi and not for No-Gi is the ordinary case, and a single
+                   person-level flag cannot say it — so each entry carries its
+                   own, claimed and verified apart, the same two states the card
+                   already draws for money and weight. */
+                'paid' => (bool) ($row['paid'] ?? false),
+                'paid_verified' => (bool) ($row['paid_verified'] ?? false),
             ];
 
             $key = ($row['id'] ?? null) !== null ? 'u'.$row['id'] : 'r'.$i;
@@ -144,6 +153,12 @@ class RosterPeople
             'uuid' => $user?->uuid,
             'name' => $row['name'] ?? __('personal.event_people_unknown'),
             'gender' => $row['gender'] ?? null,
+            /* Age on the day the event runs, straight from the row the event
+               type built (rosterRows). It was missing from this shape
+               altogether, so every card on the roster printed an em dash for it
+               — reported 2026-09-12. Null stays null: no birthdate on file is
+               the ordinary case, not a fault. */
+            'age' => $row['age'] ?? null,
             /* The rank, drawn as the card's edge.
                Two shapes arrive here and both are legitimate: the event view
                resolves the ANNOUNCED belt through App\Sports\Combat\BeltRank
