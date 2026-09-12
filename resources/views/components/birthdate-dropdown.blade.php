@@ -23,6 +23,19 @@
 
        Omit `model` and everything below behaves exactly as it always has. */
     'model' => null,
+
+    /* ── Inside a scrolling sheet ──────────────────────────────────────────
+       The day and month panels are absolutely positioned, which is right on a
+       page and WRONG inside a bottom sheet: an `overflow-y-auto` body clips
+       them, so the panel opens where nobody can see it and the control reads
+       as dead. It is the anti-pattern the Mobile Pattern Language names
+       outright, and it was reported on the event people sheet (2026-09-12).
+
+       Given `inline`, the panels expand IN THE NORMAL FLOW instead — the same
+       answer the date picker already gives for the same reason — so the sheet
+       simply grows and scrolls to them. Nothing else changes, and every
+       caller that does not pass it is untouched. */
+    'inline' => false,
 ])
 
 @php
@@ -161,13 +174,13 @@
                 return { sign: 'Pisces', symbol: '♓' };
             },
             getAgeGroup(age) {
-                if (age <= 2) return { label: @json(__('platform.age_infant')), style: 'color:#0284c7;background:#f0f9ff;' };
-                if (age <= 12) return { label: @json(__('platform.age_child')), style: 'color:#16a34a;background:#f0fdf4;' };
-                if (age <= 17) return { label: @json(__('platform.age_teenager')), style: 'color:#ca8a04;background:#fefce8;' };
-                if (age <= 25) return { label: @json(__('platform.age_young_adult')), style: 'color:#9333ea;background:#faf5ff;' };
-                if (age <= 45) return { label: @json(__('platform.age_adult')), style: 'color:#4f46e5;background:#eef2ff;' };
+                if (age <= 2) return { label: ".json_encode(__('platform.age_infant')).", style: 'color:#0284c7;background:#f0f9ff;' };
+                if (age <= 12) return { label: ".json_encode(__('platform.age_child')).", style: 'color:#16a34a;background:#f0fdf4;' };
+                if (age <= 17) return { label: ".json_encode(__('platform.age_teenager')).", style: 'color:#ca8a04;background:#fefce8;' };
+                if (age <= 25) return { label: ".json_encode(__('platform.age_young_adult')).", style: 'color:#9333ea;background:#faf5ff;' };
+                if (age <= 45) return { label: ".json_encode(__('platform.age_adult')).", style: 'color:#4f46e5;background:#eef2ff;' };
                 if (age <= 64) return { label: 'Middle Aged', style: 'color:#ea580c;background:#fff7ed;' };
-                return { label: @json(__('platform.age_senior')), style: 'color:#dc2626;background:#fef2f2;' };
+                return { label: ".json_encode(__('platform.age_senior')).", style: 'color:#dc2626;background:#fef2f2;' };
             }
         }"
         : "birthdateDropdown_{$id}()";
@@ -196,7 +209,12 @@
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95"
-                 :class="dayDropUp ? 'bottom-full mb-1' : 'top-full mt-1'"
+                 @if(! $inline) :class="dayDropUp ? 'bottom-full mb-1' : 'top-full mt-1'" @endif
+                 {{-- ⚠️ An inline style, not a new class: the Tailwind bundle
+                      is prebuilt, so a class nobody has used before ships with
+                      no CSS at all and the panel would stay absolute. `static`
+                      also makes the class's own left/right/z inert. --}}
+                 @if($inline) style="position: static; margin-top: .5rem;" @endif
                  class="tf-dropdown-menu max-h-52">
                 <template x-for="day in days" :key="day">
                     <div @click="selectDay(day)"
@@ -224,7 +242,12 @@
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95"
-                 :class="monthDropUp ? 'bottom-full mb-1' : 'top-full mt-1'"
+                 @if(! $inline) :class="monthDropUp ? 'bottom-full mb-1' : 'top-full mt-1'" @endif
+                 {{-- ⚠️ An inline style, not a new class: the Tailwind bundle
+                      is prebuilt, so a class nobody has used before ships with
+                      no CSS at all and the panel would stay absolute. `static`
+                      also makes the class's own left/right/z inert. --}}
+                 @if($inline) style="position: static; margin-top: .5rem;" @endif
                  class="tf-dropdown-menu max-h-52">
                 <template x-for="m in months" :key="m.value">
                     <div @click="selectMonth(m)"
