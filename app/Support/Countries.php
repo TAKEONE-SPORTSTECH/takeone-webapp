@@ -120,6 +120,39 @@ final class Countries
         return 'UNK';
     }
 
+    /**
+     * The alpha-2 a flag file is named by, from whatever the row stores.
+     *
+     * The mirror of iso3(): members carry 'BH', some clubs carry 'BHR', and the
+     * flag set is named in alpha-2. Null rather than a guess when nothing
+     * matches — a flag drawn from a guessed country is worse than no flag, and
+     * the component says the code instead.
+     */
+    public static function iso2(?string $code): ?string
+    {
+        $code = strtoupper(trim((string) $code));
+
+        if ($code === '') {
+            return null;
+        }
+
+        if (strlen($code) === 2) {
+            return isset(self::index()[$code]) ? strtolower($code) : null;
+        }
+
+        foreach (self::rows() as $row) {
+            if (strtoupper(trim((string) ($row['iso3'] ?? ''))) === $code) {
+                $iso2 = strtoupper(trim((string) ($row['iso2'] ?? '')));
+
+                if ($iso2 !== '') {
+                    return strtolower($iso2);
+                }
+            }
+        }
+
+        return null;
+    }
+
     /** code (upper, alpha-2 AND alpha-3) => name */
     private static function index(): array
     {
