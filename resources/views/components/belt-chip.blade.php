@@ -21,11 +21,16 @@
 @php $chip = \App\Sports\Combat\BeltRank::chip($belt, $grade); @endphp
 
 @if($chip)
-    <span {{ $attributes->merge(['class' => 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground']) }}
+    <span {{ $attributes->merge(['class' => 'inline-flex items-center gap-1 ps-1 pe-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground']) }}
           title="{{ $chip['label'] }}">
-        {{-- A pale belt needs the outline or the dot vanishes into the card.
-             The colour itself is never falsified: a white belt IS white. --}}
-        <span class="w-2 h-2 rounded-full flex-shrink-0"
-              style="background: {{ $chip['colour'] }};{{ $chip['pale'] ? ' box-shadow: inset 0 0 0 1px rgba(15,23,42,.35);' : '' }}"></span>{{ $chip['label'] }}
+        {{-- The belt itself, not a coloured dot: a dot said "some rank", and the
+             reader had to know the ladder to tell which. A pale belt is drawn
+             with an outline so it survives a white card — the colour itself is
+             never falsified, a white belt IS white.
+
+             Silent to a screen reader on purpose: the chip says the rank in
+             words right beside it, and one thing should be announced once. --}}
+        <x-belt-icon :belt="$belt" :grade="$grade" :title="false"
+                     class="w-4 h-4 flex-shrink-0" />{{ $chip['label'] }}
     </span>
 @endif
