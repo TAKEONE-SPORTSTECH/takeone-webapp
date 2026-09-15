@@ -41,11 +41,16 @@ return [
         // overlaps; order between them is immaterial.
         \App\Events\OpenMat\OpenMat::class,
 
+        // A season and a table, for any sport played by sides. The other
+        // shape of competition entirely: everybody plays everybody, a match
+        // can be drawn, nothing advances, and a table decides it. Claims by
+        // event_type alone, so it sits below the sport-specific packages.
+        \App\Events\League\League::class,
+
         // TODO — port the remaining types out of the generic bucket. Each
         // lives under its SPORT's folder (see Documentation/EVENTS.md):
         // \App\Events\Sports\Taekwondo\BeltTest\BeltTest::class,
         // \App\Events\Sports\Taekwondo\Poomsae\Poomsae::class,
-        // \App\Events\Sports\Football\League\League::class,
     ],
 
     /*
