@@ -21,6 +21,17 @@ Schedule::command('duels:expire-pending')->hourly();
 Schedule::command('events:send-notifications')->hourly()->withoutOverlapping();
 
 /*
+ * The weigh-in deadline, enforced: entries that are not paid for and/or have
+ * never been on the scale come off the list once `weigh_in_at` has passed.
+ *
+ * Only for an event whose organiser switched it on, and never for one that has
+ * already started. Idempotent — what it removes is gone, so an hourly run does
+ * nothing the second time, and anybody who pays up or weighs in between two
+ * runs simply stays.
+ */
+Schedule::command('events:enforce-entry-deadline')->hourly()->withoutOverlapping();
+
+/*
  * Nightly backup: a verified database snapshot + an archive of the upload
  * folders, pruned on a retention window and copied off-server when BACKUP_DISK
  * is set. Runs before the small hours so a failure is visible in the morning
