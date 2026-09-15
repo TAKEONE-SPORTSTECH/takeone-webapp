@@ -61,7 +61,7 @@
             {{-- Appointing lives here, on the trailing edge, where every other
                  page action on this platform lives (Design Rule #6). It renders
                  nothing at all for a reader who may only look. --}}
-            <x-event-officials :event="$e['key']" :can-manage="$canManage ?? false" />
+            <x-event-officials :event="$e['key']" :can-manage="$canManage ?? false" :sport-label="$e['sport_label'] ?? ''" :color="$e['color']" />
         </div>
 
         {{-- Identity: chips, the title, then whose event it is. --}}
@@ -135,6 +135,26 @@
                                 <span class="text-[11px] font-semibold text-muted-foreground truncate">{{ $p['country'] }}</span>
                             </div>
                         @endif
+
+                        {{-- Whose referee this is. The hall asks it about every
+                             official on the sheet — a competitor has a real
+                             interest in knowing the man refereeing their bout
+                             wears the same badge as the person opposite. A
+                             crest is the bare image, never a white tile
+                             (Design Rule #5); independent is said out loud,
+                             because a blank line reads as unrecorded. --}}
+                        <div class="flex items-center gap-1.5 mt-1 min-w-0">
+                            @if(! empty($p['club']['logo']))
+                                <span class="w-4 h-4 flex-shrink-0">
+                                    <img src="{{ $p['club']['logo'] }}" alt="" class="w-full h-full object-contain">
+                                </span>
+                            @else
+                                <i class="bi {{ $p['club'] ? 'bi-buildings' : 'bi-person' }} text-[11px] text-muted-foreground flex-shrink-0"></i>
+                            @endif
+                            <span class="text-[11px] font-semibold text-muted-foreground truncate">
+                                {{ $p['club']['name'] ?? __('personal.personal_event_officials_club_none') }}
+                            </span>
+                        </div>
 
                         {{-- What the job actually is. Part of the card, not a strip
                              bolted under it: it is the third line of the same

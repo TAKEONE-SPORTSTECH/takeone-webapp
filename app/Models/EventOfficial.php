@@ -15,6 +15,8 @@ use App\Members\Models\User;
  */
 class EventOfficial extends Model
 {
+    use \App\Traits\DeletesUploadedFiles;
+
     /** Arrange the draw before the event starts. */
     public const ROLE_JURY = 'jury';
 
@@ -65,11 +67,34 @@ class EventOfficial extends Model
         'event_id',
         'role_label',
         'user_id',
+        /*
+         * Whose referee this is. Per APPOINTMENT, not per person — the same
+         * coach officiates for his own club one weekend and for the federation
+         * the next — which is why it lives here rather than on the user.
+         *
+         * Exactly one of the two, or neither: a club with an account on the
+         * platform is a tenant, a visiting club written down on this event's
+         * own list is an `event_clubs` row, and both null means independent.
+         * App\Events\Support\EventClubChoice resolves and describes the pair.
+         */
+        'representing_tenant_id',
+        'event_club_id',
         'role',
+        // The face on the officiating sheet — this APPOINTMENT's photo, not the
+        // person's profile picture. See the migration.
+        'photo',
         'assigned_by',
         'compensation',
         'fee',
     ];
+
+    /*
+     * The photo goes when the appointment does (CLAUDE.md → Delete Files Before
+     * Records). It is this row's own file, so nothing else can be pointing at
+     * it — unlike an entry's photo, which may be a copy of a member's profile
+     * picture and needs EntryPhoto's care.
+     */
+    protected array $fileUploads = ['photo' => 'public'];
 
     protected $casts = [
         'fee' => 'decimal:3',
@@ -146,5 +171,19 @@ class EventOfficial extends Model
     public function assignedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    /**
+     * The club this appointment came with, as the sheet prints it — or null for
+     * somebody here on their own account.
+     *
+     * @return array{slug: ?string, name: string, logo: ?string}|null
+     */
+    public function club(): ?array
+    {
+        return \App\Events\Support\EventClubChoice::describe(
+            $this->representing_tenant_id ? (int) $this->representing_tenant_id : null,
+            $this->event_club_id ? (int) $this->event_club_id : null,
+        );
     }
 }
