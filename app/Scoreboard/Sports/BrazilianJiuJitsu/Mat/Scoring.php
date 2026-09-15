@@ -437,6 +437,23 @@ class Scoring
             throw new \RuntimeException(__('scoreboard::bjj_messages.match_not_found'));
         }
 
+        /*
+         * ⚠️ A BOUT WITH AN EMPTY CORNER CANNOT BE CALLED.
+         *
+         * The queue already knows this — `RunningOrder::isRunnable()` is what
+         * greys it out — but `load` never asked, so a semi-final still waiting
+         * on a quarter-final could be pushed onto the mat: the hall board then
+         * showed a VS card with BOTH corners blank (the named side is not
+         * rendered without an opponent) and nobody standing at that screen had
+         * any way to clear it.
+         *
+         * A bout that has already been fought may be loaded again — correcting
+         * a result is legitimate, and both corners are filled by then.
+         */
+        if (! $match->a_name || ! $match->b_name) {
+            throw new \RuntimeException(__('scoreboard::bjj_messages.match_not_ready'));
+        }
+
         // Keyed by REGISTRATION id, not user id: a_competitor_id/b_competitor_id
         // name the entry in THIS event, which is what carries the weigh-in
         // weight and the belt presented.

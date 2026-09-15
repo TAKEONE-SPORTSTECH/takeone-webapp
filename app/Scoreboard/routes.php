@@ -164,19 +164,19 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     // write path an appointed official holds for the length of a competition,
     // and every call of it appends a ledger row.
     Route::post('/bjj/control/{event:uuid}', [ScoreboardController::class, 'command'])
-        ->name('bjj-scoreboard.command')->middleware('throttle:300,1');
+        ->name('bjj-scoreboard.command')->middleware('throttle:mat-command');
 
     // The console's own re-read. Cheap and bounded — one state row, twelve
     // queued matches and the log of the bout on the mat — but throttled anyway,
     // because it is reachable by anyone entitled to score and a socket nudge is
     // what normally calls it.
     Route::get('/bjj/control/{event:uuid}/state', [ScoreboardController::class, 'consoleState'])
-        ->name('bjj-scoreboard.console-state')->middleware('throttle:120,1');
+        ->name('bjj-scoreboard.console-state')->middleware('throttle:mat-read');
 
     // The same whole-draw catalogue as the token door beside it, through the
     // organiser's own session. One console, two front doors.
     Route::get('/bjj/control/{event:uuid}/catalogue', [ScoreboardController::class, 'catalogueRead'])
-        ->name('bjj-scoreboard.catalogue')->middleware('throttle:120,1');
+        ->name('bjj-scoreboard.catalogue')->middleware('throttle:mat-read');
 
     Route::post('/bjj/control/{event:uuid}/photo/{side}', [ScoreboardController::class, 'photo'])
         ->name('bjj-scoreboard.photo')->where('side', 'blue|white')
@@ -649,6 +649,12 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
     // canManage-gated; being an official only ever grants arranging the draw.
     Route::get('/events/{event:uuid}/officials', [App\Http\Controllers\PersonalEventController::class, 'officials'])->name('events.officials');
     Route::post('/events/{event:uuid}/officials', [App\Http\Controllers\PersonalEventController::class, 'storeOfficial'])->name('events.officials.store')->middleware('throttle:member-write');
+    // The other door: somebody the platform has never met, written down at the
+    // desk. Mat roles only — see the controller.
+    // The face on the sheet — the same photo flow a competitor's picture goes
+    // through, stored against the APPOINTMENT.
+    Route::post('/events/{event:uuid}/officials/{official}/photo', [App\Http\Controllers\PersonalEventController::class, 'officialPhoto'])->name('events.officials.photo')->whereNumber('official')->middleware('throttle:uploads');
+    Route::post('/events/{event:uuid}/officials/person', [App\Http\Controllers\PersonalEventController::class, 'storeOfficialPerson'])->name('events.officials.person')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/officials/{official}', [App\Http\Controllers\PersonalEventController::class, 'updateOfficial'])->name('events.officials.update')->whereNumber('official')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/officials/{official}', [App\Http\Controllers\PersonalEventController::class, 'destroyOfficial'])->name('events.officials.destroy')->middleware('throttle:member-write');
     // Bracket screen data + hand-arranging the draw. Generic to every bracketed

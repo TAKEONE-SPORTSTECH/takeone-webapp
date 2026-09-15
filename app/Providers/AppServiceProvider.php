@@ -399,6 +399,29 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
 
+        /*
+         * ⚠️ A BUCKET PER ROUTE, NOT PER PERSON.
+         *
+         * Laravel's UNNAMED `throttle:300,1` keys on the user id alone — no
+         * route, no prefix — so every unnamed throttle an account touches
+         * shares ONE counter, and the tightest limit among them decides when
+         * they all start failing. On a mat that meant the console's own re-read
+         * (`throttle:120,1`) began answering 429 after roughly seventeen reads,
+         * because the scoring commands beside it (300) were filling the same
+         * bucket. One official running two mats does that inside a minute.
+         *
+         * These two are named so each keeps its own key. The scoring endpoint
+         * is the busy one; the state door is read between bouts and after every
+         * realtime nudge.
+         */
+        RateLimiter::for('mat-command', function (Request $request) {
+            return Limit::perMinute(300)->by('mat-command|'.($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('mat-read', function (Request $request) {
+            return Limit::perMinute(240)->by('mat-read|'.($request->user()?->id ?: $request->ip()));
+        });
+
         // Arranging a tournament draw: one save per drop, and an organiser
         // laying out a 32-competitor bracket makes many in a row — so it gets
         // its own bucket rather than exhausting member-write. Still bounded:

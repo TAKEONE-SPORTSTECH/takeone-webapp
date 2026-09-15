@@ -778,7 +778,11 @@ class ScoreboardController extends Controller
     {
         $order = new RunningOrder;
 
-        $queue = $order->matQueue($event, $court)->take(12);
+        // Enough to see the END of a mat's day. At 12 a busy mat's last bouts
+        // were simply not in the payload — they appeared as earlier ones
+        // drained, so nothing was lost, but an official planning the mat could
+        // not see what they were planning towards.
+        $queue = $order->matQueue($event, $court)->take(24);
         $queue->load('category:id,name,weight_class');
 
         $entryIds = $queue->flatMap(fn (EventMatch $m) => [$m->a_competitor_id, $m->b_competitor_id])

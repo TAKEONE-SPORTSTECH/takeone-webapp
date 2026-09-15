@@ -68,6 +68,7 @@ return [
 
     // ── The scoring table refuses ────────────────────────────────────────
     'no_match_loaded' => 'There is no match on this mat. Load one from the queue first.',
+    'match_not_ready' => 'That bout is still waiting on a result — one corner is empty. Call it once both athletes are known.',
     'match_not_found' => 'That match is not part of this event.',
     'match_over' => 'This match is over. Reverse an entry to correct it, or reset the match to run it again.',
     'intro_running' => 'Stop the clock before putting the introduction back up — the hall cannot see the score behind it.',

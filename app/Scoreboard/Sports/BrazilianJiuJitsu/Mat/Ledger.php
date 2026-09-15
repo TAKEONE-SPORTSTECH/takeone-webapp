@@ -230,6 +230,26 @@ class Ledger
             ->orderBy('sequence')
             ->get(['id', 'action', 'side', 'value', 'reverses_id']);
 
+        /*
+         * ⚠️ ONLY THIS ATTEMPT.
+         *
+         * The ledger is append-only and keeps every row the mat ever wrote for
+         * this bout — including the rows of an EARLIER attempt, because a bout
+         * can be loaded again: a result entered against the wrong match, a
+         * scoring error the desk wants to redo. Summing the lot added the old
+         * attempt's points to the new one, so a bout re-fought and won 0–4 was
+         * filed as 2–4, carrying a score its loser never scored.
+         *
+         * A `load` is where an attempt begins, so the tally starts after the
+         * last one. Nothing is deleted — the whole history stays readable, and
+         * the officiating log still shows both attempts in order.
+         */
+        $lastLoad = $rows->last(fn (MatchEvent $row) => $row->action === 'load');
+
+        if ($lastLoad) {
+            $rows = $rows->skipUntil(fn (MatchEvent $row) => $row->id === $lastLoad->id)->values();
+        }
+
         $cancelled = $this->cancelled($rows);
 
         $n = ['a' => ['point' => 0, 'advantage' => 0, 'penalty' => 0],
