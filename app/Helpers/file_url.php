@@ -34,6 +34,40 @@ if (! function_exists('file_url')) {
     }
 }
 
+if (! function_exists('thumb_url')) {
+    /**
+     * The same file, asked for at a size a list actually paints.
+     *
+     * Takes a URL `file_url()` already built (or a bare path) and adds the
+     * named size. The door does the rest: it authorises the SOURCE exactly as
+     * before and serves a rendition instead of the original, falling back to
+     * the original whenever one cannot be drawn — so a caller can always use
+     * this and never has to handle a missing thumbnail.
+     *
+     * Sizes are the names in App\Support\Thumbnails::SIZES and nothing else.
+     * An unknown one is left off rather than passed through, so a typo costs a
+     * few kilobytes instead of silently becoming a number on a URL.
+     *
+     * ⚠️ Only for pictures drawn SMALL. A screen showing somebody's face at
+     * size — the bout page, the lightbox — reads the original.
+     */
+    function thumb_url(?string $url, string $size = 'card'): ?string
+    {
+        $url = (string) ($url ?? '');
+
+        if ($url === '' || ! \App\Support\Thumbnails::knows($size)) {
+            return $url ?: null;
+        }
+
+        // An absolute foreign URL is somebody else's file; we resize nothing.
+        if (! str_contains($url, '/file/')) {
+            return $url;
+        }
+
+        return $url.(str_contains($url, '?') ? '&' : '?').'s='.$size;
+    }
+}
+
 if (! function_exists('file_exists_in_storage')) {
     /** Does this stored path exist, on the one storage root? */
     function file_exists_in_storage(?string $path): bool

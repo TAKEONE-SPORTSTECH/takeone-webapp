@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\FileAccess;
+use App\Support\Thumbnails;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -33,6 +34,28 @@ class FileController extends Controller
         $disk = Storage::disk('local');
 
         abort_unless($disk->exists($path), 404);
+
+        /* ── A smaller copy, for the lists that paint it tiny ───────────────
+         *
+         * Asked for by NAME (`?s=card`), never by pixels: drawing an image is
+         * expensive work behind a cheap URL, and a free number would let a
+         * stranger fill the disk one request at a time (Part 3 §14). An
+         * unknown name is ignored rather than refused — the original is always
+         * a correct answer.
+         *
+         * Authorisation has already happened, above, against the SOURCE path:
+         * a rendition of a private photograph is just as private, and there is
+         * no second door into it.
+         */
+        $size = (string) $request->query('s', '');
+
+        if ($size !== '' && Thumbnails::knows($size)) {
+            $small = Thumbnails::for($path, $size);
+
+            if ($small !== null) {
+                $path = $small;
+            }
+        }
 
         $headers = [
             'Content-Disposition' => 'inline',

@@ -372,6 +372,34 @@ class StoragePath
         return self::join(self::CACHE, 'fetched', $mediaUuid);
     }
 
+    /**
+     * A small rendition of a stored image, for a list that paints it tiny.
+     *
+     * Under `cache/` like every other derived file: it can be deleted at any
+     * time and the next request draws it again from the source, so it never
+     * needs backing up and the vault sync never needs to carry it.
+     *
+     * The source path is HASHED rather than mirrored. A roster photo's path
+     * contains ids, and a cache tree that repeats them is a second copy of the
+     * same structure to keep in step when a source moves; the hash is stable,
+     * flat and says nothing about its subject. `$size` is a NAMED size from
+     * App\Support\Thumbnails — never a number off a request, which would let a
+     * stranger fill this directory one pixel at a time.
+     */
+    public static function thumb(string $sourcePath, string $size, string $extension = 'jpg'): string
+    {
+        $key = hash('sha256', $sourcePath);
+        $safeSize = preg_replace('/[^a-z0-9_-]/', '', strtolower($size)) ?: 'card';
+
+        // Two levels of fan-out: one flat directory with tens of thousands of
+        // files is slow to read on every filesystem that matters.
+        return self::file(
+            self::join(self::CACHE, 'thumbs', $safeSize, substr($key, 0, 2), substr($key, 2, 2)),
+            substr($key, 4),
+            $extension,
+        );
+    }
+
     /* ──────────────────────────────────────────────────────────────────────
      | Filenames
      ────────────────────────────────────────────────────────────────────── */
