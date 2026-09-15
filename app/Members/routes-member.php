@@ -93,6 +93,16 @@ Route::get('/market/{product}', [App\Members\Controllers\PersonalMobileControlle
 
 Route::get('/settings', [App\Members\Controllers\PersonalMobileController::class, 'settings'])->name('settings');
 
+/*
+ | Where the device is, as a COUNTRY and nothing else — so a form can seed the
+ | country field the member is standing in instead of asking them to find it in
+ | a list of 196. Read-only, cheap, and throttled all the same: it is a request
+ | that reaches an outside geocoder on a miss.
+ */
+Route::get('/geo/country', [App\Members\Controllers\GeoController::class, 'country'])
+    ->middleware('throttle:mat-read')
+    ->name('geo.country');
+
 // People discovery — search directory (public profile lives at /people/{uuid}).
 Route::get('/people', [App\Members\Controllers\PeopleController::class, 'index'])->name('people');
 Route::get('/people/search', [App\Members\Controllers\PeopleController::class, 'search'])->name('people.search');

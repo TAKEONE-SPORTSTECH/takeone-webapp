@@ -31,6 +31,26 @@
     'announce' => false,
 
     /*
+     * Seed the field from WHERE THE DEVICE IS, when nothing is chosen yet.
+     *
+     * A country is the one fact a phone already knows, and hunting for it in a
+     * list of 196 is work software exists to remove. Opt-in — off everywhere it
+     * is not asked for, so no existing form starts quietly filling itself in —
+     * and it only ever fills a BLANK: a value already on file, or one the
+     * operator has touched, is never overwritten by a guess.
+     */
+    'geo' => false,
+
+    /*
+     * Anchor the panel instead of letting it be absolute inside whatever is
+     * hosting it. An absolute panel is clipped by a scrolling sheet body; an
+     * in-flow one shoves the fields below it down the sheet. Fixed and
+     * positioned under the trigger (partials/float-panel) is neither.
+     * Opt-in — every existing caller renders exactly as it did.
+     */
+    'float' => false,
+
+    /*
      * Styling seams, for a surface with its own field language (the public
      * event pages' `.e-field`) rather than the platform's purple input group.
      * Defaults reproduce exactly what this component rendered before.
@@ -41,6 +61,18 @@
 ])
 
 @php
+    /*
+     * Seeding from the device's own position, when `geo` is on and the field is
+     * still blank. `window.takeoneGeoCountry()` (published once, below) owns the
+     * whole flow — permission, the fix, the lookup and the cache — and answers
+     * null whenever it cannot, which leaves the field exactly as it was.
+     */
+    $geoSeed = $geo && $model
+        ? "if (! this.selectedValue) { window.takeoneGeoCountry?.().then(iso => {
+                if (iso && ! this.selectedValue) { this.adopt(iso); {$model} = iso; }
+            }); }"
+        : '';
+
     /* Null-safe read of the bound path: the sheet that holds this control sets
        its whole state object to null when it closes, and a getter that reads
        `fix.form.x` straight would throw on the way out. */
@@ -57,6 +89,7 @@
                 /* The record is fetched after this mounts, so follow the bound
                    value until the operator touches the control. */
                 this.\$watch('{$modelSafe}', v => { if (v !== this.selectedValue) this.adopt(v) });
+                {$geoSeed}
             },
             adopt(iso) {
                 const match = this.items.find(c => c.iso2 === (iso || ''));
@@ -87,6 +120,11 @@
         : "countryDropdown_{$id}()";
 @endphp
 
+@if($float)
+    {{-- The anchoring runtime, published once per page. --}}
+    @include('partials.float-panel')
+@endif
+
 <div class="{{ $wrapperClass }}" x-data="{{ $countryState }}"
      @unless($model && $inline) x-init="init()" @endunless
      @if($model && ! $inline) x-effect="{{ $model }} = selectedValue" @endif>
@@ -95,8 +133,8 @@
     </label>
     <div class="relative" x-ref="wrapper">
         <button type="button"
-                @click="toggle()"
-                @click.away="open = false"
+                @click="toggle()@if($float); $nextTick(() => window.tkFloat($refs.trigger, $refs.panel, open))@endif"
+                @click.away="open = false @if($float); window.tkFloat(null, $refs.panel, false)@endif"
                 x-ref="trigger"
                 class="{{ $triggerClass ?? 'tf-dropdown-trigger '.($error ? 'border-red-500' : 'border-primary/20 focus:border-primary') }}">
             <span class="flex items-center gap-2">
@@ -114,7 +152,8 @@
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             :class="dropUp ? 'bottom-full mb-1' : 'top-full mt-1'"
+             @if(! $float) :class="dropUp ? 'bottom-full mb-1' : 'top-full mt-1'" @endif
+             @if($float) x-ref="panel" style="z-index:78" @endif
              class="tf-dropdown-panel">
             <div class="p-2 border-b border-gray-100">
                 <input type="text"
@@ -237,3 +276,107 @@
     }
 </script>
 @endunless
+
+@once
+@push('scripts')
+{{-- WHERE THE DEVICE IS, as a country code — resolved once per browser and
+     shared by every picker that asks for it (`<x-country-dropdown geo>`).
+
+     Pushed to the page's script stack rather than written inline: this picker is
+     regularly rendered inside a teleported sheet, and a <script> there never
+     runs (CLAUDE.md → Alpine state must be REGISTERED, not inline).
+
+     The contract is one promise that NEVER rejects and answers null whenever it
+     cannot tell — a form seeded by this must be no worse off than a form that
+     was not. It:
+       · reuses the fix the shell already took (localStorage `userLocation`),
+         so no second permission prompt appears for the common case,
+       · asks the device only when permission is already granted,
+       · sends the coordinates to OUR OWN endpoint, never to a third party from
+         the member's browser, and gets back a country code and nothing else,
+       · remembers the answer for a week, so opening a form is not a request. --}}
+<script>
+(function () {
+    if (window.takeoneGeoCountry) return;
+
+    var KEY = 'takeoneCountry';
+    var WEEK = 7 * 24 * 60 * 60 * 1000;
+    var pending = null;
+
+    function cached() {
+        try {
+            var raw = JSON.parse(localStorage.getItem(KEY) || 'null');
+            if (raw && raw.code && (Date.now() - raw.at) < WEEK) return raw.code;
+        } catch (e) { /* private window, or storage blocked — just ask again */ }
+        return null;
+    }
+
+    function remember(code) {
+        try { localStorage.setItem(KEY, JSON.stringify({ code: code, at: Date.now() })); }
+        catch (e) { /* not worth failing over */ }
+    }
+
+    /* The shell stores a fix on login; prefer it over prompting again. */
+    function storedFix() {
+        try {
+            var raw = JSON.parse(localStorage.getItem('userLocation') || 'null');
+            if (raw && typeof raw.lat === 'number' && typeof raw.lng === 'number') return raw;
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+
+    function freshFix() {
+        return new Promise(function (resolve) {
+            if (! navigator.geolocation) return resolve(null);
+
+            var done = false;
+            var finish = function (v) { if (! done) { done = true; resolve(v); } };
+
+            /* Only when the member has ALREADY said yes. A country field
+               quietly raising a permission dialog is not a convenience. */
+            var ask = function () {
+                navigator.geolocation.getCurrentPosition(
+                    function (p) { finish({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+                    function () { finish(null); },
+                    { enableHighAccuracy: false, timeout: 6000, maximumAge: 600000 }
+                );
+            };
+
+            if (navigator.permissions && navigator.permissions.query) {
+                navigator.permissions.query({ name: 'geolocation' })
+                    .then(function (s) { s.state === 'granted' ? ask() : finish(null); })
+                    .catch(function () { finish(null); });
+            } else {
+                finish(null);
+            }
+        });
+    }
+
+    window.takeoneGeoCountry = function () {
+        var hit = cached();
+        if (hit) return Promise.resolve(hit);
+        if (pending) return pending;
+
+        pending = (async function () {
+            var fix = storedFix() || await freshFix();
+            if (! fix) return null;
+
+            try {
+                var res = await fetch('{{ route('me.geo.country') }}?lat=' + encodeURIComponent(fix.lat) + '&lng=' + encodeURIComponent(fix.lng), {
+                    headers: { 'Accept': 'application/json' }, credentials: 'same-origin',
+                });
+                if (! res.ok) return null;
+
+                var d = await res.json();
+                if (d && d.country) { remember(d.country); return d.country; }
+            } catch (e) { /* offline, or the geocoder is down — the field stays blank */ }
+
+            return null;
+        })().finally(function () { pending = null; });
+
+        return pending;
+    };
+})();
+</script>
+@endpush
+@endonce

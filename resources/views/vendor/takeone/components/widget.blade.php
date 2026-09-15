@@ -306,9 +306,6 @@ $(function() {
         if (fi) fi.value = '';
         if (ci) ci.value = '';
     }
-    // Delegated: these elements live inside an x-teleport template that isn't in the queryable
-    // DOM at $(ready) on SPA nav, so direct binding would silently miss them.
-    $(document).on('click.tk{{ $id }}', '#cancel_{{ $id }}, #cancelBtn_{{ $id }}, #editorBackdrop_{{ $id }}', hideEditor_{{ $id }});
 @else
     // Load current image when modal opens
     $('#cropperModal_{{ $id }}').on('shown.bs.modal', function() {
@@ -336,6 +333,15 @@ $(function() {
     // cropper is in the page directly OR inside an x-teleport template that Alpine moves to <body>
     // after $(ready). off() first guards against any re-execution stacking duplicates.
     $(document).off('.tk{{ $id }}');
+
+@if($inline)
+    // Leaving the crop editor: the header ✕, the footer Cancel and the backdrop.
+    // ⚠️ This MUST be bound after the off() above — it used to sit beside
+    // hideEditor() further up, and the namespace-wide off() then removed it
+    // before anyone could click it, so the cropper could be opened but never
+    // cancelled. Delegated, because the editor is moved onto <body>.
+    $(document).on('click.tk{{ $id }}', '#cancel_{{ $id }}, #cancelBtn_{{ $id }}, #editorBackdrop_{{ $id }}', hideEditor_{{ $id }});
+@endif
 
     $(document).on('change.tk{{ $id }}', '#input_{{ $id }}', function() {
         handleFileSelect_{{ $id }}(this);

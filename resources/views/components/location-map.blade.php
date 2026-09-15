@@ -27,6 +27,30 @@
     $addressId = $id . 'Address';
 @endphp
 
+{{-- ===== The map keeps its z-indexes to itself =====
+
+     Leaflet paints its own layers with z-index 400 (panes) up to 1200
+     (popups), and those numbers are absolute — nothing about being inside a
+     card contains them. With no stacking context of its own the map therefore
+     competed with the PAGE, and won: open any bottom sheet (`z-[60]`) and
+     scroll, and the tiles rode up over it, on the member page and the public
+     one alike.
+
+     `isolation: isolate` gives the map element its own stacking context, so
+     everything Leaflet does inside it is painted as one z-0 box. The internal
+     ordering — tiles under markers under controls — is untouched, because it
+     is all relative to this element now.
+
+     Once, here, rather than at each of the places a map is embedded: a
+     component owns its own behaviour (CLAUDE.md → Standalone Components). --}}
+@once
+    @push('styles')
+        <style>
+            .leaflet-container { isolation: isolate; z-index: 0; }
+        </style>
+    @endpush
+@endonce
+
 <div class="space-y-4" id="{{ $id }}Container">
     {{-- Address search --}}
     @if($showAddress)

@@ -560,6 +560,22 @@ class ClubMemberAdminController extends Controller
         return back()->with('info', 'Selected users are already members of this club.');
     }
 
+    /**
+     * An account a club admin created at the desk is trusted: they were
+     * standing in front of the person. No verification email, no wall on first
+     * sign-in.
+     *
+     * Written with `forceFill` because `email_verified_at` is intentionally not
+     * fillable — a mass-assignable verification flag is exactly the kind of
+     * thing an attacker looks for.
+     */
+    private function trustDeskAccount(User $user): void
+    {
+        if ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
+    }
+
     public function walkInRegistration(WalkInRegistrationRequest $request, Tenant $club)
     {
         $this->authorizeClub($club);
@@ -587,7 +603,6 @@ class ClubMemberAdminController extends Controller
                 'nationality' => $g['nationality'] ?? null,
                 'mobile' => ['code' => $g['countryCode'] ?? '+973', 'number' => $g['phone']],
                 // Admin-created accounts are trusted — mark verified, no email step.
-                'email_verified_at' => now(),
             ];
 
             // Only an email-bearing account can collide with a soft-deleted one worth reviving.
@@ -601,6 +616,19 @@ class ClubMemberAdminController extends Controller
             } else {
                 $guardianUser = User::create($guardianData);
             }
+
+            /*
+             * ⚠️ `email_verified_at` is NOT mass-assignable (see User::$fillable
+             * — deliberately, so no request can ever verify itself), so passing
+             * it in the array above was silently dropped. Every member the desk
+             * registered was created UNVERIFIED and met the "verify your email"
+             * wall the first time they signed in — for an account a club admin
+             * had stood in front of and vouched for, and often on an address
+             * that was never theirs to check.
+             *
+             * Marked explicitly, which is the only way it takes.
+             */
+            $this->trustDeskAccount($guardianUser);
 
             // Optional club role chosen during registration — grants admin/staff permissions.
             $roleSlug = $g['role'] ?? null;
@@ -623,8 +651,8 @@ class ClubMemberAdminController extends Controller
                             ? ['code' => $person['countryCode'] ?? '+973', 'number' => $childPhone]
                             : null,
                         'password' => Hash::make(Str::random(16)),
-                        'email_verified_at' => now(),
                     ]);
+                    $this->trustDeskAccount($childUser);
                     UserRelationship::create([
                         'guardian_user_id' => $guardianUser->id,
                         'dependent_user_id' => $childUser->id,
@@ -753,8 +781,8 @@ class ClubMemberAdminController extends Controller
                     ? ['code' => $g['countryCode'] ?? '+973', 'number' => $phone]
                     : null,
                 'password' => Hash::make(Str::random(16)),
-                'email_verified_at' => now(),
             ]);
+            $this->trustDeskAccount($childUser);
 
             Membership::firstOrCreate(
                 ['tenant_id' => $club->id, 'user_id' => $childUser->id],

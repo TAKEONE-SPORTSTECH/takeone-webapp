@@ -139,7 +139,7 @@ window.instructorAddSheet = function () {
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100 translate-y-0"
              x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-4 sm:scale-95"
-             class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col"
+             class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full flex flex-col"
              style="height: 92vh; max-height: 92vh;" @click.stop>
 
             {{-- Header --}}

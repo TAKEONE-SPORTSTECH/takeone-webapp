@@ -381,7 +381,7 @@
                                      x-transition:leave="transition ease-in duration-200"
                                      x-transition:leave-start="opacity-100 translate-y-0"
                                      x-transition:leave-end="opacity-0 translate-y-full"
-                                     class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col"
+                                     class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full flex flex-col"
                                      style="max-height: 92vh;" @click.stop>
                                     <template x-if="ach">
                                         <div class="flex flex-col overflow-hidden">

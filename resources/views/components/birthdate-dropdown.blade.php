@@ -36,6 +36,18 @@
        simply grows and scrolls to them. Nothing else changes, and every
        caller that does not pass it is untouched. */
     'inline' => false,
+
+    /* ── …without shoving the fields below it ─────────────────────────────
+       Expanding in the flow fixed the clipping and introduced a second
+       complaint: opening the day list PUSHES the phone field, and everything
+       under it, down the sheet (reported 2026-09-14).
+
+       `float` is the answer to both — the panel is `position: fixed` and
+       anchored under its trigger by partials/float-panel, so it overlays the
+       fields like a dropdown should AND escapes the scrolling body's clip.
+       Opt-in, so every caller that does not pass it keeps exactly the
+       behaviour it has today. */
+    'float' => false,
 ])
 
 @php
@@ -64,6 +76,11 @@
         }
     }
 @endphp
+
+@if($float)
+    {{-- The anchoring runtime, published once per page. --}}
+    @include('partials.float-panel')
+@endif
 
 @php
     /* Null-safe READ of the bound path — the sheet that holds this control sets
@@ -194,7 +211,9 @@
     <div class="grid grid-cols-3 gap-2">
         {{-- Day --}}
         <div class="relative" x-ref="dayWrapper">
-            <button type="button" @click="toggleDay()" @click.away="dayOpen = false" x-ref="dayTrigger"
+            <button type="button" x-ref="dayTrigger"
+                @click="toggleDay()@if($float); $nextTick(() => window.tkFloat($refs.dayTrigger, $refs.dayPanel, dayOpen))@endif"
+                @click.away="dayOpen = false @if($float); window.tkFloat(null, $refs.dayPanel, false)@endif"
                 class="tf-dropdown-trigger {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
                 <span class="flex items-center gap-2">
                     <i class="bi bi-calendar-day text-primary/40" :class="{ 'text-primary': selectedDay }"></i>
@@ -209,12 +228,13 @@
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95"
-                 @if(! $inline) :class="dayDropUp ? 'bottom-full mb-1' : 'top-full mt-1'" @endif
+                 @if(! $inline && ! $float) :class="dayDropUp ? 'bottom-full mb-1' : 'top-full mt-1'" @endif
                  {{-- ⚠️ An inline style, not a new class: the Tailwind bundle
                       is prebuilt, so a class nobody has used before ships with
                       no CSS at all and the panel would stay absolute. `static`
                       also makes the class's own left/right/z inert. --}}
-                 @if($inline) style="position: static; margin-top: .5rem;" @endif
+                 @if($inline && ! $float) style="position: static; margin-top: .5rem;" @endif
+                 @if($float) x-ref="dayPanel" style="z-index:78" @endif
                  class="tf-dropdown-menu max-h-52">
                 <template x-for="day in days" :key="day">
                     <div @click="selectDay(day)"
@@ -227,7 +247,9 @@
 
         {{-- Month --}}
         <div class="relative" x-ref="monthWrapper">
-            <button type="button" @click="toggleMonth()" @click.away="monthOpen = false" x-ref="monthTrigger"
+            <button type="button" x-ref="monthTrigger"
+                @click="toggleMonth()@if($float); $nextTick(() => window.tkFloat($refs.monthTrigger, $refs.monthPanel, monthOpen))@endif"
+                @click.away="monthOpen = false @if($float); window.tkFloat(null, $refs.monthPanel, false)@endif"
                 class="tf-dropdown-trigger {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
                 <span class="flex items-center gap-2">
                     <i class="bi bi-calendar-month text-primary/40" :class="{ 'text-primary': selectedMonth }"></i>
@@ -242,12 +264,13 @@
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95"
-                 @if(! $inline) :class="monthDropUp ? 'bottom-full mb-1' : 'top-full mt-1'" @endif
+                 @if(! $inline && ! $float) :class="monthDropUp ? 'bottom-full mb-1' : 'top-full mt-1'" @endif
                  {{-- ⚠️ An inline style, not a new class: the Tailwind bundle
                       is prebuilt, so a class nobody has used before ships with
                       no CSS at all and the panel would stay absolute. `static`
                       also makes the class's own left/right/z inert. --}}
-                 @if($inline) style="position: static; margin-top: .5rem;" @endif
+                 @if($inline && ! $float) style="position: static; margin-top: .5rem;" @endif
+                 @if($float) x-ref="monthPanel" style="z-index:78" @endif
                  class="tf-dropdown-menu max-h-52">
                 <template x-for="m in months" :key="m.value">
                     <div @click="selectMonth(m)"
