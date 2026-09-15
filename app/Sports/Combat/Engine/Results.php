@@ -11,46 +11,93 @@ class Results
     public function __construct(private Scheduler $scheduler) {}
 
     /**
-     * Medalists per weight class, derived purely from the bracket results:
-     * Final winner = gold, Final loser = silver, both Semifinal losers = bronze.
-     * Only divisions whose Final is decided are returned.
+     * Medalists per weight class.
+     *
+     * ⚠️ ONE RULE, ONE PLACE. This used to derive the medals a second time —
+     * gold and silver off the final, bronze to BOTH beaten semi-finalists,
+     * hardcoded — while `Advancement::awardIfComplete()` wrote
+     * `event_categories.podium` by the SPORT's own `bronzeRule()`. The two
+     * disagreed on the same division: the bracket board showed one bronze (or,
+     * before the play-off bout existed, none at all) and the member page showed
+     * two. A medal is a fact about a championship and cannot have two answers.
+     *
+     * So the stored podium is authoritative, and this reads it. The derivation
+     * below is kept only as a fallback for a division decided BEFORE the podium
+     * was recorded — the divisions already in the database when this shipped —
+     * and never overrides a stored one.
+     *
+     * Only divisions whose final is decided are returned.
      */
     public function podium(ClubEvent $event): array
     {
         $out = [];
         foreach ($event->categories()->with('matches')->orderBy('sort_order')->get() as $cat) {
-            $final = $cat->matches->firstWhere('round', 'Final');
-            if (! $final || ! $final->winner) {
-                continue; // no champion yet
-            }
-            // Medals carry the ENTRY that won them, so a result can reach the
-            // athlete's profile, a club medal tally and ranking points — not
-            // just a name printed on a board.
-            $medal = fn (int $place, $bout, string $side) => [
-                'place' => $place,
-                'name' => $bout->{$side.'_name'},
-                'competitor_id' => $bout->{$side.'_competitor_id'},
-            ];
+            /*
+             * ⚠️ NOT EVERY DECIDED DIVISION HAS A FINAL.
+             *
+             * A pool of three has none by design — everybody has met everybody,
+             * so the table is the answer and `GroupEngine` cuts no knockout
+             * round at all. Requiring a decided Final therefore SKIPPED such a
+             * division entirely: the member page said "3 divisions decided"
+             * where the public results page, which reads the stored podium,
+             * correctly listed four. Two surfaces, two answers, same event.
+             *
+             * The platform's own award is the authority (it is what
+             * Advancement::awardIfComplete wrote); the final is only the
+             * fallback for a division decided before podiums were stored.
+             */
+            $medals = $cat->podium ?: [];
 
-            $win = $final->winner;
-            $lose = $win === 'a' ? 'b' : 'a';
+            if ($medals === []) {
+                $final = $cat->matches->firstWhere('round', 'Final');
 
-            $medals = [$medal(1, $final, $win), $medal(2, $final, $lose)];
-
-            foreach ($cat->matches->where('round', 'Semifinal') as $sf) {
-                if (! $sf->winner) {
-                    continue;
+                if (! $final || ! $final->winner) {
+                    continue;   // genuinely undecided
                 }
-                $loserSide = $sf->winner === 'a' ? 'b' : 'a';
-                if ($sf->{$loserSide.'_name'}) {
-                    $medals[] = $medal(3, $sf, $loserSide);
-                }
+
+                $medals = $this->derive($cat, $final);
             }
 
             $out[] = ['division' => $cat->name, 'class' => $cat->weight_class, 'medals' => $medals];
         }
 
         return $out;
+    }
+
+    /**
+     * The historical reading, for a division whose medals were never stored:
+     * final winner = gold, final loser = silver, both beaten semi-finalists =
+     * bronze. Never used for a division the platform has awarded itself.
+     *
+     * @return array<int, array{place: int, name: ?string, competitor_id: ?int}>
+     */
+    private function derive($cat, $final): array
+    {
+        // Medals carry the ENTRY that won them, so a result can reach the
+        // athlete's profile, a club medal tally and ranking points — not
+        // just a name printed on a board.
+        $medal = fn (int $place, $bout, string $side) => [
+            'place' => $place,
+            'name' => $bout->{$side.'_name'},
+            'competitor_id' => $bout->{$side.'_competitor_id'},
+        ];
+
+        $win = $final->winner;
+        $lose = $win === 'a' ? 'b' : 'a';
+
+        $medals = [$medal(1, $final, $win), $medal(2, $final, $lose)];
+
+        foreach ($cat->matches->where('round', 'Semifinal') as $sf) {
+            if (! $sf->winner) {
+                continue;
+            }
+            $loserSide = $sf->winner === 'a' ? 'b' : 'a';
+            if ($sf->{$loserSide.'_name'}) {
+                $medals[] = $medal(3, $sf, $loserSide);
+            }
+        }
+
+        return $medals;
     }
 
     /**

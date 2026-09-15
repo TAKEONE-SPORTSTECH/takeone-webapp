@@ -20,7 +20,7 @@ return [
     |
     */
 
-    'en' => ['name' => 'English', 'native' => 'English', 'dir' => 'ltr', 'flag' => 'us'],
+    'en' => ['name' => 'English', 'native' => 'English', 'dir' => 'ltr', 'flag' => 'gb'],
     'ar' => ['name' => 'Arabic',  'native' => 'العربية', 'dir' => 'rtl', 'flag' => 'sa'],
 
     /*

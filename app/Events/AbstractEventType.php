@@ -134,6 +134,12 @@ abstract class AbstractEventType implements EventType
         return null;
     }
 
+    /** Nothing beyond what every event publishes. Types that have more say so. */
+    public function publicView(ClubEvent $event): array
+    {
+        return [];
+    }
+
     public function onEntrantsChanged(ClubEvent $event, ?EventCategory $category = null): void
     {
         // No derived state by default.
@@ -357,7 +363,7 @@ abstract class AbstractEventType implements EventType
     public function rosterRows(ClubEvent $event): array
     {
         return $event->participantRegistrations()
-            ->with(['user:id,full_name,name,gender,birthdate', 'category:id,name,weight_class', 'representingTenant:id,country'])
+            ->with(['user:id,full_name,name,gender,birthdate,nationality', 'category:id,name,weight_class', 'representingTenant:id,country'])
             ->latest('registered_at')->get()
             ->map(fn ($r) => [
                 'id' => $r->user?->id,
@@ -413,8 +419,14 @@ abstract class AbstractEventType implements EventType
         $pFee = EventFee::amount($event, 'participant') ?? 0.0;
         $sFee = $event->spectator_enabled ? (EventFee::amount($event, 'spectator') ?? 0.0) : 0.0;
 
-        $paidP = $event->registrations()->where('role', 'participant')->where('paid', true)->count();
-        $paidS = $event->registrations()->where('role', 'spectator')->where('paid', true)->count();
+        /* PEOPLE who have paid, not entries that are ticked: the figure sits
+           beside the revenue and has to be countable against it. An athlete
+           holding a Gi entry and a No-Gi entry is one person who paid one fee,
+           and reading "74 paid" over 53 entrants was the visible half of the
+           same mistake. */
+        $billing = EventFee::billing($event);
+        $paidP = $billing->where('role', 'participant')->where('paid', true)->count();
+        $paidS = $billing->where('role', 'spectator')->where('paid', true)->count();
 
         /*
          * Revenue is SUMMED from what each entry was actually charged, not
@@ -464,6 +476,8 @@ abstract class AbstractEventType implements EventType
             'expected_revenue' => $money['expected'],
             'expected_outstanding' => round($money['expected'] - ($pRev + $sRev), 3),
             'unpaid_entries' => $money['unpaid'],
+            // Of those, how many owe an amount nobody recorded — see moneySources().
+            'unpriced_entries' => $money['unpriced'] ?? 0,
             'expenses' => $expenses,
             'expenses_total' => $expTotal,
             'profit' => ($pRev + $sRev) - $expTotal,
@@ -483,10 +497,13 @@ abstract class AbstractEventType implements EventType
      */
     private static function chargedRevenue(ClubEvent $event, string $role): array
     {
-        $paidIds = $event->registrations()
-            ->where('role', $role)
+        /* ONE entry per PERSON, not every entry — an athlete pays once for the
+           event and holds one entry per division. EventFee::billing picks the
+           row their fee is recorded on; summing the rest counted money the
+           event never took. */
+        $paidIds = EventFee::billing($event, $role)
             ->where('paid', true)
-            ->pluck('club_event_registrations.id');
+            ->pluck('registration_id');
 
         if ($paidIds->isEmpty()) {
             return [0.0, 0];
@@ -542,17 +559,19 @@ abstract class AbstractEventType implements EventType
      */
     private static function moneySources(ClubEvent $event): array
     {
-        $entries = $event->registrations()
-            ->whereIn('role', ['participant', 'spectator'])
-            ->get(['club_event_registrations.id', 'role', 'paid']);
+        /* One row per PERSON per role — see EventFee::billing. Both halves of
+           this answer are money, so both are counted the way money is: an
+           athlete in three divisions is one entry fee, here and in the
+           forecast. */
+        $entries = EventFee::billing($event);
 
         if ($entries->isEmpty()) {
             return ['sources' => [], 'expected' => 0.0, 'unpaid' => 0];
         }
 
-        $paidIds = $entries->where('paid', true)->pluck('id')->all();
+        $paidIds = $entries->where('paid', true)->pluck('registration_id')->all();
 
-        $lines = \App\Models\EventRegistrationFeeLine::whereIn('registration_id', $entries->pluck('id'))
+        $lines = \App\Models\EventRegistrationFeeLine::whereIn('registration_id', $entries->pluck('registration_id'))
             ->get(['registration_id', 'fee_option_id', 'kind', 'label', 'amount']);
 
         $isPaid = array_fill_keys($paidIds, true);
@@ -560,7 +579,27 @@ abstract class AbstractEventType implements EventType
 
         $sources = [];
 
-        foreach ($lines->groupBy(fn ($l) => $l->kind.':'.($l->fee_option_id ?? 0).':'.$l->label) as $group) {
+        /*
+         * ⚠️ Grouped by the OPTION, never by the label it was sold under.
+         *
+         * A fee line freezes the label as it read at the moment of purchase,
+         * and that label is translated content — so the same option bought
+         * through the Arabic page and the English one wrote two different
+         * strings. Grouping on text therefore split every option in half and
+         * the organiser was shown six kinds of income for three choices
+         * (reported 2026-09-13): "رسوم التسجيل (No-Gi)" 9 entries and
+         * "Registration Fee (No-Gi)" 1, which are one thing.
+         *
+         * The id is the identity; the wording comes from the option itself, so
+         * the table reads in the language the organiser is reading in. A line
+         * with no option behind it (a late-entry penalty) has only its label,
+         * and grouping those by text is right — they are not an option.
+         */
+        $optionLabels = EventFee::options($event, 'participant')
+            ->concat(EventFee::options($event, 'spectator'))
+            ->pluck('label', 'id');
+
+        foreach ($lines->groupBy(fn ($l) => $l->kind.':'.($l->fee_option_id ? 'o'.$l->fee_option_id : 'l'.$l->label)) as $group) {
             $first = $group->first();
 
             // A zero-amount line is a recorded free entry, not a source of
@@ -572,31 +611,75 @@ abstract class AbstractEventType implements EventType
 
             $paidRows = $group->filter(fn ($l) => isset($isPaid[$l->registration_id]));
 
+            /*
+             * The PRICE EACH, so the sheet can show the sum as arithmetic —
+             * "33 × BHD 15 = BHD 495" — instead of a total the organiser has to
+             * take on trust. Null when the rows in one group disagree (a price
+             * edited between two purchases, which the frozen lines preserve on
+             * purpose); the sheet then prints the subtotal without a
+             * multiplication rather than an average nobody was charged.
+             */
+            $prices = $group->pluck('amount')->map(fn ($a) => round((float) $a, 3))->unique();
+
             $sources[] = [
-                'label' => (string) $first->label,
+                // The option's own wording where there is one — the frozen
+                // label is only a fallback, for a line that names no option.
+                'label' => (string) ($optionLabels[$first->fee_option_id] ?? $first->label),
                 'kind' => (string) $first->kind,
+                'unit' => $prices->count() === 1 ? (float) $prices->first() : null,
                 'count' => $paidRows->count(),
+                // Entrants who chose this and have NOT paid. The outstanding
+                // money is theirs, and naming it per option is what turns
+                // "someone owes 20" into "two Gi entrants owe 10 each".
+                'unpaid' => $group->count() - $paidRows->count(),
                 'revenue' => round((float) $paidRows->sum('amount'), 3),
                 'expected' => round((float) $group->sum('amount'), 3),
                 'estimated' => false,
             ];
         }
 
-        // Everything the record does not cover, valued at the list price.
-        $unrecorded = $entries->reject(fn ($r) => in_array($r->id, $lined, true));
+        /*
+         * Entries the record does not cover — and there is no such thing as a
+         * "fee type not recorded" (said plainly on 2026-09-13). An organiser
+         * sells the things they put on the entry form; a row naming a kind of
+         * income nobody offers is noise in a table whose whole job is to say
+         * which of their choices is selling.
+         *
+         * So it depends on HOW the event is priced, and the two cases are not
+         * alike:
+         *
+         *   · **One base price, no options.** Then the missing line is not
+         *     ambiguous — there was only ever one thing to pay, and entries
+         *     older than the fee-line record are legitimately worth it. They
+         *     are counted, under the event's own entry fee, because that IS
+         *     what they bought.
+         *   · **Priced through options** (this event: Gi, No-Gi, Gi + No-Gi).
+         *     Then a missing line means nobody recorded WHICH was bought, and
+         *     the platform will not invent one. It counts nothing and shows no
+         *     row: a guess at the cheapest option is not income, and it was
+         *     quietly adding money to the total that no entry could account for.
+         */
+        $unrecorded = $entries->reject(fn ($r) => in_array($r->registration_id, $lined, true));
 
         foreach (['participant', 'spectator'] as $role) {
             $rows = $unrecorded->where('role', $role);
             $price = EventFee::listPrice($event, $role);
 
-            if ($rows->isEmpty() || $price <= 0) {
+            if ($rows->isEmpty() || $price <= 0 || EventFee::hasOptions($event, $role)) {
                 continue;
             }
 
             $sources[] = [
-                'label' => __('personal.event_show_money_unrecorded'),
+                // Named for what it IS on this event: an entry fee, or a
+                // spectator ticket. Both are a single price with no options —
+                // that is the only case that reaches here.
+                'label' => $role === 'spectator'
+                    ? __('personal.personal_event_create_spectator_tickets')
+                    : __('personal.event_show_entry_fee'),
                 'kind' => 'unrecorded',
+                'unit' => $price,
                 'count' => $rows->where('paid', true)->count(),
+                'unpaid' => $rows->where('paid', false)->count(),
                 'revenue' => round($rows->where('paid', true)->count() * $price, 3),
                 'expected' => round($rows->count() * $price, 3),
                 'estimated' => true,
@@ -610,6 +693,15 @@ abstract class AbstractEventType implements EventType
             'sources' => $sources,
             'expected' => round(array_sum(array_column($sources, 'expected')), 3),
             'unpaid' => $entries->where('paid', false)->count(),
+            /*
+             * Entrants who owe an amount NOBODY CAN NAME — unpaid, and with no
+             * fee line saying what they chose. They are real and they are
+             * counted in `unpaid`, but they cannot be in the forecast, so
+             * without saying this the sheet reads "three entrants have not
+             * paid" over an outstanding figure covering two. A number that does
+             * not tie is the thing this whole sheet is being fixed for.
+             */
+            'unpriced' => $unrecorded->where('paid', false)->count(),
         ];
     }
 

@@ -26,12 +26,18 @@ class EventFeeOption extends Model
 
     protected $table = 'event_fee_options';
 
-    protected $fillable = ['uuid', 'event_id', 'role', 'label', 'amount', 'is_active', 'sort'];
+    protected $fillable = [
+        'uuid', 'event_id', 'role', 'label', 'amount', 'is_active', 'sort',
+        // Which streams BUYING this entitles you to — a combined option grants
+        // several, which is the whole reason it is a list.
+        'grants',
+    ];
 
     protected $casts = [
         'amount' => 'decimal:3',
         'is_active' => 'boolean',
         'sort' => 'integer',
+        'grants' => 'array',
     ];
 
     /** The roles that may carry options — the same two the event's own fees use. */

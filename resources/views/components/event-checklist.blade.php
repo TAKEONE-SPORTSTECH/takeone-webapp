@@ -112,7 +112,7 @@
                  x-transition:leave="transition ease-in duration-200"
                  x-transition:leave-start="translate-y-0"
                  x-transition:leave-end="translate-y-full"
-                 class="relative max-h-[88vh] w-full sm:max-w-lg flex flex-col bg-background rounded-t-3xl shadow-2xl overflow-hidden">
+                 class="relative max-h-[88vh] w-full flex flex-col bg-background rounded-t-3xl shadow-2xl overflow-hidden">
 
                 {{-- Header: the same standing, so opening the sheet never loses it --}}
                 <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"

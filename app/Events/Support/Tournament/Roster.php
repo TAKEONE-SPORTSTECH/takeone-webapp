@@ -26,7 +26,7 @@ abstract class Roster
     {
         return $event->participantRegistrations()
             ->with([
-                'user:id,full_name,name,gender,birthdate',
+                'user:id,full_name,name,gender,birthdate,nationality',
                 'user.latestHealthRecord',
                 // For BeltRank: resolving a rank per athlete would otherwise be a
                 // query each, on a list that can run to hundreds of entrants.

@@ -138,6 +138,7 @@
                      this.squadSaving = false;
 
                      this.goingCount = d.going ?? this.goingCount;
+                     this.peopleCount = d.going_people ?? this.peopleCount;
                      (d.entered || []).forEach(row => {
                          const a = this.athletes.find(x => x.id === row.user_id);
                          if (a) { a.entered = true; a.division = row.division || a.division; }
@@ -163,7 +164,7 @@
                  x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0" x-transition:enter-end="translate-y-0 sm:opacity-100"
                  x-transition:leave="transition ease-in duration-200"
                  x-transition:leave-start="translate-y-0 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-4 sm:opacity-0"
-                 class="relative w-full sm:max-w-lg max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl">
+                 class="relative w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl">
 
                 <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
                      style="background: linear-gradient(150deg, {{ $e['color'] }}, {{ $e['color'] }}b0);">

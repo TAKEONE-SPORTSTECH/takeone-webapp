@@ -47,8 +47,17 @@ class Tournament extends AbstractEventType
 
     private const SPORT = 'bjj';
 
-    /** Event types this package presents as. */
-    private const TYPES = ['tournament', 'championship'];
+    /**
+     * Event types this package presents as.
+     *
+     * `league` is here because a jiu-jitsu competition run as POOLS is still a
+     * jiu-jitsu competition — same entrants, same weigh-in, same mats, same
+     * medals — and only the shape of the play changes, which is a property of
+     * each weight class (`event_categories.format`), not of the event. An
+     * organiser who types "league" gets this package with its classes cut as
+     * round robins, never the team-and-fixture-list league.
+     */
+    private const TYPES = ['tournament', 'championship', 'league'];
 
     public function __construct(
         private SportRegistry $sports,
@@ -179,17 +188,23 @@ class Tournament extends AbstractEventType
      */
     public function classifyEntry(ClubEvent $event, ClubEventRegistration $registration): ?EventCategory
     {
-        if ($registration->category_id || ! $registration->user || ! $registration->weight) {
-            return null;
-        }
+        return $this->weighInPlacement($event, $registration)['division'];
+    }
 
-        $division = $this->enrolment()->resolveDivision($event, $registration->user, (float) $registration->weight);
-
-        if ($division) {
-            $registration->update(['category_id' => $division->id]);
-        }
-
-        return $division;
+    /**
+     * The same placement, with the WORD for what happened — so the weigh-in
+     * desk can say "placed in" or "moved to" rather than reporting a move as a
+     * plain recording.
+     *
+     * The rule itself is shared (Enrolment::placeOnWeighIn): every bracketed
+     * sport places an athlete by the scale the same way, and only the medal
+     * conventions and the scoring differ between them.
+     *
+     * @return array{division: ?EventCategory, action: ?string, from: ?EventCategory}
+     */
+    public function weighInPlacement(ClubEvent $event, ClubEventRegistration $registration): array
+    {
+        return $this->enrolment()->placeOnWeighIn($event, $registration);
     }
 
     /**
@@ -306,6 +321,13 @@ class Tournament extends AbstractEventType
         abort_if($event->hasEnded(), 422, __('event-bjj_tournament::messages.ended_locked'));
 
         $result = $this->advancement()->record($match, $payload);
+
+        // The shared engine refuses an impossible instruction (a winner with
+        // nobody in that corner) rather than reading it as "clear this bout".
+        // Nothing is notified, nothing is called: nothing happened.
+        if (($result['ok'] ?? true) === false) {
+            return $result;
+        }
 
         // The queue behind this bout just moved up: tell whoever the result
         // concerned, then call anyone who has come within range on this mat.
@@ -762,9 +784,22 @@ class Tournament extends AbstractEventType
          * `EventFee::chargedForMany` is the same source the event total uses,
          * so the divisions always add up to it.
          */
-        $paid = \App\Models\ClubEventRegistration::where('event_id', $event->id)
-            ->where('role', 'participant')
+        /*
+         * ONE entry per PERSON, exactly as the event total counts them.
+         *
+         * An athlete pays once and holds one entry per division, so summing
+         * every paid entry booked the same fee into two divisions — and the
+         * breakdown then added up to a total the event had never taken.
+         * EventFee::billing picks the entry the fee is recorded on, which is
+         * the one they registered through; its division is where the money
+         * lands. The other division still shows the entrant in its `paid`
+         * count — they HAVE paid — it just does not bank the fee twice.
+         */
+        $billed = \App\Events\Support\EventFee::billing($event, 'participant')
             ->where('paid', true)
+            ->pluck('registration_id');
+
+        $paid = \App\Models\ClubEventRegistration::whereIn('id', $billed)
             ->get(['id', 'category_id']);
 
         $charged = \App\Events\Support\EventFee::chargedForMany($event, $paid->pluck('id'), 'participant')['amounts'];
@@ -825,6 +860,18 @@ class Tournament extends AbstractEventType
      * they take over automatically — the caller resolves a declared view only
      * when it exists, so a package may ship one device at a time.
      */
+    /**
+     * The classes run as POOLS, published beside the draw.
+     *
+     * An event with both shapes shows both doors: the draw for the classes that
+     * are bracketed, the tables for the classes that are not. The reading is
+     * shared — a pool table is the same object in every sport.
+     */
+    public function publicView(ClubEvent $event): array
+    {
+        return app(\App\Events\Support\Tournament\PublicPools::class)->view($event);
+    }
+
     public function views(): array
     {
         return [];

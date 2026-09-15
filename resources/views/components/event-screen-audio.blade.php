@@ -59,7 +59,7 @@
          x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-         class="absolute inset-x-0 bottom-0 flex flex-col bg-white rounded-t-3xl shadow-2xl sm:mx-auto sm:max-w-lg"
+         class="absolute inset-x-0 bottom-0 flex flex-col bg-white rounded-t-3xl shadow-2xl sm:mx-auto"
          style="max-height:92vh">
 
         {{-- Header — the sheet's own band, with the drag handle and a way out. --}}

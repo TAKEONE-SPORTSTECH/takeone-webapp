@@ -2,8 +2,11 @@
 
 namespace App\Sports\Combat\Engine;
 
+use App\Events\Support\EventFee;
 use App\Models\ClubEvent;
 use App\Models\EventCategory;
+use App\Models\EventMatch;
+use App\Sports\Combat\SportRegistry;
 
 /**
  * Single-elimination draw generation + lifecycle for a combat championship.
@@ -12,7 +15,10 @@ use App\Models\EventCategory;
  */
 class DrawEngine
 {
-    public function __construct(private Scheduler $scheduler, private GroupEngine $groups) {}
+    public function __construct(private Scheduler $scheduler, private GroupEngine $groups, private SportRegistry $sports) {}
+
+    /** The round a play-off for bronze is held under. */
+    public const ROUND_THIRD = 'Third place';
 
     /**
      * Keep each division's draw current:
@@ -53,6 +59,30 @@ class DrawEngine
                 if ($cat->draw_state === 'final') {
                     continue; // locked
                 }
+
+                /*
+                 * ⚠️ NEVER RE-CUT A DIVISION THAT HAS BEEN FOUGHT.
+                 *
+                 * `build()` deletes the division's bouts and lays new ones —
+                 * so reaching here with results on the board destroys them:
+                 * every winner, every score, and the link from a recording to
+                 * the bout it filmed. It is not hypothetical. Starting an event
+                 * only writes `started_at`; the draw stays `provisional` until
+                 * something calls this. Bouts fought in that window were then
+                 * wiped by the next bracket page view, which is the first thing
+                 * anybody does on a mat morning.
+                 *
+                 * `startEvent` now locks the draw up front, which closes the
+                 * window. This closes the DOOR: a result is a fact, and no
+                 * housekeeping pass may delete one. The division is marked
+                 * final so it is never asked again.
+                 */
+                if ($this->hasResults($cat)) {
+                    $cat->update(['draw_state' => 'final']);
+
+                    continue;
+                }
+
                 $this->build($event, $cat, paidOnly: true);
                 $changed = true;
             } else {
@@ -107,10 +137,26 @@ class DrawEngine
         // types a number. Drawing on those is how someone reaches the mat
         // without having paid or made weight. The provisional draw still shows
         // everyone, so nobody disappears from the board before the weigh-in.
+        /*
+         * ⚠️ A FREE competition has no payment to sign for.
+         *
+         * `paid_by` is the payments official's name against an entry, and it is
+         * the right demand when money is owed. It is nonsense when nothing is:
+         * a free club event has no proof to check and no official who ever
+         * opens that sheet, so every entrant carried `paid_by = null` and the
+         * final draw dropped ALL of them — the bracket emptied the moment the
+         * organiser pressed Start, with no message and nothing to fight.
+         *
+         * So the money half of the test is asked only of an event that charges.
+         * The weigh-in half always stands: a weight is a safety matter and it
+         * is free to record.
+         */
+        $charges = EventFee::chargesAnything($event, 'participant');
+
         $regs = $cat->registrations()
             ->where('role', 'participant')
             ->when($paidOnly, fn ($q) => $q
-                ->where('paid', true)->whereNotNull('paid_by')
+                ->when($charges, fn ($q) => $q->where('paid', true)->whereNotNull('paid_by'))
                 ->whereNotNull('weight')->whereNotNull('weighed_in_by'))
             ->with('user:id,full_name,name')
             ->get();
@@ -129,7 +175,7 @@ class DrawEngine
             // a self-declared entry as safe here would promise a place the final
             // build then takes away.
             'provisional' => ! $paidOnly && (
-                ! $r->paid || ! $r->paid_by || $r->weight === null || ! $r->weighed_in_by
+                ($charges && (! $r->paid || ! $r->paid_by)) || $r->weight === null || ! $r->weighed_in_by
             ),
             'key' => md5($cat->id.':'.$r->user_id),
         ])->sortBy('key')->values();
@@ -194,12 +240,147 @@ class DrawEngine
             }
         }
 
+        /*
+         * ===== The play-off for bronze =====
+         *
+         * A sport whose convention is `third_place_match` awards ONE bronze,
+         * to the winner of a bout between the two beaten semi-finalists — and
+         * that bout has to EXIST for anybody to fight it. It never did:
+         * `Advancement::awardIfComplete()` has always looked for a bout
+         * `round = 'Third place'` and nothing in the platform ever created one,
+         * so every knockout division in such a sport stopped at silver.
+         *
+         * It is cut here, with the rest of the ladder, because it is part of
+         * the draw — not something a desk remembers to add on the day.
+         *
+         * Written LAST, after the final, so it sits at the end of the slot
+         * order and reads as the appendix it is. It takes no part in the
+         * winner-walk: `Advancement` excludes this round from the bracket
+         * geometry and feeds it the semi-final LOSERS instead.
+         *
+         * Only for a sport that says so, and only when there are semi-finals to
+         * lose (a field of four or more). Karate and taekwondo settle bronze by
+         * repechage and are untouched.
+         */
+        if ($this->awardsThirdPlaceBout($event, $rounds)) {
+            $cat->matches()->create([
+                'event_id' => $event->id,
+                'round' => self::ROUND_THIRD,
+                'phase' => 'finals',
+                'slot' => $slot++,
+                'status' => 'upcoming',
+            ]);
+        }
+
+        /*
+         * ⚠️ A BYE MUST WALK FORWARD, EVERY TIME THE DRAW IS CUT.
+         *
+         * A bye is written above with a winner and `status = done`, which is
+         * the RESULT — it is not the same as putting that athlete in the next
+         * round. Carrying them forward used to be done by the owning package,
+         * in `generateDraw()` alone, and the two OTHER callers of this method
+         * never did it: `ensure()` (which re-cuts the division the moment the
+         * event STARTS, as the final paid-only draw) and `onEntrantsChanged()`.
+         *
+         * So pressing Start erased every bye advancement, and the semi-final
+         * behind it became "(tbd) v Somebody" — un-runnable, for ever: once an
+         * event has started the draw actions are withdrawn, so the organiser
+         * could neither re-cut it nor arrange it, and the only way past was to
+         * award a walkover against a competitor who had already won their way
+         * through. Every knockout division of 5, 6, 7, 9… entrants was exposed.
+         *
+         * It belongs here, beside the code that writes the bye, so it cannot be
+         * forgotten by a caller again. Pure geometry — bout i feeds bout ⌊i/2⌋,
+         * side a when i is even — the same rule Advancement walks with.
+         */
+        $this->carryByes($cat);
+
         $cat->update([
             'draw_state' => $paidOnly ? 'final' : 'provisional',
             'draw_count' => $n,
             'schedule' => $cat->schedule ?: $this->scheduler->defaultSchedule($event, $cat),
             'status' => ($paidOnly && $cat->status === 'enrolling') ? 'live' : $cat->status,
         ]);
+    }
+
+    /**
+     * Put every first-round bye into the round it has already won its way to.
+     *
+     * Only a BYE: a bout with a winner and nobody in the other corner. A bout
+     * two people actually fought is a result, and results are propagated by
+     * Advancement when they are recorded, not by the draw being cut.
+     */
+    private function carryByes(EventCategory $cat): void
+    {
+        $rounds = $cat->matches()->orderBy('slot')->get()
+            ->reject(fn (EventMatch $m) => $m->round === self::ROUND_THIRD)
+            ->groupBy('round')
+            ->sortBy(fn ($bouts) => $bouts->min('slot'))
+            ->values();
+
+        $first = $rounds->first();
+        $next = $rounds->get(1);
+
+        if (! $first || ! $next) {
+            return;     // a one-bout division has nowhere to carry anybody
+        }
+
+        foreach ($first->values() as $i => $bout) {
+            $won = $bout->winner;
+
+            if (! $won || ! $bout->{$won.'_name'}) {
+                continue;
+            }
+
+            // Both corners named means they fought; that is not a bye.
+            $other = $won === 'a' ? 'b' : 'a';
+
+            if ($bout->{$other.'_name'}) {
+                continue;
+            }
+
+            $target = $next->values()->get(intdiv($i, 2));
+
+            if (! $target) {
+                continue;
+            }
+
+            $side = $i % 2 === 0 ? 'a' : 'b';
+
+            $target->{$side.'_name'} = $bout->{$won.'_name'};
+            $target->{$side.'_competitor_id'} = $bout->{$won.'_competitor_id'};
+            $target->{$side.'_country'} = $bout->{$won.'_country'};
+            $target->{$side.'_provisional'} = (bool) $bout->{$won.'_provisional'};
+            $target->save();
+        }
+    }
+
+    /**
+     * Has anything in this division been decided by two people meeting?
+     *
+     * A bye is not a result — it is written with a winner the moment the draw
+     * is cut, so counting it would freeze every bracket that is not a clean
+     * power of two at its provisional shape.
+     */
+    private function hasResults(EventCategory $cat): bool
+    {
+        return $cat->matches()
+            ->whereNotNull('winner')
+            ->whereNotNull('a_name')
+            ->whereNotNull('b_name')
+            ->exists();
+    }
+
+    /**
+     * Does this event's sport settle bronze with a play-off, and is there a
+     * semi-final for its two losers to come out of?
+     *
+     * @param  array<int, string>  $rounds
+     */
+    private function awardsThirdPlaceBout(ClubEvent $event, array $rounds): bool
+    {
+        return in_array('Semifinal', $rounds, true)
+            && $this->sports->get($event->sport)?->bronzeRule() === 'third_place_match';
     }
 
     /** Standard single-elimination seed positions (index = slot, value = seed #). */

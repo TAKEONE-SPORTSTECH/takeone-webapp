@@ -150,7 +150,7 @@
     {{-- Add / edit modal --}}
     <div x-show="showForm" x-cloak class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
         <div class="fixed inset-0 bg-black/40" @click="showForm = false"></div>
-        <div class="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+        <div class="relative bg-white w-full sm:rounded-2xl rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
             <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
                  style="background: linear-gradient(150deg, #7c6bf5, #7c6bf5b0);">
                 <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>

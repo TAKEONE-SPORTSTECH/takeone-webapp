@@ -33,68 +33,74 @@
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 space-y-4">
-                    {{-- Revenue --}}
+                    {{-- ===== Money collected =====
+
+                         Every figure here is ARITHMETIC the organiser can
+                         check: each thing they sell, the number who bought it,
+                         the price each, and the product. They add up to the
+                         total printed underneath, and that total is the one in
+                         the band.
+
+                         This replaced a single line reading "N entrants paid ×
+                         BHD 10" against a total that was nothing of the sort —
+                         a leftover from when an event had ONE price, and
+                         nonsense the moment it has three (reported
+                         2026-09-13). An event's prices are a list, so the sheet
+                         shows a list. --}}
                     <div class="rounded-2xl border border-gray-100 p-3">
-                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">{{ __('personal.event_show_money_collected') }}</p>
-                        {{-- The "each" figure is the LIST price when the event
-                             has no base fee: pricing through options leaves that
-                             column at 0, and printing "18 paid entries BHD 0"
-                             beside real revenue is how this looked like nobody
-                             had paid. --}}
-                        <div class="flex items-center justify-between text-sm py-1">
-                            <span class="text-muted-foreground"><span x-text="fin.paid_participants"></span> {{ __('personal.event_show_paid_entries') }} <span x-text="money(fin.participant_fee || fin.list_price)"></span></span>
-                            <span class="font-bold text-foreground" x-text="money(fin.participant_revenue)"></span>
-                        </div>
-                        <template x-if="fin.spectator_enabled">
-                            <div class="flex items-center justify-between text-sm py-1">
-                                <span class="text-muted-foreground"><span x-text="fin.paid_spectators"></span> {{ __('personal.event_show_tickets_x') }} <span x-text="money(fin.spectator_fee)"></span></span>
-                                <span class="font-bold text-foreground" x-text="money(fin.spectator_revenue)"></span>
+                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">{{ __('personal.event_show_money_collected') }}</p>
+
+                        <template x-for="src in (fin.sources || [])" :key="src.label + src.kind">
+                            <div class="flex items-start gap-2.5 py-2">
+                                <span class="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0"
+                                      :class="src.kind === 'late' ? 'bg-amber-500' : (src.estimated ? 'bg-gray-300' : 'bg-green-500')"></span>
+
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-[13px] font-bold text-foreground truncate"
+                                          :class="src.estimated ? 'italic' : ''" x-text="src.label"></span>
+
+                                    {{-- The multiplication, written out. No price
+                                         each when the frozen lines disagree on one
+                                         (a price edited mid-event) — then the
+                                         subtotal stands alone rather than implying
+                                         an average nobody was charged. --}}
+                                    <span class="block text-[11px] text-muted-foreground tabular-nums mt-0.5">
+                                        <span x-text="src.count"></span>
+                                        {{ __('personal.event_show_money_paid_word') }}<template x-if="src.unit !== null && src.unit !== undefined"><span> × <span x-text="money(src.unit)"></span></span></template>
+                                    </span>
+
+                                    {{-- Who still owes, on the row for the thing
+                                         they bought: "2 unpaid × BHD 10". --}}
+                                    <span x-show="src.unpaid > 0" x-cloak
+                                          class="block text-[11px] text-amber-600 tabular-nums">
+                                        <span x-text="src.unpaid"></span>
+                                        {{ __('personal.event_show_money_unpaid_word') }}<template x-if="src.unit !== null && src.unit !== undefined"><span> × <span x-text="money(src.unit)"></span></span></template>
+                                        <span x-text="'= ' + money(src.expected - src.revenue)"></span>
+                                    </span>
+                                </span>
+
+                                <span class="font-black text-foreground tabular-nums flex-shrink-0 text-end"
+                                      x-text="money(src.revenue)"></span>
                             </div>
                         </template>
+
+                        <p x-show="! (fin.sources || []).length" x-cloak
+                           class="text-[11px] text-muted-foreground text-center py-2">{{ __('personal.event_show_money_nothing_yet') }}</p>
+
                         <div class="flex items-center justify-between text-sm pt-2 mt-1 border-t border-gray-100">
                             <span class="font-bold text-foreground">{{ __('personal.event_show_total_revenue') }}</span>
-                            <span class="font-black text-green-600" x-text="money(fin.revenue)"></span>
+                            <span class="font-black text-green-600 tabular-nums" x-text="money(fin.revenue)"></span>
                         </div>
 
-                        {{-- An estimate says so. A desk entry is ticked paid
-                             without an amount ever being quoted, so it carries
-                             no fee line and is counted at the list price. --}}
+                        {{-- An estimate says so. Only an event with ONE price can
+                             have them: where entries are priced through options a
+                             missing fee line is counted as nothing, because
+                             nobody recorded which option was bought. --}}
                         <p x-show="fin.estimated_entries > 0" x-cloak
                            class="text-[10.5px] text-muted-foreground mt-2 leading-snug"
                            x-text="@js(__('personal.event_show_money_estimated', ['count' => ':count', 'amount' => ':amount']))
                                     .replace(':count', fin.estimated_entries)
                                     .replace(':amount', money(fin.list_price))"></p>
-
-                        {{-- WHERE it comes from. A total says how much; this
-                             says which of the things the organiser is selling
-                             is actually selling — Gi against Gi + No-Gi against
-                             the late penalty. Straight off the frozen fee
-                             lines, so it never re-states itself when a price is
-                             edited afterwards. --}}
-                        <template x-if="(fin.sources || []).length">
-                            <div class="mt-3 pt-2 border-t border-gray-100">
-                                <p class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">{{ __('personal.event_show_money_sources') }}</p>
-                                <template x-for="src in fin.sources" :key="src.label + src.kind">
-                                    <div class="flex items-center gap-2 text-[12px] py-1">
-                                        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                              :class="src.kind === 'late' ? 'bg-amber-500' : (src.estimated ? 'bg-gray-300' : 'bg-green-500')"></span>
-                                        <span class="min-w-0 flex-1 truncate" :class="src.estimated ? 'text-muted-foreground italic' : 'text-foreground'" x-text="src.label"></span>
-                                        <span class="text-muted-foreground flex-shrink-0" x-text="'×' + src.count"></span>
-                                        {{-- Collected, and — only when they
-                                             differ — what this type would bring
-                                             if its unpaid entries paid. Showing
-                                             the second figure always would put
-                                             the same number twice on most
-                                             rows. --}}
-                                        <span class="flex-shrink-0 text-end">
-                                            <span class="font-bold text-foreground" x-text="money(src.revenue)"></span>
-                                            <span class="text-[10.5px] text-muted-foreground" x-show="src.expected > src.revenue"
-                                                  x-text="' / ' + money(src.expected)"></span>
-                                        </span>
-                                    </div>
-                                </template>
-                            </div>
-                        </template>
                     </div>
 
                     {{-- The forecast. What the event takes if every entrant on
@@ -105,15 +111,25 @@
                     <template x-if="fin.expected_outstanding > 0">
                         <div class="rounded-2xl border border-gray-100 p-3">
                             <div class="flex items-center justify-between text-sm py-1">
-                                <span class="font-bold text-foreground">{{ __('personal.event_show_money_forecast') }}</span>
-                                <span class="font-black text-foreground" x-text="money(fin.expected_revenue)"></span>
-                            </div>
-                            <div class="flex items-center justify-between text-sm py-1">
                                 <span class="text-muted-foreground">{{ __('personal.event_show_money_outstanding') }}</span>
-                                <span class="font-bold text-amber-600" x-text="money(fin.expected_outstanding)"></span>
+                                <span class="font-bold text-amber-600 tabular-nums" x-text="money(fin.expected_outstanding)"></span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm py-1 pt-2 mt-1 border-t border-gray-100">
+                                <span class="font-bold text-foreground">{{ __('personal.event_show_money_forecast') }}</span>
+                                <span class="font-black text-foreground tabular-nums" x-text="money(fin.expected_revenue)"></span>
                             </div>
                             <p class="text-[10.5px] text-muted-foreground mt-1"
                                x-text="@js(__('personal.event_show_money_unpaid_entries', ['count' => ':count'])).replace(':count', fin.unpaid_entries)"></p>
+
+                            {{-- Why the head count can exceed what is owed: an
+                                 entrant with no fee recorded owes an amount
+                                 nobody can name, so they are in the count and
+                                 not in the forecast. Said out loud, because a
+                                 figure that does not tie is what sends an
+                                 organiser looking for a bug. --}}
+                            <p x-show="fin.unpriced_entries > 0" x-cloak
+                               class="text-[10.5px] text-muted-foreground leading-snug"
+                               x-text="@js(__('personal.event_show_money_unpriced', ['count' => ':count'])).replace(':count', fin.unpriced_entries)"></p>
                         </div>
                     </template>
 
@@ -147,10 +163,16 @@
                         </div>
                     </div>
 
-                    {{-- Profit --}}
-                    <div class="rounded-2xl p-4 flex items-center justify-between" :class="profit >= 0 ? 'bg-green-50' : 'bg-red-50'">
-                        <span class="text-sm font-black" :class="profit >= 0 ? 'text-green-700' : 'text-red-700'">{{ __('personal.event_show_profit') }}</span>
-                        <span class="text-lg font-black" :class="profit >= 0 ? 'text-green-700' : 'text-red-700'" x-text="money(profit)"></span>
+                    {{-- Profit, with the subtraction it came from written
+                         underneath — the last figure in the sheet should not be
+                         the one number the reader has to take on trust. --}}
+                    <div class="rounded-2xl p-4 flex items-center justify-between gap-3" :class="profit >= 0 ? 'bg-green-50' : 'bg-red-50'">
+                        <span class="min-w-0">
+                            <span class="block text-sm font-black" :class="profit >= 0 ? 'text-green-700' : 'text-red-700'">{{ __('personal.event_show_profit') }}</span>
+                            <span class="block text-[11px] tabular-nums mt-0.5" :class="profit >= 0 ? 'text-green-700/70' : 'text-red-700/70'"
+                                  x-text="money(fin.revenue) + ' − ' + money(expensesTotal)"></span>
+                        </span>
+                        <span class="text-lg font-black tabular-nums flex-shrink-0" :class="profit >= 0 ? 'text-green-700' : 'text-red-700'" x-text="money(profit)"></span>
                     </div>
                 </div>
             </div>

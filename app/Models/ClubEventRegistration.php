@@ -38,6 +38,12 @@ class ClubEventRegistration extends Model
         });
     }
 
+    /** The division was worked out by the platform, and may be corrected by it. */
+    public const PLACED_AUTO = 'auto';
+
+    /** A person put them there. Their call, and it outranks the scale. */
+    public const PLACED_MANUAL = 'manual';
+
     protected $fillable = [
         'event_id',
         'user_id',
@@ -48,6 +54,8 @@ class ClubEventRegistration extends Model
         'paid_at',
         'paid_by',
         'category_id',
+        // WHO chose that division — see the migration. 'auto' | 'manual'.
+        'category_source',
         'weight',
         // Recorded at the same desk, by the same official, as the weight —
         // see App\Sports\Combat\BeltRank for why this outranks the profile.

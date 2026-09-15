@@ -84,6 +84,7 @@ class BracketView
                 'entrants' => 0,
                 'rounds' => [],
                 'bench' => [],
+                'arrangeable' => true,
                 'podium' => [],
             ];
         }
@@ -129,6 +130,23 @@ class BracketView
             'standings' => ($c->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN
                 ? $this->standings($c)
                 : [],
+
+            /*
+             * ...and whether this division can be ARRANGED at all.
+             *
+             * Arranging is a bracket idea — who stands in which slot decides
+             * who meets whom. A pool has no such choice: everybody meets
+             * everybody, so there is nothing to place and dragging a name out
+             * of one fixture only breaks it. Arrangeability therefore belongs
+             * to the DIVISION, not to the board: one event may run a bracket
+             * the organiser can seed and a pool they cannot, side by side.
+             *
+             * The board still receives its own `can_arrange` (may this PERSON
+             * arrange, is the draw still open); this says whether this
+             * particular division is the kind of thing that is arranged at all.
+             * Arrangement::move() refuses the same case server-side.
+             */
+            'arrangeable' => ($c->format ?: EventCategory::FORMAT_KNOCKOUT) !== EventCategory::FORMAT_ROUND_ROBIN,
         ];
     }
 

@@ -64,6 +64,28 @@ trait SyncsDivisions
 
             $cap = $d['capacity'] ?? null;
             $cat->capacity = ($cap === null || $cap === '') ? null : (int) $cap;
+
+            /*
+             * HOW THE CLASS RUNS — a bracket, or a pool where everybody meets.
+             *
+             * Taken from the form when it says, and otherwise from the event's
+             * own word for itself: an organiser who created a "league" means
+             * pools in every class, and having to open each one afterwards to
+             * say so again is the kind of thing that gets done to eleven
+             * classes and forgotten on the twelfth.
+             *
+             * Only ever set on a division being CREATED. One already running is
+             * the organiser's, and its shape is not re-decided by a form save.
+             */
+            if (! $cat->exists) {
+                $cat->format = in_array($d['format'] ?? null, EventCategory::RUNNABLE_FORMATS, true)
+                    ? $d['format']
+                    : ($event->event_type === 'league'
+                        ? EventCategory::FORMAT_ROUND_ROBIN
+                        : EventCategory::FORMAT_KNOCKOUT);
+            } elseif (in_array($d['format'] ?? null, EventCategory::RUNNABLE_FORMATS, true)) {
+                $cat->format = $d['format'];
+            }
             if (! empty($d['schedule']) && is_array($d['schedule'])) {
                 $cat->schedule = $this->normalizePhaseSchedule($d['schedule']);
             }
@@ -96,6 +118,8 @@ trait SyncsDivisions
             // A title in the list rather than a division. See sync().
             'divisions.*.is_heading' => ['nullable', 'boolean'],
             'divisions.*.capacity' => ['nullable', 'integer', 'min:2', 'max:512'],
+            // A bracket or a pool, per class, straight from the create form.
+            'divisions.*.format' => ['nullable', \Illuminate\Validation\Rule::in(EventCategory::RUNNABLE_FORMATS)],
             'divisions.*.schedule' => ['nullable', 'array'],
             'divisions.*.schedule.preliminary' => ['nullable', 'integer', 'min:1', 'max:60'],
             'divisions.*.schedule.quarterfinals' => ['nullable', 'integer', 'min:1', 'max:60'],

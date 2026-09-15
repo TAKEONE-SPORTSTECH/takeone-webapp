@@ -80,6 +80,9 @@
     $feeLateAmount = $feeLateActive ? (float) ($feeEvent->late_fee_amount ?? 0) : 0.0;
     $feePrices = $feeOptions->map(fn ($o) => ['key' => $o->uuid, 'amount' => (float) $o->amount])->values()->all();
     $feeHasOptions = $feeOptions->isNotEmpty();
+    // Radio or checkbox: the organiser's own answer, read once here and used by
+    // this page AND partials/enrol-mine, so the two doors can never disagree.
+    $feeSingle = $feeEvent ? \App\Events\Support\EventFee::selection($feeEvent) === 'single' : false;
 @endphp
 {{-- Two mutually exclusive branches, chosen on the SERVER.
 
@@ -259,7 +262,7 @@
                                     <button type="button" @click="toggleFee('{{ $opt->uuid }}')"
                                             :class="feeChosen.includes('{{ $opt->uuid }}') ? 'is-on' : ''"
                                             class="m-press e-pick w-full rounded-2xl px-3 py-3 flex items-center gap-3 text-start">
-                                        <span class="w-5 h-5 rounded-md border-2 grid place-items-center flex-shrink-0"
+                                        <span class="w-5 h-5 {{ $feeSingle ? 'rounded-full' : 'rounded-md' }} border-2 grid place-items-center flex-shrink-0"
                                               :class="feeChosen.includes('{{ $opt->uuid }}') ? 'text-white' : 'border-gray-300'"
                                               :style="feeChosen.includes('{{ $opt->uuid }}') ? 'background: {{ $ev }}; border-color: {{ $ev }}' : ''">
                                             <i class="bi bi-check text-[11px]" x-show="feeChosen.includes('{{ $opt->uuid }}')"></i>
@@ -394,12 +397,26 @@ function enrolFlow() {
            costs is the event's business and is read server-side by
            EventFee::quote(). The price list below is the one this page was
            rendered with, and exists only so the total can be drawn. */
+        // Radio or checkbox — the event's own answer, enforced server-side in
+        // EventFee::quote(). See EventFee::selection().
+        feeSingle: @js($feeSingle ?? false),
         feeChosen: [],
         feePrices: @js($feePrices),
         feeBase: @js($feeBase),
         feeLate: @js($feeLateAmount),
 
         toggleFee(key) {
+            /* A RADIO where the event sells one option (fee_selection =
+               single): picking replaces, and a pick cannot be undone by
+               pressing it again — that is what a radio is, and it is how an
+               event with a combined Gi-plus-No-Gi option has to behave, or
+               the two can be bought separately for more than the combined
+               price.
+
+               The server enforces the same rule in EventFee::quote(); this only
+               saves the entrant from choosing something it would refuse. */
+            if (this.feeSingle) { this.feeChosen = [key]; return; }
+
             const i = this.feeChosen.indexOf(key);
             if (i === -1) this.feeChosen.push(key); else this.feeChosen.splice(i, 1);
         },

@@ -604,9 +604,17 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
         [$category] = $this->drawnDivision($event, $club);
 
-        $this->actingAs($organiser)->postJson(route('me.events.start', $event->uuid))->assertOk();
-
+        // Read BEFORE starting. Starting an event applies the final, paid-only
+        // draw immediately (PersonalEventController::startEvent → the package's
+        // onEntrantsChanged) — it used to be applied lazily by whatever next
+        // happened to view the bracket, which left bouts fought in between on a
+        // provisional draw that the next view then deleted. This fixture's
+        // entries carry no official's signature, so the final cut drops them
+        // and there is no bout to name afterwards; the refusal under test is
+        // about the ACTION being withdrawn, not about the bout still existing.
         $match = EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+
+        $this->actingAs($organiser)->postJson(route('me.events.start', $event->uuid))->assertOk();
 
         $this->actingAs($organiser)->putJson(route('me.events.bracket.arrange', $event->uuid), [
             'category_id' => $category->id,

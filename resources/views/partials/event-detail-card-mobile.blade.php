@@ -457,7 +457,7 @@
 
                     {{-- pointer-events-none so the scrim never eats a map drag;
                          the link re-enables them for itself. --}}
-                    <div class="absolute inset-x-0 bottom-0 z-[400] p-4 pt-10 pointer-events-none"
+                    <div class="absolute inset-x-0 bottom-0 z-10 p-4 pt-10 pointer-events-none"
                          style="background: linear-gradient(to top, rgba(17,24,39,.88), rgba(17,24,39,0));">
                         <div class="flex items-end justify-between gap-3">
                             {{-- No eyebrow here: the section heading above the map

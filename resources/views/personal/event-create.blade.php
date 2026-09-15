@@ -114,6 +114,8 @@
         start_time: @js($initStart),
         end_time: @js($initEnd),
         weigh_in_at: @js($ev?->weigh_in_at ? \Carbon\Carbon::parse($ev->weigh_in_at)->format('Y-m-d\TH:i') : ''),
+        // Let the deadline itself take unpaid / un-weighed entries off the list.
+        entry_deadline_enforced: @js((bool) ($ev?->entry_deadline_enforced ?? false)),
         enrollment_starts: @js($ev?->enrollment_starts_at?->format('Y-m-d') ?? ($isEdit ? '' : now()->format('Y-m-d'))),
         enrollment_ends: @js($ev?->enrollment_ends_at?->format('Y-m-d') ?? ''),
         {{-- Weight tables come from the Taekwondo package's own catalogue. This
@@ -165,7 +167,17 @@
         beltTo: @js($beltTo),
 
         get typeMeta() { return this.schema.types[this.type] || {}; },
-        get sections() { return this.typeMeta.sections || []; },
+        /* The TYPE decides the sections — except that a martial art run as a
+           league is still a martial art. "League" for a combat sport means its
+           weight classes are pools instead of brackets, so it asks for
+           divisions and a weigh-in, never for teams and a fixture list. The
+           variant lives in the schema beside the default. */
+        get sections() {
+            const meta = this.typeMeta;
+            const byFamily = meta.sections_by_family || {};
+
+            return byFamily[(this.sportMeta.family || '')] || meta.sections || [];
+        },
         has(s) { return this.sections.includes(s); },
         get sportMeta() { return this.schema.sports[this.sport] || {}; },
         get divisionLabel() { return this.sportMeta.division_label || 'Category'; },
@@ -362,6 +374,8 @@
                     date: this.date, end_date: this.end_date || null,
                     start_time: this.start_time, end_time: this.end_time || null,
                     weigh_in_at: (this.isCombat && this.weigh_in_at) ? this.weigh_in_at : null,
+                    // Only meaningful with a weigh-in moment to enforce.
+                    entry_deadline_enforced: (this.isCombat && this.weigh_in_at) ? this.entry_deadline_enforced : false,
                     enrollment_starts_at: this.enrollment_starts || null,
                     enrollment_ends_at: this.enrollment_ends || null,
                     location: locName,
@@ -421,7 +435,7 @@
                     requirements: this.has('requirements') ? this.requirements.map(r => (r||'').trim()).filter(Boolean) : [],
                     tags: this.tagsText.split(',').map(s => s.trim().replace(/^#/, '')).filter(Boolean),
                     phases: (this.has('phases') && !this.isCombat) ? this.phases.filter(p => (p.label||'').trim()).map(p => ({ label: p.label.trim(), date: p.date || null, note: (p.note||'').trim() })) : [],
-                    divisions: this.has('divisions') ? this.divisions.filter(d => (d.name||'').trim()).map(d => ({ name: d.name, capacity: (d.capacity === '' || d.capacity == null) ? null : parseInt(d.capacity, 10), schedule: d.schedule })) : [],
+                    divisions: this.has('divisions') ? this.divisions.filter(d => (d.name||'').trim()).map(d => ({ name: d.name, capacity: (d.capacity === '' || d.capacity == null) ? null : parseInt(d.capacity, 10), schedule: d.schedule, format: d.format || null, is_heading: !!d.is_heading })) : [],
                     league: this.has('league') ? {
                         teams: this.league.teams.map(t => (t||'').trim()).filter(Boolean),
                         fixtures: this.league.fixtures.filter(f => (f.home||'').trim() && (f.away||'').trim()),
@@ -610,6 +624,33 @@
                 <input x-model="weigh_in_at" type="datetime-local"
                        :min="(enrollment_ends || enrollment_starts) ? ((enrollment_ends || enrollment_starts) + 'T00:00') : ''" @change="clampDates()"
                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+
+                {{-- What the deadline DOES.
+                     A weigh-in moment on its own is a note in a calendar. This
+                     is the organiser saying it decides something: an entry that
+                     is not paid for and has not been on the scale comes off the
+                     list when it passes, the athlete is told which of the two it
+                     was, and the draw is re-cut without them.
+
+                     Off unless asked for — it removes entries — and offered only
+                     once there is a moment for it to happen at. --}}
+                <button type="button" x-show="weigh_in_at" x-cloak
+                        @click="entry_deadline_enforced = ! entry_deadline_enforced"
+                        :class="entry_deadline_enforced ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'"
+                        class="m-press mt-2 w-full flex items-start gap-3 p-3 rounded-xl border text-start transition-colors">
+                    <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0"
+                          :class="entry_deadline_enforced ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'">
+                        <i class="bi bi-clock-history"></i>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_event_create_deadline_enforce') }}</span>
+                        <span class="block text-[11px] text-muted-foreground mt-0.5 leading-snug">{{ __('personal.personal_event_create_deadline_enforce_hint') }}</span>
+                    </span>
+                    <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 mt-0.5"
+                          :class="entry_deadline_enforced ? 'border-primary bg-primary text-white' : 'border-gray-300'">
+                        <i class="bi bi-check text-[11px]" x-show="entry_deadline_enforced" x-cloak></i>
+                    </span>
+                </button>
             </div>
 
             {{-- Start / end date --}}

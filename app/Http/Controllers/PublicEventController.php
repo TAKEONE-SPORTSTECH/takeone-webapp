@@ -196,6 +196,10 @@ class PublicEventController extends Controller
             'officials' => ['bi-person-badge-fill', __('personal.event_show_tile_officials')],
             'gallery' => ['bi-camera-reels-fill', __('events.bout_gallery_title')],
             'participants' => ['bi-people-fill', __('personal.event_show_tile_participants')],
+            'results' => ['bi-trophy-fill', __('personal.event_show_results_medals')],
+            // The owning package's own page — a league's table today. Its icon
+            // and its title come from the package, so this is only a fallback.
+            'table' => [$e['type_public']['icon'] ?? 'bi-table', $e['type_public']['label'] ?? ''],
         ][$section] ?? null;
 
         abort_if($meta === null, 404);
@@ -203,6 +207,12 @@ class PublicEventController extends Controller
         // An event that runs no draw has no draw page either — the poster shows
         // no door to one, and the address must agree with the door.
         abort_if($section === 'draw' && $e['divisions'] === [] && ! $e['draw']['published'], 404);
+
+        // ...and no result sheet before anybody has won anything.
+        abort_if($section === 'results' && ($e['results']['count'] ?? 0) === 0, 404);
+
+        // ...and no package page for a type that publishes nothing.
+        abort_if($section === 'table' && ($e['type_public']['key'] ?? null) !== 'table', 404);
 
         // The mobile reading, at every width — see show(). The four doors are
         // part of the same app and cannot answer that question differently.

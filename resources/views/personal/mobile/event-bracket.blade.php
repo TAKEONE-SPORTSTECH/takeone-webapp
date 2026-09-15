@@ -338,14 +338,37 @@
                     <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3"><i class="bi bi-award-fill text-amber-500"></i> {{ __('personal.personal_event_bracket_podium_prizes') }}</h3>
                     <div class="space-y-2">
                         @foreach($c['podium'] as $p)
-                            @php $medal = [1 => ['#f59e0b','🥇'], 2 => ['#9ca3af','🥈'], 3 => ['#b45309','🥉']][$p['place']]; @endphp
+                            @php
+                                /* Fourth place is a placing, not a medal — it wears its
+                                   numeral. A podium the platform awarded carries no prize
+                                   and may carry no flag, so neither is assumed: this block
+                                   used to read a hand-typed shape only, and fataled on
+                                   `country` the first time a division was awarded by the
+                                   draw itself. */
+                                $medal = [
+                                    1 => ['#f59e0b', '🥇', __('personal.personal_event_bracket_champion')],
+                                    2 => ['#9ca3af', '🥈', __('personal.personal_event_bracket_runner_up')],
+                                    3 => ['#b45309', '🥉', __('personal.personal_event_bracket_third_place')],
+                                    4 => ['#64748b', '',   __('personal.event_show_fourth_place')],
+                                ][$p['place'] ?? 0] ?? ['#64748b', '', '#'.($p['place'] ?? '')];
+                                $country = $p['country'] ?? null;
+                            @endphp
                             <div class="flex items-center gap-3 rounded-xl p-2.5" style="background: {{ $medal[0] }}12;">
-                                <div class="w-9 h-9 grid place-items-center text-2xl flex-shrink-0 leading-none">{{ $medal[1] }}</div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-foreground truncate">{{ $p['name'] }} {!! $flag($p['country']) !!} <span class="text-[10px] font-semibold text-muted-foreground">{{ $p['country'] }}</span></p>
-                                    <p class="text-[11px] text-muted-foreground">{{ $p['place'] === 1 ? __('personal.personal_event_bracket_champion') : ($p['place'] === 2 ? __('personal.personal_event_bracket_runner_up') : __('personal.personal_event_bracket_third_place')) }}</p>
+                                <div class="w-9 h-9 grid place-items-center flex-shrink-0 leading-none">
+                                    @if($medal[1] !== '')
+                                        <span class="text-2xl">{{ $medal[1] }}</span>
+                                    @else
+                                        <span class="w-7 h-7 rounded-full grid place-items-center text-xs font-black"
+                                              style="background: {{ $medal[0] }}20; color: {{ $medal[0] }};">{{ $p['place'] ?? '' }}</span>
+                                    @endif
                                 </div>
-                                <span class="text-[11px] font-black flex-shrink-0" style="color: {{ $medal[0] }};">{{ $p['prize'] }}</span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold text-foreground truncate">{{ $p['name'] ?? '' }} @if($country){!! $flag($country) !!} <span class="text-[10px] font-semibold text-muted-foreground">{{ $country }}</span>@endif</p>
+                                    <p class="text-[11px] text-muted-foreground">{{ $medal[2] }}</p>
+                                </div>
+                                @if(filled($p['prize'] ?? null))
+                                    <span class="text-[11px] font-black flex-shrink-0" style="color: {{ $medal[0] }};">{{ $p['prize'] }}</span>
+                                @endif
                             </div>
                         @endforeach
                     </div>

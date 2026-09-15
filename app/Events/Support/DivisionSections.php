@@ -165,8 +165,22 @@ class DivisionSections
                     $label = $gender;
                     $chip = $name;                                  // the whole translated name
                 } else {
-                    $label = trim(trim($m[1]).' '.$gender);
-                    $chip = trim($m[3]) !== '' ? trim($m[3]) : $name;
+                    $label = $this->tidy(trim($m[1]).' '.$gender);
+
+                    /*
+                     * What is LEFT of the name once the gender and everything
+                     * before it has become the caption — and `trim()` alone is
+                     * not enough to leave it presentable.
+                     *
+                     * An organiser separates the parts of a division's name
+                     * with a middot: "Adult Men · White & Blue · −64 kg". Cut
+                     * the caption off and the remainder still opens with that
+                     * separator, so every chip on the poster and the event page
+                     * read "· White & Blue · −64 kg" — a bullet hanging off the
+                     * front of each one. The separators BETWEEN the parts stay;
+                     * only a dangling one at either end goes.
+                     */
+                    $chip = $this->tidy($m[3]) !== '' ? $this->tidy($m[3]) : $name;
                 }
 
                 $fallback = false;
@@ -187,5 +201,30 @@ class DivisionSections
         // sort_order — the sequence the organiser arranged them in. Imposing an
         // alphabetical order here would quietly override it.
         return array_values($groups);
+    }
+
+    /**
+     * Trim whitespace AND a dangling separator from either end.
+     *
+     * The separators a name is built from — `·`, `|`, `/`, a dash — are only
+     * meaningful between two things. One left at an edge by cutting the name in
+     * half is not punctuation, it is a seam showing.
+     *
+     * ⚠️ A LEADING DASH BEFORE A NUMBER IS NOT A SEPARATOR. `-58 kg` is a
+     * weight limit and the dash is half of what it means; stripping it turns
+     * "under 58 kg" into "58 kg", which is a different division. So the strip
+     * walks one token at a time and stops the moment the next one is a sign in
+     * front of a number.
+     */
+    private function tidy(string $text): string
+    {
+        $text = trim($text);
+
+        while ($text !== '' && preg_match('/^([\s·•|\/]+|[-–—−](?!\s*\d))/u', $text, $m)) {
+            $text = ltrim(mb_substr($text, mb_strlen($m[0])));
+        }
+
+        // Nothing meaningful ever ends a name, so the tail needs no such care.
+        return rtrim(preg_replace('/[\s·•|\/\-–—−]+$/u', '', $text));
     }
 }

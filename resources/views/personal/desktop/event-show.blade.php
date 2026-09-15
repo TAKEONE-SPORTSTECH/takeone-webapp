@@ -15,7 +15,10 @@
     // Why competing is not on offer — the exact sentence the server produced, so
     // the apology dialog gives the real reason rather than a generic refusal.
     // Defined up here because partials.event-show-script (included below) reads it.
-    $whyNot = ($banned ?? false)
+    /* Banned by a person, or taken off by the deadline — either way the
+       server already wrote the exact sentence, and the apology dialog says it
+       rather than a generic refusal. */
+    $whyNot = (($banned ?? false) || ($excludedAt ?? null))
         ? ($eligReason ?? __('personal.event_show_removed_default'))
         : (($e['ended'] ?? false)
             ? __('personal.event_show_ended_msg')
@@ -23,7 +26,7 @@
                 ? __('personal.event_show_entry_by_qualification')
                 : ($eligReason ?? __('personal.event_show_not_eligible_default'))));
 
-    $locked  = ($banned ?? false) || ($e['ended'] ?? false);
+    $locked  = ($banned ?? false) || ($excludedAt ?? null) !== null || ($e['ended'] ?? false);
     $canJoin = ! $locked && ($canCompete ?? true) && ! $byQual;
 @endphp
 
@@ -318,7 +321,25 @@
                 </button>
             </div>
 
-            {{-- ===== Join / spectate =====
+            {{-- ===== Taken off at the deadline =====
+     Not a ban and not a refusal to enter: their place existed and was
+     released. Said on arrival rather than behind a "Why not?" tap, because
+     somebody who expected to compete this morning should not have to go
+     looking for the reason. --}}
+@if($excludedAt ?? null)
+    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3 mb-4">
+        <span class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 grid place-items-center flex-shrink-0">
+            <i class="bi bi-clock-history text-lg"></i>
+        </span>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-bold text-amber-900">{{ __('personal.event_show_deadline_removed') }}</p>
+            <p class="text-[12px] text-amber-800 mt-1 leading-snug">{{ $eligReason }}</p>
+            <p class="text-[11px] text-amber-700/80 mt-1.5">{{ \App\Support\Cldr::shortDate($excludedAt) }}</p>
+        </div>
+    </div>
+@endif
+
+        {{-- ===== Join / spectate =====
                  Ported from mobile, which replaced the old "Entry & tickets" card
                  plus a separate CTA underneath. Each row IS the way in: it already
                  names the thing, its price and who it is for, so a CTA below only
@@ -497,7 +518,7 @@
                                 <div class="min-w-0 flex-1">
                                     <h3 class="font-black text-[15px] leading-tight">{{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_tile_participants') }}</h3>
                                     <p class="text-[11px] text-white/85 mt-0.5 truncate">
-                                        <span x-text="goingCount">{{ $e['participants_total'] ?? $e['going'] }}</span> {{ __('personal.event_show_in') }}
+                                        <span x-text="peopleCount">{{ $e['participants_people'] ?? $e['participants_total'] ?? $e['going'] }}</span> {{ __('personal.event_show_in') }}
                                         @if($hasTicket)
                                             · <span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_spectators') }}
                                         @endif
@@ -604,9 +625,25 @@
                                 <p class="text-sm font-bold text-foreground mb-2 flex items-center gap-2"><i class="bi bi-diagram-3 bracket-icon text-primary"></i> {{ $r['division'] }}</p>
                                 <div class="space-y-1.5">
                                     @foreach($r['medals'] as $m)
-                                        @php $medal = [1 => ['🥇', '#f59e0b', __('personal.event_show_champion')], 2 => ['🥈', '#9ca3af', __('personal.event_show_runner_up')], 3 => ['🥉', '#b45309', __('personal.event_show_third_place')]][$m['place']]; @endphp
+                                        @php
+                                        /* Fourth is a PLACING, not a medal — it carries the
+                                           numeral rather than a fourth colour of disc, and a
+                                           place this sheet does not know falls back to its own
+                                           number rather than fataling on a missing key. */
+                                        $medal = [
+                                            1 => ['🥇', '#f59e0b', __('personal.event_show_champion')],
+                                            2 => ['🥈', '#9ca3af', __('personal.event_show_runner_up')],
+                                            3 => ['🥉', '#b45309', __('personal.event_show_third_place')],
+                                            4 => ['',   '#64748b', __('personal.event_show_fourth_place')],
+                                        ][$m['place']] ?? ['', '#64748b', '#'.$m['place']];
+                                    @endphp
                                         <div class="flex items-center gap-3 rounded-xl p-2" style="background: {{ $medal[1] }}12;">
+                                            @if($medal[0] !== '')
                                             <span class="text-2xl flex-shrink-0 leading-none">{{ $medal[0] }}</span>
+                                        @else
+                                            <span class="w-8 h-8 rounded-full grid place-items-center flex-shrink-0 text-xs font-black"
+                                                  style="background: {{ $medal[1] }}20; color: {{ $medal[1] }};">{{ $m['place'] }}</span>
+                                        @endif
                                             <div class="min-w-0 flex-1">
                                                 <p class="text-sm font-bold text-foreground truncate">{{ $m['name'] }}</p>
                                                 <p class="text-xs text-muted-foreground">{{ $medal[2] }}</p>

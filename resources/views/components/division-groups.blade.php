@@ -105,6 +105,8 @@
             'miss_gender' => __('personal.division_miss_gender'),
             'miss_age'    => __('personal.division_miss_age'),
             'miss_weight' => __('personal.division_miss_weight'),
+            'miss_belt'   => __('personal.division_miss_belt'),
+            'miss_stream' => __('personal.division_miss_stream'),
             'kg'          => __('personal.division_kg'),
             'yrs'         => __('personal.division_yrs'),
             'register'    => __('personal.division_register'),
@@ -251,7 +253,7 @@
                  x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-                 class="absolute inset-x-0 bottom-0 mx-auto w-full sm:max-w-lg max-h-[92vh] flex flex-col
+                 class="absolute inset-x-0 bottom-0 mx-auto w-full max-h-[92vh] flex flex-col
                         rounded-t-3xl bg-background shadow-2xl overflow-hidden">
 
                 {{-- The gradient band every sheet opens with (Design Rule #8).
@@ -400,7 +402,7 @@
                  x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-                 class="absolute inset-x-0 bottom-0 mx-auto w-full sm:max-w-lg max-h-[92vh] flex flex-col
+                 class="absolute inset-x-0 bottom-0 mx-auto w-full max-h-[92vh] flex flex-col
                         rounded-t-3xl bg-background shadow-2xl overflow-hidden">
 
                 <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
@@ -1107,6 +1109,8 @@ document.addEventListener('alpine:init', () => {
                 gender: this.words.miss_gender,
                 age: this.words.miss_age,
                 weight: this.words.miss_weight,
+                belt: this.words.miss_belt,
+                stream: this.words.miss_stream,
             }[m] ?? m)).join(', ');
         },
 

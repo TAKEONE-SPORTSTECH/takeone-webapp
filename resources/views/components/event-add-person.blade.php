@@ -1,7 +1,11 @@
 @props([
     'event',                // event uuid
-    'divisions' => [],      // [['id' => int, 'name' => string], …] — the event's activities
     'fees' => [],           // $e['fees'] — what this event SELLS (Gi / No-Gi / …)
+    /* The clubs this person may be entered FOR — EntryEditor::clubOptions(),
+       the same list and the same two key shapes (a tenant slug, or an event
+       club's uuid for a visiting team with no account) the roster's own club
+       picker offers. Empty simply hides the question. */
+    'clubs' => [],
     'color' => '#7c3aed',
     'title' => '',
 ])
@@ -39,13 +43,6 @@
 @php
     $c = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $color) ? $color : '#7c3aed';
 
-    // Ids and names only — nothing else about a division is this sheet's
-    // business, and the server re-checks that each one belongs to THIS event.
-    $divs = collect($divisions)->map(fn ($d) => [
-        'id' => (int) ($d['id'] ?? 0),
-        'name' => (string) ($d['name'] ?? ''),
-    ])->filter(fn ($d) => $d['id'] > 0)->values()->all();
-
     /* One id for the photo flow, unique per event so two consoles on one page
        could never answer each other's events. Letters and digits only — it is
        also the cropper's element id. */
@@ -65,20 +62,30 @@
     $feeCurrency = $fees['currency'] ?? '';
     $feeLate = (bool) ($fees['late_active'] ?? false);
     $feeLateAmount = (float) ($fees['late_amount'] ?? 0);
+    // Radio or checkbox, straight from the same payload — one answer for every
+    // door into this event (EventFee::selection).
+    $feeSingle = ($fees['selection'] ?? 'multiple') === 'single';
 @endphp
 
 <div x-data="{
         open: false,
-        tab: 'member',
+        /* Opens on the WALK-IN. The desk's common case is somebody standing
+           there with no account — an athlete who has one is usually entered by
+           themselves or by their coach long before the morning. */
+        tab: 'new',
 
-        /* ---------------- the activity, shared by both tabs ----------------
-           One choice applied to everybody being added, because this sheet is
-           for the handful of people the organiser adds at the desk, not for a
-           mixed squad of forty (that is the coach's roster sheet). Null means
-           'let the package's gate decide', which is what every caller before
-           this did. */
-        divisions: @js($divs),
-        division: null,
+        /* ---------------- which division ----------------
+           Nobody's to choose. A division is decided by what it is FOR — the
+           weight, the age, the rank and the part of the event somebody
+           entered — and the package's own gate works that out from the entry
+           (EntryService / DivisionRange). A picker here offered the desk a
+           twelfth answer to a question the filters had already answered, and
+           any answer it gave that disagreed with them was wrong.
+
+           So this sheet commits the PERSON and what they bought, and where
+           they are drawn follows from that. Moving somebody deliberately is
+           still possible — on the division's own sheet, where the range that
+           makes it an exception is visible. */
 
         /* ---------------- what they are entering ----------------
            The event's priced options, exactly as the public enrolment form
@@ -95,9 +102,21 @@
         feeLate: @js($feeLate),
         feeLateAmount: @js($feeLateAmount),
         feeCurrency: @js($feeCurrency),
+        feeSingle: @js($feeSingle),
         feeChosen: [],
 
         toggleFee(key) {
+            /* A RADIO where the event sells one option (fee_selection =
+               single): picking replaces, and a pick cannot be undone by
+               pressing it again — that is what a radio is, and it is how an
+               event with a combined Gi-plus-No-Gi option has to behave, or
+               the two can be bought separately for more than the combined
+               price.
+
+               The server enforces the same rule in EventFee::quote(); this only
+               saves the entrant from choosing something it would refuse. */
+            if (this.feeSingle) { this.feeChosen = [key]; return; }
+
             const i = this.feeChosen.indexOf(key);
             if (i === -1) this.feeChosen.push(key); else this.feeChosen.splice(i, 1);
         },
@@ -115,7 +134,7 @@
             return (this.feeCurrency ? this.feeCurrency + ' ' : '') + this.feeTotal.toFixed(3);
         },
 
-        /* ---------------- tab 1: somebody with an account ---------------- */
+        /* ---------------- the SECOND door: somebody with an account ---------------- */
         q: '',
         results: [],
         picked: [],
@@ -170,11 +189,6 @@
             if (! this.picked.length || this.entering) return;
             this.entering = true;
 
-            /* The endpoint takes divisions PER athlete; one choice here simply
-               fills the map for everybody picked. Absent = the gate decides. */
-            const divisions = {};
-            if (this.division) this.picked.forEach(id => { divisions[id] = [this.division]; });
-
             /* The endpoint takes the options PER athlete (a real squad is
                mixed); one choice here simply fills the map for everybody
                picked, which is what the coach's sheet's apply-to-all does. */
@@ -191,7 +205,8 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
                     },
                     credentials: 'same-origin',
-                    body: JSON.stringify({ user_ids: this.picked, divisions, fee_options }),
+                    // No `divisions`: the gate places them. See the note above.
+                    body: JSON.stringify({ user_ids: this.picked, fee_options }),
                 });
                 d = await res.json().catch(() => ({}));
                 if (! res.ok || ! d.success) throw new Error(d.message || @js(__('personal.event_show_action_failed')));
@@ -223,8 +238,20 @@
             }));
         },
 
-        /* ---------------- tab 2: somebody with no account ---------------- */
-        person: { full_name: '', contact_email: '', contact_phone: '', gender: '', birthdate: '', weight: '' },
+        /* ---------------- the FIRST door: somebody with no account ---------------- */
+        person: { full_name: '', contact_email: '', contact_phone: '', contact_code: '+973', gender: '', birthdate: '', weight: '', belt_colour: '', belt_grade: '', club: '' },
+
+        /* The club picker, as a dropdown rather than a stack of cards: an event
+           gathers clubs as it fills, and nine of them (and counting) pushed
+           every field under them off the screen. The list itself is the same
+           one, from the same authority. */
+        clubOpen: false,
+        clubList: @js(array_values(array_map(fn ($c) => [
+            'slug' => (string) ($c['slug'] ?? ''),
+            'name' => (string) ($c['name'] ?? ''),
+            'logo' => $c['logo'] ?? null,
+        ], $clubs))),
+        clubChosen() { return this.clubList.find(c => c.slug === this.person.club) || null; },
         creating: false,
         claim: null,          // the link just minted — shown ONCE, never listed
 
@@ -308,12 +335,21 @@
                Decides What It Demands'). Blanks are dropped rather than sent
                as empty strings, which the format rules would refuse. */
             const body = { full_name: name };
-            ['contact_email', 'contact_phone', 'gender', 'birthdate'].forEach(k => {
+            ['contact_email', 'gender', 'birthdate', 'belt_colour', 'belt_grade', 'club'].forEach(k => {
                 const v = (this.person[k] || '').trim();
                 if (v) body[k] = v;
             });
+
+            /* One dialable string. The code is only worth storing when there IS
+               a number, and a number already typed in full international form
+               is left exactly as the person at the desk wrote it. */
+            const phone = (this.person.contact_phone || '').trim();
+            if (phone) {
+                body.contact_phone = phone.startsWith('+')
+                    ? phone
+                    : ((this.person.contact_code || '') + ' ' + phone).trim();
+            }
             if ((this.person.weight || '').toString().trim()) body.weight = Number(this.person.weight);
-            if (this.division) body.category_id = this.division;
             if (this.feeChosen.length) body.options = this.feeChosen.slice();
 
             let d = null;
@@ -338,7 +374,7 @@
             this.creating = false;
 
             this.claim = d.claim || null;
-            this.person = { full_name: '', contact_email: '', contact_phone: '', gender: '', birthdate: '', weight: '' };
+            this.person = { full_name: '', contact_email: '', contact_phone: '', contact_code: '+973', gender: '', birthdate: '', weight: '', belt_colour: '', belt_grade: '', club: '' };
             window.showToast('success', d.message);
 
             /* The entry carries its registration id back (EntryClaim::present),
@@ -457,23 +493,30 @@
 
                     {{-- The two doors, as a segmented control inside the band. --}}
                     <div class="relative mt-3 flex items-center gap-1 p-1 rounded-full bg-white/15 backdrop-blur">
-                        <button type="button" @click="tab = 'member'"
-                                class="flex-1 h-8 rounded-full text-[12px] font-bold transition-colors"
-                                :class="tab === 'member' ? 'bg-white/90 text-gray-900' : 'text-white/85'">
-                            <i class="bi bi-person-check-fill me-1"></i>{{ __('events.add_person_tab_member') }}
-                        </button>
                         <button type="button" @click="tab = 'new'"
                                 class="flex-1 h-8 rounded-full text-[12px] font-bold transition-colors"
                                 :class="tab === 'new' ? 'bg-white/90 text-gray-900' : 'text-white/85'">
                             <i class="bi bi-pencil-fill me-1"></i>{{ __('events.add_person_tab_new') }}
                         </button>
+                        <button type="button" @click="tab = 'member'"
+                                class="flex-1 h-8 rounded-full text-[12px] font-bold transition-colors"
+                                :class="tab === 'member' ? 'bg-white/90 text-gray-900' : 'text-white/85'">
+                            <i class="bi bi-person-check-fill me-1"></i>{{ __('events.add_person_tab_member') }}
+                        </button>
                     </div>
                 </div>
 
-                {{-- Body scrolls; the footer holding the action stays reachable. --}}
-                <div class="flex-1 overflow-y-auto px-5 py-4">
+                {{-- Body scrolls; the footer holding the action stays reachable.
 
-                    {{-- ===================== Tab 1 — has an account ===================== --}}
+                     ONE rhythm, owned here: 24px between the sheet's major
+                     blocks (the open tab, what they are buying, the footnote).
+                     Nothing inside a block sets its own bottom margin to hold
+                     the next one off — that is how a gap disappears the day the
+                     block above it is removed, which is exactly what happened
+                     when the division picker went. --}}
+                <div class="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+
+                    {{-- ============ Second tab — has an account ============ --}}
                     <div x-show="tab === 'member'" x-cloak>
                         <div class="relative">
                             <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm"></i>
@@ -522,11 +565,13 @@
                         </div>
                     </div>
 
-                    {{-- ===================== Tab 2 — no account ===================== --}}
-                    <div x-show="tab === 'new'" x-cloak>
+                    {{-- ============ First tab, and the default — no account ============ --}}
+                    {{-- 20px between the pane's own sections; a section's
+                         controls sit 12px apart (space-y-3 below). --}}
+                    <div x-show="tab === 'new'" x-cloak class="space-y-5">
                         {{-- What was just minted, shown once. A claim link is a
                              credential, so it lives here and is never listed. --}}
-                        <div x-show="claim" x-cloak class="rounded-2xl border-2 border-green-200 bg-green-50 p-4 mb-4">
+                        <div x-show="claim" x-cloak class="rounded-2xl border-2 border-green-200 bg-green-50 p-4">
                             <p class="text-sm font-black text-foreground flex items-center gap-2">
                                 <i class="bi bi-check-circle-fill text-green-600"></i>
                                 <span x-text="claim ? claim.name : ''"></span>
@@ -566,7 +611,7 @@
                              the platform, and the fallback is a silhouette, not
                              an icon — this is a person, and the box should look
                              like it is waiting for one. --}}
-                        <div class="flex items-center gap-4 mb-5">
+                        <div class="flex items-center gap-4">
                             <button type="button" @click="pickPhoto()"
                                     {{-- ⚠️ `border-solid` is NOT in the prebuilt Tailwind
                                          bundle, so the dashed edge is dropped by
@@ -600,93 +645,222 @@
                             </div>
                         </div>
 
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('events.add_person_name') }}</label>
-                        <input type="text" x-model="person.full_name" maxlength="120"
-                               placeholder="{{ __('events.add_person_name_ph') }}"
-                               class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mt-5 mb-1">{{ __('events.add_person_details') }}</p>
-                        <p class="text-[11.5px] text-muted-foreground leading-snug mb-3">{{ __('events.add_person_details_sub') }}</p>
-
-                        {{-- The shared two-button selector, not a native select
-                             (Design Rule #4) and not a second copy of it. --}}
-                        <x-gender-toggle model="person.gender"
-                                         :male-label="(string) Illuminate\Support\Js::from(__('events.add_person_male'))"
-                                         :female-label="(string) Illuminate\Support\Js::from(__('events.add_person_female'))" />
-
-                        <div class="mt-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('events.add_person_birthdate') }}</label>
-                            {{-- The DROPDOWN variant — Day / Month / Year, with a
-                                 typeable year — because a birthdate is decades
-                                 back and paging a month grid there is absurd.
-                                 The same control, in the same variant, that the
-                                 self-serve entrant is asked with
-                                 (entry/public/my-entry). Never a native date
-                                 input (Design Rule #4). --}}
-                            <x-date-picker variant="dropdown" model="person.birthdate"
-                                           max="{{ now()->subDay()->toDateString() }}" />
-                        </div>
-
-                        <div class="mt-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('events.add_person_weight') }}</label>
-                            <input type="number" inputmode="decimal" step="0.1" min="10" max="300" x-model="person.weight"
+                        {{-- The only field that is required, and the only one
+                             standing on its own. --}}
+                        <section>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events.add_person_name') }}</label>
+                            <input type="text" x-model="person.full_name" maxlength="120"
+                                   placeholder="{{ __('events.add_person_name_ph') }}"
                                    class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                        </div>
+                        </section>
 
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mt-5 mb-2">{{ __('events.add_person_contact') }}</p>
-                        <div class="space-y-2">
-                            <input type="email" x-model="person.contact_email" maxlength="190"
-                                   placeholder="{{ __('events.add_person_email') }}"
-                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                            <input type="tel" x-model="person.contact_phone" maxlength="32"
-                                   placeholder="{{ __('events.add_person_phone') }}"
-                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                        </div>
+                        <section>
+                            {{-- Eyebrow, its sub-line 2px under it, then 12px of
+                                 air before the first control: the heading and
+                                 its explanation read as ONE object, set apart
+                                 from the fields they introduce. --}}
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('events.add_person_details') }}</p>
+                            <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events.add_person_details_sub') }}</p>
+
+                            <div class="space-y-3 mt-3">
+                                {{-- The shared two-button selector, not a native select
+                                     (Design Rule #4) and not a second copy of it. --}}
+                                <x-gender-toggle model="person.gender"
+                                                 :male-label="(string) Illuminate\Support\Js::from(__('events.add_person_male'))"
+                                                 :female-label="(string) Illuminate\Support\Js::from(__('events.add_person_female'))" />
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events.add_person_birthdate') }}</label>
+                                    {{-- The DROPDOWN variant — Day / Month / Year, with a
+                                         typeable year — because a birthdate is decades
+                                         back and paging a month grid there is absurd.
+                                         The same control, in the same variant, that the
+                                         self-serve entrant is asked with
+                                         (entry/public/my-entry). Never a native date
+                                         input (Design Rule #4). --}}
+                                    <x-date-picker variant="dropdown" model="person.birthdate"
+                                                   max="{{ now()->subDay()->toDateString() }}" />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events.add_person_weight') }}</label>
+                                    <input type="number" inputmode="decimal" step="0.1" min="10" max="300" x-model="person.weight"
+                                           class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                </div>
+
+                                {{-- THE RANK.
+
+                                     The desk knows it — the athlete is standing
+                                     there in the belt — and it decides which
+                                     division they land in, so asking for it here
+                                     is the difference between placing them now
+                                     and chasing them later. It was the one thing
+                                     the entry list showed that this sheet could
+                                     not record (reported 2026-09-13).
+
+                                     Drawn as the belt itself rather than a
+                                     coloured dot: the picker is answered by
+                                     looking at somebody's waist, so it should
+                                     look like what the answerer is looking at.
+                                     The ladder is App\Sports\Combat\BeltRank's
+                                     — the one every other surface reads. --}}
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events.entry_field_belt') }}</label>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        @foreach(\App\Sports\Combat\BeltRank::ladder() as $belt)
+                                            <button type="button"
+                                                    @click="person.belt_colour = person.belt_colour === @js($belt['value']) ? '' : @js($belt['value'])"
+                                                    :aria-pressed="person.belt_colour === @js($belt['value'])"
+                                                    :class="person.belt_colour === @js($belt['value']) ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'"
+                                                    class="m-press flex items-center gap-1.5 px-2 py-2 rounded-xl border-2 transition-colors min-w-0">
+                                                <x-belt-icon :color="$belt['value']" :title="false" class="w-6 h-6 flex-shrink-0" />
+                                                <span class="text-[11.5px] font-bold text-foreground truncate">{{ $belt['label'] }}</span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+
+                                    {{-- The degree, in the federation's own words.
+                                         Only once a belt is chosen: a grade with no
+                                         belt is not a rank anybody announces. --}}
+                                    <input type="text" x-show="person.belt_colour" x-cloak
+                                           x-model="person.belt_grade" maxlength="40"
+                                           placeholder="{{ __('events.entry_field_grade') }}"
+                                           class="mt-2 w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                </div>
+                            </div>
+                        </section>
+
+                        {{-- WHICH CLUB they compete for.
+
+                             Per entry, not per person: an athlete competes for one
+                             club this weekend and another next year. The list is the
+                             clubs already at this event, so it is a picker at a mat
+                             rather than a search of the platform — and "not
+                             representing a club" is a real answer, not an empty one.
+
+                             Absent entirely when the event has no clubs on it yet,
+                             because a picker with one option that means "nobody" is
+                             a question not worth asking. --}}
+                        @if(! empty($clubs))
+                            <section>
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('events.entry_field_club') }}</p>
+
+                                {{-- A DROPDOWN, not a stack of selection cards.
+
+                                     Nine clubs and counting is past the point
+                                     where cards help: they pushed the fee list
+                                     and the Add button off the bottom of the
+                                     sheet, which is the one thing a mobile form
+                                     may never do.
+
+                                     ⚠️ It expands IN THE NORMAL FLOW, never
+                                     `position: absolute` — this sheet's body is
+                                     `overflow-y-auto`, and an absolute panel is
+                                     clipped by its own scrolling container
+                                     (Mobile Pattern Language; the same reason
+                                     <x-date-picker> opens in flow). That also
+                                     rules out <x-select-menu> here, whose panel
+                                     is absolute — and it could not carry the
+                                     crests anyway. --}}
+                                <div class="mt-3" @click.outside="clubOpen = false" @keydown.escape.stop="clubOpen = false">
+                                    <button type="button" @click="clubOpen = ! clubOpen"
+                                            :aria-expanded="clubOpen"
+                                            :class="clubOpen ? 'ring-2 ring-primary border-transparent' : 'border-gray-200'"
+                                            class="w-full flex items-center gap-2.5 px-3 py-2.5 bg-white border rounded-xl text-start transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        {{-- What is chosen, drawn the way the row that chose it was.
+                                             Design Rule #5: the bare crest, never a white tile. --}}
+                                        <template x-if="clubChosen() && clubChosen().logo">
+                                            <span class="w-5 h-5 flex-shrink-0 grid place-items-center">
+                                                <img :src="clubChosen().logo" alt="" class="w-full h-full object-contain">
+                                            </span>
+                                        </template>
+                                        <template x-if="! clubChosen() || ! clubChosen().logo">
+                                            <i class="bi flex-shrink-0 text-muted-foreground"
+                                               :class="clubChosen() ? 'bi-buildings' : 'bi-person-x'"></i>
+                                        </template>
+
+                                        <span class="text-[13px] font-bold flex-1 truncate"
+                                              :class="clubChosen() ? 'text-foreground' : 'text-muted-foreground'"
+                                              x-text="clubChosen() ? clubChosen().name : @js(__('events.entry_no_club'))"></span>
+
+                                        <i class="bi bi-chevron-down text-xs text-gray-400 transition-transform flex-shrink-0"
+                                           :class="clubOpen && 'rotate-180'"></i>
+                                    </button>
+
+                                    <div x-show="clubOpen" x-cloak
+                                         x-transition:enter="transition ease-out duration-150"
+                                         x-transition:enter-start="opacity-0 -translate-y-1"
+                                         x-transition:enter-end="opacity-100 translate-y-0"
+                                         class="mt-1 rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden max-h-64 overflow-y-auto">
+                                        <button type="button" @click="person.club = ''; clubOpen = false"
+                                                :class="! person.club ? 'bg-primary/5 text-primary' : 'text-foreground hover:bg-muted/60'"
+                                                class="w-full flex items-center gap-2.5 px-3 py-2.5 text-start transition-colors">
+                                            <i class="bi bi-person-x flex-shrink-0 text-muted-foreground"></i>
+                                            <span class="text-[13px] font-bold flex-1">{{ __('events.entry_no_club') }}</span>
+                                            <i class="bi bi-check-lg flex-shrink-0" x-show="! person.club"></i>
+                                        </button>
+
+                                        @foreach($clubs as $club)
+                                            <button type="button" @click="person.club = @js($club['slug']); clubOpen = false"
+                                                    :class="person.club === @js($club['slug']) ? 'bg-primary/5 text-primary' : 'text-foreground hover:bg-muted/60'"
+                                                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-start transition-colors border-t border-gray-100">
+                                                <span class="w-5 h-5 flex-shrink-0 grid place-items-center">
+                                                    @if(! empty($club['logo']))
+                                                        <img src="{{ $club['logo'] }}" alt="" class="w-full h-full object-contain">
+                                                    @else
+                                                        <i class="bi bi-buildings text-muted-foreground"></i>
+                                                    @endif
+                                                </span>
+                                                <span class="text-[13px] font-bold flex-1 truncate">{{ $club['name'] }}</span>
+                                                <i class="bi bi-check-lg flex-shrink-0" x-show="person.club === @js($club['slug'])"></i>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </section>
+                        @endif
+
+                        <section>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('events.add_person_contact') }}</p>
+                            <div class="space-y-2 mt-3">
+                                <input type="email" x-model="person.contact_email" maxlength="190"
+                                       placeholder="{{ __('events.add_person_email') }}"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                {{-- The platform's phone control, not a bare text
+                                     box: a dial code picked from a list beats one
+                                     typed four different ways, and it is the same
+                                     control the register form and the member sheet
+                                     ask with (Component-First).
+
+                                     `model` mirrors the code into this sheet's own
+                                     Alpine scope — createPerson() joins it to the
+                                     number, so what is stored is one dialable
+                                     string. Its default `tf-input-group` styling is
+                                     deliberate: the focus-within utilities a
+                                     hand-rolled group would need are NOT in the
+                                     prebuilt Tailwind bundle and would silently do
+                                     nothing. --}}
+                                <x-country-code-dropdown
+                                    name="contact_code"
+                                    :id="$photoId.'Dial'"
+                                    model="person.contact_code"
+                                    value="+973">
+                                    <input type="tel" x-model="person.contact_phone" maxlength="32"
+                                           autocomplete="tel"
+                                           placeholder="{{ __('events.add_person_phone') }}"
+                                           class="w-full px-3 py-2.5 bg-transparent text-sm border-0 outline-none focus:ring-0">
+                                </x-country-code-dropdown>
+                            </div>
+                        </section>
                     </div>
-
-                    {{-- ===== Which division, if the desk already knows =====
-                         Separate from the purchase above: what they BUY is Gi or
-                         No-Gi, what they are DRAWN in is a weight group, and the
-                         package's own gate works the second one out from their
-                         weight, age and rank unless somebody says otherwise. --}}
-                    @if (count($divs))
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('events.add_person_activity') }}</p>
-                        <div class="space-y-2 mb-5">
-                            {{-- Selection cards, never a dropdown inside a scrolling
-                                 sheet (Mobile Pattern Language §3). --}}
-                            <button type="button" @click="division = null"
-                                    class="m-press w-full text-start rounded-2xl border-2 p-3 transition-colors flex items-center gap-3"
-                                    :class="division === null ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'">
-                                <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0"
-                                      :class="division === null ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground'">
-                                    <i class="bi bi-magic"></i>
-                                </span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="block text-sm font-bold text-foreground">{{ __('events.add_person_activity_auto') }}</span>
-                                    <span class="block text-[11px] text-muted-foreground leading-snug">{{ __('events.add_person_activity_auto_sub') }}</span>
-                                </span>
-                            </button>
-                            @foreach ($divs as $d)
-                                <button type="button" @click="division = @js($d['id'])"
-                                        class="m-press w-full text-start rounded-2xl border-2 p-3 transition-colors flex items-center gap-3"
-                                        :class="division === @js($d['id']) ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'">
-                                    <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0"
-                                          :class="division === @js($d['id']) ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground'">
-                                        <i class="bi bi-diagram-3 bracket-icon"></i>
-                                    </span>
-                                    <span class="min-w-0 flex-1 text-sm font-bold text-foreground truncate">{{ $d['name'] }}</span>
-                                </button>
-                            @endforeach
-                        </div>
-                    @endif
 
                     {{-- ===== What they are entering — LAST, under the button =====
 
                          Immediately above the control that commits it (owner's
                          call, 2026-09-11): the sheet asks who this person is,
-                         then which division, and the choice that decides the
-                         MONEY is the thing under the reader's eye when they
-                         press Add — not something scrolled past on the way in.
+                         and the choice that decides the MONEY is the thing
+                         under the reader's eye when they press Add — not
+                         something scrolled past on the way in.
 
                          Shared by both tabs.
 
@@ -699,14 +873,15 @@
                          Only UUIDs are posted; the running total is a courtesy
                          to the person at the desk, never an authority. --}}
                     @if (count($feeOptions))
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('events.fee_select_options') }}</p>
+                    <section>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-3">{{ __('events.fee_select_options') }}</p>
                         <div class="space-y-2">
                             @foreach ($feeOptions as $opt)
                                 <button type="button" @click="toggleFee(@js($opt['key']))"
                                         class="m-press w-full text-start rounded-2xl border-2 p-3 transition-colors flex items-center gap-3"
                                         :class="hasFee(@js($opt['key'])) ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'"
                                         :aria-pressed="hasFee(@js($opt['key']))">
-                                    <span class="w-5 h-5 rounded-md border-2 grid place-items-center flex-shrink-0 transition-colors"
+                                    <span class="w-5 h-5 {{ $feeSingle ? 'rounded-full' : 'rounded-md' }} border-2 grid place-items-center flex-shrink-0 transition-colors"
                                           :class="hasFee(@js($opt['key'])) ? 'border-transparent text-white' : 'border-gray-300'"
                                           :style="hasFee(@js($opt['key'])) ? 'background: {{ $c }}' : ''">
                                         <i class="bi bi-check text-[11px]" x-show="hasFee(@js($opt['key']))" x-cloak></i>
@@ -728,15 +903,14 @@
                             </div>
                         @endif
 
-                        <div class="flex items-center justify-between mt-3 pt-3 mb-5 border-t border-gray-100">
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                             <span class="text-[12px] font-bold text-muted-foreground">{{ __('events.fee_total') }}</span>
                             <span class="text-[15px] font-black text-foreground" x-text="feeTotalText"></span>
                         </div>
+                    </section>
                     @endif
 
-
-
-                    <p class="text-[11px] text-muted-foreground leading-snug mt-5 flex items-start gap-1.5">
+                    <p class="text-[11px] text-muted-foreground leading-snug flex items-start gap-1.5">
                         <i class="bi bi-shield-lock mt-0.5 flex-shrink-0"></i>{{ __('events.add_person_hint') }}
                     </p>
                 </div>

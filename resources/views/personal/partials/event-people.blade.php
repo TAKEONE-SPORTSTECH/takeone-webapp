@@ -327,6 +327,9 @@
                      seeded when the sheet opens (openEntry) so the picker shows
                      what is on file, and only the SERVER prices it. --}}
                 feeTypes: @js($feeTypes ?? []),
+                {{-- Radio or checkbox, decided by the event (EventFee::selection)
+                     and enforced again in EventFee::quote(). --}}
+                feeSingle: @js($feeSingle ?? false),
                 feeDraft: [],
                 feeSaving: false,
                 {{-- Did the official actually touch the boxes? An untouched
@@ -342,6 +345,11 @@
 
                 toggleFee(key) {
                     this.feeTouched = true;
+
+                    // A radio where the event sells one option — see
+                    // EventFee::selection(), which the server enforces too.
+                    if (this.feeSingle) { this.feeDraft = [key]; return; }
+
                     const i = this.feeDraft.indexOf(key);
                     if (i === -1) this.feeDraft.push(key);
                     else this.feeDraft.splice(i, 1);
@@ -496,7 +504,7 @@
                             @endif
 
                             <span class="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[0.6rem] font-extrabold"
-                                  x-text="rtab==='participants' ? goingCount : (rtab==='spectators' ? spectators : blockedCount)">{{ $e['participants_total'] ?? $e['going'] }}</span>
+                                  x-text="rtab==='participants' ? peopleCount : (rtab==='spectators' ? spectators : blockedCount)">{{ $e['participants_people'] ?? $e['participants_total'] ?? $e['going'] }}</span>
                             <i class="bi bi-chevron-down text-muted-foreground transition-transform" :class="open && 'rotate-180'"></i>
                         </button>
 
@@ -509,7 +517,7 @@
                                 <i class="bi bi-person-arms-up text-primary shrink-0"></i>
                                 <span class="flex-1 truncate">{{ __('personal.event_show_participants') }}</span>
                                 <span class="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[0.6rem] font-extrabold"
-                                      x-text="goingCount">{{ $e['participants_total'] }}</span>
+                                      x-text="peopleCount">{{ $e['participants_people'] ?? $e['participants_total'] }}</span>
                                 <i class="bi bi-check-lg shrink-0" x-show="rtab==='participants'"></i>
                             </button>
 
@@ -541,7 +549,7 @@
                         </div>
                     </div>
                 @else
-                    <span class="text-[11px] font-semibold text-primary shrink-0" x-text="`${goingCount} {{ __('personal.event_show_in') }}`">{{ $e['participants_total'] ?? $e['going'] }} {{ __('personal.event_show_in') }}</span>
+                    <span class="text-[11px] font-semibold text-primary shrink-0" x-text="`${peopleCount} {{ __('personal.event_show_in') }}`">{{ $e['participants_people'] ?? $e['participants_total'] ?? $e['going'] }} {{ __('personal.event_show_in') }}</span>
                 @endif
                     </div>{{-- /search + switcher row --}}
                 </div>{{-- /tray --}}
@@ -991,7 +999,7 @@
                                                         <button type="button" @click="toggleFee(t.key)"
                                                                 class="m-press w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 text-start transition-colors"
                                                                 :class="feeDraft.includes(t.key) ? 'border-primary bg-primary/5' : 'border-gray-200'">
-                                                            <span class="w-5 h-5 rounded-md border-2 grid place-items-center flex-shrink-0"
+                                                            <span class="w-5 h-5 {{ ($feeSingle ?? false) ? 'rounded-full' : 'rounded-md' }} border-2 grid place-items-center flex-shrink-0"
                                                                   :class="feeDraft.includes(t.key) ? 'border-primary bg-primary text-white' : 'border-gray-300'">
                                                                 <i class="bi bi-check text-[11px]" x-show="feeDraft.includes(t.key)"></i>
                                                             </span>

@@ -30,6 +30,7 @@ return [
     'action_clear_draw' => 'Clear draw',
     'action_end_next_bout' => 'End next match',
     'draw_generated' => 'Provisional draw generated',
+    'pool_not_arranged' => 'This class is run as a pool — everybody meets everybody, so there is nothing to arrange. Add or remove people from the class instead.',
     'draw_final' => 'The championship has started — the draw is final and can’t be regenerated.',
     'draw_arranged' => 'Draw updated 🥋',
     'draw_cleared' => 'Draw emptied — every entrant is back on the list',

@@ -60,7 +60,7 @@ class BrandedEventSurfaceTest extends TestCase
         ], $attrs));
     }
 
-    public function test_the_three_martial_arts_tournaments_opt_in_and_nothing_else_does(): void
+    public function test_only_the_competition_packages_opt_in(): void
     {
         $registry = app(\App\Events\EventTypeRegistry::class);
 
@@ -74,7 +74,17 @@ class BrandedEventSurfaceTest extends TestCase
 
         sort($branded);
 
-        $this->assertSame(['bjj_tournament', 'karate_tournament', 'taekwondo_tournament'], $branded);
+        /*
+         * The COMPETITION packages, and nothing else.
+         *
+         * `league` joined the three tournaments on 2026-09-14: a league is a
+         * competition in the organiser's name exactly as a championship is, and
+         * the branded surface is also what makes its member page and its public
+         * poster the same page at every width (the user's ask — "they must be
+         * identical in all aspects"). Sparring, Open Mat and everything still
+         * in the generic bucket keep the member shell they have always had.
+         */
+        $this->assertSame(['bjj_tournament', 'karate_tournament', 'league', 'taekwondo_tournament'], $branded);
         $this->assertFalse($registry->fallback()->brandedSurface(), 'the generic bucket must keep the member shell');
     }
 
@@ -135,10 +145,12 @@ class BrandedEventSurfaceTest extends TestCase
     {
         $owner = $this->createUser();
         $club = $this->club($owner);
+        // A CLASS: still in the generic bucket, and the example this test needs
+        // now that `league` is a package of its own and opts in (see above).
         $event = $this->event($owner, $club, [
-            'title' => 'City League',
+            'title' => 'Tuesday class',
             'sport' => 'football',
-            'event_type' => 'league',
+            'event_type' => 'class',
         ]);
 
         $member = $this->member($club);

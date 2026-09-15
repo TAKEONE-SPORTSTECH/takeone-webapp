@@ -374,7 +374,12 @@
                                 <button type="button" @click="form.belt = '{{ $b['v'] }}'"
                                         class="m-press e-pick rounded-2xl py-3 flex flex-col items-center gap-1.5"
                                         :class="form.belt === '{{ $b['v'] }}' && 'is-on'">
-                                    <span class="w-8 h-2.5 rounded-full border border-white/25" style="background: {{ $b['hex'] }}"></span>
+                                    {{-- The belt itself. This card is DARK, so every belt
+                                         carries the light halo the bar used to — a black belt
+                                         disappears here as readily as a white one does on a
+                                         white card. --}}
+                                    <x-belt-icon :color="$b['v']" :title="false"
+                                                 outline="rgba(255,255,255,.45)" class="w-8 h-8" />
                                     <span class="text-[11.5px] font-bold">{{ $b['label'] }}</span>
                                 </button>
                             @endforeach

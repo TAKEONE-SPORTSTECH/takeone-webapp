@@ -125,7 +125,7 @@
                 <div x-show="showForm"
                      x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-                     class="relative bg-background w-full sm:max-w-lg rounded-t-3xl shadow-2xl flex flex-col"
+                     class="relative bg-background w-full rounded-t-3xl shadow-2xl flex flex-col"
                      style="max-height: 92vh; max-height: 92dvh;" @click.stop>
 
                     {{-- header --}}

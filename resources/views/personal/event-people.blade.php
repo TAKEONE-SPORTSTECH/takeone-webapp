@@ -331,7 +331,13 @@
                 }
             }
 
-            // The rank chip, rebuilt from the sport's own ladder.
+            /* The rank chip, rebuilt from the sport's own ladder — and it draws
+               the BELT, exactly as the server-rendered chip beside it does.
+               The drawing is not re-implemented here: the page carries one
+               <symbol id=belt-icon> (x-belt-icon-defs) and this points at it,
+               colouring the instance with the custom properties the server
+               worked out (App\Sports\Combat\BeltIcon::style). Geometry in one
+               place, colour maths in one place. */
             const belt = card.querySelector('[data-ec=belt]');
             if (belt) {
                 const row = this.beltLadder[String(entry.belt_colour || '').toLowerCase()];
@@ -341,14 +347,21 @@
                     const digits = String(entry.belt_grade || '').match(/\d+/);
                     const degree = Math.min(6, Math.max(0, parseInt((digits && digits[0]) || 0, 10)));
                     const label = (row.label + (degree > 0 ? ' ' + degree : '')).trim();
-                    const dot = document.createElement('span');
-                    dot.className = 'w-2 h-2 rounded-full flex-shrink-0';
-                    dot.style.background = row.bg;
-                    if (row.pale) dot.style.boxShadow = 'inset 0 0 0 1px rgba(15,23,42,.35)';
+                    const NS = 'http://www.w3.org/2000/svg';
+                    const svg = document.createElementNS(NS, 'svg');
+                    svg.setAttribute('class', 'w-4 h-4 flex-shrink-0');
+                    svg.setAttribute('viewBox', '0 0 24 24');
+                    svg.setAttribute('fill', 'none');
+                    // Silent: the chip says the rank in words right beside it.
+                    svg.setAttribute('aria-hidden', 'true');
+                    svg.setAttribute('style', row.style);
+                    const use = document.createElementNS(NS, 'use');
+                    use.setAttribute('href', '#belt-icon');
+                    svg.appendChild(use);
                     const chip = document.createElement('span');
-                    chip.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground flex-shrink-0';
+                    chip.className = 'inline-flex items-center gap-1 ps-1 pe-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground flex-shrink-0';
                     chip.title = label;
-                    chip.appendChild(dot);
+                    chip.appendChild(svg);
                     chip.appendChild(document.createTextNode(label));
                     belt.innerHTML = '';
                     belt.appendChild(chip);
@@ -372,10 +385,15 @@
             }
         },
 
-        /** The sport's belt ladder, for rebuilding a rank chip client-side. */
+        /** The sport's belt ladder, for rebuilding a rank chip client-side.
+            `style` is the belt drawing's own colours, worked out server-side so
+            the shading and the pale-belt outline are not a second opinion. */
         beltLadder: @js(collect(\App\Sports\Combat\BeltRank::ladder())->mapWithKeys(function ($b) {
-            $chip = \App\Sports\Combat\BeltRank::chip($b['value']);
-            return [$b['value'] => ['label' => $b['label'], 'bg' => $b['bg'], 'pale' => (bool) ($chip['pale'] ?? false)]];
+            $icon = \App\Sports\Combat\BeltIcon::for($b['value']);
+            return [$b['value'] => [
+                'label' => $b['label'],
+                'style' => $icon ? \App\Sports\Combat\BeltIcon::style($icon) : '',
+            ]];
         })),
 
         seedFix(entry, perms) {
@@ -939,12 +957,17 @@
         {{-- ===== Athletes ===== Each competitor is their own card, so the list
              reads as a stack of people rather than one slab. The whole card is
              the link — a name-sized tap target on a phone is not one. --}}
-        {{-- `space-y-5` rather than the 10px the other lists use: every card
-             here wears two readiness badges that hang 12px above its top edge,
-             and at the tighter rhythm they touched the card above (2026-09-04).
-             `mt-6` is the same clearance at the TOP of the list, where the
-             first card's badges were touching the search box. Both gaps are the
-             badge's overhang, so the three are set together. --}}
+        {{-- The rhythm of this list is set by what hangs OFF the cards rather
+             than by the cards: every one wears two readiness badges standing
+             12px proud of its top edge, and at the 10px the other lists use
+             they touched the card above (2026-09-04).
+
+             `space-y-8`, widened from `space-y-5` on 2026-09-12 at the
+             organiser's request. A card now carries badges above it, a face,
+             three lines of facts and its activity tags — at the old gap the
+             list read as one column of text instead of a stack of people.
+             `mt-6` is the same clearance at the TOP, where the first card's
+             badges were touching the search box. --}}
         @php
             /* What every entry on this page was signed up for, in ONE query —
                the options ticked at registration, keyed by entry. Read here
@@ -953,9 +976,14 @@
             $feeWords = \App\Events\Support\EventFee::optionLabelsForMany(
                 collect($participants)->flatMap(fn ($row) => collect($row['entries'] ?? [])->pluck('registration'))
             );
+
+            /* One width for every badge on the page, from the longest word any
+               of them carries — so the tags line up down the list instead of
+               each hugging its own label. */
+            $feeBadgeCh = collect($feeWords)->flatten()->map(fn ($w) => mb_strlen((string) $w))->max() ?: 0;
         @endphp
 
-        <div x-show="tab === 'athletes'" x-cloak class="mt-6 space-y-5 mobile-stagger">
+        <div x-show="tab === 'athletes'" x-cloak class="mt-6 space-y-8 mobile-stagger">
             @forelse($participants as $p)
                 @php
                     /* ONE chip per DIVISION THEY ARE IN, and nothing else. The
@@ -1121,7 +1149,7 @@
                     <x-entrant-card
                         :name="$pName" :gender="$pGender" :country="$pCountry" :age="$pAge"
                         :divisions="$division" :activity="$pActivity"
-                        :weight="$pWeight" :weight-tone="$pWeighState" :activities="$pActivities"
+                        :weight="$pWeight" :weight-tone="$pWeighState" :activities="$pActivities" :activity-width="$feeBadgeCh"
                         :belt="$p['belt'] ?? null" :belt-grade="$p['belt_grade'] ?? null"
                         :club-name="$pClubName" :club-logo="$pClubLogo"
                         :show="$pShow" :chevron="true"
@@ -1165,7 +1193,18 @@
                                  to the drawn stand-in below, which is what an absent
                                  picture is supposed to look like. --}}
                             <template x-if="photo">
-                                <img :src="photo" alt="" x-on:error="photo = null"
+                                {{-- `thumb`, not `photo`: a desk photograph is
+                                     whatever the phone produced and this box is
+                                     42×56 — sixty originals made this page pull
+                                     megabytes to paint postage stamps. `photo`
+                                     stays the original, because the sheet this
+                                     card opens shows the face at size.
+
+                                     Lazy, because a roster is long and the
+                                     reader sees eight rows; async decoding so a
+                                     face never holds up the row around it. --}}
+                                <img :src="thumb" alt="" x-on:error="photo = null"
+                                     loading="lazy" decoding="async"
                                      class="absolute inset-0 w-full h-full object-cover">
                             </template>
                             <template x-if="! photo">
@@ -1188,7 +1227,7 @@
                         :name="$pName" :photo="$p['photo']" :gender="$pGender"
                         :country="$pCountry" :age="$pAge" :divisions="$division"
                         :activity="$pActivity"
-                        :weight="$pWeight" :weight-tone="$pWeighState" :activities="$pActivities"
+                        :weight="$pWeight" :weight-tone="$pWeighState" :activities="$pActivities" :activity-width="$feeBadgeCh"
                         :club-name="$pClubName" :club-logo="$pClubLogo"
                         :href="$pHref" :show="$pShow" :chevron="(bool) $pUuid" />
                 @endif
@@ -1872,6 +1911,11 @@
         </div>
     </template>
 @endif
+
+{{-- The one copy of the belt drawing, for the chips this page rebuilds in
+     place after a fix is saved (patchEntrantCard). The server-rendered chips
+     above draw their own; this is for the ones JavaScript makes. --}}
+<x-belt-icon-defs />
 </div>
 @endsection
 
@@ -1890,6 +1934,16 @@ function competitorPhoto(config) {
         photo: config.photo,
         owned: config.owned,
         busy: false,
+
+        /* The card-sized copy of the same file. The one file door authorises
+           the source and hands back a rendition, falling back to the original
+           whenever it cannot draw one — so this is always a usable src. The
+           cache-busting `?v=` an upload adds is preserved. */
+        get thumb() {
+            if (! this.photo || ! String(this.photo).includes('/file/')) return this.photo;
+
+            return this.photo + (String(this.photo).includes('?') ? '&' : '?') + 's=card';
+        },
 
         async upload(input) {
             const file = input.files && input.files[0];

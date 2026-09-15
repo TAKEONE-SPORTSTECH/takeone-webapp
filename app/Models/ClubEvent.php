@@ -128,6 +128,7 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         'start_time',
         'end_time',
         'weigh_in_at',
+        'entry_deadline_enforced',
         'enrollment_starts_at',
         'enrollment_ends_at',
         'minutes_per_match',
@@ -193,12 +194,17 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         'phases',
         'agenda',
         'created_by',
+    
+        // The parts of this event entered separately (App\Events\Support\EventStreams),
+        // and whether an entrant picks ONE of the fee options or several.
+        'streams', 'fee_selection',
     ];
 
     protected $casts = [
         'date' => 'date',
         'end_date' => 'date',
         'weigh_in_at' => 'datetime',
+        'entry_deadline_enforced' => 'boolean',
         'enrollment_starts_at' => 'date',
         'enrollment_ends_at' => 'date',
         'tags' => 'array',
@@ -230,6 +236,8 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         'started_at' => 'datetime',
         'start_overridden' => 'boolean',
         'public_entry_auto_accept' => 'boolean',
+    
+        'streams' => 'array',
     ];
 
     /**

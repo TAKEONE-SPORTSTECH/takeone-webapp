@@ -172,10 +172,17 @@ class EntryClaim
                 'entry_state' => 'incomplete',
                 'weight' => $details['weight'] ?? null,
                 'belt_colour' => $details['belt_colour'] ?? null,
+                // The degree beside the colour — "2nd Dan", "1 دان". Recorded
+                // with it or not at all: a colour without its degree is a
+                // half-written rank, and the desk was typing both.
+                'belt_grade' => $details['belt_grade'] ?? null,
                 // The activity, when the desk named one. Without it the entry
                 // is unplaced and the package's own gate (or the weigh-in)
                 // decides later, exactly as before.
                 'category_id' => $target?->id,
+                // A desk naming the division is a PERSON placing them, and it
+                // outranks the scale later; leaving it to the gate does not.
+                'category_source' => $target ? ClubEventRegistration::PLACED_MANUAL : null,
             ]);
 
             // What the club is committing to pay, frozen onto the entry the
@@ -517,16 +524,10 @@ class EntryClaim
      */
     private function makeUnclaimedPerson(string $fullName, array $details = []): User
     {
-        return User::create([
-            'full_name' => $fullName,
-            'name' => $fullName,
-            'email' => null,
-            'password' => null,
-            'is_unclaimed' => true,
-            'is_discoverable' => false,
-            'gender' => $details['gender'] ?? null,
-            'birthdate' => $details['birthdate'] ?? null,
-        ]);
+        // One definition of "somebody the platform has never met", shared with
+        // the officials desk — which needs exactly the same record for a referee
+        // the federation sent.
+        return UnclaimedPerson::make($fullName, $details);
     }
 
     /**

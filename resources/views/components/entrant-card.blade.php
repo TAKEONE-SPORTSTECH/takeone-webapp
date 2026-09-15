@@ -26,6 +26,12 @@
        each with its own money state; given nothing, it falls back to the single
        `activity` chip and every existing caller is unchanged. */
     'activities' => [],
+    /* How wide every activity badge should be, in characters of its longest
+       label. Given by a LIST so the badges line up card to card — a column of
+       tags that each hug their own word reads as noise going down a roster.
+       Null falls back to this card's own longest, which is right for a card
+       standing on its own. */
+    'activityWidth' => null,
     /* The scale reading, when the caller is allowed to show one, plus where it
        came from: 'self' (the athlete declared it — amber) or 'official' (a
        weigh-in official signed for it — green). Printed bold beside the
@@ -227,7 +233,22 @@
                              class="absolute inset-0 w-full h-full" />
 
             @if($photo)
-                <img data-ec="photo" src="{{ $photo }}" alt="" onerror="this.remove()"
+                {{-- ── Small, and only when it is on screen ─────────────────
+                     A desk photograph is whatever the phone produced — 1836×3264
+                     and half a megabyte is ordinary — and this box is 42×56.
+                     Sixty of them made the people page pull about 5.6 MB of
+                     camera originals to paint thumbnails (reported 2026-09-12).
+
+                     `thumb_url()` asks the one file door for a rendition; it
+                     falls back to the original whenever one cannot be drawn, so
+                     there is no missing-thumbnail case to handle here.
+
+                     `loading="lazy"` because a roster is a long list and the
+                     reader sees eight cards: the rest fetch as they scroll.
+                     `decoding="async"` so decoding a face never blocks the
+                     paint of the row it sits in. --}}
+                <img data-ec="photo" src="{{ thumb_url($photo, 'card') }}" alt=""
+                     loading="lazy" decoding="async" onerror="this.remove()"
                      class="absolute inset-0 w-full h-full object-cover">
             @endif
         @endif
@@ -312,7 +333,26 @@
             @endif
             <span data-ec="club" class="truncate">{{ $clubName ?: ($unattached ?? __('events.public_unattached')) }}</span>
 
-            @php $acts = array_values(array_filter((array) $activities, fn ($a) => ! empty($a['label']))); @endphp
+            @php
+                $acts = array_values(array_filter((array) $activities, fn ($a) => ! empty($a['label'])));
+
+                /* Every badge on a card is the SAME WIDTH — sized to the
+                   longest word among them, so "Gi" and "Gi + No-Gi" sit as two
+                   equal tags rather than reading as a big thing and a small
+                   one. In `ch`, which is the unit that actually tracks text,
+                   plus the padding and the icon; and inline, because the
+                   Tailwind bundle is prebuilt and an arbitrary `min-w-[…]`
+                   would ship with no rule at all. */
+                $aWidest = (int) $activityWidth;
+
+                if ($aWidest <= 0) {
+                    foreach ($acts as $a) {
+                        $aWidest = max($aWidest, mb_strlen((string) $a['label']));
+                    }
+                }
+
+                $aBox = $aWidest ? 'min-width: calc('.$aWidest.'ch + 2.1rem);' : '';
+            @endphp
 
             @if($acts)
                 {{-- One badge per thing they signed up for, on the CARD'S LAST
@@ -350,7 +390,8 @@
                             // white text on nothing.
                             $aTone = 'bg-blue-600 text-white';
                         @endphp
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap {{ $aTone }}"
+                        <span style="{{ $aBox }}"
+                              class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap {{ $aTone }}"
                               title="{{ $act['label'] }}{{ $aOk ? ' · '.__('events.people_paid_verified') : ($aPaid ? ' · '.__('events.people_paid_claimed') : ' · '.__('events.people_unpaid')) }}">
                             <i class="bi {{ $aOk ? 'bi-check-circle-fill' : ($aPaid ? 'bi-clock-fill' : 'bi-tag-fill') }} text-[9px] {{ $aOk ? '' : 'opacity-70' }}"></i>{{ $act['label'] }}
                         </span>

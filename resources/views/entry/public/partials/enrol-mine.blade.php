@@ -184,7 +184,13 @@
                                     <button type="button" @click="belt = '{{ $b['v'] }}'"
                                             class="m-press e-pick rounded-2xl py-3 flex flex-col items-center gap-1.5"
                                             :class="belt === '{{ $b['v'] }}' && 'is-on'">
-                                        <span class="w-8 h-2.5 rounded-full border border-white/25" style="background: {{ $b['hex'] }}"></span>
+                                        {{-- The belt itself, not a coloured bar: the question
+                                             is answered by looking at somebody's waist, and the
+                                             organiser's own entry sheet asks it this way too, so
+                                             one rank looks like one thing everywhere. A pale belt
+                                             is outlined automatically — a white belt IS white and
+                                             is never falsified. --}}
+                                        <x-belt-icon :color="$b['v']" :title="false" class="w-8 h-8" />
                                         <span class="text-[11.5px] font-bold">{{ $b['label'] }}</span>
                                     </button>
                                 @endforeach
@@ -324,7 +330,7 @@
                                         <button type="button" @click="toggleFee('{{ $opt->uuid }}')"
                                                 :class="feeChosen.includes('{{ $opt->uuid }}') ? 'is-on' : ''"
                                                 class="m-press e-pick w-full rounded-2xl px-3 py-3 flex items-center gap-3 text-start">
-                                            <span class="w-5 h-5 rounded-md border-2 grid place-items-center flex-shrink-0"
+                                            <span class="w-5 h-5 {{ ($feeSingle ?? false) ? 'rounded-full' : 'rounded-md' }} border-2 grid place-items-center flex-shrink-0"
                                                   :class="feeChosen.includes('{{ $opt->uuid }}') ? 'text-white' : 'border-gray-300'"
                                                   :style="feeChosen.includes('{{ $opt->uuid }}') ? 'background: {{ $ev }}; border-color: {{ $ev }}' : ''">
                                                 <i class="bi bi-check text-[11px]" x-show="feeChosen.includes('{{ $opt->uuid }}')"></i>
@@ -465,12 +471,26 @@ function enrolMine() {
            one this page was rendered with and exists only to draw the total —
            EventFee::quote() re-prices the entry server-side before anybody is
            charged. */
+        // Radio or checkbox — the event's own answer, enforced server-side in
+        // EventFee::quote(). See EventFee::selection().
+        feeSingle: @js($feeSingle ?? false),
         feeChosen: [],
         feePrices: @js($feePrices ?? []),
         feeBase: @js($feeBase ?? 0),
         feeLate: @js($feeLateAmount ?? 0),
 
         toggleFee(key) {
+            /* A RADIO where the event sells one option (fee_selection =
+               single): picking replaces, and a pick cannot be undone by
+               pressing it again — that is what a radio is, and it is how an
+               event with a combined Gi-plus-No-Gi option has to behave, or
+               the two can be bought separately for more than the combined
+               price.
+
+               The server enforces the same rule in EventFee::quote(); this only
+               saves the entrant from choosing something it would refuse. */
+            if (this.feeSingle) { this.feeChosen = [key]; return; }
+
             const i = this.feeChosen.indexOf(key);
             if (i === -1) this.feeChosen.push(key); else this.feeChosen.splice(i, 1);
         },

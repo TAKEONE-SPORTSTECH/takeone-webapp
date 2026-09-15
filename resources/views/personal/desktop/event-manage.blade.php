@@ -163,6 +163,42 @@
     {{-- The cards ride up over the band's tail, as on the event page. --}}
     <div class="-mt-12 relative z-10 space-y-6">
 
+    @if($canManage)
+        {{-- ===== Adding a participant, first =====
+             The console's first control, because on the morning of an event it
+             is the one an organiser reaches for over and over: somebody turns
+             up who is not on the list. It sat below the screens and the hall
+             wiring, which is a scroll away from where the work is (moved
+             2026-09-12).
+
+             Organiser (and the platform team) only — every other door into the entry list belongs to
+             somebody else: the athlete, their coach, or a stranger following
+             the public link. Same component as the mobile console. --}}
+        <div class="mb-6">
+            <x-event-add-person :event="$e['key']"
+                                :fees="$e['fees'] ?? []"
+                                :clubs="$entryClubs ?? []"
+                                :color="$mgColor"
+                                :title="$e['title']" />
+        </div>
+
+        {{-- Clubs, immediately under it: the two doors an organiser uses on the
+             morning are "somebody turned up" and "a club turned up", and they
+             belong together. It used to sit below the hall wiring, which is
+             also the one way in to that page on desktop (moved 2026-09-12). --}}
+        <div class="mb-6">
+            <a href="{{ route('me.events.clubs', $e['key']) }}" data-shell-link
+               class="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 no-underline hover:border-primary/40 transition-colors">
+                <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 bg-accent text-primary"><i class="bi bi-buildings-fill text-lg"></i></span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-bold text-foreground truncate">{{ __('events.clubs_add_tile') }}</span>
+                    <span class="block text-[11px] text-muted-foreground mt-0.5 truncate">{{ __('events.clubs_sub') }}</span>
+                </span>
+                <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
+            </a>
+        </div>
+    @endif
+
     {{-- ===== Preparations — the component brings its own button and dialog ===== --}}
     @if($canOfficiate)
         <x-event-checklist :event="$e['key']"
@@ -250,33 +286,10 @@
 
 
 
-    @if($canManage)
-        {{-- Putting somebody on the list by hand. Organiser (and the platform
-             team) only — every other door into the entry list belongs to
-             somebody else: the athlete, their coach, or a stranger following
-             the public link. Same component as the mobile console. --}}
-        <div class="mb-6">
-            <x-event-add-person :event="$e['key']"
-                                :divisions="$entryDivisions ?? []"
-                                :fees="$e['fees'] ?? []"
-                                :color="$mgColor"
-                                :title="$e['title']" />
-        </div>
-    @endif
+
 
     @if($canManage)
-        {{-- Clubs standing behind the event — the ported sandbox feature's one
-             way in on desktop. Without this tile the page existed and nothing
-             linked to it. --}}
-        <a href="{{ route('me.events.clubs', $e['key']) }}" data-shell-link
-           class="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 no-underline hover:border-primary/40 transition-colors">
-            <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 bg-accent text-primary"><i class="bi bi-buildings-fill text-lg"></i></span>
-            <span class="min-w-0 flex-1">
-                <span class="block text-sm font-bold text-foreground truncate">{{ __('events.clubs_title') }}</span>
-                <span class="block text-[11px] text-muted-foreground mt-0.5 truncate">{{ __('events.clubs_sub') }}</span>
-            </span>
-            <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
-        </a>
+
     @endif
 
     @if($canManage)

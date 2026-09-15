@@ -45,6 +45,17 @@ return [
         'league' => [
             'label' => 'League', 'icon' => 'bi-table', 'color' => '#6d28d9',
             'sections' => ['league', 'phases', 'schedule', 'prize'],
+            /*
+             * A COMBAT league is not a season of teams — it is a championship
+             * whose weight classes are run as pools. Same entrants, same
+             * weigh-in, same mats, same medals; only the shape of the play
+             * changes, and that is a property of each class. So it asks the
+             * questions a championship asks, and App\Events\Sports\*\Tournament
+             * claims it (App\Events\League\League deliberately does not).
+             */
+            'sections_by_family' => [
+                'Combat' => ['divisions', 'weigh_in', 'mats', 'schedule', 'requirements', 'prize'],
+            ],
             'competitive' => true,
         ],
     ],

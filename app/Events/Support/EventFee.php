@@ -236,6 +236,20 @@ class EventFee
      * @param  array<int, string> $optionKeys  option UUIDs the entrant ticked
      * @return array{total: float, currency: string, lines: array<int, array{kind: string, label: string, amount: float, fee_option_id: ?int}>}
      */
+    /**
+     * Does this event let an entrant pick ONE option or several?
+     *
+     * 'single' is a radio set — which is what an event selling a COMBINED
+     * option ("Gi + No-Gi", priced below the two apart) must be, or the two
+     * can be bought separately for more money and the combined price means
+     * nothing. 'multiple' is the default and is what every event did before
+     * the column existed.
+     */
+    public static function selection(ClubEvent $event): string
+    {
+        return $event->fee_selection === 'single' ? 'single' : 'multiple';
+    }
+
     public static function quote(
         ClubEvent $event,
         string $role = 'participant',
@@ -269,6 +283,24 @@ class EventFee
 
             if ($keys !== []) {
                 $chosen = self::options($event, $role)->whereIn('uuid', $keys);
+
+                /*
+                 * ⚠️ ONE option where the event sells one.
+                 *
+                 * `fee_selection = single` is a radio set, and it is enforced
+                 * HERE rather than only drawn as a radio: the keys arrive from a
+                 * browser, and an event selling Gi (10), No-Gi (10) and
+                 * Gi + No-Gi (15) would otherwise take 20 for a thing it prices
+                 * at 15 — and write two fee lines for one purchase, which no
+                 * receipt or roster could explain afterwards.
+                 *
+                 * The FIRST as the event orders them wins, which is the one a
+                 * radio would have had selected; nothing is dropped silently
+                 * anywhere a caller validated first (see the entry doors).
+                 */
+                if (self::selection($event) === 'single' && $chosen->count() > 1) {
+                    $chosen = $chosen->sortBy('sort')->take(1);
+                }
 
                 foreach ($chosen as $option) {
                     $lines[] = [
@@ -505,7 +537,19 @@ class EventFee
             ->groupBy('registration_id')
             ->pluck('total', 'registration_id');
 
-        $list = self::listPrice($event, $role);
+        /*
+         * The fallback for an entry with no line, and WHEN there is one.
+         *
+         * An event with a single base price has no ambiguity: there was only
+         * ever one thing to pay, so an entry older than the fee-line record is
+         * worth it. An event priced through OPTIONS is a different question —
+         * a missing line means nobody recorded which option was bought, and
+         * valuing it at the cheapest one invents income. It showed up as a
+         * phantom "No fee type recorded" line of money in the organiser's own
+         * breakdown, so an option-priced event now counts those as zero and
+         * says nothing about them (2026-09-13).
+         */
+        $list = self::hasOptions($event, $role) ? 0.0 : self::listPrice($event, $role);
 
         $amounts = [];
         $estimated = [];
@@ -525,6 +569,74 @@ class EventFee
         }
 
         return ['amounts' => $amounts, 'estimated' => $estimated];
+    }
+
+    /**
+     * ONE entry per person — the entry their fee is counted on.
+     *
+     * ⚠️ An athlete pays once for an EVENT; they hold one entry per DIVISION.
+     * Those are different counts, and money summed over the second one is money
+     * the event never took. This platform lets one person hold several entries
+     * on purpose (a jiu-jitsu competitor enters Gi and No-Gi, a karateka enters
+     * Kata and Kumite) and prices exactly that as a single option — "Gi + No-Gi,
+     * BHD 15" — so counting per entry reported a championship at BHD 915 that
+     * had taken BHD 665 (found 2026-09-13). Two ways, both silent:
+     *
+     *   · the fee line is copied onto both entries, and 15 is counted twice;
+     *   · the second entry carries no line at all, so it is valued at the LIST
+     *     price as if it were an unrecorded payment — inventing a charge for
+     *     somebody who has already paid.
+     *
+     * Which entry is billed, in order: the one that CARRIES a fee line (the
+     * record of what was actually charged beats a guess), then a paid one, then
+     * the earliest. In practice that is the entry they registered through, and
+     * its division is where the money lands in the per-division breakdown.
+     *
+     * `paid` is asked of the PERSON, not of the billed entry: an athlete who
+     * paid has paid, whichever of their rows an official ticked.
+     *
+     * Grouped by role as well as person, because a fee for entering is not the
+     * fee for watching — somebody who does both owes both.
+     *
+     * @param  string|null  $role  one role, or null for every one that is charged
+     * @return \Illuminate\Support\Collection<int, object{registration_id: int, user_id: ?int, role: string, paid: bool}>
+     */
+    public static function billing(ClubEvent $event, ?string $role = null)
+    {
+        $entries = $event->registrations()
+            ->when($role !== null, fn ($q) => $q->where('role', $role))
+            ->when($role === null, fn ($q) => $q->whereIn('role', ['participant', 'spectator']))
+            ->get(['club_event_registrations.id', 'user_id', 'role', 'paid']);
+
+        if ($entries->isEmpty()) {
+            return collect();
+        }
+
+        $lined = EventRegistrationFeeLine::whereIn('registration_id', $entries->pluck('id'))
+            ->pluck('registration_id')
+            ->flip();
+
+        return $entries
+            // An entry with no person behind it is its own person — it cannot
+            // be folded in with anybody, and two of them are two entrants.
+            ->groupBy(fn ($r) => $r->role.':'.($r->user_id ? 'u'.$r->user_id : 'r'.$r->id))
+            ->map(function ($group) use ($lined) {
+                $billed = $group
+                    ->sortBy([
+                        fn ($a, $b) => ($lined->has($b->id) ? 1 : 0) <=> ($lined->has($a->id) ? 1 : 0),
+                        fn ($a, $b) => ((int) $b->paid) <=> ((int) $a->paid),
+                        fn ($a, $b) => $a->id <=> $b->id,
+                    ])
+                    ->first();
+
+                return (object) [
+                    'registration_id' => (int) $billed->id,
+                    'user_id' => $billed->user_id ? (int) $billed->user_id : null,
+                    'role' => (string) $billed->role,
+                    'paid' => $group->contains(fn ($r) => (bool) $r->paid),
+                ];
+            })
+            ->values();
     }
 
     /**

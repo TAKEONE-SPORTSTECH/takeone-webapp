@@ -87,9 +87,23 @@ class EventPagesRenderTest extends TestCase
             ],
         ]);
 
+        /*
+         * The teams are no longer STACKED on the event page: since 2026-09-14
+         * the member page carries the same doors the public poster does, and a
+         * league's table lives behind its own (partials/event-doors). What this
+         * page must still do is offer that door — and the legacy JSON season
+         * must still become real rows on the way (League::hydrateLegacy).
+         */
         $this->actingAs($this->member($club))->get("/me/events/{$event->uuid}")
             ->assertOk()
-            ->assertSee('Falcons');
+            ->assertSee(__('event-league::messages.title'));
+
+        $this->assertSame(
+            ['Falcons', 'Sharks'],
+            \App\Events\League\Models\LeagueTeam::where('event_id', $event->id)
+                ->orderBy('sort_order')->pluck('name')->all(),
+            'the season typed into the old form was not brought across',
+        );
     }
 
     public function test_manager_sees_the_detail_page_with_finance(): void

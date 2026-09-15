@@ -251,23 +251,22 @@
         'documents' => $e['documents'] ?? [],
     ])
 
-    {{-- ===== Draw · Officials · Gallery · Participants =====
-         Four doors out of this page, the same four the member page has and in
-         the same order. Each opens its own page rather than expanding here: a
-         draw, an officiating sheet, a footage gallery and an entry list are
-         each a screen's worth of reading, and stacked inline they pushed the
-         way in a screen and a half below the fold.
+    {{-- ===== The doors =====
+         Built here, drawn by `partials.event-doors` — the same partial the
+         member page renders, so the two surfaces cannot drift apart again.
+         Each door names a public SECTION of this event.
 
-         The Draw door only exists when the event HAS divisions — an event that
-         runs no draw gets no door to one, which is the rule the member page's
-         own Draw row follows. --}}
+         A door only exists when there is something behind it: no draw for an
+         event that runs none, no table unless the owning package publishes one,
+         no winners until somebody has won. --}}
     @php
+        $section = fn (string $s) => route('events.public.section', ['event' => $e['key'], 'section' => $s]);
         $doors = [];
 
-        if (!empty($e['divisions']) || ($e['draw']['published'] ?? false)) {
+        if (! empty($e['divisions']) || ($e['draw']['published'] ?? false)) {
             $drawn = ($e['draw']['published'] ?? false);
-            $doors[] = [
-                'href' => route('events.public.section', ['event' => $e['key'], 'section' => 'draw']),
+            $doors['draw'] = [
+                'href' => $section('draw'),
                 'icon' => 'bi-diagram-3-fill bracket-icon',
                 'label' => __('personal.event_show_tile_draw'),
                 'sub' => $drawn
@@ -276,21 +275,33 @@
             ];
         }
 
-        $doors[] = [
-            'href' => route('events.public.section', ['event' => $e['key'], 'section' => 'officials']),
+        /* Whatever the owning package publishes of its own — the pool tables of
+           the classes that are not bracketed, or a league's whole table. Next
+           to the DRAW because they are two readings of one question: how this
+           competition is being played. */
+        if (($e['type_public']['key'] ?? null) === 'table') {
+            $doors['table'] = [
+                'href' => $section('table'),
+                'icon' => $e['type_public']['icon'] ?? 'bi-table',
+                'label' => $e['type_public']['label'] ?? '',
+                'sub' => $e['type_public']['sub'] ?? '',
+            ];
+        }
+
+        $doors['officials'] = [
+            'href' => $section('officials'),
             'icon' => 'bi-person-badge-fill',
             'label' => __('personal.event_show_tile_officials'),
             'sub' => ($e['officials']['count'] ?? 0) > 0
-                ? trans_choice('events.public_officials_count', $e['officials']['count'], ['n' => $e['officials']['count']])
+                ? trans_choice('personal.event_manage_officials_count', $e['officials']['count'], ['count' => $e['officials']['count']])
                 : __('events.public_officials_empty_title'),
         ];
 
         // Always a door, even with nothing behind it yet: an event's footage is
         // a place people go looking for, and a door that only appears once
-        // something is behind it cannot be found before then. The page says so
-        // itself when empty.
-        $doors[] = [
-            'href' => route('events.public.section', ['event' => $e['key'], 'section' => 'gallery']),
+        // something is behind it cannot be found before then.
+        $doors['gallery'] = [
+            'href' => $section('gallery'),
             'icon' => 'bi-camera-reels-fill',
             'label' => __('events.bout_gallery_title'),
             'sub' => ($e['gallery']['count'] ?? 0) > 0
@@ -298,35 +309,28 @@
                 : __('events.bout_gallery_none'),
         ];
 
-        $doors[] = [
-            'href' => route('events.public.section', ['event' => $e['key'], 'section' => 'participants']),
+        $doors['participants'] = [
+            'href' => $section('participants'),
             'icon' => 'bi-people-fill',
             'label' => __('personal.event_show_tile_participants'),
             'sub' => ($e['participants']['count'] ?? 0) > 0
                 ? trans_choice('events.public_draw_competitors', $e['participants']['count'], ['n' => $e['participants']['count']])
                 : __('events.public_participants_empty_title'),
         ];
+
+        if (($e['results']['count'] ?? 0) > 0) {
+            $doors['results'] = [
+                'href' => $section('results'),
+                'icon' => 'bi-trophy-fill',
+                'label' => __('personal.event_show_results_medals'),
+                'sub' => trans_choice('personal.event_show_results_divisions', $e['results']['count'], ['count' => $e['results']['count']]),
+                // Gold, because it is the last thing that happens at an event.
+                'style' => 'background: linear-gradient(135deg, #eab308, #78350f);',
+            ];
+        }
     @endphp
-    <div class="px-4 mt-4 space-y-3">
-        @foreach($doors as $d)
-            <a href="{{ $d['href'] }}"
-               class="m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5 no-underline"
-               style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
-                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
-                {{-- inline-block via .bracket-icon: a bare <i> is an inline box
-                     and CSS transforms do not apply to those, so the bracket's
-                     quarter turn would silently do nothing. --}}
-                <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                    <i class="bi {{ $d['icon'] }} text-2xl"></i>
-                </div>
-                <div class="relative min-w-0 flex-1">
-                    <h3 class="font-black text-base leading-tight">{{ $d['label'] }}</h3>
-                    <p class="text-xs text-white/85 mt-0.5 truncate">{{ $d['sub'] }}</p>
-                </div>
-                <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0"></i>
-            </a>
-        @endforeach
-    </div>
+
+    @include('partials.event-doors')
 
     {{-- ===== The way in ===== --}}
     <span id="enter" class="block"></span>

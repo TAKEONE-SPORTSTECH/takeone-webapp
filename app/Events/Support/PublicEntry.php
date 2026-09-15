@@ -667,6 +667,7 @@ class PublicEntry
             'message' => __('events.public_review_accepted', ['name' => $entry->athlete?->full_name ?? '']),
             'division' => $result['division'],
             'going' => $event->participantRegistrations()->count(),
+            'going_people' => $event->participantRegistrations()->distinct()->count('user_id'),
         ];
     }
 

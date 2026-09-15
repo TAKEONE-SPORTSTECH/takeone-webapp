@@ -19,6 +19,41 @@
        federation's weight classes as a preset; given nothing, it offers no
        preset and behaves exactly as before. */
     'presets' => [],
+
+    /* The host's own header carries the add button (the weight-classes page
+       puts a round control in its hero band, Design Rule #6). Given this, the
+       component draws no button row of its own and instead opens its add menu
+       when the page dispatches `divisions-add` — so the three ways in are one
+       control in the band rather than three dashed buttons under the list.
+
+       Default false, so the create form — which has no band, and passes its
+       own preset button through the actions slot — is untouched. */
+    'headerAdd' => false,
+
+    /* The organiser's DRAW screen — brackets/manage, where the bracket can be
+       arranged — without a division on the end; the sheet appends
+       `?division=<id>` and the page opens on that one.
+
+       ⚠️ The manage screen deep-links by `division`, while the read-only
+       bracket page uses `category`. Two names for one id, and pointing the
+       organiser's button at the visitor's page was the first thing this got
+       wrong (2026-09-12): it opened a board they could look at and not touch.
+
+       Passed in rather than built here because only the page knows which shell
+       it is in — the sealed console lives at /e/{uuid}/admin/… and the member
+       one at /me/events/… — and a link that guessed would walk the reader out
+       of the shell they are working in. */
+    'bracketUrl' => null,
+
+    /* The parts of the event somebody enters SEPARATELY — Gi and No-Gi, Kata
+       and Kumite: [['key' => 'gi', 'label' => 'Gi'], …], from
+       App\Events\Support\EventStreams::of(). A division belongs to exactly
+       one, and the entrant list then stops offering people who did not enter
+       it.
+
+       Empty, or a single stream, and the sheet asks nothing: an event that runs
+       one thing has nothing to tell apart, which is most events. */
+    'streams' => [],
 ])
 
 {{--
@@ -227,6 +262,9 @@
         'fits_here' => __('events.divisions_fits_here', ['count' => ':count']),
         'fits_unknown' => __('events.divisions_fits_unknown', ['count' => ':count']),
         'fits_counting' => __('events.divisions_fits_counting'),
+        'stream_title' => __('events.divisions_section_stream'),
+        'stream_hint' => __('events.divisions_stream_hint'),
+        'stream_any' => __('events.divisions_stream_any'),
     ];
 @endphp
 
@@ -242,6 +280,7 @@
         belts: {{ Illuminate\Support\Js::from($beltLadder) }},
         presets: {{ Illuminate\Support\Js::from($presetTable) }},
         avatars: {{ Illuminate\Support\Js::from($avatars) }},
+        streams: {{ Illuminate\Support\Js::from(array_values(array_filter((array) $streams, fn ($r) => is_array($r) && ($r['key'] ?? '') !== ''))) }},
         @if(! $isServer && $model)
         {{-- Local mode reads the HOST's array rather than copying it: the host
              posts that same array with its form, so a copy here would be a
@@ -359,8 +398,13 @@
         {{ __('events.divisions_empty') }}
     </p>
 
-    @if($canManage)
+    @if($canManage && ! $headerAdd)
         {{-- Add, and whatever else the host offers alongside it, on ONE row.
+
+             Not drawn at all when the host's header carries the add control
+             (headerAdd) — the weight-classes page does, so the three ways in
+             live behind one round button in its band instead of three dashed
+             buttons under the list.
 
              The create form puts its bulk weight-class picker here. Stacking the
              two full-width buttons read as a sequence -- do this, then that --
@@ -414,7 +458,18 @@
                  x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-200"
                  x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-                 class="relative w-full sm:max-w-lg max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+                 {{-- Full width at EVERY size, like every other bottom sheet on
+                      the platform since 2026-09-12: they were capped at 32rem
+                      above 640px, which left a narrow card floating at the
+                      bottom of a tablet or a laptop — and a scoring table is
+                      usually one of those. Tried on this sheet first, then
+                      taken off the rest.
+
+                      The three that kept the cap are not bottom sheets at that
+                      width: they turn into CENTRED DIALOGS (`sm:inset-0`), and
+                      a dialog stretched across a monitor is what the cap is
+                      for. --}}
+                 class="relative w-full max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
 
                 {{-- ===== The band =====
                      Design Rule #8's sheet header, carrying the DIVISION rather
@@ -455,6 +510,29 @@
                                     : (editing === null ? @js(__('events.divisions_new')) : @js(__('events.divisions_edit')))"></p>
                         </div>
 
+                        @if($bracketUrl)
+                            {{-- Straight to THIS division's draw, on the screen
+                                 where it can be CHANGED — arrange the bracket,
+                                 build it, clear it — not the read-only board a
+                                 visitor sees. The question an organiser asks while
+                                 looking at a weight class is "what does its
+                                 bracket look like, and let me fix it", and until
+                                 now the answer was: close the sheet, leave the
+                                 screen, open the draw page, find the division
+                                 again in its picker (asked for 2026-09-12).
+
+                                 Only on a division that EXISTS and is not a
+                                 heading: there is no draw for a row that has not
+                                 been saved, and none for a title. --}}
+                            <a x-show="editing !== null && ! form.is_heading" x-cloak
+                               :href="@js($bracketUrl) + '?division=' + editing"
+                               aria-label="{{ __('events.divisions_open_bracket') }}"
+                               title="{{ __('events.divisions_open_bracket') }}"
+                               class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform text-white no-underline">
+                                <i class="bi bi-diagram-3-fill bracket-icon"></i>
+                            </a>
+                        @endif
+
                         <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
                                 class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
                             <i class="bi bi-x-lg"></i>
@@ -485,14 +563,14 @@
                          rather than an underlined strip on the white below it:
                          the choice belongs to the subject in the header, and it
                          keeps the body a single uninterrupted form. --}}
+                    {{-- PEOPLE first, and the tab a saved division opens on
+                         (2026-09-12). Who is in a weight class is what an
+                         organiser comes here to change; its settings are set
+                         once and then mostly read. A NEW division still opens
+                         on Settings — there is nobody to put in a group that
+                         does not exist yet. --}}
                     <div x-show="! form.is_heading" x-cloak
                          class="relative mt-3.5 p-1 rounded-full bg-black/15 backdrop-blur flex items-center gap-1">
-                        <button type="button" @click="tab = 'settings'"
-                                class="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-colors"
-                                :class="tab === 'settings' ? 'bg-white shadow-sm' : 'text-white/85'"
-                                :style="tab === 'settings' ? 'color: {{ $c }}' : ''"
-                                x-text="words.tab_settings"></button>
-
                         <button type="button" @click="openPeopleTab()" :disabled="editing === null || ! server"
                                 class="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
                                 :class="tab === 'people' ? 'bg-white shadow-sm' : 'text-white/85'"
@@ -500,6 +578,15 @@
                             <span x-text="words.tab_people"></span>
                             <span x-show="inCount()" x-cloak class="text-[10px] opacity-80" x-text="inCount()"></span>
                         </button>
+
+                        {{-- The fits panel is only asked for when its tab is
+                             actually opened, so a sheet that lands on People
+                             does not fetch a count nobody is looking at. --}}
+                        <button type="button" @click="tab = 'settings'; queuePreview()"
+                                class="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-colors"
+                                :class="tab === 'settings' ? 'bg-white shadow-sm' : 'text-white/85'"
+                                :style="tab === 'settings' ? 'color: {{ $c }}' : ''"
+                                x-text="words.tab_settings"></button>
                     </div>
 
                     <p x-show="editing === null && server && ! form.is_heading" x-cloak
@@ -552,92 +639,108 @@
                                 <span class="h-px flex-1 bg-gray-100"></span>
                             </div>
                             <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_gender') }}</label>
-                                                    <div class="grid grid-cols-3 gap-2 mb-3">
-                                                        @foreach([['', 'divisions_gender_any', 'bi-people'], ['Male', 'divisions_gender_male', 'bi-gender-male'], ['Female', 'divisions_gender_female', 'bi-gender-female']] as [$g, $k, $icon])
-                                                            <button type="button" @click="form.gender = @js($g); settingsChanged()"
-                                                                    class="m-press rounded-xl border-2 p-2.5 text-center transition-colors"
-                                                                    :class="(form.gender || '') === @js($g) ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-foreground'"
-                                                                    :aria-pressed="(form.gender || '') === @js($g)">
-                                                                <i class="bi {{ $icon }} text-base"></i>
-                                                                <span class="block text-[11px] font-bold mt-0.5">{{ __('events.'.$k) }}</span>
-                                                            </button>
-                                                        @endforeach
-                                                    </div>
+                            <div class="grid grid-cols-3 gap-2 mb-3">
+                                @foreach([['', 'divisions_gender_any', 'bi-people'], ['Male', 'divisions_gender_male', 'bi-gender-male'], ['Female', 'divisions_gender_female', 'bi-gender-female']] as [$g, $k, $icon])
+                                    <button type="button" @click="form.gender = @js($g); settingsChanged()"
+                                            class="m-press rounded-xl border-2 p-2.5 text-center transition-colors"
+                                            :class="(form.gender || '') === @js($g) ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-foreground'"
+                                            :aria-pressed="(form.gender || '') === @js($g)">
+                                        <i class="bi {{ $icon }} text-base"></i>
+                                        <span class="block text-[11px] font-bold mt-0.5">{{ __('events.'.$k) }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
 
                             {{-- Age --}}
-                                                    <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_age') }}</label>
-                                                    <div class="grid grid-cols-2 gap-2 mb-1">
-                                                        <input x-model="form.min_age" @input="settingsChanged()" type="number" min="2" max="100" inputmode="numeric"
-                                                               placeholder="{{ __('events.divisions_from') }}"
-                                                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                                        <input x-model="form.max_age" @input="settingsChanged()" type="number" min="2" max="100" inputmode="numeric"
-                                                               placeholder="{{ __('events.divisions_to') }}"
-                                                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                                    </div>
-                                                    <p x-show="errors.max_age" x-cloak class="mb-2 text-xs text-red-500" x-text="errors.max_age"></p>
+                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_age') }}</label>
+                            <div class="grid grid-cols-2 gap-2 mb-1">
+                                <input x-model="form.min_age" @input="settingsChanged()" type="number" min="2" max="100" inputmode="numeric"
+                                       placeholder="{{ __('events.divisions_from') }}"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                                <input x-model="form.max_age" @input="settingsChanged()" type="number" min="2" max="100" inputmode="numeric"
+                                       placeholder="{{ __('events.divisions_to') }}"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            </div>
+                            <p x-show="errors.max_age" x-cloak class="mb-2 text-xs text-red-500" x-text="errors.max_age"></p>
 
-                                                    {{-- Weight --}}
-                                                    <label class="block text-[11px] font-semibold text-gray-500 mb-1 mt-2">{{ __('events.divisions_weight') }}</label>
-                                                    <div class="grid grid-cols-2 gap-2 mb-1">
-                                                        <input x-model="form.min_weight" @input="settingsChanged()" type="number" min="10" max="300" step="0.1" inputmode="decimal"
-                                                               placeholder="{{ __('events.divisions_from') }}"
-                                                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                                        <input x-model="form.max_weight" @input="settingsChanged()" type="number" min="10" max="300" step="0.1" inputmode="decimal"
-                                                               placeholder="{{ __('events.divisions_to') }}"
-                                                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                                    </div>
-                                                    <p x-show="errors.max_weight" x-cloak class="text-xs text-red-500" x-text="errors.max_weight"></p>
+                            {{-- Weight --}}
+                            <label class="block text-[11px] font-semibold text-gray-500 mb-1 mt-2">{{ __('events.divisions_weight') }}</label>
+                            <div class="grid grid-cols-2 gap-2 mb-1">
+                                <input x-model="form.min_weight" @input="settingsChanged()" type="number" min="10" max="300" step="0.1" inputmode="decimal"
+                                       placeholder="{{ __('events.divisions_from') }}"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                                <input x-model="form.max_weight" @input="settingsChanged()" type="number" min="10" max="300" step="0.1" inputmode="decimal"
+                                       placeholder="{{ __('events.divisions_to') }}"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            </div>
+                            <p x-show="errors.max_weight" x-cloak class="text-xs text-red-500" x-text="errors.max_weight"></p>
                         </section>
+                        {{-- ===== Which part of the event =====
+                             Only where there IS more than one. An event that
+                             runs a single thing has nothing to tell apart, and
+                             a question with one answer is noise.
+
+                             It reads like the belt row on purpose: same chips,
+                             same "Any" escape, same meaning for the absence of a
+                             choice. But it is a RADIO, not a set — a division is
+                             in one stream, because a bracket is one bracket. --}}
+                        <section x-show="streams.length > 1" x-cloak>
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <i class="bi bi-layers text-[13px] text-muted-foreground"></i>
+                                <h4 class="text-[12.5px] font-bold text-foreground" x-text="words.stream_title"></h4>
+                                <span class="h-px flex-1 bg-gray-100"></span>
+                            </div>
+
+                            <div class="flex flex-wrap gap-1.5">
+                                <button type="button" @click="form.stream = ''; settingsChanged()"
+                                        class="m-press px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all"
+                                        :class="! form.stream ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-muted-foreground bg-white'"
+                                        :aria-pressed="! form.stream"
+                                        x-text="words.stream_any"></button>
+
+                                <template x-for="st in streams" :key="st.key">
+                                    <button type="button" @click="form.stream = st.key; settingsChanged()"
+                                            class="m-press px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all"
+                                            :class="form.stream === st.key ? 'border-transparent text-white shadow-sm' : 'border-gray-200 text-muted-foreground bg-white'"
+                                            :style="form.stream === st.key ? 'background: {{ $c }}' : ''"
+                                            :aria-pressed="form.stream === st.key"
+                                            x-text="st.label"></button>
+                                </template>
+                            </div>
+
+                            <p class="mt-1 text-[11px] text-muted-foreground leading-snug" x-text="words.stream_hint"></p>
+                        </section>
+
                         <section>
                             <div class="flex items-center gap-2 mb-2.5">
                                 <i class="bi bi-award text-[13px] text-muted-foreground"></i>
                                 <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events.divisions_section_belts') }}</h4>
                                 <span class="h-px flex-1 bg-gray-100"></span>
                             </div>
-                            {{-- ===== Belts =====
-                                                         Chips rather than a dropdown: a division is
-                                                         regularly opened to two or three grades at once
-                                                         ("Blue, Purple"), and a multi-select pop-over
-                                                         inside this scrolling body would be clipped by it
-                                                         (Mobile Pattern Language → selection cards).
+                            {{-- FIVE TO A ROW, equal cells. Content-sized chips put "Red" and
+                                 "Light Feather" side by side at wildly different widths, which reads as
+                                 importance rather than as ten equal options. --}}
+                            <div class="grid grid-cols-5 gap-1.5">
+                                {{-- "All" is not a tenth belt: it is the ABSENCE of a restriction, which is
+                                     what an empty list already means everywhere else (DivisionRange). So it
+                                     lights up when nothing is chosen, and pressing it clears the rest. --}}
+                                <button type="button" @click="form.belts = []; settingsChanged()"
+                                        class="m-press px-1 py-1.5 rounded-full text-[11px] font-bold border transition-all truncate"
+                                        :class="! (form.belts || []).length ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-muted-foreground bg-white'"
+                                        x-text="words.belts_all"></button>
 
-                                                         None selected means ANY belt, which is both the
-                                                         default and the honest reading of an empty column —
-                                                         said in words underneath so it is never mistaken
-                                                         for "nothing chosen yet". --}}
-                                                    <label class="block text-[11px] font-semibold text-gray-500 mb-1 mt-3">{{ __('events.divisions_belts') }}</label>
-                                                    {{-- FIVE TO A ROW, equal cells. Content-sized chips put
-                                                         "Red" and "Light Feather" side by side at wildly
-                                                         different widths, which reads as importance rather
-                                                         than as ten equal options — and the row rewrapped
-                                                         every time a label changed language. Ten chips (All
-                                                         + nine belts) land as two tidy rows of five. --}}
-                                                    <div class="grid grid-cols-5 gap-1.5">
-                                                        {{-- "All" is not a tenth belt: it is the ABSENCE of
-                                                             a restriction, which is what an empty list
-                                                             already means everywhere else (DivisionRange).
-                                                             So it lights up when nothing is chosen, and
-                                                             pressing it clears the rest. --}}
-                                                        <button type="button" @click="form.belts = []; settingsChanged()"
-                                                                class="m-press px-1 py-1.5 rounded-full text-[11px] font-bold border transition-all truncate"
-                                                                :class="! (form.belts || []).length ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-muted-foreground bg-white'"
-                                                                x-text="words.belts_all"></button>
-
-                                                        <template x-for="b in beltLadder" :key="b.value">
-                                                            <button type="button" @click="toggleBelt(b.value)" :title="b.label"
-                                                                    class="m-press px-1 py-1.5 rounded-full text-[11px] font-bold border transition-all flex items-center justify-center gap-1 min-w-0"
-                                                                    :class="hasBelt(b.value)
-                                                                        ? 'border-transparent shadow-sm'
-                                                                        : 'border-gray-200 text-muted-foreground bg-white'"
-                                                                    :style="hasBelt(b.value) ? ('background:' + b.bg + ';color:' + b.fg) : ''">
-                                                                <span class="w-2.5 h-2.5 rounded-full border border-black/15 flex-shrink-0"
-                                                                      :style="'background:' + b.bg"></span>
-                                                                <span class="truncate" x-text="b.label"></span>
-                                                            </button>
-                                                        </template>
-                                                    </div>
-                                                    <p x-show="! (form.belts || []).length" x-cloak
-                                                       class="mt-1 text-[11px] text-muted-foreground" x-text="words.belts_any"></p>
+                                <template x-for="b in beltLadder" :key="b.value">
+                                    <button type="button" @click="toggleBelt(b.value)" :title="b.label"
+                                            class="m-press px-1 py-1.5 rounded-full text-[11px] font-bold border transition-all flex items-center justify-center gap-1 min-w-0"
+                                            :class="hasBelt(b.value) ? 'border-transparent shadow-sm' : 'border-gray-200 text-muted-foreground bg-white'"
+                                            :style="hasBelt(b.value) ? ('background:' + b.bg + ';color:' + b.fg) : ''">
+                                        <span class="w-2.5 h-2.5 rounded-full border border-black/15 flex-shrink-0" :style="'background:' + b.bg"></span>
+                                        <span class="truncate" x-text="b.label"></span>
+                                    </button>
+                                </template>
+                            </div>
+                            <p x-show="! (form.belts || []).length" x-cloak
+                               class="mt-1 text-[11px] text-muted-foreground" x-text="words.belts_any"></p>
                         </section>
                         <section>
                             <div class="flex items-center gap-2 mb-2.5">
@@ -753,59 +856,49 @@
                         </section>
 
                         {{-- ===== Who is actually in it =====
-                                                     The question an organiser is really asking while
-                                                     typing a range: is there ANYBODY in this? Until now
-                                                     it could only be answered by saving the division,
-                                                     opening the entrant picker and counting — so a
-                                                     weight class that caught nobody was discovered
-                                                     after the fact, when it is either the wrong numbers
-                                                     or a division the event should not run.
+                             The question an organiser is really asking while typing a range: is there
+                             ANYBODY in this? Judged by the same rule the roster is judged by
+                             (DivisionRange, server side), so this and the picker cannot disagree.
 
-                                                     Judged by the same rule the roster is judged by
-                                                     (DivisionRange, server side), so this and the
-                                                     picker cannot disagree.
+                             Faces are CIRCLES, as asked for on 2026-09-12 — the one place that departs
+                             from Profile Pictures Are Portrait 3:4, and only for face-as-token stacks.
+                             `object-top` keeps the head rather than the bottom of the frame. --}}
+                        <div x-show="server && (preview.loading || preview.loaded)" x-cloak
+                             class="mt-3 rounded-2xl border border-gray-100 bg-muted/40 p-3">
 
-                                                     Faces are CIRCLES here, as asked for on 2026-09-12
-                                                     — see the note on the list's own stack for why that
-                                                     departs from the 3:4 rule and how far the exception
-                                                     reaches. They overlap into a row, which is what a
-                                                     stack of faces is for. --}}
-                                                <div x-show="server && (preview.loading || preview.loaded)" x-cloak
-                                                     class="mt-3 rounded-2xl border border-gray-100 bg-muted/40 p-3">
+                            <div class="flex items-center gap-3">
+                                <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
+                                      style="background: {{ $c }}">
+                                    <i class="bi bi-people-fill text-lg"></i>
+                                </span>
 
-                                                    <div class="flex items-center gap-3">
-                                                        <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
-                                                              style="background: {{ $c }}">
-                                                            <i class="bi bi-people-fill text-lg"></i>
-                                                        </span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-black text-foreground leading-tight"
+                                       x-text="preview.loading ? words.fits_counting : fitsLine()"></p>
+                                    <p class="text-[11px] text-muted-foreground mt-0.5"
+                                       x-show="! preview.loading" x-text="fitsSubLine()"></p>
+                                </div>
+                            </div>
 
-                                                        <div class="min-w-0 flex-1">
-                                                            <p class="text-sm font-black text-foreground leading-tight"
-                                                               x-text="preview.loading ? words.fits_counting : fitsLine()"></p>
-                                                            <p class="text-[11px] text-muted-foreground mt-0.5"
-                                                               x-show="! preview.loading" x-text="fitsSubLine()"></p>
-                                                        </div>
-                                                    </div>
+                            <div x-show="preview.people.length" x-cloak class="flex items-center mt-2.5 ps-0.5">
+                                <template x-for="(p, k) in preview.people" :key="p.name + k">
+                                    {{-- ⚠️ The overlap is an INLINE margin: `-ms-1.5` and `first:ms-0`
+                                         are not in the prebuilt Tailwind bundle, so they would render as
+                                         nothing and the stack would sit in a flat row. --}}
+                                    <span class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-muted ring-2 ring-white"
+                                          :style="k ? 'margin-inline-start:-9px' : ''"
+                                          :title="p.name"
+                                          :class="p.fit === 'unknown' ? 'opacity-60' : ''">
+                                        <img :src="p.photo || avatars[p.gender === 'Female' ? 'Female' : 'Male']"
+                                             alt="" class="w-full h-full object-cover object-top">
+                                    </span>
+                                </template>
 
-                                                    {{-- The faces themselves. Overlapping, in the order
-                                                         the server sorted them, with the remainder as a
-                                                         number rather than a scroll. --}}
-                                                    <div x-show="preview.people.length" x-cloak class="flex items-center mt-2.5 ps-0.5">
-                                                        <template x-for="(p, k) in preview.people" :key="p.name + k">
-                                                            <span class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-muted ring-2 ring-white"
-                                                                  :style="k ? 'margin-inline-start:-9px' : ''"
-                                                                  :title="p.name"
-                                                                  :class="p.fit === 'unknown' ? 'opacity-60' : ''">
-                                                                <img :src="p.photo || avatars[p.gender === 'Female' ? 'Female' : 'Male']"
-                                                                     alt="" class="w-full h-full object-cover object-top">
-                                                            </span>
-                                                        </template>
-
-                                                        <span x-show="preview.matched > preview.people.length" x-cloak
-                                                              class="ms-2 text-[11px] font-bold text-muted-foreground"
-                                                              x-text="'+' + (preview.matched - preview.people.length)"></span>
-                                                    </div>
-                                                </div>
+                                <span x-show="preview.matched > preview.people.length" x-cloak
+                                      class="ms-2 text-[11px] font-bold text-muted-foreground"
+                                      x-text="'+' + (preview.matched - preview.people.length)"></span>
+                            </div>
+                        </div>
 
                         {{-- Copy this one. Offered only on a division that exists,
                                                  for the same reason Delete is: there is nothing to copy
@@ -826,35 +919,30 @@
                 </div>
 
                 {{-- ===== Who is in it =====
-                     Two lists of the same people: the ones this division is FOR,
-                     and everybody entered in the event. Filtered first, because
-                     it is the answer nine times in ten — and All second rather
-                     than not at all, because a range is a guide and never a gate
-                     (DivisionRange): an organiser moving a strong junior up, or
-                     filling a bracket of three, must be able to reach anybody.
-
-                     The tick is the only control, and it is reversible until
-                     Save. Nothing here confirms or warns: entering somebody in
-                     two divisions is the ordinary thing this exists for. --}}
+                     Two lists of the same people and the one they are already
+                     on. Filtered is the range as a GUIDE, never a gate: an
+                     organiser moving a strong junior up, or filling a bracket of
+                     three, must be able to reach anybody. --}}
                 <div x-show="tab === 'people'" x-cloak class="flex-1 overflow-y-auto px-5 py-4">
 
-                    {{-- Three ways into the same roster: who the division is
-                         FOR, everybody entered, and who is in it right now.
-
-                         Selected is the one an organiser checks last — it
-                         answers "is this division right" without reading past
-                         sixty names, and it counts UNSAVED ticks too, so it is
-                         what the division will be once Save is pressed rather
-                         than what it was when the sheet opened. --}}
+                    {{-- SELECTED first: who is in this division right now is the
+                         answer an organiser opens the tab for, and the other two
+                         are how they change it (order asked for 2026-09-12). --}}
                     <div class="grid grid-cols-3 gap-2 mb-3">
+                        <button type="button" @click="peopleTab = 'selected'"
+                                class="m-press rounded-xl border-2 py-2 px-1 text-center transition-colors"
+                                :class="peopleTab === 'selected' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-foreground'">
+                            <span class="flex items-center justify-center gap-1.5 min-w-0">
+                                <span class="text-[12px] font-bold truncate" x-text="words.people_selected"></span>
+                                <span class="text-[12px] font-black flex-shrink-0"
+                                      style="color: {{ $c }}" x-text="inCount()"></span>
+                            </span>
+                        </button>
                         <button type="button" @click="peopleTab = 'fit'"
                                 class="m-press rounded-xl border-2 py-2 px-1 text-center transition-colors"
                                 :class="peopleTab === 'fit' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-foreground'">
                             <span class="flex items-center justify-center gap-1.5 min-w-0">
                                 <span class="text-[12px] font-bold truncate" x-text="words.people_fit"></span>
-                                {{-- The count in the sheet's own accent, bold: it is
-                                     the thing being compared across the three, so it
-                                     must not read as a footnote to the label. --}}
                                 <span class="text-[12px] font-black flex-shrink-0"
                                       style="color: {{ $c }}" x-text="fitList().length"></span>
                             </span>
@@ -864,23 +952,8 @@
                                 :class="peopleTab === 'all' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-foreground'">
                             <span class="flex items-center justify-center gap-1.5 min-w-0">
                                 <span class="text-[12px] font-bold truncate" x-text="words.people_all"></span>
-                                {{-- The count in the sheet's own accent, bold: it is
-                                     the thing being compared across the three, so it
-                                     must not read as a footnote to the label. --}}
                                 <span class="text-[12px] font-black flex-shrink-0"
                                       style="color: {{ $c }}" x-text="roster.length"></span>
-                            </span>
-                        </button>
-                        <button type="button" @click="peopleTab = 'selected'"
-                                class="m-press rounded-xl border-2 py-2 px-1 text-center transition-colors"
-                                :class="peopleTab === 'selected' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-foreground'">
-                            <span class="flex items-center justify-center gap-1.5 min-w-0">
-                                <span class="text-[12px] font-bold truncate" x-text="words.people_selected"></span>
-                                {{-- The count in the sheet's own accent, bold: it is
-                                     the thing being compared across the three, so it
-                                     must not read as a footnote to the label. --}}
-                                <span class="text-[12px] font-black flex-shrink-0"
-                                      style="color: {{ $c }}" x-text="inCount()"></span>
                             </span>
                         </button>
                     </div>
@@ -921,6 +994,29 @@
                                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
                                               x-text="(p.weight ?? '—') + ' ' + words.kg"></span>
 
+                                        {{-- The RANK, drawn as the belt itself.
+                                             A division is very often FOR a belt
+                                             ("Blue, 12-13, -44kg"), so an
+                                             organiser ticking people into one
+                                             is matching a rank — and the row
+                                             said age and weight but never which
+                                             belt, leaving the one fact the
+                                             filter is about off the card.
+
+                                             The drawing is the page's single
+                                             <symbol> (x-belt-icon-defs below);
+                                             the colours arrive worked out on
+                                             the row, so nothing about the belt
+                                             is re-decided in the browser. --}}
+                                        <template x-if="p.belt_icon">
+                                            <span class="inline-flex items-center gap-1 ps-1 pe-2 py-0.5 rounded-full bg-muted text-foreground text-[10px] font-bold"
+                                                  :title="p.belt_icon.label">
+                                                <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none"
+                                                     aria-hidden="true" :style="p.belt_icon.style"><use href="#belt-icon"></use></svg>
+                                                <span x-text="p.belt_icon.label"></span>
+                                            </span>
+                                        </template>
+
                                         {{-- Why they are not in the filtered list.
                                              Said on the row rather than by leaving
                                              them out silently — an organiser
@@ -933,6 +1029,24 @@
                                         <span x-show="p.fit === 'unknown'" x-cloak
                                               class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
                                               x-text="words.people_unknown"></span>
+
+                                        {{-- What they signed up for — "Gi",
+                                             "No-Gi", "Gi + No-Gi" — off the fee
+                                             options they ticked at
+                                             registration, in the same blue the
+                                             roster card uses so the two screens
+                                             say one thing.
+
+                                             It is the fact this picker is
+                                             missing without it: an organiser
+                                             filling a Gi bracket can otherwise
+                                             tick somebody who never entered Gi,
+                                             and nothing on the row says so. --}}
+                                        <template x-for="(a, k) in (p.activities || [])" :key="a + k">
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white whitespace-nowrap">
+                                                <span x-text="a"></span>
+                                            </span>
+                                        </template>
                                     </span>
                                 </span>
                             </div>
@@ -964,6 +1078,76 @@
         </div>
     </template>
 
+    {{-- ===== The add menu =====
+         One control in the page's header, three ways in behind it: a division,
+         a heading over several, or a batch straight off the federation's
+         weight table. They were three dashed buttons under the list, which is
+         three things to read before adding the first one and a row that grew
+         every time a way in was added.
+
+         Opened by a window event rather than by a click in here, because the
+         button lives in the PAGE'S hero band and the band is outside this
+         component's scope — the same seam the rest of the platform uses to let
+         a shell talk to a component it renders. --}}
+    <template x-teleport="body" data-teleport-template="true">
+        <div x-show="addOpen" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center"
+             @divisions-add.window="if (canManage) addOpen = true"
+             @keydown.escape.window="addOpen = false" style="display:none;">
+            <div x-show="addOpen" x-transition.opacity class="absolute inset-0 bg-black/40" @click="addOpen = false"></div>
+
+            <div x-show="addOpen"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="relative w-full flex flex-col bg-white rounded-t-3xl shadow-2xl">
+
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, {{ $c }}, {{ $c }}b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3 sm:hidden"></div>
+
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-plus-lg text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('events.divisions_add_title') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('events.divisions_add_hint') }}</p>
+                        </div>
+                        <button type="button" @click="addOpen = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="px-5 py-4 space-y-2"
+                     style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+                    @foreach ([
+                        ['bi-diagram-3-fill bracket-icon', 'divisions_add', 'divisions_add_one_hint', "addOpen = false; openNew()", null],
+                        ['bi-lightning-charge-fill', 'divisions_add_preset', 'divisions_add_preset_hint', "addOpen = false; openPresets()", 'presetTable.length'],
+                        ['bi-bookmark-fill', 'divisions_add_heading', 'divisions_add_heading_hint', "addOpen = false; openNew(true)", null],
+                    ] as [$addIcon, $addLabel, $addHint, $addDo, $addWhen])
+                        <button type="button" @click="{{ $addDo }}"
+                                @if($addWhen) x-show="{{ $addWhen }}" x-cloak @endif
+                                class="m-press w-full rounded-2xl border-2 border-gray-200 p-3.5 flex items-center gap-3 text-start transition-colors hover:bg-muted/50">
+                            <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 text-white"
+                                  style="background: {{ $c }}">
+                                <i class="bi {{ $addIcon }} text-base"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-foreground">{{ __('events.'.$addLabel) }}</span>
+                                <span class="block text-[11px] text-muted-foreground mt-0.5">{{ __('events.'.$addHint) }}</span>
+                            </span>
+                            <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </template>
+
     {{-- ===== The preset sheet =====
          The federation's weight classes, picked in one place. Its own sheet
          rather than a tab inside the editor: the editor edits ONE division and
@@ -982,7 +1166,7 @@
                  x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-200"
                  x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-                 class="relative w-full sm:max-w-lg max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+                 class="relative w-full max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
 
                 <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
                      style="background: linear-gradient(150deg, {{ $c }}, {{ $c }}b0);">
@@ -1119,6 +1303,37 @@
                             </template>
                         </div>
                     </div>
+
+                    {{-- ===== HOW THEY RUN =====
+                         The same question the single-division editor asks, asked
+                         once for the whole batch — because it is the whole
+                         batch that comes off a federation table, and a
+                         championship run as pools is run as pools in every
+                         class, not in one of them.
+
+                         It only SEEDS the divisions being made: each one keeps
+                         its own format afterwards and can be changed on its
+                         own, which is what a class of three entrants in an
+                         otherwise bracketed event needs. --}}
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_format') }}</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <template x-for="f in [
+                                { v: 'knockout', label: words.format_ko, icon: 'bi-diagram-3-fill bracket-icon' },
+                                { v: 'round_robin', label: words.format_rr, icon: 'bi-table' }
+                            ]" :key="f.v">
+                                <button type="button" @click="presetFormat = f.v" :aria-pressed="presetFormat === f.v"
+                                        class="m-press flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-start transition-colors"
+                                        :class="presetFormat === f.v ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'">
+                                    <span class="w-8 h-8 rounded-lg grid place-items-center flex-shrink-0"
+                                          :class="presetFormat === f.v ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'">
+                                        <i class="bi" :class="f.icon"></i>
+                                    </span>
+                                    <span class="text-[12px] font-bold text-foreground truncate" x-text="f.label"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100"
@@ -1133,6 +1348,11 @@
             </div>
         </div>
     </template>
+
+    {{-- The one copy of the belt drawing, for the rank on each person in the
+         picker. Rendered in the component rather than asked of the host page,
+         so <x-event-divisions> stays standalone wherever it is dropped. --}}
+    <x-belt-icon-defs />
 </div>
 
 @once
@@ -1160,6 +1380,9 @@
         beltLadder: Array.isArray(cfg.belts) ? cfg.belts : [],
         presetTable: Array.isArray(cfg.presets) ? cfg.presets : [],
         avatars: cfg.avatars || {},
+        /* The parts of the event entered separately. Fewer than two is nothing
+           to tell apart, so the sheet does not ask (see the `streams` prop). */
+        streams: Array.isArray(cfg.streams) ? cfg.streams : [],
 
         /* Local mode hands us a live reference to the HOST's array. Server mode
            owns its own list, seeded from the payloads the page rendered with. */
@@ -1169,6 +1392,7 @@
         open: false,
         saving: false,
         autoName: false,     // is the name still following the settings?
+        addOpen: false,      // the add menu, opened from the page's header
         presetsOpen: false,  // the federation-table picker
         presetBand: '',
         presetGender: 'male',
@@ -1177,7 +1401,7 @@
         previewTimer: null,
         previewSeq: 0,
         tab: 'settings',       // settings | people
-        peopleTab: 'fit',      // fit | all
+        peopleTab: 'selected', // selected | fit | all
         roster: [],            // the candidate list, as the server judged it
         rosterLoading: false,
         picked: {},            // person_id => wanted, for ticks not yet saved
@@ -1634,6 +1858,9 @@
                 min_weight: val(r.min_weight),
                 max_weight: val(r.max_weight),
                 belts: Array.isArray(r.belts) ? r.belts.slice() : [],
+                // Which part of the event it is in. Empty string is "not said",
+                // which is what an event running one thing always answers.
+                stream: d.stream || '',
                 schedule: Object.assign(this.blankSchedule(), d.schedule || {}),
             };
         },
@@ -1701,8 +1928,10 @@
             // A blank name is by definition still waiting to be written.
             this.autoName = ! heading;
             this.preview = { loading: false, loaded: false, matched: 0, unknown: 0, here: 0, total: 0, people: [] };
+            // A group that does not exist yet can hold nobody, so a NEW one
+            // opens where the work is: its settings.
             this.tab = 'settings';
-            this.peopleTab = 'fit';
+            this.peopleTab = 'selected';
             this.roster = [];
             this.picked = {};
             this.open = true;
@@ -1727,12 +1956,19 @@
                 && (! String(d.name || '').trim() || this.looksGenerated(d, i));
 
             this.preview = { loading: false, loaded: false, matched: 0, unknown: 0, here: 0, total: 0, people: [] };
-            this.tab = 'settings';
-            this.peopleTab = 'fit';
+            this.peopleTab = 'selected';
             this.roster = [];
             this.picked = {};
             this.open = true;
-            this.queuePreview();
+
+            /* An EXISTING division opens on People: who is in it is what an
+               organiser came to change, and its settings are set once and then
+               mostly read (2026-09-12). A heading has no people and no tabs, so
+               it stays on the only pane it has. */
+            this.tab = 'settings';
+
+            if (! d.is_heading && this.server && this.editing !== null) this.openPeopleTab();
+            else this.queuePreview();
         },
 
         close() {
@@ -1932,6 +2168,13 @@
             this.presetRuleset = this.rulesets()[0] || 'gi';
             this.presetPick = {};
             this.presetBelts = [];
+
+            /* Follow what this event already does. An organiser who set the
+               first class to pools means the next twelve too — and one who has
+               none yet gets the platform's default. */
+            const running = this.rows().filter((r) => ! r.is_heading).map((r) => r.format || 'knockout');
+            this.presetFormat = running.length && running.every((f) => f === 'round_robin') ? 'round_robin' : 'knockout';
+
             this.syncBand();
             this.presetsOpen = true;
         },
@@ -2022,6 +2265,11 @@
          * DID land in the list rather than losing the lot. The list patches in
          * place as each arrives, so the organiser watches them appear.
          */
+        /* The format the next batch of preset classes is made with. Seeded from
+           what this event already runs, so an organiser who set the first class
+           to pools is not asked again for the other eleven. */
+        presetFormat: 'knockout',
+
         async addPresets() {
             if (this.saving || ! this.canManage) return;
 
@@ -2037,7 +2285,7 @@
                 const body = {
                     is_heading: false,
                     capacity: null,
-                    format: 'knockout',
+                    format: this.presetFormat,
                     gender: this.presetGender === 'female' ? 'Female' : 'Male',
                     min_age: row.min_age == null ? null : row.min_age,
                     max_age: row.max_age == null ? null : row.max_age,
@@ -2106,6 +2354,7 @@
                 min_weight: num(this.form.min_weight),
                 max_weight: num(this.form.max_weight),
                 belts: (this.form.belts || []).slice(),
+                stream: this.form.stream || null,
                 division: this.server ? this.editing : null,
             });
 
@@ -2361,6 +2610,7 @@
                 min_weight: num(this.form.min_weight),
                 max_weight: num(this.form.max_weight),
                 belts: (this.form.belts || []).slice(),
+                stream: this.form.stream || null,
                 schedule: Object.assign({}, this.form.schedule || {}),
             };
         },

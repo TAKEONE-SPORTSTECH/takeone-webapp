@@ -243,7 +243,7 @@ window.BracketBoard = window.BracketBoard || (function () {
             emit('bracket:loaded', {
                 divisions: S.divisions.map(d => ({ id: d.id, name: d.name, entrants: d.entrants,
                                               bench: d.bench.length, is_heading: !!d.is_heading })),
-                division: S.division, canArrange: S.canArrange, locked: S.locked,
+                division: S.division, canArrange: arrangeable(), locked: S.locked,
             });
         } catch (e) {
             S.layer.innerHTML = '';
@@ -257,6 +257,14 @@ window.BracketBoard = window.BracketBoard || (function () {
 
     const current = () => S.divisions.find(d => d.id === S.division) || null;
 
+    /* Arranging is gated on TWO things now: whether this person may arrange
+       this event's draw at all (server truth, `can_arrange`), and whether the
+       division in front of them is the kind of thing that is arranged. A pool
+       is not: everybody meets everybody, so there are no slots to place anyone
+       in and a drag only breaks a fixture. See BracketView `arrangeable` and
+       Arrangement::move(), which refuses the same case server-side. */
+    const arrangeable = () => S.canArrange && (current()?.arrangeable !== false);
+
     function show(id) {
         const d = S.divisions.find(x => String(x.id) === String(id));
         if (!d) return;
@@ -264,6 +272,12 @@ window.BracketBoard = window.BracketBoard || (function () {
         if (d.is_heading) return;
         S.division = d.id;
         S.pick = null;
+
+        /* Walking from a bracket into a pool turns arrange mode off with it:
+           the mode would otherwise stay lit over a division that has nothing
+           to arrange, offering handles that refuse every drop. */
+        if (!arrangeable()) { S.arrange = false; }
+
         render();
         emitState();
     }
@@ -569,7 +583,7 @@ window.BracketBoard = window.BracketBoard || (function () {
 
     function renderBench(div) {
         if (S.bench) { S.bench.remove(); S.bench = null; }
-        if (!S.arrange || !S.canArrange || !div) return;
+        if (!S.arrange || !arrangeable() || !div) return;
 
         const bench = el('div', 'bk-bench');
         bench.dataset.benchDrop = '1';
@@ -711,7 +725,7 @@ window.BracketBoard = window.BracketBoard || (function () {
     }
 
     /** In arrange mode a press on a competitor drags them, not the canvas. */
-    const grabbable = target => S.arrange && S.canArrange && !!(
+    const grabbable = target => S.arrange && arrangeable() && !!(
         target.closest('.bk-bench-item') ||
         target.closest('.bk-slot[data-arrangeable="1"]')
     );
@@ -935,7 +949,7 @@ window.BracketBoard = window.BracketBoard || (function () {
     }
 
     function applyArrangeClasses() {
-        S.vp.classList.toggle('is-arranging', S.arrange && S.canArrange);
+        S.vp.classList.toggle('is-arranging', S.arrange && arrangeable());
         S.vp.querySelectorAll('.is-picked').forEach(n => n.classList.remove('is-picked'));
         if (!S.pick) return;
 
@@ -994,7 +1008,7 @@ window.BracketBoard = window.BracketBoard || (function () {
     }
 
     async function clearDraw() {
-        if (!S.canArrange || !S.division) return;
+        if (!arrangeable() || !S.division) return;
         const ok = await (window.confirmAction ? window.confirmAction({
             title: S.cfg.text.clearTitle,
             message: S.cfg.text.clearMessage,
@@ -1049,7 +1063,7 @@ window.BracketBoard = window.BracketBoard || (function () {
     function emit(name, detail) { S.vp.dispatchEvent(new CustomEvent(name, { detail, bubbles: true })); }
     function emitState() {
         emit('bracket:state', {
-            arrange: S.arrange && S.canArrange,
+            arrange: S.arrange && arrangeable(),
             picked: S.pick ? S.pick.name : null,
             division: S.division,
             divisions: S.divisions.map(d => ({ id: d.id, name: d.name, entrants: d.entrants,
@@ -1058,7 +1072,7 @@ window.BracketBoard = window.BracketBoard || (function () {
     }
 
     function toggleArrange(on) {
-        if (!S.canArrange) return;
+        if (!arrangeable()) return;
         S.arrange = on === undefined ? !S.arrange : !!on;
         S.pick = null;
         renderBench(current());

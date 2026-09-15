@@ -193,6 +193,9 @@ return [
     'divisions_people_saved' => 'Division updated.',
     'divisions_section_for' => 'Who it\'s for',
     'divisions_section_belts' => 'Belts',
+    'divisions_section_stream' => 'Part of the event',
+    'divisions_stream_hint' => 'People who did not enter this part are not offered for it.',
+    'divisions_stream_any' => 'Any',
     'divisions_section_runs' => 'How it runs',
     'divisions_section_days' => 'Days',
     'divisions_any_age' => 'Any age',
@@ -201,6 +204,12 @@ return [
     'people_paid_verified' => 'paid, confirmed',
     'people_paid_claimed' => 'paid, not yet confirmed',
     'people_unpaid' => 'not paid',
+    'divisions_add_title' => 'Add to this event',
+    'divisions_add_hint' => 'A weight class, a batch of them, or a heading over several',
+    'divisions_add_one_hint' => 'One group, set up by hand',
+    'divisions_add_preset_hint' => 'Pick them off the federation\'s own table',
+    'divisions_add_heading_hint' => 'A title over the divisions under it',
+    'divisions_open_bracket' => 'Open this division\'s draw',
     'divisions_move_up' => 'Move up',
     'divisions_move_down' => 'Move down',
     'divisions_drag' => 'Drag to reorder',
@@ -792,6 +801,11 @@ return [
     'bout_card_share' => 'Share clip',
     'public_gallery_empty_title' => 'Nothing filmed yet',
     'public_gallery_empty_body' => 'Bouts appear here as they are recorded on the mat.',
+    'outcome_empty_side' => 'That side has nobody in it — it cannot be the winner. To take a result off, record it with no winner.',
+    'public_pools_title' => 'Pool tables',
+    'public_pools_count' => '{1} 1 class run as a pool|[2,*] :count classes run as pools',
+    'public_results_empty_title' => 'No results yet',
+    'public_results_divisions' => '{1} :count division|[2,*] :count divisions',
     'public_participants_empty_title' => 'No entries yet',
     'public_participants_empty_body' => 'The entry list fills up as competitors are entered.',
     'cover_title' => 'Cover picture',
@@ -990,6 +1004,10 @@ return [
     'entry_remove_started' => ':name stays in: the competition is under way and the draw was cut from this list. Record a walkover on the bout instead.',
     'entry_remove_has_result' => ':name has already fought — a recorded result outlives their place on the list.',
     'entry_remove_result' => 'Removed :removed · refused :rejected',
+    'entry_deadline_notify_title' => 'Taken off :title',
+    'entry_deadline_reason_unpaid' => 'Your entry fee was not confirmed before the weigh-in deadline, so your place was released.',
+    'entry_deadline_reason_no_weigh_in' => 'You were not weighed in before the deadline, so your place was released.',
+    'entry_deadline_reason_unpaid_and_no_weigh_in' => 'Your entry fee was not confirmed and you were not weighed in before the deadline, so your place was released.',
     'entry_removed_notify_title' => 'Removed from :title',
     'entry_removed_notify_body' => ':club has taken your entry off this competition.',
 
@@ -1237,6 +1255,10 @@ return [
     'clubs_tab_invite' => 'On TAKEONE',
     'clubs_tab_new' => 'Not on TAKEONE',
     'clubs_tile_sub' => 'Invite a club, or write down one that is not here yet',
+    /* The console TILE. The page it opens keeps `clubs_title` — the screen
+       is the event's club list, and this is the door an organiser presses to
+       put one on it. */
+    'clubs_add_tile' => 'Add a club',
     'clubs_title' => 'Clubs',
     'divisions_page_title' => 'Weight classes',
     'divisions_page_hint' => 'Each one gets its own draw. Entrants are sorted into them, so editing one re-cuts its bracket.',
@@ -1365,8 +1387,8 @@ return [
      * Two halves of one sheet: a TAKEONE account they already have, or a person
      * who has none. See resources/views/components/event-add-person.blade.php.
      */
-    'add_person' => 'Add a person',
-    'add_person_sub' => 'Put somebody on the entry list yourself',
+    'add_person' => 'Add a participant',
+    'add_person_sub' => 'Put a participant on the entry list yourself',
     'add_person_hint' => 'Only you and the platform team can add people this way. Everyone added still goes through the event\'s own rules.',
     'add_person_tab_member' => 'Has an account',
     'add_person_tab_new' => 'New person',

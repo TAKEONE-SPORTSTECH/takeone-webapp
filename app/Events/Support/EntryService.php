@@ -125,6 +125,7 @@ class EntryService
             'entered' => $entered,
             'rejected' => $rejected,
             'going' => $event->participantRegistrations()->count(),
+            'going_people' => $event->participantRegistrations()->distinct()->count('user_id'),
         ];
     }
 
@@ -325,6 +326,18 @@ class EntryService
                 'status' => 'joined',
                 'paid' => $existing?->paid ?? ! $paidFee,
                 'category_id' => $decision->category?->id ?? $existing?->category_id,
+                /*
+                 * WHO chose it. A named division is an organiser placing a
+                 * competitor by hand and outranks the scale afterwards; a
+                 * division the gate worked out is the platform's own and may be
+                 * corrected at the weigh-in. An entry that lands unplaced
+                 * records nothing — there is no decision yet to attribute.
+                 */
+                'category_source' => match (true) {
+                    $target !== null => ClubEventRegistration::PLACED_MANUAL,
+                    $decision->category !== null => ClubEventRegistration::PLACED_AUTO,
+                    default => $existing?->category_source,
+                },
                 'weight' => $decision->weight ?? $existing?->weight,
                 'registered_at' => $existing?->registered_at ?? now(),
                 'entered_by' => $actor->id,
@@ -1031,6 +1044,7 @@ class EntryService
             'removed' => $removed,
             'rejected' => $rejected,
             'going' => $event->participantRegistrations()->count(),
+            'going_people' => $event->participantRegistrations()->distinct()->count('user_id'),
         ];
     }
 
@@ -1134,6 +1148,16 @@ class EntryService
      * Asks the MATCH table directly rather than the owning package, because the
      * question is the same for every sport that draws a bracket and a type that
      * draws none has no rows here to find.
+     *
+     * ⚠️ A BYE IS NOT A BOUT. Byes are written the moment a draw is cut — a
+     * winner and `status = 'done'`, with nobody in the other corner — so a
+     * bracket that is not a clean power of two hands one in three entrants a
+     * "result" before anybody has stepped on a mat. Counting those made an
+     * entrant unremovable: the organiser was told "they have already fought",
+     * about somebody who had not, and the only way to take them off the list
+     * was to delete the whole division's draw first.
+     *
+     * A bout is fought when two named people met in it.
      */
     private function hasFought(ClubEvent $event, ClubEventRegistration $registration): bool
     {
@@ -1142,6 +1166,8 @@ class EntryService
                 ->where('a_competitor_id', $registration->id)
                 ->orWhere('b_competitor_id', $registration->id))
             ->where(fn ($q) => $q->whereNotNull('winner')->orWhere('status', 'done'))
+            ->whereNotNull('a_name')
+            ->whereNotNull('b_name')
             ->exists();
     }
 

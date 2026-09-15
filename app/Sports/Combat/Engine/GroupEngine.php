@@ -476,10 +476,17 @@ class GroupEngine
      */
     private function competitors(EventCategory $cat, bool $paidOnly): Collection
     {
+        // The money half of the final draw's test is asked only of an event
+        // that charges — a free competition has no payments official and no
+        // proof to check, so demanding a signature emptied its groups the
+        // moment it started. Same rule as DrawEngine::build; the two must agree
+        // or one shape of division would keep a field the other drops.
+        $charges = \App\Events\Support\EventFee::chargesAnything($cat->event ?: $cat->event()->first(), 'participant');
+
         return $cat->registrations()
             ->where('role', 'participant')
             ->when($paidOnly, fn ($q) => $q
-                ->where('paid', true)->whereNotNull('paid_by')
+                ->when($charges, fn ($q) => $q->where('paid', true)->whereNotNull('paid_by'))
                 ->whereNotNull('weight')->whereNotNull('weighed_in_by'))
             ->with('user:id,full_name,name')
             ->get()
@@ -488,7 +495,7 @@ class GroupEngine
                 'name' => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
                 'country' => $r->countryCode(),
                 'provisional' => ! $paidOnly && (
-                    ! $r->paid || ! $r->paid_by || $r->weight === null || ! $r->weighed_in_by
+                    ($charges && (! $r->paid || ! $r->paid_by)) || $r->weight === null || ! $r->weighed_in_by
                 ),
                 'key' => md5($cat->id.':'.$r->user_id),
             ])

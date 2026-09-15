@@ -58,7 +58,7 @@
 return [
 
     // ---- The interface's own languages, so they sort into the same list ----
-    'en' => ['name' => 'English',    'native' => 'English',    'dir' => 'ltr', 'flag' => 'us'],
+    'en' => ['name' => 'English',    'native' => 'English',    'dir' => 'ltr', 'flag' => 'gb'],
     'ar' => ['name' => 'Arabic',     'native' => 'العربية',     'dir' => 'rtl', 'flag' => 'sa'],
 
     // ---- The Gulf and the wider region an event here actually draws from ----

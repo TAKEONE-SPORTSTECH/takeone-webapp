@@ -753,7 +753,10 @@ class EntryEditor
 
         $type = $this->registry->for($event);
 
-        $registration->forceFill(['category_id' => null])->save();
+        // Re-derived from the edited facts, so the placement that comes out of
+        // it belongs to the platform again — an organiser's earlier hand
+        // placement was for the OLD weight, and this edit is what replaced it.
+        $registration->forceFill(['category_id' => null, 'category_source' => null])->save();
 
         rescue(fn () => $type->classifyEntry($event, $registration), null, false);
 
@@ -982,11 +985,11 @@ class EntryEditor
      *
      * @return array<int, array{slug: string, name: string, logo: ?string}>
      */
-    private function clubChoices(ClubEvent $event, ClubEventRegistration $registration, ?User $athlete): array
+    private function clubChoices(ClubEvent $event, ?ClubEventRegistration $registration, ?User $athlete): array
     {
         $ids = [];
 
-        if ($registration->representing_tenant_id) {
+        if ($registration?->representing_tenant_id) {
             $ids[] = (int) $registration->representing_tenant_id;
         }
 
@@ -1062,6 +1065,23 @@ class EntryEditor
         }
 
         return $out;
+    }
+
+    /**
+     * The same picker, for somebody who has no entry YET.
+     *
+     * The organiser's "add a participant" sheet asks which club the person
+     * competes for before there is a registration to hang it on. It is the
+     * SAME question with the same two key shapes and the same dedup, so it is
+     * the same list — a second implementation would drift the moment one of
+     * them learned about visiting teams and the other did not
+     * (CLAUDE.md, "Shared Stays Shared").
+     *
+     * @return array<int, array{slug: string, name: string, logo: ?string}>
+     */
+    public function clubOptions(ClubEvent $event): array
+    {
+        return $this->clubChoices($event, null, null);
     }
 
     /**

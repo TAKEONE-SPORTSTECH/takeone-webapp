@@ -54,6 +54,26 @@ abstract class Arrangement
             return ['ok' => false, 'message' => __('events.division_not_found')];
         }
 
+        /*
+         * ⚠️ A POOL IS NOT ARRANGED.
+         *
+         * Arranging is a bracket idea: a draw has SLOTS, and who stands in
+         * which one decides who meets whom, so an organiser moves people
+         * between them. A round robin has no such choice to make — everybody
+         * meets everybody, and the fixtures ARE the entrant list. Dragging a
+         * competitor out of one group bout leaves that fixture with an empty
+         * corner while every other fixture still names them, which is not a
+         * rearranged pool, it is a broken one. (The server used to answer
+         * "Draw updated" and do exactly that.)
+         *
+         * The action that belongs here is adding or removing somebody from the
+         * class — `me.events.divisions.members` — after which the pool is
+         * re-cut around whoever is left.
+         */
+        if (($category->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN) {
+            return ['ok' => false, 'message' => $this->t('pool_not_arranged')];
+        }
+
         $first = $this->firstRound($category);
         if ($first->isEmpty()) {
             return ['ok' => false, 'message' => __('events.bracket_not_drawn')];
@@ -108,6 +128,12 @@ abstract class Arrangement
             return ['ok' => false, 'message' => $this->t('draw_final')];
         }
 
+        // Emptying a pool onto a bench is the same category mistake as moving
+        // one competitor within it — see move().
+        if (($category->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN) {
+            return ['ok' => false, 'message' => $this->t('pool_not_arranged')];
+        }
+
         DB::transaction(function () use ($category) {
             foreach ($this->firstRound($category) as $bout) {
                 $this->place($bout, 'a', null);
@@ -129,6 +155,26 @@ abstract class Arrangement
      */
     public function syncEntrants(EventCategory $category): void
     {
+        /*
+         * A POOL is never hand-arranged, so it is never kept in step by hand
+         * either: its fixtures are simply what its entrant list implies, and
+         * the honest answer to "the entrants moved" is to cut them again.
+         *
+         * This also repairs a division marked `manual` before arranging a pool
+         * was refused. That flag told every caller "leave this alone, a human
+         * placed it" — so such a pool was frozen: it could not be arranged (now
+         * refused) and could not be re-cut (this branch). It is cut here and
+         * rejoins the ordinary path.
+         */
+        if (($category->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN) {
+            if ($event = $category->event) {
+                app(\App\Sports\Combat\Engine\GroupEngine::class)
+                    ->build($event, $category, paidOnly: $event->hasStarted());
+            }
+
+            return;
+        }
+
         $entrantIds = $category->registrations()
             ->where('role', 'participant')->pluck('id')->all();
 

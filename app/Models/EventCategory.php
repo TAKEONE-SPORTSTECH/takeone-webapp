@@ -41,6 +41,8 @@ class EventCategory extends Model
         // Which belts the division is for. A LIST — a division is regularly
         // opened to several grades at once — and null means ANY.
         'belts',
+        // Which stream this division belongs to — Gi, Kata, Poomsae …
+        'stream',
     ];
 
     protected $casts = [

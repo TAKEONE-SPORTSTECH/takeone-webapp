@@ -25,7 +25,10 @@
     // Why competing is not on offer — the exact sentence the server produced, so
     // the apology dialog gives the real reason rather than a generic refusal.
     // Defined up here because partials.event-show-script (included below) reads it.
-    $whyNot = ($banned ?? false)
+    /* Banned by a person, or taken off by the deadline — either way the
+       server already wrote the exact sentence, and the apology dialog says it
+       rather than a generic refusal. */
+    $whyNot = (($banned ?? false) || ($excludedAt ?? null))
         ? ($eligReason ?? __('personal.event_show_removed_default'))
         : (($e['ended'] ?? false)
             ? __('personal.event_show_ended_msg')
@@ -113,8 +116,29 @@
              own reopen-cover arrow does. --}}
         <x-event-poster-band :color="$e['color']" :eyebrow="$eyebrow"
                              :title="$e['title']" :owner="$e['club']" :chips="$mchips">
+            {{-- BACK, at the head of the classification line, where the dash
+                 was (asked for 2026-09-14).
+
+                 It is where the poster puts its Home control, and where Design
+                 Rule #6 puts back on every other page of the platform: the
+                 leading edge is back, the trailing edge is actions. The dash it
+                 replaces was decoration — a reader arriving on a chrome-less
+                 event page had their one way out tucked into the cluster of
+                 round controls opposite, reading as just another action. --}}
+            <x-slot:lead>
+                <a href="{{ $backHref }}" class="m-press ev-ctl flex-none"
+                   @if(! ($sealed ?? false)) data-shell-link data-route="me.events" @endif
+                   aria-label="{{ $backLabel }}" title="{{ $backLabel }}">
+                    {{-- `rtl:rotate-180` is not decoration: a chevron that keeps
+                         pointing left in Arabic points AWAY from where it goes. --}}
+                    <i class="bi bi-chevron-left rtl:rotate-180"></i>
+                </a>
+            </x-slot:lead>
+
             <x-slot:controls>
-                @include('partials.event-band-controls')
+                {{-- ...and therefore NOT in the trailing cluster any more: one
+                     back per page, on the leading edge. --}}
+                @include('partials.event-band-controls', ['leading' => 'none'])
             </x-slot:controls>
 
             <x-slot:banner>
@@ -218,229 +242,117 @@
         </div>
     </div>
 
-    {{-- ===== Winners / results ===== --}}
-    <div class="px-4 mt-4" x-show="results.length > 0" x-cloak>
-        <div class="m-card rounded-2xl p-4">
-            <div class="flex items-center justify-between">
-                <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-trophy-fill text-amber-500"></i> {{ __('personal.event_show_winners') }}</h2>
-            </div>
-            <div class="mt-3 space-y-2">
-                <template x-for="w in results" :key="w.place + '-' + w.name">
-                    <div class="flex items-center gap-3 rounded-xl p-2.5" :style="`background:${medal(w.place)}12`">
-                        <div class="w-9 h-9 rounded-full grid place-items-center text-white flex-shrink-0 font-black text-xs" :style="`background:${medal(w.place)}`">
-                            <i class="bi" :class="w.place===1 ? 'bi-trophy-fill' : (w.place<=3 ? 'bi-award-fill' : 'bi-award')" x-show="w.place<=3"></i>
-                            <span x-show="w.place>3" x-text="w.place"></span>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-bold text-foreground truncate" x-text="w.name"></p>
-                            <p class="text-[11px] text-muted-foreground" x-text="w.place===1 ? '{{ __("personal.event_show_champion") }}' : (w.place===2 ? '{{ __("personal.event_show_runner_up") }}' : (w.place===3 ? '{{ __("personal.event_show_third_place") }}' : ('#' + w.place)))"></p>
-                        </div>
-                        <span class="text-[11px] font-black flex-shrink-0" :style="`color:${medal(w.place)}`" x-text="w.prize"></span>
-                    </div>
-                </template>
-            </div>
-        </div>
-    </div>
-
-
     @include('partials.event-detail-card-mobile')
 
-    {{-- ===== League: standings + fixtures ===== --}}
-    @if(!empty($league))
-        @php $lg = $league; @endphp
-        @if(!empty($lg['standings']))
-            <div class="px-4 mt-4">
-                <div class="m-card rounded-2xl p-4">
-                    <h2 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3"><i class="bi bi-table text-primary"></i> {{ __('personal.event_show_standings') }}</h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-[12px]">
-                            <thead>
-                                <tr class="text-muted-foreground text-[10px] uppercase tracking-wide">
-                                    <th class="text-start font-semibold pb-2 ps-1">#</th>
-                                    <th class="text-start font-semibold pb-2">{{ __('personal.event_show_team') }}</th>
-                                    <th class="font-semibold pb-2 w-7">{{ __('personal.event_show_col_played') }}</th>
-                                    <th class="font-semibold pb-2 w-7">{{ __('personal.event_show_col_won') }}</th>
-                                    <th class="font-semibold pb-2 w-7">{{ __('personal.event_show_col_drawn') }}</th>
-                                    <th class="font-semibold pb-2 w-7">{{ __('personal.event_show_col_lost') }}</th>
-                                    <th class="font-semibold pb-2 w-9">{{ __('personal.event_show_col_gd') }}</th>
-                                    <th class="font-semibold pb-2 w-9 text-end pe-1">{{ __('personal.event_show_col_pts') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($lg['standings'] as $i => $row)
-                                    <tr class="border-t border-gray-50 {{ $i < 3 ? 'font-semibold' : '' }}">
-                                        <td class="py-2 ps-1 text-muted-foreground">{{ $i + 1 }}</td>
-                                        <td class="py-2 text-foreground truncate max-w-[120px]">{{ $row['team'] }}</td>
-                                        <td class="py-2 text-center text-muted-foreground">{{ $row['p'] }}</td>
-                                        <td class="py-2 text-center text-muted-foreground">{{ $row['w'] }}</td>
-                                        <td class="py-2 text-center text-muted-foreground">{{ $row['d'] }}</td>
-                                        <td class="py-2 text-center text-muted-foreground">{{ $row['l'] }}</td>
-                                        <td class="py-2 text-center text-muted-foreground">{{ $row['gd'] > 0 ? '+' : '' }}{{ $row['gd'] }}</td>
-                                        <td class="py-2 text-end pe-1 font-black" style="color: {{ $e['color'] }};">{{ $row['pts'] }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        @endif
+    {{-- ===== The doors =====
+         The same partial, the same order and the same tiles the PUBLIC poster
+         renders (`partials.event-doors`) — this page and `/e/{uuid}` show one
+         event to two audiences and must not look like two products.
 
-        @if(!empty($lg['fixtures']))
-            <div class="px-4 mt-4">
-                <div class="m-card rounded-2xl p-4">
-                    <h2 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3"><i class="bi bi-calendar2-week text-primary"></i> {{ __('personal.event_show_fixtures') }}</h2>
-                    <div class="space-y-2">
-                        @foreach($lg['fixtures'] as $f)
-                            @php $played = $f['home_score'] !== null && $f['away_score'] !== null; @endphp
-                            <div class="flex items-center gap-2 rounded-xl bg-muted/40 px-3 py-2">
-                                <span class="flex-1 text-end text-sm font-semibold text-foreground truncate">{{ $f['home'] }}</span>
-                                @if($played)
-                                    <span class="px-2 py-0.5 rounded-lg text-xs font-black text-white" style="background: {{ $e['color'] }};">{{ $f['home_score'] }} – {{ $f['away_score'] }}</span>
-                                @else
-                                    <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-white text-muted-foreground border border-gray-100">{{ $f['date'] ?: __('personal.event_show_vs') }}</span>
-                                @endif
-                                <span class="flex-1 text-start text-sm font-semibold text-foreground truncate">{{ $f['away'] }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        @endif
-    @endif
-
-    {{-- ===== Draw · Officials · Participants — the three doors out of this page.
-         Three identical full-width rows, icon beside the label rather than above
-         it. They were squares in one row; at a third of a phone's width the label
-         had 44px to live in, so "Participants" truncated and the count under it
-         was unreadable. Stacked, all three are the same size and each one says
-         what it is and how many are in it. The Draw row only exists when the
-         event has categories. --}}
+         Only the destinations differ: these lead to the member's own screens.
+         What used to sit INLINE here — the entry list, the winners, a league's
+         whole table — is behind its own door now, which is what kept the way
+         into the event a screen and a half below the fold. --}}
     @php
-        $hasBrackets = !empty($e['categories']);
         $doors = [];
 
-        if ($hasBrackets) {
+        if (! empty($e['categories'])) {
             // Entrants, not divisions: "how many are in the draw" is the number
             // an organiser is checking, and a division count reads as full when
             // nobody has entered a single one of them.
             $athleteTotal = collect($e['categories'])->sum('joined');
-            $doors[] = [
+            $doors['draw'] = [
                 'href' => route('me.events.bracket', $e['key']),
+                'shell' => true,
                 'icon' => 'bi-diagram-3-fill bracket-icon',
                 'label' => __('personal.event_show_tile_draw'),
                 'sub' => $athleteTotal.' '.__('personal.event_show_entrants'),
             ];
         }
 
-        $doors[] = [
+        /* The classes that are not drawn — a pool's table, or a league's whole
+           table. Same door the poster carries, in the same place, from the same
+           source (EventType::publicView); it opens the board, which is where a
+           member reads a table. */
+        if ((($typePublic ?? [])['key'] ?? null) === 'table') {
+            $doors['table'] = [
+                'href' => route('me.events.bracket', $e['key']),
+                'shell' => true,
+                'icon' => $typePublic['icon'] ?? 'bi-table',
+                'label' => $typePublic['label'] ?? '',
+                'sub' => $typePublic['sub'] ?? '',
+            ];
+        }
+
+        $doors['officials'] = [
             'href' => route('me.events.officiating', $e['key']),
+            'shell' => true,
             'icon' => 'bi-person-badge-fill',
             'label' => __('personal.event_show_tile_officials'),
             'sub' => trans_choice('personal.event_manage_officials_count', $e['officials_count'] ?? 0, ['count' => $e['officials_count'] ?? 0]),
         ];
 
-        // The gallery — every bout that was filmed, grouped by division. Always
-        // a door, like Participants: an event's footage is a place people go
-        // looking for, and a door that only appears once something is behind it
-        // cannot be found before then. The gallery says so itself when empty.
-        $doors[] = [
+        $doors['gallery'] = [
             'href' => route('me.events.gallery', $e['key']),
+            'shell' => true,
             'icon' => 'bi-camera-reels-fill',
             'label' => __('events.bout_gallery_title'),
             'sub' => ($e['clips_count'] ?? 0) > 0
                 ? trans_choice('events.bout_gallery_count', $e['clips_count'], ['count' => $e['clips_count']])
                 : __('events.bout_gallery_none'),
         ];
+
+        /* ===== Participants =====
+           The door goes to the event's OWN entry list — `/e/{uuid}/participants`
+           — not to the organiser's roster (asked for on 2026-09-08). They are
+           two pages for two jobs: a reader wants to know WHO IS IN, which is a
+           published fact; the roster is organiser work — moderation, payment
+           state, contact details — and stays a row of the CONSOLE.
+
+           Falls back to the member roster when there is no public page to send
+           anybody to: `/e/{uuid}/participants` refuses everybody while
+           `entry_mode` is `members`, and a tile that lands on a refusal is a
+           dead end (Navigation Integrity). */
+        $peopleHref = ! empty($publicUrl ?? null)
+            ? route('events.public.section', ['event' => $e['key'], 'section' => 'participants', 'from' => 'me'])
+            : route('me.events.people', $e['key']);
+
+        $doors['participants'] = [
+            'href' => $peopleHref,
+            // `data-shell-link` only while the destination is still a platform
+            // page; the public entry list is its own sealed surface.
+            'shell' => empty($publicUrl ?? null),
+            'icon' => 'bi-people-fill',
+            'label' => $byQual ? __('personal.event_show_finalists') : __('personal.event_show_tile_participants'),
+            'sub' => '<span x-text="peopleCount">'.e($e['participants_people'] ?? $e['participants_total'] ?? $e['going']).'</span> '.e(__('personal.event_show_in'))
+                .($hasTicket ? ' · <span x-text="spectators">'.e($e['spectator']['count']).'</span> '.e(__('personal.event_show_spectators')) : ''),
+        ];
+
+        /* Results — the last thing to happen at an event, and the only door
+           that opens a sheet on this page rather than a page of its own. */
+        if (! empty($e['bracket_results'])) {
+            $doors['results'] = [
+                'click' => 'showResultsOpen = true',
+                'icon' => 'bi-trophy-fill',
+                // The same words the poster uses — one door, one name.
+                'label' => __('personal.event_show_results_medals'),
+                'sub' => trans_choice('personal.event_show_results_divisions', count($e['bracket_results']), ['count' => count($e['bracket_results'])]),
+                'style' => 'background: linear-gradient(135deg, #eab308, #78350f);',
+            ];
+        } elseif (! empty($e['results'])) {
+            // An event whose winners the organiser typed rather than fought for
+            // (a race, a belt test). Same door, same sheet.
+            $doors['results'] = [
+                'click' => 'showResultsOpen = true',
+                'icon' => 'bi-trophy-fill',
+                'label' => __('personal.event_show_winners'),
+                'sub' => trans_choice('events.public_draw_competitors', count($e['results']), ['n' => count($e['results'])]),
+                'style' => 'background: linear-gradient(135deg, #eab308, #78350f);',
+            ];
+        }
     @endphp
-    <div class="px-4 mt-4">
-        <div class="space-y-3">
-            @foreach($doors as $d)
-                <a href="{{ $d['href'] }}" data-shell-link data-route="me.events"
-                   class="m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5"
-                   style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
-                    <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
-                    <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                        {{-- inline-block via .bracket-icon: a bare <i> is an inline
-                             box and CSS transforms do not apply to those, so the
-                             bracket's quarter turn would silently do nothing. --}}
-                        <i class="bi {{ $d['icon'] }} text-2xl"></i>
-                    </div>
-                    <div class="relative min-w-0 flex-1">
-                        <h3 class="font-black text-base leading-tight">{{ $d['label'] }}</h3>
-                        <p class="text-xs text-white/85 mt-0.5">{{ $d['sub'] }}</p>
-                    </div>
-                    <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0"></i>
-                </a>
-            @endforeach
 
-            {{-- ===== Participants =====
-                 The door goes to the event's OWN entry list — `/e/{uuid}/participants`
-                 — not to the organiser's roster, asked for on 2026-09-08.
-
-                 They are two different pages for two different jobs, and this
-                 tile belongs to the first: a reader wants to know WHO IS IN,
-                 which is a published fact about a competition. The roster is
-                 organiser work — moderation, payment state, contact details —
-                 and it stays exactly where that belongs, as its own row of the
-                 CONSOLE (`personal/{mobile,desktop}/event-manage`), so nobody
-                 loses it.
-
-                 Falls back to the member roster when there is no public page to
-                 send anybody to: `/e/{uuid}/participants` refuses everybody
-                 while `entry_mode` is `members`, and a tile that lands on a
-                 refusal is a dead end (Navigation Integrity). --}}
-            @php
-                $peopleHref = ! empty($publicUrl ?? null)
-                    ? route('events.public.section', ['event' => $e['key'], 'section' => 'participants', 'from' => 'me'])
-                    : route('me.events.people', $e['key']);
-            @endphp
-            {{-- `data-shell-link` only while the destination is still a platform
-                 page: the mobile shell navigator swaps content in place, and the
-                 public surface is a different shell. --}}
-            <a href="{{ $peopleHref }}" @if(empty($publicUrl ?? null)) data-shell-link data-route="me.events" @endif
-               class="m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5"
-               style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
-                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
-                <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                    <i class="bi bi-people-fill text-2xl"></i>
-                </div>
-                <div class="relative min-w-0 flex-1">
-                    <h3 class="font-black text-base leading-tight">{{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_tile_participants') }}</h3>
-                    <p class="text-xs text-white/85 mt-0.5">
-                        <span x-text="goingCount">{{ $e['participants_total'] ?? $e['going'] }}</span> {{ __('personal.event_show_in') }}
-                        @if($hasTicket)
-                            · <span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_spectators') }}
-                        @endif
-                    </p>
-                </div>
-                <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0"></i>
-            </a>
-
-            {{-- Results — the same row as the doors above it, in gold: it is the
-                 last thing to happen at an event, and the only one of these rows
-                 that opens a sheet rather than a page. Appears only once the
-                 finals are decided. --}}
-            @if(!empty($e['bracket_results']))
-                <button type="button" @click="showResultsOpen=true"
-                        class="m-press w-full rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5 text-start"
-                        style="background: linear-gradient(135deg, #eab308, #78350f);">
-                    <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
-                    <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                        <i class="bi bi-trophy-fill text-2xl"></i>
-                    </div>
-                    <div class="relative min-w-0 flex-1">
-                        <h3 class="font-black text-base leading-tight">{{ __('personal.event_show_show_results') }}</h3>
-                        <p class="text-xs text-white/85 mt-0.5">
-                            {{ trans_choice('personal.event_show_results_divisions', count($e['bracket_results']), ['count' => count($e['bracket_results'])]) }}
-                        </p>
-                    </div>
-                    <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0"></i>
-                </button>
-            @endif
-        </div>
-    </div>
-
+    @include('partials.event-doors')
 
     {{-- ===== Agenda timeline ===== --}}
     @if(!empty($e['agenda']))
@@ -534,10 +446,28 @@
 
              A row shows a tick and turns green once you hold that place. --}}
         @php
-            $locked = ($banned ?? false) || ($e['ended'] ?? false);
+            $locked = ($banned ?? false) || ($excludedAt ?? null) !== null || ($e['ended'] ?? false);
             // $whyNot is set at the top of this view — the script partial needs it.
             $canJoin = ! $locked && ($canCompete ?? true) && ! $byQual;
         @endphp
+
+{{-- ===== Taken off at the deadline =====
+     Not a ban and not a refusal to enter: their place existed and was
+     released. Said on arrival rather than behind a "Why not?" tap, because
+     somebody who expected to compete this morning should not have to go
+     looking for the reason. --}}
+@if($excludedAt ?? null)
+    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3 mb-4">
+        <span class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 grid place-items-center flex-shrink-0">
+            <i class="bi bi-clock-history text-lg"></i>
+        </span>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-bold text-amber-900">{{ __('personal.event_show_deadline_removed') }}</p>
+            <p class="text-[12px] text-amber-800 mt-1 leading-snug">{{ $eligReason }}</p>
+            <p class="text-[11px] text-amber-700/80 mt-1.5">{{ \App\Support\Cldr::shortDate($excludedAt) }}</p>
+        </div>
+    </div>
+@endif
 
         {{-- ===== Join / spectate =====
              Same shape as the "Brackets & draws" card further down the page:
@@ -649,9 +579,25 @@
                             <p class="text-sm font-bold text-foreground mb-2 flex items-center gap-2"><i class="bi bi-diagram-3 bracket-icon text-primary"></i> {{ $r['division'] }}</p>
                             <div class="space-y-1.5">
                                 @foreach($r['medals'] as $m)
-                                    @php $medal = [1 => ['🥇', '#f59e0b', __('personal.event_show_champion')], 2 => ['🥈', '#9ca3af', __('personal.event_show_runner_up')], 3 => ['🥉', '#b45309', __('personal.event_show_third_place')]][$m['place']]; @endphp
+                                    @php
+                                        /* Fourth is a PLACING, not a medal — it carries the
+                                           numeral rather than a fourth colour of disc, and a
+                                           place this sheet does not know falls back to its own
+                                           number rather than fataling on a missing key. */
+                                        $medal = [
+                                            1 => ['🥇', '#f59e0b', __('personal.event_show_champion')],
+                                            2 => ['🥈', '#9ca3af', __('personal.event_show_runner_up')],
+                                            3 => ['🥉', '#b45309', __('personal.event_show_third_place')],
+                                            4 => ['',   '#64748b', __('personal.event_show_fourth_place')],
+                                        ][$m['place']] ?? ['', '#64748b', '#'.$m['place']];
+                                    @endphp
                                     <div class="flex items-center gap-3 rounded-xl p-2" style="background: {{ $medal[1] }}12;">
-                                        <span class="text-2xl flex-shrink-0 leading-none">{{ $medal[0] }}</span>
+                                        @if($medal[0] !== '')
+                                            <span class="text-2xl flex-shrink-0 leading-none">{{ $medal[0] }}</span>
+                                        @else
+                                            <span class="w-8 h-8 rounded-full grid place-items-center flex-shrink-0 text-xs font-black"
+                                                  style="background: {{ $medal[1] }}20; color: {{ $medal[1] }};">{{ $m['place'] }}</span>
+                                        @endif
                                         <div class="min-w-0 flex-1">
                                             <p class="text-sm font-bold text-foreground truncate">{{ $m['name'] }}</p>
                                             <p class="text-[11px] text-muted-foreground">{{ $medal[2] }}</p>

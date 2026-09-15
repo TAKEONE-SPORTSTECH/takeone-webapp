@@ -73,10 +73,15 @@ class DivisionRange
      *   fit 'in'      — matches everything the division narrows by
      *       'out'     — a value is known and falls outside
      *       'unknown' — nothing contradicts it, but something needed is missing
-     *   misses        — machine-readable reasons ('gender', 'age', 'weight'),
-     *                   which the client turns into words.
+     *   misses        — machine-readable reasons ('gender', 'age', 'weight',
+     *                   'belt', 'stream'), which the client turns into words.
+     *
+     * @param  array<int, string>|null  $granted
+     *   The streams this PERSON has bought, as EventStreams keys, when the
+     *   caller has them to hand. Null (the default) means "not asked", which is
+     *   every caller that predates streams and every event that declares none.
      */
-    public function judge(ClubEventRegistration $entrant): array
+    public function judge(ClubEventRegistration $entrant, ?array $granted = null): array
     {
         $misses = [];
         $unknown = false;
@@ -134,6 +139,26 @@ class DivisionRange
             } elseif (! in_array(strtolower($colour), $this->belts(), true)) {
                 $misses[] = 'belt';
             }
+        }
+
+        /*
+         * The stream — Gi, No-Gi, Kata, Kumite: the part of the event this
+         * division belongs to.
+         *
+         * This one is different in kind from the four above. Gender, age,
+         * weight and belt describe the ATHLETE and the organiser may overrule
+         * any of them: a strong junior in the adults is a judgement call. What
+         * somebody ENTERED is not a judgement call — an athlete who paid for
+         * No-Gi is not in the Gi competition, and offering them for a Gi
+         * bracket is offering to charge them for something they did not buy.
+         *
+         * It is still only a badge and a sort, not a gate, because the desk
+         * sells an upgrade on the day and the fee lines catch up afterwards.
+         * EventStreams::judge() decides, and answers 'unknown' — never 'out' —
+         * whenever either side is silent, which is most events.
+         */
+        if ($granted !== null && EventStreams::judge(EventStreams::ofDivision($this->category), $granted) === 'out') {
+            $misses[] = 'stream';
         }
 
         return [

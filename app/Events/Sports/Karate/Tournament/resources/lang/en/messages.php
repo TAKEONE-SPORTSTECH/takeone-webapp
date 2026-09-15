@@ -25,6 +25,7 @@ return [
     // Draw + run day
     'action_generate_draw' => 'Generate draw',
     'draw_generated' => 'Provisional draw generated',
+    'pool_not_arranged' => 'This class is run as a pool — everybody meets everybody, so there is nothing to arrange. Add or remove people from the class instead.',
     'draw_final' => 'The championship has started — the draw is final and can’t be regenerated.',
     'action_arrange_draw' => 'Arrange draw',
     'action_clear_draw' => 'Empty draw',

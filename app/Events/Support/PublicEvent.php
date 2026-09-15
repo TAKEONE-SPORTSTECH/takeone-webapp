@@ -2,6 +2,7 @@
 
 namespace App\Events\Support;
 
+use App\Events\Contracts\EventType;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\EventAccess;
 use App\Models\ClubEvent;
@@ -295,6 +296,33 @@ class PublicEvent
             // is left out of each and why.
             'officials' => $this->officials($event),
             'participants' => $this->participants($event, $tr),
+            /*
+             * WHO WON.
+             *
+             * A championship's medals are the most public thing about it — they
+             * are read out in the hall, printed on a sheet pinned to the wall
+             * and posted by every club whose athlete is on them. Until now the
+             * only way to see them was to hold an account and open the member
+             * page, so a parent following a link had a bracket to decipher and
+             * no answer to "did she win?".
+             *
+             * Names and places only. No entry ids, no photographs, no clubs,
+             * no scores — the same restraint the entry list is built with. And
+             * only divisions the platform has actually finished awarding, so a
+             * half-run division never reads as a final result.
+             */
+            'results' => $this->results($event, $tr, $type),
+
+            /*
+             * WHATEVER THIS TYPE PUBLISHES OF ITS OWN.
+             *
+             * A league's table, and whatever the next package brings. The
+             * poster does not know what any of it means — it renders the door
+             * and hands the payload to the section page — which is the whole
+             * point: a public surface that grew a branch per event type would
+             * undo the packages. See EventType::publicView().
+             */
+            'type_public' => $type->publicView($event),
             'gallery' => $this->gallery($event),
             'requirements' => $tr->list('requirements', array_values($event->requirements ?: [])),
             'tags' => array_values($event->tags ?: []),
@@ -537,7 +565,15 @@ class PublicEvent
     {
         $rows = $event->participantRegistrations()
             ->with([
-                'user:id,uuid,full_name,name,gender,birthdate,is_discoverable,profile_picture,profile_picture_is_public,updated_at',
+                'user:id,uuid,full_name,name,gender,birthdate,nationality,is_discoverable,profile_picture,profile_picture_is_public,updated_at',
+                /* The athlete's OWN club, for the fallback below — and
+                   `nationality` above, for the flag's. Both were missing from
+                   these column lists, so an entry that never claimed a club
+                   read as clubless AND flagless here while the organiser's own
+                   roster showed both (reported 2026-09-14). A column that is
+                   not selected is silently null, which is why this looked like
+                   a rule rather than an omission. */
+                'user.memberClubs:id,club_name,country,logo',
                 'representingTenant:id,club_name,country,logo',
                 'category:id,name,weight_class',
             ])
@@ -546,7 +582,14 @@ class PublicEvent
         $people = $rows
             ->filter(fn (ClubEventRegistration $r) => $r->user !== null)
             ->map(function (ClubEventRegistration $r) use ($tr) {
-                $club = $r->representedTenantId() ? $r->representingTenant : null;
+                /* The SAME answer the organiser's roster gives
+                   (RosterPeople::participant): what the entry says wins,
+                   including when it says unattached, and only an entry that
+                   never recorded a club falls back to the athlete's own
+                   membership. This read `representedTenantId()` directly and so
+                   skipped that fallback — two lists of the same people
+                   disagreeing about which club they are from. */
+                $club = $r->competingClub();
 
                 return [
                     'name' => $r->user->full_name ?: $r->user->name,
@@ -566,7 +609,7 @@ class PublicEvent
                         : null,
                     'club' => $club?->club_name,
                     'club_logo' => $club?->logo ? file_url($club->logo) : null,
-                    'country' => $r->countryCode() ? strtoupper($r->countryCode()) : null,
+                    'country' => ($cc = $club?->country ?: $r->countryCode()) ? strtoupper($cc) : null,
                     /*
                      * A face, and only if THEY said so.
                      *
@@ -680,6 +723,78 @@ class PublicEvent
             'club_rows' => $clubs,
             'rows' => $people,
         ];
+    }
+
+    /**
+     * The medals, division by division.
+     *
+     * Read from `event_categories.podium`, which the platform writes itself
+     * when a division's last decisive bout lands (Advancement::awardIfComplete)
+     * — never from a separate derivation, because a medal cannot have two
+     * answers. A division still running simply is not here.
+     *
+     * @return array{count: int, divisions: array<int, array<string, mixed>>}
+     */
+    private function results(ClubEvent $event, TranslatedDocument $tr, ?EventType $type = null): array
+    {
+        $divisions = [];
+
+        foreach ($event->categories()->orderBy('sort_order')->get() as $division) {
+            if ($division->isHeading() || ! $division->podium) {
+                continue;
+            }
+
+            $places = collect($division->podium)
+                ->filter(fn ($row) => filled($row['name'] ?? null))
+                ->sortBy('place')
+                ->map(fn ($row) => [
+                    'place' => (int) $row['place'],
+                    'name' => (string) $row['name'],
+                ])
+                ->values()->all();
+
+            if ($places === []) {
+                continue;
+            }
+
+            $divisions[] = [
+                // Translated through the same key the divisions list uses, so
+                // one division is not named two ways on one page.
+                'division' => $tr->get('divisions.'.$division->id, (string) ($division->name ?: $division->weight_class)),
+                'class' => $division->weight_class,
+                'places' => $places,
+            ];
+        }
+
+        /*
+         * A competition whose winners are not held as division podiums.
+         *
+         * A LEAGUE has no `event_categories` at all — it is teams and a table —
+         * so the loop above finds nothing and the poster offered no winners
+         * door for a season that had finished, while the member page beside it
+         * showed the finishing order. The owning package already knows the
+         * answer (`EventType::results()`), so it is asked rather than a second
+         * derivation being written here. Names and places only, as above.
+         */
+        if ($divisions === [] && $type !== null) {
+            foreach ($type->results($event) as $block) {
+                $places = collect($block['medals'] ?? [])
+                    ->filter(fn ($row) => filled($row['name'] ?? null))
+                    ->sortBy('place')
+                    ->map(fn ($row) => ['place' => (int) $row['place'], 'name' => (string) $row['name']])
+                    ->values()->all();
+
+                if ($places !== []) {
+                    $divisions[] = [
+                        'division' => $block['division'] ?? $event->title,
+                        'class' => $block['class'] ?? null,
+                        'places' => $places,
+                    ];
+                }
+            }
+        }
+
+        return ['count' => count($divisions), 'divisions' => $divisions];
     }
 
     /**

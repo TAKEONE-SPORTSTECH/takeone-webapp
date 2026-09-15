@@ -6,7 +6,13 @@ x-data="{
         liked: false,
         likes: 36,
         busy: false,
-        goingCount: {{ $e['participants_total'] ?? $e['going'] }},
+        {{-- ENTRIES, and deliberately so: it drives the capacity meter, and
+             capacity is counted in places in the draw. --}}
+        goingCount: {{ $e['going'] }},
+        {{-- PEOPLE — what every 'N in' on this event labels, because the
+             lists behind them carry one card per person however many
+             divisions they entered. --}}
+        peopleCount: {{ $e['participants_people'] ?? $e['participants_total'] ?? $e['going'] }},
         spectators: {{ $hasTicket ? $e['spectator']['count'] : 0 }},
         blockedCount: {{ ($canManage ?? false) ? count($e['bans_list'] ?? []) : 0 }},
         cap: {{ $e['cap'] }},
@@ -56,6 +62,7 @@ x-data="{
             this.proofSubmitting = false;
             this.going = true;
             this.goingCount = d.going ?? this.goingCount;
+            this.peopleCount = d.going_people ?? this.peopleCount;
             if (d.division) this.joinedDivision = d.division;
             this.paymentPending = true;
             this.proofOpen = false;
@@ -339,6 +346,7 @@ x-data="{
             // Partial success is the NORMAL outcome, so say both halves and
             // leave the refused ones on screen with the server's own reason.
             this.goingCount = d.going ?? this.goingCount;
+            this.peopleCount = d.going_people ?? this.peopleCount;
             (d.entered || []).forEach(row => {
                 const a = this.athletes.find(x => x.id === row.user_id);
                 if (! a) return;
@@ -420,6 +428,7 @@ x-data="{
             this.byName = { full_name: '', contact_email: '', contact_phone: '' };
             this.byNameContact = false;
             this.goingCount = d.going ?? this.goingCount;
+            this.peopleCount = d.going_people ?? this.peopleCount;
             window.showToast('success', d.message);
         },
 
@@ -466,6 +475,7 @@ x-data="{
             this.pendingClaims = this.pendingClaims.filter(x => x.uuid !== c.uuid);
             if (this.freshClaim?.uuid === c.uuid) this.freshClaim = null;
             this.goingCount = d.going ?? this.goingCount;
+            this.peopleCount = d.going_people ?? this.peopleCount;
             window.showToast('success', d.message);
         },
 
@@ -689,6 +699,7 @@ x-data="{
             // register() settles a FREE entry instantly and leaves a paid one owing.
             this.feeDue = {{ $pPaid ? 'true' : 'false' }};
             this.goingCount = d.going ?? this.goingCount + 1;
+            this.peopleCount = d.going_people ?? this.peopleCount + 1;
             this.joinedDivision = d.division || '';
             window.showToast('success', d.message);
         },
@@ -725,6 +736,7 @@ x-data="{
             document.getElementById('prow-' + id)?.remove();
             document.getElementById('srow-' + id)?.remove();
             this.goingCount = d.going ?? this.goingCount;
+            this.peopleCount = d.going_people ?? this.peopleCount;
             this.spectators = d.spectators ?? this.spectators;
             if (d.banned && d.user) { this.addBlockedRow(d.user); this.blockedCount++; }
             window.showToast('success', d.message);

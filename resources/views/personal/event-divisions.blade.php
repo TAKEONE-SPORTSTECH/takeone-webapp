@@ -46,6 +46,30 @@
                aria-label="{{ __('personal.event_manage_title') }}" title="{{ __('personal.event_manage_title') }}">
                 <i class="bi bi-chevron-left"></i>
             </a>
+
+            {{-- ADD, as the band's one action (Design Rule #6: actions cluster
+                 on the trailing edge as round 40px controls).
+
+                 It replaced three dashed buttons under the list — add a
+                 division, add a heading, add from the sport's table — which is
+                 three things to read before adding the first one, and a row
+                 that grew every time another way in was added. The three are
+                 now the menu behind this button.
+
+                 The band is outside the divisions component's Alpine scope, so
+                 the press is a window event and the component opens its own
+                 menu. --}}
+            {{-- ⚠️ A plain `onclick`, not Alpine's `@click`: this button sits in
+                 the page's hero band, which is OUTSIDE every x-data on the
+                 page, and Alpine only binds directives inside a component
+                 tree — so `@click` here is an attribute nothing reads and the
+                 button does nothing at all. --}}
+            <button type="button"
+                    onclick="window.dispatchEvent(new CustomEvent('divisions-add'))"
+                    class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center text-white"
+                    aria-label="{{ __('events.divisions_add_title') }}" title="{{ __('events.divisions_add_title') }}">
+                <i class="bi bi-plus-lg"></i>
+            </button>
         </div>
 
         {{-- Identity: the count as a chip, then the title, then whose event. --}}
@@ -75,7 +99,9 @@
                            :divisions="$e['division_rows'] ?? []"
                            :phases="$e['phase_defs'] ?? []"
                            :days="$e['day_count'] ?? 1"
-                           :presets="$presets ?? []"
+                           :presets="$presets ?? []" :header-add="true"
+                           :streams="$streams ?? []"
+                           :bracket-url="($sealed ?? false) ? url('/e/'.$e['key'].'/admin/brackets/manage') : route('me.events.bracket.manage', $e['key'])"
                            :color="$e['color']" :can-manage="true" />
     </div>
 </div>

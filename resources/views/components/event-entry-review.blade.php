@@ -130,7 +130,7 @@
                  x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                  x-transition:leave="transition ease-in duration-200"
                  x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-                 class="relative w-full sm:max-w-lg max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+                 class="relative w-full max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
 
                 {{-- gradient header band (Design Rule #8) --}}
                 <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"

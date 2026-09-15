@@ -117,7 +117,7 @@ Route::get('/e/{event:uuid}/draw/data', [App\Http\Controllers\PublicEventControl
 // view name built from user input.
 Route::get('/e/{event:uuid}/{section}', [App\Http\Controllers\PublicEventController::class, 'section'])
     ->name('events.public.section')->middleware('throttle:public-event')->whereUuid('event')
-    ->whereIn('section', ['draw', 'officials', 'gallery', 'participants']);
+    ->whereIn('section', ['draw', 'officials', 'gallery', 'participants', 'results', 'table']);
 
 /*
 | The organiser's door, on the event's own page.

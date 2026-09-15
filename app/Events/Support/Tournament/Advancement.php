@@ -24,6 +24,15 @@ use Illuminate\Support\Collection;
 abstract class Advancement
 {
     /**
+     * The play-off for bronze, cut by `DrawEngine` for a sport whose
+     * `bronzeRule()` is `third_place_match`.
+     *
+     * It is NOT part of the bracket geometry: the winner-walk never visits it
+     * (see `rounds()`), because it is fed by the two semi-finals' LOSERS.
+     */
+    public const ROUND_THIRD = 'Third place';
+
+    /**
      * The win reasons this package accepts, from its own Scoring class.
      *
      * `Scoring` is PRIVATE to an event package — the shared base must never
@@ -58,12 +67,28 @@ abstract class Advancement
     {
         $winner = in_array($payload['winner'] ?? null, ['a', 'b'], true) ? $payload['winner'] : null;
 
-        // A side can only win if it has a competitor in it.
-        if ($winner === 'a' && ! $match->a_name) {
-            $winner = null;
-        }
-        if ($winner === 'b' && ! $match->b_name) {
-            $winner = null;
+        /*
+         * ⚠️ A SIDE WITH NOBODY IN IT CANNOT WIN — and being told it did is not
+         * the same instruction as "clear this bout".
+         *
+         * These two were one code path: an impossible winner was quietly turned
+         * into null, and null means "no result", which erases whatever the bout
+         * held and walks that erasure down the bracket. So naming the empty
+         * corner of a BYE as the winner deleted the bye's own decided result
+         * and un-advanced the athlete who had walked through it — answering 200
+         * "Result recorded" while doing the opposite.
+         *
+         * Clearing stays available, and stays explicit: send no winner.
+         */
+        if ($winner !== null && ! $match->{$winner.'_name'}) {
+            return [
+                'ok' => false,
+                'message' => __('events.outcome_empty_side'),
+                'match' => $this->row($match),
+                'advanced' => [],
+                'podium' => [],
+                'division_complete' => false,
+            ];
         }
 
         $match->a_score = $this->score($payload['a_score'] ?? null);
@@ -126,6 +151,11 @@ abstract class Advancement
         $changed = [];
         $current = $from;
 
+        // Every semi-final this change reached — the one just recorded, plus any
+        // the walk-forward re-cut. Each of them owes a side of the bronze
+        // play-off, so it is re-seeded once the walk is done.
+        $semis = $from->round === 'Semifinal' ? [$from] : [];
+
         while ($next = $this->nextBout($rounds, $current)) {
             [$bout, $side] = $next;
 
@@ -160,10 +190,110 @@ abstract class Advancement
             $bout->save();
 
             $changed[] = $this->row($bout);
+
+            if ($bout->round === 'Semifinal') {
+                $semis[] = $bout;
+            }
+
             $current = $bout;
         }
 
+        foreach ($semis as $semifinal) {
+            $changed = array_merge($changed, $this->syncThirdPlace($category, $semifinal));
+        }
+
         return $changed;
+    }
+
+    /**
+     * Put a beaten semi-finalist into the bronze play-off — or take them back
+     * out when the result that put them there was corrected.
+     *
+     * The side is decided by the semi-final's own position, so the board reads
+     * the way the hall does: the first semi-final's loser is the red corner of
+     * the play-off, the second's is the blue.
+     *
+     * @return array<int, array> the rows that changed, for an in-place UI patch
+     */
+    private function syncThirdPlace(EventCategory $category, EventMatch $semifinal): array
+    {
+        $third = $category->matches()->where('round', self::ROUND_THIRD)->first();
+
+        if (! $third) {
+            return [];   // a sport that settles bronze another way
+        }
+
+        $semifinals = $category->matches()->where('round', 'Semifinal')->orderBy('slot')->get();
+        $index = $semifinals->search(fn (EventMatch $m) => $m->id === $semifinal->id);
+
+        if ($index === false || $index > 1) {
+            return [];
+        }
+
+        $side = $index === 0 ? 'a' : 'b';
+
+        // The LOSER — and nobody at all while the bout is undecided, or when it
+        // was a bye and there was never anybody to beat.
+        $lost = $semifinal->winner === 'a' ? 'b' : ($semifinal->winner === 'b' ? 'a' : null);
+        $name = $lost ? $semifinal->{$lost.'_name'} : null;
+        $competitorId = $lost ? $semifinal->{$lost.'_competitor_id'} : null;
+
+        $unchanged = $competitorId
+            ? $third->{$side.'_competitor_id'} === $competitorId
+            : ($third->{$side.'_competitor_id'} === null && $third->{$side.'_name'} === $name);
+
+        if ($unchanged) {
+            return $this->settleThirdPlaceWalkover($category, $third);
+        }
+
+        $third->{$side.'_name'} = $name;
+        $third->{$side.'_competitor_id'} = $competitorId;
+        $third->{$side.'_country'} = $name ? ($lost ? $semifinal->{$lost.'_country'} : null) : null;
+        $third->{$side.'_provisional'} = $name ? (bool) $semifinal->{$lost.'_provisional'} : false;
+        $third->{$side.'_score'} = null;
+
+        // A competitor changed, so any result this bout held is void.
+        if ($third->winner) {
+            $third->winner = null;
+            $third->status = 'upcoming';
+        }
+
+        $third->save();
+
+        return array_merge([$this->row($third)], $this->settleThirdPlaceWalkover($category, $third));
+    }
+
+    /**
+     * Three people in a division means one semi-final was a bye, so only one
+     * athlete ever arrives at the play-off. Nobody fights a bout alone: they
+     * take bronze the way a bye takes a round.
+     *
+     * @return array<int, array>
+     */
+    private function settleThirdPlaceWalkover(EventCategory $category, EventMatch $third): array
+    {
+        if ($third->winner) {
+            return [];
+        }
+
+        $undecided = $category->matches()->where('round', 'Semifinal')
+            ->whereNull('winner')->exists();
+
+        if ($undecided) {
+            return [];   // somebody is still to be beaten
+        }
+
+        $here = array_filter(['a', 'b'], fn (string $s) => filled($third->{$s.'_name'}));
+
+        if (count($here) !== 1) {
+            return [];   // a real bout, or an empty one
+        }
+
+        $third->winner = array_values($here)[0];
+        $third->status = 'done';
+        $third->save();
+
+        return [$this->row($third)];
     }
 
     /**
@@ -203,11 +333,36 @@ abstract class Advancement
 
         // Bronze: both semi-final losers (repechage / both_sf_losers), or a
         // single third-place bout winner when the sport says so.
+        // Whether every medal this division awards has actually been won. A
+        // ladder with an unfought bronze play-off is not finished, however
+        // decided its final is.
+        $settled = true;
+
         if ($this->sport->bronzeRule() === 'third_place_match') {
-            $third = $matches->firstWhere('round', 'Third place');
+            $third = $matches->firstWhere('round', self::ROUND_THIRD);
 
             if ($third?->winner) {
                 $podium[] = $this->medal(3, $third, $third->winner);
+
+                /*
+                 * FOURTH — the athlete who lost the play-off for bronze.
+                 *
+                 * Not a medal, and the reason to record it anyway is that a
+                 * championship's own result sheet has four names on it: fourth
+                 * place is a placing an athlete carries, a seeding a federation
+                 * reads, and the one line a competitor who came off the podium
+                 * by a single bout can point at. It is only ever written where
+                 * a bout actually decided it — never inferred.
+                 */
+                $fourthSide = $third->winner === 'a' ? 'b' : 'a';
+
+                if ($third->{$fourthSide.'_name'}) {
+                    $podium[] = $this->medal(4, $third, $fourthSide);
+                }
+            } elseif ($third && filled($third->a_name) && filled($third->b_name)) {
+                // Both semi-finalists are waiting on the mat: the division has
+                // a gold and a silver, and is not over.
+                $settled = false;
             } elseif ($matches->contains('round', GroupEngine::ROUND)) {
                 /*
                  * A GROUP has no third-place bout to hold — and does not need
@@ -242,18 +397,27 @@ abstract class Advancement
             }
         }
 
-        $category->update(['podium' => $podium, 'status' => 'completed']);
+        $category->update([
+            'podium' => $podium,
+            'status' => $settled ? 'completed' : $category->status,
+        ]);
 
         return $podium;
     }
 
-    /** One medal, carrying the entry it was won by. */
+    /**
+     * One medal, carrying the entry it was won by — and the flag it was won
+     * under, which the board expects because a hand-typed podium has always
+     * had one. A platform-awarded podium without it made the bracket page
+     * fatal on `country` the first time a division was ever completed.
+     */
     private function medal(int $place, EventMatch $bout, string $side): array
     {
         return [
             'place' => $place,
             'name' => $bout->{$side.'_name'},
             'competitor_id' => $bout->{$side.'_competitor_id'},
+            'country' => $bout->{$side.'_country'},
         ];
     }
 
@@ -268,6 +432,13 @@ abstract class Advancement
     private function rounds(EventCategory $category): Collection
     {
         return $category->matches()->orderBy('slot')->get()
+            /*
+             * The bronze play-off sits at the end of the slot order and would
+             * otherwise read as "the round after the final" — so the final's
+             * winner would be walked into it. It is fed by `syncThirdPlace()`
+             * instead, from the semi-finals' losers.
+             */
+            ->reject(fn (EventMatch $m) => $m->round === self::ROUND_THIRD)
             ->groupBy('round')
             ->sortBy(fn (Collection $bouts) => $bouts->min('slot'))
             ->values();

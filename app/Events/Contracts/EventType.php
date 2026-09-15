@@ -292,6 +292,28 @@ interface EventType
     public function runData(ClubEvent $event, User $viewer): array;
 
     /**
+     * What this type puts on its PUBLIC page, beyond the things every event
+     * has.
+     *
+     * The poster already knows how to show a date, a price, an entry list and
+     * a draw, because every event has those. It does not know what a LEAGUE
+     * table is, and it must not learn: a shared surface that grows a branch per
+     * type is the thing event packages exist to prevent. So the package hands
+     * over its own public reading, already narrowed to what a stranger may see,
+     * and the poster renders it under one door.
+     *
+     * Return an empty array for a type with nothing extra to publish — which
+     * is most of them, and is the default in AbstractEventType.
+     *
+     * Whatever is returned is read by anonymous visitors, so it carries names
+     * and numbers only: no ids that address a person, no photographs that were
+     * not opted into, no money, no contact details.
+     *
+     * @return array{key?: string, icon?: string, label?: string, sub?: string, data?: array<string, mixed>}
+     */
+    public function publicView(ClubEvent $event): array;
+
+    /**
      * The type's divisions as BRACKETS, for the zoomable bracket screen.
      *
      * A knockout draw is not one sport's idea — a taekwondo weight class, a

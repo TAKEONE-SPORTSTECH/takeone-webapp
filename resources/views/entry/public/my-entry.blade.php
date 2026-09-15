@@ -1399,7 +1399,9 @@ function myEntryPhoto() {
                                 <button type="button" @click="draft.belt_colour = (draft.belt_colour === '{{ $b['value'] }}' ? null : '{{ $b['value'] }}')"
                                         class="m-press e-pick rounded-2xl py-3 flex flex-col items-center gap-1.5"
                                         :class="draft.belt_colour === '{{ $b['value'] }}' && 'is-on'">
-                                    <span class="w-8 h-2.5 rounded-full border border-white/25" style="background: {{ $b['bg'] }}"></span>
+                                    {{-- The belt itself — the same drawing the entry form
+                                         and the organiser's sheet use. --}}
+                                    <x-belt-icon :color="$b['value']" :title="false" class="w-8 h-8" />
                                     <span class="text-[11.5px] font-bold">{{ $b['label'] }}</span>
                                 </button>
                             @endforeach
