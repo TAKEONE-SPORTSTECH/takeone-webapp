@@ -134,7 +134,7 @@ class PlatformController extends Controller
         $whatsapp = app(\App\Services\WhatsAppManager::class);
 
         return view('admin.platform.settings', [
-            'toastsEnabled'    => \App\Models\PlatformSetting::getBool('toasts_enabled', true),
+            'toastsEnabled'    => \App\Platform\Models\PlatformSetting::getBool('toasts_enabled', true),
             'realtimeSettings' => $realtime->adminSettings(),
             'realtimeStatus'   => $realtime->probe(),
             'whatsappSettings' => $whatsapp->adminSettings(),
@@ -143,7 +143,7 @@ class PlatformController extends Controller
 
     public function updateSettings(Request $request)
     {
-        \App\Models\PlatformSetting::set('toasts_enabled', $request->boolean('toasts_enabled'));
+        \App\Platform\Models\PlatformSetting::set('toasts_enabled', $request->boolean('toasts_enabled'));
 
         return redirect()->route('admin.platform.settings')
             ->with('success', 'Settings updated.');

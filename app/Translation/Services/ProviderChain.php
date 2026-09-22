@@ -46,7 +46,7 @@ class ProviderChain
     /** The provider currently doing the translating, or null for automatic. */
     public static function primaryId(): ?int
     {
-        $id = (int) \App\Models\PlatformSetting::get(self::PRIMARY_SETTING, 0);
+        $id = (int) \App\Platform\Models\PlatformSetting::get(self::PRIMARY_SETTING, 0);
 
         return $id > 0 ? $id : null;
     }
@@ -54,7 +54,7 @@ class ProviderChain
     /** Choose the model that translates. Null returns to automatic order. */
     public static function setPrimary(?int $providerId): void
     {
-        \App\Models\PlatformSetting::set(self::PRIMARY_SETTING, (int) $providerId);
+        \App\Platform\Models\PlatformSetting::set(self::PRIMARY_SETTING, (int) $providerId);
     }
 
     /**
@@ -109,7 +109,7 @@ class ProviderChain
          * and switching back is the same click. A stored id whose provider has
          * since been deleted or disabled is ignored rather than fatal.
          */
-        $primary = (int) \App\Models\PlatformSetting::get(self::PRIMARY_SETTING, 0);
+        $primary = (int) \App\Platform\Models\PlatformSetting::get(self::PRIMARY_SETTING, 0);
 
         if ($primary > 0) {
             $chosen = AiProvider::query()->enabled()->modality('text')->find($primary);

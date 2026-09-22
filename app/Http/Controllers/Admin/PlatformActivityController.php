@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 use App\Ai\AiManager;
 use App\Support\HtmlSanitizer;
 use App\Traits\StoresBase64Images;

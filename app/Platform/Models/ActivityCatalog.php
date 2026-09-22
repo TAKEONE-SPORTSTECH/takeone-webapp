@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Platform\Models;
 
 use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

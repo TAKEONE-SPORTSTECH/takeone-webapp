@@ -2882,7 +2882,7 @@
             ]);
 
             // Skill name → encyclopedia (activity directory) url, for deep-linking each taught skill.
-            $workCatalogByName = \App\Models\ActivityCatalog::where('is_active', true)
+            $workCatalogByName = \App\Platform\Models\ActivityCatalog::where('is_active', true)
                 ->get(['uuid', 'name'])
                 ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
 

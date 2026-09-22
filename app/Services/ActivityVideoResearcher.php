@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 

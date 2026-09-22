@@ -8,7 +8,7 @@ use App\Media\Ffmpeg;
 use App\Media\MediaVaults;
 use App\Media\Models\MediaFile;
 use App\Media\Models\MediaVault;
-use App\Models\PlatformSetting;
+use App\Platform\Models\PlatformSetting;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 

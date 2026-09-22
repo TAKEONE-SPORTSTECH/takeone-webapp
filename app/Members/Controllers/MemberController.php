@@ -397,7 +397,7 @@ class MemberController extends Controller
         // Map each skill to the encyclopedia (activity directory) entry it matches by
         // name, so its badge can deep-link to /activity/{uuid}. Built once (no N+1);
         // skill_name IS the activity name, so a case-insensitive name match is exact.
-        $catalogByName = \App\Models\ActivityCatalog::where('is_active', true)
+        $catalogByName = \App\Platform\Models\ActivityCatalog::where('is_active', true)
             ->get(['uuid', 'name'])
             ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
         $skillEncyclopedia = [];
@@ -2350,7 +2350,7 @@ class MemberController extends Controller
         // real club activity can carry an activity_id (provenance is scoped to the
         // affiliation's club by storeAffiliationSkill's validation), so catalog rows
         // are name-only suggestions.
-        $catalog = \App\Models\ActivityCatalog::where('is_active', true)
+        $catalog = \App\Platform\Models\ActivityCatalog::where('is_active', true)
             ->orderByDesc('usage_count')->orderBy('name')
             ->get(['id', 'name', 'translations'])
             ->map(fn ($a) => ['id' => null, 'name' => $a->tr('name') ?? $a->name])
@@ -2638,7 +2638,7 @@ class MemberController extends Controller
             // Deep-link to the encyclopedia entry this skill matches by name, if any.
             'encyclopedia_url' => (function () use ($skill) {
                 $name = $skill->activity?->name ?? $skill->activity_name ?? $skill->skill_name;
-                $entry = \App\Models\ActivityCatalog::where('is_active', true)
+                $entry = \App\Platform\Models\ActivityCatalog::where('is_active', true)
                     ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim((string) $name))])->first();
 
                 return $entry ? route('activity.show', $entry->uuid) : null;

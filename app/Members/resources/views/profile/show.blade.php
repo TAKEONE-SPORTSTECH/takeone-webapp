@@ -1775,7 +1775,7 @@
                 'derived' => false, 'logo' => null, 'skills' => [], 'club_url' => null, '_sort' => optional($w->start_date)->timestamp ?? 0,
             ]);
 
-            $workCatalogByNameD = \App\Models\ActivityCatalog::where('is_active', true)
+            $workCatalogByNameD = \App\Platform\Models\ActivityCatalog::where('is_active', true)
                 ->get(['uuid', 'name'])
                 ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
 

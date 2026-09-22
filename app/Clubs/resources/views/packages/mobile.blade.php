@@ -12,7 +12,7 @@
 
     // Public directory page per activity name, resolved in ONE query for the whole
     // page — an activity row links to it when the discipline exists in the catalog.
-    $activityLinks = \App\Models\ActivityCatalog::linksForNames(
+    $activityLinks = \App\Platform\Models\ActivityCatalog::linksForNames(
         $packages->flatMap(fn ($p) => $p->activities)->pluck('name')
     );
 @endphp

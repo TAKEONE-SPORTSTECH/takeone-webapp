@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Platform\Commands;
 
 use App\Support\DemoManifest;
 use Illuminate\Console\Command;

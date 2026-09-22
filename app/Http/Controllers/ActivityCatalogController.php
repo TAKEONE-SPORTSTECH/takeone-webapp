@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 use Illuminate\Http\Request;
 
 /**

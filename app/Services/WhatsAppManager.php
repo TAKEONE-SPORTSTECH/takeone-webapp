@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\PlatformSetting;
+use App\Platform\Models\PlatformSetting;
 use Illuminate\Support\Facades\Http;
 
 /*

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Platform\Commands;
 
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 use App\Ai\AiManager;
 use App\Traits\StoresBase64Images;
 use Illuminate\Console\Command;

@@ -92,7 +92,7 @@ class ClubActivityController extends Controller
 
         $locale = app()->getLocale();
 
-        $items = \App\Models\ActivityCatalog::query()
+        $items = \App\Platform\Models\ActivityCatalog::query()
             ->where('is_active', true)
             ->orderByDesc('usage_count')
             ->orderBy('name')
@@ -224,7 +224,7 @@ class ClubActivityController extends Controller
     private function contributeToCatalog(ClubActivity $activity, int $tenantId): void
     {
         try {
-            $entry = \App\Models\ActivityCatalog::contribute([
+            $entry = \App\Platform\Models\ActivityCatalog::contribute([
                 'name' => $activity->name,
                 'description' => $activity->description,
                 'translations' => $activity->translations,

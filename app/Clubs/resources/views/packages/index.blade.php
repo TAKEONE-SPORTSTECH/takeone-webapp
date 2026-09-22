@@ -3,7 +3,7 @@
 @section('club-admin-content')
 @php
     // Public directory page per activity name — resolved once for the whole grid.
-    $activityLinks = \App\Models\ActivityCatalog::linksForNames(
+    $activityLinks = \App\Platform\Models\ActivityCatalog::linksForNames(
         collect($packages ?? [])->flatMap(fn ($p) => $p->activities ?? [])->pluck('name')
     );
 @endphp

@@ -755,7 +755,7 @@ class PeopleController extends Controller
 
         // Catalogue icons are keyed by the activity's own name, so a sport that
         // matches a catalogue entry inherits its icon for free.
-        $icons = \App\Models\ActivityCatalog::whereIn('name', $names)
+        $icons = \App\Platform\Models\ActivityCatalog::whereIn('name', $names)
             ->pluck('icon', 'name')
             ->mapWithKeys(fn ($icon, $name) => [mb_strtolower($name) => $icon]);
 

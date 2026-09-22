@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Platform\Commands;
 
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;

@@ -52,6 +52,17 @@ return [
         \App\Ai\Ai::class,
 
         \App\Forms\Forms::class,
+
+        /*
+         * The operator's own vertical: the super-admin's room, the global
+         * activity directory, platform-wide settings, and the commands that
+         * back up, reset a baseline or seed a demo. Last, because it is about
+         * the platform rather than about anything on it.
+         *
+         * ⚠️ Not App\Http\Controllers\PlatformController, which despite the
+         * name is the public club browser and belongs with Clubs.
+         */
+        \App\Platform\Platform::class,
     ],
 
     /*
