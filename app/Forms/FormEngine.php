@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support;
+namespace App\Forms;
 
-use App\Models\Form;
+use App\Forms\Models\Form;
 
 /**
  * Turns a Form's JSON schema into Laravel validation rules and evaluates

@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Forms\Models;
 
+use App\Forms\Models\FormSubmission;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;

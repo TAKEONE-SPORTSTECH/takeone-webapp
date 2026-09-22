@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Forms\Controllers;
 
-use App\Models\Form;
-use App\Support\FormEngine;
+use App\Http\Controllers\Controller;
+use App\Forms\Models\Form;
+use App\Forms\FormEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +25,7 @@ class FormController extends Controller
         $alreadyDone = ! empty($form->settings['oncePerUser']) && Auth::check()
             && $form->submissions()->where('user_id', Auth::id())->exists();
 
-        return view('forms.show', compact('form', 'alreadyDone'));
+        return view('forms::show', compact('form', 'alreadyDone'));
     }
 
     /** Validate against the schema, store files + the submission. */

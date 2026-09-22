@@ -467,9 +467,7 @@ Route::post('/login/link', [App\Http\Controllers\Auth\MagicLinkController::class
     ->name('login.magic')->middleware('throttle:login');
 Route::get('/login/link/{user}', [App\Http\Controllers\Auth\MagicLinkController::class, 'login'])
     ->name('login.magic.verify')->middleware('signed', 'throttle:6,1');
-// Public form renderer (surveys/intake via link or QR).
-Route::get('/f/{form:uuid}', [App\Http\Controllers\FormController::class, 'show'])->name('forms.show');
-Route::post('/f/{form:uuid}', [App\Http\Controllers\FormController::class, 'submit'])->name('forms.submit')->middleware('throttle:20,1');
+// The public form renderer moved to app/Forms/routes.php with its module.
 
 Route::get('/register', [RegisteredUserController::class, 'create'])->name('register')->middleware('no-store');
 Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('throttle:register');

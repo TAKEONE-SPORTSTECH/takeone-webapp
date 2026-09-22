@@ -37,6 +37,13 @@ return [
         // reads it in theirs. Last in the list because it serves the other
         // modules' content rather than owning a vertical of its own.
         \App\Translation\Translation::class,
+
+        /*
+         * Forms a club builds for itself — a waiver, an intake sheet, a
+         * questionnaire. Its one surface is /f/{uuid}; app/Forms/Forms.php
+         * says why this is a vertical of its own rather than part of the club.
+         */
+        \App\Forms\Forms::class,
     ],
 
     /*
