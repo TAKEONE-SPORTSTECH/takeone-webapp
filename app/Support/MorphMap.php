@@ -76,6 +76,17 @@ class MorphMap
 
             // ---- Media -----------------------------------------------------
             'media_file' => \App\Models\MediaFile::class,
+
+            /*
+             * The owner of a media file — what produced the bytes. This alias
+             * was MISSING, so MediaIngest's $owner->getMorphClass() fell back to
+             * the fully-qualified class name and wrote the literal
+             * "App\Models\EventCameraClip" into media_files.owner_type. That is
+             * precisely the weld this class exists to prevent: the two rows
+             * carrying it were orphaned the moment the clip model moved into
+             * App\Events\Models. Repointed to this alias on 2026-09-22.
+             */
+            'event_camera_clip' => \App\Events\Models\EventCameraClip::class,
         ];
     }
 }
