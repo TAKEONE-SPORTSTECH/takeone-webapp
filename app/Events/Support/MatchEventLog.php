@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEvent;
-use App\Models\EventMatchEvent;
+use App\Events\Models\EventMatchEvent;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 

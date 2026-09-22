@@ -5,7 +5,7 @@ namespace App\Events\Support;
 use App\Events\EventTypeRegistry;
 use App\Jobs\DeliverEventNotification;
 use App\Models\ClubEvent;
-use App\Models\EventNotificationSent;
+use App\Events\Models\EventNotificationSent;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 

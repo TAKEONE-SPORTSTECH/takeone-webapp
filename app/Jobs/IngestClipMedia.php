@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Media\MediaIngest;
 use App\Media\MediaVaults;
 use App\Models\ClubEvent;
-use App\Models\EventCameraClip;
+use App\Events\Models\EventCameraClip;
 use App\Models\EventMatch;
 use App\Models\EventRecording;
 use App\Models\MediaFile;

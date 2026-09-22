@@ -5,7 +5,7 @@ namespace App\Events\Support;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
-use App\Models\EventRunSlot;
+use App\Events\Models\EventRunSlot;
 use Illuminate\Support\Facades\DB;
 
 /**

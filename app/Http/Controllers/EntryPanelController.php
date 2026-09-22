@@ -10,7 +10,7 @@ use App\Events\Support\PublicEvent;
 use App\Events\Support\Withdrawal;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventWithdrawalRequest;
+use App\Events\Models\EventWithdrawalRequest;
 use App\Sports\Combat\BeltRank;
 use App\Support\StoragePath;
 use App\Traits\StoresBase64Images;

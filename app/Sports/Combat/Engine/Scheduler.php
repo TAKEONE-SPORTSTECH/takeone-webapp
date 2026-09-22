@@ -204,7 +204,7 @@ class Scheduler
          * day only. Empty for an event nobody has written a running order for,
          * which is the switch that keeps the old behaviour exactly as it was.
          */
-        $sheetPos = \App\Models\EventRunSlot::where('event_id', $event->id)
+        $sheetPos = \App\Events\Models\EventRunSlot::where('event_id', $event->id)
             ->whereNotNull('category_id')
             ->orderBy('day')->orderBy('position')->orderBy('id')
             ->pluck('category_id')

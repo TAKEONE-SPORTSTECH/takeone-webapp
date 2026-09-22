@@ -9,7 +9,7 @@ use App\Members\Models\UserRelationship;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
-use App\Models\EventEntryClaim;
+use App\Events\Models\EventEntryClaim;
 use App\Members\Models\UserNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;

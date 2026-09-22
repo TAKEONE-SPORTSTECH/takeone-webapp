@@ -294,7 +294,7 @@ class Results
          * for an event with no running order.
          */
         $sheetEndsInCeremony = $lastDayRunSlots
-            && (($lastDayRunSlots[count($lastDayRunSlots) - 1]['kind'] ?? null) === \App\Models\EventRunSlot::KIND_CEREMONY);
+            && (($lastDayRunSlots[count($lastDayRunSlots) - 1]['kind'] ?? null) === \App\Events\Models\EventRunSlot::KIND_CEREMONY);
 
         if ($lastCompetitionDay && ! $sheetEndsInCeremony) {
             $entries[] = [

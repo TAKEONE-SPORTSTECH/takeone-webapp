@@ -6,7 +6,7 @@ use App\Members\Models\User;
 use App\Members\Models\UserNotification;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventWithdrawalRequest;
+use App\Events\Models\EventWithdrawalRequest;
 use App\Events\EventTypeRegistry;
 use Illuminate\Support\Str;
 

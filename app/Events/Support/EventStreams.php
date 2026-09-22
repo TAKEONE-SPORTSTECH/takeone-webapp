@@ -6,7 +6,7 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventFeeOption;
-use App\Models\EventRegistrationFeeLine;
+use App\Events\Models\EventRegistrationFeeLine;
 
 /**
  * The parts of an event somebody enters separately — and who is in which.

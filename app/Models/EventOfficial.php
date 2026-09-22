@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\Models\EventExpense;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Members\Models\User;

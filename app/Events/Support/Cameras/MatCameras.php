@@ -4,7 +4,7 @@ namespace App\Events\Support\Cameras;
 
 use App\Models\ClubEvent;
 use App\Models\EventCamera;
-use App\Models\EventCameraClip;
+use App\Events\Models\EventCameraClip;
 use Illuminate\Support\Collection;
 
 /**

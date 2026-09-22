@@ -6,7 +6,7 @@ use App\Members\Models\User;
 use App\Members\Models\UserNotification;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventEntryExclusion;
+use App\Events\Models\EventEntryExclusion;
 use Illuminate\Support\Facades\Log;
 
 /**

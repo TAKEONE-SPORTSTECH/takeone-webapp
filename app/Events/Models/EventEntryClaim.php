@@ -1,7 +1,9 @@
 <?php
 
-namespace App\Models;
+namespace App\Events\Models;
 
+use App\Models\ClubEvent;
+use App\Models\ClubEventRegistration;
 use App\Members\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

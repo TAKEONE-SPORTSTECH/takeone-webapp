@@ -18,12 +18,12 @@ use App\Models\EventFeeOption;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
 use App\Models\EventCategory;
-use App\Models\EventEntryClaim;
-use App\Models\EventChecklistItem;
-use App\Models\EventExpense;
+use App\Events\Models\EventEntryClaim;
+use App\Events\Models\EventChecklistItem;
+use App\Events\Models\EventExpense;
 use App\Models\EventOfficial;
 use App\Models\EventParticipantBan;
-use App\Models\EventPublicEntry;
+use App\Events\Models\EventPublicEntry;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Carbon\Carbon;
@@ -1111,7 +1111,7 @@ class PersonalEventController extends Controller
         $explicit = $options !== null;
         $chosen = array_values(array_filter((array) $options, 'is_string'));
 
-        $recorded = \App\Models\EventRegistrationFeeLine::where('registration_id', $registration->id)->exists();
+        $recorded = \App\Events\Models\EventRegistrationFeeLine::where('registration_id', $registration->id)->exists();
 
         if (! $explicit) {
             if ($recorded) {
@@ -7321,9 +7321,9 @@ class PersonalEventController extends Controller
             'category_ids' => ['nullable', 'array', 'max:200'],
             'category_ids.*' => ['integer'],
             'kind' => ['nullable', Rule::in([
-                \App\Models\EventRunSlot::KIND_CEREMONY,
-                \App\Models\EventRunSlot::KIND_BREAK,
-                \App\Models\EventRunSlot::KIND_CUSTOM,
+                \App\Events\Models\EventRunSlot::KIND_CEREMONY,
+                \App\Events\Models\EventRunSlot::KIND_BREAK,
+                \App\Events\Models\EventRunSlot::KIND_CUSTOM,
             ])],
             'label' => ['nullable', 'string', 'max:160'],
             'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
@@ -7363,7 +7363,7 @@ class PersonalEventController extends Controller
     }
 
     /** Pin a part to a clock time, rename it, or change how long it takes. */
-    public function updateRunSlot(Request $request, ClubEvent $event, \App\Models\EventRunSlot $slot): JsonResponse
+    public function updateRunSlot(Request $request, ClubEvent $event, \App\Events\Models\EventRunSlot $slot): JsonResponse
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);
@@ -7391,7 +7391,7 @@ class PersonalEventController extends Controller
     }
 
     /** Take a part off the day. The division itself is untouched. */
-    public function destroyRunSlot(ClubEvent $event, \App\Models\EventRunSlot $slot): JsonResponse
+    public function destroyRunSlot(ClubEvent $event, \App\Events\Models\EventRunSlot $slot): JsonResponse
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);

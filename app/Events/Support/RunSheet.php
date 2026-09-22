@@ -5,7 +5,7 @@ namespace App\Events\Support;
 use App\Models\ClubEvent;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
-use App\Models\EventRunSlot;
+use App\Events\Models\EventRunSlot;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 

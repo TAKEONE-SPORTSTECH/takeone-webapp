@@ -5,7 +5,7 @@ namespace App\Events\Support;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventFeeOption;
-use App\Models\EventRegistrationFeeLine;
+use App\Events\Models\EventRegistrationFeeLine;
 
 /**
  * What the verification desk signs off, and what it needs to draw itself.
@@ -76,7 +76,7 @@ class EntryGates
            a two-hundred-name roster where a third of the field holds two
            entries is not the place for a query in a loop. */
         $lines = $canPay
-            ? \App\Models\EventRegistrationFeeLine::whereIn(
+            ? \App\Events\Models\EventRegistrationFeeLine::whereIn(
                 'registration_id',
                 $regs->keys()->all(),
             )->get(['registration_id', 'fee_option_id', 'amount'])->groupBy('registration_id')

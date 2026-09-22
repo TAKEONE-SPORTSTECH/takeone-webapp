@@ -8,7 +8,7 @@ use App\Members\Models\UserNotification;
 use App\Mail\EventEntryEmail;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventPublicEntry;
+use App\Events\Models\EventPublicEntry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;

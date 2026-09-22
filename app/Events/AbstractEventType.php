@@ -11,7 +11,7 @@ use App\Events\Support\Milestone;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
-use App\Models\EventExpense;
+use App\Events\Models\EventExpense;
 use App\Members\Models\User;
 use Carbon\Carbon;
 
@@ -598,7 +598,7 @@ abstract class AbstractEventType implements EventType
 
         $paidIds = $entries->where('paid', true)->pluck('registration_id')->all();
 
-        $lines = \App\Models\EventRegistrationFeeLine::whereIn('registration_id', $entries->pluck('registration_id'))
+        $lines = \App\Events\Models\EventRegistrationFeeLine::whereIn('registration_id', $entries->pluck('registration_id'))
             ->get(['registration_id', 'fee_option_id', 'kind', 'label', 'amount']);
 
         $isPaid = array_fill_keys($paidIds, true);

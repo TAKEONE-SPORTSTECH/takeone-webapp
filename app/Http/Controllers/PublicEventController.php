@@ -14,7 +14,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Members\Models\User;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventDocument;
+use App\Events\Models\EventDocument;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
@@ -118,7 +118,7 @@ class PublicEventController extends Controller
                 ->where('user_id', $me->id)
                 ->exists();
 
-            $asked = ! $entered && \App\Models\EventPublicEntry::where('event_id', $event->id)
+            $asked = ! $entered && \App\Events\Models\EventPublicEntry::where('event_id', $event->id)
                 ->where('user_id', $me->id)
                 ->where('state', 'pending')
                 ->exists();

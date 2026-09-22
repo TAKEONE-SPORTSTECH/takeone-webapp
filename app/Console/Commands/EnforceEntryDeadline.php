@@ -75,7 +75,7 @@ class EnforceEntryDeadline extends Command
                 $this->line(sprintf(
                     '  – %s  (%s)',
                     $registration->user?->full_name ?: '—',
-                    \App\Models\EventEntryExclusion::reasonFor($unpaid, $unweighed),
+                    \App\Events\Models\EventEntryExclusion::reasonFor($unpaid, $unweighed),
                 ));
             }
         }

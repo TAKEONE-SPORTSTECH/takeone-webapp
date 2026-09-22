@@ -4,7 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Events\Support\EventAccess;
 use App\Models\ClubEvent;
-use App\Models\EventChecklistItem;
+use App\Events\Models\EventChecklistItem;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
