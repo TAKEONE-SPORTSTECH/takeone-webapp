@@ -5,7 +5,7 @@ namespace App\Support;
 use App\Events\Support\EventAccess;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use App\Members\Models\TournamentEvent;
 use App\Members\Models\User;
 use Illuminate\Support\Collection;

@@ -521,7 +521,7 @@ class PublicEntry
          * competing, so naming it resolves to nothing.
          */
         if ($key !== '' && $event !== null) {
-            $onEvent = \App\Models\EventClub::query()
+            $onEvent = \App\Events\Models\EventClub::query()
                 ->where('event_id', $event->id)
                 ->where('state', '!=', 'declined')
                 ->where('uuid', $key)

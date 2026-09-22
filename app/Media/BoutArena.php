@@ -4,8 +4,8 @@ namespace App\Media;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventMatch;
-use App\Models\EventOfficial;
+use App\Events\Models\EventMatch;
+use App\Events\Models\EventOfficial;
 use App\Sports\Combat\SportRegistry;
 use App\Support\BoutStage;
 

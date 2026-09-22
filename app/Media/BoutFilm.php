@@ -2,8 +2,8 @@
 
 namespace App\Media;
 
-use App\Models\EventMatch;
-use App\Models\EventRecording;
+use App\Events\Models\EventMatch;
+use App\Events\Models\EventRecording;
 use Illuminate\Support\Collection;
 
 /**

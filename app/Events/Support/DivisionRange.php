@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEventRegistration;
-use App\Models\EventCategory;
+use App\Events\Models\EventCategory;
 
 /**
  * What a division is for, and who sits outside it.

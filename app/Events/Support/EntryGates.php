@@ -4,7 +4,7 @@ namespace App\Events\Support;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventFeeOption;
+use App\Events\Models\EventFeeOption;
 use App\Events\Models\EventRegistrationFeeLine;
 
 /**
@@ -69,7 +69,7 @@ class EntryGates
         // id => uuid for the event's fee types, so a stored line can be matched
         // back to the box that is ticked in the sheet. One query, not one per row.
         $optionKeys = $canPay
-            ? \App\Models\EventFeeOption::where('event_id', $event->id)->pluck('uuid', 'id')->all()
+            ? \App\Events\Models\EventFeeOption::where('event_id', $event->id)->pluck('uuid', 'id')->all()
             : [];
 
         /* Every fee line for the event in one query rather than one per entry:

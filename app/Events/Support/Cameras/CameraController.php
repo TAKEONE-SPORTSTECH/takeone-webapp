@@ -3,9 +3,9 @@
 namespace App\Events\Support\Cameras;
 
 use App\Http\Controllers\Controller;
-use App\Models\EventCamera;
+use App\Events\Models\EventCamera;
 use App\Events\Models\EventCameraClip;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

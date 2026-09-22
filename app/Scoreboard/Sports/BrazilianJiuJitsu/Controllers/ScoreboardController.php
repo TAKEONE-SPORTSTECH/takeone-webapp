@@ -11,7 +11,7 @@ use App\Events\Support\ScreenMedia;
 use App\Http\Controllers\Controller;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use App\Members\Models\User;
 use App\Events\Support\Cameras\MatCameraController;
 use Illuminate\Http\JsonResponse;

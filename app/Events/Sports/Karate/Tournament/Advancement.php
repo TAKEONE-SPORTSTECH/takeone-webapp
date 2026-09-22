@@ -3,8 +3,8 @@
 namespace App\Events\Sports\Karate\Tournament;
 
 use App\Scoreboard\Sports\Karate\Mat\Scoring;
-use App\Models\EventCategory;
-use App\Models\EventMatch;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventMatch;
 use App\Sports\Combat\CombatSport;
 use Illuminate\Support\Collection;
 

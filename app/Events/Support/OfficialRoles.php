@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEvent;
-use App\Models\EventOfficial;
+use App\Events\Models\EventOfficial;
 use Illuminate\Support\Str;
 
 /**

@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEvent;
-use App\Models\EventClub;
+use App\Events\Models\EventClub;
 use App\Clubs\Models\Tenant;
 
 /**

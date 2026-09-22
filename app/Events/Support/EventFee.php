@@ -4,7 +4,7 @@ namespace App\Events\Support;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventFeeOption;
+use App\Events\Models\EventFeeOption;
 use App\Events\Models\EventRegistrationFeeLine;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;

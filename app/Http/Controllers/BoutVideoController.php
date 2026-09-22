@@ -9,8 +9,8 @@ use App\Models\BoutCoachNote;
 use App\Models\BoutComment;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventMatch;
-use App\Models\EventOfficial;
+use App\Events\Models\EventMatch;
+use App\Events\Models\EventOfficial;
 use App\Members\Models\User;
 use App\Sports\Combat\SportRegistry;
 use App\Support\BoutStage;
@@ -549,7 +549,7 @@ class BoutVideoController extends Controller
         $deleted = 0;
         $uuids = [];
 
-        foreach (\App\Models\EventRecording::where('match_id', $match->id)->with('mediaFile')->get() as $recording) {
+        foreach (\App\Events\Models\EventRecording::where('match_id', $match->id)->with('mediaFile')->get() as $recording) {
             if ($recording->mediaFile) {
                 $uuids[] = $recording->mediaFile->uuid;
                 $vaults->delete($recording->mediaFile);
@@ -560,7 +560,7 @@ class BoutVideoController extends Controller
             // means the row is correct whether or not there were bytes to lose.
             $recording->forceFill([
                 'media_file_id' => null,
-                'status' => \App\Models\EventRecording::STATUS_UNLINKED,
+                'status' => \App\Events\Models\EventRecording::STATUS_UNLINKED,
             ])->save();
         }
 

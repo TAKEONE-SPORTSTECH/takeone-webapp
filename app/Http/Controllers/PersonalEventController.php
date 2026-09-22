@@ -14,15 +14,15 @@ use App\Events\Support\EventStreams;
 use App\Events\Support\RosterPeople;
 use App\Events\Support\PublicEntry;
 use App\Models\ClubEvent;
-use App\Models\EventFeeOption;
+use App\Events\Models\EventFeeOption;
 use App\Models\ClubEventRegistration;
-use App\Models\EventMatch;
-use App\Models\EventCategory;
+use App\Events\Models\EventMatch;
+use App\Events\Models\EventCategory;
 use App\Events\Models\EventEntryClaim;
 use App\Events\Models\EventChecklistItem;
 use App\Events\Models\EventExpense;
-use App\Models\EventOfficial;
-use App\Models\EventParticipantBan;
+use App\Events\Models\EventOfficial;
+use App\Events\Models\EventParticipantBan;
 use App\Events\Models\EventPublicEntry;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
@@ -1141,7 +1141,7 @@ class PersonalEventController extends Controller
             'charged' => $total,
             'charged_label' => EventFee::display($total, $quote['currency']),
             'fee_options' => collect($quote['lines'])->pluck('fee_option_id')->filter()
-                ->map(fn ($id) => \App\Models\EventFeeOption::where('id', $id)->value('uuid'))
+                ->map(fn ($id) => \App\Events\Models\EventFeeOption::where('id', $id)->value('uuid'))
                 ->filter()->values()->all(),
         ];
     }
@@ -1194,7 +1194,7 @@ class PersonalEventController extends Controller
             // Echo what was actually stored, so the sheet shows the server's
             // answer rather than what it hoped for.
             'fee_options' => collect($quote['lines'])->pluck('fee_option_id')->filter()
-                ->map(fn ($id) => \App\Models\EventFeeOption::where('id', $id)->value('uuid'))
+                ->map(fn ($id) => \App\Events\Models\EventFeeOption::where('id', $id)->value('uuid'))
                 ->filter()->values()->all(),
             'lines' => collect($quote['lines'])->map(fn ($l) => [
                 'label' => $l['label'],
@@ -1946,11 +1946,11 @@ class PersonalEventController extends Controller
         // reading order on an officiating sheet, not insertion order.
         $rank = ['referee' => 0, 'judge' => 1, 'timekeeper' => 2, 'recorder' => 3, 'jury' => 4, 'organiser' => 5];
 
-        return \App\Models\EventOfficial::where('event_id', $event->id)
+        return \App\Events\Models\EventOfficial::where('event_id', $event->id)
             ->with('user:id,uuid,full_name,name,birthdate,nationality,profile_picture,profile_picture_is_public,is_discoverable,updated_at')
             ->get()
             ->sortBy(fn ($o) => [$rank[$o->role] ?? 99, mb_strtolower((string) ($o->user?->full_name ?? ''))])
-            ->map(function (\App\Models\EventOfficial $o) {
+            ->map(function (\App\Events\Models\EventOfficial $o) {
                 $user = $o->user;
 
                 $isMinor = $user?->birthdate ? Carbon::parse($user->birthdate)->age < 18 : false;
@@ -2253,9 +2253,9 @@ class PersonalEventController extends Controller
              * gone, this branch and the column can go with them.
              */
             'video_url' => (function () use ($event, $match) {
-                $row = \App\Models\EventRecording::with('mediaFile')
+                $row = \App\Events\Models\EventRecording::with('mediaFile')
                     ->where('match_id', $match->id)
-                    ->where('status', \App\Models\EventRecording::STATUS_LINKED)
+                    ->where('status', \App\Events\Models\EventRecording::STATUS_LINKED)
                     ->where(fn ($q) => $q->whereNotNull('play_url')->orWhereNotNull('media_file_id'))
                     ->latest('id')
                     ->first();
@@ -6735,7 +6735,7 @@ class PersonalEventController extends Controller
 
         $named = collect($clubs)->pluck('name')->map(fn ($n) => mb_strtolower((string) $n))->all();
 
-        $extra = \App\Models\EventClub::where('event_id', $event->id)
+        $extra = \App\Events\Models\EventClub::where('event_id', $event->id)
             ->whereNull('tenant_id')
             ->where('state', '!=', 'declined')
             ->withCount('entrants')
@@ -7455,7 +7455,7 @@ class PersonalEventController extends Controller
     private function applyRunOrderToMats(ClubEvent $event): void
     {
         rescue(function () use ($event) {
-            $bouts = \App\Models\EventMatch::where('event_id', $event->id);
+            $bouts = \App\Events\Models\EventMatch::where('event_id', $event->id);
 
             if (! (clone $bouts)->exists()) {
                 return;

@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 
 /**
  * What stage of the competition a bout belongs to.

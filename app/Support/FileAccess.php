@@ -184,7 +184,7 @@ class FileAccess
      */
     private static function isEventClubCrest(ClubEvent $event, string $path): bool
     {
-        return \App\Models\EventClub::query()
+        return \App\Events\Models\EventClub::query()
             ->where('event_id', $event->id)
             ->where('logo', $path)
             ->exists();

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\Models\EventCategory;
 use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

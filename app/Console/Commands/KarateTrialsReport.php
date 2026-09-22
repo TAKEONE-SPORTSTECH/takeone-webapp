@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\ClubEvent;
-use App\Models\EventCategory;
-use App\Models\EventMatch;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventMatch;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 

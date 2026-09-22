@@ -5,7 +5,7 @@ namespace App\Events\Support\Clubs;
 use App\Clubs\Models\Tenant;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventClub;
+use App\Events\Models\EventClub;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 

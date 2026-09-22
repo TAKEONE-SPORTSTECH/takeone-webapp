@@ -3,7 +3,7 @@
 namespace App\Scoreboard;
 
 use App\Models\ClubEvent;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 
 /**
  * Putting a corrected competitor back on the wall.

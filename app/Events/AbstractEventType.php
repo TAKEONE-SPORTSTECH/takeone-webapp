@@ -10,7 +10,7 @@ use App\Events\Support\EventFee;
 use App\Events\Support\Milestone;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventCategory;
+use App\Events\Models\EventCategory;
 use App\Events\Models\EventExpense;
 use App\Members\Models\User;
 use Carbon\Carbon;

@@ -3,7 +3,7 @@
 namespace App\Events\Models;
 
 use App\Models\ClubEvent;
-use App\Models\EventCategory;
+use App\Events\Models\EventCategory;
 use App\Traits\TranslatesAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

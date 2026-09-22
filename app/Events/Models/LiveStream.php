@@ -3,7 +3,7 @@
 namespace App\Events\Models;
 
 use App\Models\ClubEvent;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use App\Models\MediaFile;
 use App\Events\Support\EventAccess;
 use Illuminate\Database\Eloquent\Model;

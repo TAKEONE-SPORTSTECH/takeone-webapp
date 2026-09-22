@@ -2,7 +2,7 @@
 
 namespace App\Events\Support\Cameras;
 
-use App\Models\EventCamera;
+use App\Events\Models\EventCamera;
 
 /**
  * The realtime channel belonging to one camera.

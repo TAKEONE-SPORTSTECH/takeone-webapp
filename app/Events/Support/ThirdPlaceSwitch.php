@@ -4,8 +4,8 @@ namespace App\Events\Support;
 
 use App\Events\Contracts\AwardsDivisions;
 use App\Models\ClubEvent;
-use App\Models\EventCategory;
-use App\Models\EventMatch;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventMatch;
 use App\Sports\Combat\Engine\DrawEngine;
 use Illuminate\Support\Facades\DB;
 

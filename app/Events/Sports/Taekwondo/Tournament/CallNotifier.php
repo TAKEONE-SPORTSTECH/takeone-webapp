@@ -4,7 +4,7 @@ namespace App\Events\Sports\Taekwondo\Tournament;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use App\Events\Models\EventNotificationSent;
 use App\Members\Models\User;
 use App\Members\Models\UserNotification;

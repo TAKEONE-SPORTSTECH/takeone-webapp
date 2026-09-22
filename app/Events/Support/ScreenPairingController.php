@@ -278,7 +278,7 @@ class ScreenPairingController extends Controller
     public function claim(Request $request, string $code)
     {
         $screen = PendingScreen::pairable($code);
-        $camera = $screen ? null : \App\Models\EventCamera::pairable($code);
+        $camera = $screen ? null : \App\Events\Models\EventCamera::pairable($code);
 
         abort_unless($screen || $camera, 404);
 
@@ -295,7 +295,7 @@ class ScreenPairingController extends Controller
     public function storeClaim(Request $request, string $code)
     {
         $screen = PendingScreen::pairable($code);
-        $camera = $screen ? null : \App\Models\EventCamera::pairable($code);
+        $camera = $screen ? null : \App\Events\Models\EventCamera::pairable($code);
 
         abort_unless($screen || $camera, 404);
 
@@ -362,7 +362,7 @@ class ScreenPairingController extends Controller
      *
      * @param  array<string, mixed>  $data
      */
-    private function claimCamera(Request $request, \App\Models\EventCamera $camera, array $data)
+    private function claimCamera(Request $request, \App\Events\Models\EventCamera $camera, array $data)
     {
         $event = ClubEvent::where('uuid', $data['event'])->first();
 
@@ -427,7 +427,7 @@ class ScreenPairingController extends Controller
             ->map(fn (ClubEvent $e) => [
                 'uuid' => $e->uuid,
                 'title' => $e->title,
-                'courts' => \App\Models\EventMatch::where('event_id', $e->id)
+                'courts' => \App\Events\Models\EventMatch::where('event_id', $e->id)
                     ->whereNotNull('court')->distinct()->orderBy('court')->pluck('court')->all(),
                 'surfaces' => $forCamera ? ['camera'] : $this->router->surfaces($e),
                 // So the form can grey out a mat's control slot that is taken,
@@ -447,7 +447,7 @@ class ScreenPairingController extends Controller
      */
     private function cameraSlots(ClubEvent $event): array
     {
-        return \App\Models\EventCamera::query()
+        return \App\Events\Models\EventCamera::query()
             ->where('event_id', $event->id)
             ->whereNull('revoked_at')
             ->whereNotNull('claimed_at')
@@ -462,7 +462,7 @@ class ScreenPairingController extends Controller
     {
         $taken = [];
 
-        foreach (\App\Models\EventMatch::where('event_id', $event->id)
+        foreach (\App\Events\Models\EventMatch::where('event_id', $event->id)
             ->whereNotNull('court')->distinct()->pluck('court') as $court) {
             if ($this->router->existingControl($event, $court)) {
                 $taken[] = $court;

@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventCategory;
-use App\Models\EventMatch;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventMatch;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Illuminate\Console\Command;

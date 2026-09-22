@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Events\Models\EventMatch;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventOfficial;
+use App\Events\Models\EventFeeOption;
 use App\Events\Models\EventRunSlot;
 use App\Events\Models\EventDocument;
 use App\Events\Models\EventChecklistItem;

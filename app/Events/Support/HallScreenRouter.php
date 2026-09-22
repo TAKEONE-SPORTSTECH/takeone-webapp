@@ -74,7 +74,7 @@ class HallScreenRouter
         // the organiser pressed: a code either belongs to a waiting screen or
         // to a waiting camera, and no phone can be talked into being a
         // scoreboard by pairing it into one.
-        if ($camera = \App\Models\EventCamera::pairable((string) $request->input('code'))) {
+        if ($camera = \App\Events\Models\EventCamera::pairable((string) $request->input('code'))) {
             return $this->pairCamera($request, $event, $camera);
         }
 
@@ -280,7 +280,7 @@ class HallScreenRouter
      * records, it cannot score, so unlike a scoring table it does not also
      * require the right to score.
      */
-    private function pairCamera(Request $request, ClubEvent $event, \App\Models\EventCamera $camera)
+    private function pairCamera(Request $request, ClubEvent $event, \App\Events\Models\EventCamera $camera)
     {
         abort_unless(app(EventAccess::class)->canManage($event, $request->user()), 403);
 

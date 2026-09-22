@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEvent;
-use App\Models\EventCategory;
+use App\Events\Models\EventCategory;
 
 /**
  * The organiser's list of divisions, cut into the sections their headings mean.

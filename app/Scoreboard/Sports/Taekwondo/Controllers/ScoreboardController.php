@@ -9,7 +9,7 @@ use App\Events\Support\EventAccess;
 use App\Http\Controllers\Controller;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use App\Traits\StoresBase64Images;
 use App\Events\Support\Cameras\MatCameraController;
 use Illuminate\Http\JsonResponse;

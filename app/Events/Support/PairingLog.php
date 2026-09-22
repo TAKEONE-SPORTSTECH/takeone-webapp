@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEvent;
-use App\Models\EventCamera;
+use App\Events\Models\EventCamera;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 

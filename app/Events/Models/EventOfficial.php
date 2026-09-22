@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Events\Models;
 
+use App\Models\ClubEvent;
 use App\Events\Models\EventExpense;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

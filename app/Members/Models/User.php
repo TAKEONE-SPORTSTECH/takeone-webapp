@@ -31,7 +31,7 @@ use App\Models\ClubEventRegistration;
 use App\Models\ClubMemberSubscription;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubTimelinePostLike;
-use App\Models\EventOfficial;
+use App\Events\Models\EventOfficial;
 use App\Trainers\Models\InstructorReview;
 use App\Models\Invoice;
 

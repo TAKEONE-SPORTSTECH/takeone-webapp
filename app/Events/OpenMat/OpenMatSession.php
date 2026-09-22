@@ -4,9 +4,9 @@ namespace App\Events\OpenMat;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventCategory;
-use App\Models\EventMatch;
-use App\Models\EventOfficial;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventMatch;
+use App\Events\Models\EventOfficial;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Members\Models\UserBlock;
@@ -465,7 +465,7 @@ class OpenMatSession
      */
     public function hasLiveBout(ClubEvent $event, string $court): bool
     {
-        return \App\Models\EventMatch::where('event_id', $event->id)
+        return \App\Events\Models\EventMatch::where('event_id', $event->id)
             ->where('court', $court)
             ->where('status', 'live')
             ->whereNull('winner')

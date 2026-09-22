@@ -2,7 +2,7 @@
 
 namespace App\Events\Support;
 
-use App\Models\EventCategory;
+use App\Events\Models\EventCategory;
 
 /**
  * The answer an event-type package gives when asked "may this member enter?".

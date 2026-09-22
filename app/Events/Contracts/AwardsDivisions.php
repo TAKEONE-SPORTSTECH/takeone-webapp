@@ -2,7 +2,7 @@
 
 namespace App\Events\Contracts;
 
-use App\Models\EventCategory;
+use App\Events\Models\EventCategory;
 
 /**
  * An event type that can be asked to (re-)award one of its divisions.

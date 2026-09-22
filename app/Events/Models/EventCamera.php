@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Events\Models;
 
+use App\Models\ClubEvent;
 use App\Events\Models\EventCameraClip;
 use App\Events\Models\LiveStream;
 use Illuminate\Database\Eloquent\Model;

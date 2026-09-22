@@ -8,7 +8,7 @@ use App\Events\Support\CompetitorPhoto;
 use App\Events\Support\EntryClub;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use Illuminate\Support\Facades\Lang;
 
 /**

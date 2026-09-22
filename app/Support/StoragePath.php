@@ -6,7 +6,7 @@ use App\Models\Business;
 use App\Challenges\Models\Challenge;
 use App\Models\ClubEvent;
 use App\Challenges\Models\Duel;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 

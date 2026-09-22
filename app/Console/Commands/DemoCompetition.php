@@ -6,7 +6,7 @@ use App\Events\EventTypeRegistry;
 use App\Clubs\Models\ClubAffiliation;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventCategory;
+use App\Events\Models\EventCategory;
 use App\Members\Models\HealthRecord;
 use App\Members\Models\MemberCertification;
 use App\Members\Models\SkillAcquisition;
@@ -201,10 +201,10 @@ class DemoCompetition extends Command
         ]);
         $this->m->track('users', $official->id);
 
-        $jury = \App\Models\EventOfficial::create([
+        $jury = \App\Events\Models\EventOfficial::create([
             'event_id' => $event->id,
             'user_id' => $official->id,
-            'role' => \App\Models\EventOfficial::ROLE_JURY,
+            'role' => \App\Events\Models\EventOfficial::ROLE_JURY,
             'assigned_by' => $this->admin->id,
         ]);
         $this->m->track('event_officials', $jury->id);

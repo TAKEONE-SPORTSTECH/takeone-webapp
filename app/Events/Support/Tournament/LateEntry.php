@@ -4,8 +4,8 @@ namespace App\Events\Support\Tournament;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventCategory;
-use App\Models\EventMatch;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventMatch;
 use App\Sports\Combat\Engine\DrawEngine;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;

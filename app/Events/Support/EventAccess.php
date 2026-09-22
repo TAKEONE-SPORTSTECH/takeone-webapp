@@ -4,7 +4,7 @@ namespace App\Events\Support;
 
 use App\Support\Cldr;
 use App\Models\ClubEvent;
-use App\Models\EventOfficial;
+use App\Events\Models\EventOfficial;
 use App\Members\Models\User;
 
 /**

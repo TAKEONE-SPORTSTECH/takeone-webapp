@@ -216,7 +216,7 @@ class MediaStreamController extends Controller
      */
     private function competedInFilmedBout(MediaFile $file, \App\Members\Models\User $user): bool
     {
-        $matchId = \App\Models\EventRecording::where('media_file_id', $file->id)
+        $matchId = \App\Events\Models\EventRecording::where('media_file_id', $file->id)
             ->whereNotNull('match_id')
             ->value('match_id')
             ?? $file->owner?->match_id;
@@ -225,7 +225,7 @@ class MediaStreamController extends Controller
             return false;
         }
 
-        $match = \App\Models\EventMatch::find($matchId);
+        $match = \App\Events\Models\EventMatch::find($matchId);
 
         if ($match === null) {
             return false;

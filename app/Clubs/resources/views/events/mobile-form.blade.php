@@ -13,7 +13,7 @@
      */
     $feeOptionEventIds = \App\Models\ClubEvent::where('tenant_id', $club->id)->pluck('id');
 
-    $feeOptionsByEvent = \App\Models\EventFeeOption::query()
+    $feeOptionsByEvent = \App\Events\Models\EventFeeOption::query()
         ->whereIn('event_id', $feeOptionEventIds)
         ->forRole('participant')
         ->active()

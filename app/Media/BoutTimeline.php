@@ -2,8 +2,8 @@
 
 namespace App\Media;
 
-use App\Models\EventMatch;
-use App\Models\EventRecording;
+use App\Events\Models\EventMatch;
+use App\Events\Models\EventRecording;
 use App\Sports\Combat\SportRegistry;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;

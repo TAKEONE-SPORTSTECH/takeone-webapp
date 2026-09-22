@@ -5,7 +5,7 @@ namespace App\Events\Contracts;
 use App\Events\Support\EnrolmentDecision;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventCategory;
+use App\Events\Models\EventCategory;
 use App\Members\Models\User;
 
 /**

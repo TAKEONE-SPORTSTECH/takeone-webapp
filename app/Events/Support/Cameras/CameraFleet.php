@@ -3,7 +3,7 @@
 namespace App\Events\Support\Cameras;
 
 use App\Models\ClubEvent;
-use App\Models\EventCamera;
+use App\Events\Models\EventCamera;
 use Illuminate\Support\Collection;
 
 /**
@@ -98,7 +98,7 @@ class CameraFleet
      */
     public static function console(ClubEvent $event): ?array
     {
-        $mats = \App\Models\EventMatch::where('event_id', $event->id)
+        $mats = \App\Events\Models\EventMatch::where('event_id', $event->id)
             ->whereNotNull('court')->distinct()->orderBy('court')->pluck('court')->values()->all();
 
         $cameras = EventCamera::query()

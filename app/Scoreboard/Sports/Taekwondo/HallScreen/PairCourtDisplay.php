@@ -3,7 +3,7 @@
 namespace App\Scoreboard\Sports\Taekwondo\HallScreen;
 
 use App\Models\ClubEvent;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use Illuminate\Console\Command;
 
 /**

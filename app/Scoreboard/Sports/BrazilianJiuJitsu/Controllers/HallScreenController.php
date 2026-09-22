@@ -544,7 +544,7 @@ class HallScreenController extends Controller
                 // The mats this event actually runs on, taken from its own draw
                 // — so the organiser picks from reality instead of typing a name
                 // that will never match a match.
-                'courts' => \App\Models\EventMatch::where('event_id', $e->id)
+                'courts' => \App\Events\Models\EventMatch::where('event_id', $e->id)
                     ->whereNotNull('court')->distinct()->orderBy('court')->pluck('court')->all(),
             ])
             ->values();

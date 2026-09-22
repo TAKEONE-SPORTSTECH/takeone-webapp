@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Events\Support\Clubs\ClubPromotion;
 use App\Models\ClubEvent;
-use App\Models\EventClub;
+use App\Events\Models\EventClub;
 use Illuminate\Console\Command;
 
 /**

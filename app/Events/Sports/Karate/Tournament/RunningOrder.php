@@ -4,7 +4,7 @@ namespace App\Events\Sports\Karate\Tournament;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use App\Sports\Combat\Engine\Scheduler;
 use Carbon\Carbon;
 

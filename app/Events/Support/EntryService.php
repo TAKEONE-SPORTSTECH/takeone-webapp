@@ -6,7 +6,7 @@ use App\Support\Cldr;
 use App\Events\EventTypeRegistry;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventParticipantBan;
+use App\Events\Models\EventParticipantBan;
 use App\Members\Models\SkillAcquisition;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
@@ -1226,7 +1226,7 @@ class EntryService
      */
     private function hasFought(ClubEvent $event, ClubEventRegistration $registration): bool
     {
-        return \App\Models\EventMatch::where('event_id', $event->id)
+        return \App\Events\Models\EventMatch::where('event_id', $event->id)
             ->where(fn ($q) => $q
                 ->where('a_competitor_id', $registration->id)
                 ->orWhere('b_competitor_id', $registration->id))

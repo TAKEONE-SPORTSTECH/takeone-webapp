@@ -9,7 +9,7 @@ use App\Members\Models\User;
 use App\Members\Models\UserNotification;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventClub;
+use App\Events\Models\EventClub;
 use App\Support\StoragePath;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\JsonResponse;

@@ -11,8 +11,8 @@ use App\Events\Support\Milestone;
 use App\Events\Support\SyncsDivisions;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventCategory;
-use App\Models\EventMatch;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventMatch;
 use App\Members\Models\User;
 use App\Sports\Combat\Engine\DrawEngine;
 use App\Sports\Combat\Engine\Results;
@@ -1086,7 +1086,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
      * being switched on or off) and cannot construct this package's own
      * Advancement to settle the consequence. This is the door it knocks on.
      */
-    public function awardDivision(\App\Models\EventCategory $category): array
+    public function awardDivision(\App\Events\Models\EventCategory $category): array
     {
         return $this->advancement()->awardIfComplete($category);
     }

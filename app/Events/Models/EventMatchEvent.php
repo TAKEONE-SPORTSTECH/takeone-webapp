@@ -3,7 +3,7 @@
 namespace App\Events\Models;
 
 use App\Models\ClubEvent;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

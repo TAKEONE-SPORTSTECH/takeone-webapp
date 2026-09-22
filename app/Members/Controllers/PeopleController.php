@@ -8,7 +8,7 @@ use App\Events\Support\EntryPhoto;
 use App\Models\ClubEventRegistration;
 use App\Models\ClubMemberSubscription;
 use App\Challenges\Models\Duel;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use App\Members\Models\User;
 use App\Services\PeopleRecommendationService;
 use Illuminate\Http\Request;
