@@ -161,6 +161,28 @@ class RouteIntegrityTest extends TestCase
      * `assertCanManage` has already admitted. One route added on purpose.
      */
     /*
+     * 767 since 2026-09-22, +16, all of them named and all from the run-day
+     * work that was sitting uncommitted on brackets-fix until it was
+     * checkpointed in 89518117. Reconciled by diffing the route files across
+     * that commit rather than by reading the number off the tree: 22 name(…)
+     * lines were added, 4 of which rewrite an existing name
+     * (events.divisions.members and the three events.verify.*), and two more
+     * — events.bans and events.person.divisions — were already counted in the
+     * notes below. 22 - 4 - 2 = 16.
+     *
+     *   me.events.rehearsal.begin / .end            a dry run of the day
+     *   me.events.bracket.admit / .candidates       late entry into a cut draw
+     *   me.events.bracket.third-place               the bronze switch
+     *   me.events.danger-code                       the destructive-action gate
+     *   me.events.run-order{,.data,.store,.reorder,.update,.destroy}   (6)
+     *   me.events.order{,.page,.move,.auto}                            (4)
+     *
+     * ⚠️ Those last two groups are the SAME FEATURE twice — the two rival
+     * running-order boards recorded in Documentation/MAP.md and on the
+     * house-cleaning register. Ten of these sixteen routes serve one job, and
+     * this tripwire is being moved to accept that rather than to bless it.
+     * When the duplicate goes, this number drops and the note goes with it.
+     *
      * 751 since 2026-09-16: `me.events.person.divisions`
      * (GET me/events/{event}/people/{uuid}/divisions) — every group in the
      * event as it stands for ONE athlete, with compatibility already judged.
@@ -173,7 +195,7 @@ class RouteIntegrityTest extends TestCase
      * on the public entry list, where the public key is the only identifier
      * present. One route added on purpose.
      */
-    private const EXPECTED_ROUTE_COUNT = 751;
+    private const EXPECTED_ROUTE_COUNT = 767;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -407,6 +429,10 @@ class RouteIntegrityTest extends TestCase
         // lost a name in the module moves.
         // 739 with `me.events.person.divisions` on 2026-09-16 — the participant
         // card's enrolment sheet; see the block above EXPECTED_ROUTE_COUNT.
-        $this->assertCount(739, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 755 on 2026-09-22: the same +16 as EXPECTED_ROUTE_COUNT, since every
+        // route the run-day work added carries a name. Twelve routes remain
+        // unnamed, the same twelve as before, so nothing lost a name in the
+        // model moves either.
+        $this->assertCount(755, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

@@ -46,7 +46,10 @@ class KarateScoringSafetyTest extends TestCase
         $this->assertSame([
             'load', 'start', 'pause', 'point', 'undo_point', 'penalty', 'senshu',
             'time', 'reset', 'finish', 'clear', 'commit', 'dismiss', 'celebrate',
-            'resync', 'board', 'intro', 'duration', 'corner', 'meta', 'rules',
+            // 'refresh' joined the vocabulary with the console's own re-read
+            // (5626c24a) — it re-reads both corners from the entries and
+            // touches nothing else, which is why it is not in NEEDS_BOUT.
+            'resync', 'refresh', 'board', 'intro', 'duration', 'corner', 'meta', 'rules',
         ], Scoring::COMMANDS);
     }
 

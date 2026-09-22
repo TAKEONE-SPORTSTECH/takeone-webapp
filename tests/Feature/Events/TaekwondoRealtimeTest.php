@@ -168,7 +168,10 @@ class TaekwondoRealtimeTest extends TestCase
         $spy = $this->spyOnBroker();
         [$owner, $event] = $this->scenario();
 
-        $this->actingAs($owner)->get("/me/events/{$event->uuid}/brackets")->assertOk();
+        // /brackets redirects to /brackets/manage — follow it, or this asserts
+        // that a redirect does not broadcast, which was never in doubt.
+        $this->actingAs($owner)->followingRedirects()
+            ->get("/me/events/{$event->uuid}/brackets")->assertOk();
 
         $this->assertSame([], $spy->sent, 'a page view must never spam the championship');
     }

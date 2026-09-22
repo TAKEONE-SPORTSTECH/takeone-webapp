@@ -114,7 +114,10 @@ class BrandedEventSurfaceTest extends TestCase
         $event = $this->event($owner, $club);
 
         foreach (['', '/manage', '/brackets', '/gallery'] as $tail) {
+            // /brackets is a redirect to /brackets/manage now; what is being
+            // asserted is what the RENDERED page links to, so follow it.
             $html = $this->actingAs($owner->fresh())
+                ->followingRedirects()
                 ->get("/me/events/{$event->uuid}{$tail}")
                 ->assertOk()
                 ->getContent();

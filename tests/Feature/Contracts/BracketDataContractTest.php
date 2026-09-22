@@ -50,13 +50,14 @@ class BracketDataContractTest extends ContractTestCase
                     'podium',
                 ],
             ],
+            'third_place_match',
             'can_arrange',
             'locked',
             'can_manage',
         ]);
 
         $this->assertSame(
-            ['divisions', 'can_arrange', 'locked', 'can_manage'],
+            ['divisions', 'third_place_match', 'can_arrange', 'locked', 'can_manage'],
             array_keys($response->json()),
         );
         $this->assertIsBool($response->json('can_arrange'));
@@ -68,6 +69,13 @@ class BracketDataContractTest extends ContractTestCase
            and the organiser here holds it. */
         $this->assertIsBool($response->json('can_manage'));
         $this->assertTrue($response->json('can_manage'));
+        /* `third_place_match` joined the payload with the bronze switch: a
+           combat sport awards either two bronzes or one decided by a play-off,
+           and the board has to know which before it can draw the podium. It is
+           the event's own setting (App\Events\Support\BronzeRule), not the
+           sport's default, which is why it travels in the payload rather than
+           being inferred by the client. */
+        $this->assertIsBool($response->json('third_place_match'));
 
         $division = $response->json('divisions.0');
         $this->assertSame('Senior Men -58 kg', $division['name']);

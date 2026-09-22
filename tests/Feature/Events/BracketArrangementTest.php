@@ -381,7 +381,11 @@ class BracketArrangementTest extends TestCase
         ]);
 
         // Viewing the bracket is what brings derived state up to date.
-        $this->actingAs($this->organiser)->get("/me/events/{$event->uuid}/brackets")->assertOk();
+        // /brackets is a redirect to /brackets/manage now — the work happens at
+        // the destination, so the redirect has to be followed for the visit to
+        // mean anything.
+        $this->actingAs($this->organiser)->followingRedirects()
+            ->get("/me/events/{$event->uuid}/brackets")->assertOk();
 
         $this->assertSame('manual', $category->fresh()->draw_state);
         $this->assertNull($bout->fresh()->a_name, 'the emptied slot stayed empty');
@@ -406,7 +410,8 @@ class BracketArrangementTest extends TestCase
         $withdrawnId = $second->a_competitor_id;
         ClubEventRegistration::whereKey($withdrawnId)->delete();
 
-        $this->actingAs($this->organiser)->get("/me/events/{$event->uuid}/brackets")->assertOk();
+        $this->actingAs($this->organiser)->followingRedirects()
+            ->get("/me/events/{$event->uuid}/brackets")->assertOk();
 
         $this->assertNull($second->fresh()->a_competitor_id, 'the withdrawn competitor left their slot');
     }

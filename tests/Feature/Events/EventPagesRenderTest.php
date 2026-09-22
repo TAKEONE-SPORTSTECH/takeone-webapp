@@ -123,9 +123,25 @@ class EventPagesRenderTest extends TestCase
         $event = $this->event($owner, $club);
         EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
 
-        $this->actingAs($this->member($club))->get("/me/events/{$event->uuid}/brackets")
+        // /brackets redirects to /brackets/manage, which is where the board
+        // lives now; the contract is that the DRAW renders, not which of the
+        // two addresses served it.
+        $member = $this->member($club);
+
+        $this->actingAs($member)->followingRedirects()
+            ->get("/me/events/{$event->uuid}/brackets")
             ->assertOk()
-            ->assertSee('Senior Men -58 kg');
+            ->assertSee('BracketBoard', false);
+
+        /* The division NAME is no longer in the server-rendered page. The
+           stage boots with `divisions: []` and fills the menu from the data
+           feed, so asserting the name against the HTML would pass only while
+           the board happened to be rendered server-side. Ask the door the
+           page actually reads through. */
+        $this->actingAs($member)
+            ->getJson("/me/events/{$event->uuid}/brackets/data")
+            ->assertOk()
+            ->assertJsonFragment(['name' => 'Senior Men -58 kg']);
     }
 
     /**
@@ -153,9 +169,16 @@ class EventPagesRenderTest extends TestCase
            every type that has not opted in. */
         config(['events.branded_surface' => false]);
 
-        $desktop = $this->actingAs($member)->get("/me/events/{$event->uuid}/brackets")->assertOk();
-        $desktop->assertSee('BracketBoard.mount', false);
-        $desktop->assertSee('event-bracket-viewport', false);
+        $desktop = $this->actingAs($member)->followingRedirects()
+            ->get("/me/events/{$event->uuid}/brackets")->assertOk();
+        /* The board is <x-tournament-bracket> now, and it names its own
+           viewport `{$id}-viewport` rather than the fixed
+           `event-bracket-viewport` this used to look for — that id does not
+           exist anywhere in the tree any more. The runtime it mounts through
+           is still window.BracketBoard, which is the part of the contract
+           that actually matters: one renderer for both screens. */
+        $desktop->assertSee('BracketBoard', false);
+        $desktop->assertSee('-viewport', false);
 
         // Mobile: no board of its own, but a way through to the full-screen one.
         $mobile = $this->actingAs($member)
