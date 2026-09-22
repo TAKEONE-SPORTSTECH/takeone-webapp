@@ -34,6 +34,7 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->assertRealtimeIsSilenced();
+        $this->isolateStorageFromRealUploads();
 
         /*
          * ⚠️ The interface-string loader memoises what it has read, in a STATIC
@@ -44,6 +45,39 @@ abstract class TestCase extends BaseTestCase
          * correction leaks into the next, which is exactly how this was found.
          */
         \App\Translation\Translations::flushInterfaceCache();
+    }
+
+    /**
+     * SAFETY: never let the suite write into the real upload folders.
+     *
+     * `local` and `public` both root at storage_path('app') — the ONE storage
+     * root the platform serves real member, club and event files from. Nothing
+     * pointed the suite somewhere else, so every upload test wrote into it for
+     * real: a run left 24 directories under storage/app/members/<uuid> for
+     * users that exist only in the in-memory database.
+     *
+     * Two consequences, one merely untidy and one not:
+     *
+     *   - those directories are owned by whoever ran phpunit, and the nightly
+     *     `takeone:backup` runs as www-data, so tar could not read them and the
+     *     UPLOADS ARCHIVE FAILED. Found 2026-09-22: the backup had been
+     *     reporting failure while the database half succeeded.
+     *   - a test user's uuid is generated, not reserved. Nothing stops one
+     *     colliding with a real member's, and a test that writes a profile
+     *     photo would then write it into that person's folder.
+     *
+     * Storage::fake() re-points each disk at storage/framework/testing/disks
+     * and empties it first, so tests get the same API and none of the reach.
+     *
+     * ⚠️ NOT covered: the two places that build a path with storage_path()
+     * instead of the Storage facade — EventCameraClip::44 and
+     * CameraController::455, both writing storage/app/camera-uploads. A test
+     * exercising a camera clip upload still touches the real folder.
+     */
+    private function isolateStorageFromRealUploads(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        \Illuminate\Support\Facades\Storage::fake('public');
     }
 
     private function assertSafeTestDatabase(): void
