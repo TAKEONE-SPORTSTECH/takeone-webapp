@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Media\MediaVaults;
-use App\Models\MediaFile;
-use App\Models\MediaVault;
+use App\Media\Models\MediaFile;
+use App\Media\Models\MediaVault;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;

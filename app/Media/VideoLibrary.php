@@ -8,11 +8,11 @@ use App\Challenges\Models\DuelMedia;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventRecording;
-use App\Models\MediaFile;
+use App\Media\Models\MediaFile;
 use App\Support\BoutStage;
 use App\Members\Models\User;
 use Illuminate\Support\Collection;
-use App\Models\MediaFileSubject;
+use App\Media\Models\MediaFileSubject;
 
 /**
  * Everything filmed, arranged for a person or for an event.

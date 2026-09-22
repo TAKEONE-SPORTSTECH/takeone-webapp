@@ -75,7 +75,7 @@ class MorphMap
             'user_post' => \App\Members\Models\UserPost::class,
 
             // ---- Media -----------------------------------------------------
-            'media_file' => \App\Models\MediaFile::class,
+            'media_file' => \App\Media\Models\MediaFile::class,
 
             /*
              * The owner of a media file — what produced the bytes. This alias

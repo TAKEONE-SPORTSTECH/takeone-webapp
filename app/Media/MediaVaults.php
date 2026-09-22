@@ -4,8 +4,8 @@ namespace App\Media;
 
 use App\Media\Contracts\VaultDriver;
 use App\Media\Drivers\LocalDriver;
-use App\Models\MediaFile;
-use App\Models\MediaVault;
+use App\Media\Models\MediaFile;
+use App\Media\Models\MediaVault;
 use App\Support\StoragePath;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;

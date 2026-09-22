@@ -540,11 +540,11 @@ class McpServerTest extends TestCase
         $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
         $match->forceFill(['a_corner' => 'red', 'b_corner' => 'blue', 'court' => '1'])->save();
 
-        $file = \App\Models\MediaFile::create([
+        $file = \App\Media\Models\MediaFile::create([
             'kind' => 'clip', 'rel_path' => 'events/x/matches/1/clips/a.mp4',
             'hls_rel_path' => 'cache/hls/a', 'original_name' => 'bout.mp4',
             'mime' => 'video/mp4', 'bytes' => 1024, 'duration_seconds' => 180,
-            'width' => 1920, 'height' => 1080, 'status' => \App\Models\MediaFile::STATUS_READY,
+            'width' => 1920, 'height' => 1080, 'status' => \App\Media\Models\MediaFile::STATUS_READY,
             'meta' => ['event_id' => $event->id], 'created_by' => $event->created_by,
         ]);
 

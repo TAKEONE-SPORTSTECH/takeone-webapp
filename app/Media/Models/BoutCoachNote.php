@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Media\Models;
 
 use App\Events\Models\ClubEvent;
 use App\Events\Models\EventMatch;

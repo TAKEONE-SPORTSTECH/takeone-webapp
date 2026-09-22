@@ -3,7 +3,7 @@
 namespace App\Media;
 
 use App\Jobs\TranscodeMedia;
-use App\Models\MediaFile;
+use App\Media\Models\MediaFile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;

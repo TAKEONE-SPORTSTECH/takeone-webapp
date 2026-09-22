@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Media\MediaVaults;
-use App\Models\MediaFile;
+use App\Media\Models\MediaFile;
 use Illuminate\Console\Command;
 
 /**

@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Jobs\MigrateMediaToVault;
 use App\Media\MediaVaults;
-use App\Models\MediaFile;
-use App\Models\MediaVault;
+use App\Media\Models\MediaFile;
+use App\Media\Models\MediaVault;
 use Illuminate\Console\Command;
 
 /**

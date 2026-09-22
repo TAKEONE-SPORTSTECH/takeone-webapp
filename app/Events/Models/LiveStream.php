@@ -4,7 +4,7 @@ namespace App\Events\Models;
 
 use App\Events\Models\ClubEvent;
 use App\Events\Models\EventMatch;
-use App\Models\MediaFile;
+use App\Media\Models\MediaFile;
 use App\Events\Support\EventAccess;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

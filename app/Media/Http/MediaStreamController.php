@@ -6,7 +6,7 @@ use App\Events\Support\EventAccess;
 use App\Http\Controllers\Controller;
 use App\Media\MediaVaults;
 use App\Events\Models\ClubEvent;
-use App\Models\MediaFile;
+use App\Media\Models\MediaFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;

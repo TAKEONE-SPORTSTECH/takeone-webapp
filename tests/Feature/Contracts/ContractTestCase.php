@@ -9,7 +9,7 @@ use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventRecording;
 use App\Members\Models\HealthRecord;
-use App\Models\MediaFile;
+use App\Media\Models\MediaFile;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Illuminate\Support\Facades\DB;

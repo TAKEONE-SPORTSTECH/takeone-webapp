@@ -8,12 +8,12 @@ use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCameraClip;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventRecording;
-use App\Models\MediaFile;
+use App\Media\Models\MediaFile;
 use App\Support\StoragePath;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
-use App\Models\MediaFileSubject;
+use App\Media\Models\MediaFileSubject;
 use App\Events\Models\ClubEventRegistration;
 
 /**

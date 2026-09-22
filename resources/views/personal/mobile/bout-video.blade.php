@@ -7320,7 +7320,7 @@ window.addEventListener('load', window._vdbScheduleOverflowCheck);
     
     <div class="ytc-new-form">
         <span class="ytc-avatar-link">
-            <span class="ytc-avatar" style="background: {{ \App\Models\BoutComment::tint(auth()->user()->full_name ?: auth()->user()->name) }}; display:grid; place-items:center; font-weight:700; font-size:13px; color:#fff;">{{ \App\Models\BoutComment::initials(auth()->user()->full_name ?: auth()->user()->name) }}</span>
+            <span class="ytc-avatar" style="background: {{ \App\Media\Models\BoutComment::tint(auth()->user()->full_name ?: auth()->user()->name) }}; display:grid; place-items:center; font-weight:700; font-size:13px; color:#fff;">{{ \App\Media\Models\BoutComment::initials(auth()->user()->full_name ?: auth()->user()->name) }}</span>
         </span>
         <div class="ytc-input-wrap">
             <textarea class="ytc-textarea" id="ytcTextarea" rows="1" maxlength="1000"
@@ -8500,7 +8500,7 @@ window._comment = {
                                      data-mrv-rev="{{ $r['id'] }}"
                                      @if ($r['end_time_seconds'] !== null) data-mrv-end="{{ $r['end_time_seconds'] }}" @endif>
                                     <div class="mrv-note-top">
-                                        <span class="mrv-ava">{{ \App\Models\BoutComment::initials($r['coach_name']) }}</span>
+                                        <span class="mrv-ava">{{ \App\Media\Models\BoutComment::initials($r['coach_name']) }}</span>
                                         <span class="mrv-who">
                                             <span class="mrv-coach">{{ $r['coach_name'] }}</span>
                                             <button type="button" class="mrv-at" data-mrv-seek="{{ $r['start_time_seconds'] }}">{{ $clock($r['start_time_seconds']) }}</button>

@@ -3,8 +3,8 @@
 namespace Tests\Feature\Admin;
 
 use App\Jobs\MigrateMediaToVault;
-use App\Models\MediaFile;
-use App\Models\MediaVault;
+use App\Media\Models\MediaFile;
+use App\Media\Models\MediaVault;
 use App\Members\Models\User;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;

@@ -5,7 +5,7 @@ namespace App\Mcp\Tools;
 use App\Events\Support\EventAccess;
 use App\Media\BoutFilm;
 use App\Media\BoutTimeline;
-use App\Models\BoutCoachNote;
+use App\Media\Models\BoutCoachNote;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventMatch;

@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Media\Ffmpeg;
 use App\Media\MediaVaults;
-use App\Models\MediaFile;
+use App\Media\Models\MediaFile;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;

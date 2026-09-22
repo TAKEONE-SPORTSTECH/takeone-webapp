@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Media\Models;
 
+use App\Media\Models\MediaFile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Members\Models\User;

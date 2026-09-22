@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Media\Models;
 
+use App\Media\Models\MediaFile;
 use App\Media\Contracts\VaultDriver;
 use App\Media\Drivers\MountDriver;
 use App\Media\Drivers\SmbDriver;

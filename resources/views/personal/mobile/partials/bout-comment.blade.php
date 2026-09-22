@@ -56,7 +56,7 @@
             <div class="ytc-reply-form" id="replyForm{{ $c['key'] }}" style="display:none">
                 <span class="ytc-avatar-link">
                     <span class="ytc-avatar ytc-avatar-sm"
-                          style="background: {{ \App\Models\BoutComment::tint(auth()->user()->full_name ?: auth()->user()->name) }}; display:grid; place-items:center; font-weight:700; font-size:11px; color:#fff;">{{ \App\Models\BoutComment::initials(auth()->user()->full_name ?: auth()->user()->name) }}</span>
+                          style="background: {{ \App\Media\Models\BoutComment::tint(auth()->user()->full_name ?: auth()->user()->name) }}; display:grid; place-items:center; font-weight:700; font-size:11px; color:#fff;">{{ \App\Media\Models\BoutComment::initials(auth()->user()->full_name ?: auth()->user()->name) }}</span>
                 </span>
                 <div class="ytc-input-wrap">
                     <textarea class="ytc-textarea ytc-reply-textarea" id="replyBody{{ $c['key'] }}"

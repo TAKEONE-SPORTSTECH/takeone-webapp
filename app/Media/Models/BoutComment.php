@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Media\Models;
 
+use App\Media\Models\BoutCommentLike;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
