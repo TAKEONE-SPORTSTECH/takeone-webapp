@@ -4,10 +4,10 @@ namespace Tests\Feature\Devices;
 
 use App\Jobs\IngestClipMedia;
 use App\Models\ClubEvent;
-use App\Models\EventCamera;
-use App\Models\EventCameraClip;
-use App\Models\EventCategory;
-use App\Models\EventMatch;
+use App\Events\Models\EventCamera;
+use App\Events\Models\EventCameraClip;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventMatch;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Illuminate\Support\Facades\Queue;

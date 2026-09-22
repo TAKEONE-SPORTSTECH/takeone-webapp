@@ -4,8 +4,8 @@ namespace Tests\Feature\Characterization;
 
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventChecklistItem;
-use App\Models\EventParticipantBan;
+use App\Events\Models\EventChecklistItem;
+use App\Events\Models\EventParticipantBan;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Database\Factories\ClubEventRegistrationFactory;
@@ -246,7 +246,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
         [$category] = $this->drawnDivision($event, $club);
 
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
 
         $this->asDesktop($organiser)
             ->get(route('me.events.bracket', ['event' => $event->uuid, 'bout' => $match->match_no]))
@@ -289,7 +289,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
     {
         [$organiser, $club, $event] = $this->scenario();
         $this->drawnDivision($event, $club);
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
 
         $desktop = $this->asDesktop($organiser)
             ->get(route('me.events.bout', ['event' => $event->uuid, 'matchNo' => $match->match_no]));
@@ -342,7 +342,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
         [$category] = $this->drawnDivision($event, $club);
 
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
 
         $noBirthdate = $match->competitorA->user;
         $noBirthdate->forceFill(['birthdate' => null, 'is_discoverable' => true])->save();
@@ -364,7 +364,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
         $this->drawnDivision($event, $club);
 
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
 
         $minor = $match->competitorA->user;
         $minor->forceFill([
@@ -388,7 +388,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
         $this->drawnDivision($event, $club);
 
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
         $match->competitorA->user->forceFill(['is_discoverable' => false])->save();
 
         $bout = $this->asDesktop($organiser)
@@ -404,7 +404,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
         $this->drawnDivision($event, $club);
 
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
         $match->competitorA->user->forceFill([
             'profile_picture' => 'members/x/profile/a.jpg',
             'profile_picture_is_public' => false,
@@ -431,7 +431,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
         $this->drawnDivision($event, $club);
 
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
         $match->forceFill(['a_corner' => null, 'b_corner' => null])->save();
 
         $bout = $this->asDesktop($organiser)
@@ -448,7 +448,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
         $this->drawnDivision($event, $club);
 
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
 
         $bout = $this->asDesktop($organiser)
             ->get(route('me.events.bout', ['event' => $event->uuid, 'matchNo' => $match->match_no]))
@@ -473,14 +473,14 @@ class PersonalEventCharacterizationTest extends ContractTestCase
      * profile — they never pick it. So the fixture asks the sport for the name
      * it will classify this athlete into rather than hard-coding a string.
      */
-    private function divisionFor(ClubEvent $event, string $gender, int $age, float $weight): \App\Models\EventCategory
+    private function divisionFor(ClubEvent $event, string $gender, int $age, float $weight): \App\Events\Models\EventCategory
     {
         $sport = app(\App\Sports\Combat\SportRegistry::class)->get($event->sport);
         $class = $sport->classify($gender, $age, $weight);
 
         $this->assertNotNull($class, 'the sport must classify this athlete for the fixture to be meaningful');
 
-        return \App\Models\EventCategory::create([
+        return \App\Events\Models\EventCategory::create([
             'event_id' => $event->id,
             'name' => $sport->divisionName($class['age_group'], $gender, $class['category']),
             'sort_order' => 1,
@@ -606,7 +606,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
     {
         [, $club, $event] = $this->scenario();
         $other = $this->championship($club, $event->createdBy ?? $this->createUser(), ['title' => 'Other']);
-        $foreign = \App\Models\EventCategory::create([
+        $foreign = \App\Events\Models\EventCategory::create([
             'event_id' => $other->id, 'name' => 'Foreign division', 'sort_order' => 1,
         ]);
 
@@ -927,7 +927,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
 
         // Four entrants in one division, but NO draw yet.
-        $category = \App\Models\EventCategory::create([
+        $category = \App\Events\Models\EventCategory::create([
             'event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1,
         ]);
 
@@ -952,7 +952,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         ]);
 
         // OUTPUT, not implementation: 4 entrants → a 4-slot knockout = 3 bouts.
-        $this->assertSame(3, \App\Models\EventMatch::where('event_id', $event->id)->count());
+        $this->assertSame(3, \App\Events\Models\EventMatch::where('event_id', $event->id)->count());
     }
 
     public function test_perform_action_is_denied_to_a_non_organiser(): void
@@ -990,7 +990,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
     {
         [$organiser, $club, $event] = $this->scenario();
         $this->drawnDivision($event, $club);
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
 
         $this->actingAs($organiser)
             ->postJson(route('me.events.outcome', ['event' => $event->uuid, 'unit' => $match->id]), [
@@ -1007,7 +1007,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
     {
         [, $club, $event] = $this->scenario();
         $this->drawnDivision($event, $club);
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
         $member = $this->clubMember($club);
 
         $this->actingAs($member)

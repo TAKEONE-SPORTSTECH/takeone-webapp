@@ -3,9 +3,9 @@
 namespace Tests\Feature\Events;
 
 use App\Models\ClubEvent;
-use App\Models\EventExpense;
-use App\Models\EventOfficial;
-use App\Models\EventParticipantBan;
+use App\Events\Models\EventExpense;
+use App\Events\Models\EventOfficial;
+use App\Events\Models\EventParticipantBan;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Tests\TestCase;

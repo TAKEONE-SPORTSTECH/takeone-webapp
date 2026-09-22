@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ClubEvent;
-use App\Models\EventDocument;
+use App\Events\Models\EventDocument;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Illuminate\Http\UploadedFile;

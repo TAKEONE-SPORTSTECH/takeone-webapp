@@ -20,7 +20,7 @@ use App\Members\Models\User;
 class VideosDataContractTest extends ContractTestCase
 {
     /** The competitor on side A of the event's first (filmed) bout. */
-    private function fighterOf(\App\Models\EventMatch $match): User
+    private function fighterOf(\App\Events\Models\EventMatch $match): User
     {
         return ClubEventRegistration::findOrFail($match->a_competitor_id)->user;
     }

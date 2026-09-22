@@ -8,7 +8,7 @@ use App\Events\Support\PublicEntry;
 use App\Mail\EventEntryEmail;
 use App\Members\Models\User;
 use App\Models\ClubEvent;
-use App\Models\EventPublicEntry;
+use App\Events\Models\EventPublicEntry;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Tests\TestCase;

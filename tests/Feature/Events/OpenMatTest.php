@@ -5,7 +5,7 @@ namespace Tests\Feature\Events;
 use App\Events\OpenMat\OpenMat;
 use App\Events\OpenMat\OpenMatCorner;
 use App\Models\ClubEvent;
-use App\Models\EventMatch;
+use App\Events\Models\EventMatch;
 use App\Members\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

@@ -6,8 +6,8 @@ use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\Ledger;
 use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatchEvent;
 use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatState;
 use App\Models\ClubEvent;
-use App\Models\EventCategory;
-use App\Models\EventMatch;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventMatch;
 use App\Members\Models\User;
 use Tests\TestCase;
 
@@ -1170,10 +1170,10 @@ class BjjScoreboardTest extends TestCase
         $official = $this->createUser();
         $official->memberClubs()->syncWithoutDetaching([$event->tenant_id => ['status' => 'active']]);
 
-        \App\Models\EventOfficial::create([
+        \App\Events\Models\EventOfficial::create([
             'event_id' => $event->id,
             'user_id' => $official->id,
-            'role' => \App\Models\EventOfficial::ROLE_WEIGH_IN,
+            'role' => \App\Events\Models\EventOfficial::ROLE_WEIGH_IN,
         ]);
 
         $this->assertTrue(app(\App\Events\Support\EventAccess::class)->canScore($event, $owner));

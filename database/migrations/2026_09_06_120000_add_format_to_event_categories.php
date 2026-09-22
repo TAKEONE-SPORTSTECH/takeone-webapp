@@ -34,7 +34,7 @@ return new class extends Migration
             // Not an enum: SQLite ignores them, and a sport package may
             // legitimately add a format this table has never heard of (pools
             // feeding a cup, best-of-three). The vocabulary is enforced in
-            // App\Models\EventCategory and at the write paths.
+            // App\Events\Models\EventCategory and at the write paths.
             $table->string('format', 24)->default('knockout')->after('weight_class');
         });
     }

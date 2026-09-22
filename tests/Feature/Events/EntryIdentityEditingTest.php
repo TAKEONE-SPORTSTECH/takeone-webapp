@@ -168,12 +168,12 @@ class EntryIdentityEditingTest extends TestCase
         // spelling, with nothing anywhere saying why.
         [, $event, $entry, $athlete] = $this->scenario();
 
-        $category = \App\Models\EventCategory::create([
+        $category = \App\Events\Models\EventCategory::create([
             'event_id' => $event->id,
             'name' => 'Adult Blue -76kg',
         ]);
 
-        $bout = \App\Models\EventMatch::create([
+        $bout = \App\Events\Models\EventMatch::create([
             'event_id' => $event->id,
             'category_id' => $category->id,
             'round' => 'Final',

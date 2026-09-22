@@ -8,7 +8,7 @@ use App\Jobs\DeliverEventNotification;
 use App\Clubs\Models\ClubActivity;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
-use App\Models\EventNotificationSent;
+use App\Events\Models\EventNotificationSent;
 use App\Clubs\Models\Tenant;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;

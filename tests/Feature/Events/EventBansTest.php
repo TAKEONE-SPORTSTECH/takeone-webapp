@@ -5,8 +5,8 @@ namespace Tests\Feature\Events;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Models\ClubEvent;
-use App\Models\EventOfficial;
-use App\Models\EventParticipantBan;
+use App\Events\Models\EventOfficial;
+use App\Events\Models\EventParticipantBan;
 use Tests\TestCase;
 
 /**

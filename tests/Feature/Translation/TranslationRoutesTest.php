@@ -5,7 +5,7 @@ namespace Tests\Feature\Translation;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Models\ClubEvent;
-use App\Models\EventCategory;
+use App\Events\Models\EventCategory;
 use App\Translation\Jobs\TranslateContent;
 use App\Translation\Models\TranslationDocument;
 use App\Translation\Translations;

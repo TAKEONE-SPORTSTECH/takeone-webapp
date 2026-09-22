@@ -3,8 +3,8 @@
 namespace Tests\Feature\Events;
 
 use App\Models\ClubEvent;
-use App\Models\EventChecklistItem;
-use App\Models\EventOfficial;
+use App\Events\Models\EventChecklistItem;
+use App\Events\Models\EventOfficial;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Tests\TestCase;

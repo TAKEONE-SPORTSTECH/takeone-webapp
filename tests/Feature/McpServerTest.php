@@ -441,7 +441,7 @@ class McpServerTest extends TestCase
             'date' => now()->addWeeks(2)->toDateString(), 'start_time' => '09:00',
             'status' => 'active', 'is_archived' => false,
         ]);
-        \App\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
+        \App\Events\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
 
         $athlete = $this->createUser(['full_name' => 'Ali', 'gender' => 'Male', 'birthdate' => now()->subYears(25)->toDateString()]);
         $athlete->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
@@ -492,7 +492,7 @@ class McpServerTest extends TestCase
     /**
      * A championship with a generated draw, plus the organiser who runs it.
      *
-     * @return array{0: \App\Models\ClubEvent, 1: \App\Members\Models\User, 2: \App\Models\EventCategory}
+     * @return array{0: \App\Models\ClubEvent, 1: \App\Members\Models\User, 2: \App\Events\Models\EventCategory}
      */
     private function drawnChampionship(): array
     {
@@ -506,7 +506,7 @@ class McpServerTest extends TestCase
             'date' => now()->addWeeks(2)->toDateString(), 'end_date' => now()->addWeeks(2)->toDateString(),
             'start_time' => '09:00', 'end_time' => '17:00', 'status' => 'active', 'is_archived' => false,
         ]);
-        $category = \App\Models\EventCategory::create([
+        $category = \App\Events\Models\EventCategory::create([
             'event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1,
         ]);
 
@@ -535,9 +535,9 @@ class McpServerTest extends TestCase
      * Attach a real-looking recording to the first bout of a drawn championship,
      * plus an officiating log the timeline is derived from.
      */
-    private function filmFirstBout(\App\Models\ClubEvent $event): \App\Models\EventMatch
+    private function filmFirstBout(\App\Models\ClubEvent $event): \App\Events\Models\EventMatch
     {
-        $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
+        $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
         $match->forceFill(['a_corner' => 'red', 'b_corner' => 'blue', 'court' => '1'])->save();
 
         $file = \App\Models\MediaFile::create([
@@ -550,10 +550,10 @@ class McpServerTest extends TestCase
 
         $anchor = now()->startOfMinute();
 
-        \App\Models\EventRecording::create([
+        \App\Events\Models\EventRecording::create([
             'event_id' => $event->id, 'match_id' => $match->id, 'court' => '1', 'angle' => 'main',
             'anchor_at' => $anchor, 'started_at' => $anchor, 'ended_at' => $anchor->copy()->addSeconds(180),
-            'media_file_id' => $file->id, 'status' => \App\Models\EventRecording::STATUS_LINKED,
+            'media_file_id' => $file->id, 'status' => \App\Events\Models\EventRecording::STATUS_LINKED,
         ]);
 
         // Two points at the SAME instant — a simultaneous exchange, which the
@@ -727,7 +727,7 @@ class McpServerTest extends TestCase
     {
         [$event, $organiser] = $this->drawnChampionship();
 
-        \App\Models\EventDocument::create([
+        \App\Events\Models\EventDocument::create([
             'event_id' => $event->id, 'title' => 'Rulebook 2026',
             'path' => 'events/'.$event->uuid.'/documents/x.pdf',
             'mime' => 'application/pdf', 'extension' => 'pdf', 'size' => 2048,
@@ -1043,7 +1043,7 @@ class McpServerTest extends TestCase
             'status' => 'active', 'is_archived' => false, 'source_locale' => 'en',
         ]);
 
-        \App\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'Adult Black', 'sort_order' => 1]);
+        \App\Events\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'Adult Black', 'sort_order' => 1]);
 
         return $event;
     }

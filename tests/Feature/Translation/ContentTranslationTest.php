@@ -3,8 +3,8 @@
 namespace Tests\Feature\Translation;
 
 use App\Models\ClubEvent;
-use App\Models\EventCategory;
-use App\Models\EventFeeOption;
+use App\Events\Models\EventCategory;
+use App\Events\Models\EventFeeOption;
 use App\Translation\Jobs\TranslateContent;
 use App\Translation\Models\TranslationDocument;
 use App\Translation\Translations;
