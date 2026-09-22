@@ -61,6 +61,7 @@ class Scoring
         'dismiss',     // put the celebration away — on the table AND the wall
         'celebrate',   // bring it back
         'resync',      // tell every screen on this mat to reload itself
+        'refresh',     // re-read both corners from the entries; touches nothing else
         'board',       // end the VS introduction and show the scoreboard, clock untouched
         'intro',       // put the introduction back up — the other half of 'board'
         'duration',    // {minutes} — the operator sets the bout length
@@ -133,6 +134,7 @@ class Scoring
             // publishes afterwards, which is the one recovery a screen with no
             // keyboard has.
             'resync' => null,
+            'refresh' => $this->refresh($event, $state),
             // Leave the introduction WITHOUT starting the bout. Hajime already
             // does both, and that was the only way off the VS screen — so an
             // introduction that had run its course held the wall until the
@@ -260,6 +262,46 @@ class Scoring
     }
 
     /* ---------------- Commands ---------------- */
+
+    /**
+     * Re-read the two people on the mat, without disturbing the bout.
+     *
+     * Everything the screens announce is assembled ONCE, by `load`, and then
+     * lives in the mat's row — which is what makes the board instant and what
+     * makes it survive a reload, but also means the board is a SNAPSHOT.
+     * Correct a competitor's photograph, belt or weight afterwards and the
+     * database changes while the wall carries on showing what was true when the
+     * bout was called.
+     *
+     * Nothing else moves: not the clock, not the score, not the penalties, not
+     * the mode, not the result. The same command exists under the same name in
+     * the Taekwondo and BJJ engines.
+     *
+     * A bout that has gone leaves the corners as they are — a blank board is
+     * worse than a stale one.
+     */
+    private function refresh(ClubEvent $event, MatState $state): void
+    {
+        $match = EventMatch::where('event_id', $event->id)
+            ->with('category:id,name,weight_class')
+            ->find((int) $state->matchId);
+
+        if (! $match) {
+            return;
+        }
+
+        $registrations = ClubEventRegistration::where('event_id', $event->id)
+            ->whereIn('id', array_filter([$match->a_competitor_id, $match->b_competitor_id]))
+            ->with(['user:id,full_name,name,gender,birthdate,nationality,height_cm,profile_picture,profile_picture_is_public',
+                'user.certifications:id,user_id,title,issue_date',
+                'user.skillAcquisitions:id,user_id,proficiency_level,start_date',
+                'user.memberClubs:id,club_name,logo,country',
+                'representingTenant:id,club_name,logo,country'])
+            ->get()->keyBy('id');
+
+        $state->aka = $this->corner($match, 'a', $registrations);
+        $state->ao = $this->corner($match, 'b', $registrations);
+    }
 
     /**
      * Put a bout on the mat.

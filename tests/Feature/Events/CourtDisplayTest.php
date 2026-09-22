@@ -204,8 +204,8 @@ class CourtDisplayTest extends TestCase
 
         $this->assertSame(
             [
-                'blueClub', 'blueFlag', 'blueLogo', 'blueName', 'bluePhoto',
-                'number', 'redClub', 'redFlag', 'redLogo', 'redName', 'redPhoto',
+                'blueClub', 'blueCountry', 'blueFallback', 'blueFlag', 'blueLogo', 'blueName', 'bluePhoto',
+                'number', 'redClub', 'redCountry', 'redFallback', 'redFlag', 'redLogo', 'redName', 'redPhoto',
                 'stage', 'weightClass',
             ],
             collect(array_keys($payload['matches'][0]))->sort()->values()->all()
@@ -228,8 +228,14 @@ class CourtDisplayTest extends TestCase
     public function test_missing_values_are_published_as_null_never_invented(): void
     {
         // A hall screen must not show detail the system does not have: no
-        // stand-in silhouette, no initial-letter crest. The field is published
-        // empty and the board hides that element.
+        // invented club, no initial-letter crest. The field is published empty
+        // and the board hides that element.
+        //
+        // The ONE exception is the face, and it is not an invention: a
+        // competitor with no picture gets the platform's drawn stand-in
+        // (App\Support\Avatar), drawn back so nobody reads it as a photograph
+        // of the athlete. `redPhoto` is still null — the stand-in travels in
+        // `redFallback`, so the two can never be confused for one another.
         $organiser = $this->createUser();
         $event = $this->event($this->clubFor($organiser), $organiser);
         $cat = $this->category($event);
@@ -250,6 +256,11 @@ class CourtDisplayTest extends TestCase
         foreach (['number', 'redFlag', 'redPhoto', 'redLogo', 'redClub'] as $field) {
             $this->assertArrayHasKey($field, $row);
         }
+
+        // The stand-in is always published, whether or not it is reached for:
+        // the board decides between it and a real picture, so it must always
+        // have both to choose from.
+        $this->assertStringContainsString('images/avatars/', (string) $row['redFallback']);
     }
 
     public function test_a_competitors_flag_falls_back_through_the_sources_it_has(): void
@@ -270,22 +281,29 @@ class CourtDisplayTest extends TestCase
         $bout = $this->bout($event, $cat, ['match_no' => 1, 'a_competitor_id' => $entry->id, 'a_country' => 'KW']);
         $this->assertSame('kw', $this->display()->payload($event, 'Mat 1')['matches'][0]['redFlag']);
 
-        // Nothing on the draw — the club they compete for supplies it.
-        //
-        // This step used to expect 'jo', the athlete's own nationality. That
-        // fallback was removed on purpose: CLAUDE.md, "Competitor flag = club
-        // country" — at an event the country beside a competitor is the CLUB's
-        // (ClubEventRegistration::competingClub()), never users.nationality. A
-        // passport is a fact about the person, not about this bout.
+        // Nothing on the draw — the club they compete for supplies it, and it
+        // still comes BEFORE the passport. CLAUDE.md, "Competitor flag = club
+        // country": an athlete representing a Bahraini club is on the sheet as
+        // Bahrain whatever their nationality says. That half is unchanged.
         $bout->update(['a_country' => null]);
         $this->assertSame('bh', $this->display()->payload($event, 'Mat 1')['matches'][0]['redFlag']);
 
-        // And it must never REACH for the passport. The athlete still carries
-        // JO; with the club's country gone the board publishes nothing rather
-        // than the wrong flag, and the design hides that element.
+        // Only when there is no club country left does the passport answer.
+        //
+        // This step used to assert null. The rule changed underneath it on
+        // 2026-09-05, at the user's request, inside
+        // ClubEventRegistration::countryCode(): where there is nobody to
+        // compete FOR, no flag told a reader nothing while the nationality was
+        // on file all along. The scoring table has read through countryCode()
+        // ever since; this board went on deriving the flag from the club alone,
+        // so a field of Saudi, Norwegian, Iraqi and Brazilian athletes flew
+        // Bahrain's flag or none at all.
+        //
+        // The ordering above is what protects the original rule: the passport
+        // is reached for LAST, and never while a club has a country.
         $club->update(['country' => '']);
-        $this->assertNull($this->display()->payload($event, 'Mat 1')['matches'][0]['redFlag']);
-        $this->assertSame('JO', $athlete->fresh()->nationality, 'the passport is still on file — it is simply not what a mat flies');
+        $this->assertSame('jo', $this->display()->payload($event, 'Mat 1')['matches'][0]['redFlag']);
+        $this->assertSame('Jordan', $this->display()->payload($event, 'Mat 1')['matches'][0]['redCountry']);
     }
 
     // ── What the board must never leak ───────────────────────────────────────

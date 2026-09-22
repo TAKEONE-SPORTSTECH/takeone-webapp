@@ -78,6 +78,22 @@ abstract class Roster
                         )
                         : null,
                     'category' => $ageGroup,
+                    /*
+                     * The division's own id, beside the words for it.
+                     *
+                     * `category` and `weight_class` above are DERIVED strings —
+                     * one canonical name split back into its two halves — and a
+                     * string cannot be linked to. A card that draws a division
+                     * chip needs somewhere for that chip to go (the group's own
+                     * draw), and every list that folds entries into one row per
+                     * person needs a stable key to fold on. Both were doing it
+                     * by name until 2026-09-17.
+                     *
+                     * Additive: nothing that reads this row today looks for it,
+                     * and it is null for an entry no division has claimed yet —
+                     * which is the ordinary state of an entry on the morning.
+                     */
+                    'category_id' => $r->category_id,
                     'weight_class' => $weightClass,
                     'meta' => $user?->gender ?: ($ageGroup ? $this->t('roster_registered') : $this->t('roster_unclassified')),
                     // The three things an organiser checks off before a

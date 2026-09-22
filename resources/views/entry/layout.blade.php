@@ -97,11 +97,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    {{-- The same sheet, from the same place, as layouts/app.blade.php — the
+    {{-- The same sheet as layouts/app.blade.php, served from this box — the
          entry list and the officiating sheet print a flag beside a name, and
-         `fi fi-bh` has to resolve here too. Not a new dependency: identical
-         URL and version to the one the app shell already loads. --}}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
+         `fi fi-bh` has to resolve here too. Self-hosted on purpose: a hall
+         with no internet is the ordinary case (CLAUDE.md → Flags Come From
+         One Local Source). --}}
+    <link rel="stylesheet" href="{{ asset('images/flags/flag-icons.css') }}">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>[x-cloak]{display:none!important}</style>
 

@@ -453,7 +453,11 @@ class ScoreboardController extends Controller
 
         $old = $entry->{$column};
 
-        $path = $this->storeBase64Image(
+        // A CREST belongs to the club and stays with the event. A PHOTO is a
+        // picture of a person, so it goes under theirs and the entry keeps a
+        // reference (CLAUDE.md → A Person's Photo Has One Home).
+        $path = \App\Members\Support\ProfilePhoto::capture(
+            (! $isCrest && $entry->user_id) ? \App\Members\Models\User::find($entry->user_id) : null,
             $data['image'],
             'events/'.$event->uuid.'/competitors',
             ($isCrest ? 'crest' : 'c').$entry->id.'-'.bin2hex(random_bytes(8)),

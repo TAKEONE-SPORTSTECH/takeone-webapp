@@ -25,7 +25,7 @@
     @endif
     @vite(['resources/css/app.css'])
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
+    <link rel="stylesheet" href="{{ asset('images/flags/flag-icons.css') }}">
     <style>
         *, *::before, *::after { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         [x-cloak] { display: none !important; }

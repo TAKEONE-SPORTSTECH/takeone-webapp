@@ -50,6 +50,7 @@ return [
     'notify_draw_title' => 'ड्रा उत्पन्न हुआ — :title',
     'notify_weigh_in_body' => 'वजन निर्धारण :time पर :place पर खुलता है। अपना पहचान पत्र लाएं।',
     'notify_weigh_in_title' => 'कल वजन निर्धारण — :title',
+    'pool_not_arranged' => 'यह कक्षा एक समूह के रूप में आयोजित की जाती है — हर कोई हर किसी से मिलता है, इसलिए कुछ भी व्यवस्थित करने की आवश्यकता नहीं है। इसके बजाय कक्षा में लोगों को जोड़ें या हटाएँ।',
     'result_body_done' => 'यह आपका दिन का अंतिम मैच था।',
     'result_body_next' => 'अगला: :round :mat पर, लगभग :minutes मिनट',
     'result_loss_title' => 'मैच समाप्त',

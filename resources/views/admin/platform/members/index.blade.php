@@ -61,6 +61,13 @@
             </div>
         </div>
 
+        {{-- Advanced filters (standalone component; emits member-filters:apply) --}}
+        <x-member-filters variant="panel"
+                          :filters="$filterState ?? []"
+                          :count="$filterCount ?? 0"
+                          :clubs="$filterClubs ?? []"
+                          :nationalities="$filterNationalities ?? []" />
+
         {{-- Cards / Table view toggle (persists across AJAX reloads via a class on #membersResults) --}}
         <div class="inline-flex items-center p-1 rounded-lg bg-muted shrink-0" role="tablist" aria-label="View mode"
              x-data="{

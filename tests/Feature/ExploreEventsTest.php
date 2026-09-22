@@ -116,6 +116,22 @@ class ExploreEventsTest extends TestCase
 
     public function test_it_excludes_finished_cancelled_and_archived_events(): void
     {
+        /*
+         * ⚠️ MIDDAY, FROZEN — the fixtures below are built from the wall clock
+         * and only make sense in the middle of a day.
+         *
+         * "Ended earlier today" is `now()->subHours(6)` for the start and
+         * `now()->subHour()` for the end, each formatted as a TIME and pinned
+         * to TODAY's date. Run at 01:30, the start becomes 19:30 — yesterday
+         * evening's clock reading stamped on today — so the row says an event
+         * that starts tonight and ended an hour ago, and the query is asked a
+         * question with no right answer. It failed every night between midnight
+         * and 06:00 and passed every working hour, which is the worst kind of
+         * red: nobody sees it, and when somebody finally does it looks like
+         * whatever they happened to be touching.
+         */
+        $this->travelTo(now()->startOfDay()->addHours(12));
+
         $user = $this->createUser();
         $club = $this->clubFor($user);
 

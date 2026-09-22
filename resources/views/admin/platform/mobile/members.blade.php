@@ -22,12 +22,21 @@
     </header>
 
     <div class="px-4 pt-4">
-        {{-- Search --}}
-        <div class="relative mb-4">
-            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            <input type="text" id="memberSearch" autocomplete="off" value="{{ $search ?? '' }}"
-                   placeholder="{{ __('platform.search_members') }}"
-                   class="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent text-sm">
+        {{-- Search + advanced filters --}}
+        <div class="flex items-center gap-2 mb-4">
+            <div class="relative flex-1 min-w-0">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="memberSearch" autocomplete="off" value="{{ $search ?? '' }}"
+                       placeholder="{{ __('platform.search_members') }}"
+                       class="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent text-sm">
+            </div>
+
+            {{-- Standalone; emits member-filters:apply, which _scripts turns into a re-query --}}
+            <x-member-filters variant="sheet" id="memberFiltersMobile"
+                              :filters="$filterState ?? []"
+                              :count="$filterCount ?? 0"
+                              :clubs="$filterClubs ?? []"
+                              :nationalities="$filterNationalities ?? []" />
         </div>
 
         {{-- Results (swapped in place on search; mobile-native card layout) --}}

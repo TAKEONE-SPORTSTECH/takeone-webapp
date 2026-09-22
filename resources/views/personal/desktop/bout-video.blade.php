@@ -13,7 +13,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ $bout['a']['name'] }} vs {{ $bout['b']['name'] }} | {{ $e['title'] }}</title>
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
+<link rel="stylesheet" href="{{ asset('images/flags/flag-icons.css') }}">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root{

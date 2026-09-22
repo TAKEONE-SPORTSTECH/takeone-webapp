@@ -168,10 +168,19 @@
 
         get typeMeta() { return this.schema.types[this.type] || {}; },
         /* The TYPE decides the sections — except that a martial art run as a
-           league is still a martial art. "League" for a combat sport means its
+           league is still a martial art: a league for a combat sport means its
            weight classes are pools instead of brackets, so it asks for
            divisions and a weigh-in, never for teams and a fixture list. The
-           variant lives in the schema beside the default. */
+           variant lives in the schema beside the default.
+
+           ⚠️ No double quotes in here. This comment sits INSIDE the x-data
+           attribute, and a double quote ends a double-quoted HTML attribute —
+           the word League used to be quoted, which truncated the whole
+           expression, killed the form's Alpine state and spilled the rest of
+           this script onto the page as text. Fixed 2026-09-16; the same trap
+           had just been shipped in the event-bans component. (And no Blade
+           component TAG in here either — Blade parses one inside a JS comment
+           and fails the whole view with an EOF error about endif.) */
         get sections() {
             const meta = this.typeMeta;
             const byFamily = meta.sections_by_family || {};

@@ -1,0 +1,1543 @@
+<x-dc>
+<helmet>
+<style>/* devanagari */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/bracket/fonts/a8205188-277b-4d07-a93b-10b008a6a108.woff2") format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+20F0, U+25CC, U+A830-A839, U+A8E0-A8FF, U+11B00-11B09;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/bracket/fonts/54319b01-48d0-46a7-8624-443f5c63d29b.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/bracket/fonts/384294e9-7632-4129-a9c1-8ebad6fcfc6a.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* devanagari */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/bracket/fonts/10f487a6-6225-40f5-b7d8-9e0344d5baba.woff2") format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+20F0, U+25CC, U+A830-A839, U+A8E0-A8FF, U+11B00-11B09;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/bracket/fonts/a6df239e-2e0e-4e42-b796-8d5995f3bbb3.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/bracket/fonts/576db428-a4cd-4630-a590-7493e631d958.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* devanagari */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/bracket/fonts/a288cd69-76ab-4a10-8be2-98e6b26a650f.woff2") format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+20F0, U+25CC, U+A830-A839, U+A8E0-A8FF, U+11B00-11B09;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/bracket/fonts/4e250ff1-fd2d-4287-8ae5-4fa324d43907.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/bracket/fonts/189ba13f-7d30-4dc0-8c14-635c5c0d08e3.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* devanagari */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/bracket/fonts/eb500dce-05af-4c84-8c26-a8081c3c6041.woff2") format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+20F0, U+25CC, U+A830-A839, U+A8E0-A8FF, U+11B00-11B09;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/bracket/fonts/2f337839-cafe-4f8f-8ff7-2cab100b9852.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/bracket/fonts/81156588-8d78-4bd6-a251-c16d2f4c8b8e.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<style>
+  body{margin:0;background:#0b132b;font-family:'Poppins',system-ui,sans-serif}
+  a{color:#caa14f}a:hover{color:#d8b25f}
+  input:focus{outline:2px solid #caa14f}
+  @keyframes bkIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes bkPulse{
+    0%,100%{box-shadow:0 0 0 3px #d8b25f,0 0 16px 4px rgba(216,178,95,.55),0 8px 24px rgba(11,19,43,.35)}
+    50%{box-shadow:0 0 0 6px #edcd85,0 0 44px 14px rgba(216,178,95,.95),0 8px 24px rgba(11,19,43,.35)}
+  }
+  @keyframes bkConf{0%{transform:translateY(-12px) rotate(0deg);opacity:1}100%{transform:translateY(160px) rotate(320deg);opacity:0}}
+  @keyframes bkChamp{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+  @keyframes bkToast{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div data-screen-label="Bracket" style="position:fixed;inset:0;background:#1e2c4f;overflow:hidden;display:grid;place-items:start center;align-content:start">
+<div style="position:relative;width:{{ stageW }};height:{{ stageH }};box-sizing:border-box;zoom:{{ stageScale }};background:linear-gradient(160deg,#0b132b 0%,#1e2c4f 100%);padding:{{ stagePad }};color:#eef1f6;display:flex;flex-direction:column;overflow:hidden;isolation:isolate">
+<sc-if value="{{ bgHas }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;inset:0;z-index:-1;overflow:hidden">
+    <div style="width:100%;height:100%;background-image:url({{ bgImg }});background-size:cover;background-position:center"></div>
+    <div style="position:absolute;inset:0;background:linear-gradient(160deg,rgba(11,19,43,.7) 0%,rgba(30,44,79,.65) 100%)"></div>
+  </div>
+</sc-if>
+  <input type="file" accept="image/*" ref="{{ fileRef }}" sc-camel-on-change="{{ onBgFile }}" style="display:none">
+  <sc-if value="{{ mobileHdr }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:none;height:150px;display:flex;align-items:center;gap:30px;padding:0 36px;background:#fff;color:#1e2c4f;border-bottom:2px solid #d5dae3">
+      <button sc-camel-on-click="{{ onBack }}" title="{{ backTitle }}" style="width:96px;height:96px;flex:none;border-radius:50%;border:2px solid #d5dae3;background:#fff;cursor:pointer;display:grid;place-items:center;padding:0"><svg width="44" height="44" sc-camel-view-box="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#1e2c4f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:26px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#97a1b4;line-height:1">Manage draw</div>
+        <div style="font-size:42px;font-weight:700;line-height:1.2;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Championship Bracket</div>
+      </div>
+      <button sc-camel-on-click="{{ onLock }}" title="{{ lockTitle }}" sc-camel-aria-pressed="{{ unlocked }}" style="width:96px;height:96px;flex:none;border-radius:28px;border:2px solid {{ lockBorder }};background:{{ lockBg }};cursor:pointer;display:grid;place-items:center;padding:0"><svg width="46" height="46" sc-camel-view-box="0 0 24 24" fill="none"><path d="{{ lockShackle }}" stroke="{{ lockFg }}" stroke-width="2.4" stroke-linecap="round"></path><rect x="4" y="10.5" width="16" height="11" rx="2.6" fill="{{ lockFg }}"></rect></svg></button>
+      <button ref="{{ menuAnchor }}" sc-camel-on-click="{{ onMenu }}" style="width:96px;height:96px;flex:none;border-radius:28px;border:2px solid #d5dae3;background:#fff;cursor:pointer;display:grid;place-items:center;padding:0"><svg width="40" height="40" sc-camel-view-box="0 0 24 24"><circle cx="12" cy="5" r="2.1" fill="#5d6880"></circle><circle cx="12" cy="12" r="2.1" fill="#5d6880"></circle><circle cx="12" cy="19" r="2.1" fill="#5d6880"></circle></svg></button>
+    </div>
+  </sc-if>
+  <sc-if value="{{ desktopHdr }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:30px">
+    <div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#d8b25f"><span style="display:inline-block;width:38px;height:3px;border-radius:2px;background:#d8b25f"></span>Promoseven Fight Series</div>
+      <h1 style="margin:8px 0 4px;font-size:2.1rem;font-weight:700;letter-spacing:-.01em;color:#fff">Championship Bracket</h1>
+      <div style="font-size:.9rem;color:#97a1b4">Lightweight division · Season finale · <span style="color:#d8b25f;font-weight:600">{{ totalMatches }} matches</span> · Click a fighter to advance them · Drag a fighter to re-seed</div>
+    </div>
+    <div style="position:relative;z-index:120;display:flex;align-items:center;gap:14px"><button sc-camel-on-click="{{ onLock }}" title="{{ lockTitle }}" sc-camel-aria-pressed="{{ unlocked }}" style="width:68px;height:68px;flex:none;border-radius:12px;border:2px solid {{ lockBorder }};background:{{ lockBg }};cursor:pointer;display:grid;place-items:center;padding:0"><svg width="34" height="34" sc-camel-view-box="0 0 24 24" fill="none"><path d="{{ lockShackle }}" stroke="{{ lockFg }}" stroke-width="2.4" stroke-linecap="round"></path><rect x="4" y="10.5" width="16" height="11" rx="2.6" fill="{{ lockFg }}"></rect></svg></button>
+      <button ref="{{ menuAnchor }}" sc-camel-on-click="{{ onMenu }}" style="padding:22px 48px;border:none;border-radius:12px;cursor:pointer;font-family:inherit;font-size:1.3rem;font-weight:700;letter-spacing:.05em;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;box-shadow:0 10px 30px rgba(216,178,95,.4)">Actions ▾</button>
+    </div>
+  </div>
+  </sc-if>
+      <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+        <div data-bk-menu="1" style="position:absolute;top:{{ menuTop }};right:{{ menuRight }};width:{{ menuW }};zoom:{{ menuZoom }};background:#fff;color:#1e2c4f;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.5);padding:14px;z-index:130">
+          <div style="font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#97a1b4;margin-bottom:6px">Fighters</div>
+          <div style="display:flex;border:1px solid #d5dae3;border-radius:8px;overflow:hidden;margin-bottom:12px">
+            <sc-for list="{{ sizeBtns }}" as="b" hint-placeholder-count="3">
+              <button sc-camel-on-click="{{ b.on }}" style="flex:1;padding:8px 0;border:none;cursor:pointer;font-family:inherit;font-size:.8rem;font-weight:600;background:{{ b.bg }};color:{{ b.fg }}">{{ b.label }}</button>
+            </sc-for>
+          </div>
+          <div style="font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#97a1b4;margin-bottom:6px">Third place</div>
+          <div style="display:flex;border:1px solid #d5dae3;border-radius:8px;overflow:hidden;margin-bottom:12px">
+            <sc-for list="{{ thirdBtns }}" as="b" hint-placeholder-count="2">
+              <button sc-camel-on-click="{{ b.on }}" style="flex:1;padding:8px 0;border:none;cursor:pointer;font-family:inherit;font-size:.74rem;font-weight:600;background:{{ b.bg }};color:{{ b.fg }}">{{ b.label }}</button>
+            </sc-for>
+          </div>
+          <div style="font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#97a1b4;margin-bottom:6px">Layout</div>
+          <div style="display:flex;border:1px solid #d5dae3;border-radius:8px;overflow:hidden;margin-bottom:12px">
+            <sc-for list="{{ layoutBtns }}" as="b" hint-placeholder-count="2">
+              <button sc-camel-on-click="{{ b.on }}" style="flex:1;padding:8px 0;border:none;cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:600;background:{{ b.bg }};color:{{ b.fg }}">{{ b.label }}</button>
+            </sc-for>
+          </div>
+          <div style="border-top:1px solid #eef1f6;margin:4px 0 6px"></div>
+          <button sc-camel-on-click="{{ onAddOpen }}" style="display:block;width:100%;text-align:left;padding:9px 10px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:600;background:transparent;color:#8a6d20" style-hover="background:#fdf6e6">+ Add fighter…</button>
+          <button sc-camel-on-click="{{ onBgPick }}" style="display:block;width:100%;text-align:left;padding:9px 10px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:500;background:transparent;color:#1e2c4f" style-hover="background:#eef1f6">Background image…</button>
+          <sc-if value="{{ bgHas }}" hint-placeholder-val="{{ false }}">
+            <button sc-camel-on-click="{{ onBgClear }}" style="display:block;width:100%;text-align:left;padding:9px 10px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:500;background:transparent;color:#5d6880" style-hover="background:#eef1f6">Remove background</button>
+          </sc-if>
+          <button sc-camel-on-click="{{ onEdit }}" style="display:block;width:100%;text-align:left;padding:9px 10px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:500;background:transparent;color:#1e2c4f" style-hover="background:#eef1f6">{{ editLabel }}</button>
+          <button sc-camel-on-click="{{ onReset }}" style="display:block;width:100%;text-align:left;padding:9px 10px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:500;background:transparent;color:#b4483c" style-hover="background:#fdeeec">Reset results</button>
+        </div>
+      </sc-if>
+
+  <sc-if value="{{ addOpen }}" hint-placeholder-val="{{ false }}">
+    <div ref="{{ addWin }}" style="position:absolute;left:{{ addX }};top:{{ addY }};width:680px;z-index:110;background:#fff;color:#1e2c4f;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.55);overflow:hidden">
+      <div sc-camel-on-mouse-down="{{ onWinDown }}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1e2c4f;color:#fff;cursor:move;user-select:none">
+        <span style="flex:1;font-size:.72rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase">Add fighter</span>
+        <button sc-camel-on-click="{{ onAddClose }}" style="width:24px;height:24px;flex:none;border:none;border-radius:6px;cursor:pointer;background:transparent;color:#d8b25f;font-size:.85rem;font-weight:700;line-height:1;padding:0">✕</button>
+      </div>
+      <div style="padding:16px 18px">
+      <div style="display:flex;border:1px solid #d5dae3;border-radius:8px;overflow:hidden;width:fit-content;margin-bottom:14px">
+        <button sc-camel-on-click="{{ onTabKnown }}" style="padding:8px 16px;border:none;cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:600;background:{{ tabKnownBg }};color:{{ tabKnownFg }}">Known fighter</button>
+        <button sc-camel-on-click="{{ onTabNew }}" style="padding:8px 16px;border:none;cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:600;background:{{ tabNewBg }};color:{{ tabNewFg }}">New fighter</button>
+      </div>
+      <sc-if value="{{ knownMode }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <input value="{{ search }}" sc-camel-on-change="{{ onSearch }}" placeholder="Search by name, club or country" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:.82rem;border:1px solid #d5dae3;border-radius:8px;padding:9px 11px;color:#1e2c4f">
+          <div style="max-height:216px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:10px">
+            <sc-for list="{{ rosterList }}" as="rf" hint-placeholder-count="0">
+              <div draggable="true" sc-camel-on-drag-start="{{ rf.onDrag }}" sc-camel-on-drag-end="{{ rf.onDragEnd }}" style="display:flex;align-items:center;gap:10px;border:1px solid #d5dae3;border-radius:10px;padding:8px 12px;cursor:grab;background:#fff">
+                <div style="width:39px;height:52px;flex:none;border:2px solid #d5dae3;border-radius:{{ rf.shape }};background-image:url({{ rf.img }});background-size:cover;background-position:center"></div>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ rf.name }}</span>
+                    <div style="width:18px;height:13px;flex:none;border-radius:2px;box-shadow:0 0 0 1px #d5dae3;background-image:url({{ rf.flagUrl }});background-size:cover;background-position:center"></div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+                    <span style="width:14px;height:14px;flex:none;border-radius:50%;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;font-size:.5rem;font-weight:700;line-height:1;display:grid;place-items:center;text-align:center">{{ rf.ab }}</span>
+                    <span style="font-size:.62rem;color:#5d6880;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ rf.club }}</span>
+                  </div>
+                </div>
+                <span style="flex:none;font-size:.62rem;color:#97a1b4">drag to bracket</span>
+                <button sc-camel-on-click="{{ rf.onAuto }}" style="flex:none;padding:7px 12px;border:none;border-radius:7px;cursor:pointer;font-family:inherit;font-size:.72rem;font-weight:600;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f">Auto-place</button>
+              </div>
+            </sc-for>
+            <sc-if value="{{ rosterEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:.78rem;color:#97a1b4;padding:8px 2px">No registered fighters match.</div>
+            </sc-if>
+          </div>
+          <div style="margin-top:10px;font-size:.7rem;color:#5d6880">Drag a fighter onto any bracket slot: a <b>bye</b> slot is filled directly; a slot whose bout has not started gets a <b>pigtail play-in</b>. Auto-place applies the same rules automatically. Decided matches are never touched.</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ newMode }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+        <div style="flex:2;min-width:160px">
+          <div style="font-size:.72rem;font-weight:500;margin-bottom:5px">Fighter name</div>
+          <input value="{{ addName }}" sc-camel-on-change="{{ onAddName }}" placeholder="e.g. Yusuf Al Doseri" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:.82rem;border:1px solid #d5dae3;border-radius:8px;padding:9px 11px;color:#1e2c4f">
+        </div>
+        <div style="width:212px;position:relative">
+          <div style="font-size:.72rem;font-weight:500;margin-bottom:5px">Country</div>
+          <button sc-camel-on-click="{{ onCountryToggle }}" style="width:100%;box-sizing:border-box;display:flex;align-items:center;gap:8px;font-family:inherit;font-size:.82rem;border:1px solid #d5dae3;border-radius:8px;padding:9px 11px;background:#fff;color:#1e2c4f;cursor:pointer;text-align:left">
+            <sc-if value="{{ selCountryHas }}" hint-placeholder-val="{{ false }}">
+              <div style="width:18px;height:13px;flex:none;border-radius:2px;box-shadow:0 0 0 1px #d5dae3;background-image:url({{ selCountryFlag }});background-size:cover;background-position:center"></div>
+              <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ selCountryName }}</span>
+            </sc-if>
+            <sc-if value="{{ selCountryNone }}" hint-placeholder-val="{{ true }}">
+              <span style="flex:1;color:#97a1b4">Select country</span>
+            </sc-if>
+            <span style="color:#97a1b4;font-size:.6rem">▾</span>
+          </button>
+          <sc-if value="{{ countryOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:224px;overflow-y:auto;background:#fff;border:1px solid #d5dae3;border-radius:10px;box-shadow:0 12px 28px rgba(11,19,43,.18);z-index:30">
+              <sc-for list="{{ countryOpts }}" as="c" hint-placeholder-count="0">
+                <div sc-camel-on-click="{{ c.on }}" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:.78rem;background:{{ c.bg }}" style-hover="background:#eef1f6">
+                  <div style="width:18px;height:13px;flex:none;border-radius:2px;box-shadow:0 0 0 1px #d5dae3;background-image:url({{ c.flagUrl }});background-size:cover;background-position:center"></div>
+                  <span>{{ c.name }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <div style="width:232px;position:relative">
+          <div style="font-size:.72rem;font-weight:500;margin-bottom:5px">Club</div>
+          <button sc-camel-on-click="{{ onClubToggle }}" style="width:100%;box-sizing:border-box;display:flex;align-items:center;gap:8px;font-family:inherit;font-size:.82rem;border:1px solid #d5dae3;border-radius:8px;padding:9px 11px;background:#fff;color:#1e2c4f;cursor:pointer;text-align:left">
+            <sc-if value="{{ selClubHas }}" hint-placeholder-val="{{ false }}">
+              <span style="width:16px;height:16px;flex:none;border-radius:50%;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;font-size:.55rem;font-weight:700;line-height:1;display:grid;place-items:center;text-align:center">{{ selClubAb }}</span>
+              <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ selClubName }}</span>
+            </sc-if>
+            <sc-if value="{{ selClubNew }}" hint-placeholder-val="{{ false }}">
+              <span style="flex:1;color:#8a6d20;font-weight:600">New club…</span>
+            </sc-if>
+            <sc-if value="{{ selClubNone }}" hint-placeholder-val="{{ true }}">
+              <span style="flex:1;color:#97a1b4">Select club</span>
+            </sc-if>
+            <span style="color:#97a1b4;font-size:.6rem">▾</span>
+          </button>
+          <sc-if value="{{ clubOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:224px;overflow-y:auto;background:#fff;border:1px solid #d5dae3;border-radius:10px;box-shadow:0 12px 28px rgba(11,19,43,.18);z-index:30">
+              <sc-for list="{{ clubOpts }}" as="c" hint-placeholder-count="0">
+                <div sc-camel-on-click="{{ c.on }}" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:.78rem;background:{{ c.bg }}" style-hover="background:#eef1f6">
+                  <span style="width:16px;height:16px;flex:none;border-radius:50%;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;font-size:.55rem;font-weight:700;line-height:1;display:grid;place-items:center;text-align:center">{{ c.ab }}</span>
+                  <span>{{ c.name }}</span>
+                </div>
+              </sc-for>
+              <div sc-camel-on-click="{{ onClubNew }}" style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;font-size:.78rem;font-weight:600;color:#8a6d20;border-top:1px solid #eef1f6;background:#fdf6e6" style-hover="background:#f8ecd2">+ Add new club</div>
+            </div>
+          </sc-if>
+        </div>
+        <sc-if value="{{ selClubNew }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:2;min-width:160px">
+            <div style="font-size:.72rem;font-weight:500;margin-bottom:5px">New club name</div>
+            <input value="{{ addClubNew }}" sc-camel-on-change="{{ onAddClubNew }}" placeholder="e.g. Riffa Fight Club" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:.82rem;border:1px solid #caa14f;border-radius:8px;padding:9px 11px;color:#1e2c4f">
+          </div>
+        </sc-if>
+        <button sc-camel-on-click="{{ onAddSubmit }}" style="padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:600;letter-spacing:.03em;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f">Add &amp; auto-place</button>
+      </div>
+      <div style="margin-top:10px;font-size:.7rem;color:#5d6880">Placement follows tournament rules: an open <b>bye</b> is filled first (no extra bout); otherwise a <b>pigtail play-in bout</b> is created at the lowest unplayed first-round slot — late entries forfeit seeding. Decided matches are never touched. Remove a fighter via Edit names (✕) to create a bye.</div>
+      </sc-if>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ noticeHas }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;top:24px;right:40px;z-index:90;display:flex;align-items:flex-start;gap:12px;background:#fdf6e6;border-left:4px solid #d8b25f;color:#1e2c4f;border-radius:0 12px 12px 0;padding:14px 16px;font-size:.8rem;line-height:1.5;max-width:420px;box-shadow:0 16px 40px rgba(0,0,0,.45);animation:bkToast .35s ease both">
+      <span style="flex:1">{{ notice }}</span>
+      <button sc-camel-on-click="{{ onDismiss }}" style="flex:none;width:22px;height:22px;border:none;border-radius:6px;cursor:pointer;background:transparent;color:#8a6d20;font-size:.8rem;font-weight:700;line-height:1;padding:0">✕</button>
+    </div>
+  </sc-if>
+  <div data-bk-canvas="1" ref="{{ boardRef }}" sc-camel-on-mouse-down="{{ onBoardDown }}" sc-camel-on-double-click="{{ onBoardFit }}" sc-camel-on-wheel="{{ onBoardWheel }}" style="{{ boardWrapStyle }}">
+  <sc-if value="{{ basketHas }}" hint-placeholder-val="{{ false }}">
+    <div sc-camel-on-drag-over="{{ onBasketOver }}" sc-camel-on-drop="{{ onBasketDrop }}" sc-camel-on-mouse-down="{{ stopMD }}" style="position:absolute;bottom:14px;right:14px;z-index:60;max-width:340px;border:2px dashed #d8b25f;border-radius:14px;padding:12px 14px;background:rgba(11,19,43,.94);box-shadow:0 16px 40px rgba(0,0,0,.45)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#d8b25f">Holding basket ({{ basketCount }})</div>
+        <button sc-camel-on-click="{{ onBasketMin }}" style="width:24px;height:24px;flex:none;border:1px solid #d8b25f;border-radius:6px;cursor:pointer;background:transparent;color:#d8b25f;font-size:.85rem;font-weight:700;line-height:1;padding:0">{{ minLabel }}</button>
+      </div>
+      <sc-if value="{{ basketOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px">
+      <sc-for list="{{ basketList }}" as="bf" hint-placeholder-count="0">
+        <div draggable="true" sc-camel-on-drag-start="{{ bf.onDrag }}" sc-camel-on-drag-end="{{ bf.onDragEnd }}" style="display:flex;align-items:center;gap:8px;background:#fff;color:#1e2c4f;border-radius:10px;padding:6px 12px 6px 6px;cursor:grab;box-shadow:0 4px 12px rgba(11,19,43,.3)">
+          <div style="width:33px;height:44px;flex:none;border:2px solid #d8b25f;border-radius:{{ bf.shape }};background-image:url({{ bf.img }});background-size:cover;background-position:center"></div>
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:.76rem;font-weight:600;white-space:nowrap">{{ bf.name }}</span>
+              <div style="width:16px;height:12px;flex:none;border-radius:2px;box-shadow:0 0 0 1px #d5dae3;background-image:url({{ bf.flagUrl }});background-size:cover;background-position:center"></div>
+            </div>
+            <div style="font-size:.6rem;color:#5d6880;white-space:nowrap">{{ bf.club }}</div>
+          </div>
+        </div>
+      </sc-for>
+      </div>
+      <div style="margin-top:8px;font-size:.62rem;color:#97a1b4">Drag a fighter into any open first-round slot.</div>
+      </sc-if>
+    </div>
+  </sc-if>
+    <div ref="{{ boardInner }}" style="{{ boardInnerStyle }}">
+      <sc-if value="{{ hasPlayins }}" hint-placeholder-val="{{ false }}">
+        <div style="width:{{ colWpx }};flex:none;display:flex;flex-direction:column;animation:bkIn .6s both">
+          <div style="height:40px;font-size:1.05rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#d8b25f;text-align:center">Play-in</div>
+          <div style="flex:1;position:relative">
+            <sc-for list="{{ playinCards }}" as="pc" hint-placeholder-count="0">
+              <div style="position:absolute;left:0;right:0;top:{{ pc.top }};transform:translateY(-50%)">
+                <div style="border-radius:10px;overflow:hidden;background:#fff;color:#1e2c4f;box-shadow:0 8px 24px rgba(11,19,43,.35);animation:{{ pc.m.anim }}">
+                  <div style="display:flex;justify-content:space-between;padding:4px 10px;font-size:.58rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#5d6880;background:#eef1f6;border-bottom:1px solid #d5dae3"><span>{{ pc.m.tagL }}</span><span style="color:#8a6d20">{{ pc.m.tagR }}</span></div>
+                  <sc-for list="{{ pc.m.slots }}" as="s" hint-placeholder-count="0">
+                    <div sc-camel-on-click="{{ s.onPick }}" sc-camel-on-mouse-enter="{{ s.onEnter }}" sc-camel-on-mouse-leave="{{ s.onLeave }}" draggable="{{ s.drag }}" sc-camel-on-drag-start="{{ s.onDragStart }}" sc-camel-on-drag-end="{{ s.onDragEnd }}" sc-camel-on-drag-over="{{ s.onDragOver }}" sc-camel-on-drop="{{ s.onDrop }}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;box-sizing:border-box;min-height:72px;cursor:pointer;outline:{{ s.outline }};outline-offset:-2px;border-left:3px solid {{ s.edge }};background:{{ s.bg }};opacity:{{ s.op }};border-bottom:{{ s.div }}">
+                      <sc-if value="{{ s.show }}" hint-placeholder-val="{{ false }}">
+                        <div style="width:39px;height:52px;flex:none;position:relative;border:2px solid {{ s.ring }};border-radius:{{ s.shape }};background-image:url({{ s.f.img }});background-size:cover;background-position:center"><sc-if value="{{ s.win }}" hint-placeholder-val="{{ false }}"><span title="{{ s.winTitle }}" style="position:absolute;right:-7px;top:-7px;width:20px;height:20px;border-radius:50%;background:#d8b25f;color:#1e2c4f;font-size:.72rem;font-weight:800;display:grid;place-items:center;line-height:1;box-shadow:0 0 0 2px #fff">✓</span></sc-if></div>
+                        <div style="flex:1;min-width:0">
+                          <div style="display:flex;align-items:center;gap:6px">
+                            <span style="font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.f.name }}</span>
+                            <div style="width:18px;height:13px;flex:none;border-radius:2px;box-shadow:0 0 0 1px #d5dae3;background-image:url({{ s.f.flagUrl }});background-size:cover;background-position:center"></div>
+                          </div>
+                          <sc-if value="{{ s.clubs }}" hint-placeholder-val="{{ true }}">
+                            <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+                              <span style="width:14px;height:14px;flex:none;border-radius:50%;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;font-size:.5rem;font-weight:700;line-height:1;display:grid;place-items:center;text-align:center">{{ s.f.ab }}</span>
+                              <span style="font-size:.62rem;color:#5d6880;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.f.club }}</span>
+                            </div>
+                          </sc-if>
+                        </div>
+                        <sc-if value="{{ s.scoreLocked }}" hint-placeholder-val="{{ false }}"><span style="width:48px;flex:none;text-align:center;font-family:inherit;font-size:.9rem;font-weight:700;color:{{ s.scoreCol }};padding:4px 0">{{ s.score }}</span></sc-if><sc-if value="{{ s.scoreEdit }}" hint-placeholder-val="{{ true }}"><input value="{{ s.score }}" sc-camel-read-only="{{ s.scoreLocked }}" sc-camel-on-change="{{ s.onScore }}" sc-camel-on-click="{{ s.stop }}" style="width:48px;flex:none;text-align:center;font-family:inherit;font-size:.9rem;font-weight:700;color:{{ s.scoreCol }};border:1px solid {{ s.scoreCol }};border-radius:6px;padding:4px 0;background:#fff"></sc-if>
+                      </sc-if>
+                      <sc-if value="{{ s.empty }}" hint-placeholder-val="{{ false }}">
+                        <div style="width:39px;height:52px;flex:none;border-radius:8px;border:2px dashed {{ s.emptyRing }}"></div>
+                        <span style="font-size:.75rem;font-weight:500;color:{{ s.emptyColor }}">{{ s.emptyLabel }}</span>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                  <div style="padding:5px 10px;font-size:.6rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a6d20;background:#fdf6e6;border-top:1px solid #eef1f6">{{ pc.m.note }}</div>
+                </div>
+                <sc-if value="{{ pc.link }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:100%;top:calc(50% - 1px);width:36px;height:2px;background:{{ pc.lc }}"></div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-for list="{{ cols }}" as="col" hint-placeholder-count="3">
+        <div style="{{ col.colStyle }}">
+          <div style="height:40px;font-size:1.05rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#d8b25f;text-align:center">{{ col.name }}</div>
+          <sc-if value="{{ col.podium }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ col.podStyle }}">
+          <sc-if value="{{ champHas }}" hint-placeholder-val="{{ false }}">
+            <div style="position:relative;overflow:hidden;border-radius:14px;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;padding:18px;animation:bkChamp .5s ease both">
+              <sc-if value="{{ celebrate }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <span style="position:absolute;top:0;left:8%;width:6px;height:10px;background:#1e2c4f;animation:bkConf 1.7s .1s ease-in infinite"></span>
+                  <span style="position:absolute;top:0;left:22%;width:5px;height:9px;background:#fff;animation:bkConf 2.1s .5s ease-in infinite"></span>
+                  <span style="position:absolute;top:0;left:38%;width:6px;height:11px;background:#1e2c4f;animation:bkConf 1.9s .9s ease-in infinite"></span>
+                  <span style="position:absolute;top:0;left:55%;width:5px;height:9px;background:#fff;animation:bkConf 2.3s .3s ease-in infinite"></span>
+                  <span style="position:absolute;top:0;left:70%;width:6px;height:10px;background:#1e2c4f;animation:bkConf 1.8s .7s ease-in infinite"></span>
+                  <span style="position:absolute;top:0;left:86%;width:5px;height:11px;background:#fff;animation:bkConf 2s 1.1s ease-in infinite"></span>
+                </div>
+              </sc-if>
+              <div style="display:flex;align-items:center;gap:8px;font-size:.62rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase">
+                <svg width="16" height="12" sc-camel-view-box="0 0 16 12"><path d="M1 10h14L14 3l-3.4 3L8 1 5.4 6 2 3z" fill="#1e2c4f"></path></svg>
+                Champion
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:10px">
+                <div style="width:57px;height:76px;border:2px solid #1e2c4f;border-radius:{{ champShape }};background-image:url({{ champImg }});background-size:cover;background-position:center"></div>
+                <div style="min-width:0">
+                  <div style="font-size:1.05rem;font-weight:700;line-height:1.2">{{ champName }}</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                    <div style="width:18px;height:13px;border-radius:2px;box-shadow:0 0 0 1px #1e2c4f;background-image:url({{ champFlag }});background-size:cover;background-position:center"></div>
+                    <span style="font-size:.68rem;font-weight:500">{{ champClub }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ champNone }}" hint-placeholder-val="{{ true }}">
+            <div style="border:2px dashed #42527d;border-radius:14px;padding:22px 18px;text-align:center;font-size:.8rem;color:#97a1b4">Champion decided here</div>
+          </sc-if>
+          <sc-for list="{{ podium }}" as="p" hint-placeholder-count="2">
+            <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:8px 12px;color:#1e2c4f">
+              <span style="width:26px;height:26px;flex:none;border-radius:50%;background:{{ p.mc }};color:#fff;font-size:.72rem;font-weight:700;display:grid;place-items:center">{{ p.pos }}</span>
+              <sc-if value="{{ p.has }}" hint-placeholder-val="{{ false }}">
+                <div style="width:30px;height:40px;border-radius:{{ p.shape }};border:1px solid #d5dae3;background-image:url({{ p.img }});background-size:cover;background-position:center"></div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.76rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</div>
+                  <div style="font-size:.62rem;color:#5d6880;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.club }}</div>
+                </div>
+                <div style="width:18px;height:13px;border-radius:2px;box-shadow:0 0 0 1px #d5dae3;background-image:url({{ p.flagUrl }});background-size:cover;background-position:center"></div>
+              </sc-if>
+              <sc-if value="{{ p.tbd }}" hint-placeholder-val="{{ true }}">
+                <span style="font-size:.76rem;color:#97a1b4">To be decided</span>
+              </sc-if>
+            </div>
+          </sc-for>
+          </div>
+          </sc-if>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:space-around">
+            <sc-for list="{{ col.pairs }}" as="pair" hint-placeholder-count="2">
+              <div style="flex:1;position:relative;display:flex;flex-direction:column;justify-content:space-around;padding:11px 0;gap:22px">
+                <sc-for list="{{ pair.matches }}" as="m" hint-placeholder-count="2">
+                  <sc-if value="{{ m.hide }}" hint-placeholder-val="{{ false }}">
+                    <div style="height:118px;visibility:hidden"></div>
+                  </sc-if>
+                  <sc-if value="{{ m.vis }}" hint-placeholder-val="{{ true }}">
+                  <div style="border-radius:10px;overflow:hidden;background:#fff;color:#1e2c4f;box-shadow:0 8px 24px rgba(11,19,43,.35);animation:{{ m.anim }}">
+                    <div style="display:flex;justify-content:space-between;padding:4px 10px;font-size:.58rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#5d6880;background:#eef1f6;border-bottom:1px solid #d5dae3"><span>{{ m.tagL }}</span><span style="color:#8a6d20">{{ m.tagR }}</span></div>
+                    <sc-for list="{{ m.slots }}" as="s" hint-placeholder-count="0">
+                      <div sc-camel-on-click="{{ s.onPick }}" sc-camel-on-mouse-enter="{{ s.onEnter }}" sc-camel-on-mouse-leave="{{ s.onLeave }}" draggable="{{ s.drag }}" sc-camel-on-drag-start="{{ s.onDragStart }}" sc-camel-on-drag-end="{{ s.onDragEnd }}" sc-camel-on-drag-over="{{ s.onDragOver }}" sc-camel-on-drop="{{ s.onDrop }}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;box-sizing:border-box;min-height:72px;cursor:pointer;outline:{{ s.outline }};outline-offset:-2px;border-left:3px solid {{ s.edge }};background:{{ s.bg }};opacity:{{ s.op }};border-bottom:{{ s.div }}">
+                        <sc-if value="{{ s.show }}" hint-placeholder-val="{{ false }}">
+                          <div style="width:39px;height:52px;flex:none;position:relative;border:2px solid {{ s.ring }};border-radius:{{ s.shape }};background-image:url({{ s.f.img }});background-size:cover;background-position:center"><sc-if value="{{ s.win }}" hint-placeholder-val="{{ false }}"><span title="{{ s.winTitle }}" style="position:absolute;right:-7px;top:-7px;width:20px;height:20px;border-radius:50%;background:#d8b25f;color:#1e2c4f;font-size:.72rem;font-weight:800;display:grid;place-items:center;line-height:1;box-shadow:0 0 0 2px #fff">✓</span></sc-if></div>
+                          <div style="flex:1;min-width:0">
+                            <div style="display:flex;align-items:center;gap:6px">
+                              <span style="font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.f.name }}</span>
+                              <div style="width:18px;height:13px;flex:none;border-radius:2px;box-shadow:0 0 0 1px #d5dae3;background-image:url({{ s.f.flagUrl }});background-size:cover;background-position:center"></div>
+                            </div>
+                            <sc-if value="{{ s.clubs }}" hint-placeholder-val="{{ true }}">
+                              <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+                                <span style="width:14px;height:14px;flex:none;border-radius:50%;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;font-size:.5rem;font-weight:700;line-height:1;display:grid;place-items:center;text-align:center">{{ s.f.ab }}</span>
+                                <span style="font-size:.62rem;color:#5d6880;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.f.club }}</span>
+                              </div>
+                            </sc-if>
+                          </div>
+                          <sc-if value="{{ s.scoreLocked }}" hint-placeholder-val="{{ false }}"><span style="width:48px;flex:none;text-align:center;font-family:inherit;font-size:.9rem;font-weight:700;color:{{ s.scoreCol }};padding:4px 0">{{ s.score }}</span></sc-if><sc-if value="{{ s.scoreEdit }}" hint-placeholder-val="{{ true }}"><input value="{{ s.score }}" sc-camel-read-only="{{ s.scoreLocked }}" sc-camel-on-change="{{ s.onScore }}" sc-camel-on-click="{{ s.stop }}" style="width:48px;flex:none;text-align:center;font-family:inherit;font-size:.9rem;font-weight:700;color:{{ s.scoreCol }};border:1px solid {{ s.scoreCol }};border-radius:6px;padding:4px 0;background:#fff"></sc-if>
+                        </sc-if>
+                        <sc-if value="{{ s.editing }}" hint-placeholder-val="{{ false }}">
+                          <div style="width:39px;height:52px;flex:none;border:2px solid #caa14f;border-radius:{{ s.shape }};background-image:url({{ s.f.img }});background-size:cover;background-position:center"></div>
+                          <input value="{{ s.f.name }}" sc-camel-on-change="{{ s.onName }}" sc-camel-on-click="{{ s.stop }}" style="flex:1;min-width:0;font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;border:1px solid #caa14f;border-radius:6px;padding:5px 7px">
+                          <sc-if value="{{ s.canRemove }}" hint-placeholder-val="{{ false }}">
+                            <button sc-camel-on-click="{{ s.onRemove }}" title="Remove fighter (creates a bye)" style="width:24px;height:24px;flex:none;border:1px solid #d5dae3;border-radius:6px;cursor:pointer;background:#fff;color:#b4483c;font-size:.7rem;font-weight:700;line-height:1">✕</button>
+                          </sc-if>
+                        </sc-if>
+                        <sc-if value="{{ s.empty }}" hint-placeholder-val="{{ false }}">
+                          <div style="width:39px;height:52px;flex:none;border-radius:8px;border:2px dashed {{ s.emptyRing }}"></div>
+                          <span style="font-size:.75rem;font-weight:500;color:{{ s.emptyColor }}">{{ s.emptyLabel }}</span>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ m.note }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:5px 10px;font-size:.6rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a6d20;background:#fdf6e6;border-top:1px solid #eef1f6">{{ m.note }}</div>
+                    </sc-if>
+                  </div>
+                  </sc-if>
+                </sc-for>
+                <sc-for list="{{ pair.lines }}" as="ln" hint-placeholder-count="0">
+                  <div style="{{ ln.s }}"></div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ col.bz }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ col.bzStyle }}">
+          <sc-if value="{{ bronzeMode }}" hint-placeholder-val="{{ false }}">
+            <div>
+              <div style="border-radius:10px;overflow:hidden;background:#faf1e6;color:#1e2c4f;box-shadow:0 0 0 2px #b07a45,0 8px 24px rgba(11,19,43,.35);animation:{{ bronzeAnim }}">
+                <div style="display:flex;justify-content:space-between;padding:4px 10px;font-size:.58rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#7a4f22;background:#ecd9bd;border-bottom:1px solid #d8bd93"><span>3rd Place · Match {{ bronzeNo }}</span><span>Mat {{ bronzeMat }}</span></div>
+                <sc-for list="{{ bronzeSlots }}" as="s" hint-placeholder-count="0">
+                  <div sc-camel-on-click="{{ s.onPick }}" sc-camel-on-mouse-enter="{{ s.onEnter }}" sc-camel-on-mouse-leave="{{ s.onLeave }}" draggable="{{ s.drag }}" sc-camel-on-drag-start="{{ s.onDragStart }}" sc-camel-on-drag-end="{{ s.onDragEnd }}" sc-camel-on-drag-over="{{ s.onDragOver }}" sc-camel-on-drop="{{ s.onDrop }}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;box-sizing:border-box;min-height:72px;cursor:pointer;outline:{{ s.outline }};outline-offset:-2px;border-left:3px solid {{ s.edge }};background:{{ s.bg }};opacity:{{ s.op }};border-bottom:{{ s.div }}">
+                    <sc-if value="{{ s.show }}" hint-placeholder-val="{{ false }}">
+                      <div style="width:39px;height:52px;flex:none;position:relative;border:2px solid {{ s.ring }};border-radius:{{ s.shape }};background-image:url({{ s.f.img }});background-size:cover;background-position:center"><sc-if value="{{ s.win }}" hint-placeholder-val="{{ false }}"><span title="{{ s.winTitle }}" style="position:absolute;right:-7px;top:-7px;width:20px;height:20px;border-radius:50%;background:#d8b25f;color:#1e2c4f;font-size:.72rem;font-weight:800;display:grid;place-items:center;line-height:1;box-shadow:0 0 0 2px #fff">✓</span></sc-if></div>
+                      <div style="flex:1;min-width:0">
+                        <div style="display:flex;align-items:center;gap:6px">
+                          <span style="font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.f.name }}</span>
+                          <div style="width:18px;height:13px;flex:none;border-radius:2px;box-shadow:0 0 0 1px #d5dae3;background-image:url({{ s.f.flagUrl }});background-size:cover;background-position:center"></div>
+                        </div>
+                        <sc-if value="{{ s.clubs }}" hint-placeholder-val="{{ true }}">
+                          <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+                            <span style="width:14px;height:14px;flex:none;border-radius:50%;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;font-size:.5rem;font-weight:700;line-height:1;display:grid;place-items:center;text-align:center">{{ s.f.ab }}</span>
+                            <span style="font-size:.62rem;color:#5d6880;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.f.club }}</span>
+                          </div>
+                        </sc-if>
+                      </div>
+                      <sc-if value="{{ s.scoreLocked }}" hint-placeholder-val="{{ false }}"><span style="width:48px;flex:none;text-align:center;font-family:inherit;font-size:.9rem;font-weight:700;color:{{ s.scoreCol }};padding:4px 0">{{ s.score }}</span></sc-if><sc-if value="{{ s.scoreEdit }}" hint-placeholder-val="{{ true }}"><input value="{{ s.score }}" sc-camel-read-only="{{ s.scoreLocked }}" sc-camel-on-change="{{ s.onScore }}" sc-camel-on-click="{{ s.stop }}" style="width:48px;flex:none;text-align:center;font-family:inherit;font-size:.9rem;font-weight:700;color:{{ s.scoreCol }};border:1px solid {{ s.scoreCol }};border-radius:6px;padding:4px 0;background:#fff"></sc-if>
+                    </sc-if>
+                    <sc-if value="{{ s.empty }}" hint-placeholder-val="{{ true }}">
+                      <div style="width:39px;height:52px;flex:none;border-radius:8px;border:2px dashed #d5dae3"></div>
+                      <span style="font-size:.75rem;color:#97a1b4">Semifinal loser</span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          </div>
+          </sc-if>
+        </div>
+      </sc-for>
+
+    </div>
+  </div>
+</div>
+
+</div></x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1920,&quot;height&quot;:1080},&quot;mats&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:2,&quot;min&quot;:1,&quot;max&quot;:8,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Schedule&quot;},&quot;photoShape&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;circle&quot;,&quot;options&quot;:[&quot;circle&quot;,&quot;square&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Style&quot;},&quot;showClubs&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Style&quot;},&quot;celebration&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+const LOCKED_NOTE = 'The board is locked. Open the padlock beside the menu to change the draw, the scores or the results.';
+
+class Component extends DCLogic {
+  state = {
+    /* ⚠️ LOCKED UNTIL SOMEBODY SAYS OTHERWISE.
+
+       This is the management view of a draw, and a draw is READ far more
+       often than it is changed — every editable thing on it (a draggable
+       competitor, a tappable corner, a score box) is something a sleeve or a
+       thumb alters by accident while somebody is only looking.
+
+       One padlock beside the menu turns the whole of it on: picking winners,
+       typing scores, editing names, re-seeding, adding people. It starts shut
+       on every load, deliberately, because a catch that remembers being open
+       is not a catch.
+
+       It is a GUARD, not a permission. Unlocking grants nothing: every write
+       goes through the bridge to an endpoint that asks the server for the
+       same authority it always did. This decides what may be TOUCHED.
+
+       And it works after the competition is over — asked for explicitly. A
+       result filed wrong on the day is corrected the week after, and a board
+       that seals itself at the final whistle is a board that cannot be put
+       right. */
+    locked: true,
+    size: 8, third: 'match', edit: false, results: {},
+    playins: [], addOpen: false, addMode: 'known', search: '', dragId: null, dragSlot: null, menuOpen: false, hoverId: null,
+    basket: [], dragBasket: null, basketMin: false, scale: 1, layout: 'linear', portrait: false, forceView: 'auto', bgImg: null,
+    addName: '', addCountry: '', addClubSel: '', addClubNew: '',
+    countryOpen: false, clubOpen: false, notice: '',
+    roster: [
+      {id:8,name:'Diego Fuentes',cc:'mx',club:'Entram Gym',ab:'EG',img:'https://randomuser.me/api/portraits/men/29.jpg'},
+      {id:201,name:'Yusuf Al Doseri',cc:'bh',club:'Bahrain Elite MMA',ab:'BE',img:'https://randomuser.me/api/portraits/men/91.jpg'},
+      {id:202,name:'Tariq Haddad',cc:'jo',club:'Amman Top Team',ab:'AT',img:'https://randomuser.me/api/portraits/men/14.jpg'},
+      {id:203,name:'Pedro Lima',cc:'br',club:'Nova Uni\u00e3o',ab:'NU',img:'https://randomuser.me/api/portraits/men/66.jpg'},
+      {id:204,name:'Daniyar Serik',cc:'kz',club:'Astana Fight Club',ab:'AK',img:'https://randomuser.me/api/portraits/men/25.jpg'},
+      {id:205,name:'Sean Murphy',cc:'ie',club:'SBG Ireland',ab:'SB',img:'https://randomuser.me/api/portraits/men/39.jpg'},
+      {id:206,name:'Omar El Sayed',cc:'eg',club:'Cairo Combat Club',ab:'CC',img:'https://randomuser.me/api/portraits/men/50.jpg'},
+      {id:207,name:'Theo Marchand',cc:'fr',club:'MMA Factory',ab:'MF',img:'https://randomuser.me/api/portraits/men/78.jpg'},
+      {id:208,name:'Faisal Al Qahtani',cc:'sa',club:'Riyadh Fight Club',ab:'RF',img:'https://randomuser.me/api/portraits/men/8.jpg'}
+    ],
+    fighters: [
+      {id:1,name:'Rafael Souza',cc:'br',club:'Chute Boxe',ab:'CB',img:'https://randomuser.me/api/portraits/men/32.jpg'},
+      {id:2,name:'Marcus Webb',cc:'us',club:'American Top Team',ab:'AT',img:'https://randomuser.me/api/portraits/men/22.jpg'},
+      {id:3,name:'Kenji Takeda',cc:'jp',club:'Krazy Bee',ab:'KB',img:'https://randomuser.me/api/portraits/men/75.jpg'},
+      {id:4,name:'Liam O\u2019Connor',cc:'ie',club:'SBG Ireland',ab:'SB',img:'https://randomuser.me/api/portraits/men/45.jpg'},
+      {id:5,name:'Hasan Fardan',cc:'bh',club:'Bahrain Elite MMA',ab:'BE',img:'https://randomuser.me/api/portraits/men/83.jpg'},
+      {id:6,name:'Somchai Rit',cc:'th',club:'Tiger Muay Thai',ab:'TM',img:'https://randomuser.me/api/portraits/men/64.jpg'},
+      {id:7,name:'Giorgi Beridze',cc:'ge',club:'Georgian Top Team',ab:'GT',img:'https://randomuser.me/api/portraits/men/18.jpg'},
+      null,
+      {id:9,name:'Antoine Dubois',cc:'fr',club:'MMA Factory',ab:'MF',img:'https://randomuser.me/api/portraits/men/52.jpg'},
+      {id:10,name:'Khalid Al Marri',cc:'ae',club:'Dubai Combat Club',ab:'DC',img:'https://randomuser.me/api/portraits/men/41.jpg'},
+      {id:11,name:'Min-Jun Park',cc:'kr',club:'Team Mad',ab:'TM',img:'https://randomuser.me/api/portraits/men/71.jpg'},
+      {id:12,name:'Jack Reilly',cc:'au',club:'Perth Fight Centre',ab:'PF',img:'https://randomuser.me/api/portraits/men/36.jpg'},
+      {id:13,name:'Ade Thompson',cc:'gb',club:'London Shootfighters',ab:'LS',img:'https://randomuser.me/api/portraits/men/85.jpg'},
+      {id:14,name:'Karim Benali',cc:'dz',club:'Atlas Fight Team',ab:'AF',img:'https://randomuser.me/api/portraits/men/57.jpg'},
+      {id:15,name:'Noah Tremblay',cc:'ca',club:'Tristar Gym',ab:'TG',img:'https://randomuser.me/api/portraits/men/12.jpg'},
+      {id:16,name:'Arman Bekov',cc:'kz',club:'Astana Fight Club',ab:'AK',img:'https://randomuser.me/api/portraits/men/68.jpg'}
+    ]
+  };
+  countries = [
+    {cc:'bh',name:'Bahrain'},{cc:'ae',name:'United Arab Emirates'},{cc:'sa',name:'Saudi Arabia'},
+    {cc:'kw',name:'Kuwait'},{cc:'qa',name:'Qatar'},{cc:'om',name:'Oman'},{cc:'jo',name:'Jordan'},
+    {cc:'eg',name:'Egypt'},{cc:'dz',name:'Algeria'},{cc:'ma',name:'Morocco'},{cc:'br',name:'Brazil'},
+    {cc:'us',name:'United States'},{cc:'gb',name:'United Kingdom'},{cc:'ie',name:'Ireland'},
+    {cc:'fr',name:'France'},{cc:'se',name:'Sweden'},{cc:'ge',name:'Georgia'},{cc:'kz',name:'Kazakhstan'},
+    {cc:'jp',name:'Japan'},{cc:'kr',name:'South Korea'},{cc:'th',name:'Thailand'},{cc:'au',name:'Australia'},
+    {cc:'ca',name:'Canada'},{cc:'mx',name:'Mexico'},{cc:'ng',name:'Nigeria'}
+  ];
+  menuAnchor = React.createRef();
+  _menuAt = {top: '120px', right: '40px'};
+  /** Put the menu directly under whichever button opened it. */
+  measureMenu(){
+    const btn = this.menuAnchor.current;
+    const stage = btn && btn.closest('[data-screen-label]');
+    if (!btn || !stage) return;
+    const b = btn.getBoundingClientRect(), s = stage.getBoundingClientRect();
+    // getBoundingClientRect is in SCREEN px; the stage is zoomed, so both are
+    // divided back into the stage's own coordinates before being written into
+    // a style on an element inside it.
+    const sc = stage.offsetWidth ? (s.width / stage.offsetWidth) : 1;
+    this._menuAt = {
+      top: Math.round((b.bottom - s.top) / sc + 10) + 'px',
+      right: Math.round((s.right - b.right) / sc) + 'px'
+    };
+  }
+  boardRef = React.createRef();
+  addWin = React.createRef();
+  fileRef = React.createRef();
+  _addPos = {x: 580, y: 130};
+  boardInner = React.createRef();
+  view = {x: 0, y: 0, z: 1};
+  zoomAt(e){
+    const bw = this.boardRef.current;
+    if (!bw) return;
+    const sc = this.realScale(bw), r = bw.getBoundingClientRect();
+    const cx = (e.clientX - r.left)/sc, cy = (e.clientY - r.top)/sc, v = this.view;
+    const nz = Math.min(3, Math.max(0.3, v.z * (e.deltaY < 0 ? 1.12 : 0.89)));
+    v.x = cx - (cx - v.x) * nz / v.z;
+    v.y = cy - (cy - v.y) * nz / v.z;
+    v.z = nz;
+    this.applyView();
+  }
+  /* ⚠️ `zoom`, NOT `transform: scale()` — the board must stay SHARP.
+
+     A transform scales a raster: the browser draws the board once at its
+     layout size and then blows that bitmap up, so zooming in on a competitor
+     magnified a 39px photograph into a 39px photograph, and the text with it.
+     The pictures are already served at full resolution — the blur was never
+     the source file, it was the compositor.
+
+     `zoom` is a LAYOUT scale: everything is laid out and re-rasterised at the
+     new size, so a face and a name are as crisp zoomed in as they are fitted
+     to the screen. Panning stays a transform, which is what a transform is
+     good at.
+
+     The two compose: with `zoom: z`, a `translate(t)` moves the element by
+     t × z on screen, so the pan offset (which is kept in stage units) is
+     divided by z on the way in. Falls back to the original transform on an
+     engine without `zoom`. */
+  applyView(){
+    const el = this.boardInner.current;
+    if (!el) return;
+    const v = this.view;
+    if (this._noZoom){
+      el.style.transform = 'translate(' + v.x + 'px,' + v.y + 'px) scale(' + v.z + ')';
+      return;
+    }
+    el.style.zoom = v.z;
+    el.style.transform = 'translate(' + (v.x / v.z) + 'px,' + (v.y / v.z) + 'px)';
+  }
+  realScale(bw){
+    const r = bw.getBoundingClientRect();
+    return bw.offsetWidth ? (r.width / bw.offsetWidth) : 1;
+  }
+  fitBoard(){
+    const bw = this.boardRef.current, el = this.boardInner.current;
+    if (!bw || !el) return;
+    /* Measured with the zoom OFF. `zoom` changes the used values, so reading
+       scrollWidth while it is applied measures the already-scaled board and
+       the fit compounds on itself a little more each time. */
+    const keepZ = el.style.zoom, keepT = el.style.transform;
+    el.style.zoom = ''; el.style.transform = '';
+    const w = bw.offsetWidth, h = bw.offsetHeight, iw = el.scrollWidth, ih = el.scrollHeight;
+    el.style.zoom = keepZ; el.style.transform = keepT;
+    if (!iw || !ih) return;
+    const z = Math.min(1, (h-12)/ih, (w-12)/iw);
+
+    /* Centred on BOTH axes. `y` was pinned to 0, which put a short draw — a
+       four-competitor division is two cards — hard against the top edge with
+       the rest of the canvas empty below it. A draw that does not fill the
+       height is centred in it; one that overflows still starts at the top,
+       because `max(0, …)` cannot go negative and scrolling up to find the
+       first round is worse than starting there. */
+    this.view = {
+        x: Math.max(0, (w - iw*z)/2),
+        y: Math.max(0, (h - ih*z)/2),
+        z,
+    };
+    this.applyView();
+  }
+  componentDidMount(){
+    // One engine in a hundred has no `zoom`; it gets the original transform.
+    this._noZoom = !(window.CSS && CSS.supports && CSS.supports('zoom', '1'));
+    this.onRz = () => {
+      const portrait = window.innerHeight > window.innerWidth;
+      const f = this.state.forceView || 'auto';
+      const m = f === 'mobile' || (f === 'auto' && portrait);
+      const sw = m ? 1080 : 1920, sh = m ? 2340 : 1080;
+      this.setState({portrait, scale: Math.min(window.innerWidth/sw, window.innerHeight/sh)}, () => this.fitBoard());
+    };
+    window.addEventListener('resize', this.onRz);
+    this.onRz();
+    try {
+      const bg = localStorage.getItem('bk-bg');
+      if (bg) fetch(bg).then(r => r.blob()).then(b => this.setState({bgImg: URL.createObjectURL(b)})).catch(() => {});
+    } catch(e){}
+    this._ds = () => { this._pan = null; };
+    window.addEventListener('dragstart', this._ds);
+    /* A press anywhere that is neither the menu nor the button that opens it
+       closes the menu. Captured on the way DOWN so it lands before whatever
+       was pressed acts, and before the button's own click re-toggles it. */
+    this._away = (e) => {
+      if (! this.state.menuOpen) return;
+      const t = e.target;
+      const inMenu = t && t.closest && t.closest('[data-bk-menu]');
+      const onBtn = this.menuAnchor.current && t && this.menuAnchor.current.contains(t);
+      if (inMenu || onBtn) return;
+      this.setState({menuOpen: false});
+    };
+    document.addEventListener('pointerdown', this._away, true);
+    this._wheel = (e) => { e.preventDefault(); e.stopPropagation(); this.zoomAt(e); };
+    let tries = 0;
+    const attach = () => {
+      const bw = this.boardRef.current;
+      if (bw){
+        bw.addEventListener('wheel', this._wheel, {passive: false});
+        this._ts = (e) => {
+          if (e.touches.length === 1){
+            const t = e.touches[0];
+            if (t.target.closest && t.target.closest('input,button,[draggable="true"]')) return;
+            this._tpan = {x: t.clientX, y: t.clientY, ox: this.view.x, oy: this.view.y};
+            this._pinch = null;
+          } else if (e.touches.length === 2){
+            this._tpan = null;
+            const a = e.touches[0], b = e.touches[1];
+            this._pinch = {d: Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY), z: this.view.z,
+              cx: (a.clientX+b.clientX)/2, cy: (a.clientY+b.clientY)/2, vx: this.view.x, vy: this.view.y};
+          }
+        };
+        this._tm = (e) => {
+          const sc = this.realScale(bw);
+          if (e.touches.length === 1 && this._tpan){
+            e.preventDefault();
+            const t = e.touches[0];
+            this.view.x = this._tpan.ox + (t.clientX - this._tpan.x)/sc;
+            this.view.y = this._tpan.oy + (t.clientY - this._tpan.y)/sc;
+            this.applyView();
+          } else if (e.touches.length === 2 && this._pinch){
+            e.preventDefault();
+            const a = e.touches[0], b = e.touches[1];
+            const d = Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+            const nz = Math.min(3, Math.max(0.3, this._pinch.z * d / this._pinch.d));
+            const r = bw.getBoundingClientRect();
+            const cx = (this._pinch.cx - r.left)/sc, cy = (this._pinch.cy - r.top)/sc;
+            this.view.x = cx - (cx - this._pinch.vx) * nz / this._pinch.z;
+            this.view.y = cy - (cy - this._pinch.vy) * nz / this._pinch.z;
+            this.view.z = nz;
+            this.applyView();
+          }
+        };
+        this._te = () => { this._tpan = null; this._pinch = null; };
+        bw.addEventListener('touchstart', this._ts, {passive: true});
+        bw.addEventListener('touchmove', this._tm, {passive: false});
+        bw.addEventListener('touchend', this._te);
+        this.fitBoard();
+      } else if (tries++ < 40) setTimeout(attach, 150);
+    };
+    attach();
+  }
+  componentDidUpdate(prevProps, prevState){
+    if (this.state.notice && this.state.notice !== prevState.notice){
+      clearTimeout(this._nt);
+      this._nt = setTimeout(() => this.setState({notice: ''}), 6500);
+    }
+  }
+  componentWillUnmount(){
+    clearTimeout(this._nt);
+    window.removeEventListener('resize', this.onRz);
+    window.removeEventListener('dragstart', this._ds);
+    document.removeEventListener('pointerdown', this._away, true);
+    if (this.boardRef.current && this._wheel) this.boardRef.current.removeEventListener('wheel', this._wheel);
+  }
+  isMobile(){
+    const f = this.state.forceView || 'auto';
+    return f === 'mobile' || (f === 'auto' && this.state.portrait);
+  }
+  res(k){ return this.state.results[k] || {}; }
+  partBase(r,i,side){
+    if (r === 0) return this.state.fighters[2*i+side] || null;
+    return this.winner(r-1, 2*i+side);
+  }
+  part(r,i,side){
+    const p = this.state.playins.find(q => q.r === r && q.i === i && q.side === side);
+    return p ? this.playinWinner(p) : this.partBase(r,i,side);
+  }
+  playinWinner(p){
+    const w = this.res('P'+p.id).w; if (!w) return null;
+    const nc = this.state.fighters.find(f => f.id === p.newId);
+    if (nc && nc.id === w) return nc;
+    const occ = this.partBase(p.r, p.i, p.side);
+    return (occ && occ.id === w) ? occ : null;
+  }
+  roundLabel(r){
+    const size = this.state.size, nR = Math.round(Math.log2(size));
+    if (r === nR-1) return 'the Final';
+    return {64:['Round of 64','Round of 32','Round of 16','Quarterfinal','Semifinal'],32:['Round of 32','Round of 16','Quarterfinal','Semifinal'],16:['Round of 16','Quarterfinal','Semifinal'],8:['Quarterfinal','Semifinal'],4:['Semifinal'],2:[]}[size][r];
+  }
+  slotRef(t){
+    const lbl = this.roundLabel(t.r);
+    const pos = (t.side ? 'bottom' : 'top') + ' slot';
+    return lbl === 'the Final' ? pos + ' of the Final' : pos + ' of ' + lbl + ' ' + (t.i+1);
+  }
+  chainClear(i){
+    if (this.res('0-'+i).w) return false;
+    const nR = Math.round(Math.log2(this.state.size));
+    let m = Math.floor(i/2);
+    for (let r = 1; r < nR; r++){ if (this.res(r+'-'+m).w) return false; m = Math.floor(m/2); }
+    return true;
+  }
+  placeF(nf, extra){
+    const s = this.state;
+    if (s.locked) return false;                 // padlock
+    const size = s.size, nR = Math.round(Math.log2(size));
+    const roster = s.roster.filter(x => x.id !== nf.id);
+    const rp = roster.length !== s.roster.length ? {roster} : {};
+    // Rule 0: bracket full but NO fight has happened yet -> expand to next power of two
+    const anyPlayed = Object.values(s.results).some(x => x && x.w) || s.playins.length > 0;
+    const full = Array.from({length: size}, (_,j) => s.fighters[j]).every(Boolean);
+    if (!anyPlayed && full && size < 16){
+      const nfs = [];
+      for (let j = 0; j < size; j++){ nfs[2*j] = s.fighters[j]; nfs[2*j+1] = null; }
+      nfs[1] = nf;
+      this.setState({size: size*2, fighters: nfs, ...rp, ...extra,
+        notice: 'No fight had started, so the bracket expanded from ' + size + ' to ' + (size*2) + ' slots — the standard procedure. Every original fighter received a bye; ' + nf.name + ' enters against the No. 1 seed, ' + (s.fighters[0] ? s.fighters[0].name : 'TBD') + '.'});
+      return true;
+    }
+    // Rule 1: fill an open bye whose result chain is untouched
+    let byeIdx = -1, byeMatch = -1;
+    for (let i = 0; i < size/2 && byeIdx < 0; i++){
+      for (const side of [0,1]){
+        const idx = 2*i+side;
+        if (s.fighters[idx]) continue;
+        if (s.playins.some(q => q.r === 0 && q.i === i && q.side === side)) continue;
+        if (this.chainClear(i)) { byeIdx = idx; byeMatch = i; break; }
+      }
+    }
+    // Rule 2: pigtail at the LOWEST unplayed first-round slot (late entries forfeit seeding)
+    let target = null;
+    if (byeIdx < 0){
+      const nM0 = size/2, order = [];
+      for (let a = 0, b = nM0-1; a <= b; a++, b--){ order.push(a); if (b !== a) order.push(b); }
+      for (const i of order){
+        if (target) break;
+        if (this.winner(0,i)) continue;
+        for (const side of [1,0]){
+          if (s.playins.some(q => q.r === 0 && q.i === i && q.side === side)) continue;
+          if (this.partBase(0,i,side)) { target = {r:0, i, side}; break; }
+        }
+      }
+      // Rule 3: only if round 1 is fully underway, use a later-round slot
+      outer:
+      for (let r = 1; r < nR && !target; r++){
+        const nM = size >> (r+1);
+        for (let i = 0; i < nM; i++){
+          if (this.winner(r,i)) continue;
+          for (const side of [0,1]){
+            if (s.playins.some(q => q.r === r && q.i === i && q.side === side)) continue;
+            if (this.partBase(r,i,side)) { target = {r,i,side}; break outer; }
+          }
+        }
+      }
+      if (!target){ this.setState({notice: 'Every match is already decided — the bracket is complete, so a late entry is not possible. Reset a result to open a spot.'}); return false; }
+    }
+    if (byeIdx >= 0){
+      this.setState({
+        fighters: s.fighters.map((f,j) => j === byeIdx ? nf : f), ...rp, ...extra,
+        notice: nf.name + ' filled the open bye in ' + this.roundLabel(0) + ' ' + (byeMatch+1) + ' — no extra bout needed. The opponent now fights instead of advancing on a bye. No played match was changed.'
+      });
+      return true;
+    }
+    const occ = this.partBase(target.r, target.i, target.side);
+    this.setState({
+      fighters: [...s.fighters, nf],
+      playins: [...s.playins, {id: Date.now(), newId: nf.id, ...target}],
+      ...rp, ...extra,
+      notice: nf.name + ' enters via a pigtail (play-in) bout against ' + (occ ? occ.name : 'TBD') + ' — late entries forfeit seeding; per pigtail rules the winner advances against the highest available seed, and the loser is eliminated. The winner takes the ' + this.slotRef(target) + ', and that match is rescheduled to the end of its round so the play-in winner gets rest. No played match was changed.'
+    });
+    return true;
+  }
+  moveSlot(from, r, i, side){
+    const s = this.state;
+    if (s.locked) return;                       // padlock
+    if (r !== 0){ this.setState({notice: 'Fighters can only be re-seeded within the first round — later slots are earned by winning.'}); return; }
+    const to = 2*i+side, fi = Math.floor(from/2);
+    if (to === from) return;
+    if (!this.chainClear(i) || !this.chainClear(fi)){ this.setState({notice: 'That move would disturb a match that is already decided — only untouched first-round matches can be re-seeded.'}); return; }
+    if (s.playins.some(q => q.r === 0 && ((q.i === i && q.side === side) || (q.i === fi && q.side === from % 2)))){ this.setState({notice: 'A play-in bout is attached to that slot — it cannot be re-seeded.'}); return; }
+    const A = s.fighters[from], B = s.fighters[to];
+    if (!A) return;
+    const fighters = s.fighters.slice();
+    fighters[from] = null; fighters[to] = A;
+    this.setState({fighters, basket: B ? [...s.basket, B] : s.basket,
+      notice: B ? (A.name + ' took ' + B.name + '\u2019s place — ' + B.name + ' is now in the holding basket; drag him into another slot.') : (A.name + ' moved to the open slot — his previous slot is now open.')});
+  }
+  placeBasket(id, r, i, side){
+    const s = this.state;
+    if (s.locked) return;                       // padlock
+    if (r !== 0){ this.setState({notice: 'Fighters can only be placed in first-round slots — later slots are earned by winning.'}); return; }
+    if (!this.chainClear(i)){ this.setState({notice: 'That match\u2019s path already has a decided result — pick an untouched first-round slot.'}); return; }
+    if (s.playins.some(q => q.r === 0 && q.i === i && q.side === side)){ this.setState({notice: 'A play-in bout is attached to that slot — it cannot be re-seeded.'}); return; }
+    const f = s.basket.find(x => x.id === id);
+    if (!f) return;
+    const to = 2*i+side, B = s.fighters[to];
+    const fighters = s.fighters.slice();
+    fighters[to] = f;
+    const basket = s.basket.filter(x => x.id !== id).concat(B ? [B] : []);
+    this.setState({fighters, basket,
+      notice: B ? (f.name + ' took ' + B.name + '\u2019s place — ' + B.name + ' moved to the holding basket.') : (f.name + ' placed into the ' + this.slotRef({r,i,side}) + '.')});
+  }
+  dropToBasket(){
+    const s = this.state;
+    if (s.locked) return;                       // padlock
+    if (s.dragSlot == null) return;
+    const from = s.dragSlot, A = s.fighters[from];
+    this.setState({dragSlot: null});
+    if (!A) return;
+    const fighters = s.fighters.slice();
+    fighters[from] = null;
+    this.setState({fighters, basket: [...s.basket, A], notice: A.name + ' moved to the holding basket — his slot is now open.'});
+  }
+  dropOn(r,i,side){
+    const s = this.state;
+    if (s.locked) return;                       // padlock
+    if (s.dragBasket != null){
+      const id = s.dragBasket;
+      this.setState({dragBasket: null});
+      this.placeBasket(id, r, i, side);
+      return;
+    }
+    if (s.dragSlot != null){
+      const from = s.dragSlot;
+      this.setState({dragSlot: null});
+      this.moveSlot(from, r, i, side);
+      return;
+    }
+    const f = s.roster.find(x => x.id === s.dragId);
+    this.setState({dragId: null});
+    if (!f) return;
+    if (this.winner(r,i)){ this.setState({notice: 'That match is already decided — drop the fighter on an unplayed slot.'}); return; }
+    if (s.playins.some(q => q.r === r && q.i === i && q.side === side)){ this.setState({notice: 'That slot already has a play-in bout attached.'}); return; }
+    const roster = s.roster.filter(x => x.id !== f.id);
+    if (r === 0 && !s.fighters[2*i+side]){
+      if (!this.chainClear(i)){ this.setState({notice: 'That bye cannot be filled — a later match on this path is already decided.'}); return; }
+      this.setState({fighters: s.fighters.map((x,j) => j === 2*i+side ? f : x), roster,
+        notice: f.name + ' filled the open bye in ' + this.roundLabel(0) + ' ' + (i+1) + ' — no extra bout needed. No played match was changed.'});
+      return;
+    }
+    const occ = this.partBase(r,i,side);
+    if (!occ){ this.setState({notice: 'That slot has no fighter yet — drop onto a fighter or a bye.'}); return; }
+    this.setState({fighters: [...s.fighters, f], roster,
+      playins: [...s.playins, {id: Date.now(), newId: f.id, r, i, side}],
+      notice: f.name + ' enters via a pigtail (play-in) bout against ' + occ.name + '. The winner takes the ' + this.slotRef({r,i,side}) + '. No played match was changed.'});
+  }
+  addFighter(){
+    const s = this.state, name = s.addName.trim();
+    if (s.locked) return;                       // padlock
+    if (!name) return;
+    const club = s.addClubSel === '__new' ? (s.addClubNew.trim() || 'Independent') : (s.addClubSel || 'Independent');
+    const known = s.fighters.find(f => f && f.club === club);
+    const imgs = [5,9,90,60,77,48];
+    const nf = {id: Date.now(), name, cc: s.addCountry || 'un', club,
+      ab: known ? known.ab : club.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase(),
+      img: 'https://randomuser.me/api/portraits/men/' + imgs[s.fighters.length % imgs.length] + '.jpg'};
+    this.placeF(nf, {addOpen: false, addName: '', addCountry: '', addClubSel: '', addClubNew: '', countryOpen: false, clubOpen: false});
+  }
+  playinView(p){
+    const k = 'P'+p.id;
+    const nc = this.state.fighters.find(f => f.id === p.newId);
+    const occ = this.partBase(p.r, p.i, p.side);
+    const w = this.playinWinner(p);
+    const pick = (f) => this.pickKey(k,f);
+    const lbl = this.roundLabel(p.r);
+    return {
+      slots: [this.mkSlot(nc,k,0,w?w.id:null,pick), this.mkSlot(occ,k,1,w?w.id:null,pick)],
+      anim: (nc && occ && !w && this.state.playins.indexOf(p)+1 === this._curNo) ? 'bkPulse 1.8s ease-in-out infinite' : 'none',
+      note: 'Winner \u2192 ' + (lbl === 'the Final' ? 'Final' : lbl + ' ' + (p.i+1)),
+      tagL: 'Match ' + (this.state.playins.indexOf(p) + 1),
+      tagR: 'Mat ' + this.matNo(this.state.playins.indexOf(p) + 1)
+    };
+  }
+  winner(r,i){
+    const a = this.part(r,i,0), b = this.part(r,i,1);
+    const w = this.res(r+'-'+i).w;
+    if (w){
+      if (a && a.id === w) return a;
+      if (b && b.id === w) return b;
+      return null;
+    }
+    if (r === 0){
+      const pin = (sd) => this.state.playins.some(q => q.r === 0 && q.i === i && q.side === sd);
+      if (a && !b && !pin(1)) return a;
+      if (b && !a && !pin(0)) return b;
+    }
+    return null;
+  }
+  removeF(idx){
+    if (this.state.locked) return;              // padlock
+    this.setState(s => ({fighters: s.fighters.map((f,j) => j === idx ? null : f)}));
+  }
+  loser(r,i){
+    const win = this.winner(r,i); if (!win) return null;
+    const a = this.part(r,i,0), b = this.part(r,i,1);
+    return win === a ? b : a;
+  }
+  pickKey(k,f){
+    if (this.state.locked) return;              // padlock
+    if (this._panned){ this._panned = false; return; }
+    this.setState(s => {
+      const results = {...s.results}, cur = results[k] || {};
+      results[k] = {...cur, w: cur.w === f.id ? null : f.id};
+      return {results};
+    });
+  }
+  setScore(k,side,v){
+    if (this.state.locked) return;              // padlock
+    this.setState(s => ({results: {...s.results, [k]: {...(s.results[k]||{}), [side]: v}}}));
+  }
+  rename(id,v){
+    if (this.state.locked) return;              // padlock
+    this.setState(s => ({fighters: s.fighters.map(f => (f && f.id === id) ? {...f, name: v} : f)}));
+  }
+  mkSlot(f,k,side,winId,pick,emptyLabel,removeFn){
+    const res = this.res(k), locked = this.state.locked, edit = this.state.edit && !locked;
+    const win = !!f && winId === f.id;
+    const pin = emptyLabel === 'Play-in winner';
+    return {
+      emptyLabel: emptyLabel || 'Awaiting winner',
+      emptyColor: pin ? '#8a6d20' : '#97a1b4',
+      emptyRing: pin ? '#caa14f' : '#d5dae3',
+      canRemove: !!removeFn && !locked,
+      onRemove: (e) => { e.stopPropagation(); if (removeFn) removeFn(); },
+      onDragOver: (e) => {}, onDrop: (e) => {}, outline: 'none',
+      drag: false, onDragStart: (e) => {}, onDragEnd: (e) => {},
+      show: !!f && !edit, editing: !!f && edit, empty: !f,
+      f: f ? {...f, flagUrl: 'https://flagcdn.com/w40/'+f.cc+'.png'} : null,
+      edge: side ? '#2f5fae' : '#c0392b',
+      scoreCol: side ? '#2f5fae' : '#c0392b',
+      onEnter: f ? () => this.setState({hoverId: f.id}) : null,
+      onLeave: () => this.setState({hoverId: null}),
+      /* THE CORNERS ARE THE FILL. Red is always the upper half of a card and
+         blue always the lower, the way they are on the mat and on the board —
+         a reader glancing at a bracket knows which corner a competitor is in
+         without reading anything. The winner's tint is the same hue carried
+         deeper, so the corner survives the state rather than being replaced
+         by it; hover stays green because it is about the POINTER, not the
+         competitor. The left edge keeps the saturated corner colour. */
+      bg: (f && this.state.hoverId === f.id)
+        ? '#c9f0da'
+        : (win ? (side ? '#d3e0f7' : '#f8d6d1') : (side ? '#eaf0fb' : '#fdecea')),
+      /* A competitor who lost is still in the red corner or the blue one —
+         that is where they FOUGHT, and it does not stop being true when the
+         bout is decided. The card used to fade to 45%, which washed the
+         corner out to a grey-pink over the white behind it. The result is
+         said by the winner's deeper fill and its gold ring instead. */
+      op: 1,
+      ring: win ? '#d8b25f' : '#d5dae3',
+      /* WHO WON IS NOT THE HIGHER NUMBER. A bout is taken on points, but it
+         is also taken by submission, stoppage, disqualification, withdrawal
+         or a referee's decision — and in several of those the scoreline reads
+         the wrong way round or is not there at all. So the result is MARKED,
+         beside the score rather than derived from it. */
+      win: win,
+      winTitle: 'Winner',
+      onPick: () => { if (!locked && !edit && f) pick(f); },
+      score: res[side ? 'sb' : 'sa'] ?? '',
+      /* A locked board has no score BOX at all — the score is drawn as plain
+         text, the way the rest of the card is. An input that merely refuses
+         keystrokes still looks like an invitation to type, and a reader who
+         accepts it watches what they typed sit there until the next render
+         quietly takes it back. The box comes back when the padlock opens. */
+      scoreLocked: locked,
+      scoreEdit: !locked,
+      onScore: (e) => { if (!locked) this.setScore(k, side ? 'sb' : 'sa', e.target.value); },
+      stop: (e) => e.stopPropagation(),
+      onName: f ? (e) => this.rename(f.id, e.target.value) : null,
+      div: side ? 'none' : '1px solid #eef1f6',
+      shape: '8px'   /* 3:4 portraits — never a circle (2026-09-20) */,
+      clubs: this.props.showClubs ?? true
+    };
+  }
+  inMatch(r,i,hid){
+    if (!hid) return false;
+    const a = this.part(r,i,0), b = this.part(r,i,1);
+    return (a && a.id === hid) || (b && b.id === hid);
+  }
+  matchView(r,i){
+    const k = r+'-'+i, w = this.winner(r,i);
+    const a = this.part(r,i,0), b = this.part(r,i,1);
+    const pick = (f) => this.pickKey(k,f);
+    const lbl = (side) => {
+      if (this.state.playins.some(q => q.r === r && q.i === i && q.side === side)) return 'Play-in winner';
+      if (r === 0 && !this.state.fighters[2*i+side]) return 'Bye';
+      return null;
+    };
+    const rm = (side) => {
+      const idx = 2*i+side;
+      if (r === 0 && this.state.edit && !this.res(k).w && this.state.fighters[idx] && !this.winner(r === 0 ? 0 : r, i)) return () => this.removeF(idx);
+      return null;
+    };
+    const slots = [this.mkSlot(a,k,0,w?w.id:null,pick,lbl(0),rm(0)), this.mkSlot(b,k,1,w?w.id:null,pick,lbl(1),rm(1))];
+    const st = this.state;
+    const dragging = !!st.dragId || st.dragSlot != null || st.dragBasket != null;
+    slots.forEach((sl,sd) => {
+      sl.onDragOver = (e) => { if (!this.state.locked && (this.state.dragId || this.state.dragSlot != null || this.state.dragBasket != null)) e.preventDefault(); };
+      sl.onDrop = (e) => { e.preventDefault(); this.dropOn(r,i,sd); };
+      const eligible = !st.locked && !w && (st.dragId ? true : (r === 0 && this.chainClear(i)));
+      if (dragging && eligible) sl.outline = '2px dashed rgba(216,178,95,.9)';
+      const idx = 2*i+sd;
+      if (!st.locked && r === 0 && st.fighters[idx] && this.chainClear(i) && !st.playins.some(q => q.r === 0 && q.i === i && q.side === sd)){
+        sl.drag = true;
+        sl.onDragStart = (e) => { try { e.dataTransfer.setData('text/plain', 'slot:'+idx); e.dataTransfer.effectAllowed = 'move'; } catch(err){} this.setState({dragSlot: idx, dragId: null}); };
+        sl.onDragEnd = () => this.setState({dragSlot: null});
+      }
+    });
+    const no = this.matchNo(r,i);
+    /* A bye is DRAWN, like every other pairing: the competitor who got it is
+       in the draw and a reader looking for them must find them. What a bye
+       has not got is a bout — so it carries no match number and no mat, and
+       says why in the place a number would have been. It used to be replaced
+       by an invisible spacer, which read as a gap in the draw. */
+    return { slots, anim: (a && b && !w && no === this._curNo) ? 'bkPulse 1.8s ease-in-out infinite' : 'none', note: '',
+      vis: true, hide: false,
+      tagL: no > 0 ? 'Match ' + no : 'Bye \u2014 no bout', tagR: no > 0 ? 'Mat ' + this.matNo(no) : '' };
+  }
+  byeMatch(i){
+    const s = this.state;
+    const pin = (sd) => s.playins.some(q => q.r === 0 && q.i === i && q.side === sd);
+    const a = s.fighters[2*i], b = s.fighters[2*i+1];
+    return (!a && !pin(0)) || (!b && !pin(1));
+  }
+  real0(){
+    const s = this.state, size = s.size;
+    const t0 = [...new Set(s.playins.filter(q => q.r === 0).map(q => q.i))];
+    const order0 = [];
+    for (let j = 0; j < size/2; j++) if (!t0.includes(j)) order0.push(j);
+    order0.push(...t0);
+    return order0.filter(j => !this.byeMatch(j));
+  }
+  totalNo(){
+    // playins + real (non-bye) first-round bouts + all later-round bouts incl. final
+    return this.state.playins.length + this.real0().length + this.state.size/2 - 1;
+  }
+  currentNo(){
+    const s = this.state, size = s.size, nR = Math.round(Math.log2(size));
+    let min = Infinity;
+    s.playins.forEach((p,ix) => {
+      const nc = s.fighters.find(f => f && f.id === p.newId);
+      const occ = this.partBase(p.r,p.i,p.side);
+      if (nc && occ && !this.playinWinner(p)) min = Math.min(min, ix+1);
+    });
+    for (let r = 0; r < nR; r++){
+      const nM = size >> (r+1);
+      for (let i = 0; i < nM; i++){
+        const a = this.part(r,i,0), b = this.part(r,i,1);
+        if (a && b && !this.res(r+'-'+i).w){
+          const no = this.matchNo(r,i);
+          if (no > 0) min = Math.min(min, no);
+        }
+      }
+    }
+    if (s.third === 'match'){
+      const pool = this.bronzePool();
+      if (pool[0] && pool[1] && !this.bronzeWinner()) min = Math.min(min, this.totalNo());
+    }
+    return min;
+  }
+  matchNo(r,i){
+    const s = this.state, size = s.size, nR = Math.round(Math.log2(size)), P = s.playins.length;
+    if (r === nR-1) return this.totalNo() + (s.third === 'match' ? 1 : 0);
+    const r0 = this.real0();
+    if (r === 0){
+      const k = r0.indexOf(i);
+      return k < 0 ? 0 : P + k + 1; // 0 = bye, no bout
+    }
+    let before = P + r0.length;
+    for (let rr = 1; rr < r; rr++) before += size >> (rr+1);
+    const nM = size >> (r+1);
+    // matches fed by a play-in are scheduled at the END of their round so the play-in winner gets rest
+    const tIs = [...new Set(s.playins.filter(q => q.r === r).map(q => q.i))];
+    const pos = tIs.includes(i)
+      ? (nM - tIs.length) + tIs.indexOf(i)
+      : i - tIs.filter(t => t < i).length;
+    return before + pos + 1;
+  }
+  matNo(no){
+    const mats = Math.max(1, Math.round(this.props.mats ?? 2));
+    return ((no-1) % mats) + 1;
+  }
+  bronzePool(){
+    const nR = Math.round(Math.log2(this.state.size));
+    return [this.loser(nR-2,0), this.loser(nR-2,1)];
+  }
+  bronzeWinner(){
+    const w = this.res('B').w; if (!w) return null;
+    return this.bronzePool().find(f => f && f.id === w) || null;
+  }
+  fChip(pos,mc,f){
+    return f ? {pos, mc, has: true, tbd: false, name: f.name, club: f.club, img: f.img,
+      flagUrl: 'https://flagcdn.com/w40/'+f.cc+'.png',
+      shape: '7px'   /* 3:4 portraits — never a circle */}
+      : {pos, mc, has: false, tbd: true};
+  }
+  renderVals(){
+    const {size, third, edit} = this.state, P = this.props;
+    this._curNo = this.currentNo();
+    const gold = '#d8b25f', grey = '#42527d';
+    const nR = Math.round(Math.log2(size));
+    const names = {64:['Round of 64','Round of 32','Round of 16','Quarterfinals','Semifinals'],32:['Round of 32','Round of 16','Quarterfinals','Semifinals'],16:['Round of 16','Quarterfinals','Semifinals'],8:['Quarterfinals','Semifinals'],4:['Semifinals'],2:[]}[size];
+    const mobile = this.isMobile();
+    const lines = (kind, mirror, c1, c2, co) => {
+      const H = mirror ? 'right' : 'left';
+      if (kind === 'pair') return [
+        {s: 'position:absolute;'+H+':100%;width:18px;height:2px;top:calc(25% - 1px);background:'+c1},
+        {s: 'position:absolute;'+H+':100%;width:18px;height:2px;top:calc(75% - 1px);background:'+c2},
+        {s: 'position:absolute;'+H+':calc(100% + 16px);width:2px;top:25%;height:calc(25% + 1px);background:'+c1},
+        {s: 'position:absolute;'+H+':calc(100% + 16px);width:2px;top:50%;height:calc(25% + 1px);background:'+c2},
+        {s: 'position:absolute;'+H+':calc(100% + 18px);width:18px;height:2px;top:calc(50% - 1px);background:'+co}
+      ];
+      if (kind === 'single') return [
+        {s: 'position:absolute;'+H+':100%;width:36px;height:2px;top:calc(50% - 1px);background:'+co}
+      ];
+      return [];
+    };
+    const hid = this.state.hoverId;
+    const HL = '#2ecc71;box-shadow:0 0 0 2px #2ecc71,0 0 12px #2ecc71,0 0 26px rgba(46,204,113,.7);z-index:3';
+    const mkPair = (r, i1, mirror) => {
+      const w1 = this.winner(r,i1), w2 = this.winner(r,i1+1);
+      const matches = [this.matchView(r,i1), this.matchView(r,i1+1)];
+      const h1 = !!(w1 && w1.id === hid), h2 = !!(w2 && w2.id === hid);
+      const advH = h1 || h2;
+      /* A bye used to be an invisible spacer, so the elbow was drawn from the
+         one visible card only. Byes are drawn now, and a card with no line
+         leaving it reads as a competitor who goes nowhere — so both sides get
+         the ordinary pair lines. A bye still advances; that is what it IS. */
+      return {matches,
+        lines: lines('pair', mirror,
+          h1 ? HL : (w1?gold:grey),
+          h2 ? HL : (w2?gold:grey),
+          advH ? HL : ((w1&&w2)?gold:grey))};
+    };
+    const mkSingle = (r, i, mirror, connected) => {
+      const w = this.winner(r,i);
+      const c = (w && w.id === hid) ? HL : (w ? gold : grey);
+      return {
+        matches: [this.matchView(r,i)],
+        lines: connected ? lines('single', mirror, null, null, c) : []
+      };
+    };
+    const layout = this.state.layout;
+    const cols = [];
+    if (layout === 'split' && nR >= 2){
+      for (let r = 0; r < nR-1; r++){
+        const half = (size >> (r+1)) / 2, pairs = [];
+        if (half === 1) pairs.push(mkSingle(r, 0, false, true));
+        else for (let j = 0; j < half/2; j++) pairs.push(mkPair(r, 2*j, false));
+        cols.push({name: names[r], pairs, rev: 'bkIn .6s '+(r*0.12).toFixed(2)+'s both'});
+      }
+      cols.push({name:'Podium / Final', podium: true, bz: true, w: '280px',
+        podStyle: 'position:absolute;left:0;right:0;bottom:calc(50% + 78px);display:flex;flex-direction:column;gap:10px;z-index:5',
+        bzStyle: 'position:absolute;top:calc(50% + 128px);left:0;right:0;z-index:5',
+        pairs:[mkSingle(nR-1, 0, false, false)], rev: 'bkIn .6s '+((nR-1)*0.12).toFixed(2)+'s both'});
+      for (let r = nR-2; r >= 0; r--){
+        const nM = size >> (r+1), half = nM/2, pairs = [];
+        if (half === 1) pairs.push(mkSingle(r, 1, true, true));
+        else for (let j = half/2; j < half; j++) pairs.push(mkPair(r, 2*j, true));
+        cols.push({name: names[r], pairs, rev: 'bkIn .6s '+(r*0.12).toFixed(2)+'s both'});
+      }
+    } else {
+      for (let r = 0; r < nR-1; r++){
+        const pairs = [], nP = (size >> (r+1)) / 2;
+        for (let j = 0; j < nP; j++) pairs.push(mkPair(r, 2*j, false));
+        cols.push({name: names[r], pairs, rev: 'bkIn .6s '+(r*0.12).toFixed(2)+'s both'});
+      }
+      cols.push({name:'Final', pairs:[mkSingle(nR-1, 0, false, false)], rev: 'bkIn .6s '+((nR-1)*0.12).toFixed(2)+'s both'});
+      cols.push({name:'Podium', podium: true, bz: true, pairs: [], rev: 'bkIn .6s .55s both', w: '290px',
+        podStyle: 'position:absolute;left:0;right:0;bottom:calc(50% + 76px);display:flex;flex-direction:column;gap:10px;z-index:5',
+        bzStyle: 'position:absolute;top:calc(50% + 20px);transform:translateY(-50%);left:0;right:0;z-index:5'});
+    }
+    const allNames = this.state.fighters.filter(Boolean).map(f => f.name).concat(this.state.basket.map(f => f.name));
+    const maxLen = Math.max(12, ...allNames.map(n => n.length));
+    const colW = Math.min(420, Math.max(242, Math.round(128 + maxLen * 7.4)));
+    cols.forEach(c => {
+      c.w = c.w ? (Math.max(parseInt(c.w), colW + 34) + 'px') : (colW + 'px');
+      c.podium = c.podium || false; c.bz = c.bz || false;
+      c.colStyle = 'width:' + c.w + ';flex:none;display:flex;flex-direction:column;position:relative;animation:' + (c.rev || 'bkIn .6s both');
+      c.podStyle = c.podStyle || 'flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px';
+      c.bzStyle = c.bzStyle || 'flex:none;margin-top:12px';
+    });
+    const playinCards = this.state.playins.map(p => {
+      const nM = size >> (p.r+1);
+      const done = !!this.playinWinner(p);
+      return {
+        m: this.playinView(p),
+        top: (((2*p.i+1)/(2*nM))*100).toFixed(2)+'%',
+        link: p.r === 0 && (this.state.layout !== 'split' || p.i < (size >> 1) / 2),
+        lc: done ? '#d8b25f' : 'repeating-linear-gradient(90deg,rgba(216,178,95,.75) 0 6px,transparent 6px 12px)'
+      };
+    });
+    const champ = this.winner(nR-1,0), runner = this.loser(nR-1,0);
+    const pool = this.bronzePool(), bMode = third === 'match';
+    const bw = this.bronzeWinner();
+    const podium = [this.fChip('2','#97a1b4',runner)];
+    if (bMode) podium.push(this.fChip('3','#b07a45',bw));
+    else { podium.push(this.fChip('3','#b07a45',pool[0])); podium.push(this.fChip('3','#b07a45',pool[1])); }
+    const pickB = (f) => this.pickKey('B',f);
+    const bwId = bw ? bw.id : null;
+    const seg = (act) => act ? {bg:'#d8b25f', fg:'#1e2c4f'} : {bg:'#fff', fg:'#5d6880'};
+    const selC = this.countries.find(c => c.cc === this.state.addCountry) || null;
+    const q = this.state.search.trim().toLowerCase();
+    const rosterList = this.state.roster.filter(f => {
+      if (!q) return true;
+      const cn = (this.countries.find(c => c.cc === f.cc) || {}).name || '';
+      return (f.name + ' ' + f.club + ' ' + cn).toLowerCase().includes(q);
+    }).map(f => ({
+      name: f.name, club: f.club, ab: f.ab, img: f.img,
+      flagUrl: 'https://flagcdn.com/w40/'+f.cc+'.png',
+      shape: '8px'   /* 3:4 portraits — never a circle (2026-09-20) */,
+      onDrag: (e) => { try { e.dataTransfer.setData('text/plain', String(f.id)); e.dataTransfer.effectAllowed = 'move'; } catch(err){} this.setState({dragId: f.id}); },
+      onDragEnd: () => this.setState({dragId: null}),
+      onAuto: () => this.placeF(f, {})
+    }));
+    const clubs = [];
+    this.state.fighters.forEach(f => { if (f && !clubs.some(c => c.name === f.club)) clubs.push({name: f.club, ab: f.ab}); });
+    return {
+      /* ── THE PADLOCK ──────────────────────────────────────────────
+         Shut: a quiet grey control, the same weight as the ⋮ beside it —
+         nothing on the board is asking to be pressed. Open: the gold this
+         design uses everywhere something is live, so the state is readable
+         across a room. The glyph is drawn, not typed: an emoji padlock is
+         the OS's drawing, different on every device, and it cannot take
+         this board's ink. */
+      unlocked: !this.state.locked,
+      onLock: () => this.setState(q => ({locked: !q.locked, edit: false})),
+      lockTitle: this.state.locked ? 'Unlock the board' : 'Lock the board',
+      lockShackle: this.state.locked
+        ? 'M8 10.5V7a4 4 0 0 1 8 0v3.5'
+        : 'M8 10.5V7a4 4 0 0 1 8 0',
+      lockBg: this.state.locked ? '#fff' : 'linear-gradient(100deg,#edcd85,#d0a854)',
+      lockBorder: this.state.locked ? '#d5dae3' : '#caa14f',
+      lockFg: this.state.locked ? '#5d6880' : '#1e2c4f',
+
+      stageScale: (this.state.scale || 1).toFixed(4),
+      stageW: mobile ? '1080px' : '1920px',
+      stageH: mobile ? '2340px' : '1080px',
+      stagePad: mobile ? '0' : '36px 40px',
+      mobileHdr: mobile, desktopHdr: !mobile,
+      fileRef: this.fileRef,
+      bgImg: this.state.bgImg || '',
+      bgHas: !!this.state.bgImg,
+      onBgPick: () => { this.setState({menuOpen: false}); if (this.fileRef.current) this.fileRef.current.click(); },
+      onBgFile: (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const rd = new FileReader();
+        rd.onload = () => {
+          this.setState({bgImg: URL.createObjectURL(file)});
+          try { localStorage.setItem('bk-bg', rd.result); } catch(err){}
+        };
+        rd.readAsDataURL(file);
+      },
+      onBgClear: () => {
+        this.setState({bgImg: null, menuOpen: false});
+        try { localStorage.removeItem('bk-bg'); } catch(err){}
+      },
+      /* ⚠️ MEASURED FROM THE BUTTON, not typed as a page coordinate.
+         These were fixed offsets ('120px' from the top, '40px' from the
+         right) that only lined up with the ⋮ while the ⋮ happened to be in a
+         particular place. Adding the padlock beside it moved the anchor and
+         the menu no longer hung under anything. `menuAnchor` is a ref on
+         whichever button opened it, so the panel now sits under that button
+         in both headers and stays there whatever else joins the row. */
+      menuAnchor: this.menuAnchor,
+      menuTop: this._menuAt.top, menuRight: this._menuAt.right,
+      menuW: '300px', menuZoom: mobile ? '1.9' : '1',
+      boardRef: this.boardRef, boardInner: this.boardInner,
+      onBoardFit: () => this.fitBoard(),
+      onBoardWheel: (e) => this.zoomAt(e),
+      onBoardDown: (e) => {
+        if (e.button !== 0) return;
+        if (e.target.closest && e.target.closest('input,button,[draggable="true"]')) return;
+        const sc = this.boardRef.current ? this.realScale(this.boardRef.current) : 1;
+        this._panned = false;
+        this._pan = {sx: e.clientX, sy: e.clientY, ox: this.view.x, oy: this.view.y};
+        const mv = (ev) => {
+          if (!this._pan) return;
+          const dx = (ev.clientX - this._pan.sx)/sc, dy = (ev.clientY - this._pan.sy)/sc;
+          if (Math.abs(dx) + Math.abs(dy) > 4) this._panned = true;
+          this.view.x = this._pan.ox + dx;
+          this.view.y = this._pan.oy + dy;
+          this.applyView();
+        };
+        const up = () => { this._pan = null; window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', mv);
+        window.addEventListener('mouseup', up);
+      },
+      cols,
+      boardH: layout === 'split' ? ({4:'680px',8:'760px',16:'980px',32:'1500px',64:'2600px'}[size]||'980px') : ({4:'460px',8:'760px',16:'1420px',32:'2700px',64:'5200px'}[size]||'1420px'),
+      sizeBtns: [4,8,16].map(v => ({label: String(v), on: () => this.setState({size: v, results: {}, playins: [], notice: ''}, () => this.fitBoard()), ...seg(size === v)})),
+      addOpen: this.state.addOpen,
+      onAddToggle: () => this.setState(s => ({addOpen: !s.addOpen})),
+      menuOpen: this.state.menuOpen,
+      onMenu: () => { this.measureMenu(); this.setState(s => ({menuOpen: !s.menuOpen})); },
+      /* The back arrow was decoration in the design file — no handler at all.
+         It goes where the platform says it goes. */
+      backTitle: (window.TAKEONE_BRACKET && window.TAKEONE_BRACKET.backLabel) || 'Back',
+      onBack: () => {
+        const to = window.TAKEONE_BRACKET && window.TAKEONE_BRACKET.backUrl;
+        if (to) window.location.href = to; else history.back();
+      },
+      onAddOpen: () => this.setState(this.state.locked
+        ? {menuOpen: false, notice: LOCKED_NOTE}
+        : {addOpen: true, menuOpen: false}),
+      onAddClose: () => this.setState({addOpen: false}),
+      addWin: this.addWin,
+      addX: this._addPos.x + 'px', addY: this._addPos.y + 'px',
+      onWinDown: (e) => {
+        if (e.target.closest && e.target.closest('button')) return;
+        e.preventDefault();
+        const sc = this.state.scale || 1, sx = e.clientX, sy = e.clientY, ox = this._addPos.x, oy = this._addPos.y;
+        const mv = (ev) => {
+          this._addPos = {x: ox + (ev.clientX - sx)/sc, y: oy + (ev.clientY - sy)/sc};
+          const el = this.addWin.current;
+          if (el){ el.style.left = this._addPos.x + 'px'; el.style.top = this._addPos.y + 'px'; }
+        };
+        const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', mv);
+        window.addEventListener('mouseup', up);
+      },
+      knownMode: this.state.addMode === 'known', newMode: this.state.addMode === 'new',
+      onTabKnown: () => this.setState({addMode: 'known'}),
+      onTabNew: () => this.setState({addMode: 'new'}),
+      tabKnownBg: this.state.addMode === 'known' ? '#d8b25f' : '#fff',
+      tabKnownFg: this.state.addMode === 'known' ? '#1e2c4f' : '#5d6880',
+      tabNewBg: this.state.addMode === 'new' ? '#d8b25f' : '#fff',
+      tabNewFg: this.state.addMode === 'new' ? '#1e2c4f' : '#5d6880',
+      search: this.state.search, onSearch: (e) => this.setState({search: e.target.value}),
+      rosterList: rosterList, rosterEmpty: rosterList.length === 0,
+      addName: this.state.addName, onAddName: (e) => this.setState({addName: e.target.value}),
+      countryOpen: this.state.countryOpen,
+      onCountryToggle: () => this.setState(q => ({countryOpen: !q.countryOpen, clubOpen: false})),
+      countryOpts: this.countries.map(c => ({name: c.name, flagUrl: 'https://flagcdn.com/w40/'+c.cc+'.png',
+        on: () => this.setState({addCountry: c.cc, countryOpen: false}),
+        bg: this.state.addCountry === c.cc ? '#fdf6e6' : '#fff'})),
+      selCountryHas: !!selC, selCountryNone: !selC,
+      selCountryName: selC ? selC.name : '',
+      selCountryFlag: selC ? 'https://flagcdn.com/w40/'+selC.cc+'.png' : '',
+      clubOpen: this.state.clubOpen,
+      onClubToggle: () => this.setState(q => ({clubOpen: !q.clubOpen, countryOpen: false})),
+      clubOpts: clubs.map(c => ({name: c.name, ab: c.ab,
+        on: () => this.setState({addClubSel: c.name, clubOpen: false}),
+        bg: this.state.addClubSel === c.name ? '#fdf6e6' : '#fff'})),
+      onClubNew: () => this.setState({addClubSel: '__new', clubOpen: false}),
+      selClubHas: !!this.state.addClubSel && this.state.addClubSel !== '__new',
+      selClubNew: this.state.addClubSel === '__new',
+      selClubNone: !this.state.addClubSel,
+      selClubName: this.state.addClubSel !== '__new' ? this.state.addClubSel : '',
+      selClubAb: (clubs.find(c => c.name === this.state.addClubSel) || {}).ab || '',
+      addClubNew: this.state.addClubNew, onAddClubNew: (e) => this.setState({addClubNew: e.target.value}),
+      onAddSubmit: () => this.addFighter(),
+      hasPlayins: playinCards.length > 0, playinCards, colWpx: colW + 'px',
+      boardWrapStyle: 'flex:1;min-height:0;overflow:hidden;position:relative;cursor:grab;touch-action:none' + (mobile ? ';margin:20px 24px 24px' : ''),
+      boardInnerStyle: 'display:flex;gap:36px;width:max-content;height:' + (layout === 'split' ? ({4:'680px',8:'760px',16:'980px',32:'1500px',64:'2600px'}[size]||'980px') : ({4:'460px',8:'760px',16:'1420px',32:'2700px',64:'5200px'}[size]||'1420px')) + ';transform-origin:0 0',
+      basketHas: this.state.basket.length > 0,
+      basketOpen: this.state.basket.length > 0 && !this.state.basketMin,
+      basketCount: this.state.basket.length,
+      minLabel: this.state.basketMin ? '+' : '\u2013',
+      onBasketMin: () => this.setState(q => ({basketMin: !q.basketMin})),
+      stopMD: (e) => e.stopPropagation(),
+      basketList: this.state.basket.map(f => ({
+        name: f.name, club: f.club, img: f.img,
+        flagUrl: 'https://flagcdn.com/w40/'+f.cc+'.png',
+        shape: '8px'   /* 3:4 portraits — never a circle (2026-09-20) */,
+        onDrag: (e) => { try { e.dataTransfer.setData('text/plain', 'basket:'+f.id); e.dataTransfer.effectAllowed = 'move'; } catch(err){} this.setState({dragBasket: f.id, dragId: null, dragSlot: null}); },
+        onDragEnd: () => this.setState({dragBasket: null})
+      })),
+      onBasketOver: (e) => { if (this.state.dragSlot != null) e.preventDefault(); },
+      onBasketDrop: (e) => { e.preventDefault(); this.dropToBasket(); },
+      notice: this.state.notice, noticeHas: !!this.state.notice,
+      onDismiss: () => this.setState({notice: ''}),
+      /* ⚠️ A REAL SETTING, NOT A VIEW. This used to change only how the draft
+         drew its own podium — it posted nothing, so an organiser picked it,
+         watched it revert on the next load, and had no way to say what their
+         championship does. It now writes to the event and the server re-cuts
+         the play-off bouts to match, so the draw changes with it. */
+      thirdBtns: [['match','3rd place match'],['shared','Two bronzes']].map(([v,l]) =>
+        ({label: l, on: () => {
+          if (window.TakeOneBracket && window.TakeOneBracket.setThirdPlace) {
+            window.TakeOneBracket.setThirdPlace(v === 'match');
+          }
+          this.setState({menuOpen: false});
+        }, ...seg(third === v)})),
+      layoutBtns: [['linear','One-sided'],['split','Split halves']].map(([v,l]) =>
+        ({label: l, on: () => this.setState({layout: v}, () => this.fitBoard()), ...seg(layout === v)})),
+      /* Edit names, Add fighter and Reset results all need the padlock
+         open. They stay in the menu while it is shut — a row that vanishes
+         teaches nobody where it is — and say so instead of doing nothing. */
+      onEdit: () => { if (this.state.locked) { this.setState({notice: LOCKED_NOTE}); return; } this.setState(s => ({edit: !s.edit})); },
+      editLabel: edit ? 'Done' : 'Edit names',
+      onReset: () => { if (this.state.locked) { this.setState({notice: LOCKED_NOTE}); return; } this.setState({results: {}}); },
+      champHas: !!champ, champNone: !champ,
+      champName: champ ? champ.name : '', champClub: champ ? champ.club : '',
+      champImg: champ ? champ.img : '',
+      champFlag: champ ? 'https://flagcdn.com/w40/'+champ.cc+'.png' : '',
+      champShape: '12px',   /* 3:4 portraits — never a circle */
+      celebrate: !!champ && (P.celebration ?? true),
+      podium,
+      bronzeMode: bMode,
+      totalMatches: this.totalNo() + (third === 'match' ? 1 : 0),
+      bronzeNo: this.totalNo(),
+      bronzeMat: this.matNo(this.totalNo()),
+      bronzeSlots: [this.mkSlot(pool[0],'B',0,bwId,pickB), this.mkSlot(pool[1],'B',1,bwId,pickB)].map(s => {
+        /* The bronze card used to repaint its two slots amber. The corner
+           fill says something the card's own frame already says, and it
+           says it about the COMPETITOR — so it is left alone here. */
+        return s;
+      }),
+      bronzeAnim: (pool[0] && pool[1] && !bw && this.totalNo() === this._curNo) ? 'bkPulse 1.8s ease-in-out infinite' : 'none'
+    };
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TAKEONE BRIDGE — appended, nothing above this line is changed.
+
+   `dc-runtime` evaluates this script with
+       new Function('DCLogic','StreamableLogic','React', src + ';return Component')
+   so `Component` is a local of that evaluation and cannot be reached from
+   outside it. These lines hand the mounted instance to the bridge
+   (/bracket/takeone-bridge.js), which seeds the board from the event's real
+   draw and sends every change back. See that file for the mapping.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function () {
+  var mounted = Component.prototype.componentDidMount;
+  Component.prototype.componentDidMount = function () {
+    if (mounted) mounted.call(this);
+    if (window.TakeOneBracket) window.TakeOneBracket.attach(this);
+  };
+})();
+</script>

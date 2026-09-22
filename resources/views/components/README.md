@@ -190,7 +190,7 @@ All components require:
 
 ### Flag Icons
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
+<link rel="stylesheet" href="{{ asset('images/flags/flag-icons.css') }}">
 ```
 
 ### Countries Data File
@@ -217,7 +217,7 @@ Here's a complete example of a form using all components:
 
 @section('content')
 <!-- Flag Icons CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
+<link rel="stylesheet" href="{{ asset('images/flags/flag-icons.css') }}">
 
 <div class="container py-5">
     <div class="row justify-content-center">

@@ -1,63 +1,127 @@
-{{-- The board owns no division switcher of its own here
-     (show-divisions="false"); the chips below drive it through
-     window.BracketBoard.show(). --}}
-<div x-data="{ divisions: [], division: null }"
-     @bracket:loaded="divisions = $event.detail.divisions; division = $event.detail.division"
-     @bracket:state="divisions = $event.detail.divisions; division = $event.detail.division">
-    @php $drawDivisions = ($e['draw']['published'] ?? false) ? $e['draw']['divisions'] : count($e['divisions']); @endphp
+{{-- ===== The draw, for a visitor and a competitor =====
+
+     Two shapes, and they are two different answers rather than one screen with
+     a hole in it:
+
+       · DRAWN — the full-screen board (`x-draw-stage`, both permissions off).
+         It covers the app chrome entirely, so the section draws nothing else:
+         a lead paragraph and a chip strip sitting behind a fixed stage are
+         furniture nobody can reach.
+       · NOT DRAWN — the waiting room, or one honest line. Those keep the
+         section's own frame, because there is something to read around them.
+--}}
+
+@if($e['draw']['published'] ?? false)
+    {{-- ===== THE DRAW, FULL SCREEN, READ-ONLY =====
+
+         The same stage the organiser arranges on, with both permissions off —
+         which is the state that component was built for (owner's instruction,
+         2026-09-17). A visitor and a competitor get the whole viewport for the
+         board instead of a 72vh slot under a paragraph, and the same division
+         menu, the same zoom and the same gestures the organiser has. Nothing
+         that writes is drawn, and neither write address is in the page.
+
+         ⚠️ THROUGH THE PUBLIC DOOR. `$e['draw_url']` is the wall sheet —
+         read-only by construction, no entrants bench, no faces, nobody's
+         payment state — and it answers a reader who is not signed in at all.
+         The member feed the stage defaults to would refuse them.
+
+         `?division=` opens it on ONE group: it is how a division chip on a
+         participant card gets somewhere. An id that is not in this draw is
+         simply not found and the board opens on its first division, so the
+         parameter can be wrong without being dangerous.
+
+         Back goes to the poster, which is where this section was opened from —
+         the stage covers the app chrome, so its own bar is the only way out,
+         and the label names that DESTINATION rather than this page.
+
+         ⚠️ Nothing but plain attributes inside the tag below. Blade's
+         component-tag parser is not the Blade compiler: a directive — or even
+         a Blade comment — in an attribute list makes it give up and print the
+         whole tag as text on the page, with no error to say so. --}}
+    <x-draw-stage
+        id="public-draw"
+        :event="$e['key']"
+        :title="$e['title']"
+        :data-url="$e['draw_url']"
+        :color="$e['color'] ?? null"
+        :division="(int) request('division') ?: null">
+
+        {{-- ===== THE EVENT'S OWN CONTROL ROW, OVER THE BOARD =====
+
+             The band's row — back, the console for whoever runs the event, and
+             the ⋯ menu with share and sign out — moves INTO the stage's bar
+             (owner's instruction, 2026-09-17). It has to: the stage is
+             `fixed inset-0` and covers the app chrome, so the row left in the
+             band behind it is a row nobody can reach, and its teleported menu
+             was the only part of it still on screen.
+
+             The SAME partial the band renders, with the same inputs. Not a copy
+             styled to match — the whole point of partials/event-band-controls
+             is that the poster, the four section pages and the member door draw
+             one row, and a second version of it here is how the drift it was
+             written to end would start again.
+
+             The stage colours its bar when it is given controls, because
+             `.ev-ctl` is white-on-translucent and would vanish on the white
+             working bar the organiser's stage uses.
+
+             `leading = back` because there IS somewhere to go back to: the
+             poster. The stage draws no back arrow of its own while this row is
+             present — the row has one, and two in a 56px bar is exactly the
+             drift this is avoiding. --}}
+        <x-slot:controls>
+            @include('partials.event-band-controls', [
+                'mode' => 'public',
+                'leading' => 'back',
+                'backHref' => route('events.public', ['event' => $e['key']]),
+                'backLabel' => __('personal.event_show_event'),
+                /* What the stage's own white bar says in its title block, and
+                   for the same reason: this row is over the BOARD, with the
+                   band's headline no longer on screen, so it has to carry both
+                   what the screen is and which event it belongs to. "Draw",
+                   not "Manage draw" — this door is read-only for everybody,
+                   whoever is signed in. */
+                'rowEyebrow' => __('events.public_draw'),
+                'rowTitle' => $e['title'],
+                'e' => $e,
+                'console' => $console ?? null,
+                'signedIn' => $signedIn ?? auth()->check(),
+                'signedInName' => auth()->user()?->full_name ?? auth()->user()?->name,
+                'signOutUrl' => route('events.public.sign-out', ['event' => $e['key']]),
+            ])
+        </x-slot:controls>
+    </x-draw-stage>
+@else
+    @php $drawDivisions = count($e['divisions']); @endphp
+
     <div class="px-4 pt-3">
-        <p class="text-[13px] text-muted-foreground leading-relaxed">{{ ($e['draw']['published'] ?? false) ? __('events.public_draw_lead') : __('events.public_draw_empty_body') }}</p>
+        <p class="text-[13px] text-muted-foreground leading-relaxed">{{ __('events.public_draw_empty_body') }}</p>
 
         <div class="flex flex-wrap gap-1.5 mt-3">
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold"
                   style="color: {{ $ev }}; background: {{ $evSoft }};">
                 <i class="bi bi-diagram-3 bracket-icon"></i>{{ trans_choice('events.public_draw_divisions', $drawDivisions, ['n' => $drawDivisions]) }}
             </span>
-            @if($e['draw']['published'] ?? false)
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-muted text-muted-foreground">
-                    <i class="bi bi-people"></i>{{ trans_choice('events.public_draw_competitors', $e['draw']['entrants'], ['n' => $e['draw']['entrants']]) }}
-                </span>
-            @endif
-        </div>
-
-        {{-- Division chips in the EVENT's colour rather than the
-             board's own purple — what the component's
-             `show-divisions="false"` seam exists for. --}}
-        <div x-show="divisions.length > 1" x-cloak class="mt-4 -mx-1 px-1 overflow-x-auto pb-0.5">
-            <div class="flex items-center gap-2 w-max">
-                <template x-for="d in divisions" :key="d.id">
-                    <button type="button" @click="window.BracketBoard.show(d.id)"
-                            class="m-press flex items-center gap-2 px-3.5 py-2 rounded-full border text-xs font-bold whitespace-nowrap transition-colors"
-                            :class="d.id === division ? 'text-white shadow-sm' : 'bg-white text-foreground border-gray-200'"
-                            :style="d.id === division ? 'background: {{ $e['color'] }}; border-color: {{ $e['color'] }};' : ''">
-                        <span x-text="d.name"></span>
-                        <span x-text="d.entrants"
-                              class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold"
-                              :class="d.id === division ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'"></span>
-                    </button>
-                </template>
-            </div>
         </div>
     </div>
 
-    @if($e['draw']['published'] ?? false)
-        <div class="px-2 pt-3 pb-2">
-            <x-tournament-bracket
-                id="public-draw"
-                :data-url="$e['draw_url']"
-                :event-uuid="$e['key']"
-                :show-divisions="false"
-                :bare="true"
-                height="72vh" />
-        </div>
+    @if(($waitingRoom['at'] ?? null) || ($waitingRoom['entries'] ?? 0))
+        {{-- Not drawn yet — so the page answers the question underneath the one
+             that was asked. A clock to the weigh-in, the head count, the spread
+             across the weight classes, the flags and the clubs. Who fights who
+             is still the one thing withheld, and nothing here says it.
 
-        <p class="px-4 pb-4 text-[11.5px] text-muted-foreground/80 leading-relaxed">{{ __('events.public_draw_note') }}</p>
+             The same component the member draw page uses
+             (<x-draw-waiting-room>), so the two surfaces cannot drift. --}}
+        <div class="px-4 pt-4 pb-5">
+            <x-draw-waiting-room :data="$waitingRoom" :color="$ev" />
+        </div>
     @else
-        {{-- Not drawn yet. A 60vh board saying "no draw" is a lot of
-             empty page; one honest line is the whole answer. --}}
+        {{-- Nothing to count and nobody entered: one honest line, as before. --}}
         @include('entry.public.partials.empty', [
             'ev' => $ev, 'icon' => 'bi-diagram-3 bracket-icon',
             'title' => __('events.public_draw_empty_title'),
         ])
     @endif
-</div>
+@endif

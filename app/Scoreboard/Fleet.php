@@ -181,6 +181,69 @@ class Fleet
         return $this->mat($event)->revokeScreen($request, $event, $device);
     }
 
+    /**
+     * An entry was corrected — put it back on any screen showing it.
+     *
+     * The other half of the mats' snapshot. A board is built once, when the
+     * bout is called, so an athlete's photograph, belt or weight corrected
+     * afterwards never reached the wall. The events module calls this from its
+     * entry editor; everything sport-specific about it is behind MatEntries.
+     *
+     * Best-effort by design and silent by design: an edit must never fail
+     * because a television is off.
+     */
+    public function entryChanged(ClubEvent $event, int $registrationId): void
+    {
+        app(MatEntries::class)->entryChanged($event, $registrationId);
+    }
+
+    /**
+     * The DRAW changed — rebuild every mat's upcoming board and push it.
+     *
+     * Separate from entryChanged() because it answers a different question.
+     * That one means "this person's details are different"; this one means
+     * "who is queued where is different", which is what an arrangement, a
+     * clear, a grown division or an admitted late entry all do. Nothing about
+     * the bout on the mat has changed, so the mat is deliberately not touched.
+     *
+     * Silent and best-effort, like everything else behind this door.
+     */
+    public function boardsChanged(ClubEvent $event): void
+    {
+        app(MatEntries::class)->boards($event);
+    }
+
+    /**
+     * The bouts this event currently has LOADED on a mat.
+     *
+     * Asked by the draw engine before it re-cuts a division, because a bout on
+     * a mat is a bout being fought — and re-cutting deletes it. The division
+     * may carry no finished result yet (a first bout, or one whose earlier
+     * rounds were all byes), so "has been fought" cannot be read from the
+     * results alone. This is the other half of that question.
+     *
+     * Only jiu-jitsu can answer it: the sibling packages keep a mat's state in
+     * the CACHE rather than a table (see MatState's docblock), so there is
+     * nothing to query. They return nothing rather than a guess — an empty
+     * answer leaves the existing results-based guard in charge, which is the
+     * behaviour those two sports have always had.
+     *
+     * @return array<int, int> event_matches.id
+     */
+    public static function matchesOnMats(ClubEvent $event): array
+    {
+        if ((string) $event->sport !== 'bjj') {
+            return [];
+        }
+
+        return \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatState::query()
+            ->where('event_id', $event->id)
+            ->whereNotNull('match_id')
+            ->pluck('match_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
     private function mat(ClubEvent $event): object
     {
         $owner = self::MATS[(string) $event->sport] ?? null;

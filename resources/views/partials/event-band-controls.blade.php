@@ -55,6 +55,13 @@
                poster, whose Home lives in the band's `lead` slot instead.
     $e         the event view/payload — needs `key`, `title`, `color`
     back:      $backHref, $backLabel
+    title:     $rowTitle, $rowEyebrow — OPTIONAL, and only for a screen that is
+               not the event's own front page. The draw stage puts its row over
+               the board, where the band's headline is no longer on screen, so
+               "MANAGE DRAW / Victory BJJ Championship" has to travel with the
+               row or the reader loses both what they are looking at and which
+               event it belongs to. The poster passes neither: its title IS the
+               band.
     member:    $canManage|$canOfficiate, $publicUrl, $shareUrl
     public:    $console (resolved by the caller), $signedIn, $signedInName, $signOutUrl
 --}}
@@ -118,6 +125,20 @@
                  hand-rolled copy on the section pages was missing it. --}}
             <i class="bi bi-chevron-left rtl:rotate-180"></i>
         </a>
+    @endif
+
+    {{-- ===== What this screen is =====
+         Between the back control and the trailing cluster, in the row's own
+         inherited colour (white on both gradients it is drawn on). Truncates
+         rather than wraps: this is a 56px bar and a two-line title pushes the
+         controls out of it. --}}
+    @if(! empty($rowTitle ?? null))
+        <span class="ev-ctl-title">
+            @if(! empty($rowEyebrow ?? null))
+                <span class="ev-ctl-eyebrow block">{{ $rowEyebrow }}</span>
+            @endif
+            <span class="ev-ctl-name block">{{ $rowTitle }}</span>
+        </span>
     @endif
 
     {{-- The ONE spacer. It sits after the leading control and nowhere else, so

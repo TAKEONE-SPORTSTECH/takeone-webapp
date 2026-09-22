@@ -17,6 +17,21 @@
 @endphp
 
 @if($members->count() > 0)
+    {{-- Matched count — the page header sits outside this swapped region, so it
+         is the only place a filtered total can be read after an AJAX re-fetch. --}}
+    <div class="flex items-center gap-2 mb-3 text-[12px] text-muted-foreground">
+        <i class="bi bi-people"></i>
+        <span>{{ __('platform.filter_matches', [
+            'count' => number_format($members->total()),
+            'label' => $members->total() === 1 ? __('platform.filter_match_one') : __('platform.filter_match_many'),
+        ]) }}</span>
+        @if(($filterCount ?? 0) > 0)
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                <i class="bi bi-funnel-fill"></i>{{ $filterCount }}
+            </span>
+        @endif
+    </div>
+
     <div class="space-y-2.5 mobile-stagger" id="membersGrid">
         @foreach($members as $member)
             @php
@@ -31,9 +46,9 @@
 
                 $natCode = strtoupper($member->nationality ?? '');
                 $country = $natMap[$natCode] ?? null;
-                $flag = $country
-                    ? implode('', array_map(fn($ch) => mb_chr(ord($ch) + 127397), str_split(strtoupper($country['iso2']))))
-                    : '';
+                /* The ISO-2, not an emoji — <x-flag> draws our own file
+                   (CLAUDE.md -> Flags Come From One Local Source). */
+                $flagIso = $country['iso2'] ?? null;
 
                 $guardian = $member->guardians->first()?->guardian ?? null;
                 $mob = $member->mobile;
@@ -91,7 +106,7 @@
                     <span class="flex-1 min-w-0 py-3 self-center">
                         <span class="flex items-center gap-1.5">
                             <span class="font-bold text-foreground truncate text-[15px]">{{ $member->full_name ?? __('platform.unknown') }}</span>
-                            @if($flag)<span class="text-sm leading-none">{{ $flag }}</span>@endif
+                            @if($flagIso)<x-flag :code="$flagIso" :h="11" :title="$country['name'] ?? null" />@endif
                         </span>
                         <span class="flex items-center gap-1.5 mt-1 flex-wrap">
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $isMale ? 'bg-accent text-primary' : 'bg-pink-50 text-pink-600' }}">{{ $ageGroup }}</span>
@@ -122,6 +137,12 @@
     <div class="bg-white rounded-2xl px-6 py-14 text-center shadow-sm border border-gray-100">
         <i class="bi bi-people text-5xl text-gray-300 m-float inline-block"></i>
         <p class="text-sm font-semibold text-foreground mt-4">{{ __('platform.no_members_found') }}</p>
-        <p class="text-[12px] text-muted-foreground mt-1">{{ $search ? __('platform.no_members_match') : __('platform.no_members_yet') }}</p>
+        <p class="text-[12px] text-muted-foreground mt-1">
+            @if(($filterCount ?? 0) > 0)
+                {{ __('platform.filter_none_match') }}
+            @else
+                {{ $search ? __('platform.no_members_match') : __('platform.no_members_yet') }}
+            @endif
+        </p>
     </div>
 @endif

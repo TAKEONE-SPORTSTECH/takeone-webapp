@@ -127,7 +127,8 @@ function Corner({ side, competitor, score, rules, words, winning, tbd }) {
 
     const flag = safeUrl(flagUrl(c.flag));
     const limit = (rules && rules.penalty_limit) || 4;
-    const ink = blue ? '#fff' : '#0a0b10';
+    // Both corners are dark plates now (red and blue), so both take white ink.
+    const ink = '#fff';
     const rowReverse = blue ? undefined : 'row-reverse';
 
     return (
@@ -136,8 +137,8 @@ function Corner({ side, competitor, score, rules, words, winning, tbd }) {
                 flex: 1, minWidth: 0, overflow: 'hidden', position: 'relative',
                 display: 'flex', flexDirection: 'column',
                 background: blue
-                    ? 'linear-gradient(135deg,#1362d1 0%,#082a55 100%)'
-                    : 'linear-gradient(225deg,#f4f7fb 0%,#9fadc0 100%)',
+                    ? 'linear-gradient(135deg,#c1121f 0%,#5c0a10 100%)'
+                    : 'linear-gradient(225deg,#1362d1 0%,#08284f 100%)',
                 color: ink,
                 alignItems: blue ? undefined : 'flex-end',
                 textAlign: blue ? undefined : 'right',
@@ -175,7 +176,7 @@ function Corner({ side, competitor, score, rules, words, winning, tbd }) {
                     </div>
                     <div style={{
                         fontSize: 34, fontWeight: 600, letterSpacing: '.3em', marginTop: 6,
-                        color: blue ? 'rgba(255,255,255,.65)' : 'rgba(10,11,16,.6)',
+                        color: 'rgba(255,255,255,.65)',
                     }}>
                         {blue ? words.corner_blue : words.corner_white}
                     </div>
@@ -195,7 +196,7 @@ function Corner({ side, competitor, score, rules, words, winning, tbd }) {
 
             <div style={{
                 fontSize: 42, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase',
-                marginTop: 10, color: blue ? 'rgba(255,255,255,.8)' : 'rgba(10,11,16,.72)',
+                marginTop: 10, color: 'rgba(255,255,255,.8)',
             }}>
                 {c.club || ''}
             </div>
@@ -205,8 +206,8 @@ function Corner({ side, competitor, score, rules, words, winning, tbd }) {
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' }}>
                 <Score
                     value={score.points}
-                    colour={blue ? '#fff' : '#0a0b10'}
-                    shadow={blue ? '0 10px 60px rgba(0,0,0,.5)' : '0 10px 60px rgba(255,255,255,.4)'}
+                    colour="#fff"
+                    shadow="0 10px 60px rgba(0,0,0,.5)"
                 />
             </div>
 
@@ -222,7 +223,7 @@ function Corner({ side, competitor, score, rules, words, winning, tbd }) {
                         <div style={{
                             width: 96, fontSize: 26, fontWeight: 700, letterSpacing: '.2em',
                             textTransform: 'uppercase', textAlign: blue ? undefined : 'right',
-                            color: blue ? 'rgba(255,255,255,.7)' : 'rgba(10,11,16,.65)',
+                            color: 'rgba(255,255,255,.7)',
                         }}>
                             {row.label}
                         </div>
@@ -341,7 +342,7 @@ function Callout({ event, words }) {
     if (!event) return null;
 
     const blue = event.side === 'blue';
-    const colour = blue ? '#4d9aff' : '#e6ebf2';
+    const colour = blue ? '#ff5a63' : '#4d9aff';
     const label = (event.kind === 'advantage' ? words.advantages : (words.sources[event.source] || '')).toUpperCase();
 
     return (
@@ -589,7 +590,7 @@ function VsSide({ side, competitor, words, tbd }) {
         }}>
             <div style={{
                 fontWeight: 800, fontSize: 21.6, letterSpacing: '0.35em', padding: '5.4px 15.1px 5.4px 18.9px',
-                color: blue ? '#fff' : '#0a0b10', background: blue ? '#1362d1' : '#e6ebf2',
+                color: '#fff', background: blue ? '#c1121f' : '#1362d1',
             }}>
                 {blue ? words.corner_blue : words.corner_white}
             </div>
@@ -662,7 +663,7 @@ function Vs({ state, words, eventTitle, court, exiting }) {
             }}
         >
             <div style={{
-                position: 'absolute', inset: '0 auto 0 0', width: '56%', overflow: 'hidden', background: '#10233f',
+                position: 'absolute', inset: '0 auto 0 0', width: '56%', overflow: 'hidden', background: '#3f1013',
                 clipPath: 'polygon(0 0, 100% 0, 82% 100%, 0 100%)',
                 animation: 'panelL 0.9s cubic-bezier(0.22,1,0.36,1) both',
             }}>
@@ -672,7 +673,7 @@ function Vs({ state, words, eventTitle, court, exiting }) {
             </div>
 
             <div style={{
-                position: 'absolute', inset: '0 0 0 auto', width: '56%', overflow: 'hidden', background: '#2c3340',
+                position: 'absolute', inset: '0 0 0 auto', width: '56%', overflow: 'hidden', background: '#10233f',
                 clipPath: 'polygon(18% 0, 100% 0, 100% 100%, 0 100%)',
                 animation: 'panelR 0.9s cubic-bezier(0.22,1,0.36,1) both',
             }}>
@@ -787,19 +788,19 @@ function QueueHalf({ match, corner, tbd }) {
         <div style={{
             flex: 1, minWidth: 0, display: 'flex', alignItems: 'stretch',
             ...(blue ? {
-                background: 'linear-gradient(90deg, #1362d1 0%, #08284f 100%)',
+                background: 'linear-gradient(90deg, #c1121f 0%, #5c0a10 100%)',
                 clipPath: 'polygon(0 0, 100% 0, calc(100% - 60px) 100%, 0 100%)',
                 marginRight: -30, color: '#fff',
             } : {
                 flexDirection: 'row-reverse',
-                background: 'linear-gradient(270deg, #eef2f7 0%, #93a1b3 100%)',
+                background: 'linear-gradient(270deg, #1362d1 0%, #08284f 100%)',
                 clipPath: 'polygon(60px 0, 100% 0, 100% 100%, 0 100%)',
-                marginLeft: -30, color: '#0a0b10',
+                marginLeft: -30, color: '#fff',
             }),
         }}>
             {photo && (
                 <div style={{
-                    width: 230, flex: '0 0 auto', backgroundColor: blue ? '#0e3f80' : '#7f8b9c',
+                    width: 230, flex: '0 0 auto', backgroundColor: blue ? '#6e1219' : '#0e3f80',
                     backgroundSize: 'cover', backgroundPosition: 'center 12%', backgroundImage: bgImage(photo),
                 }} />
             )}
@@ -923,55 +924,79 @@ function QueuePlate({ match, isNext, words, enter, index }) {
  * would read as the whole board flinching.
  */
 function QueueRow({ match, index, isNext, enter, words, tbd }) {
+    /* ⚠️ MOVEMENT BELONGS TO THE FIRST ROW ONLY, and the row is ROUNDED
+       (both 2026-09-20, matching the three blade boards).
+
+       Four rows each carrying an entrance, and a shine crossing all four on
+       four staggered clocks, meant something was always moving somewhere on
+       the wall — and a reader looking for the bout that is NEXT had nothing
+       to look at. Row 0 keeps everything; rows 1-3 draw and stay drawn.
+
+       The rounding needs TWO layers. A radius alone would not show: the two
+       halves are clip-path polygons, which replace the border box, so their
+       outer corners stay square however the row is rounded — an ancestor has
+       to clip them. But that ancestor cannot be the row itself, because
+       `overflow:hidden` clips a CHILD'S box-shadow, and the breath on row 0 is
+       exactly that: a child whose 110px glow is meant to spread OUTSIDE the
+       row. So the outer div stays unclipped and carries what belongs outside
+       the edge; `body` is the rounded, clipped box. */
+    const R = 16;
+
     return (
         <div style={{
-            flex: 1, minHeight: 0, position: 'relative', display: 'flex', alignItems: 'stretch',
-            background: '#101016',
-            border: `1px solid ${isNext ? 'rgba(253,196,54,0.8)' : 'rgba(255,255,255,0.15)'}`,
+            flex: 1, minHeight: 0, position: 'relative', borderRadius: R,
             boxShadow: isNext ? '0 0 16px rgba(253,196,54,0.35), 0 0 44px rgba(253,196,54,0.15)' : undefined,
-            animation: enter
-                ? `${index % 2 === 0 ? 'rowEnterL' : 'rowEnterR'} 0.7s ${0.2 + index * 0.15}s cubic-bezier(0.22,1,0.36,1) both`
+            animation: (enter && isNext)
+                ? 'rowEnterL 0.7s 0.2s cubic-bezier(0.22,1,0.36,1) both'
                 : undefined,
         }}>
-            <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 2 }}>
-                <div style={{
-                    position: 'absolute', top: 0, bottom: 0, width: '26%',
-                    background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent)',
-                    animation: `rowSweep 4.5s ${1.2 + index * 0.55}s ease-in-out infinite`,
-                }} />
-            </div>
-
             {isNext && (
                 <>
                     {/* The breath: the strong shadow rasterised ONCE and faded in
                         and out, rather than a 110px blur re-drawn every frame. */}
                     <div style={{
                         position: 'absolute', inset: 0, zIndex: -1, pointerEvents: 'none', opacity: 0,
+                        borderRadius: R,
                         boxShadow: '0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35)',
                         animation: 'glowPulse 2.2s 1.2s ease-in-out infinite',
                     }} />
-                    {/* The running border, as four thin strips rather than one
-                        masked box: a mask forces a render surface. */}
-                    <div style={{ position: 'absolute', inset: -2, pointerEvents: 'none', zIndex: 2 }}>
-                        {['top', 'bottom'].map((edge) => (
-                            <div key={edge} style={{ position: 'absolute', left: 0, right: 0, [edge]: 0, height: 3, overflow: 'hidden' }}>
-                                <div style={{
-                                    position: 'absolute', top: 0, bottom: 0, left: 0, width: '300%',
-                                    background: `linear-gradient(90deg, ${GOLD}, #fffdf0 25%, ${GOLD} 50%, #6b5310 75%, ${GOLD})`,
-                                    animation: 'goldSlide 2.5s linear infinite',
-                                }} />
-                            </div>
-                        ))}
-                        {['left', 'right'].map((edge) => (
-                            <div key={edge} style={{ position: 'absolute', top: 0, bottom: 0, [edge]: 0, width: 3, background: GOLD }} />
-                        ))}
+                    {/* The running border: one rounded plate carrying the sliding
+                        gradient, with the body laid over it 2px in. Four straight
+                        strips cannot follow a curve, and two stacked rounded boxes
+                        still need no mask — which was the point of the strips. */}
+                    <div style={{
+                        position: 'absolute', inset: -2, borderRadius: R + 2,
+                        overflow: 'hidden', pointerEvents: 'none', zIndex: 0,
+                    }}>
+                        <div style={{
+                            position: 'absolute', top: 0, bottom: 0, left: 0, width: '300%',
+                            background: `linear-gradient(90deg, ${GOLD}, #fffdf0 25%, ${GOLD} 50%, #6b5310 75%, ${GOLD})`,
+                            animation: 'goldSlide 2.5s linear infinite',
+                        }} />
                     </div>
                 </>
             )}
 
-            <QueueHalf match={match} corner="blue" tbd={tbd} />
-            <QueueHalf match={match} corner="white" tbd={tbd} />
-            <QueuePlate match={match} isNext={isNext} words={words} enter={enter} index={index} />
+            {/* Everything that must be clipped to the rounded shape. */}
+            <div style={{
+                position: 'absolute', inset: 0, display: 'flex', alignItems: 'stretch',
+                overflow: 'hidden', borderRadius: R, background: '#101016', zIndex: 1,
+                border: isNext ? undefined : '1px solid rgba(255,255,255,0.15)',
+            }}>
+                {isNext && (
+                    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 2 }}>
+                        <div style={{
+                            position: 'absolute', top: 0, bottom: 0, width: '26%',
+                            background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent)',
+                            animation: 'rowSweep 4.5s 1.2s ease-in-out infinite',
+                        }} />
+                    </div>
+                )}
+
+                <QueueHalf match={match} corner="blue" tbd={tbd} />
+                <QueueHalf match={match} corner="white" tbd={tbd} />
+                <QueuePlate match={match} isNext={isNext} words={words} enter={enter} index={index} />
+            </div>
         </div>
     );
 }
@@ -1010,12 +1035,15 @@ function Queue({ board, words, eventTitle, court, rows }) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    {/* Solid gold, not a shimmer. The title used to animate its own
+                        background-position behind clipped text, so the one word on the
+                        board that never changes was the one thing always moving. Stopped
+                        2026-09-20. Painted rather than merely un-animated: the gradient
+                        exists ONLY to be slid, and left parked it renders the text as an
+                        off-centre band. */}
                     <div style={{
                         fontFamily: "'Anton',sans-serif", fontSize: 64, letterSpacing: '0.2em', paddingLeft: '0.2em',
-                        textTransform: 'uppercase', whiteSpace: 'nowrap',
-                        background: `linear-gradient(100deg, ${GOLD} 40%, #fffdf0 50%, ${GOLD} 60%)`,
-                        backgroundSize: '200% 100%', WebkitBackgroundClip: 'text', backgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent', animation: 'titleShimmer 3.5s linear infinite',
+                        textTransform: 'uppercase', whiteSpace: 'nowrap', color: GOLD,
                     }}>
                         {words.court_title}
                     </div>
@@ -1034,7 +1062,7 @@ function Queue({ board, words, eventTitle, court, rows }) {
                             {board.courtNumber || matNumber(court)}
                         </span>
                     </div>
-                    <div style={{ width: 10, height: 64, background: '#e6ebf2' }} />
+                    <div style={{ width: 10, height: 64, background: '#1362d1' }} />
                 </div>
             </div>
 

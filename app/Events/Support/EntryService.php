@@ -261,7 +261,29 @@ class EntryService
         // play. So no new entries after the start — for a club or an
         // individual. Someone already entered is untouched; this only refuses
         // people who are not in yet.
-        if (($event->hasStarted() || $event->isOverdueToStart())
+        /*
+         * ⚠️ NOT ASKED OF THE ORGANISER (2026-09-18, at the user's instruction:
+         * "when I add people I don't want any system locks").
+         *
+         * The rule above is right for everybody else, and stays: a club or an
+         * individual cannot post an entry into a competition that is already
+         * running. It was wrong for the person RUNNING it. An athlete who
+         * turned up, weighed in and was missed off the sheet is a fact of every
+         * event day, and the organiser is the one who has to put it right —
+         * they are already trusted to arrange the draw, move people between
+         * divisions and record results, all of which are larger acts than
+         * naming somebody who is standing in the hall.
+         *
+         * Refusing it did not keep the competition tidy; it sent the organiser
+         * to a developer, which is how the first entry of the day was made on
+         * 2026-09-18 — by hand, against the database, at 11:36.
+         *
+         * Entering somebody does NOT put them on a board: a division that has
+         * been drawn is frozen, so a late entry lands on the bench and is
+         * placed through Arrange. That separation is what makes this safe.
+         */
+        if (! $runsThisEvent
+            && ($event->hasStarted() || $event->isOverdueToStart())
             && ! ($existing && $existing->role === 'participant')) {
             return $reject('started', __('events.entry_event_started'));
         }
@@ -708,6 +730,8 @@ class EntryService
     {
         $clubIds = $this->administeredClubIds($actor);
 
+        // 1. A club this actor runs that the athlete actually belongs to. The
+        //    strongest answer there is: both ends agree.
         if ($clubIds) {
             $match = $athlete->memberClubs()->whereIn('tenants.id', $clubIds)
                 ->wherePivot('status', 'active')->value('tenants.id');
@@ -717,10 +741,44 @@ class EntryService
             }
         }
 
+        // 2. The athlete belongs to exactly one club anywhere — then that is
+        //    who they compete for, whoever entered them.
         $active = $athlete->memberClubs()->wherePivot('status', 'active')
             ->pluck('tenants.id');
 
-        return $active->count() === 1 ? (int) $active->first() : null;
+        if ($active->count() === 1) {
+            return (int) $active->first();
+        }
+
+        /*
+         * 3. ...and otherwise, the club the ACTOR runs, when they run exactly
+         *    one.
+         *
+         * ⚠️ This is the case that was missing, and it is the ordinary one at a
+         * championship. `enter()` says "Entered BY a club, FOR that club" — but
+         * the two steps above both ask about the ATHLETE'S MEMBERSHIP, and a
+         * coach entering their squad has usually never enrolled any of them as
+         * platform members of the tenant. Competing for a club and holding a
+         * subscription to it are different facts.
+         *
+         * So a coach entered eighteen athletes through the club door and every
+         * one of them came out unattached — no club on the entry list, no club
+         * on the board, and no flag either, because the flag follows the club
+         * (reported 2026-09-18: "many of them have clubs but it's not
+         * showing"). The intent was already written down; only the lookup
+         * stopped short.
+         *
+         * LAST, deliberately: it fires only where the answer would otherwise be
+         * NULL, so nothing that resolved before resolves differently now. An
+         * actor who runs several clubs stays ambiguous and still records
+         * nothing — guessing which of three clubs a coach meant would be worse
+         * than leaving it for them to say.
+         */
+        if (count($clubIds) === 1) {
+            return (int) reset($clubIds);
+        }
+
+        return null;
     }
 
     /**
@@ -743,9 +801,10 @@ class EntryService
          * the closing date is the ordinary case, and refusing it there just
          * moves the entry onto a paper sheet.
          *
-         * Everything that protects the COMPETITION rather than the diary —
-         * ended, started, overdue to start — is asked of them exactly as it is
-         * asked of everybody else, below.
+         * An event that has ENDED is closed to everybody, organiser included:
+         * there is no competition left to enter. Started and overdue-to-start
+         * no longer answer back at the organiser either (2026-09-18) — see the
+         * guard in enter() for why.
          */
         $runsThisEvent = $actor && app(EventAccess::class)->canManage($event, $actor);
 
@@ -756,7 +815,13 @@ class EntryService
         // behind it is not taking entries whether or not an organiser has
         // pressed the button yet: the entry list is what the day is being run
         // from, and "nobody pressed start" is an admin detail, not an invitation.
-        if ($event->hasStarted() || $event->isOverdueToStart()) {
+        /*
+         * Open to the ORGANISER once it is running (2026-09-18) — the same
+         * change as the guard in enter(), and it has to be made here too or the
+         * door opens while the screen still says it is shut. For everybody else
+         * this stays exactly as it was.
+         */
+        if (! $runsThisEvent && ($event->hasStarted() || $event->isOverdueToStart())) {
             return ['open' => false, 'note' => __('events.entry_event_started')];
         }
         if (! $runsThisEvent && EntryWindow::hasNotOpened($event)) {

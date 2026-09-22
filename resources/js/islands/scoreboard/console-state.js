@@ -80,7 +80,7 @@ export function useConsole(props) {
      * A 422 is a REFUSAL an official needs to read, and it comes back with the
      * current state so a console that had fallen behind corrects itself.
      */
-    const send = useCallback((command, payload, done) => {
+    const send = useCallback((command, payload, done, silent) => {
         const optimism = payload && payload.__optimistic;
         const id = optimism ? ++deltaId : null;
         if (optimism) setOptimistic((list) => [...list, { id, ...optimism }]);
@@ -107,7 +107,12 @@ export function useConsole(props) {
                 if (Object.prototype.hasOwnProperty.call(res.body, 'stall')) setStall(res.body.stall);
                 if (id) setOptimistic((list) => list.filter((d) => d.id !== id));
 
-                if (!res.ok) { flash(res.body.message || ''); return null; }
+                // `silent` is for a command nobody PRESSED — the stalling
+                // count applying itself. Two consoles at one mat both notice
+                // zero and both send it; the second is refused with "no
+                // stalling count is running", which is the right answer and a
+                // message nobody needs to read.
+                if (!res.ok) { if (!silent) flash(res.body.message || ''); return null; }
                 if (done) done(res.body);
                 return res.body;
             })
@@ -145,6 +150,43 @@ export function useConsole(props) {
     }, []);
 
     useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+    /* ── A stalling count applies ITSELF ──────────────────────────────────
+       When the count reaches zero the penalty lands, full stop. No card, no
+       question: by the time a referee has started a count against a corner
+       they have already decided, and a dialog in front of somebody watching a
+       mat is a dialog read late. A correction is made the ordinary way, from
+       the score log — which is the same answer as for any other press.
+
+       This used to ask (`stallPrompt`, penalty / award / dismiss) for a
+       single-corner count, while a DOUBLE stall applied itself. Now both do.
+
+       Sent from here because the server has no timer: the only thing that
+       knows the count ran out is whatever is watching it. Guarded on the
+       count's own `until`, so it fires ONCE per count however often this
+       re-renders, and silently, so the second console at the same mat is
+       refused without saying anything. */
+    const stallApplied = useRef(null);
+
+    useEffect(() => {
+        if (!stall || !stall.until) return undefined;
+
+        const key = String(stall.until);
+
+        const fire = () => {
+            if (stallApplied.current === key) return;
+            stallApplied.current = key;
+            send('stall', { phase: 'apply' }, null, true);
+        };
+
+        const ms = new Date(stall.until).getTime() - Date.now();
+
+        if (ms <= 0) { fire(); return undefined; }
+
+        const id = setTimeout(fire, ms);
+
+        return () => clearTimeout(id);
+    }, [stall, send]);
 
     /* ── What the operator actually sees ──────────────────────────────────
        Authoritative + in-flight. The two are added only for DISPLAY; nothing

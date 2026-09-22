@@ -300,6 +300,37 @@ class MatCameras
     }
 
     /**
+     * STOP RECORDING. Now, whatever the mat believes.
+     *
+     * The mat drives the cameras — hajime rolls them, the result stops them —
+     * and that is right almost always. Almost: a command that ENDS a bout can
+     * be refused (a result cannot be filed before the competition day is
+     * started), the refusal leaves the engine before the fleet is told
+     * anything, and the phones keep rolling with nothing left that will ever
+     * stop them. Unpairing the camera was the only way out, and it sends a
+     * working camera back to a pairing code in the middle of a competition.
+     *
+     * So the panel gets a stop of its own. It is not a scoring act and files no
+     * result: it closes the clip, which the phone was going to do anyway, and
+     * the operator gets the control they were missing. This is the camera's
+     * half of "an unattended device must always recover" — the person standing
+     * at the mat must always be able to stop a recording.
+     *
+     * The flag is cleared HERE as well as being sent, so the console stops
+     * showing a red dot even if the phone is on the wrong side of a dropped
+     * access point. The phone corrects it on its next beat.
+     */
+    public static function stop(EventCamera $camera): void
+    {
+        $camera->forceFill(['recording' => false, 'recording_match_id' => null])->save();
+
+        CameraChannel::send($camera, [
+            'action' => 'stop',
+            'at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
      * "Tell me how you are, now."
      *
      * A camera beats every 30 seconds, which is right for a phone on a tripod

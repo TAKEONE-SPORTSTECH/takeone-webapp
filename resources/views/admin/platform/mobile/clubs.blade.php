@@ -38,7 +38,8 @@
                 @foreach($clubs as $club)
                     @php
                         $cc = strtoupper($club->country ?? '');
-                        $flag = (strlen($cc) === 2 && ctype_alpha($cc)) ? mb_chr(127397 + ord($cc[0])) . mb_chr(127397 + ord($cc[1])) : '';
+                        /* Our own file, not an emoji — see <x-flag>. */
+                        $flagIso = \App\Support\Flag::iso2($cc);
                     @endphp
                     <div class="club-card-wrapper m-card bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100"
                          data-club-id="{{ $club->id }}"
@@ -55,8 +56,8 @@
                                 @endif
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
                                 <span class="absolute top-2 left-2 px-2.5 py-0.5 rounded-full text-[10px] font-semibold text-white bg-primary/90">{{ __('platform.badge_admin') }}</span>
-                                @if($flag)
-                                    <span class="absolute top-2 right-2 text-base leading-none">{{ $flag }}</span>
+                                @if($flagIso)
+                                    <x-flag :code="$flagIso" :h="13" class="absolute top-2 right-2" />
                                 @endif
                                 <button type="button" aria-label="{{ __('platform.edit_club') }}"
                                         onclick="event.preventDefault(); event.stopPropagation(); window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'edit', clubId: {{ $club->id }} } }));"

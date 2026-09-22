@@ -53,8 +53,24 @@
             : sprintf('%d:%02d', intdiv($s, 60), $s % 60);
     };
 @endphp
-<div x-data="publicEvent()" class="-mx-4 -mt-4 pb-4">
+@php
+    /* ===== A SECTION THAT TAKES THE WHOLE SCREEN =====
+     *
+     * The published draw is not a panel on this page any more — it is
+     * `x-draw-stage`, `fixed inset-0`, covering the app chrome by design
+     * (2026-09-17). Drawing the band behind it would leave a header nobody can
+     * see, whose control row is still in the tab order and whose teleported
+     * menu is a SECOND copy of the one the stage now carries in its own bar.
+     *
+     * So the page skips its own chrome for that one case and lets the section
+     * be the screen. Every other section, and an undrawn draw, is unchanged.
+     */
+    $ownScreen = $section === 'draw' && ($e['draw']['published'] ?? false);
+@endphp
 
+<div x-data="publicEvent()" class="{{ $ownScreen ? '' : '-mx-4 -mt-4 pb-4' }}">
+
+    @unless($ownScreen)
     {{-- ===== The band (Design Rule #6) ===== --}}
     <header class="m-hero px-5 pt-5 pb-14 text-white relative overflow-hidden"
             style="background: {{ \App\Support\Palette::eventBand($e['color'], '150deg') }};">
@@ -108,6 +124,7 @@
             @endif
         </div>
     </header>
+    @endunless
 
     {{-- The body rides up over the band's tail, like every other page's does.
 
@@ -119,17 +136,27 @@
          those shadows while the white ground swallowed the card edges. Cards
          inside a card is a card with cards on it, so a section may opt out of
          the panel and lay out its own surface. It keeps the page's gutters
-         either way. --}}
-    @php $ownSurface = in_array($section, ['participants', 'gallery'], true); @endphp
-    <div class="px-4 -mt-8 relative z-10">
-        @if($ownSurface)
-            @include('entry.public.sections.'.$section.'-mobile')
-        @else
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+         either way.
+
+         RESULTS joined them on 2026-09-21: it is a column of division cards
+         (`<x-event-podium-list>`, the same ones the organiser's sheet draws)
+         and they were sitting inside the white panel with their own borders
+         showing against it — the card-on-a-card the note above describes. --}}
+    @php $ownSurface = in_array($section, ['participants', 'gallery', 'results'], true); @endphp
+    @if($ownScreen)
+        {{-- No gutters, no panel, no ride-up: the section IS the screen. --}}
+        @include('entry.public.sections.'.$section.'-mobile')
+    @else
+        <div class="px-4 -mt-8 relative z-10">
+            @if($ownSurface)
                 @include('entry.public.sections.'.$section.'-mobile')
-            </div>
-        @endif
-    </div>
+            @else
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    @include('entry.public.sections.'.$section.'-mobile')
+                </div>
+            @endif
+        </div>
+    @endif
 </div>
 
 {{-- The gallery's player. Harmless on the other three: nothing opens it. --}}

@@ -2,283 +2,339 @@
      nothing shared this is the member shell exactly as before. See entry/shell. --}}
 @extends($shell ?? 'layouts.app')
 
-@section('title', __('personal.personal_event_bracket_manage_draw'))
+@section('title', ($canManage || $canArrange)
+    ? __('personal.personal_event_bracket_manage_draw')
+    : __('events.public_draw'))
 
 {{--
-    Manage draw — the board, full screen.
+    THE DRAW — the Combat Sports Bracket, running as itself.
 
-    One view for both devices: the board component is already responsive, and
-    arranging a draw is the same job on a phone as on a desktop. The page covers
-    the app chrome entirely (fixed inset-0) so the draw gets the whole viewport —
-    on a laptop that is the difference between seeing two rounds and seeing all
-    of them.
+    ⚠️ THE BOARD ON THIS PAGE IS NOT A RE-IMPLEMENTATION OF THE DESIGN FILE.
+    It IS the design file. `drafts/Combat Sports Bracket.html` ships React 18
+    UMD, a `dc-runtime` that parses its root `x-dc` element, twelve Poppins
+    woff2 faces and one `class Component extends DCLogic`. All of it was
+    unpacked out of that file and installed verbatim:
 
-    The division switcher lives in the top bar rather than inside the component
-    (showDivisions=false), which is tidier and keeps a variable-height control
-    out of the board's own column.
+        public/bracket/react.production.min.js        (from the file)
+        public/bracket/react-dom.production.min.js    (from the file)
+        public/bracket/dc-runtime.js                  (from the file)
+        public/bracket/fonts/*.woff2                  (from the file, 12 faces)
+        resources/views/personal/partials/bracket-board.html
+                                                      (its x-dc template and
+                                                       its Component class)
 
-    Read-only viewers never get here — manageBracket() redirects them to the
-    ordinary bracket page.
+    Two edits were made to that last file, and nothing else was touched:
+
+      1. The font `url(…)` references, which the bundler wrote as bare uuids,
+         now point at the installed woff2 files.
+      2. Its two round-name tables and two height tables carried 4 / 8 / 16
+         only. Real divisions are cut to 32 and 64 as well, and the board threw
+         on the first one — so those four tables gained the missing entries.
+         Additive: every value the file already had is unchanged.
+
+    A third block is APPENDED to the end of its script (below the closing brace
+    of the class, touching not one line of it) which hands the mounted instance
+    to /bracket/takeone-bridge.js. That bridge is what makes the board real: it
+    replaces the file's demo roster with this event's actual draw and posts
+    every change back. The mapping is documented in the bridge.
+
+    ── Why the markup is included rather than written here ───────────────────
+
+    Blade's component-tag compiler runs over the WHOLE template before
+    anything else — before comments are stripped, and without caring whether it
+    is looking at markup, a script or a CSS comment. The draft's root element
+    is an x-dc tag, so a Blade file containing one (even in a comment, even in
+    this one) compiles to a component call for a component that does not exist
+    and the page 500s. That is why the markup is read off disk and emitted raw,
+    and why no line in this file spells that tag out.
 --}}
+
+@push('styles')
+{{-- The draft covers the viewport by itself (`position:fixed;inset:0`), so the
+     shell behind it has nothing to show and its scrollbar is only in the way. --}}
+<style>
+    /* The board covers the viewport by itself, so the page behind it has
+       nothing to show and its scrollbar is only in the way. `z-index` clears
+       the mobile shell's bottom tab bar (40) and its top bar. */
+    html:has(#takeone-bracket-root) body { overflow: hidden; }
+    #takeone-bracket-root { position: fixed; inset: 0; z-index: 70; }
+    /* The design file draws its own 150px header hard against the top edge —
+       nothing of ours may sit above it. */
+    #takeone-bracket-root > * { margin: 0; }
+</style>
+@endpush
 
 @section($contentSection ?? 'content')
 @php
-    // The event's own colour, whitelisted before it reaches a style attribute —
-    // it is organiser-supplied and the sheet bands interpolate it directly.
-    // Same expression the two event-manage consoles use, and the same fallback.
-    $mgColor = preg_match('/^#[0-9a-fA-F]{3,8}$/', (string) ($e['color'] ?? '')) ? $e['color'] : '#7c3aed';
-@endphp
-{{-- ⚠️ `height` is set TWICE on purpose, and the board below fills it.
+    /* ⚠️ EVERY BRACKET ASSET CARRIES ITS OWN MTIME.
 
-     `fixed inset-0` (and `100vh`) resolve against the LARGE viewport on a
-     phone — the one that assumes the browser's toolbar is retracted. With the
-     toolbar showing, the bottom of this page sits underneath it, and what is
-     pinned to that bottom edge (the zoom cluster, the legend) sinks out of
-     reach (reported 2026-09-06). `100dvh` is the viewport as it actually is
-     right now; the `100vh` line before it is the fallback for a browser that
-     does not know `dvh`, and CSS drops the declaration it cannot parse. --}}
-<div id="draw-stage" class="ev-app-fixed fixed inset-0 z-[60] bg-background flex flex-col"
-     style="height: 100vh; height: 100dvh;"
-     x-data="{
-        divisions: [], division: null, arrange: false, open: false,
-        target: @js($division),
-        get selected() { return this.divisions.find(d => d.id === this.division) ?? null; },
+       These four files live in public/ and are served by the web server, not
+       by Vite — so nothing puts a hash in their names and a browser that has
+       one keeps it. An edit to the bridge then reaches nobody: the page is
+       new, the script is last week's, and the two disagree in ways that look
+       like the feature was never built. Cost is one stat() per file. */
+    $brk = function (string $file) {
+        $path = public_path('bracket/'.$file);
 
-        // Gender is not a column on a division — it lives in the name, so it is
-        // read back out here. This MIRRORS AbstractCombatSport::genderWord(),
-        // which writes every division name:
-        //
-        //     'female' => 'Women', everything else => 'Men'
-        //
-        // Binary and total, exactly like the producer: a division is always one
-        // gender or the other, never mixed. Names are generated (never typed by
-        // hand) and genderWord() always emits English, so matching 'Women' is
-        // enough — no locale variants to chase. Tested with a word boundary
-        // because 'men' is a substring of 'women'.
-        genderOf(name) {
-            return /\bwomen\b/i.test(name || '') ? 'f' : 'm';
-        },
-        genderIcon(name) {
-            return this.genderOf(name) === 'f' ? 'bi-gender-female' : 'bi-gender-male';
-        },
-        genderColor(name) {
-            return this.genderOf(name) === 'f' ? 'text-pink-500' : 'text-blue-500';
-        },
-
-        onLoaded(d) {
-            this.divisions = d.divisions; this.division = d.division;
-            // Deep-link: open on the division the organiser came from.
-            if (this.target && d.divisions.some(x => String(x.id) === String(this.target))) {
-                window.BracketBoard.show(this.target);
-                this.target = null;
-            }
-        },
-        onState(d) { this.arrange = d.arrange; this.divisions = d.divisions; this.division = d.division; },
-     }"
-     @bracket:loaded="onLoaded($event.detail)"
-     @bracket:state="onState($event.detail)">
-
-    {{-- ===== Top bar: leave, and what you are arranging ===== --}}
-    <header class="h-14 shrink-0 flex items-center gap-3 px-3 sm:px-4 border-b border-gray-200 bg-white">
-        {{-- ⚠️ Back goes where you CAME FROM: the console. This screen is
-             linked from exactly one place — the console's draw tile — and the
-             arrow used to open `me.events.bracket`, the read-only board, which
-             is neither where you were nor what you were doing.
-
-             ICON ONLY here, and a tail-less chevron (asked for on 2026-09-04).
-             Design Rule #6's labelled back pill governs the HERO BAND that
-             opens a page; this is a 56px working bar on a full-screen board,
-             where the words were competing with the event title beside them.
-             The destination still says itself through `title` / `aria-label`.
-
-             Inside the sealed event app the console is /e/{uuid}/admin/manage;
-             on the platform it is the member console. --}}
-        @php
-            $drawBack = ($sealed ?? false)
-                ? url('/e/'.$e['key'].'/admin/manage')
-                : route('me.events.manage', $e['key']);
-        @endphp
-        <a href="{{ $drawBack }}"
-           class="ev-ico shrink-0 w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center
-                  text-foreground no-underline hover:bg-muted/60 transition-colors"
-           title="{{ __('personal.event_manage_title') }}"
-           aria-label="{{ __('personal.event_manage_title') }}">
-            <i class="bi bi-chevron-left text-base"></i>
-        </a>
-
-        <div class="min-w-0">
-            <p class="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground leading-none">
-                {{ __('personal.personal_event_bracket_manage_draw') }}
-            </p>
-            <h1 class="text-sm font-bold text-foreground truncate leading-tight mt-0.5">{{ $e['title'] }}</h1>
-        </div>
-
-        <div class="ms-auto shrink-0 flex items-center gap-2">
-            {{-- ===== One control for the whole bar =====
-
-                 The draw's own verbs (build it, clear it — moved off the
-                 console on 2026-09-03) and the group tools used to be a menu
-                 AND three labelled buttons sitting side by side, which is four
-                 controls and five words in a 56px bar (reported 2026-09-04).
-
-                 They are now ONE three-dot menu: <x-division-groups> renders it
-                 in `as-menu` mode and this page hands its verbs down through
-                 the `actions` slot. The component still owns both sheets and
-                 every request, and still learns which division is open from the
-                 board's bracket:loaded / bracket:state events.
-
-                 The package decides whether each verb may run today
-                 (availableActions); this is only where they are offered. --}}
-            <x-division-groups :event="$e['key']" :can-manage="$canManage"
-                               :color="$mgColor" :as-menu="true">
-                @if(! empty($drawActions))
-                    <x-slot:actions>
-                        @foreach($drawActions as $action)
-                            <form method="POST" action="{{ route('me.events.action', [$e['key'], $action['action']]) }}"
-                                  data-event-action data-after="bracket"
-                                  data-failed="{{ __('events.action_failed') }}">
-                                @csrf
-                                <button type="submit" role="menuitem"
-                                        class="w-full text-start px-3 py-2.5 flex items-center gap-2.5 text-sm hover:bg-muted/60 transition-colors">
-                                    <span class="w-8 h-8 rounded-lg grid place-items-center flex-shrink-0 bg-primary/10 text-primary">
-                                        <i class="{{ \App\Support\Icon::bi($action['icon'] ?? null, 'text-sm', 'bi-lightning-charge') }}"></i>
-                                    </span>
-                                    <span class="font-bold text-foreground">{{ $action['label'] }}</span>
-                                </button>
-                            </form>
-                        @endforeach
-                    </x-slot:actions>
-                @endif
-            </x-division-groups>
-        </div>
-    </header>
-
-    {{-- ===== The board — every pixel that is not the top bar =====
-         No padding anywhere: the canvas runs to all four edges. `bare` (not
-         `bleed`) because this page has no gutters to escape from — bleeding here
-         would hang the board off the viewport. It fills what the flex column
-         leaves it, so the bar's height is nobody else's business. --}}
-    <div class="flex-1 min-h-0 relative">
-        <x-tournament-bracket
-            id="manage-bracket"
-            :data-url="route('me.events.bracket.data', $e['key'])"
-            :arrange-url="route('me.events.bracket.arrange', $e['key'])"
-            :clear-url="route('me.events.bracket.clear', $e['key'])"
-            :event-uuid="$e['key']"
-            :can-arrange="$canArrange"
-            :my-competitor-ids="$myCompetitorIds"
-            :show-divisions="false"
-            {{-- Fill the flex slot rather than computing a height from the
-                 viewport: the wrapper above already IS the viewport, and a
-                 calc() that has to know the bar's height is one edit away from
-                 being wrong. --}}
-            height="100%"
-            :fill="true"
-            bare />
-
-        {{-- Divisions — a menu floating on the canvas, stacked above the zoom
-             cluster on the same edge. A menu rather than pills because a
-             championship carries dozens of divisions (age × gender × weight),
-             and scrolling a strip back and forth to find one is worse than
-             opening a list you can read down.
-
-             It sits OUTSIDE the board element (a sibling, not a child) on
-             purpose: the board is overflow-hidden, which would clip the open
-             menu. It drops to top-16 while arranging so it never sits under the
-             component's arrange banner, which spans the full width at top-3.
-
-             `end-3` rather than right-3 so it mirrors to the left in Arabic,
-             like the rest of this page — and it keeps the trailing edge clear of
-             the component's "Draw final" badge, which pins to the leading one. --}}
-        <div x-show="divisions.length > 1" x-cloak
-             class="absolute end-3 z-40 transition-all"
-             :class="arrange ? 'top-16' : 'top-3'"
-             @keydown.escape.window="open = false"
-             @click.outside="open = false">
-
-            <button type="button" @click="open = !open"
-                    :aria-expanded="open" aria-haspopup="listbox"
-                    class="flex items-center gap-2 ps-2.5 pe-2 py-1.5 rounded-xl border border-gray-200 bg-white
-                           text-xs font-bold text-foreground shadow-sm hover:shadow-md hover:bg-muted/60
-                           transition-all max-w-[16rem]">
-                <i class="bi shrink-0" :class="genderIcon(selected?.name) + ' ' + genderColor(selected?.name)"></i>
-                <span class="truncate" x-text="selected?.name ?? ''"></span>
-                <span class="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[0.6rem] font-extrabold shrink-0"
-                      x-text="selected?.entrants ?? 0"></span>
-                <i class="bi bi-chevron-down text-muted-foreground transition-transform shrink-0"
-                   :class="open && 'rotate-180'"></i>
-            </button>
-
-            <div x-show="open" x-cloak x-transition.opacity.duration.120ms
-                 role="listbox"
-                 class="absolute end-0 mt-2 w-72 max-h-[60vh] overflow-y-auto rounded-xl border border-gray-200
-                        bg-white shadow-xl z-50 py-1">
-                <template x-for="d in divisions" :key="d.id">
-                    <button type="button" role="option" :aria-selected="d.id === division"
-                            @click="window.BracketBoard.show(d.id); open = false"
-                            :class="d.id === division ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'"
-                            class="w-full flex items-center gap-2.5 px-3 py-2 text-start text-xs font-bold transition-colors">
-                        <i class="bi shrink-0" :class="genderIcon(d.name) + ' ' + genderColor(d.name)"></i>
-                        <span class="flex-1 truncate" x-text="d.name"></span>
-                        <span class="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[0.6rem] font-extrabold shrink-0"
-                              x-text="d.entrants"></span>
-                        <i class="bi bi-check-lg shrink-0" x-show="d.id === division"></i>
-                    </button>
-                </template>
-            </div>
-        </div>
-    </div>
-</div>
-{{-- ===== The stage is exactly as tall as the screen actually is =====
-
-     Three answers to "how tall is the viewport?", in increasing order of truth:
-
-       · `100vh` — the LARGE viewport, as if the browser's toolbar were
-         retracted. Always too tall while the toolbar is showing, which pushed
-         the board's bottom edge (and the zoom cluster and legend pinned to it)
-         underneath it.
-       · `100dvh` — the viewport as it is right now. Correct in every browser
-         that has it, and the style above uses it.
-       · `visualViewport.height` — what is actually on screen, asked of the
-         browser rather than described to it. Samsung Internet keeps its bar at
-         the BOTTOM of the screen, and that is the case that kept clipping the
-         last button even with `dvh` in place, so this has the final word.
-
-     Cheap (one style write per resize), guarded so the shells can re-run this
-     script without stacking listeners, and it does nothing at all if the
-     element is not on the page. --}}
-<script>
-(function () {
-    const size = () => {
-        const el = document.getElementById('draw-stage');
-        if (! el) return;
-
-        const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-        if (h > 0) el.style.height = Math.round(h) + 'px';
+        return asset('bracket/'.$file).'?v='.(is_file($path) ? filemtime($path) : 0);
     };
 
-    size();
+    /* ⚠️ Back goes where you CAME FROM: the console. Inside the sealed event
+       app that is /e/{uuid}/admin/manage; on the platform it is the member
+       console. Rendered whole rather than assembled, so the sealed app's
+       rewriter can map it. */
+    $drawBack = ($sealed ?? false)
+        ? url('/e/'.$e['key'].'/admin/manage')
+        : route('me.events.manage', $e['key']);
 
-    if (window.__drawStageSized) return;
-    window.__drawStageSized = true;
+    /* WHICH division the board is showing. The draft draws one bracket — it
+       has no division switcher and inventing one would mean editing its
+       template — so the division travels in the URL and the bracket page's own
+       list links in here per division. */
+    $drawDivision = $division;
 
-    window.addEventListener('resize', size);
-    window.addEventListener('orientationchange', size);
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', size);
-        // The bar retracting as the page scrolls is a viewport OFFSET change,
-        // not a resize, in some browsers.
-        window.visualViewport.addEventListener('scroll', size);
-    }
-    // The board measures itself to fit the draw, so it needs telling once the
-    // stage has settled on its real height.
-    window.addEventListener('load', size);
+    /* ⚠️ Pre-assigned, never inlined into @json().
+    
+       Blade's @json() directive matches brackets itself and chokes on a
+       nested call inside a ternary — the compiled view came out as a PHP
+       syntax error (CLAUDE.md records the same trap for
+       `@json($arr['key'] ?? [...])`). One variable each, then one plain
+       @json() per line.
+    
+       The two WRITE addresses are built only for a viewer the server says may
+       manage or arrange. They re-authorise on every call regardless; this
+       keeps an address nobody may use out of a stranger's page source.
+       `__ID__` is substituted by the bridge, and the template comes from a
+       real route so a rename moves with it (Navigation Integrity). */
+    $drawOutcomeUrl = $canManage
+        ? str_replace('999999999', '__ID__', route('me.events.outcome', [$e['key'], 999999999]))
+        : null;
+    $drawArrangeUrl = ($canManage || $canArrange)
+        ? route('me.events.bracket.arrange', $e['key'])
+        : null;
+    $drawDataUrl = route('me.events.bracket.data', $e['key']);
+
+    /* The play-off switch is the ORGANISER's — an appointed official who may
+       arrange a draw does not decide how many medals the championship awards.
+       Built only for a viewer the server says may manage, like the other two
+       write addresses above; the endpoint re-authorises regardless. */
+    $drawThirdPlaceUrl = $canManage
+        ? route('me.events.bracket.third-place', $e['key'])
+        : null;
+@endphp
+
+<div id="takeone-bracket-root">
+    {!! file_get_contents(resource_path('views/personal/partials/bracket-board.html')) !!}
+</div>
+
+{{-- ===== WHICH DIVISION IS ON THE BOARD =====
+
+     The draft draws ONE bracket and has no switcher of its own — giving it one
+     would mean editing its template, which this page does not do. So the
+     picker lives beside it, over the board rather than in it: the bridge says
+     which divisions the payload holds (`bracket:divisions`) and
+     `TakeOneBracket.show(id)` redraws from the payload already in hand, with
+     no second request and no page load.
+
+     THE SAME CONTROL AS THE DRAW STAGE'S, class for class. One picker, read
+     the same way wherever a draw is shown — only the call behind a row differs
+     (that board answers to BracketBoard, this one to TakeOneBracket).
+
+     WHERE IT SITS: the top-right corner of the CANVAS — the panning area the
+     draw is drawn in — and not the board's header, which is the draft's own
+     150px band carrying the back arrow, the title, the padlock and Actions.
+     The picker belongs to what it changes. That corner cannot be a constant:
+     the board is laid out at 1920×1080 and then zoomed to whatever screen it
+     is on, so the header's height on screen differs on every window. The
+     canvas carries `data-bk-canvas` and is MEASURED instead, on resize and
+     whenever the divisions change.
+
+     ⚠️ It must hang off <body>. The board root does the same dance a few
+     lines down and for the same reason — a `fixed` element resolves against
+     the nearest TRANSFORMED ancestor, and the shell wrapper has one, so a
+     picker left inside it is laid out in a box the size of the wrapper and
+     never appears on screen at all. `lift()` moves both. --}}
+<div x-data="{
+        divisions: [], division: null, open: false, boardMenu: false,
+        get selected() { return this.divisions.find(d => d.id === this.division) ?? null; },
+
+        /* Gender is not a column on a division — it lives in the NAME, which
+           AbstractCombatSport::genderWord() generates ('Women', else 'Men').
+           Matched with a word boundary because 'men' is inside 'women'. This
+           mirrors the draw stage's picker; if one changes, both do. */
+        genderOf(name) { return /\bwomen\b/i.test(name || '') ? 'f' : 'm'; },
+        genderIcon(name) { return this.genderOf(name) === 'f' ? 'bi-gender-female' : 'bi-gender-male'; },
+        genderColor(name) { return this.genderOf(name) === 'f' ? 'text-pink-500' : 'text-blue-500'; },
+
+        /* The board's own Actions menu has just opened or closed. It is drawn
+           inside #takeone-bracket-root, a stacking context this picker sits
+           OUTSIDE of (it has to, to escape the shell's transform), so the
+           menu can never paint above it however high its z-index. The picker
+           stands aside instead — and closes its own panel on the way, because
+           two open menus over one board is nobody's idea of an answer. */
+        onBoardMenu(d) {
+            this.boardMenu = !! d.open;
+            if (this.boardMenu) { this.open = false; }
+        },
+
+        onDivisions(d) {
+            this.divisions = d.divisions || [];
+            this.division = d.division;
+            this.place();
+        },
+
+        /* The canvas's top-right corner, in screen coordinates, with the same
+           gap down as in. A board that has not mounted yet leaves the picker
+           where it is rather than throwing it into a corner of the window. */
+        place() {
+            this.$nextTick(() => {
+                const box = document.querySelector('[data-bk-canvas]');
+                if (! box) return;
+
+                const r = box.getBoundingClientRect();
+                if (! r.width || ! r.height) return;
+
+                const GAP = 8;
+                this.$el.style.top = Math.round(r.top + GAP) + 'px';
+                this.$el.style.right = Math.round(window.innerWidth - r.right + GAP) + 'px';
+            });
+        },
+
+        init() {
+            if (window.__takeoneDivisions) this.onDivisions(window.__takeoneDivisions);
+
+            /* The board re-fits on resize, so the canvas moves with the window.
+               Kept on the component so a shell re-running this page's scripts
+               replaces the listener instead of stacking another on top. */
+            this._place = () => this.place();
+            window.addEventListener('resize', this._place);
+            this.place();
+        },
+
+        destroy() { window.removeEventListener('resize', this._place); },
+     }"
+     @bracket:divisions.window="onDivisions($event.detail)"
+     @bracket:menu.window="onBoardMenu($event.detail)"
+     @keydown.escape.window="open = false"
+     @click.outside="open = false"
+     x-show="divisions.length > 1 && ! boardMenu" x-cloak
+     x-transition.opacity.duration.120ms
+     id="draw-division-picker"
+     class="fixed z-[80] transition-all">
+
+    <button type="button" @click="open = !open"
+            :aria-expanded="open" aria-haspopup="listbox"
+            class="flex items-center gap-2 ps-2.5 pe-2 py-1.5 rounded-xl border border-gray-200 bg-white
+                   text-xs font-bold text-foreground shadow-sm hover:shadow-md hover:bg-muted/60
+                   transition-all max-w-[16rem]">
+        <i class="bi shrink-0" :class="genderIcon(selected?.name) + ' ' + genderColor(selected?.name)"></i>
+        <span class="truncate" x-text="selected?.name ?? ''"></span>
+        <span class="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[0.6rem] font-extrabold shrink-0"
+              x-text="selected?.entrants ?? 0"></span>
+        <i class="bi bi-chevron-down text-muted-foreground transition-transform shrink-0"
+           :class="open && 'rotate-180'"></i>
+    </button>
+
+    <div x-show="open" x-cloak x-transition.opacity.duration.120ms
+         role="listbox"
+         class="absolute end-0 mt-2 w-80 max-h-[60vh] overflow-y-auto rounded-xl border border-gray-200
+                bg-white shadow-xl z-50 py-1">
+        <template x-for="d in divisions" :key="d.id">
+            <button type="button" role="option" :aria-selected="d.id === division"
+                    @click="window.TakeOneBracket?.show(d.id); open = false"
+                    :class="d.id === division ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'"
+                    class="w-full flex items-start gap-2.5 px-3 py-2 text-start text-[11px] font-bold transition-colors">
+                <i class="bi shrink-0" :class="genderIcon(d.name) + ' ' + genderColor(d.name)"></i>
+                {{-- A division's name is its whole identity — belt, age band,
+                     weight, Gi or No-Gi. Cut it off and two rows read the
+                     same, so it wraps instead. --}}
+                <span class="flex-1 min-w-0 break-words leading-snug" x-text="d.name"></span>
+                <span class="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[0.6rem] font-extrabold shrink-0"
+                      x-text="d.entrants"></span>
+                <i class="bi bi-check-lg shrink-0" x-show="d.id === division"></i>
+            </button>
+        </template>
+    </div>
+</div>
+
+{{-- ⚠️ ORDER MATTERS. dc-runtime checks for `window.React` and only fetches it
+     from a CDN when it is absent — so loading the two UMD bundles we shipped
+     first keeps this page entirely on our own origin (CLAUDE.md → supply
+     chain: no third-party script at runtime). --}}
+<script src="{{ $brk('react.production.min.js') }}"></script>
+<script src="{{ $brk('react-dom.production.min.js') }}"></script>
+
+<script>
+    /* Everything the bridge needs, and nothing it does not. Each value is a
+       plain variable — see the note beside them above. */
+    window.TAKEONE_BRACKET = {
+        event: @json($e['key']),
+        division: @json($drawDivision),
+        dataUrl: @json($drawDataUrl),
+        outcomeUrl: @json($drawOutcomeUrl),
+        arrangeUrl: @json($drawArrangeUrl),
+        thirdPlaceUrl: @json($drawThirdPlaceUrl),
+        backUrl: @json($drawBack),
+        csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
+        text: {
+            failed: @json(__('events.bracket_move_failed')),
+            readonly: @json(__('events.bracket_locked')),
+            noDraw: @json(__('events.bracket_not_drawn')),
+        },
+    };
+</script>
+
+<script src="{{ $brk('takeone-bridge.js') }}"></script>
+<script src="{{ $brk('dc-runtime.js') }}"></script>
+
+<script>
+/* dc-runtime boots itself on DOMContentLoaded. The mobile and admin shells
+   swap page content in place and re-run inline scripts WITHOUT firing a real
+   DOMContentLoaded of their own, so a board arrived at through one would never
+   mount. It exposes `__dcBoot()` for exactly this; calling it twice is safe
+   (it re-reads the x-dc block and re-renders). */
+(function () {
+    /* ⚠️ THE BOARD MUST HANG OFF <body>, NOT OFF THE SHELL.
+
+       The design file's stage is `position:fixed;inset:0`, and a fixed
+       element resolves against the nearest TRANSFORMED ancestor rather than
+       the viewport. The mobile shell's #shell-content carries `.mobile-stagger`,
+       whose entrance animation leaves a `transform` on every direct child — so
+       the stage was being laid out inside that wrapper and came to rest below
+       the shell's own chrome, with a band of the page showing above its header
+       (reported 2026-09-20: "there must be no gap, it must be sticking the top
+       most"). The same trap CLAUDE.md records for bottom sheets, and the same
+       answer: get out of the transformed ancestor.
+
+       Moved BEFORE the runtime boots, so React mounts into a node that is
+       already in its final home and never re-parents a live tree. */
+    var lift = function () {
+        var root = document.getElementById('takeone-bracket-root');
+        if (root && root.parentNode !== document.body) document.body.appendChild(root);
+
+        /* The division picker is fixed over the board and falls into the very
+           same trap — it was laid out inside the transformed wrapper and never
+           appeared on screen at all. It travels with the board. Alpine holds
+           its scope on the element, so moving the node keeps it working. */
+        var pick = document.getElementById('draw-division-picker');
+        if (pick && pick.parentNode !== document.body) document.body.appendChild(pick);
+
+        return root;
+    };
+
+    var boot = function () {
+        var root = lift();
+        if (window.__dcBoot && root && root.querySelector('[data-screen-label]')) {
+            window.__dcBoot();
+        }
+    };
+
+    lift();
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else setTimeout(boot, 0);
 })();
 </script>
+
 @include('partials.event-action-runner')
 @endsection
-
-@push('styles')
-{{-- The legend used to need an inset here because it sat beneath a board that
-     runs flush to the edges. It lives inside the board now and carries its own. --}}
-@endpush

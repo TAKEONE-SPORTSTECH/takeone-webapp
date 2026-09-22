@@ -182,7 +182,7 @@
         <div id="eventTitle" style="font-weight:700; font-size:34px; letter-spacing:0.24em; text-transform:uppercase; color:rgba(232,230,224,0.85); max-width:520px;"></div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-        <div style="font-family:'Anton',sans-serif; font-size:64px; letter-spacing:0.2em; padding-left:0.2em; text-transform:uppercase; white-space:nowrap; background:linear-gradient(100deg, #fdc436 40%, #fffdf0 50%, #fdc436 60%); background:linear-gradient(100deg, oklch(0.85 0.16 85) 40%, #fffdf0 50%, oklch(0.85 0.16 85) 60%); background-size:200% 100%; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation:titleShimmer 3.5s linear infinite;">{{ __('scoreboard::karate_messages.court_title') }}</div>
+        <div style="font-family:'Anton',sans-serif; font-size:64px; letter-spacing:0.2em; padding-left:0.2em; text-transform:uppercase; white-space:nowrap; color:#fdc436; color:oklch(0.85 0.16 85);">{{ __('scoreboard::karate_messages.court_title') }}</div>
         <div style="height:3px; width:100%; background:linear-gradient(to right, transparent, #fdc436, transparent); background:linear-gradient(to right, transparent, oklch(0.85 0.16 85), transparent);"></div>
       </div>
       <div style="flex:1; display:flex; justify-content:flex-end; align-items:center; gap:18px;">
@@ -261,10 +261,10 @@
     return v !== '';
   }
 
-  // TODO(offline): flags come from flagcdn. Harmless on 4G, but the screen agent
-  // should mirror them to disk so a dead uplink never empties the flag boxes.
+  // Our own files, served from this box — a hall with no uplink is the
+  // ordinary case (CLAUDE.md -> Flags Come From One Local Source).
   function flagUrl(code) {
-    return /^[a-z]{2}$/.test(String(code || '')) ? 'https://flagcdn.com/w1280/' + code + '.png' : null;
+    return /^[a-z]{2}$/.test(String(code || '')) ? '/images/flags/' + code + '.svg' : null;
   }
 
   // ── Colour has to survive an old engine ──────────────────────────────────
@@ -304,30 +304,55 @@
 
     // Competitor portrait. Hidden when the athlete has no published picture —
     // the corner's own tone still carries the half, and the name gets the room.
-    var photo = el('div', 'width:230px; flex:0 0 auto;' + dual('background-color', tone.fb, tone.ok) +
+    // ⚠️ The box is the PICTURE'S OWN SHAPE, not a fixed width — see the note
+    // in the BJJ board. Every profile picture here is portrait 3:4 (stored
+    // 600x800), so a 230px-wide box at row height is landscape and `cover`
+    // ate the top and bottom of the crop the member chose.
+    var photo = el('div', 'align-self:stretch; aspect-ratio:3/4; width:auto; flex:0 0 auto;' + dual('background-color', tone.fb, tone.ok) +
       'background-size:cover; background-position:center 12%;');
-    bgOrHide(photo, m[corner + 'Photo']);
+    // Their own face, and the drawn stand-in when there is none — the same
+    // rule as the introduction panel. The stand-in sits well back, so nobody
+    // reads it as a photograph of the athlete about to walk on.
+    var face = m[corner + 'Photo'] || m[corner + 'Fallback'];
+    bgOrHide(photo, face);
+    photo.style.opacity = (face && !m[corner + 'Photo']) ? '.45' : '1';
     wrap.appendChild(photo);
 
     var col = el('div', 'flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:6px;' +
       (isRed ? 'padding:10px 60px 10px 26px;' : 'align-items:flex-end; padding:10px 26px 10px 60px; text-align:right;'));
+
+    // The country goes ABOVE the name: flag, then the country spelled out.
+    // A reader scanning four rows from the back of a hall finds the nation
+    // first and the person second, which is the order a competition is read
+    // in. The plate below the name keeps the club, which is the smaller claim.
+    //
+    // The flag is smaller here than it was in the club strip — it sits over a
+    // 56px name rather than beside a 30px club, and a 76px plate above the
+    // name out-shouted it.
+    var nat = el('div', 'display:flex; align-items:center; gap:12px; max-width:100%;' + (isRed ? '' : 'flex-direction:row-reverse;'));
+
+    // Stretched to fill the box — `100% 100%`, not `cover` and not `contain`.
+    // National flags run from 1.43:1 to 2:1 while this box is 4:3, so the three
+    // options are crop (which ate a third off a 2:1 flag), letterbox (grey
+    // bands), or stretch — which keeps every flag WHOLE and fills the plate.
+    var flag = el('div', 'width:58px; flex:0 0 auto; aspect-ratio:4/3; background-color:rgba(0,0,0,0.25); background-size:100% 100%; image-rendering:auto; background-repeat:no-repeat; background-position:center; border:1px solid rgba(255,255,255,0.4);');
+    var hasFlag = bgOrHide(flag, flagUrl(m[corner + 'Flag']));
+    nat.appendChild(flag);
+
+    var country = el('div', 'min-width:0; font-weight:700; font-size:26px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;');
+    var hasCountry = textOrHide(country, m[corner + 'Country']);
+    nat.appendChild(country);
+
+    // Neither one — the line steps aside rather than leaving its gap over the
+    // name. Same rule as the club strip below.
+    show(nat, hasFlag || hasCountry);
+    col.appendChild(nat);
 
     // The one field that never hides: a nameless half looks broken from ten
     // metres, so an undrawn slot says so instead.
     col.appendChild(el('div', "font-family:'Anton',sans-serif; font-size:56px; line-height:1; text-transform:uppercase; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;", m[corner + 'Name'] || TBD));
 
     var meta = el('div', 'display:flex; align-items:center; gap:12px; max-width:100%;' + (isRed ? '' : 'flex-direction:row-reverse;'));
-
-    // Stretched to fill the box — `100% 100%`, not `cover` and not `contain`.
-    // National flags run from 1.43:1 (Brazil) to 2:1 (Jordan) while this box is
-    // 4:3, so the three options are: crop (`cover`) which ate a third off each
-    // side of a 2:1 flag and took Jordan's chevron and Oman's emblem with it;
-    // letterbox (`contain`) which left grey bands and a flag that did not fill
-    // its frame; or stretch, which keeps every flag WHOLE and fills the plate.
-    // Stretch is the chosen trade: a little distortion, nothing lost.
-    var flag = el('div', 'width:76px; flex:0 0 auto; aspect-ratio:4/3; background-color:rgba(0,0,0,0.25); background-size:100% 100%; image-rendering:auto; background-repeat:no-repeat; background-position:center; border:1px solid rgba(255,255,255,0.4);');
-    var hasFlag = bgOrHide(flag, flagUrl(m[corner + 'Flag']));
-    meta.appendChild(flag);
 
     var crest = el('div', 'width:66px; height:66px; flex:0 0 auto; border-radius:50%; background-color:rgba(255,255,255,0.12); background-size:cover; background-position:center; border:1px solid rgba(255,255,255,0.35);');
     var hasCrest = bgOrHide(crest, m[corner + 'Logo']);
@@ -337,9 +362,9 @@
     var hasClub = textOrHide(club, m[corner + 'Club']);
     meta.appendChild(club);
 
-    // With flag, crest and club all absent the strip is an empty flex row that
+    // With crest and club both absent the strip is an empty flex row that
     // would still eat its gap under the name — so the row itself steps aside.
-    show(meta, hasFlag || hasCrest || hasClub);
+    show(meta, hasCrest || hasClub);
 
     col.appendChild(meta);
     wrap.appendChild(col);
@@ -398,29 +423,52 @@
    * four would read as the whole board flinching — only genuinely new rows fly in.
    */
   function row(m, i, isNext, enter) {
-    var anim = [];
-    if (enter) anim.push((i % 2 === 0 ? 'rowEnterL' : 'rowEnterR') + ' 0.7s ' + (0.2 + i * 0.15) + 's cubic-bezier(0.22,1,0.36,1) both');
+    /* ⚠️ MOVEMENT BELONGS TO THE FIRST ROW ONLY (2026-09-20).
 
-    var r = el('div', 'flex:1; min-height:0; position:relative; display:flex; align-items:stretch;' +
-      (isNext ? dual('border', '1px solid rgba(253,196,54,0.8)', '1px solid oklch(0.85 0.16 85 / 0.8)')
-              : 'border:1px solid rgba(255,255,255,0.15);') + 'background:#101016;' +
+       Four rows each carrying an entrance, and a shine crossing all four on
+       four staggered clocks, meant something was always moving somewhere on
+       the wall — and a reader looking for the bout that is NEXT had nothing to
+       look at, because everything was equally alive. The gold ring, the breath
+       and the beating number on row 0 were competing with three rows of
+       decoration rather than standing out from them.
+
+       So the queue below the first row is STILL. Row 0 keeps everything it
+       had; rows 1-3 draw and stay drawn. Nothing is removed — it is scoped,
+       which is what makes the top row read as the top row. */
+    var anim = [];
+    if (enter && isNext) anim.push('rowEnterL 0.7s 0.2s cubic-bezier(0.22,1,0.36,1) both');
+
+    /* ── Rounded corners, and the two layers that make them possible ───────
+       Asked for 2026-09-20. A radius alone would not have shown: the two
+       halves are CLIP-PATH polygons, which replace the border box entirely,
+       so their outer corners stay square however the row is rounded. They
+       have to be clipped by an ancestor.
+
+       But that ancestor cannot be the row itself, because `overflow:hidden`
+       clips a CHILD'S box-shadow — and the breath on row 0 is exactly that: a
+       child whose 110px glow is meant to spread OUTSIDE the row. Clipping it
+       would delete the thing that marks the next bout.
+
+       So the row splits in two. `r` is unclipped and carries everything that
+       belongs outside the edge (the glow, the running border); `body` is the
+       rounded, clipped box and carries everything that belongs inside it. */
+    var R = 16;
+
+    var r = el('div', 'flex:1; min-height:0; position:relative; border-radius:' + R + 'px;' +
       // The quiet half of the breath, as a plain static shadow. The loud half
-      // is the layer below, faded over the top of it.
+      // is the layer below, faded over the top of it. An element's OWN shadow
+      // is not clipped by its own overflow, so this one is safe here.
       (isNext ? dual('box-shadow',
                      '0 0 16px rgba(253,196,54,0.35), 0 0 44px rgba(253,196,54,0.15)',
                      '0 0 16px oklch(0.85 0.16 85 / 0.35), 0 0 44px oklch(0.85 0.16 85 / 0.15)') : '') +
       (anim.length ? ' animation:' + anim.join(', ') + ';' : ''));
-
-    var sweepWrap = el('div', 'position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2;');
-    sweepWrap.appendChild(el('div', 'position:absolute; top:0; bottom:0; width:26%; background:linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent); animation:rowSweep 4.5s ' + (1.2 + i * 0.55) + 's ease-in-out infinite;'));
-    r.appendChild(sweepWrap);
 
     if (isNext) {
       // The breath: the strong shadow rasterised ONCE and faded in and out,
       // rather than a 110px blur re-drawn around a full-width row every frame.
       // Behind the row's own background (z-index:-1), so what is seen is the
       // glow spilling out past its edges — exactly as before.
-      r.appendChild(el('div', 'position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:0;' +
+      r.appendChild(el('div', 'position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:0; border-radius:' + R + 'px;' +
         dual('box-shadow',
              '0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35)',
              '0 0 36px oklch(0.85 0.16 85 / 0.8), 0 0 110px oklch(0.85 0.16 85 / 0.35)') +
@@ -434,31 +482,41 @@
       // group the size of three full rows. These strips are the same picture
       // with none of that: the light runs along two bands 3px tall, and the
       // ends are the flat gold the gradient shows there anyway.
-      var ring = el('div', 'position:absolute; inset:-2px; pointer-events:none; z-index:2;');
+      /* One rounded plate carrying the sliding gradient, with the body laid
+         over it 2px in. Four straight strips cannot follow a curve — rounding
+         them left a notch on every corner — and two stacked rounded boxes
+         still need no mask, which was the whole reason for the strips. */
+      var ring = el('div', 'position:absolute; inset:-2px; border-radius:' + (R + 2) + 'px; overflow:hidden; pointer-events:none; z-index:0;');
       var GRAD = dual('background',
         'linear-gradient(90deg, ' + GOLD_FB + ', #fffdf0 25%, ' + GOLD_FB + ' 50%, #6b5310 75%, ' + GOLD_FB + ')',
         'linear-gradient(90deg, ' + GOLD + ', #fffdf0 25%, ' + GOLD + ' 50%, #6b5310 75%, ' + GOLD + ')');
 
-      ['top:0;', 'bottom:0;'].forEach(function (edge) {
-        var band = el('div', 'position:absolute; left:0; right:0; ' + edge + ' height:3px; overflow:hidden;');
-        // The gradient repeats every 50% of its own width (gold at 0, 50 and
-        // 100), so a -50% slide loops with no seam.
-        band.appendChild(el('div', 'position:absolute; top:0; bottom:0; left:0; width:300%;' + GRAD +
-          'animation:goldSlide 2.5s linear infinite;'));
-        ring.appendChild(band);
-      });
-      ['left:0;', 'right:0;'].forEach(function (edge) {
-        ring.appendChild(el('div', 'position:absolute; top:0; bottom:0; ' + edge + ' width:3px;' + dual('background', GOLD_FB, GOLD)));
-      });
+      // The gradient repeats every 50% of its own width (gold at 0, 50 and
+      // 100), so a -50% slide loops with no seam.
+      ring.appendChild(el('div', 'position:absolute; top:0; bottom:0; left:0; width:300%;' + GRAD +
+        'animation:goldSlide 2.5s linear infinite;'));
       r.appendChild(ring);
     }
 
-    r.appendChild(half(m, 'red', true));
-    r.appendChild(half(m, 'blue', false));
+    // Everything that must be clipped to the rounded shape lives in here.
+    var body = el('div', 'position:absolute; inset:0; display:flex; align-items:stretch; overflow:hidden;' +
+      'border-radius:' + R + 'px; background:#101016; z-index:1;' +
+      (isNext ? '' : 'border:1px solid rgba(255,255,255,0.15);'));
+    r.appendChild(body);
+
+    // The travelling shine, on the next bout and nowhere else.
+    if (isNext) {
+      var sweepWrap = el('div', 'position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2;');
+      sweepWrap.appendChild(el('div', 'position:absolute; top:0; bottom:0; width:26%; background:linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent); animation:rowSweep 4.5s 1.2s ease-in-out infinite;'));
+      body.appendChild(sweepWrap);
+    }
+
+    body.appendChild(half(m, 'red', true));
+    body.appendChild(half(m, 'blue', false));
 
     var pl = plate(m, isNext);
     if (enter) pl.style.animation = 'platePop 0.55s ' + (0.55 + i * 0.15) + 's cubic-bezier(0.22,1,0.36,1) both';
-    r.appendChild(pl);
+    body.appendChild(pl);
     return r;
   }
 

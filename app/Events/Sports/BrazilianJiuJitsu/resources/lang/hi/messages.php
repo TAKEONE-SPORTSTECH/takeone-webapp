@@ -29,8 +29,14 @@ return [
     'belt_brown' => 'भूरा',
     'belt_purple' => 'बैंगनी',
     'belt_white' => 'सफेद',
-    'corner_blue' => 'नीला',
-    'corner_white' => 'सफेद',
+    /* ⚠️ THE KEY IS THE SIDE, NOT THE COLOUR. `corner_blue` is side A, the
+       LEFT corner, and it is RED since 2026-09-20; `corner_white` is side B,
+       the RIGHT corner, and it is BLUE. The old names are what the mat's own
+       columns and 1,100 recorded ledger rows are keyed by, so renaming them is
+       a migration — registered in Documentation/HOUSE-CLEANING.md. Translate
+       these as the colours below, never as 'blue' and 'white'. */
+    'corner_blue' => 'लाल',
+    'corner_white' => 'नीला',
     'division_label' => 'वजन श्रेणी',
     'mat' => 'मैट',
     'official_mat_organiser' => 'मैट संगठक',

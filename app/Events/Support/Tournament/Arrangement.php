@@ -45,8 +45,62 @@ abstract class Arrangement
      */
     public function move(ClubEvent $event, array $payload): array
     {
-        if ($event->hasStarted() || $event->hasEnded()) {
-            return ['ok' => false, 'message' => $this->t('draw_final')];
+        /*
+         * ⚠️ ONE MOVE SURVIVES THE START: FILLING AN EMPTY SLOT FROM THE BENCH
+         * (2026-09-18, at the user's instruction).
+         *
+         * The draw locking at the start is right — an arranged bracket is a
+         * published promise and shuffling it mid-competition changes who meets
+         * whom after people have seen it. But the lock was total, and that left
+         * no way to fix its own worst side effect: an athlete who is enrolled,
+         * in the right weight class, and simply not ON the board. Nine of them
+         * appeared at 08:01 on 2026-09-18 when the day started and each division
+         * was re-cut to its verified entries. The organiser could see them on
+         * the bench and could not put them anywhere.
+         *
+         * So exactly one shape is still allowed after the start: bench → an
+         * EMPTY first-round corner. It adds somebody who was missing and can do
+         * nothing else — it cannot move a competitor who is already drawn, it
+         * cannot swap two, and `endpoint()` has always refused a later round.
+         * Everything the lock was protecting stays protected, because a corner
+         * with nobody in it is not part of anybody's promise.
+         *
+         * A bye's empty corner is a legitimate destination, and filling one
+         * turns the walkover back into a bout — `reflow()` re-cuts the rounds
+         * above it, so the athlete who was advancing unopposed stops advancing
+         * until they have won. That is the correct outcome and the reason this
+         * goes through the normal path rather than writing the corner by hand.
+         */
+        $afterStart = $event->hasStarted() || $event->hasEnded();
+
+        /*
+         * ⚠️ THE ONE THING A RUNNING EVENT STILL REFUSES: THE BOUT ON THE MAT.
+         *
+         * The lock was total, then it allowed bench → empty corner, and it is
+         * now open, because a draw laid wrong is not a draw worth protecting.
+         * An organiser who finds their brackets mis-built on the morning has to
+         * be able to put them right; refusing that does not preserve a
+         * competition, it stops one.
+         *
+         * What stays refused is the bout being FOUGHT. A mat holds its own
+         * snapshot of the two corners, taken when the bout was loaded, and it
+         * files its result against that row when the officials declare. Change
+         * the row underneath and the table is scoring one bout while the
+         * bracket describes another — which is exactly the state Group D was
+         * left in at 11:40 on 2026-09-18, with Mat 1 live on a semi-final whose
+         * corners had just been emptied.
+         *
+         * Everything else is the organiser's to change, including a bout that
+         * has already been decided: correcting one re-cuts what follows it,
+         * which is the documented behaviour of Advancement and is what "fixing
+         * the bracket" actually means.
+         */
+        if ($afterStart) {
+            $onMat = $this->boutOnAMat($event, $payload);
+
+            if ($onMat !== null) {
+                return ['ok' => false, 'message' => __('events.bracket_bout_on_mat', ['bout' => $onMat])];
+            }
         }
 
         $category = $event->categories()->find($payload['category_id'] ?? null);
@@ -234,6 +288,39 @@ abstract class Arrangement
     }
 
     /**
+     * Does this move touch a bout that is currently loaded on a mat?
+     *
+     * Returns the bout's number (or id, when it has no number yet) so the
+     * refusal can NAME it — "the draw is locked" sends an organiser looking for
+     * a setting, whereas "bout 23 is on a mat" sends them to the mat, which is
+     * where the answer is. Either end of the move counts: a swap changes both.
+     *
+     * @return int|string|null null when nothing in this move is being fought
+     */
+    private function boutOnAMat(ClubEvent $event, array $payload): int|string|null
+    {
+        $onMats = \App\Scoreboard\Fleet::matchesOnMats($event);
+
+        if ($onMats === []) {
+            return null;
+        }
+
+        foreach (['from', 'to'] as $end) {
+            if (($payload[$end]['type'] ?? null) !== 'slot') {
+                continue;
+            }
+
+            $id = (int) ($payload[$end]['match_id'] ?? 0);
+
+            if (in_array($id, $onMats, true)) {
+                return EventMatch::find($id)?->match_no ?: $id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * An entrant sitting out of the draw. Must be a participant in THIS
      * division and must not already stand somewhere in it — otherwise one
      * person could be dropped into two slots and fight themselves.
@@ -313,9 +400,74 @@ abstract class Arrangement
             $hasA = (bool) $bout->a_name;
             $hasB = (bool) $bout->b_name;
 
-            $bout->winner = ($hasA xor $hasB) ? ($hasA ? 'a' : 'b') : null;
-            $bout->status = $bout->winner ? 'done' : 'upcoming';
-            $bout->save();
+            /*
+             * ⚠️ A DECIDED CONTEST IS A FACT, NOT SOMETHING TO RE-DERIVE.
+             *
+             * The line below reads a winner off the SHAPE of a bout: one corner
+             * occupied means a walkover, so that corner won. That is right
+             * while a draw is being arranged and nothing has been fought — and
+             * catastrophic afterwards, because a bout with BOTH corners filled
+             * fails the `xor` and was therefore set to `winner = null`. Every
+             * real result in the round was wiped by any arrangement anywhere
+             * else in it.
+             *
+             * It happened on 2026-09-18: one competitor was dropped into an
+             * open corner of Group D and the three fought quarter-finals beside
+             * it lost their winners, the semi-finals emptied, and the bout
+             * standing on Mat 1 at that moment had its row blanked underneath
+             * the table scoring it.
+             *
+             * So a contested bout that has been decided is left exactly alone.
+             * Byes and empty slots still re-derive, which is the whole job this
+             * loop was written for.
+             */
+            if ($hasA && $hasB && $bout->winner && ! $bout->won_by_bye) {
+                continue;
+            }
+
+            /*
+             * ⚠️ ARRANGING NEVER DECIDES A BOUT (2026-09-18, at the user's
+             * instruction: "the system auto makes the fighters lose, which is
+             * wrong" — "don't undo the winning results unless I go and do it
+             * manually").
+             *
+             * The line that used to stand here read a winner off the SHAPE of
+             * the bout: one corner occupied meant a walkover, so that corner
+             * won. Cutting a draw may say that — a bye is genuinely part of the
+             * layout, and DrawEngine writes it. An organiser moving people
+             * around may not. Pulling somebody out of a bout to put them
+             * somewhere else instantly awarded the bout to whoever was left,
+             * walked them up the bracket, and recorded the person who had been
+             * moved as beaten — a defeat nobody fought, written by a drag.
+             *
+             * So this loop now only ever TAKES a verdict away, and only one it
+             * put there itself:
+             *
+             *   · a fought result is untouchable, and is left alone above;
+             *   · a walkover whose empty corner has just been FILLED is stale —
+             *     the bout is real now and has to be fought, so the verdict
+             *     goes and the winner stops advancing (this is the bug that
+             *     shipped this morning: the guard above could not tell a
+             *     walkover from a result, kept it, and left a bout reading
+             *     "done" with two names in it);
+             *   · a walkover whose own winner has been moved OUT holds a
+             *     verdict for somebody who is no longer there, so that goes
+             *     too.
+             *
+             * A bout left with one name and no verdict simply waits. Nobody is
+             * advanced by the machine and nobody is beaten by it; the organiser
+             * declares the walkover themselves by tapping the card, exactly as
+             * they declare every other result.
+             */
+            $decided = $hasA && $hasB;                 // a real contest to be fought
+            $stale = $bout->winner && ($decided || ! $bout->{$bout->winner.'_name'});
+
+            if ($stale) {
+                $bout->winner = null;
+                $bout->won_by_bye = false;
+                $bout->status = 'upcoming';
+                $bout->save();
+            }
         }
 
         // Carry each first-round outcome (or the lack of one) forward. Propagate

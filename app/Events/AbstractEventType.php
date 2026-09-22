@@ -223,6 +223,33 @@ abstract class AbstractEventType implements EventType
     }
 
     /**
+     * Tell everyone watching that the DRAW changed — a public door onto the
+     * broadcast below.
+     *
+     * `broadcast()` is protected, which is right: what an event announces is
+     * the package's business and not everybody's. But one caller outside the
+     * events module has a legitimate need for exactly this message, and only
+     * this one — the SCORING TABLE, when a table official corrects the name or
+     * the country a corner is announced under. That correction is written onto
+     * the bout's draw row, so the bracket and the running order every watcher
+     * has open are now showing the old spelling.
+     *
+     * `{action: 'draw'}` is the refresh signal the bracket already handles —
+     * the same one arranging a division sends (see `arrangedResponse` in each
+     * tournament package), and a refresh signal rather than a crafted payload
+     * because the board renders differently per viewer.
+     *
+     * Silent and best-effort, like everything else on this path.
+     */
+    public function announceDrawChanged(ClubEvent $event, ?int $categoryId = null): void
+    {
+        $this->broadcast($event, array_filter([
+            'action' => 'draw',
+            'division' => $categoryId,
+        ], fn ($v) => $v !== null));
+    }
+
+    /**
      * Best-effort MQTT fan-out for this event. Never throws — a broker outage
      * must not fail the write that triggered it.
      *

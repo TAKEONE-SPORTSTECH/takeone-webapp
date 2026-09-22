@@ -2,6 +2,22 @@
      Renders BOTH the cards grid and a table; visibility is toggled by the `.show-table` class on
      the persistent #membersResults container (set by the Cards/Table toggle in index.blade). --}}
 @if($members->count() > 0)
+    {{-- How many the current search + filters actually matched. The page hero
+         carries a count too, but it sits outside this region and so does not
+         change when the list is re-fetched over AJAX. --}}
+    <div class="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+        <i class="bi bi-people"></i>
+        <span>{{ __('platform.filter_matches', [
+            'count' => number_format($members->total()),
+            'label' => $members->total() === 1 ? __('platform.filter_match_one') : __('platform.filter_match_many'),
+        ]) }}</span>
+        @if(($filterCount ?? 0) > 0)
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                <i class="bi bi-funnel-fill"></i>{{ $filterCount }}
+            </span>
+        @endif
+    </div>
+
     {{-- ===== Cards view ===== --}}
     <div class="members-cards-view grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4" id="membersGrid">
         @foreach($members as $member)
@@ -105,7 +121,9 @@
             <i class="bi bi-people text-muted-foreground text-6xl"></i>
             <h5 class="mt-3 mb-2">{{ __('platform.members_results_none_title') }}</h5>
             <p class="text-muted-foreground mb-0">
-                @if($search)
+                @if(($filterCount ?? 0) > 0)
+                    {{ __('platform.filter_none_match') }}
+                @elseif($search)
                     {{ __('platform.members_results_none_search') }}
                 @else
                     {{ __('platform.members_results_none_empty') }}

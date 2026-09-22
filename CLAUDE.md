@@ -1114,6 +1114,74 @@ Reference implementation: `resources/views/components-templates/member/mobile/pa
 
 ---
 
+## Self-Host Everything, and Flags Come From One Local Source — STRICT
+
+**Every asset the product needs to draw itself is served from this box.** Never from a CDN,
+never from a third-party image host, and never from a glyph we hope the reader's operating
+system happens to ship. If we need it, we hold it.
+
+**Why, in the three ways it has already bitten us**
+- **A CDN is a dependency on somebody else's uptime, on a critical path.** Flag artwork was
+  loaded from `cdn.jsdelivr.net` on six layouts and from `flagcdn.com` in fourteen files. A
+  hall with no uplink — which is the ORDINARY case on an event day — a blocked host, or a
+  bad afternoon at the CDN, and every flag on every board is an empty box, with nothing in
+  the logs. It is also third-party code and third-party bytes we do not control (Part 3 §15).
+- **An OS glyph is not an asset.** Flags were drawn as emoji built from the ISO-2 code by
+  codepoint arithmetic. That renders a flag on iOS, Android and macOS and renders the
+  LETTERS "BH" on Windows, which ships no flag glyphs — and Windows is what scoring tables
+  and admin desks run. Reported twice before it was fixed.
+- **It fragments.** By the time it was counted there were FOUR ways to draw one flag: an
+  emoji, a CDN stylesheet class, a remote PNG, and the local component. Four renderings
+  drift, and three of them were broken somewhere.
+
+### The rule
+
+- **Vendor it into `public/`**, with its licence beside it, and a README saying where it came
+  from and how to update it. `public/images/flags/` is the worked example.
+- **No `<link>`, `<script>` or `url()` may point at a third-party host** for anything the
+  product needs to render. (Google Fonts and the Bootstrap Icons sheet are the two
+  grandfathered exceptions already in the layouts; do not add a third, and prefer vendoring
+  when either is touched.)
+- **Never rely on emoji for meaning** — a flag, a medal, a belt, a rank. The platform draws
+  those: `<x-flag>`, `<x-medal-icon>`, `<x-belt-icon>`. An emoji is the OS's drawing, it is
+  different on every device, it ignores the size it is given and it cannot take our ink.
+- **One source per asset family, two renderings at most**, and only for the reason the belt
+  and medal icons already have: a Blade component for markup we render, and a CSS class or
+  an SVG `<symbol>` for markup JAVASCRIPT builds, because an Alpine `x-for` cannot call a
+  Blade component. Both read the SAME files. Never a third way.
+
+### Flags, concretely
+
+| Need | Use |
+|---|---|
+| A flag in Blade | `<x-flag :code="$iso" :h="13" :title="$name" />` |
+| A flag in JS-built markup | `class="fi fi-{iso2}"` |
+| A URL, or "do we have this one?" | `App\Support\Flag::url()` / `::iso2()` / `::exists()` |
+| A country cell that paints itself | `<span class="nationality-display" data-iso3="…">` + `@include('partials.nationality-runtime')` |
+| The country list itself | `App\Support\Countries` — `all()`, `name()`, `label()`, `dialCodes()` |
+
+- The files are `public/images/flags/{iso2}.svg` — the flag-icons 4×3 set, vendored with its
+  licence. `public/images/flags/flag-icons.css` is **generated from those same SVGs** and is
+  what makes `fi fi-xx` work; it replaced the jsDelivr sheet on every layout.
+- `<x-flag>` accepts alpha-2, alpha-3 or a name, decides the size and the rounding, and
+  **falls back to the CODE rather than to nothing** — a flag we cannot draw is still a fact
+  about where somebody is from.
+- **Never hand-write `/images/flags/…` in a Blade file.** Use the component or the helper.
+
+### Never hand-write a country list
+
+`App\Support\Countries` reads `public/data/countries.json`, which is the one list the whole
+product uses. A picker that carries its own array is a picker that is wrong the day after it
+is typed: `<x-country-code-dropdown>` held a hand-written sixty countries, so the platform
+had **no Syria, no Yemen, no Sudan, no Afghanistan and no Libya** — a member from any of them
+could not enter their own phone number, and nothing anywhere said so. It now reads
+`Countries::dialCodes()`, which is all 196.
+
+> Test: *unplug the internet. Does the page still draw every flag, icon and picker it is
+> supposed to?* If not, something is not ours yet.
+
+---
+
 ## Blade Component Library — REUSE FIRST
 
 **Rule:** Before building any new UI element, check this catalog. If a component covers the need, use it — do not re-implement it inline. When a new reusable component is created, add it here immediately. New components must satisfy the **Standalone Self-Contained Components** contract.
@@ -1157,6 +1225,9 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-package-card>` | Club package card — cover image, pricing, schedule, activities, capacity | `package`, `club`, `instructorsMap`; slots: `actions`, `footer` |
 | `<x-belt-icon>` | **A tied martial-arts belt, drawn in any colour** — the rank icon Bootstrap Icons does not have (`bi-award` was standing in for it, and says "a prize", not "a grade"). Inline SVG, no dependencies; size it with `class`. `belt` takes every shape a belt travels in — a ladder value, a `belt_colour` column, or the array `BeltRank::for()` returns — and resolves through `BeltRank::chip()`, the same call `<x-belt-chip>` makes, so icon and chip can never show two different purples. **Nothing on file draws nothing**, and a rank the ladder does not know is never guessed at. `color` is the by-hand door (a ladder word or any hex). A pale belt gets a silhouette outline automatically (measured by luminance — a white belt IS white and is never falsified) and a dark belt's knot shades towards white instead of black. `tip` draws the rank bar at the tails' ends; `:title="false"` silences it beside a chip that already says the rank. Geometry and colour maths live in `App\Sports\Combat\BeltIcon` — never re-draw the belt anywhere else. | `belt`, `grade`, `color`, `tip`, `title` |
 | `<x-belt-icon-defs>` | **The belt drawing as one `<symbol id="belt-icon">`, for belts drawn by JAVASCRIPT** — an Alpine `x-for` roster, a card patched after a save. Include once per such page (`@once`-guarded, so twice is free); each instance is `<svg :style="row.belt_icon.style"><use href="#belt-icon"></use></svg>`, with the style string coming from `App\Sports\Combat\BeltIcon::payload()` server-side — so neither the geometry nor the colour maths is re-implemented in JS. Unset custom properties fall back to `transparent`, which is how "no tip bar" and "no outline" are said without a second symbol. `<x-belt-icon>` does NOT need it — that one renders inline so it stays standalone. | _(no props)_ |
+| `<x-participant-card>` | **One entrant, as a card — the entry-list card for every surface that lists competitors.** Portrait 3:4 photo (locked ratio, tap opens a zoom lightbox), name + flag, age-group chip, age, club with its crest, the format badge, and the rank drawn as a tied belt at 44px from `App\Sports\Combat\BeltIcon`. A gender rail down the leading edge themes the whole card. Divisions ride in a footer band, one chip each, opening that group's draw when `drawUrl` is given and saying *when* it opens (`drawNote`) when it is not. **Standalone:** it emits its own stylesheet, photo lightbox, tap behaviour, scroll memory and — for `manage` — the organiser's action sheet (verify · enrol in groups · profile), each `@once` however many cards a page draws; the host needs only `@stack('styles')` and `@stack('scripts')`. ⚠️ **It draws the `ready` payload it is handed and never decides who may see one** — payment/weigh-in state and body weight are scoped by the HOST (`PublicEventController::readinessFor`), and absent means the rows are not drawn rather than greyed. Verification is an OUTPUT: it dispatches `open-verification` `{entry}` for whatever desk the host renders, and `participant-enrolled` `{uuid}` after a save (cancel it to re-render the list yourself instead of the reload). Design source: `drafts/participant-card.html`. | `person` (required — `club_href` in it makes the club row a door, and the HOST decides whether there is a safe destination), `ready`, `href`, `manage`, `event`, `entry`, `drawUrl`, `drawNote`, `show`, `placeKey` |
+| `<x-podium-table>` | **Three positions with their medals — the answer, not the bracket.** First, second, third, each with `<x-medal-icon>`; a bracket says who fought whom, this says who won. The three rows are FIXED, so a division halfway through reads as a champion and two places still to be decided rather than as a one-line table. **Two bronzes share the third row** (most combat sports award both semi-final losers), which is why the medal comes from the ROW and not from the data — the row IS the place. Static via `podium` (the `event_categories.podium` shape), or live via `source`, an Alpine expression naming that array. **Visible from the start either way**, with a dash against each place not yet decided — `hide-empty` is the opt-out, for a host stacking one per division. ⚠️ **Not for a podium on a BOARD** — the bracket draws its own inside the canvas (`renderPodium()` in the runtime), so it pans and zooms with the drawing instead of floating over it at a fixed size. This component is for a podium outside a board: a results list, a division card. The board also carries `podium` per division on `bracket:loaded`/`bracket:state` for any host that wants it. | `podium`, `source`, `title`, `color`, `size` |
+| `<x-medal-icon>` | **A medal — gold, silver, bronze — drawn, not typed.** Bootstrap Icons has no medal and the platform was using the emoji (🥇🥈🥉) in seven places, each with its own hex beside it: an emoji is the OS's drawing, different on every device, it ignores the size it is given and it cannot take our ink. Inline SVG, no dependencies, sized by `size` (the disc's diameter; the ribbon makes the box 1.32× as tall). The numeral is drawn ON the disc by default, because colour alone is not a distinction for a reader who cannot tell bronze from gold. ⚠️ **Place 4 is not a fourth medal** — it draws the numeral on a slate disc with no ribbon, because coming off the podium by one bout is a placing, not something you wear. **The geometry lives in `App\Support\Medal` and nowhere else** — `<x-medal-icon>` renders it inline (so it stays standalone), and `<x-medal-icon-defs>` emits the same shapes as `<symbol id="medal-place-1|2|3">` for a medal drawn by JAVASCRIPT (the bracket canvas builds its podium in JS and `<use>`s them). Same arrangement as `<x-belt-icon>` / `<x-belt-icon-defs>`, and for the same reason: a medal re-drawn in a second place becomes two medals. | `place`, `size`, `numeral`, `label` |
 | `<x-gender-avatar>` | Portrait fallback avatar — gendered head-and-shoulders silhouette on a colored tile, for users with no profile picture. Pass sizing/rounding/border via `class`. | `gender` (`m`/`f`/…), `bg` (default `hsl(250 55% 60%)`) |
 
 ### UI / Display
@@ -1164,6 +1235,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | Tag | Purpose | Key props |
 |-----|---------|-----------|
 | `<x-toast-notification>` | Global toast container — **include once per layout**; call `window.showToast(type, message)` from JS | `position` (default `top-right`) |
+| `<x-flag>` | **A country's flag — the ONE way to draw one.** An `<img>` of `public/images/flags/{iso2}.svg` (the flag-icons 4×3 set, vendored with its licence), sized by `h` with the width following at 4:3 and the size set INLINE because the Tailwind bundle is prebuilt. Accepts alpha-2, alpha-3 or a country name via `App\Support\Countries::iso2()`, and **falls back to the CODE in a muted chip rather than to nothing** — a flag we cannot draw is still a fact about where somebody is from. ⚠️ **Never an emoji** (draws the letters "BH" on Windows) and **never a CDN** (a hall has no uplink) — see *Self-Host Everything, and Flags Come From One Local Source*. For markup JAVASCRIPT builds, use `class="fi fi-{iso2}"` against the generated `public/images/flags/flag-icons.css`, which is the same files; for a country cell that paints itself, `<span class="nationality-display" data-iso3="…">` plus `@include('partials.nationality-runtime')`. | `code`, `h` (px, default 13), `rounded`, `title` |
 | `<x-qr-code>` | Offline QR (bacon, server-rendered SVG) — trigger button opens a modal with the code + Download PNG/SVG + Copy link + optional printable poster. Build target URLs via `App\Http\Controllers\QrController::clubPageUrl/clubRegisterUrl/memberUrl/eventUrl()`; poster routes are `qr.club.page`, `qr.club.register`, `qr.member`, `qr.event`. QR rendering helper: `App\Support\Qr::svg()`. | `url` (required), `title`, `caption`, `filename`, `label`, `icon`, `size`, `posterUrl`, `buttonClass` |
 | `<x-stat-card>` | KPI stat card with sparkline, trend indicator, and live-update API (`StatCard.update(cardId, detail)`). Supports click navigation via `href`, `modal`, or `on-click`. | `label`, `value`, `sub-label`, `icon` (bi-*), `icon-bg`, `icon-color`, `size` (`sm`\|`md`\|`lg`), `spark-data`, `spark-labels`, `spark-color`, `trend`, `trend-up`, `refresh-event`, `card-id`, `href`, `modal`, `on-click` |
 | `<x-admin-hero>` | Platform/club-admin page hero band (purple gradient, control-center style) — title + optional eyebrow/subtitle, optional right-side `count` chip, and an `actions` slot for buttons/badges. Used on the platform dashboard + admin list pages. | `title` (required), `eyebrow`, `subtitle`, `icon` (bi-*), `count`, `countLabel`; slot: `actions` |
@@ -1173,8 +1245,12 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-event-documents>` | Download list for an event's attached files, plus an uploader when the viewer may manage the event. Owns its own Alpine state, upload/delete requests and in-place list patching (No-Reload); dispatches `event-documents-changed` (`{action:'created'\|'deleted', document\|uuid}`). Files are served only via `me.events.documents.download`, which re-checks `EventAccess::visible` per request — the list never holds a storage path, and every server value is rendered with `x-text`/`:href`, never `innerHTML`. Byte-level validation + server-assigned filenames live in `App\Support\DocumentUpload`. | `event` (uuid), `documents`, `canManage`, `color` |
 | `<x-event-section-band>` | Full-bleed dark gradient band that announces a section of the event detail card (About / How the event runs / Divisions / Requirements / Location) and doubles as the divider between them. Two modes: **heading** (icon + title) or **value** (icon + eyebrow + a big value line — pass `value`; this is what the prize band is). Render it as a direct child of the card, **outside** the padded content wrapper, so it meets both edges. `color`/`icon` are whitelisted inside the component (hex + `bi-*`) since they are organiser-supplied and land in a `style` attribute / class name. Used by both `personal/{mobile,desktop}/event-show`. | `color`, `icon` (bi-*), `title`, `value` |
 | `<x-court-screens>` | **Hall screens panel for the event console** — the wall displays showing an event's mats. Lists each paired screen (mat plate, live/last-seen, unpair) and owns the whole pairing flow in a teleported bottom sheet: **scan the QR** (opens the shared `partials/qr-scanner` in hand-back mode via `qr-scan:open` with `{emit:'court-screens:scanned'}` — it returns the value instead of navigating) **or type the 6-character code** printed under it, then pick a mat from selection cards (the mats come from the draw; "Another mat" is the escape hatch). Writes patch in place and other organisers are nudged over `realtime:events` `{action:'screens'}` — a refresh signal, so each console re-fetches what it may see. Rendered only when `EventType::hallScreens()` returns non-null, so a type with no wall boards has no section. **Unpair ≠ revoke:** it unclaims the device so the screen returns to a fresh pairing code (revoking would kill the token and strand a screen the agent can never re-enrol). | `event` (uuid), `mats`, `screens`, `color` |
+| `<x-draw-stage>` | **The draw, full screen** — a 56px working bar, `<x-tournament-bracket>` filling every remaining pixel, and a division menu floating on the canvas. Covers the app chrome entirely (`fixed inset-0`) and sizes itself to the viewport as it actually is (`visualViewport`, not `100vh`), so the zoom cluster never sinks under a phone's toolbar. **Two permissions, not one:** `canManage` draws the three-dot editing menu (build the draw, clear it, make and delete groups) and `canArrange` turns the board's arrange mode on — an appointed official has the second without the first. **Both false is the ordinary case, not a degraded one:** a competitor and a visitor get the same stage, the same board and the same division menu with no controls and no write addresses in their page source. Neither flag is a boundary — every endpoint re-authorises; these decide what is OFFERED. `dataUrl` picks which door the board reads through — the member feed by default, the public wall sheet where a signed-out visitor must be answered. A `controls` slot puts the host's own row (e.g. `partials/event-band-controls`) in the bar; the stage then colours the bar with the event gradient, because `.ev-ctl` is white-on-translucent and vanishes on white, and drops its own back arrow because the row carries one. Standalone apart from its two child components; the host supplies only `backUrl`, which is the one thing it cannot know. | `event` (required), `title`, `backUrl`, `backLabel`, `color`, `canManage`, `canArrange`, `drawActions`, `myCompetitorIds`, `division`, `dataUrl`, `id`; slot: `controls` |
+| `<x-action-sheet>` | **The bottom sheet, as a component** — the one shape Design Rule #8 describes, built once: a full-width panel rising from the bottom edge, a gradient band carrying the drag handle, a 3:4 tile, the subject's name over a sub-line, the ✕ and any extra round `controls`, then a scrolling list of actions and a safe-area footer. Rows are DATA (`actions`: icon · label · hint · `onclick`/`click` · `tone: danger`), because a row is a shape and not a decision. Further faces of the same sheet go in `pages` as `<div data-sheet-page="name">`. Standalone: its own stylesheet and runtime, `@once`; `position: fixed` on a root element, so it never meets the transformed-ancestor trap and needs no teleport. Every id is namespaced by `id`, so several sheets coexist. Opened from anywhere — markup, Alpine or a delegated handler — through `ActionSheet.open(id, {title, subtitle, photo})` · `.close(id)` · `.page(id, name)` · `.actions(id)` · `.isOpen(id)`. Escape and a backdrop tap close it. `id` is whitelisted (it reaches a DOM id) and `color` goes through `Palette::safe` (it reaches a `style`). | `id` (required), `color`, `icon`, `photo`, `title`, `subtitle`, `actions`, `handle`; slots: `controls`, `pages`, default |
 | `<x-media-lightbox>` | **Full-screen single-file viewer — black tint, zoom + pan.** Include once per page; open it from any element by adding `data-media-lightbox data-src="…" data-label="…"` (delegated off `document`, so innerHTML-rebuilt rows work), or dispatch `open-media-lightbox` with `{src, label, kind}`. Images get pinch / wheel / double-tap zoom and drag-to-pan and are fitted to the stage on load; a PDF is handed to the browser's own viewer inside the same dark surface. `src` is refused unless it resolves to an http(s) URL. Teleported to `<body>`, safe-area padded, Escape/+/-/0 keys. Used by the member profile's identity documents (mobile + desktop). | `eventName` |
 | `<x-event-languages>` | **Every language an event is read in, and the organiser's power to correct any of it** — one console row opening a hub-and-spoke sheet: the list of languages, drilling into one language's fields with the organiser's own words above each editable translation. Saves on blur to `me.events.translations.update`, which marks the row `human` — and **no machine run ever overwrites a human row** (`TranslateContent::store`), so a correction is permanent. Also re-translate and remove-language. Loads lazily on open; `Alpine.data()`-registered because it lives inside a teleported template. Content itself is translated by `App\Translation`, whose store is ONE JSON record per event holding every language (`translation_documents`). | `event` (uuid), `color`, `title`, `source-locale` |
+| `<x-event-podium-list>` | **The division cards — one card per division, places in order, champion first.** The contents of the results sheet, on their own, so the organiser's sheet and the PUBLIC results page are the same object rather than two renderings that drift (they already had: one drew medal icons, the other a flat list, and only one knew a championship can award a single bronze). Pass `divisions` to list names that have no podium yet as PENDING (what an organiser opens the sheet for); leave it empty and only decided divisions are drawn (what a public result sheet wants). Accepts either payload shape — `medals` or `places` — reconciled once inside. ⚠️ **Draws what it is handed and decides nothing:** a `place => 4` row draws as a placing on slate, two `place => 3` rows draw as two bronzes, and a play-off championship with the bout unfought has no fourth row. | `divisions`, `results` |
+| `<x-event-podium-sheet>` | **The result sheet, per division — the podium as it would be pinned to the wall of the hall.** One card per division, places in order, champion first; every division is listed, not only the finished ones, because an organiser opens it to see what is still OUTSTANDING. **Read-only on purpose:** a bracketed championship has no winners to type in (`EventType::allowsManualResults()` is false and `setResults()` refuses hand-entry server-side), so the sheet agrees with the server instead of offering a form the endpoint would reject. ⚠️ **It draws the medals it is handed and decides nothing** — how many bronzes a championship awards is `App\Events\Support\BronzeRule` (per event, defaulting to the sport), settled by `Advancement` and read back through `Results::podium()`. It used to decide that here, filling its fourth row with a second `place => 3` and never looking for a `place => 4`, which is how a one-bronze championship showed two. The cards themselves are `<x-event-podium-list>`, shared with the public results page. Opens either way: `flag` binds an Alpine expression the HOST already owns (both event consoles pass `resultsOpen`), or pass nothing and it owns its state and opens on `event-name` (default `open-event-podium`). Teleports itself to `<body>`, carries the Design Rule #8 band, whitelists `color`, and drops the footer when there is no `drawUrl`. | `divisions`, `results`, `title`, `drawUrl`, `color`, `flag`, `eventName` |
 | `<x-event-draw-visibility>` | **When an event's draw becomes readable** — the organiser's switch, as one row of the event console opening a sheet. Three selection cards: *Visible now* (`always`), *On the day* (`start_day` — opens on the event's own date, or the moment it is started), *Hidden* (`hidden` — no clock; the organiser puts it up). Writes to `me.events.draw-reveal` (organiser only), patches itself in place and dispatches `event-draw-reveal-changed`. Disclosure only: it never changes who may ARRANGE a draw, and the organiser and their appointed officials read the bracket at every setting. The rule itself is `App\Events\Support\EventAccess::drawVisible()` — one place, obeyed by the board's JSON door, the bout page, the public event page and the MCP tool. | `event` (uuid), `reveal`, `date`, `color`, `title` |
 | `<x-draw-veil>` | The card shown in place of a withheld draw — padlock, the sentence saying WHEN it opens, and the event's own colour. Says *when* rather than nothing on purpose: a reader who cannot tell "not published yet" from "nobody entered" phones the organiser. | `message`, `color` |
 | `<x-prose-text>` | **Textarea prose → real markup, with the small slice of Markdown people type by reflex.** The default way to render any free-text field an author typed in a `<textarea>` (an event's About, notes, a description). Blank line = `<p>`, single newline = `<br>`; `#`–`######` headings, `- `/`* `/`• ` bullets, `1. ` numbered lists, `> ` quotes, `---` rules, `**bold**`, `*italic*`, `` `code` ``, `[label](url)`. Never use `whitespace-pre-line` for this — it honours newlines but leaves one undifferentiated wall, and shows `##`/`**` as literal punctuation. **Safe on untrusted input by construction:** `App\Support\PlainProse::toHtml()` escapes every character BEFORE a tag is added and emits only tags it writes itself; link schemes are whitelisted to http(s)/mailto and Markdown images are downgraded to links (no author-chosen fetch on a public page). Deliberately a SUBSET, not a Markdown library — no raw-HTML passthrough, images or tables. Last block never carries the gap class (`last:mb-0` is not in the prebuilt bundle), and `list-decimal` is set inline for the same reason. | `text`, `textClass`, `gapClass` (+ any attributes, applied to the wrapper) |
@@ -1758,6 +1834,70 @@ Always pair with `object-cover` on the `<img>` and `overflow-hidden` on the cont
 > Applies to club logos too, in the opposite direction: logos are transparent PNGs of
 > arbitrary shape and use `object-contain` on a bare sizing box (Design Rule #5), never a
 > 3:4 crop.
+
+---
+
+## A Person's Photo Has One Home — STRICT
+
+**A photograph of a person belongs to the PERSON, not to the screen that happened to
+capture it. There is exactly ONE store for it, and every other record holds a REFERENCE to
+that one file. Never a second copy, never a private folder, never a face that exists on one
+surface and not another.**
+
+**The one store**
+- The bytes live under that person's own subtree: `members/{user-uuid}/photos/…`
+  (`App\Support\StoragePath::memberPhotos()`), or `…/profile/…` for one they uploaded
+  themselves.
+- A `user_photos` row records it. `users.profile_picture` names whichever of them is their
+  current face.
+- **Every capture path goes through `App\Members\Support\ProfilePhoto`** —
+  `store()` for bytes, `capture()` when the subject may not have an account yet, `adopt()`
+  for a file already on disk, `path()`/`url()` to read one back. That call validates the
+  real bytes, generates the name and builds the folder, so no surface has to remember the
+  three upload rules separately.
+- An entry, an appointment, a board, a bracket stores **the path**, and nothing else.
+  `club_event_registrations.photo` and `event_officials.photo` are references.
+
+**It must work by DEFAULT — a capture path does not opt in.** The moment somebody
+photographs a person anywhere in the product, that person has a face everywhere in the
+product. No screen gets to hold a picture the rest of the platform cannot see, and no
+feature is finished when it works on the surface it was built for and nowhere else.
+
+**Why this is a rule and not a preference.** It had already failed, quietly and for months:
+an organiser photographing a competitor at the weigh-in desk wrote to
+`events/{uuid}/competitors/…`, so the athlete looked back at you from the bracket and the
+hall screen and was a blank silhouette on their own profile and in the admin members list a
+tap later. **Forty-five people were in that state**, and every part of the system was
+behaving exactly as written. Two stores for one face is one store too many, and the second
+one always loses.
+
+**Non-negotiables**
+- **Never write a person's photograph outside their subtree.** The one honest exception is
+  an entry with no account behind it yet — a name off a paper list — and it moves to the
+  person the moment there is one.
+- **A desk photograph fills a BLANK profile picture; it never replaces one the member
+  chose.** Their profile is theirs.
+- **Storage is not disclosure.** `users.profile_picture_is_public` and the event's own
+  visibility still decide who may SEE it (*Profile Pictures Are Portrait 3:4*,
+  `App\Support\FileAccess`). One home for the file settles where it lives, not who may
+  look at it.
+- **Never `Storage::delete()` a photo path directly.** Duplicate accounts and sibling
+  entries share files. `App\Events\Support\EntryPhoto::discard()` /
+  `discardShared()` ask whether another record still names it; the four tables that can are
+  `users.profile_picture`, `user_photos.path`, `club_event_registrations.photo` and
+  `event_officials.photo`.
+- **A face is never drawn as an icon or initials.** Missing means `<x-gender-avatar>` /
+  `App\Support\Avatar::placeholder()`.
+
+**The one-time pass for what was already scattered** is
+`php artisan takeone:gather-person-photos` — dry run by default, `--apply` after a verified
+backup. It MOVES (never copies) and repoints all four tables in one transaction; it refuses
+any file two different people point at. Run on 2026-09-21: 52 photographs gathered, the
+45-person gap closed.
+
+> Test: *can this person's face be found from their profile, the members list, a bracket, a
+> hall screen and a public entry list — all of them reading the same file?* If one surface
+> has a picture another cannot reach, it is not one home yet.
 
 ---
 

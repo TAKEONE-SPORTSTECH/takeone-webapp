@@ -42,6 +42,11 @@ class CallNotifier
         if (! config('event_notifications.enabled', true) || $event->status === 'cancelled') {
             return 0;
         }
+        // A REHEARSAL calls nobody: a message is the one thing a snapshot
+        // cannot take back. See App\Events\Support\Rehearsal.
+        if (app(\App\Events\Support\Rehearsal::class)->active($event)) {
+            return 0;
+        }
 
         $sent = 0;
         $thresholds = config('event_notifications.call_thresholds', []);
@@ -114,6 +119,11 @@ class CallNotifier
     public function pushResult(ClubEvent $event, EventMatch $bout): int
     {
         if (! config('event_notifications.enabled', true)) {
+            return 0;
+        }
+        // A REHEARSAL calls nobody: a message is the one thing a snapshot
+        // cannot take back. See App\Events\Support\Rehearsal.
+        if (app(\App\Events\Support\Rehearsal::class)->active($event)) {
             return 0;
         }
 

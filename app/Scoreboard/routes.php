@@ -498,6 +498,33 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
     Route::get('/events/{event:uuid}/manage', [App\Http\Controllers\PersonalEventController::class, 'manage'])->name('events.manage');
     Route::get('/events/{event:uuid}/edit', [App\Http\Controllers\PersonalEventController::class, 'edit'])->name('events.edit')->middleware('source-text');
     Route::put('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'update'])->name('events.update')->middleware(['throttle:member-write', 'source-text']);
+    /*
+     * The code that has to be typed before an event is called off or erased.
+     *
+     * Issued by the server, checked by the server — see
+     * App\Events\Support\DestructiveChallenge for why it is not a browser's
+     * business. Throttled like any other write: asking for codes in bulk is the
+     * only way to make this endpoint interesting.
+     */
+    /*
+     * The running order, as a board: read it, drag one bout, or lay the whole
+     * day out again. Reading needs `canScore` (the table runs off it); the two
+     * writes are the organiser's — see App\Events\Support\Tournament\OrderBoard.
+     */
+    Route::get('/events/{event:uuid}/order', [App\Http\Controllers\PersonalEventController::class, 'runningOrderPage'])->name('events.order.page');
+    Route::get('/events/{event:uuid}/running-order', [App\Http\Controllers\PersonalEventController::class, 'runningOrder'])->name('events.order')->middleware('throttle:120,1');
+    Route::put('/events/{event:uuid}/running-order', [App\Http\Controllers\PersonalEventController::class, 'moveInRunningOrder'])->name('events.order.move')->middleware('throttle:admin-write');
+    Route::post('/events/{event:uuid}/running-order/auto', [App\Http\Controllers\PersonalEventController::class, 'autoRunningOrder'])->name('events.order.auto')->middleware('throttle:member-write');
+
+    /*
+     * The dress rehearsal: run the competition before the day, then take it
+     * back. Both doors are organiser-only (checked in the controller) and
+     * throttled — see App\Events\Support\Rehearsal.
+     */
+    Route::post('/events/{event:uuid}/rehearsal', [App\Http\Controllers\PersonalEventController::class, 'beginRehearsal'])->name('events.rehearsal.begin')->middleware('throttle:member-write');
+    Route::delete('/events/{event:uuid}/rehearsal', [App\Http\Controllers\PersonalEventController::class, 'endRehearsal'])->name('events.rehearsal.end')->middleware('throttle:member-write');
+
+    Route::post('/events/{event:uuid}/danger-code', [App\Http\Controllers\PersonalEventController::class, 'dangerCode'])->name('events.danger-code')->middleware('throttle:member-write');
     Route::patch('/events/{event:uuid}/cancel', [App\Http\Controllers\PersonalEventController::class, 'cancelEvent'])->name('events.cancel-event')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/results', [App\Http\Controllers\PersonalEventController::class, 'setResults'])->name('events.results')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'destroy'])->name('events.destroy')->middleware('throttle:member-write');
@@ -629,12 +656,19 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
         ->name('events.competitors.photo')->middleware('throttle:uploads');
     Route::delete('/events/{event:uuid}/competitors/{registration}/photo', [App\Http\Controllers\PersonalEventController::class, 'competitorPhotoDestroy'])
         ->name('events.competitors.photo.destroy')->middleware('throttle:member-write');
-    Route::put('/events/{event:uuid}/verify/{registration}/weigh-in', [App\Http\Controllers\PersonalEventController::class, 'verifyWeighIn'])->name('events.verify.weigh-in')->middleware('throttle:member-write');
-    Route::put('/events/{event:uuid}/verify/{registration}/payment', [App\Http\Controllers\PersonalEventController::class, 'verifyPayment'])->name('events.verify.payment')->middleware('throttle:member-write');
+    /* ===== THE DESK =====
+       Signing a weight, approving a receipt, correcting the fee types and
+       enrolling somebody in a second division are one person's work at a
+       queue, so they share ONE bucket sized for a queue (`event-desk`, see
+       AppServiceProvider). They were on `member-write` (30/min — a member
+       editing their own health records) and `admin-write`, and an organiser
+       ran out of both on an event morning. */
+    Route::put('/events/{event:uuid}/verify/{registration}/weigh-in', [App\Http\Controllers\PersonalEventController::class, 'verifyWeighIn'])->name('events.verify.weigh-in')->middleware('throttle:event-desk');
+    Route::put('/events/{event:uuid}/verify/{registration}/payment', [App\Http\Controllers\PersonalEventController::class, 'verifyPayment'])->name('events.verify.payment')->middleware('throttle:event-desk');
     Route::get('/events/{event:uuid}/verify/{registration}/proof', [App\Http\Controllers\PersonalEventController::class, 'verifyProof'])->name('events.verify.proof');
     // What the entry is being charged for. Same gate as the payment itself
     // (EventAccess::canVerifyPayments) — it writes the money record.
-    Route::put('/events/{event:uuid}/verify/{registration}/fees', [App\Http\Controllers\PersonalEventController::class, 'verifyFees'])->name('events.verify.fees')->middleware('throttle:member-write');
+    Route::put('/events/{event:uuid}/verify/{registration}/fees', [App\Http\Controllers\PersonalEventController::class, 'verifyFees'])->name('events.verify.fees')->middleware('throttle:event-desk');
 
     // Run-day checklist, and the start it gates. Writing the list is the
     // organiser's (canManage); clearing an item is any appointed official's
@@ -663,6 +697,15 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
     Route::get('/events/{event:uuid}/brackets/data', [App\Http\Controllers\PersonalEventController::class, 'bracketData'])->name('events.bracket.data')->middleware('throttle:120,1');
     Route::put('/events/{event:uuid}/brackets/arrange', [App\Http\Controllers\PersonalEventController::class, 'arrangeBracket'])->name('events.bracket.arrange')->middleware('throttle:bracket-arrange');
     Route::put('/events/{event:uuid}/brackets/clear', [App\Http\Controllers\PersonalEventController::class, 'clearBracket'])->name('events.bracket.clear')->middleware('throttle:member-write');
+    /* Whether THIS championship plays third place off. Re-cuts the play-off
+       bouts on the way through, so the draw agrees with the setting the moment
+       it changes — see App\Events\Support\ThirdPlaceSwitch. */
+    Route::put('/events/{event:uuid}/brackets/third-place', [App\Http\Controllers\PersonalEventController::class, 'setThirdPlace'])->name('events.bracket.third-place')->middleware('throttle:member-write');
+    // Admitting an athlete to a division that is already being fought. Throttled
+    // with arranging rather than with ordinary writes: it is a desk action taken
+    // in bursts on a competition morning, not a member write.
+    Route::get('/events/{event:uuid}/brackets/admit-candidates', [App\Http\Controllers\PersonalEventController::class, 'lateEntryCandidates'])->name('events.bracket.candidates')->middleware('throttle:event-desk');
+    Route::put('/events/{event:uuid}/brackets/admit', [App\Http\Controllers\PersonalEventController::class, 'admitLateEntry'])->name('events.bracket.admit')->middleware('throttle:bracket-arrange');
 
     /*
      | Groups — building a bracket BY HAND.
@@ -698,7 +741,20 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
     Route::delete('/events/{event:uuid}/divisions/{division}', [App\Http\Controllers\PersonalEventController::class, 'destroyDivision'])->name('events.divisions.destroy')->whereNumber('division')->middleware('throttle:admin-write');
     Route::post('/events/{event:uuid}/divisions/{division}/duplicate', [App\Http\Controllers\PersonalEventController::class, 'duplicateDivision'])->name('events.divisions.duplicate')->whereNumber('division')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/divisions/{division}/candidates', [App\Http\Controllers\PersonalEventController::class, 'divisionCandidates'])->name('events.divisions.candidates')->whereNumber('division')->middleware('throttle:120,1');
-    Route::put('/events/{event:uuid}/divisions/{division}/members', [App\Http\Controllers\PersonalEventController::class, 'updateDivisionMembers'])->name('events.divisions.members')->whereNumber('division')->middleware('throttle:admin-write');
+    Route::put('/events/{event:uuid}/divisions/{division}/members', [App\Http\Controllers\PersonalEventController::class, 'updateDivisionMembers'])->name('events.divisions.members')->whereNumber('division')->middleware('throttle:event-desk');
+    /*
+     * Every group as it stands for ONE person — the enrolment sheet behind a
+     * participant card. The mirror of `divisions.candidates`, which asks the
+     * same question from the group's end; compatibility is computed server-side
+     * in both, by the same DivisionRange, so the two can never disagree.
+     *
+     * Bound by the athlete's UUID because the card that opens it is on the
+     * public entry list, where the public key is the only identifier present
+     * (CLAUDE.md → Unpredictable Resource Identifiers). Authorisation is the
+     * picker's own and is re-checked in the controller; the uuid is how it is
+     * addressed, never why it is allowed.
+     */
+    Route::get('/events/{event:uuid}/people/{uuid}/divisions', [App\Http\Controllers\PersonalEventController::class, 'personDivisions'])->name('events.person.divisions')->whereUuid('uuid')->middleware('throttle:60,1');
     // Manager actions + outcome recording are owned by the event's TYPE PACKAGE
     // (CLAUDE.md → "Events Are Self-Contained Packages"): one route each, the
     // package decides which actions exist and what they do. Adding an event type
@@ -790,6 +846,36 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
     // only — it never changes who may ARRANGE a draw, and the organiser and
     // their officials read it at every setting.
     Route::post('/events/{event:uuid}/draw-reveal', [App\Http\Controllers\PersonalEventController::class, 'setDrawReveal'])->name('events.draw-reveal')->middleware('throttle:admin-write');
+
+    /*
+     * ⚠️ These live under /day-order, NOT /running-order, and must stay there.
+     * `/running-order` already belongs to the BOUT order board above
+     * (`events.order`, `events.order.move`) — two routes registered on one
+     * URI+method do not coexist: the second silently REPLACES the first and its
+     * NAME stops resolving, so every `route('me.events.order')` in a view
+     * throws. That shipped for an hour on 2026-09-17 and 500'd the bout board.
+     *
+     * The two boards are different things and both are wanted: that one orders
+     * BOUTS on MATS, this one orders the PARTS OF THE DAY — the divisions plus
+     * the ceremonies and breaks that have no bouts at all.
+     *
+     * The running order: what happens on a competition day, in order.
+     *
+     * The organiser arranges PARTS; every clock time is worked out from the
+     * day's start, the draw and the bout length (App\Events\Support\RunSheet).
+     * Organiser-only throughout — a visitor reads the finished order on the
+     * public event page, never through these.
+     *
+     * The slot binds on its uuid, never its id (CLAUDE.md → Unpredictable
+     * Resource Identifiers), and every write re-checks that the slot belongs to
+     * the event in the URL.
+     */
+    Route::get('/events/{event:uuid}/day-order', [App\Http\Controllers\PersonalEventController::class, 'runOrder'])->name('events.run-order')->middleware('throttle:60,1');
+    Route::get('/events/{event:uuid}/day-order/data', [App\Http\Controllers\PersonalEventController::class, 'runOrderData'])->name('events.run-order.data')->middleware('throttle:120,1');
+    Route::post('/events/{event:uuid}/day-order', [App\Http\Controllers\PersonalEventController::class, 'storeRunSlot'])->name('events.run-order.store')->middleware('throttle:admin-write');
+    Route::put('/events/{event:uuid}/day-order', [App\Http\Controllers\PersonalEventController::class, 'reorderRunOrder'])->name('events.run-order.reorder')->middleware('throttle:admin-write');
+    Route::put('/events/{event:uuid}/day-order/{slot}', [App\Http\Controllers\PersonalEventController::class, 'updateRunSlot'])->name('events.run-order.update')->whereUuid('slot')->middleware('throttle:admin-write');
+    Route::delete('/events/{event:uuid}/day-order/{slot}', [App\Http\Controllers\PersonalEventController::class, 'destroyRunSlot'])->name('events.run-order.destroy')->whereUuid('slot')->middleware('throttle:admin-write');
     // The queue of strangers who followed that link and asked to compete. The
     // accept is the gate — until it happens the request is an entry in nothing
     // (EVENTS-PUBLIC-ENTRY.md, Door C).
@@ -813,6 +899,18 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Http\Middleware\BrandE
     // Owner moderation of registrations (remove / block this event / blacklist club-wide).
     Route::post('/events/{event:uuid}/participants/{user}/moderate', [App\Http\Controllers\PersonalEventController::class, 'moderateParticipant'])->name('events.participant.moderate')->whereNumber('user')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/bans/{user}', [App\Http\Controllers\PersonalEventController::class, 'liftBan'])->name('events.ban.lift')->whereNumber('user')->middleware('throttle:member-write');
+    /*
+     * Who is barred, read by the console's own sheet.
+     *
+     * A door of its own rather than a payload on the console, so a moderated
+     * member's name is only sent to a browser that ASKED for it — the list used
+     * to ride in the page's client-side search index on every load, drawn
+     * nowhere, which is disclosure without a feature (fixed 2026-09-15).
+     *
+     * Organiser only, and re-checked in the controller: this is the one list on
+     * the event that is about people's conduct rather than their competing.
+     */
+    Route::get('/events/{event:uuid}/bans', [App\Http\Controllers\PersonalEventController::class, 'bans'])->name('events.bans')->middleware('throttle:60,1');
 
     /*
      * The clubs standing behind the event.

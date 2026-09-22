@@ -12,11 +12,28 @@ class EventMatch extends Model
         'a_name', 'a_competitor_id', 'a_country', 'a_seed', 'a_score', 'a_provisional',
         'b_name', 'b_competitor_id', 'b_country', 'b_seed', 'b_score', 'b_provisional',
         'winner', 'court', 'day', 'scheduled_time', 'status',
+        /*
+         * ⚠️ `won_by_bye` MUST BE HERE.
+         *
+         * `DrawEngine::build()` writes each bout with `matches()->create([…])`,
+         * so an attribute missing from this list is dropped in silence. The
+         * column was added on 2026-09-18 with a backfill, which flagged every
+         * bye then on file — and every bye drawn SINCE was written unflagged,
+         * because this line was not updated with it.
+         *
+         * Nothing failed loudly. What failed is the distinction the flag exists
+         * to carry: a walkover and a result look identical once both corners are
+         * filled, and `Arrangement::reflow()` reads this flag to tell them
+         * apart. Without it a bye that gains an opponent keeps its verdict, so
+         * the newcomer is recorded as beaten by a bout nobody fought.
+         */
+        'won_by_bye',
     ];
 
     protected $casts = [
         'a_provisional' => 'boolean',
         'b_provisional' => 'boolean',
+        'won_by_bye' => 'boolean',
         'day' => 'integer',
     ];
 

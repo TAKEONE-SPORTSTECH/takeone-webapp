@@ -90,117 +90,73 @@
     @endif
 
         {{-- ===== The entry list =====
-             The platform's mobile people-card, as /admin/members draws it —
-             admin/platform/members/_results-mobile, element for element: the
-             gender accent rail, the portrait filling the card's full height on
-             the leading edge, the name with its flag, the age-group chip beside
-             the gender icon and the age, and the third line under them.
 
-             ⚠️ The third line is the CLUB, where the members list prints a phone
-             number. That list is behind the super-admin's door; this page is
-             open to anybody holding the link, and an entry list is not a place
-             to publish two hundred competitors' phone numbers — a great many of
-             them minors. Everything else is the same card.
+             The PARTICIPANT CARD, ported from drafts/participant-card.html and
+             used as drawn — the markup, the class names and the data-*
+             contract are the draft's, and nothing of the card that stood here
+             before it survives (the user's instruction, 2026-09-16). The
+             previous card was <x-entrant-card>. The organiser's own roster
+             drew that one too until 2026-09-17, when it moved onto THIS
+             component — so there is one entrant card on the platform again,
+             and the roster adds its powers through the component's seams
+             (can-edit, can-remove, the trailing slot) rather than by keeping
+             a second card alive.
 
-             The face is governed by the athlete's own `profile_picture_is_public`
-             (App\Events\Support\PublicEvent::participants), exactly as the draw
-             on this same page governs it. No picture is not a bug, and the
-             absence is silent. --}}
-    <div x-show="tab === 'athletes'" x-cloak class="mt-2.5 space-y-2.5">
-        {{-- ⚠️ THE CARDS DO NOT LINK OUT. Corrected 2026-09-08.
-             This block used to carry a comment claiming that every card linked
-             to route('people.show') "which SealEventPage rewrites to the sealed
-             mirror, so the white-label surface is never left". That was FALSE,
-             and it was the one hole in an otherwise sealed surface.
-             `events.public.section` — the route that serves this page — is not
+             ⚠️ THE CARDS DO NOT LEAVE THE EVENT. `events.public.section` is not
              one of the mirrored `me/events/…` routes, so SealEventPage never
-             runs over this response and PublicEventSkin::rewriteBody() never
-             touched the URL. Any SIGNED-IN reader (which is every competitor,
-             since entering creates an account) got a live link to
-             /people/{uuid}, rendered in the FULL platform layout, whose own
-             back button, sign-in link, "message" form and "challenge" button
-             then lead further into the platform. One tap out of the event app.
-             The public entry list therefore states a name, a club and a flag,
-             and stops there — which is all a stranger reading an entry list
-             needs. A reader who wants a profile can find it on the platform. --}}
+             rewrites this response and a `/people/{uuid}` link here would drop
+             a reader into the full platform — one tap out of the event app, and
+             the hole that was closed on 2026-09-08. Every destination below is
+             therefore built from a SEALED route (`sealed.people.show`, the
+             event's own draw page) or it is not offered at all. --}}
+    <div x-show="tab === 'athletes'" x-cloak class="mt-2.5 space-y-2.5">
 
         @forelse($pRows as $i => $person)
-                @php
-                    /* Where this card goes, decided on the SERVER.
-                       · organiser  → a choice of two profiles (the sheet below)
-                       · signed in  → the safe public profile
-                       · a stranger → the same, but only when it will actually
-                                      open for them (PublicEvent::participants
-                                      answers the anonymous rule) — a card that
-                                      leads to a 404 is a dead end, and plenty of
-                                      entrants are minors or came through the
-                                      public door with discovery off. */
-                    $pUuid = $person['uuid'] ?? null;
-                    /* Straight to the PUBLIC profile, for everybody including an
-                       organiser. This used to hand a manager a sheet asking
-                       which of two profiles they meant — but this is the public
-                       entry list, the same page a stranger reads, and a card on
-                       it means one thing. The organiser's own screens are where
-                       the full profile belongs.
+            @php
+                /*
+                 * Where a card goes, decided on the SERVER.
+                 *
+                 * The public profile inside this event's own skin, and only
+                 * where it will actually open: `sealed.people.show` answers a
+                 * stranger with 404 for a member who is not discoverable or is a
+                 * minor (PeopleController), and a card that leads to a 404 is a
+                 * dead end — plenty of entrants are one or the other. A signed-in
+                 * reader gets the wider rule, so the flag is only consulted for a
+                 * guest.
+                 */
+                $pUuid = $person['uuid'] ?? null;
+                /* `from=participants` so the profile's own back control returns
+                   to THIS list rather than to the organiser's entry list or the
+                   poster — PeopleController::sealedBackUrl reads the key. It is
+                   a KEY, never a URL: a destination taken from the query string
+                   is an open redirect with extra steps. */
+                $pHref = ($pUuid && ($signedIn || ($person['public_profile'] ?? false)))
+                    ? route('sealed.people.show', ['event' => $e['key'], 'uuid' => $pUuid]).'?from=participants'
+                    : null;
 
-                       `from=participants` so the profile's back control returns
-                       HERE rather than to the organiser's entry list. */
-                    // Nothing to open — see the note above. Kept as a named
-                    // variable rather than deleted so the card component's
-                    // contract is unchanged and a future public person-door can
-                    // be dropped in here in one line.
-                    $pHref = null;
+                /* The same client-side filter the search box drives. Every row
+                   is already on the page, so typing narrows it with no round
+                   trip, and it can only ever hide what the server published. */
+                $pShow = 'match('.json_encode($person['name']).', '.json_encode($person['club'] ?? '').')';
 
-                    /* ⚠️ EVERY value the component tag uses is computed HERE, as
-                       a plain variable. Blade's component-tag parser is not the
-                       Blade compiler: it gives up on a directive or a literal
-                       array inside an attribute list and prints the whole tag as
-                       text on the page. Both mistakes were made getting this
-                       card shared, and both look like "the component silently
-                       did nothing". */
-                    $pName = $person['name'];
-                    $pPhoto = $person['photo'] ?? null;
-                    $pGender = $person['gender'] ?? null;
-                    $pCountry = $person['country'] ?? null;
-                    $pAge = $person['age'] ?? null;
-                    /* Every division they are entered in. An athlete in two
-                       groups is ONE card wearing two chips — see
-                       PublicEvent::participants(). `division` is the fallback
-                       for a payload cached before that. */
-                    $pDivisions = array_values(array_filter(
-                        $person['divisions'] ?? [$person['division'] ?? null]
-                    ));
-                    /* Gi, No-Gi, or both — the activity of the event they are
-                       entered in, derived from those division names by
-                       App\Events\Support\ActivityTag. Absent for an event that
-                       runs a single activity. */
-                    $pActivity = $person['activity'] ?? \App\Events\Support\ActivityTag::label($pDivisions);
-                    $pClub = $person['club'] ?? null;
-                    /* The crest, not just the club's name. `PublicEvent::participants`
-                       has published it all along and this card was the one reader that
-                       never asked for it, so all 27 entrants showed the generic
-                       buildings glyph — including the 16 who compete for a club with a
-                       logo on file. The component draws it bare (Design Rule #5). */
-                    $pClubLogo = $person['club_logo'] ?? null;
-                    $pChevron = (bool) $pHref;
-                    $pLink = $pHref;
-                    $pRun = null;
+                $pReady = $readiness[$pUuid] ?? null;
+                $pEntry = $deskEntries[$pUuid] ?? null;
+                /* Where a division chip goes, or null when the draw is not out
+                   and the chip should say so instead. */
+                $pDrawUrl = $drawOpen
+                    ? route('events.public.section', ['event' => $e['key'], 'section' => 'draw'])
+                    : null;
+            @endphp
 
-                    $pShow = 'match('.json_encode($pName).', '.json_encode($pClub ?? '').')'
-                        .(($pFold && $i >= 12) ? ' && all' : '');
-
-                @endphp
-
-                {{-- The shared entrant card — the same component the organiser's
-                     own "who's joined" screen renders, so the roster looks
-                     identical wherever it is read. Only the behaviour differs:
-                     a door for whoever may open it, a plain card otherwise. --}}
-                <x-entrant-card :name="$pName" :photo="$pPhoto" :gender="$pGender"
-                                :country="$pCountry" :age="$pAge" :divisions="$pDivisions"
-                                :activity="$pActivity"
-                                :club-name="$pClub" :club-logo="$pClubLogo" :chevron="$pChevron"
-                                :belt="$person['belt'] ?? null"
-                                :href="$pLink" :pick="$pRun" :show="$pShow" />
+            {{-- ⚠️ EVERY value on this tag is a plain variable computed above.
+                 Blade's component-tag parser is not the Blade compiler: it
+                 gives up on a directive or a literal array inside an attribute
+                 list and prints the whole tag as text on the page. --}}
+            <x-participant-card :person="$person" :ready="$pReady" :href="$pHref"
+                                :manage="$canManage" :event="$e['key']" :entry="$pEntry"
+                                :draw-url="$pDrawUrl" :draw-note="$drawNote"
+                                :color="$ev"
+                                :show="$pShow" />
         @empty
             {{-- The empty state is a card of its own now, because the list it
                  stands in for is a stack of cards on the page ground rather
@@ -279,3 +235,12 @@
         </button>
     @endif
 </div>
+
+{{-- ===== The verification desk =====
+     Rendered for an official or the organiser, and for nobody else. It is the
+     SHEET only: the list on this page is the participant cards above, and the
+     desk opens over the card that was tapped (see onVerify). --}}
+@if($desk)
+    @include('entry.public.sections.partials.verification-desk', $desk)
+@endif
+

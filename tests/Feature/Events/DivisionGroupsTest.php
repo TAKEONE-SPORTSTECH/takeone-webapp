@@ -750,18 +750,42 @@ class DivisionGroupsTest extends TestCase
 
     /* ---------------- Deleting ---------------- */
 
-    public function test_a_group_with_people_in_it_is_not_deleted(): void
+    /**
+     * A group with people in it is not deleted by ACCIDENT.
+     *
+     * It used to be refused outright with a 422. That was wrong about what a
+     * division is: a container the organiser drew, and moving the same entrants
+     * into a different one is ordinary work rather than an error. So the answer
+     * is now an ASK — 409, saying how many people and bouts are in there — and
+     * only a caller that repeats the request with `release` gets it. What still
+     * has to hold, and is the whole point, is that the entries SURVIVE: they
+     * lose their group, not their place in the event.
+     */
+    public function test_a_group_with_people_in_it_is_not_deleted_without_asking(): void
     {
         [$owner, $event] = $this->scenario();
 
         $division = EventCategory::create(['event_id' => $event->id, 'name' => 'Busy', 'status' => 'enrolling']);
-        $this->entrant($event, 'Held', 'Male', 25, 70.0)->update(['category_id' => $division->id]);
+        $entry = $this->entrant($event, 'Held', 'Male', 25, 70.0);
+        $entry->update(['category_id' => $division->id]);
 
         $this->actingAs($owner)
             ->deleteJson($this->url($event, "/{$division->id}"))
-            ->assertStatus(422);
+            ->assertStatus(409)
+            ->assertJson(['success' => false, 'needs_release' => true, 'people' => 1]);
 
         $this->assertDatabaseHas('event_categories', ['id' => $division->id]);
+
+        // Asked and answered: the group goes, the entrant stays — ungrouped,
+        // which is the state anybody is in before they are placed.
+        $this->actingAs($owner)
+            ->deleteJson($this->url($event, "/{$division->id}"), ['release' => true])
+            ->assertOk();
+
+        $this->assertDatabaseMissing('event_categories', ['id' => $division->id]);
+        $this->assertDatabaseHas('club_event_registrations', [
+            'id' => $entry->id, 'category_id' => null, 'status' => 'joined',
+        ]);
     }
 
     public function test_an_empty_group_is_deleted(): void

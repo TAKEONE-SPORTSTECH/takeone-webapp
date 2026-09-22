@@ -93,7 +93,7 @@ class MatCameraController extends Controller
     public static function apply(Request $request, ClubEvent $event, string $court, int $cameraId): JsonResponse
     {
         $data = $request->validate([
-            'do' => ['required', 'string', 'in:settings,upload,play,purge,delete,wipe,report,cancel'],
+            'do' => ['required', 'string', 'in:settings,upload,play,purge,delete,wipe,report,cancel,stop'],
 
             // Footage orders. `clip` is a phone's own handle for a file, or the
             // word "all"; it is passed through to the device and never used to
@@ -128,6 +128,24 @@ class MatCameraController extends Controller
             return response()->json([
                 'success' => true,
                 'camera' => MatCameras::configure($camera, $settings),
+            ]);
+        }
+
+        /*
+         * Stop rolling — the one camera order that is not about footage.
+         *
+         * It exists because the mat cannot always be relied on to end a clip:
+         * a bout-ending command can be refused (an unstarted competition day)
+         * and the phones are then left recording with nothing to stop them.
+         * See MatCameras::stop.
+         */
+        if ($data['do'] === 'stop') {
+            MatCameras::stop($camera);
+
+            return response()->json([
+                'success' => true,
+                'asked' => 'stop',
+                'message' => __('events.mat_camera_asked'),
             ]);
         }
 

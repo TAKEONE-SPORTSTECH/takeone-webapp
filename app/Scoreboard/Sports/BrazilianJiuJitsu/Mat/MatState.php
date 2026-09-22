@@ -368,6 +368,23 @@ class MatState extends Model
             'theme' => $this->theme === 'venue' ? 'venue' : 'arena',
 
             /*
+             * IS THIS A REHEARSAL?
+             *
+             * Carried on the state rather than fetched by each screen, because
+             * this is the one payload the console, the wall board and every
+             * MQTT push all read — so the answer cannot differ between the
+             * table and the wall, and it follows a rehearsal being started or
+             * ended without anybody refreshing.
+             *
+             * It is here for one reason: an official at the table and a reader
+             * in the hall must never be unable to tell a practice bout from a
+             * real one. A rehearsal that looks exactly like the day is the
+             * whole risk of the feature.
+             */
+            'rehearsal' => app(\App\Events\Support\Rehearsal::class)
+                ->active($this->relationLoaded('event') ? $this->event : \App\Models\ClubEvent::find($this->event_id)),
+
+            /*
              * The stalling count — ON the board since 2026-09-12.
              *
              * ⚠️ This was deliberately absent until then, and the reason was a

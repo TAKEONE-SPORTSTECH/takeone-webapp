@@ -5,6 +5,10 @@
     'clearUrl' => null,             // PUT  → empty a division onto the bench
     'eventUuid' => null,            // scopes realtime nudges to this event
     'canArrange' => false,          // SERVER truth; the runtime re-reads it on every load
+    'canManage' => false,           // may this viewer DECIDE a bout, score it,
+                                    // correct a name? The organiser's, not the
+                                    // appointed official's — and re-read from
+                                    // the data feed on every load.
     'myCompetitorIds' => [],        // highlights the viewer's own bouts
     'height' => '70vh',             // a CSS length, applied inline — see below
     'initialDivision' => null,      // open on THIS division instead of the first
@@ -55,6 +59,26 @@
     // what its viewer actually needs.
     $arrangeEndpoint = $canArrange ? $arrangeUrl : null;
     $clearEndpoint = $canArrange ? $clearUrl : null;
+
+    /* ── The DRAFT's organiser actions, as addresses ───────────────────────
+
+       Deciding a bout, typing a score and correcting a name are the
+       ORGANISER's — a different permission from arranging, which an appointed
+       official also holds. `canManage` is what the host knows; the board
+       re-reads the server's own answer (`can_manage` on the data feed) before
+       it draws a single control, and each endpoint authorises for itself.
+
+       Built from a real route with a sentinel id so `php artisan route:list`
+       still accounts for them, then the sentinel is swapped client-side. */
+    $outcomeTemplate = $canManage && $eventUuid
+        ? str_replace('999999999', '__ID__', route('me.events.outcome', [$eventUuid, 999999999]))
+        : null;
+    $entrantTemplate = $canManage && $eventUuid
+        ? str_replace('999999999', '__ID__', route('me.events.entrant.update', [$eventUuid, 999999999]))
+        : null;
+    $admitEndpoint = ($canManage || $canArrange) && $eventUuid
+        ? route('me.events.bracket.admit', $eventUuid)
+        : null;
 @endphp
 
 <div
@@ -92,13 +116,10 @@
 
                     <button type="button" x-show="! d.is_heading"
                             @click="window.BracketBoard.show(d.id)"
-                            :class="d.id === division
-                                ? 'bg-primary text-white border-primary shadow-sm'
-                                : 'bg-white text-foreground border-gray-200 hover:bg-muted/60'"
+                            :class="d.id === division ? 'bk-pill is-on' : 'bk-pill'"
                             class="flex items-center gap-2 px-3.5 py-2 rounded-full border text-xs font-bold transition-colors whitespace-nowrap">
                         <span x-text="d.name"></span>
-                        <span :class="d.id === division ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'"
-                              class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold"
+                        <span class="bk-pill-count px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold"
                               x-text="d.entrants"></span>
                     </button>
                 </div>
@@ -112,17 +133,22 @@
          a height that silently resolves to 0 (an arbitrary class the CSS build
          never saw, because this component was added after the last build)
          would leave a zero-height, un-clickable board. Inline always applies. --}}
-    <div class="relative overflow-hidden bg-white
-                {{ $bare ? '' : 'rounded-2xl border border-gray-100 shadow-sm' }}
-                {{ $bleed ? '-mx-4 sm:-mx-6 lg:-mx-8' : '' }}"
+    {{-- The frame is the board's own navy now, not white: the draft's hall
+         runs to the edge of whatever holds it, and a white card around a navy
+         board reads as a hole in the page. --}}
+    <div @class([
+            'bk-frame relative overflow-hidden',
+            'bk-frame-card' => ! $bare,
+            '-mx-4 sm:-mx-6 lg:-mx-8' => $bleed,
+         ])
          style="height: {{ $height }};">
         {{-- The board itself. Everything inside is built by the runtime. --}}
         <div id="{{ $viewportId }}" class="w-full h-full"></div>
 
         {{-- Arrange banner — says what mode you're in and what you're holding. --}}
         <div x-show="arrange" x-cloak x-transition
-             class="absolute top-3 inset-x-3 z-30 flex items-center gap-2 px-3 py-2 rounded-xl
-                    bg-primary text-white shadow-lg text-xs font-bold pointer-events-none">
+             class="bk-banner absolute top-3 inset-x-3 z-30 flex items-center gap-2 px-3 py-2 rounded-xl
+                    shadow-lg text-xs font-bold pointer-events-none">
             <i class="bi bi-arrows-move"></i>
             <span x-show="!picked">{{ __('events.bracket_arrange_hint') }}</span>
             <span x-show="picked" x-cloak>
@@ -144,43 +170,40 @@
              board. Inline wins wherever it parses. --}}
         <div class="bk-controls absolute bottom-3 z-30 flex flex-col gap-2 {{ $rtl ? 'left-3' : 'right-3' }}"
              style="bottom: calc(0.75rem + env(safe-area-inset-bottom));">
-            @if($arrangeEndpoint)
-                <button type="button" x-show="canArrange" x-cloak
-                        @click="window.BracketBoard.toggleArrange()"
-                        :class="arrange ? 'bg-primary text-white border-primary' : 'bg-white text-foreground border-gray-200'"
-                        class="w-10 h-10 rounded-xl border flex items-center justify-center shadow-sm
-                               hover:shadow-md transition-all active:scale-95"
-                        :aria-pressed="arrange"
-                        :title="arrange ? '{{ __('events.bracket_done_arranging') }}' : '{{ __('events.bracket_arrange') }}'">
-                    <i class="bi" :class="arrange ? 'bi-check-lg' : 'bi-arrows-move'"></i>
-                </button>
+            {{-- ⚠️ THE ARRANGE AND CLEAR BUTTONS ARE GONE FROM HERE (2026-09-20).
 
-                @if($clearEndpoint)
-                    <button type="button" x-show="arrange" x-cloak x-transition
-                            @click="window.BracketBoard.clearDraw()"
-                            class="w-10 h-10 rounded-xl border border-red-200 bg-white text-red-600
-                                   flex items-center justify-center shadow-sm hover:bg-red-50 transition-all active:scale-95"
-                            title="{{ __('events.bracket_clear') }}">
-                        <i class="bi bi-eraser"></i>
-                    </button>
-                @endif
-            @endif
+                 Arranging is no longer a mode of its own: the draw stage's
+                 PADLOCK turns it on along with everything else editable, which
+                 is what the owner asked for — one switch, not four controls
+                 that each unlock a quarter of the board. A second arrange
+                 button beside it would have sat there refusing every press
+                 while the padlock was shut, which is exactly the drift this
+                 project keeps a component library to avoid.
+
+                 Emptying a draw is a DRAW VERB and lives with the others in
+                 the stage's menu ("Clear draw", from the package's own
+                 availableActions), so it is offered once rather than twice.
+
+                 `arrangeUrl` / `clearUrl` are untouched — the runtime still
+                 reaches for both, and `window.BracketBoard.toggleArrange()`
+                 and `.clearDraw()` are still on the public API for any host
+                 that wants to drive them. Only these two buttons went. --}}
 
             <button type="button" @click="window.BracketBoard.zoomIn()"
-                    class="w-10 h-10 rounded-xl border border-gray-200 bg-white text-foreground
-                           flex items-center justify-center shadow-sm hover:bg-muted/60 transition-all active:scale-95"
+                    class="bk-ctl w-10 h-10 rounded-xl border flex items-center justify-center
+                           shadow-lg transition-all active:scale-95"
                     title="{{ __('events.bracket_zoom_in') }}">
                 <i class="bi bi-plus-lg"></i>
             </button>
             <button type="button" @click="window.BracketBoard.zoomOut()"
-                    class="w-10 h-10 rounded-xl border border-gray-200 bg-white text-foreground
-                           flex items-center justify-center shadow-sm hover:bg-muted/60 transition-all active:scale-95"
+                    class="bk-ctl w-10 h-10 rounded-xl border flex items-center justify-center
+                           shadow-lg transition-all active:scale-95"
                     title="{{ __('events.bracket_zoom_out') }}">
                 <i class="bi bi-dash-lg"></i>
             </button>
             <button type="button" @click="window.BracketBoard.fit()"
-                    class="w-10 h-10 rounded-xl border border-gray-200 bg-white text-foreground
-                           flex items-center justify-center shadow-sm hover:bg-muted/60 transition-all active:scale-95"
+                    class="bk-ctl w-10 h-10 rounded-xl border flex items-center justify-center
+                           shadow-lg transition-all active:scale-95"
                     title="{{ __('events.bracket_fit') }}">
                 <i class="bi bi-arrows-angle-contract"></i>
             </button>
@@ -188,8 +211,8 @@
 
         {{-- Locked notice — the draw is final from the first bout. --}}
         <div x-show="locked" x-cloak
-             class="absolute top-3 z-20 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur border border-gray-200
-                    text-[0.6rem] font-extrabold text-muted-foreground flex items-center gap-1.5
+             class="bk-locked absolute top-3 z-20 px-2.5 py-1 rounded-full backdrop-blur border
+                    text-[0.6rem] font-extrabold flex items-center gap-1.5
                     {{ $rtl ? 'right-3' : 'left-3' }}">
             <i class="bi bi-lock-fill"></i> {{ __('events.bracket_locked') }}
         </div>
@@ -206,12 +229,12 @@
              deal with. Asked for explicitly 2026-09-06. --}}
         <div id="{{ $id }}-legend" x-show="! arrange"
              style="bottom: calc(0.75rem + env(safe-area-inset-bottom));"
-             class="absolute bottom-3 z-20 pointer-events-none
-                    flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] text-muted-foreground
+             class="bk-legend absolute bottom-3 z-20 pointer-events-none
+                    flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem]
                     {{-- clears the zoom/arrange control column, which shares this edge --}}
                     {{ $rtl ? 'right-3 left-16' : 'left-3 right-16' }}">
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ __('events.bracket_legend_provisional') }}</span>
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-600"></span>{{ __('events.bracket_legend_done') }}</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#d8b25f"></span>{{ __('events.bracket_legend_provisional') }}</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#2ecc71"></span>{{ __('events.bracket_legend_done') }}</span>
             <span class="flex items-center gap-1.5"><i class="bi bi-hand-index-thumb"></i>{{ __('events.bracket_legend_gestures') }}</span>
         </div>
     </div>
@@ -236,6 +259,19 @@
             // division. Null keeps the previous behaviour exactly.
             initialDivision: @json($initialDivision),
             csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
+            /* ── The three addresses the DRAFT's board writes through ──────
+               Handed over only to a viewer the server has said may manage,
+               for the same reason the arrange endpoints are: every one of
+               them re-authorises on each call, and an address nobody may use
+               has no business in a stranger's page source.
+
+               `__ID__` is substituted client-side. Built from a route with a
+               placeholder id rather than concatenated by hand, so a change to
+               the route pattern moves these with it (CLAUDE.md → JS-built
+               URLs must match a real route). */
+            outcomeUrl: @json($outcomeTemplate),
+            entrantUrl: @json($entrantTemplate),
+            admitUrl: @json($admitEndpoint),
             myCompetitorIds: @json(array_values((array) $myCompetitorIds)),
             rtl: {{ $rtl ? 'true' : 'false' }},
             text: {
@@ -250,6 +286,32 @@
                 clearTitle: @json(__('events.bracket_clear_title')),
                 clearMessage: @json(__('events.bracket_clear_message')),
                 clearConfirm: @json(__('events.bracket_clear_confirm')),
+                /* The podium card the canvas draws. Its words come from here
+                   rather than from the JS, so the board says "Champion" in the
+                   reader's own language like everything else on it. */
+                podium: @json(__('personal.personal_event_bracket_podium')),
+                place1: @json(__('personal.event_show_champion')),
+                place2: @json(__('personal.event_show_runner_up')),
+                place3: @json(__('personal.event_show_third_place')),
+                /* The draft's own vocabulary — the strip across a bout, the
+                   two kinds of empty corner, and the holding basket. */
+                match: @json(__('events.bracket_match')),
+                mat: @json(__('events.bracket_mat')),
+                byeNoBout: @json(__('events.bracket_bye_no_bout')),
+                awaiting: @json(__('events.bracket_awaiting')),
+                champion: @json(__('events.bracket_champion')),
+                championPending: @json(__('events.bracket_champion_pending')),
+                toBeDecided: @json(__('events.bracket_to_be_decided')),
+                basket: @json(__('events.bracket_basket')),
+                basketHint: @json(__('events.bracket_basket_hint')),
+                semifinalLoser: @json(__('events.bracket_semifinal_loser')),
+                score: @json(__('events.bracket_score')),
+                removeToBye: @json(__('events.bracket_remove_to_bye')),
+                outcomeFailed: @json(__('events.bracket_outcome_failed')),
+                renameFailed: @json(__('events.bracket_rename_failed')),
+                dismiss: @json(__('shared.close')),
+                bgBadType: @json(__('events.bracket_bg_bad_type')),
+                bgTooBig: @json(__('events.bracket_bg_too_big')),
             },
         });
     };

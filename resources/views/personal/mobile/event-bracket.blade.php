@@ -228,13 +228,28 @@
         </div>
     </header>
 
-    {{-- A draw the organiser has not let out yet: the page is the veil and
-         nothing else — not merely the board, because this page also reads the
-         same bouts out as a list (PersonalEventController::bracket empties
-         $categories to match). --}}
-    @if($drawHidden ?? null)
+    {{-- ===== The draw is not out =====
+         Withheld by the organiser's `draw_reveal`, or simply not cut. Either
+         way the waiting room is the WHOLE page — the division selector and the
+         per-division entry lists are held back with the bracket itself.
+
+         Asked of `$waitingRoom` (which the controller sets from the EVENT) and
+         not of `$drawHidden` (which is set per READER): the organiser and their
+         officials read through their own veil, and showing them the division
+         strip while every other reader gets a padlock meant the page said two
+         different things about the same event. Hidden for them too, at the
+         user's request, 2026-09-16 — managing the draw is the console's job
+         (the gear in the band above), never this page's.
+
+         The bare veil survives for the one case where it is still the whole
+         truth: nothing to count down to and nobody entered. --}}
+    @if(($waitingRoom ?? null) !== null)
         <div class="px-4 mt-4">
-            <x-draw-veil :message="$drawHidden" :color="$color" />
+            @if(($waitingRoom['at'] ?? null) || ($waitingRoom['entries'] ?? 0))
+                <x-draw-waiting-room :data="$waitingRoom" :color="$color" />
+            @else
+                <x-draw-veil :message="$drawHidden ?? __('events.public_draw_empty_title')" :color="$color" />
+            @endif
         </div>
     @else
 
@@ -345,26 +360,23 @@
                                    used to read a hand-typed shape only, and fataled on
                                    `country` the first time a division was awarded by the
                                    draw itself. */
+                                /* The DRAWING is `x-medal-icon`; the tint of the
+                                   row and the word beside the name stay here. */
                                 $medal = [
-                                    1 => ['#f59e0b', '🥇', __('personal.personal_event_bracket_champion')],
-                                    2 => ['#9ca3af', '🥈', __('personal.personal_event_bracket_runner_up')],
-                                    3 => ['#b45309', '🥉', __('personal.personal_event_bracket_third_place')],
-                                    4 => ['#64748b', '',   __('personal.event_show_fourth_place')],
-                                ][$p['place'] ?? 0] ?? ['#64748b', '', '#'.($p['place'] ?? '')];
+                                    1 => ['#f59e0b', __('personal.personal_event_bracket_champion')],
+                                    2 => ['#9ca3af', __('personal.personal_event_bracket_runner_up')],
+                                    3 => ['#b45309', __('personal.personal_event_bracket_third_place')],
+                                    4 => ['#64748b', __('personal.event_show_fourth_place')],
+                                ][$p['place'] ?? 0] ?? ['#64748b', '#'.($p['place'] ?? '')];
                                 $country = $p['country'] ?? null;
                             @endphp
                             <div class="flex items-center gap-3 rounded-xl p-2.5" style="background: {{ $medal[0] }}12;">
                                 <div class="w-9 h-9 grid place-items-center flex-shrink-0 leading-none">
-                                    @if($medal[1] !== '')
-                                        <span class="text-2xl">{{ $medal[1] }}</span>
-                                    @else
-                                        <span class="w-7 h-7 rounded-full grid place-items-center text-xs font-black"
-                                              style="background: {{ $medal[0] }}20; color: {{ $medal[0] }};">{{ $p['place'] ?? '' }}</span>
-                                    @endif
+                                    <x-medal-icon :place="$p['place'] ?? null" :size="26" :label="$medal[1]" />
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm font-bold text-foreground truncate">{{ $p['name'] ?? '' }} @if($country){!! $flag($country) !!} <span class="text-[10px] font-semibold text-muted-foreground">{{ $country }}</span>@endif</p>
-                                    <p class="text-[11px] text-muted-foreground">{{ $medal[2] }}</p>
+                                    <p class="text-[11px] text-muted-foreground">{{ $medal[1] }}</p>
                                 </div>
                                 @if(filled($p['prize'] ?? null))
                                     <span class="text-[11px] font-black flex-shrink-0" style="color: {{ $medal[0] }};">{{ $p['prize'] }}</span>
@@ -387,10 +399,19 @@
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-foreground flex items-center gap-2">
                                 <i class="bi bi-diagram-2 text-primary"></i> {{ $round['name'] }}
+                                {{-- What this round decides, as the medals it
+                                     awards. Two discs for the semi-finals
+                                     because both losers take bronze. --}}
                                 @if($round['name'] === 'Final')
-                                    <span class="text-lg leading-none" title="{{ __('personal.personal_event_bracket_decides_gold_silver') }}">🥇 🥈</span>
+                                    <span class="inline-flex items-center gap-0.5" title="{{ __('personal.personal_event_bracket_decides_gold_silver') }}">
+                                        <x-medal-icon :place="1" :size="18" :numeral="false" />
+                                        <x-medal-icon :place="2" :size="18" :numeral="false" />
+                                    </span>
                                 @elseif($round['name'] === 'Semifinal')
-                                    <span class="text-lg leading-none" title="{{ __('personal.personal_event_bracket_decides_bronze') }}">🥉 🥉</span>
+                                    <span class="inline-flex items-center gap-0.5" title="{{ __('personal.personal_event_bracket_decides_bronze') }}">
+                                        <x-medal-icon :place="3" :size="18" :numeral="false" />
+                                        <x-medal-icon :place="3" :size="18" :numeral="false" />
+                                    </span>
                                 @endif
                             </h3>
                             <span class="text-[11px] text-muted-foreground">{{ count($round['matches']) }} {{ count($round['matches']) === 1 ? __('personal.personal_event_bracket_bout') : __('personal.personal_event_bracket_bouts') }}</span>

@@ -155,7 +155,10 @@
                 </button>
             @endif
 
-            @include('partials.event-detail-card-desktop')
+            {{-- See the mobile twin: `?category=` is the bracket page's door. --}}
+            @include('partials.event-detail-card-desktop', [
+                'divisionLink' => route('me.events.bracket.manage', $e['key']).'?division=',
+            ])
 
             {{-- League --}}
             @if(!empty($league))
@@ -457,7 +460,7 @@
                                 $catCount = count($e['categories']);
                                 $athleteTotal = collect($e['categories'])->sum('joined');
                             @endphp
-                            <a href="{{ route('me.events.bracket', $e['key']) }}"
+                            <a href="{{ route('me.events.bracket.manage', $e['key']) }}"
                                class="block rounded-2xl p-4 text-white relative overflow-hidden shadow-md hover:shadow-lg transition-shadow"
                                style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
                                 <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
@@ -630,23 +633,21 @@
                                            numeral rather than a fourth colour of disc, and a
                                            place this sheet does not know falls back to its own
                                            number rather than fataling on a missing key. */
+                                        /* The DRAWING is `x-medal-icon`; what is
+                                           decided here is the tint of the row and
+                                           the word beside the name. */
                                         $medal = [
-                                            1 => ['🥇', '#f59e0b', __('personal.event_show_champion')],
-                                            2 => ['🥈', '#9ca3af', __('personal.event_show_runner_up')],
-                                            3 => ['🥉', '#b45309', __('personal.event_show_third_place')],
-                                            4 => ['',   '#64748b', __('personal.event_show_fourth_place')],
-                                        ][$m['place']] ?? ['', '#64748b', '#'.$m['place']];
+                                            1 => ['#f59e0b', __('personal.event_show_champion')],
+                                            2 => ['#9ca3af', __('personal.event_show_runner_up')],
+                                            3 => ['#b45309', __('personal.event_show_third_place')],
+                                            4 => ['#64748b', __('personal.event_show_fourth_place')],
+                                        ][$m['place']] ?? ['#64748b', '#'.$m['place']];
                                     @endphp
-                                        <div class="flex items-center gap-3 rounded-xl p-2" style="background: {{ $medal[1] }}12;">
-                                            @if($medal[0] !== '')
-                                            <span class="text-2xl flex-shrink-0 leading-none">{{ $medal[0] }}</span>
-                                        @else
-                                            <span class="w-8 h-8 rounded-full grid place-items-center flex-shrink-0 text-xs font-black"
-                                                  style="background: {{ $medal[1] }}20; color: {{ $medal[1] }};">{{ $m['place'] }}</span>
-                                        @endif
+                                        <div class="flex items-center gap-3 rounded-xl p-2" style="background: {{ $medal[0] }}12;">
+                                            <x-medal-icon :place="$m['place']" :size="26" :label="$medal[1]" />
                                             <div class="min-w-0 flex-1">
                                                 <p class="text-sm font-bold text-foreground truncate">{{ $m['name'] }}</p>
-                                                <p class="text-xs text-muted-foreground">{{ $medal[2] }}</p>
+                                                <p class="text-xs text-muted-foreground">{{ $medal[1] }}</p>
                                             </div>
                                         </div>
                                     @endforeach

@@ -724,16 +724,21 @@
         const year = (d.since || '').split('/')[2] ?? new Date().getFullYear();
         document.getElementById('mpMemberId').textContent  = `#MEM-${year}-${String(d.id).padStart(3, '0')}`;
 
-        // Where they are from, as the flag of their nationality. Built from the ISO2
-        // code the same way the rest of the admin does it — no flag asset to fetch,
-        // and nothing rendered at all when no nationality is on file.
-        const mpFlag = /^[A-Za-z]{2}$/.test(d.nationality || '')
-            ? d.nationality.toUpperCase().split('').map(c => String.fromCodePoint(127397 + c.charCodeAt(0))).join('')
-            : '';
+        // Where they are from, as OUR OWN flag file. This was an emoji built
+        // from the ISO2 code, which draws the letters "BH" on Windows — which
+        // is what an admin desk runs (CLAUDE.md -> Flags Come From One Local
+        // Source). Nothing rendered at all when no nationality is on file.
         const flagEl = document.getElementById('mpFlagName');
         if (flagEl) {
-            flagEl.textContent = mpFlag;
-            flagEl.title = mpFlag ? (d.nationality || '') : '';
+            const mpIso = /^[A-Za-z]{2}$/.test(d.nationality || '')
+                ? d.nationality.toLowerCase() : '';
+            flagEl.innerHTML = '';
+            flagEl.title = mpIso ? (d.nationality || '') : '';
+            if (mpIso) {
+                const f = document.createElement('span');
+                f.className = 'fi fi-' + mpIso + ' rounded-[2px]';
+                flagEl.appendChild(f);
+            }
         }
         document.getElementById('mpPhone').textContent     = d.phone;
         document.getElementById('mpEmail').textContent     = d.email;

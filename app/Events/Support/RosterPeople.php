@@ -88,6 +88,7 @@ class RosterPeople
             $entry = [
                 'registration' => $row['registration'] ?? null,
                 'division' => $row['category'] ?? $row['weight_class'] ?? null,
+                'division_id' => $row['category_id'] ?? null,
                 /* Money belongs to an ENTRY, not to a person: an event may run
                    several activities and each is entered, drawn and PAID FOR
                    separately (owner's ruling, 2026-09-11). Someone who has paid
@@ -114,6 +115,26 @@ class RosterPeople
             if ($entry['division'] && ! in_array($entry['division'], $merged[$key]['divisions'], true)) {
                 $merged[$key]['divisions'][] = $entry['division'];
             }
+        }
+
+        /* THE DIVISIONS AS ROWS — `[['id' => 12, 'name' => 'Group D (+70)'], …]`
+           — the shape <x-participant-card> draws its chips from, and the same
+           shape the public payload builds (PublicEvent). Keyed by id so an
+           athlete entered twice in one division cannot draw it twice, and
+           entries with no division yet simply contribute nothing. */
+        foreach ($merged as $key => $row) {
+            $rows = [];
+
+            foreach (($row['entries'] ?? []) as $entry) {
+                if (($entry['division_id'] ?? null) && ($entry['division'] ?? null)) {
+                    $rows[(int) $entry['division_id']] = [
+                        'id' => (int) $entry['division_id'],
+                        'name' => $entry['division'],
+                    ];
+                }
+            }
+
+            $merged[$key]['division_rows'] = array_values($rows);
         }
 
         /* WHICH ACTIVITIES each person is in — "Gi", "No-Gi", "Gi + No-Gi" —
@@ -172,6 +193,10 @@ class RosterPeople
                 ? ($row['belt']['grade'] ?? null)
                 : null,
             'category' => $row['category'] ?? null,
+            // The division's id, so a chip drawn from this row can open that
+            // group's draw. Passed through untouched; null where the event
+            // type does not supply one, and the chip is then not a door.
+            'category_id' => $row['category_id'] ?? null,
             'weight_class' => $row['weight_class'] ?? null,
             /* EVERY division this person is entered in, and every entry behind
                them — passed through untouched from the row the caller built.
@@ -179,6 +204,11 @@ class RosterPeople
                a roster folded into one row per PERSON (the people page) carries
                both, because one card then stands for two entries. */
             'divisions' => $row['divisions'] ?? null,
+            /* The same divisions WITH their ids — built by byPerson() above, so
+               a chip drawn from this shape can open the group's own draw.
+               Passed through rather than rebuilt: two places deciding what a
+               person's divisions are is two places to disagree. */
+            'division_rows' => $row['division_rows'] ?? null,
             'entries' => $row['entries'] ?? null,
             'activity' => $row['activity'] ?? null,
             // The flag is the CLUB's country, not the person's passport. Someone

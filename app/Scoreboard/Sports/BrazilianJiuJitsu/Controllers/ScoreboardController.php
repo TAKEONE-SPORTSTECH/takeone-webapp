@@ -384,6 +384,32 @@ class ScoreboardController extends Controller
             ScreenChannel::notifyCourt($event, $data['command'] === 'commit' ? null : $data['mat']);
         }
 
+        /*
+         * A CORNER correction changes the draw, so it changes every board.
+         *
+         * `corner` writes the typed name and country onto this bout's draw row
+         * as well as onto the mat (see Scoring::cornerEdit), and the upcoming
+         * queues are built from the draw — on every mat, because a competitor
+         * is routinely queued on one they are not fighting on. Without this the
+         * official saw their correction on the plate in front of them and
+         * nowhere else in the hall.
+         */
+        if ($data['command'] === 'corner') {
+            rescue(fn () => app(\App\Scoreboard\MatEntries::class)->boards($event), null, false);
+
+            // And everyone watching on a phone: the bracket and the running
+            // order are built from the same draw row, so they are showing the
+            // old spelling too. A refresh signal, because the bracket renders
+            // differently per viewer.
+            rescue(function () use ($event) {
+                $type = app(\App\Events\EventTypeRegistry::class)->for($event);
+
+                if ($type instanceof \App\Events\AbstractEventType) {
+                    $type->announceDrawChanged($event);
+                }
+            }, null, false);
+        }
+
         // Every screen on this mat, immediately. Best-effort like every other
         // push in the app: the database is the truth and a screen that missed
         // this re-fetches on reconnect.
@@ -589,7 +615,10 @@ class ScoreboardController extends Controller
         $previous = $registration->photo;
 
         if ($remove) {
-            $registration->update(['photo' => null]);
+            // Across every entry this person holds in this event — they are
+            // entered once per division and each row has its own photo column.
+            // See App\Events\Support\EntryPhoto::assign.
+            \App\Events\Support\EntryPhoto::assign($event, $registration, null);
 
             if ($previous) {
                 // Through EntryPhoto, never a raw delete: an entry settled at
@@ -605,7 +634,12 @@ class ScoreboardController extends Controller
         // Real bytes, server-assigned extension, SVG refused — see the
         // StoresBase64Images trait. The folder is built by the app from the
         // event's public id, never passed through from the client.
-        $path = $this->storeBase64Image(
+        // Stored under the PERSON, not under the event — the entry keeps a
+        // reference (CLAUDE.md → A Person's Photo Has One Home). A face
+        // photographed at the mat used to exist for the hall screens and
+        // nowhere else, so the same athlete was a silhouette on their profile.
+        $path = \App\Members\Support\ProfilePhoto::capture(
+            $registration->user_id ? \App\Members\Models\User::find($registration->user_id) : null,
             $request->input('image'),
             'events/'.$event->uuid.'/competitors',
             'c'.$registration->id.'-'.\Illuminate\Support\Str::random(16),
@@ -618,7 +652,21 @@ class ScoreboardController extends Controller
             ], 422);
         }
 
-        $registration->update(['photo' => $path]);
+        // As above: the face goes on the person, not on one division's row.
+        \App\Events\Support\EntryPhoto::assign($event, $registration, $path);
+
+        /*
+         * Every OTHER mat, and every upcoming board.
+         *
+         * photoResponse() below refreshes and pushes THIS mat, which is the
+         * one the official is standing at. It is not the only screen showing
+         * this competitor: they are queued on the walls — routinely on a mat
+         * they are not currently fighting on — and they may be loaded on a
+         * second mat in another division. Those screens heard nothing, so a
+         * face fixed at one table stayed wrong everywhere else in the hall.
+         */
+        rescue(fn () => app(\App\Scoreboard\MatEntries::class)
+            ->entryChanged($event, (int) $registration->id), null, false);
 
         if ($previous && $previous !== $path) {
             // See above: this file may be the athlete's profile picture rather
@@ -632,13 +680,16 @@ class ScoreboardController extends Controller
     /**
      * Push the corner the registration behind it just changed.
      *
-     * 'resync' is the defined no-op: it changes nothing, saves the state as it
-     * stands, and hands it back — which is exactly what is needed to rebuild a
-     * corner from its registration and put it on the wall.
+     * 'refresh' is the command that re-reads both corners from the entries and
+     * touches nothing else — not the clock, not the score, not the result.
+     *
+     * This sent 'resync' until 2026-09-16, on the belief that it rebuilt a
+     * corner. It does not: it is the defined NO-OP, it saves the state exactly
+     * as it stands, and a photograph replaced here never reached the wall.
      */
     private function photoResponse(ClubEvent $event, string $court, string $side, ?string $photo, string $message): JsonResponse
     {
-        $fresh = $this->scoring->apply($event, $court, 'resync', [], $this->actingUser());
+        $fresh = $this->scoring->apply($event, $court, 'refresh', [], $this->actingUser());
         $payload = $fresh->present();
 
         ScreenChannel::notifyCourt($event, $court, ['action' => 'mat', 'state' => $payload]);
@@ -778,11 +829,38 @@ class ScoreboardController extends Controller
     {
         $order = new RunningOrder;
 
-        // Enough to see the END of a mat's day. At 12 a busy mat's last bouts
-        // were simply not in the payload — they appeared as earlier ones
-        // drained, so nothing was lost, but an official planning the mat could
-        // not see what they were planning towards.
-        $queue = $order->matQueue($event, $court)->take(24);
+        // THE WHOLE DAY, not a window onto it.
+        //
+        // This was 12, then 24, and both were the same mistake in two sizes: a
+        // mat running 87 bouts showed the operator a list that stopped at #24
+        // with nothing to say it had stopped, so the afternoon's divisions
+        // simply did not exist until the morning's drained away. An official
+        // planning a mat is planning the DAY.
+        //
+        // The cost is one row per undecided bout in a payload that is already
+        // carrying names, clubs and photo URLs — a few tens of kilobytes on a
+        // console that re-reads only when the draw actually moves. A day with
+        // holes in it costs more.
+        /*
+         * IN RUNNING ORDER, not runnable-first.
+         *
+         * `matQueue` floats the callable bouts to the front, which is right for
+         * "what is next" and wrong for a LIST: the bouts still waiting on a
+         * feeder sink to the bottom, and the 24-row window then cut them out of
+         * the payload altogether. On Mat 1 that hid #3, #4 and #5 — a division's
+         * own semi-finals and final — so the console showed a day with holes in
+         * it and no way to see the end of a weight class.
+         *
+         * They are listed here and drawn greyed and unloadable by the runtime
+         * (`boutRow`), which already knew how: nobody can be called out as "the
+         * winner of bout 3", but everybody needs to see that bout 3 exists.
+         *
+         * Nothing about WHAT IS NEXT changes — the console picks the first
+         * `runnable` row, and the wall board reads `matQueue` directly.
+         */
+        $queue = $order->matQueue($event, $court)
+            ->sortBy(fn (EventMatch $m) => $m->match_no ?? PHP_INT_MAX)
+            ->values();
         $queue->load('category:id,name,weight_class');
 
         $entryIds = $queue->flatMap(fn (EventMatch $m) => [$m->a_competitor_id, $m->b_competitor_id])
@@ -862,7 +940,7 @@ class ScoreboardController extends Controller
             // The club's country first, then countryCode() — purely additive,
             // so nobody who had a flag loses one. Each candidate is checked for
             // a real ISO-2 code because a club's `country` is not always stored
-            // as one ("Bahrain" would ask flagcdn for /bahrain.png and get
+            // as one ("Bahrain" would ask for /images/flags/bahrain.svg and get
             // nothing back).
             $iso = collect([$named['country'] ?? null, $reg?->countryCode()])
                 ->first(fn ($c) => preg_match('/^[A-Za-z]{2}$/', (string) $c));

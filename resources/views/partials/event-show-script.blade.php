@@ -785,24 +785,104 @@ x-data="{
             this.manageOpen = false;
             window.location.href = '{{ route('me.events.edit', $e['key']) }}';
         },
-        async cancelEvent() {
-            this.manageOpen = false;
-            const ok = await window.confirmAction({ title: '{{ __("personal.event_show_cancel_title") }}', message: '{{ __("personal.event_show_cancel_msg") }}', type: 'danger', confirmText: '{{ __("personal.event_show_cancel_event") }}' });
-            if (!ok) return;
-            const d = await this.req('{{ route('me.events.cancel-event', $e['key']) }}', 'PATCH');
-            if (d) { this.cancelled = true; window.showToast('info', d.message); }
+        /* ===== The dress rehearsal =====
+
+           Run the whole competition before the day and then take it back. The
+           server snapshots the event, lets the ordinary engines do the real
+           work, and restores it on End (App\Events\Support\Rehearsal). Nothing
+           here decides anything — the two calls below are the whole client. */
+        rehearsing: {{ ($rehearsing ?? false) ? 'true' : 'false' }},
+        rehearsalBusy: false,
+        async startRehearsal() {
+            if (this.rehearsalBusy) return;
+            this.rehearsalBusy = true;
+            try {
+                const d = await this.req('{{ route('me.events.rehearsal.begin', $e['key']) }}', 'POST');
+                if (! d) return;
+                this.rehearsing = true;
+                window.showToast('success', d.message);
+            } finally { this.rehearsalBusy = false; }
         },
-        async deleteEvent() {
+        async stopRehearsal() {
+            if (this.rehearsalBusy) return;
+            this.rehearsalBusy = true;
+            try {
+                const d = await this.req('{{ route('me.events.rehearsal.end', $e['key']) }}', 'DELETE');
+                if (! d) return;
+                this.rehearsing = false;
+                window.showToast('success', d.message);
+                /* The draw, the divisions and the results all just moved back.
+                   Nothing on this page is bound to them deeply enough to patch
+                   honestly, and a console showing a rehearsal's bracket after
+                   the rehearsal ended is the one confusion this feature must
+                   not create — so this is the one place a reload is right. */
+                setTimeout(() => window.location.reload(), 600);
+            } finally { this.rehearsalBusy = false; }
+        },
+
+        /* ===== Ending it: the typed-code gate =====
+
+           Cancel and Delete each end a competition, and each used to be one tap
+           and one reflex-dismissed dialog away. Both now open the same sheet
+           (partials/event-danger-sheet): the server issues a six-character
+           code, the organiser reads it and types it back, and the request
+           carries it. The matching HERE only decides when the button lights up
+           — App\Events\Support\DestructiveChallenge is what actually decides,
+           because a gate checked in the browser is not a gate. */
+        danger: null,          // { action: 'cancel'|'delete', code: string|null }
+        dangerTyped: '',
+        dangerBusy: false,
+        get dangerMatches() {
+            return !! (this.danger && this.danger.code)
+                && this.dangerTyped.trim().toUpperCase() === this.danger.code;
+        },
+        cancelEvent() { this.askDanger('cancel'); },
+        deleteEvent() { this.askDanger('delete'); },
+        async askDanger(action) {
             this.manageOpen = false;
-            const ok = await window.confirmAction({ title: '{{ __("personal.event_show_delete_title") }}', message: '{{ __("personal.event_show_delete_msg") }}', type: 'danger', confirmText: '{{ __('shared.delete') }}' });
-            if (!ok) return;
-            {{-- Same trap as the edit form's PUT: a bare quoted
-                 `/me/events/{uuid}` is rewritten to the public poster inside
-                 the sealed app, and the poster answers GET only — so the
-                 DELETE has to name the mirrored admin root itself. See the
-                 note in personal/event-create.blade.php. --}}
-            const d = await this.req('{{ ($sealed ?? false) ? url('/e/'.$e['key'].'/admin') : route('me.events.destroy', $e['key']) }}', 'DELETE');
-            if (d) { window.showToast('success', d.message); setTimeout(() => { window.location.href = d.redirect || '{{ route('me.events') }}'; }, 500); }
+            /* Opened BEFORE the code arrives, with the sheet saying so: a sheet
+               that appears only after a round trip reads as a dead button on a
+               slow hall connection. */
+            this.danger = { action, code: null };
+            this.dangerTyped = '';
+
+            const d = await this.req('{{ route('me.events.danger-code', $e['key']) }}', 'POST', { action });
+
+            if (! d || ! d.code) { this.danger = null; return; }
+            /* Still the same sheet? A second tap while this was in flight has
+               its own code coming, and the last one to arrive must not win. */
+            if (this.danger && this.danger.action === action) this.danger.code = d.code;
+        },
+        closeDanger() { this.danger = null; this.dangerTyped = ''; },
+        async runDanger() {
+            if (! this.dangerMatches || this.dangerBusy) return;
+            const action = this.danger.action;
+            const code = this.danger.code;
+            this.dangerBusy = true;
+
+            try {
+                if (action === 'cancel') {
+                    const d = await this.req('{{ route('me.events.cancel-event', $e['key']) }}', 'PATCH', { code });
+                    if (! d) return;
+                    this.cancelled = true;
+                    this.closeDanger();
+                    window.showToast('info', d.message);
+                    return;
+                }
+
+                {{-- Same trap as the edit form's PUT: a bare quoted
+                     `/me/events/{uuid}` is rewritten to the public poster inside
+                     the sealed app, and the poster answers GET only — so the
+                     DELETE has to name the mirrored admin root itself. See the
+                     note in personal/event-create.blade.php. --}}
+                const d = await this.req('{{ ($sealed ?? false) ? url('/e/'.$e['key'].'/admin') : route('me.events.destroy', $e['key']) }}', 'DELETE', { code });
+                if (! d) return;
+                this.closeDanger();
+                window.showToast('success', d.message);
+                setTimeout(() => { window.location.href = d.redirect || '{{ route('me.events') }}'; }, 500);
+            } finally {
+                this.dangerBusy = false;
+            }
         },
         // ----- Results / winners -----
         results: @js($e['results'] ?? []),

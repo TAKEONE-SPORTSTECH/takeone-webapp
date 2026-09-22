@@ -1,3 +1,6 @@
+{{-- The one nationality/flag runtime (window.paintNationalities) --}}
+@include('partials.nationality-runtime')
+
 {{-- Shared behaviour for the members list (desktop + mobile): debounced server-side
      search swapping #membersResults, AJAX pagination, nationality flags, popup. --}}
 @push('scripts')
@@ -7,38 +10,43 @@
         const resultsEl = document.getElementById('membersResults');
         const searchEl  = document.getElementById('memberSearch');
         if (!resultsEl || !searchEl) return;
-        let countriesCache = null;
         let searchDebounce = null;
         let currentSearch  = @json($search ?? '');
         let currentSort    = @json($sort ?? 'newest');
+        let currentFilters = @json($filterState ?? null) || {};
         let activeFetch    = 0;
+
+        // Array filters travel as repeated params (missing[]=phone&missing[]=email);
+        // everything else as a scalar. Empty values are left out entirely so a
+        // cleared filter disappears from the URL rather than lingering as noise.
+        function appendFilters(params) {
+            Object.entries(currentFilters).forEach(([key, value]) => {
+                if (Array.isArray(value)) {
+                    value.forEach(v => params.append(key + '[]', v));
+                } else if (value !== null && value !== '' && value !== undefined && !(key === 'verified' && value === 'any')) {
+                    params.set(key, value);
+                }
+            });
+        }
 
         function buildUrl() {
             const params = new URLSearchParams();
             if (currentSearch) params.set('search', currentSearch);
             if (currentSort)   params.set('sort', currentSort);
+            appendFilters(params);
             const qs = params.toString();
             return baseUrl + (qs ? ('?' + qs) : '');
         }
 
+        // Flags come from partials/nationality-runtime — one runtime, our own
+        // files. This used to fetch countries.json and build an EMOJI, which
+        // draws the letters "BH" on Windows, which is what an admin desk runs
+        // (CLAUDE.md -> Flags Come From One Local Source).
         function convertNationalities(root) {
-            if (!countriesCache) return;
-            root.querySelectorAll('.nationality-display').forEach(element => {
-                const iso3Code = element.getAttribute('data-iso3');
-                if (!iso3Code) return;
-                const country = countriesCache.find(c => c.iso2 === iso3Code || c.iso3 === iso3Code);
-                if (country) {
-                    const flagEmoji = country.iso2.toUpperCase().split('')
-                        .map(char => String.fromCodePoint(127397 + char.charCodeAt(0))).join('');
-                    element.textContent = `${flagEmoji} ${country.name}`;
-                }
-            });
+            window.paintNationalities?.(root || document);
         }
 
-        fetch('/data/countries.json')
-            .then(response => response.json())
-            .then(countries => { countriesCache = countries; convertNationalities(resultsEl); })
-            .catch(error => console.error('Error loading countries:', error));
+        convertNationalities(resultsEl);
 
         function loadResults(url) {
             const requestId = ++activeFetch;
@@ -70,6 +78,20 @@
             history.replaceState(null, '', url);
             loadResults(url);
         };
+
+        // The advanced filter component's one output. Stored on window and removed
+        // before re-adding, because the mobile shell re-runs this script on every
+        // AJAX navigation and the listeners would otherwise stack up.
+        if (window.__memberFiltersApply) {
+            window.removeEventListener('member-filters:apply', window.__memberFiltersApply);
+        }
+        window.__memberFiltersApply = function(e) {
+            currentFilters = e.detail || {};
+            const url = buildUrl();
+            history.replaceState(null, '', url);
+            loadResults(url);
+        };
+        window.addEventListener('member-filters:apply', window.__memberFiltersApply);
 
         searchEl.addEventListener('input', function(e) {
             clearTimeout(searchDebounce);

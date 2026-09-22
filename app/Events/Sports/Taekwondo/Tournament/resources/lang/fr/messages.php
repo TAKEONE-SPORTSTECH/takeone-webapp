@@ -65,6 +65,7 @@ return [
     'notify_draw_title' => 'Le tirage est publié — :title',
     'notify_weigh_in_body' => 'Pesée officielle à :time, :place. Vous devez atteindre la limite de votre division pour participer.',
     'notify_weigh_in_title' => 'Pesée demain — :title',
+    'pool_not_arranged' => 'Ce cours est en libre accès — tout le monde rencontre tout le monde, il n\'y a donc rien à programmer. Ajoutez ou retirez des personnes du cours à la place.',
     'result_body_done' => 'C’était votre dernier combat de la journée.',
     'result_body_next' => 'Suivant :round sur :mat, environ :minutes min',
     'result_loss_title' => 'Combat terminé',

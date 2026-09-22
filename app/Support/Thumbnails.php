@@ -44,6 +44,7 @@ class Thumbnails
      */
     public const SIZES = [
         'card' => [126, 168],   // an entrant card's portrait, at 3×
+        'face' => [240, 320],   // a bracket slot's portrait — small, but zoomable
         'row' => [96, 96],      // a square list avatar
         'tile' => [400, 400],   // a club logo / cover thumbnail
     ];

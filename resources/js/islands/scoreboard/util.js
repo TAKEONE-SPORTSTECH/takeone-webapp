@@ -20,11 +20,11 @@ export function bgImage(u) {
 }
 
 /**
- * TODO(offline): flags come from flagcdn. Harmless on 4G, but the screen agent
- * should mirror them to disk so a dead uplink never empties the flag boxes.
+ * Our own files, served from this box — a hall with no uplink is the ordinary
+ * case (CLAUDE.md -> Flags Come From One Local Source).
  */
 export function flagUrl(code) {
-    return /^[a-z]{2}$/.test(String(code || '')) ? `https://flagcdn.com/w1280/${code}.png` : null;
+    return /^[a-z]{2}$/.test(String(code || '')) ? `/images/flags/${code}.svg` : null;
 }
 
 /** m:ss, floored — the same arithmetic the Blade renderer used. */

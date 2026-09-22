@@ -75,6 +75,31 @@ class BulkEntryTest extends TestCase
         return $user->fresh();
     }
 
+    /**
+     * A VISITING coach: admin of another club, holding the `enter-athletes`
+     * grant, entering their own squad into somebody else's competition.
+     *
+     * The tests that pin the entry RULES need this actor rather than
+     * `$this->coach`, who owns the host club and created the event. Since
+     * 2026-09-03 whoever runs a competition is exempt from the two checks that
+     * exist to stop a coach reaching past their own club — "not your athlete"
+     * and the entry window — because the list is theirs and the window is their
+     * own setting, not a rule binding its author (EntryService::enter,
+     * `$runsThisEvent`). Asking those rules of the organiser tested nothing.
+     *
+     * @return array{0: User, 1: Tenant}
+     */
+    private function visitingCoach(): array
+    {
+        $club = $this->createClub($this->createUser(), ['country' => 'BH', 'currency' => 'BHD']);
+        $coach = $this->createUser(['full_name' => 'Visiting Coach']);
+        $coach->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+        $this->makeClubAdmin($coach, $club);
+        $this->grantEnterAthletes('club-admin');
+
+        return [$coach->fresh(), $club];
+    }
+
     /* ---------------- The happy path ---------------- */
 
     public function test_a_coach_enters_a_whole_squad_in_one_submission(): void
@@ -241,13 +266,40 @@ class BulkEntryTest extends TestCase
 
     public function test_entries_are_refused_once_the_window_has_closed(): void
     {
-        $event = $this->event(['enrollment_ends_at' => now()->subDay()->toDateString()]);
+        // `inter_club` so the visiting coach's own athlete is in scope; the
+        // window is the only thing left to refuse them.
+        $event = $this->event([
+            'enrollment_ends_at' => now()->subDay()->toDateString(),
+            'scope' => 'inter_club',
+        ]);
 
-        $response = $this->actingAs($this->coach)
-            ->postJson("/me/events/{$event->uuid}/entries", ['user_ids' => [$this->athlete('Ali')->id]])
+        [$coach, $theirClub] = $this->visitingCoach();
+
+        $response = $this->actingAs($coach)
+            ->postJson("/me/events/{$event->uuid}/entries", [
+                'user_ids' => [$this->athlete('Ali', 57, $theirClub)->id],
+            ])
             ->assertOk();
 
         $this->assertSame('closed', $response->json('rejected.0.code'));
+    }
+
+    /**
+     * …and the organiser is not stopped by their own closing date.
+     *
+     * The other half of the rule above, and the reason it needed a visiting
+     * coach to test at all: somebody turns up at the desk on the morning, after
+     * the window the organiser themselves set. Refusing the author of the
+     * setting was never the point of it.
+     */
+    public function test_the_organiser_may_still_enter_after_their_own_window_closed(): void
+    {
+        $event = $this->event(['enrollment_ends_at' => now()->subDay()->toDateString()]);
+
+        $this->actingAs($this->coach)
+            ->postJson("/me/events/{$event->uuid}/entries", ['user_ids' => [$this->athlete('Ali')->id]])
+            ->assertOk()
+            ->assertJsonCount(1, 'entered');
     }
 
     public function test_capacity_is_honoured_across_the_batch(): void
@@ -267,12 +319,14 @@ class BulkEntryTest extends TestCase
 
     public function test_a_coach_cannot_enter_another_clubs_athletes(): void
     {
-        $event = $this->event();
+        $event = $this->event(['scope' => 'inter_club']);
 
-        $otherClub = $this->createClub($this->createUser(), ['country' => 'BH']);
-        $notMine = $this->athlete('Stranger', 57, $otherClub);
+        [$coach] = $this->visitingCoach();
 
-        $response = $this->actingAs($this->coach)
+        $thirdClub = $this->createClub($this->createUser(), ['country' => 'BH']);
+        $notMine = $this->athlete('Stranger', 57, $thirdClub);
+
+        $response = $this->actingAs($coach)
             ->postJson("/me/events/{$event->uuid}/entries", ['user_ids' => [$notMine->id]])
             ->assertOk();
 
@@ -313,17 +367,31 @@ class BulkEntryTest extends TestCase
             ->assertJsonCount(1, 'entered');
     }
 
-    public function test_a_club_admin_whose_grant_was_taken_away_may_not_enter(): void
+    /**
+     * The grant is the authority for a VISITING club — a club that revokes it
+     * revokes the ability, and the role slug alone is never enough.
+     *
+     * Asked of another club's admin, not the host's. An admin of the club
+     * HOSTING the event runs that event outright (EventAccess::canManage,
+     * widened 2026-09-03 so a club owner is not locked out of their own
+     * competition), so `enter-athletes` was never what let them in and taking
+     * it away cannot be what stops them. Testing the rule on the host's admin
+     * measured the wrong authority.
+     */
+    public function test_a_visiting_club_admin_without_the_grant_may_not_enter(): void
     {
-        // The permission is the authority, so a club that revokes it revokes
-        // the ability — the role slug alone must never be enough.
-        $event = $this->event();
+        $event = $this->event(['scope' => 'inter_club']);
+
+        $theirClub = $this->createClub($this->createUser(), ['country' => 'BH']);
         $admin = $this->createUser();
-        $admin->memberClubs()->syncWithoutDetaching([$this->club->id => ['status' => 'active']]);
-        $this->makeClubAdmin($admin, $this->club);
+        $admin->memberClubs()->syncWithoutDetaching([$theirClub->id => ['status' => 'active']]);
+        $this->makeClubAdmin($admin, $theirClub);
+        // No grantEnterAthletes() — that is the whole test.
 
         $this->actingAs($admin->fresh())
-            ->postJson("/me/events/{$event->uuid}/entries", ['user_ids' => [$this->athlete('Ali')->id]])
+            ->postJson("/me/events/{$event->uuid}/entries", [
+                'user_ids' => [$this->athlete('Ali', 57, $theirClub)->id],
+            ])
             ->assertForbidden();
     }
 

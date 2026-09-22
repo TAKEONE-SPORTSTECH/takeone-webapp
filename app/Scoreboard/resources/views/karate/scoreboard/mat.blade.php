@@ -426,7 +426,7 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitNames);
 
   function flagUrl(code) {
-    return /^[a-z]{2}$/.test(String(code || '')) ? 'https://flagcdn.com/w1280/' + code + '.png' : null;
+    return /^[a-z]{2}$/.test(String(code || '')) ? '/images/flags/' + code + '.svg' : null;
   }
 
   /* ── The clock ──────────────────────────────────────────────────────────

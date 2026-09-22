@@ -17,6 +17,19 @@ class UserObserver
 {
     public function saved(User $user): void
     {
+        /*
+         * A competitor standing on a mat right now.
+         *
+         * The event desk's own editor already tells the hall when it changes
+         * somebody; this is every OTHER way a name or a face can change — the
+         * athlete's own profile, a guardian's edit, a platform admin. Behind
+         * one field test, so an ordinary save on a user costs nothing.
+         *
+         * Silent and best-effort: a profile edit must never fail because a
+         * television is off.
+         */
+        rescue(fn () => \App\Events\Support\PersonChanged::sync($user), null, false);
+
         if (! $user->wasChanged('profile_picture')) {
             return;
         }

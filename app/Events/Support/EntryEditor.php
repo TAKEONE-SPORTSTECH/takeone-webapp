@@ -9,6 +9,7 @@ use App\Members\Models\UserRelationship;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
+use App\Models\EventMatch;
 use App\Models\EventClub;
 use App\Sports\Combat\BeltRank;
 use App\Support\StoragePath;
@@ -380,7 +381,15 @@ class EntryEditor
                         throw new \RuntimeException('photo');
                     }
 
-                    $entryUpdates['photo'] = $newPhoto;
+                    /*
+                     * NOT into $entryUpdates — a face belongs to the PERSON,
+                     * and one athlete holds one entry per division. Writing it
+                     * to this row alone left the other divisions (and therefore
+                     * the mat, which draws from whichever row the bracket
+                     * placed) showing the old photograph. EntryPhoto::assign
+                     * writes all of them and discards what it replaces.
+                     */
+                    EntryPhoto::assign($event, $registration, $newPhoto);
                     $changed[] = 'photo';
                 }
 
@@ -510,10 +519,15 @@ class EntryEditor
 
                 if ($entryUpdates) {
                     $registration->forceFill($entryUpdates)->save();
+                    $this->fanOut($event, $registration, $entryUpdates);
                 }
 
                 if ($personUpdates) {
                     $athlete->forceFill($personUpdates)->save();
+
+                    if (array_key_exists('full_name', $personUpdates)) {
+                        $this->restampName($event, $athlete->id, (string) $personUpdates['full_name']);
+                    }
                 }
             });
         } catch (\RuntimeException $e) {
@@ -540,7 +554,9 @@ class EntryEditor
         // REPLACE the old file goes only after the new one is committed).
         if ($previousPhoto && $newPhoto && $previousPhoto !== $newPhoto) {
             // Via EntryPhoto: `photo` may be a REFERENCE to the athlete's own
-            // profile picture rather than a file this entry owns.
+            // profile picture rather than a file this entry owns. (The athlete's
+            // OTHER entries are purged the same way inside assign(), which is
+            // the only place that knows what each of them was carrying.)
             EntryPhoto::discard($previousPhoto);
         }
 
@@ -717,11 +733,52 @@ class EntryEditor
             return false;
         }
 
-        return $this->storeBase64Image(
+        // A photograph is a picture of a PERSON, so it is stored under theirs
+        // and the entry references it (CLAUDE.md → A Person's Photo Has One
+        // Home). The event folder is only for an entry with no account behind
+        // it yet.
+        return \App\Members\Support\ProfilePhoto::capture(
+            $registration->user_id ? \App\Members\Models\User::find($registration->user_id) : null,
             $photo,
             StoragePath::event($event, 'competitors'),
             'c'.$registration->id.'-'.Str::random(16),
         ) ?? false;
+    }
+
+    /**
+     * The facts that describe the PERSON, carried to their other entries.
+     *
+     * An athlete enters one division per entry, so a competitor in Gi and No-Gi
+     * is two rows — and the belt column sits on the row, not on them. Correct a
+     * rank at the desk and only the division the editor happened to open was
+     * right; the other one, and whichever of the two the draw put on the mat,
+     * went on saying something the organiser had just said was wrong.
+     *
+     * WEIGHT IS NOT HERE, and must not be added: a weight is a reading taken at
+     * a scale for one entry, and the two divisions an athlete enters can
+     * legitimately record different ones. Nor is the club, whose second table
+     * (`event_club_entrants`) makes it a change of its own rather than a copied
+     * column.
+     *
+     * The photograph goes the same way, through EntryPhoto::assign, which owns
+     * it because it also has to decide what to do with the file left behind.
+     *
+     * @param  array<string, mixed>  $updates  what was just written to this row
+     */
+    private function fanOut(ClubEvent $event, ClubEventRegistration $registration, array $updates): void
+    {
+        $shared = array_intersect_key($updates, array_flip(['belt_colour', 'belt_grade']));
+        $userId = (int) $registration->user_id;
+
+        if (! $shared || ! $userId) {
+            return;
+        }
+
+        ClubEventRegistration::where('event_id', $event->id)
+            ->where('user_id', $userId)
+            ->where('id', '!=', $registration->id)
+            ->get()
+            ->each(fn (ClubEventRegistration $sibling) => $sibling->forceFill($shared)->save());
     }
 
     /* ==================== Putting them in the right division ==================== */
@@ -777,6 +834,46 @@ class EntryEditor
         return $movedTo !== $movedFrom;
     }
 
+    /**
+     * A corrected name, written back onto the draw rows that carry it.
+     *
+     * ⚠️ `event_matches.a_name` is a SNAPSHOT, taken by DrawEngine when the
+     * bracket was cut, and everything the hall reads is built from it — the
+     * bracket, the running order, the wall's upcoming board and the plate on
+     * the mat. It has to be: a hand-typed entrant has no account behind them,
+     * and a provisional slot holds a projected name with nobody in it yet.
+     *
+     * The cost of a snapshot is that it goes stale. An organiser fixing a
+     * misspelt name at the desk changed the person and left every board in the
+     * venue announcing the old spelling, with nothing anywhere saying why. So
+     * the correction follows the person onto their rows, in the same
+     * transaction as the edit.
+     *
+     * Scoped by COMPETITOR ID, never by the old name: two athletes can share a
+     * name, and matching on the string would rename the wrong one. Entries the
+     * draw never placed simply match nothing.
+     */
+    public function restampName(ClubEvent $event, int $userId, string $name): void
+    {
+        if ($userId <= 0 || $name === '') {
+            return;
+        }
+
+        $entryIds = ClubEventRegistration::where('event_id', $event->id)
+            ->where('user_id', $userId)
+            ->pluck('id');
+
+        if ($entryIds->isEmpty()) {
+            return;
+        }
+
+        foreach (['a', 'b'] as $side) {
+            EventMatch::where('event_id', $event->id)
+                ->whereIn($side.'_competitor_id', $entryIds)
+                ->update([$side.'_name' => $name]);
+        }
+    }
+
     /* ==================== Telling everyone ==================== */
 
     /**
@@ -808,6 +905,23 @@ class EntryEditor
             fn (int $id) => ['topic' => \Realtime()->userTopic($id, 'events'), 'payload' => $payload],
             $watchers,
         )), null, false);
+
+        /*
+         * And the WALL, which hears none of the above.
+         *
+         * A mat's board is not a view that re-fetches — it is a snapshot the
+         * engine assembles when the bout is called and then keeps. So an
+         * organiser correcting a photograph, a belt or a weight while that
+         * athlete's bout is loaded changed the record and left the hall looking
+         * at the old one, with nothing anywhere saying so. Reported 2026-09-16.
+         *
+         * Fleet is the scoreboard module's one public door (CLAUDE.md → "The
+         * Platform Is a Set of Modules"); which sports have mats, and how each
+         * one is refreshed, is entirely behind it. It is silent and best-effort:
+         * an edit must not fail because a screen is unreachable.
+         */
+        rescue(fn () => app(\App\Scoreboard\Fleet::class)
+            ->entryChanged($event, (int) $registration->id), null, false);
     }
 
     /* ==================== Reading it back ==================== */

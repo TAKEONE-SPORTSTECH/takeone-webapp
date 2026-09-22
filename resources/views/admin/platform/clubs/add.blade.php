@@ -390,13 +390,10 @@ function autoFillFromCountry(countryName) {
     if (phoneCodeInput && country.call_code) {
         phoneCodeInput.value = country.call_code;
         if (phoneCodeFlag) {
-            // Convert ISO2 to flag emoji
-            const flagEmoji = country.iso2
-                .toUpperCase()
-                .split('')
-                .map(char => String.fromCodePoint(127397 + char.charCodeAt(0)))
-                .join('');
-            phoneCodeFlag.textContent = flagEmoji;
+            // Our own flag file via the local sheet, not an emoji
+            // (CLAUDE.md -> Flags Come From One Local Source).
+            phoneCodeFlag.textContent = '';
+            phoneCodeFlag.className = 'fi fi-' + country.iso2.toLowerCase() + ' rounded-[2px]';
         }
         if (phoneCodeCountry) {
             phoneCodeCountry.textContent = `${country.name} (${country.call_code})`;

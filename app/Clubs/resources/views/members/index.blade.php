@@ -845,6 +845,9 @@
 </div>
 
 @push('scripts')
+{{-- The one nationality/flag runtime (window.paintNationalities) --}}
+@include('partials.nationality-runtime')
+
 <script>
 const clubId = '{{ $club->id }}';
 let selectedMembers = new Set();
@@ -1009,26 +1012,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Load countries and convert ISO3 to flag emoji
 function loadNationalityFlags() {
-    fetch('/data/countries.json')
-        .then(response => response.json())
-        .then(countries => {
-            document.querySelectorAll('.nationality-display').forEach(element => {
-                const iso3Code = element.getAttribute('data-iso3');
-                if (!iso3Code) return;
-
-                const country = countries.find(c => c.iso2 === iso3Code || c.iso3 === iso3Code);
-                if (country) {
-                    const flagEmoji = country.iso2
-                        .toUpperCase()
-                        .split('')
-                        .map(char => String.fromCodePoint(127397 + char.charCodeAt(0)))
-                        .join('');
-
-                    element.textContent = `${flagEmoji} ${country.name}`;
-                }
-            });
-        })
-        .catch(error => console.error('Error loading countries:', error));
+    // One runtime for every nationality cell in the product —
+    // partials/nationality-runtime, included alongside. This page used to
+    // carry its own copy that drew an EMOJI flag, which renders as the
+    // letters "BH" on Windows (CLAUDE.md -> Flags Come From One Local
+    // Source). It paints itself; this call is for anything re-rendered.
+    window.paintNationalities?.(document);
 }
 
 const _cardsUrl    = '{{ route('admin.club.members.cards', $club->slug) }}';

@@ -169,6 +169,21 @@ class EventAccess
 
     public function drawVisible(ClubEvent $event, ?User $user = null): bool
     {
+        /*
+         * A REHEARSAL is not published, at any setting.
+         *
+         * While one is running the real bracket is being advanced by practice
+         * bouts, and it is put back when the rehearsal ends. A reader who is
+         * not running the event must never be shown that intermediate state —
+         * so the draw closes for everybody except the people doing the
+         * rehearsing, which is the same set the concealed-draw rule already
+         * lets through below. See App\Events\Support\Rehearsal.
+         */
+        if (app(Rehearsal::class)->active($event)) {
+            return $user !== null && ($this->canManage($event, $user)
+                || $event->officials()->where('user_id', $user->id)->exists());
+        }
+
         if ($event->drawRevealed()) {
             return true;
         }

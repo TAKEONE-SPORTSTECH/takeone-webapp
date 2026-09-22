@@ -65,6 +65,7 @@ return [
     'notify_draw_title' => '抽签已公布 —— :title',
     'notify_weigh_in_body' => '正式称重时间：:time，地点：:place。您必须达到所属级别的体重限制才能参赛。',
     'notify_weigh_in_title' => '明天称重 —— :title',
+    'pool_not_arranged' => '本课程为自由对抗赛，所有学员之间互相对抗，无需安排对阵。请添加或移除课程成员。',
     'result_body_done' => '这是您当天的最后一场比赛。',
     'result_body_next' => '下一场：:round 在 :mat 上，大约 :minutes 分钟',
     'result_loss_title' => '比赛结束',

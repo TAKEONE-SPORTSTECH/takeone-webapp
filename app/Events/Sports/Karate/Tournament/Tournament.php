@@ -34,7 +34,7 @@ use Illuminate\Validation\Rule;
  * from the Karate combat-sport plug-in. Nothing outside this directory needs
  * to know Karate exists.
  */
-class Tournament extends AbstractEventType
+class Tournament extends AbstractEventType implements \App\Events\Contracts\AwardsDivisions
 {
     use SyncsDivisions;
 
@@ -284,7 +284,23 @@ class Tournament extends AbstractEventType
         $match = EventMatch::with('category')->where('event_id', $event->id)->findOrFail($unitId);
 
         // A finished championship is a historical record.
-        abort_if($event->hasEnded(), 422, __('event-karate_tournament::messages.ended_locked'));
+        /*
+         * ⚠️ A FINISHED CHAMPIONSHIP IS STILL CORRECTABLE (2026-09-20, at the
+         * owner's instruction).
+         *
+         * This used to refuse outright — "a finished championship is a
+         * historical record" — and that reading is wrong in the one case that
+         * matters: the record is wrong. A winner entered against the wrong
+         * corner on the day is found when somebody reads the sheet afterwards,
+         * and refusing the correction does not protect the history, it
+         * preserves the mistake in it.
+         *
+         * Nothing else changed. This door is me.events.outcome, which asks for
+         * canManage on every call; the change is appended to the officiating
+         * log exactly as any other; and Advancement re-cuts whatever followed
+         * the bout, which is what correcting a result means. The board offers
+         * it only behind its padlock.
+         */
 
         $result = $this->advancement()->record($match, $payload);
 
@@ -337,6 +353,7 @@ class Tournament extends AbstractEventType
             'generate_draw' => $this->generateDraw($event),
             'arrange_draw' => $this->arrangeDraw($event, $payload),
             'clear_draw' => $this->clearDraw($event, $payload),
+            'admit_late_entry' => $this->admitLateEntry($event, $payload),
             'end_next_bout' => $this->endNextBout($event),
             default => ['success' => false, 'message' => __('events.action_unsupported')],
         };
@@ -356,6 +373,17 @@ class Tournament extends AbstractEventType
             // Arranging is offered as an action rather than a route of its own,
             // so the "may this run?" check stays in one place: an action the
             // package does not currently offer can never be performed.
+            //
+            // ⚠️ STILL WITHDRAWN AT THE START HERE, unlike Brazilian Jiu-Jitsu.
+            // Not an oversight and not a preference: this package still carries
+            // its own copy of Arrangement (App\Events\Sports\Karate\Tournament\
+            // Arrangement), which refuses every move once the event has started,
+            // while BJJ's extends the shared base that allows the narrow ones.
+            // Offering the verb here would put a control on the board that
+            // always refuses, which is worse than not offering it.
+            //
+            // The fix is the port CLAUDE.md already describes (Shared Stays
+            // Shared → the agreed approach), and it needs its own go-ahead.
             $actions[] = [
                 'action' => 'arrange_draw',
                 'label' => __('event-karate_tournament::messages.action_arrange_draw'),
@@ -366,6 +394,24 @@ class Tournament extends AbstractEventType
                 'action' => 'clear_draw',
                 'label' => __('event-karate_tournament::messages.action_clear_draw'),
                 'icon' => 'bi-eraser',
+            ];
+        }
+
+        /*
+         * Admitting somebody to a division that is ALREADY BEING FOUGHT.
+         *
+         * ⚠️ OUTSIDE the block above, deliberately: everything in there re-cuts
+         * a board and is rightly withdrawn the moment the day starts. This one
+         * is for the desk at ten in the morning — an entered, eligible
+         * competitor turns up for a division three bouts deep — and it protects
+         * the RESULTS rather than the clock, so it has no business being
+         * withdrawn by one. See App\Events\Support\Tournament\LateEntry.
+         */
+        if ($event->categories()->exists() && ! $event->hasEnded()) {
+            $actions[] = [
+                'action' => 'admit_late_entry',
+                'label' => __('event-karate_tournament::messages.action_admit_late_entry'),
+                'icon' => 'bi-person-plus',
             ];
         }
 
@@ -533,9 +579,110 @@ class Tournament extends AbstractEventType
      * the bench), so the broadcast is a refresh signal — the division's data
      * comes back only to the operator who moved it, for their in-place patch.
      */
+    /**
+     * Put a late entrant onto a division's board, whatever state it is in.
+     *
+     * The division may be mid-competition; that is the whole point. What it may
+     * not do is cost anybody a result, and the engine — not this method — is
+     * what guarantees that. Here we only resolve WHO and WHERE, including the
+     * common case where the athlete is entered in the championship but sitting
+     * in no division at all (or in the wrong one, which is the same repair).
+     *
+     * Shared with every other combat package: see
+     * App\Events\Support\Tournament\LateEntry.
+     */
+    private function admitLateEntry(ClubEvent $event, array $payload): array
+    {
+        $category = $event->categories()->find($payload['category_id'] ?? null);
+
+        if (! $category || $category->isHeading()) {
+            return ['success' => false, 'message' => __('events.division_not_found')];
+        }
+
+        $entry = $event->registrations()
+            ->where('id', (int) ($payload['competitor_id'] ?? 0))
+            ->where('role', 'participant')
+            ->with('user:id,full_name,name')
+            ->first();
+
+        if (! $entry) {
+            return ['success' => false, 'message' => __('events.late_entry_not_an_entrant')];
+        }
+
+        /*
+         * ⚠️ A PERSON IS ONE; THEIR ENTRIES ARE MANY — one per division, held
+         * by a unique key. If this athlete already has an entry in the target
+         * division, that is the row to admit; moving the picked one on top of
+         * it violates the key. Only otherwise is the picked row moved, which is
+         * the repair for somebody entered in the championship and placed in no
+         * division at all.
+         */
+        $mine = $event->registrations()
+            ->where('role', 'participant')
+            ->where('user_id', $entry->user_id)
+            ->where('category_id', $category->id)
+            ->with('user:id,full_name,name')
+            ->first();
+
+        if ($mine) {
+            $entry = $mine;
+        } else {
+            $from = $entry->category;
+
+            try {
+                $entry->category_id = $category->id;
+                $entry->save();
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                return ['success' => false, 'message' => __('events.late_entry_already_drawn')];
+            }
+
+            if ($from) {
+                rescue(fn () => $this->arrangement()->syncEntrants($from->fresh()), null, false);
+            }
+        }
+
+        $result = (new \App\Events\Support\Tournament\LateEntry($this->advancement()))
+            ->admit($event, $category, $entry->fresh(['user']));
+
+        if (! ($result['ok'] ?? false)) {
+            return ['success' => false, 'message' => $result['message'] ?? __('events.action_unsupported')];
+        }
+
+        $this->scheduler->scheduleAndNumber($event->fresh());
+
+        $name = $entry->user?->full_name ?: $entry->user?->name ?: __('events.athlete');
+
+        $message = match (true) {
+            $result['how'] === 'grown' => __('events.late_entry_grown', ['name' => $name, 'opponent' => $result['opponent']]),
+            filled($result['opponent'] ?? null) => __('events.late_entry_placed', ['name' => $name, 'opponent' => $result['opponent']]),
+            default => __('events.late_entry_placed_bye', ['name' => $name]),
+        };
+
+        return $this->arrangedResponse($event, $category->fresh(), $message);
+    }
+
     private function arrangedResponse(ClubEvent $event, EventCategory $category, string $message): array
     {
         $this->broadcast($event, ['action' => 'draw', 'division' => $category->id]);
+
+        /*
+         * And the WALL. broadcast() reaches USER topics — an athlete's phone,
+         * an organiser's console — and a hall screen is not a user: it has no
+         * session and nothing in that scheme fits it, so it heard none of this.
+         *
+         * Every path into this method changes who is standing in a first-round
+         * slot: arranging, clearing, growing a division, admitting a late
+         * entry. The scheduler has just re-numbered and re-mat'd the bouts
+         * above, so a competitor moved between brackets is now queued on a
+         * different board — and both the board they left and the board they
+         * joined were showing the old draw until somebody power-cycled a
+         * television.
+         *
+         * Fleet is the scoreboard module's one public door (CLAUDE.md → "The
+         * Platform Is a Set of Modules"), and it is silent and best-effort: an
+         * arrangement must never fail because a screen is unreachable.
+         */
+        rescue(fn () => app(\App\Scoreboard\Fleet::class)->boardsChanged($event), null, false);
 
         return [
             'success' => true,
@@ -943,6 +1090,18 @@ class Tournament extends AbstractEventType
     private function enrolment(): Enrolment
     {
         return new Enrolment($this->sport());
+    }
+
+    /**
+     * Award one division again, on request — App\Events\Contracts\AwardsDivisions.
+     *
+     * Shared code changes things a podium depends on (the play-off for bronze
+     * being switched on or off) and cannot construct this package's own
+     * Advancement to settle the consequence. This is the door it knocks on.
+     */
+    public function awardDivision(\App\Models\EventCategory $category): array
+    {
+        return $this->advancement()->awardIfComplete($category);
     }
 
     private function advancement(): Advancement

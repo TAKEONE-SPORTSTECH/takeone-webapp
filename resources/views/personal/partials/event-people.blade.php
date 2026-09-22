@@ -148,10 +148,19 @@
                     return !s || (name || '').toLowerCase().includes(s);
                 },
                 // Names per list, so a list can say when a search matched nothing.
+                {{-- ⚠️ Only the lists this render actually DRAWS.
+
+                     Without tabs (`sheetOnly` — the entry list, which includes
+                     this partial for its verification sheet alone) the
+                     spectators and blocked sections do not exist on the page,
+                     and serialising their names anyway put every ticket-holder
+                     and every moderated member into the source of a page that
+                     shows neither. A search index for a list nobody can open is
+                     not a feature, it is a disclosure. --}}
                 names: {
                     participants: @js(collect($e['participants'] ?? [])->pluck('name')->values()),
-                    spectators: @js(collect($e['spectators_list'] ?? [])->pluck('name')->values()),
-                    blocked: @js(collect($e['bans_list'] ?? [])->pluck('name')->values()),
+                    spectators: @js($showTabs ? collect($e['spectators_list'] ?? [])->pluck('name')->values() : []),
+                    blocked: @js($showTabs ? collect($e['bans_list'] ?? [])->pluck('name')->values() : []),
                 },
                 noMatches(list) {
                     return this.q.trim() !== '' && !(this.names[list] || []).some(n => this.match(n));
@@ -206,9 +215,41 @@
                            Matching by hand needs no quoting at all. */
                         const row = Array.from(document.querySelectorAll('[data-entry]'))
                             .find(el => el.getAttribute('data-entry') === String(wanted));
-                        if (! row) return;
-                        row.click();
-                        row.scrollIntoView({ block: 'center' });
+
+                        if (row) { row.click(); row.scrollIntoView({ block: 'center' }); return; }
+
+                        /* ⚠️ NO ROW TO CLICK, and that is the ordinary case.
+
+                           This partial renders in two shapes. On the event
+                           screen it draws the roster itself, and those rows
+                           carry data-entry. On the ENTRY LIST it is included
+                           with sheetOnly — the page draws its own cards and
+                           this render contributes the verification sheet and
+                           nothing else — so there is no row anywhere, and the
+                           deep link found nothing and quietly did nothing.
+
+                           That is the whole of a bug reported on 2026-09-16: a
+                           participant card offering to open somebody s
+                           verification landed the organiser on the list of
+                           everybody who has joined, with no sheet.
+
+                           openEntry() is the same door the page s own action
+                           menu uses and carries the same guard — the gates map
+                           holds only entries this viewer may officiate, so a
+                           registration that is not theirs still opens nothing.
+                           The row-click path above is kept first, so a page
+                           that HAS rows behaves exactly as it did. */
+                        const gate = this.gates[wanted];
+                        if (! gate) return;
+
+                        this.openEntry(wanted);
+
+                        /* The card is keyed by the PERSON; the deep link names
+                           an ENTRY. The gate knows both. */
+                        const card = gate.user_id
+                            ? document.getElementById('prow-' + gate.user_id)
+                            : null;
+                        if (card) card.scrollIntoView({ block: 'center' });
                     });
                 },
 
@@ -769,6 +810,25 @@
                          @keydown.escape.window="closePerson()" role="dialog" aria-modal="true" style="display:none;">
                         <div x-show="sel !== null" x-transition.opacity class="absolute inset-0 bg-black/50" @click="closePerson()"></div>
 
+                        {{-- FULL WIDTH, not full height (owner's call,
+                             2026-09-17).
+
+                             It was `sm:max-w-md` — a 448px card floating in the
+                             middle of a wide screen, which is what a tablet at
+                             the weigh-in desk actually is. The cap is gone, so
+                             the desk runs edge to edge at every width. The
+                             HEIGHT stays capped: this is still a sheet laid over
+                             the list, not a page, and the list showing above it
+                             is how an official knows where they came from.
+
+                             ⚠️ `max-h-[92vh]` and `sm:max-h-[85vh]` are both in
+                             the PREBUILT Tailwind bundle. `h-dvh`, `h-screen`
+                             and `sm:h-[94vh]` are NOT, and a height class with
+                             no CSS behind it does not make a shorter sheet — it
+                             makes a panel that grows past the screen and takes
+                             its own footer with it (CLAUDE.md → the
+                             prebuilt-bundle note). Check the built file before
+                             changing any measurement here. --}}
                         <div x-show="sel !== null"
                              x-transition:enter="transition ease-out duration-300"
                              x-transition:enter-start="translate-y-full"
@@ -776,7 +836,7 @@
                              x-transition:leave="transition ease-in duration-200"
                              x-transition:leave-start="translate-y-0"
                              x-transition:leave-end="translate-y-full"
-                             class="relative w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+                             class="relative w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
 
                             {{-- Who --}}
                             <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
@@ -803,40 +863,33 @@
                                           x-text="isReady(sel) ? @js(__('personal.event_verify_in_draw')) : @js(__('personal.event_verify_held'))"></span>
                                 </div>
 
-                                {{-- ===== The same athlete's OTHER entries =====
+                                {{-- The entries switcher was removed on 2026-09-17
+                                     at the owner's request: a row of chips in the
+                                     band read as tabs, and this sheet is not a
+                                     tabbed screen.
 
-                                     One person, two entries — a Gi group and a
-                                     No-Gi group at the same championship. The
-                                     list outside shows them as ONE card, because
-                                     they are one person; the desk signs for one
-                                     ENTRY at a time, because that is what a fee
-                                     and a scale reading belong to.
+                                     ⚠️ What it did is NOT replaced. Both lists
+                                     that open this desk draw one card per PERSON
+                                     (RosterPeople::byPerson), so an athlete
+                                     entered in two divisions — a Gi group and a
+                                     No-Gi group at the same championship — has
+                                     ONE card, and the desk now opens on their
+                                     FIRST entry with no door to the second. A
+                                     fee, a receipt and a weigh-in signature all
+                                     belong to an ENTRY, so that second entry
+                                     cannot be signed from here at the moment.
 
-                                     So the entries are chips here: tapping one
-                                     re-opens the sheet on it. A tick on a chip
-                                     is that entry already cleared, so an
-                                     official can see at a glance which half of
-                                     the work is left. Rendered only when there
-                                     is more than one — a single entry needs no
-                                     chooser and the sheet is unchanged. --}}
-                                <template x-if="(current?.entries || []).length > 1">
-                                    <div class="relative mt-3">
-                                        <p class="text-[10px] font-bold uppercase tracking-wide text-white/70">{{ __('personal.event_verify_entries') }}</p>
-                                        <div class="mt-1.5 flex flex-wrap gap-1.5">
-                                            <template x-for="en in current.entries" :key="en.reg">
-                                                <button type="button" @click="openPerson(en.reg)"
-                                                        class="m-press inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors"
-                                                        :class="String(en.reg) === String(sel)
-                                                            ? 'bg-white text-foreground border-white'
-                                                            : 'bg-white/15 text-white border-white/30 hover:bg-white/25'">
-                                                    <i class="bi text-[10px]"
-                                                       :class="isReady(en.reg) ? 'bi-check-circle-fill' : 'bi-circle'"></i>
-                                                    <span x-text="en.label"></span>
-                                                </button>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </template>
+                                     The gate payload still carries `entries`
+                                     (App\Events\Support\EntryGates::attach), so
+                                     whatever replaces this — both entries stacked
+                                     in the body, or one card per entry in the
+                                     list — has the data waiting and needs no
+                                     server change. Registered in
+                                     Documentation/HOUSE-CLEANING.md.
+
+                                     ⚠️ `personal.event_verify_entries` is now
+                                     unread. Left in the lang files rather than
+                                     deleted in passing (House Cleaning). --}}
                             </div>
 
                             <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">

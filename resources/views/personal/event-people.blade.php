@@ -33,6 +33,12 @@
 
         return strlen($c) === 2 ? 'fi fi-'.$c : null;
     };
+
+    /* The event's colour, for the band on the card's organiser sheet
+       (Design Rule #8). Through Palette::safe because it lands in a `style`
+       attribute and it is organiser-supplied; the card whitelists it a second
+       time, which is belt and braces on purpose. */
+    $pCardColor = \App\Support\Palette::safe($e['color'] ?? null);
 @endphp
 
 @section($contentSection ?? 'content')
@@ -44,7 +50,17 @@
      lands in a padded one. Cancelling unconditionally would fix the sealed page
      and push the member page 16px past both screen edges, so the cancellation
      follows the shell. --}}
-<div class="{{ isset($shell) ? '-mx-4 -mt-4' : '' }}" x-data="{
+{{-- The card opens the door, this page walks through it.
+
+     <x-participant-card>'s organiser sheet owns neither the editor nor the
+     removal — it names an entry and says what was asked for, and the host that
+     already has both does the work. Same contract as `open-verification`, and
+     the same reason: an endpoint is authorised where it is performed, and a
+     list is patched by whoever owns it. --}}
+<div class="{{ isset($shell) ? '-mx-4 -mt-4' : '' }}"
+     @participant-edit.window="openFix({ reg: $event.detail.entry, name: $event.detail.name, club: $event.detail.club })"
+     @participant-remove.window="removeEntry($event.detail.entry)"
+     x-data="{
         tab: 'athletes',
         q: '',
         match(...fields) {
@@ -138,6 +154,18 @@
             if (! this.actions) return;
             const reg = this.actions.reg;
             this.closeActions();
+            this.picked = [reg];
+            await this.removePicked();
+        },
+
+        {{-- The same removal, asked for by the card's own sheet rather than by
+             this page's action sheet. It arrives as a registration id and
+             nothing else, so it goes straight down the one-entry path that
+             removeOne() uses — the confirmation, the endpoint and the list
+             patch are all removePicked()'s, and there is no second version of
+             any of them. --}}
+        async removeEntry(reg) {
+            if (! reg) return;
             this.picked = [reg];
             await this.removePicked();
         },
@@ -707,24 +735,35 @@
                 await this.loadFix(true);
             }
 
-            {{-- And the row's picture, which is the one part of a card bound
-                 live. The rest of the card is server-rendered text and has no
-                 partial to re-render from — see the note in the report. --}}
-            if ((d.fields || []).includes('photo')) {
+            {{-- And the CARD — all of it, the same way the person who made the
+                 change sees it (patchEntrantCard is what saveFix calls).
+
+                 This used to patch the photograph alone, so a name, a club, a
+                 belt or a weight corrected by somebody else sat stale on every
+                 other screen until it was reloaded. One fetch feeds both: the
+                 server decides what this viewer may see, which is why a refresh
+                 signal carries no entry fields of its own. --}}
+            try {
+                const res = await fetch(this.entrantUrl(d.registration), {
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                });
+                const j = await res.json().catch(() => ({}));
+                if (! res.ok || ! j.success || ! j.entry) return;
+
+                {{-- The card is named for the FIRST of the person's entries,
+                     so a change to their second is patched onto the card that
+                     actually shows them. --}}
+                this.patchEntrantCard({ ...j.entry, registration: this.cardRegOf(d.registration) });
+
                 const scope = this.cardScope(d.registration);
-                if (! scope) return;
-                try {
-                    const res = await fetch(this.entrantUrl(d.registration), {
-                        headers: { 'Accept': 'application/json' },
-                        credentials: 'same-origin',
-                    });
-                    const j = await res.json().catch(() => ({}));
-                    if (res.ok && j.success) {
-                        scope.photo = j.entry.photo ? j.entry.photo + '?v=' + Date.now() : null;
-                        scope.owned = !! j.entry.photo;
-                    }
-                } catch (e) { /* the last good picture stays */ }
-            }
+                if (scope) {
+                    {{-- Cache-busted: a replaced photograph can land on the
+                         same URL, and the browser would keep the old bytes. --}}
+                    scope.photo = j.entry.photo ? j.entry.photo + '?v=' + Date.now() : null;
+                    scope.owned = !! j.entry.photo;
+                }
+            } catch (e) { /* the last good card stays on screen */ }
         },
      }">
 
@@ -1076,6 +1115,79 @@
                        badges: withheld rows carry no weight to print. */
                     $pWeight = $pShowStatus ? ($p['weight'] ?? null) : null;
 
+                    /* Where a division chip goes: this event's own bracket,
+                       which the chip narrows with `?division=<id>`. Offered to
+                       whoever may MANAGE — they read the draw at every setting
+                       (EventAccess::drawVisible) — and to nobody else here, and
+                       a chip with no destination is then a silent label rather
+                       than a promise. Rendered as a whole address so the sealed
+                       app's rewriter can map it (see <x-running-order-board>'s
+                       note on why a URL must never be assembled in JS). */
+                    $pDrawUrl = route('me.events.bracket.manage', $e['key']);
+
+                    /* ===== THE CARD'S OWN PAYLOAD =====
+
+                       <x-participant-card> reads ONE array about the person and
+                       one about their readiness — the same two this event's
+                       public entry list hands it (PublicEvent). Built here from
+                       the roster row so the organiser and the public read the
+                       identical card; the organiser's POWERS are added on top
+                       through the tag, not by drawing a second card.
+
+                       `belt_icon` is resolved server-side by
+                       App\Sports\Combat\BeltIcon — the one place the belt's
+                       colour maths lives — because the card only paints what it
+                       is told (CLAUDE.md → the belt component). */
+                    $pPerson = [
+                        'name' => $pName,
+                        'uuid' => $pUuid,
+                        'gender' => $pGender,
+                        'age' => $pAge,
+                        'country' => $pCountry,
+                        'club' => $pClubName,
+                        'club_logo' => $pClubLogo,
+                        /* The club's own page, when it HAS one — a club the
+                           organiser wrote down for the day has no tenant behind
+                           it and is a name only (RosterPeople::clubHref returns
+                           null for it).
+
+                           ⚠️ Not inside the sealed event app: there is no
+                           sealed club page, so the address would walk the
+                           reader out of the event. `$sealed` is shared only on
+                           the /e/{uuid}/admin routes. */
+                        'club_href' => ($sealed ?? false) ? null : ($p['club']['href'] ?? null),
+                        'photo' => $p['photo'] ?? null,
+                        'activity' => $pActivity,
+                        'belt_icon' => \App\Sports\Combat\BeltIcon::for($p['belt'] ?? null),
+                        'division_rows' => $p['division_rows'] ?? [],
+                    ];
+
+                    /* The two badges, and ONLY for a row the server allowed to
+                       show its status. Null means the card draws no badges at
+                       all — never grey ones, because a row of grey badges is
+                       itself saying something about another family's fee and
+                       their child's weight (attachReadiness). */
+                    /* HOW MANY of their entries are settled, so a part-paid
+                       card can say so rather than reading as "has not paid".
+                       A fee is per ENTRY: somebody in Gi and No-Gi owes twice,
+                       and `paid` above is true only when both are. */
+                    $pEntries = collect($p['entries'] ?? []);
+                    $pPaidCount = $pEntries->filter(fn ($en) => ! empty($en['paid']))->count();
+
+                    $pReady = $pShowStatus ? [
+                        'status' => match (true) {
+                            ! $pFeePaid => 'pending',
+                            $pWeighState !== 'official' && $pWeighState !== 'self' => 'paid',
+                            default => 'ready',
+                        },
+                        'paid' => $pFeePaid,
+                        'paid_count' => $pPaidCount,
+                        'entries_count' => $pEntries->count(),
+                        'weighed' => $pWeighState === 'official',
+                        'weight' => $pWeight,
+                        'weight_verified' => $pWeighState === 'official',
+                    ] : null;
+
                     /* What the sheet needs to know about this entry. The profile
                        URL travels with it so the sheet never has to build one. */
                     $pSheet = json_encode([
@@ -1093,145 +1205,84 @@
                     $pRing = "selecting && isPicked({$pRegJs}) ? 'ring-2 ring-primary border-primary bg-primary/[0.06]' : ''";
                 @endphp
 
-                {{-- ===== The SHARED entrant card =====
+                {{-- ===== ONE CARD ON THE PLATFORM =====
 
-                     The very same <x-entrant-card> the public participants page
-                     renders. It used to be a card of its own here — a 48px
-                     square portrait on a squat row — and the organiser, the one
-                     person who actually runs the competition, got the worse of
-                     the two. Now the shape is the component's and only the
-                     ORGANISER'S POWERS are added on top, through its slots:
-                     a selection checkbox and the put-a-face-on-this-entry
-                     controls.
+                     <x-participant-card>, the very same component the event's
+                     public entry list draws. This page used to draw
+                     <x-entrant-card> instead — two components for one thing,
+                     which is exactly what *Shared Stays Shared* exists to stop,
+                     and the organiser (the one person who actually runs the
+                     competition) had the worse of the two. Swapped on
+                     2026-09-17 at the owner's instruction.
+
+                     The card's SHAPE is the component's. Only the ORGANISER'S
+                     POWERS are added on top, and each through a seam the
+                     component offers rather than a fork of it:
+
+                       · `can-edit`   → a pencil in the sheet's HEADER, which
+                                        dispatches `participant-card:edit`; this
+                                        page listens and opens its own editor.
+                       · `can-remove` → the red row, dispatching
+                                        `participant-card:remove`.
+                       · the trailing slot → the selection checkbox.
+                       · plain attributes → the select-mode tap swallow, the
+                                        ring and the checkbox roles.
 
                      While selecting, the card stops being a door and becomes a
                      checkbox: the tap is swallowed with `capture`, BEFORE any
                      control inside can act on it, and the href is left in place
-                     so it is a link again the instant selection ends. An entry
-                     with no registration id cannot be picked — there is nothing
-                     to send.
+                     so it is a link again the instant selection ends.
 
-                     ⚠️ Alpine's `:class` / `:role` / `:aria-checked` are written
-                     `::class` etc. here: inside a component tag a single colon
-                     means a BOUND PHP PROP, and Blade would try to evaluate the
-                     Alpine expression as PHP. --}}
-                {{-- ⚠️ TWO tags, one component. Not `@if` inside a single tag:
+                     ⚠️ Alpine's `:class` / `:role` / `:aria-checked` are
+                     written `::class` etc: inside a component tag a single
+                     colon means a BOUND PHP PROP, and Blade would try to
+                     evaluate the Alpine expression as PHP.
+
+                     ⚠️ TWO tags, one component. Not `@if` inside a single tag:
                      a directive in a component's attribute list compiles to
                      broken PHP ("unexpected endif"), and this version of Blade
                      cannot spread an attribute bag either. So the branch is
-                     OUTSIDE the tag, and the card's SHAPE is still defined in
-                     exactly one place. --}}
-                {{-- ===== The row's wrapper, and why it exists =====
+                     OUTSIDE the tag.
 
-                     The two readiness badges STRADDLE the card's top edge —
-                     half of each pill above it, half below (asked for on
-                     2026-09-04). <x-entrant-card> clips its own overflow, so a
-                     badge hung inside it would be sliced in half; this wrapper
-                     is unclipped and is what the pills are positioned against.
-
-                     It also carries the search's `x-show`, so a row that does
-                     not match hides its badges with it — the filter is on the
-                     wrapper rather than on the card for exactly that reason.
-                     The card keeps its own `x-show` too: harmless, and it means
-                     the card is still filterable on its own wherever else it is
-                     used. --}}
-                <div class="relative" x-show="{{ $pShow }}" x-cloak>
-                    @if($pShowStatus)
-                        {{-- Your OWN row shows its badges to you as well:
-                             seeing that your fee is outstanding is the one
-                             status a competitor is entitled to. Everybody
-                             else's row has no badges AT ALL rather than grey
-                             ones — see attachReadiness(). --}}
-                        <x-entrant-readiness-badges :paid="$pFeePaid" :weigh="$pWeighState" />
-                    @endif
-
+                     The readiness badges are the CARD's now — it draws them
+                     from `ready` on its own top line — so the unclipped wrapper
+                     that used to hang them over <x-entrant-card>'s clipped edge,
+                     and <x-entrant-readiness-badges> with it, are gone from
+                     this list. One less thing positioned against another. --}}
                 @if($pManage)
-                    <x-entrant-card
-                        :name="$pName" :gender="$pGender" :country="$pCountry" :age="$pAge"
-                        :divisions="$division" :activity="$pActivity"
-                        :weight="$pWeight" :weight-tone="$pWeighState" :activities="$pActivities" :activity-width="$feeBadgeCh"
-                        :belt="$p['belt'] ?? null" :belt-grade="$p['belt_grade'] ?? null"
-                        :club-name="$pClubName" :club-logo="$pClubLogo"
-                        :show="$pShow" :chevron="true"
-                        chevron-show="! selecting"
-                        :id="'entrant-'.$pReg"
-                        :pick="'openActions('.$pSheet.')'"
+                    <x-participant-card
+                        :person="$pPerson" :ready="$pReady"
+                        :manage="true" :event="$e['key']" :entry="$pReg"
+                        :can-edit="true" :can-remove="true"
+                        :color="$pCardColor" :draw-url="$pDrawUrl"
+                        :href="$pHref" :show="$pShow"
                         @click.capture="{{ $pTapWhileSelecting }}"
                         ::class="{{ $pRing }}"
                         ::aria-checked="selecting ? isPicked({{ $pRegJs }}) : null"
-                        ::role="selecting ? 'checkbox' : null"
-                        x-data="competitorPhoto({ event: {{ json_encode($e['key']) }}, registration: {{ $pRegJs }}, photo: {{ json_encode($p['photo']) }}, owned: {{ json_encode((bool) $p['has_entry_photo']) }} })">
+                        ::role="selecting ? 'checkbox' : null">
 
-                        {{-- The checkbox. A real square box rather than a tick
-                             that only exists once chosen: an empty box is what
-                             says "this row can be picked". Leading the card,
-                             because a list of checkboxes is read down its
-                             leading edge. --}}
                         {{-- The checkbox sits on the TRAILING edge: right in
                              English, left in Arabic — asked for on 2026-09-03.
-                             It reads as the row's answer rather than its bullet,
-                             and it takes the chevron's place, so a card is a
-                             door OR a checkbox and never both at once. --}}
+                             It reads as the row's answer rather than its bullet.
+                             A real square box rather than a tick that only
+                             exists once chosen: an empty box is what says "this
+                             row can be picked". --}}
                         <x-slot:trailing>
                             <span x-show="selecting" x-cloak
                                   x-transition:enter="transition ease-out duration-150"
                                   x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                                  class="w-6 h-6 rounded-md border-2 grid place-items-center flex-shrink-0 self-center transition-colors"
+                                  class="w-6 h-6 rounded-md border-2 grid place-items-center flex-shrink-0 transition-colors"
                                   :class="isPicked({{ $pRegJs }}) ? 'bg-primary border-primary text-white' : 'border-gray-300 bg-white'">
                                 <i class="bi bi-check-lg text-[13px] font-black" x-show="isPicked({{ $pRegJs }})" x-cloak></i>
                             </span>
                         </x-slot:trailing>
-
-                        {{-- The picture is live: an organiser can add or clear it
-                             without leaving the page. --}}
-                        <x-slot:picture>
-                            {{-- `x-on:error`, NOT `@error` — Blade would eat that as
-                                 its validation directive. A path whose FILE has gone
-                                 (an entry photo deleted while three tables still named
-                                 it) used to paint the browser's broken-image glyph on
-                                 a competitor card; dropping `photo` hands the portrait
-                                 to the drawn stand-in below, which is what an absent
-                                 picture is supposed to look like. --}}
-                            <template x-if="photo">
-                                {{-- `thumb`, not `photo`: a desk photograph is
-                                     whatever the phone produced and this box is
-                                     42×56 — sixty originals made this page pull
-                                     megabytes to paint postage stamps. `photo`
-                                     stays the original, because the sheet this
-                                     card opens shows the face at size.
-
-                                     Lazy, because a roster is long and the
-                                     reader sees eight rows; async decoding so a
-                                     face never holds up the row around it. --}}
-                                <img :src="thumb" alt="" x-on:error="photo = null"
-                                     loading="lazy" decoding="async"
-                                     class="absolute inset-0 w-full h-full object-cover">
-                            </template>
-                            <template x-if="! photo">
-                                <span class="absolute inset-0">
-                                    <x-gender-avatar :gender="$pGender"
-                                                     :bg="($pGender ?? 'Male') === 'Male' ? 'hsl(250 55% 60%)' : '#ec4899'"
-                                                     sizes="66px" class="w-full h-full" />
-                                </span>
-                            </template>
-                        </x-slot:picture>
-
-{{-- ⚠️ NOTHING on the photograph. There used to be a camera badge
-                             and a ✕ pinned to the thumbnail — two 24px targets in
-                             front of the picture they edit, on a card that is
-                             also a tap target. Both moved into the sheet the card
-                             now opens (asked for on 2026-09-03). --}}
-                    </x-entrant-card>
+                    </x-participant-card>
                 @else
-                    <x-entrant-card
-                        :name="$pName" :photo="$p['photo']" :gender="$pGender"
-                        :country="$pCountry" :age="$pAge" :divisions="$division"
-                        :activity="$pActivity"
-                        :weight="$pWeight" :weight-tone="$pWeighState" :activities="$pActivities" :activity-width="$feeBadgeCh"
-                        :club-name="$pClubName" :club-logo="$pClubLogo"
-                        :href="$pHref" :show="$pShow" :chevron="(bool) $pUuid" />
+                    <x-participant-card
+                        :person="$pPerson" :ready="$pReady"
+                        :color="$pCardColor"
+                        :href="$pHref" :show="$pShow" />
                 @endif
-                </div>
             @empty
                 @include('personal.partials.event-people-empty', [
                     'icon' => 'bi-person-arms-up',

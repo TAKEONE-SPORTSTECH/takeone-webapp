@@ -8,9 +8,10 @@
         @foreach($clubs as $club)
             @php
                 $cc = strtoupper($club->country ?? '');
-                $flag = (strlen($cc) === 2 && ctype_alpha($cc))
-                    ? mb_chr(127397 + ord($cc[0])) . mb_chr(127397 + ord($cc[1]))
-                    : '';
+                /* The CODE — the flag itself is drawn by <x-flag> from our own
+                   files, never an emoji (CLAUDE.md -> Flags Come From One Local
+                   Source). */
+                $flagIso = \App\Support\Flag::iso2($cc);
                 $countryName = $countryNames[$cc] ?? $cc;
             @endphp
             <div class="club-card-wrapper w-full h-full"
@@ -52,10 +53,10 @@
                         </div>
 
                         <!-- Country Flag - Bottom Right -->
-                        @if($flag)
+                        @if($flagIso)
                             <div class="absolute bottom-2 end-2">
                                 <span class="club-flag inline-flex items-center gap-1 bg-white/90 shadow-sm rounded-full ps-2 pe-2.5 py-1 text-xs font-semibold text-foreground whitespace-nowrap">
-                                    <span class="club-flag-emoji text-base leading-none">{{ $flag }}</span><span class="club-flag-code">{{ $countryName }}</span>
+                                    <x-flag :code="$flagIso" :h="12" class="club-flag-emoji" /><span class="club-flag-code">{{ $countryName }}</span>
                                 </span>
                             </div>
                         @endif

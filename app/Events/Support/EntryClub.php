@@ -76,18 +76,96 @@ class EntryClub
             return [];
         }
 
-        return DB::table('event_club_entrants as l')
+        $found = DB::table('event_club_entrants as l')
             ->join('event_clubs as c', 'c.id', '=', 'l.event_club_id')
             ->where('c.event_id', $eventId)
             ->whereIn('l.registration_id', $ids)
             ->select('l.registration_id', 'c.name', 'c.logo', 'c.country')
             ->get()
             ->keyBy('registration_id')
-            ->map(fn ($row) => [
-                'name' => (string) $row->name,
-                'logo' => $row->logo ? file_url($row->logo) : null,
-                'country' => $row->country ?: null,
-            ])
+            ->map(fn ($row) => static::shape($row))
             ->all();
+
+        return $found + static::byPerson($eventId, array_values(array_diff($ids, array_keys($found))));
+    }
+
+    /**
+     * The club a PERSON is at this event with, for entries nobody linked.
+     *
+     * `event_club_entrants` is keyed by ENTRY, and an athlete has one entry per
+     * division — so an organiser who writes a competitor down under a club
+     * while editing one of their entries leaves the others attached to nothing.
+     * The same athlete then read as "BAHRAIN FIGHTERS" in one division and as
+     * nobody in the next, on the same wall, minutes apart. At the Victory BJJ
+     * Championship that was most of the field: 33 entries linked out of the 71
+     * belonging to a written-down club.
+     *
+     * A person belongs to ONE club at ONE competition, so the club travels with
+     * them across their entries here — but only when it is UNAMBIGUOUS. An
+     * athlete linked to two different clubs in the same event is a question
+     * only the organiser can answer, and this resolves them to nothing rather
+     * than picking one and printing it on a wall.
+     *
+     * It fills blanks and never overrides: a link on the entry itself, and a
+     * tenant named by the entry, both still win.
+     *
+     * @param  array<int, int>  $unresolved
+     * @return array<int, array{name: string, logo: ?string, country: ?string}>
+     */
+    private static function byPerson(int $eventId, array $unresolved): array
+    {
+        if (! $unresolved) {
+            return [];
+        }
+
+        // Who those entries belong to. A claim with no account yet has no
+        // user_id and simply has no other entry to borrow from.
+        $people = DB::table('club_event_registrations')
+            ->whereIn('id', $unresolved)
+            ->whereNotNull('user_id')
+            ->pluck('user_id', 'id');
+
+        if ($people->isEmpty()) {
+            return [];
+        }
+
+        $clubs = DB::table('event_club_entrants as l')
+            ->join('event_clubs as c', 'c.id', '=', 'l.event_club_id')
+            ->join('club_event_registrations as r', 'r.id', '=', 'l.registration_id')
+            ->where('c.event_id', $eventId)
+            ->where('r.event_id', $eventId)
+            ->whereIn('r.user_id', $people->unique()->values()->all())
+            ->select('r.user_id', 'c.id as club_id', 'c.name', 'c.logo', 'c.country')
+            ->get()
+            ->groupBy('user_id');
+
+        $out = [];
+
+        foreach ($people as $registrationId => $userId) {
+            $rows = $clubs->get($userId);
+
+            // None, or more than one club — say nothing.
+            if (! $rows || $rows->pluck('club_id')->unique()->count() !== 1) {
+                continue;
+            }
+
+            $out[(int) $registrationId] = static::shape($rows->first());
+        }
+
+        return $out;
+    }
+
+    /**
+     * One `event_clubs` row as the display shape every caller expects.
+     *
+     * @return array{name: string, logo: ?string, country: ?string}
+     */
+    private static function shape(object $row): array
+    {
+        return [
+            'name' => (string) $row->name,
+            'logo' => $row->logo ? file_url($row->logo) : null,
+            'country' => $row->country ?: null,
+        ];
     }
 }

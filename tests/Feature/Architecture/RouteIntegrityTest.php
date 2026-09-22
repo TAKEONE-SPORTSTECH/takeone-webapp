@@ -105,7 +105,75 @@ class RouteIntegrityTest extends TestCase
      *   me.events.translations{,.update,.retranslate,.destroy}
      *                                             the organiser's review screen
      */
-    private const EXPECTED_ROUTE_COUNT = 680;   // +4: events.public.draw.data, events.public.section, events.public.enter.mine, events.public.enter.clubs; +5: me.events.divisions.*; +1: locale.set
+    /*
+     * RECONCILED 2026-09-15, on the merge that brought every outstanding branch
+     * onto main. The note above asked whoever committed the branch to confirm
+     * the additions and set the constant once, with the reasons. Done — and the
+     * gap turned out to be wider than 727, because the branches were merged in
+     * between: the table stands at 749.
+     *
+     * What was actually verified, rather than waved through:
+     *
+     *   · NOTHING WAS REMOVED. The route-name list at 026015c2 (the last tree
+     *     that still boots against today's vendor) is a strict subset of
+     *     today's — no route lost a name, changed one, or disappeared in any of
+     *     the module moves. That is the failure this tripwire exists to catch,
+     *     and it did not happen.
+     *   · Every route still resolves to a real callable, and no name is
+     *     duplicated or unresolvable — the three tests either side of this one
+     *     pass, so only the COUNTS had drifted.
+     *
+     * The nineteen added since 026015c2, all of them audited by name:
+     *
+     *   · SIX for the interface language (App\Translation, admin side) —
+     *     `admin.languages{,.status,.strings,.translate,.update}` and
+     *     `admin.ai.translation-primary`, the super-admin's screen for
+     *     generating and reviewing a lang/ file.
+     *   · SEVEN for content translation — `events.public.language.prepare` /
+     *     `.status`, the visitor asking for a language and waiting for it, and
+     *     `me.events.translations{,.offered,.update,.retranslate,.destroy}`,
+     *     the organiser's review screen. (The earlier note named six of these;
+     *     `.offered` is the seventh.)
+     *   · ONE, `events.public.visitors` — the public poster's own read of who
+     *     is looking at it.
+     *   · FIVE for the league package — `me.events.league.data` plus its teams
+     *     (store / destroy) and fixtures (generate / update). They live in
+     *     app/Events/League/routes.php and are the whole of that package's
+     *     surface, which is what a package owning its routes is supposed to
+     *     look like.
+     *
+     * The fifty between 680 and 730 are the module migration, the BJJ package,
+     * the scoreboard split and the mat camera panel, merged here from `BJJ` and
+     * `development`. They cannot be enumerated commit-by-commit any more —
+     * those trees no longer boot against the current vendor — so they are
+     * recorded as a block rather than pretended to be individually reviewed.
+     * The subset check above is what stands behind them.
+     */
+    /*
+     * 750 since 2026-09-15: `me.events.bans` (GET me/events/{event}/bans), the
+     * organiser's read of who is barred from their event.
+     *
+     * A door of its own rather than a payload on the console, deliberately: the
+     * list had been riding in the roster partial's client-side search index on
+     * every load, for a tab that page does not render — so a moderated member's
+     * name reached every browser that opened the entry list and was drawn on
+     * none of them. Now it is sent only to a request that asks, from somebody
+     * `assertCanManage` has already admitted. One route added on purpose.
+     */
+    /*
+     * 751 since 2026-09-16: `me.events.person.divisions`
+     * (GET me/events/{event}/people/{uuid}/divisions) — every group in the
+     * event as it stands for ONE athlete, with compatibility already judged.
+     *
+     * The mirror of `divisions.candidates`, which asks the same question from
+     * the group's end. It exists because the participant card's organiser sheet
+     * enrols a person across several groups at once, and the rule that decides
+     * which ones fit (DivisionRange) must be answered in one place for both
+     * screens. Bound by the athlete's uuid because the card that opens it lives
+     * on the public entry list, where the public key is the only identifier
+     * present. One route added on purpose.
+     */
+    private const EXPECTED_ROUTE_COUNT = 751;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -330,6 +398,15 @@ class RouteIntegrityTest extends TestCase
         // 660 with `events.public.section` — one route for the poster's four
         // doors (draw, officials, gallery, participants). Every change
         // deliberate.
-        $this->assertCount(668, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 738 with `me.events.bans`, the same day — see the block above
+        // EXPECTED_ROUTE_COUNT for why that list is read through a door of its
+        // own rather than handed to every console that renders.
+        // 668 → 737 on 2026-09-15, reconciled with EXPECTED_ROUTE_COUNT in the
+        // same commit and for the same reasons — see the block above it. Twelve
+        // routes remain unnamed, the same twelve as at 026015c2, so nothing
+        // lost a name in the module moves.
+        // 739 with `me.events.person.divisions` on 2026-09-16 — the participant
+        // card's enrolment sheet; see the block above EXPECTED_ROUTE_COUNT.
+        $this->assertCount(739, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

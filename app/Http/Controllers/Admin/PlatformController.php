@@ -17,6 +17,7 @@ use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\TournamentEvent;
 use App\Members\Models\User;
+use App\Members\Support\MemberFilters;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -346,21 +347,38 @@ class PlatformController extends Controller
         ];
         $sort = array_key_exists($request->input('sort'), $sortOptions) ? $request->input('sort') : 'newest';
 
+        // The advanced filter. Whitelisted inside MemberFilters — nothing the
+        // client sends reaches the query except as a bound parameter.
+        $filters = MemberFilters::from($request);
+
         $query = User::with(['memberClubs', 'dependents', 'guardians.guardian', 'latestHealthRecord'])
             ->withCount('memberClubs')
             ->when($search, function ($query, $search) {
-                $query->where('full_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('nationality', 'like', "%{$search}%")
-                    ->orWhere('gender', 'like', "%{$search}%")
-                    ->orWhereRaw("JSON_EXTRACT(mobile, '$.number') LIKE ?", ["%{$search}%"])
-                    ->orWhereHas('memberClubs', fn ($q) => $q->where('club_name', 'like', "%{$search}%"));
+                // Grouped: the search is a chain of ORs, and without its own
+                // closure the first filter clause added below would be swallowed
+                // by it and silently widen the result set.
+                $query->where(function ($q) use ($search) {
+                    $q->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('nationality', 'like', "%{$search}%")
+                        ->orWhere('gender', 'like', "%{$search}%")
+                        ->orWhereRaw("JSON_EXTRACT(mobile, '$.number') LIKE ?", ["%{$search}%"])
+                        ->orWhereHas('memberClubs', fn ($c) => $c->where('club_name', 'like', "%{$search}%"));
+                });
             });
+
+        $filters->apply($query);
 
         // Apply the chosen sort closure to the query.
         $sortOptions[$sort]($query);
 
         $members = $query->paginate(20)->withQueryString();
+
+        // Everything the filter UI needs to draw itself, and the state to seed it.
+        $filterState = $filters->toArray();
+        $filterCount = $filters->count();
+        $filterClubs = MemberFilters::clubOptions();
+        $filterNationalities = MemberFilters::nationalityOptions();
 
         $isMobile = (bool) $request->attributes->get('is_mobile');
 
@@ -371,12 +389,15 @@ class PlatformController extends Controller
                 ? 'admin.platform.members._results-mobile'
                 : 'admin.platform.members._results';
 
-            return view($resultsView, compact('members', 'search', 'sort'));
+            return view($resultsView, compact('members', 'search', 'sort', 'filterCount'));
         }
 
         $mobile = $isMobile && view()->exists('admin.platform.mobile.members');
 
-        return view($mobile ? 'admin.platform.mobile.members' : 'admin.platform.members.index', compact('members', 'search', 'sort'));
+        return view(
+            $mobile ? 'admin.platform.mobile.members' : 'admin.platform.members.index',
+            compact('members', 'search', 'sort', 'filterState', 'filterCount', 'filterClubs', 'filterNationalities')
+        );
     }
 
     public function memberPopup(User $user)

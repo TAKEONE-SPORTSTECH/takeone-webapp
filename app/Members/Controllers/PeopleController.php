@@ -399,23 +399,25 @@ class PeopleController extends Controller
         /*
          * Opponent faces, one query for the whole list.
          *
-         * Honours the athlete's own "show my picture" choice via
-         * profile_picture_is_public, exactly as BracketView does — this profile is
-         * seen by everyone the person's public profile reaches, so it is not a
-         * place to override someone else's decision about their face. An opponent
-         * who has not opted in keeps the initials tile.
+         * ⚠️ READ THROUGH App\Events\Support\CompetitorFace, which is the one
+         * place that knows what a competitor's face IS. This used to look only
+         * at `users.profile_picture` — so on a championship where every face
+         * was photographed at the DESK, and lives on the entry rather than the
+         * member's profile, an athlete appeared on the board and on the result
+         * sheet and then had a blank tile beside every bout on their own
+         * profile (reported 2026-09-21).
+         *
+         * The member's own choice about their own photograph is unchanged and
+         * still inside that class: a profile picture is used only where they
+         * have published it. An opponent with neither keeps the silhouette.
          */
         $opponentFaces = $compBouts->isEmpty() ? collect() : ClubEventRegistration::query()
             ->whereIn('id', $compBouts->flatMap(fn ($b) => [$b->a_competitor_id, $b->b_competitor_id])->filter()->unique())
             ->with('user:id,profile_picture,profile_picture_is_public,updated_at')
-            ->get(['id', 'user_id'])
-            ->mapWithKeys(function (ClubEventRegistration $r) {
-                $user = $r->user;
-
-                return [$r->id => ($user?->profile_picture && $user->profile_picture_is_public)
-                    ? file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 0)
-                    : null];
-            });
+            ->get(['id', 'user_id', 'photo', 'updated_at'])
+            ->mapWithKeys(fn (ClubEventRegistration $r) => [
+                $r->id => \App\Events\Support\CompetitorFace::for($r),
+            ]);
 
         $compVideos = $compBouts->isEmpty() ? collect() : \Illuminate\Support\Facades\DB::table('event_recordings')
             ->whereIn('match_id', $compBouts->pluck('id'))

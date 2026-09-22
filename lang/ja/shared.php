@@ -673,6 +673,7 @@ return [
     'refresh' => '更新',
     'reset_zoom' => '画面に合わせる',
     'save' => '保存',
+    'saved' => '保存済み',
     'saving' => '保存中',
     'schedule_session_modal_add_cooldown' => 'クールダウンステップを追加',
     'schedule_session_modal_add_exercise' => 'エクササイズを追加',

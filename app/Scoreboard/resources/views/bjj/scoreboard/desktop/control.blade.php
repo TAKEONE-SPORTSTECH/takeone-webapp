@@ -565,7 +565,7 @@
 
     @foreach ([
         ['blue', __('sport-brazilianjiujitsu::messages.corner_blue'), 'var(--blue)', 'var(--blue-ink)', '1', '.05s', false, '100deg'],
-        ['white', __('sport-brazilianjiujitsu::messages.corner_white'), 'var(--white)', 'var(--white)', '3', '.3s', true, '260deg'],
+        ['white', __('sport-brazilianjiujitsu::messages.corner_white'), 'var(--white)', 'var(--white-ink)', '3', '.3s', true, '260deg'],
     ] as [$side, $label, $colour, $plateInk, $order, $delay, $mirror, $angle])
     <div class="corner{{ $mirror ? ' mirror' : '' }}" style="order:{{ $order }};animation:cardIn .6s {{ $delay }} cubic-bezier(.2,.8,.2,1) both;">
       <span class="rule" style="background:{{ $colour }};"></span>
@@ -740,7 +740,7 @@
              do NEXT, from the state rather than from a flag this page keeps:
              a second console, a reload, or the wall being switched by somebody
              else all have to leave this button telling the truth. --}}
-        <button id="btnBoard" class="cbtn bout" style="color:var(--blue-ink);border:1px solid rgba(138,180,255,.45);"></button>
+        <button id="btnBoard" class="cbtn bout" style="color:var(--accent);border:1px solid rgba(138,180,255,.45);"></button>
         {{-- Opens the end-of-match dialog, so it carries the runtime's own
              #btnEnd id rather than a second copy of that flow. --}}
         <button id="btnEnd" class="cbtn bout" style="background:var(--fill-alt);color:var(--alarm);border:1px solid rgba(255,59,71,.5);">{{ __('scoreboard::bjj_messages.ctl_finish') }}</button>
@@ -757,7 +757,7 @@
              hung screen is most likely to need this when the mat is empty, and
              a button that greys out exactly when you reach for it is worse
              than no button at all. --}}
-        <button id="btnResync" class="cbtn" style="background:var(--fill-alt);color:var(--blue-ink);border:1px solid rgba(138,180,255,.45);">{{ __('scoreboard::bjj_messages.ctl_resync') }}</button>
+        <button id="btnResync" class="cbtn" style="background:var(--fill-alt);color:var(--accent);border:1px solid rgba(138,180,255,.45);">{{ __('scoreboard::bjj_messages.ctl_resync') }}</button>
       </div>
 
       {{-- A level match at the bell is not a result — IBJJF sends it to the
@@ -1284,7 +1284,7 @@
     <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:stretch;">
       @foreach ([
           ['blue', __('sport-brazilianjiujitsu::messages.corner_blue'), 'var(--blue)', 'var(--blue-ink)', false, '140deg'],
-          ['white', __('sport-brazilianjiujitsu::messages.corner_white'), 'var(--white)', 'var(--white)', true, '220deg'],
+          ['white', __('sport-brazilianjiujitsu::messages.corner_white'), 'var(--white)', 'var(--white-ink)', true, '220deg'],
       ] as [$side, $label, $colour, $ink, $mirror, $angle])
         @if ($mirror)
           <span style="align-self:center;font-family:'Anton',sans-serif;font-size:40px;color:var(--faint);">{{ __('scoreboard::bjj_messages.vs') }}</span>

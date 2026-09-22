@@ -90,17 +90,26 @@
        already standing when they need it. Two doors to one job was one too
        many (removed 2026-09-03 at the user's request). */
 
+    /* ===== "Who's joined" — for the OFFICIALS too =====
+       Everybody who may open this console gets this row, not only whoever
+       manages the event. The note above says the verification desk's sheet now
+       opens from a person's card here — and the row that says so was inside the
+       organiser's block, so a weigh-in or payments official arrived at the
+       console and found no door to the one screen their job lives on. They
+       could still reach it by typing the URL, which is not a door.
+
+       Safe to widen: the page authorises per viewer (people() re-checks, and
+       the gates are attached only for the role that signs them), so linking it
+       discloses nothing an official could not already read there. Fixed
+       2026-09-15; the tests that caught it are in EventConsoleTest. */
+    $links[] = [
+        'icon' => 'bi-people-fill', 'tone' => 'bg-amber-50 text-amber-600',
+        'label' => __('personal.event_show_whos_joined'),
+        'sub' => trans_choice('personal.event_manage_entrants', $counts['entrants'], ['count' => $counts['entrants']]),
+        'href' => route('me.events.people', $e['key']),
+    ];
+
     if ($canManage) {
-        // Who is on the list. The console had no door to the roster at all:
-        // the Entries row opens the ENTERING flow, and reading down the
-        // entrants — which is where an organiser strikes names off — was
-        // reachable only from the public event page.
-        $links[] = [
-            'icon' => 'bi-people-fill', 'tone' => 'bg-amber-50 text-amber-600',
-            'label' => __('personal.event_show_whos_joined'),
-            'sub' => trans_choice('personal.event_manage_entrants', $counts['entrants'], ['count' => $counts['entrants']]),
-            'href' => route('me.events.people', $e['key']),
-        ];
         /* ===== "Enter your athletes" — HIDDEN until it exists =====
          *
          * This tile is not another door to the roster. It is for a CLUB OWNER
@@ -245,11 +254,18 @@
                      Organiser (and the platform team) only — every other door
                      into the entry list belongs to somebody else: the athlete,
                      their coach, or a stranger following the public link. --}}
+                {{-- ⚠️ ORGANISER ONLY — the comment above said so and nothing
+                     enforced it, so an appointed official was shown a control
+                     whose every endpoint would refuse them (entry-search and
+                     entries both assert canManage). A button that 403s is worse
+                     than no button. Added 2026-09-15. --}}
+                @if($canManage)
                 <x-event-add-person :event="$e['key']"
                                     :fees="$e['fees'] ?? []"
                                     :clubs="$entryClubs ?? []"
                                     :color="$mgColor"
                                     :title="$e['title']" />
+                @endif
 
                 {{-- Clubs, immediately under it: the two doors an organiser
                      uses on the morning are "somebody turned up" and "a club
@@ -286,7 +302,31 @@
                         </span>
                         <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
                     </a>
+
                 @endif
+
+                {{-- ...and the ORDER it all runs in, under the draw it comes out
+                     of. Two different questions — who fights whom, and in what
+                     sequence — and the second one is now ONE screen with two
+                     views: the day part by part (where a ceremony or a prayer
+                     break gets its place, and the one board that can say an
+                     athlete is in two parts running), and the bouts on each mat.
+                     There were two console rows here, both reading "Running
+                     order", which is exactly the confusion it sounds like.
+
+                     Outside the @if above on purpose: the day can be planned
+                     before a single bout exists, so a draw is not the gate. --}}
+                <a href="{{ route('me.events.order.page', $e['key']) }}" data-shell-link data-route="me.events"
+                   class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3 no-underline">
+                    <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 bg-indigo-50 text-indigo-600">
+                        <i class="bi bi-list-ol text-lg"></i>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-foreground truncate">{{ __('events.order_title') }}</span>
+                        <span class="block text-[11px] text-muted-foreground mt-0.5 truncate">{{ __('events.order_console_sub') }}</span>
+                    </span>
+                    <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
+                </a>
                 
 
             </div>
@@ -416,6 +456,16 @@
                 <x-event-entry-review :event="$e['key']" :entries="$publicEntries ?? []"
                                       :color="$mgColor" :title="$e['title']" />
 
+                {{-- Who is barred, and why — the moderation list, which had no
+                     screen at all between 2026-09-03 and 2026-09-15: the desk
+                     that carried it was removed and its tab went with it, so
+                     `me.events.ban.lift` was an endpoint with no door. Beside
+                     the review queue on purpose: who is waiting to be let in,
+                     then who may not come in at all. --}}
+                <x-event-bans :event="$e['key']" :count="count($e['bans_list'] ?? [])"
+                              :color="$mgColor" :title="$e['title']"
+                              :club="$e['club'] ?? null" />
+
                 {{-- When the draw stops being the organiser's working copy and
                      becomes the sheet on the wall. Only for a type that draws
                      one — an event with no divisions has nothing to reveal. --}}
@@ -488,6 +538,8 @@
             </div>
         </div>
 
+        @include('partials.event-rehearsal-card')
+
         {{-- ===== Ending it ===== --}}
         <div>
             <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2 px-1">{{ __('personal.event_manage_danger') }}</p>
@@ -515,6 +567,11 @@
         @include(($manual_results ?? true) ? 'partials.event-results-sheet' : 'partials.event-podium-sheet')
         @include('partials.event-finance-sheet')
     @endif
+
+    {{-- The gate in front of Cancel and Delete. Inside the x-data above (it
+         reads `danger`), outside the owner-only block (the two buttons it
+         guards are not owner-only), and teleported to <body> from there. --}}
+    @include('partials.event-danger-sheet')
     </div>{{-- /cards --}}
 </div>
 @include('partials.event-action-runner')

@@ -91,6 +91,8 @@ class ParityAudit
         $originals = [];
         /** @var array<string, bool> $sameInBoth  lowercased value => some file renders it identically */
         $sameInBoth = [];
+        /** @var array<string, bool> $canFallBack  lowercased value => some key with it has no translation at all */
+        $canFallBack = [];
 
         foreach ($this->catalog->files($locale) as $id => $file) {
             $english = $this->catalog->strings($file['source']);
@@ -147,13 +149,38 @@ class ParityAudit
                 if (isset($target[$key]) && trim((string) $target[$key]) === $value) {
                     $sameInBoth[$slot] = true;
                 }
+
+                /*
+                 * ⚠️ …and the other half of the same thought, added 2026-09-15.
+                 *
+                 * A key that HAS a translation cannot render its English. So if
+                 * every key carrying this value is translated, the English can
+                 * never have reached the page through `__()` — and a match
+                 * against it is a homograph, not a leak. Three of the five
+                 * "leaks" on the French poster were exactly that: «Commentaire»
+                 * and «Continuer» contain the English "Comment" and "Continue",
+                 * and «Inscriptions closes» contains "closes". All three are
+                 * correct French, and chasing them would have meant rewriting
+                 * correct French to satisfy the audit.
+                 *
+                 * This is NOT the value-forgiving rule rejected above: that one
+                 * excused a MISSING translation because some other file had the
+                 * same word. Here the requirement is the opposite way round —
+                 * at least one key with this value must actually be missing
+                 * before the value is evidence of anything. `member.…_
+                 * championship` with no Chinese entry still counts, which is the
+                 * case that rule exists for.
+                 */
+                if (! isset($target[$key])) {
+                    $canFallBack[$slot] = true;
+                }
             }
         }
 
         $out = [];
 
         foreach ($candidates as $slot => $key) {
-            if (! isset($sameInBoth[$slot])) {
+            if (! isset($sameInBoth[$slot]) && isset($canFallBack[$slot])) {
                 $out[$key] = $originals[$slot];
             }
         }
@@ -246,7 +273,7 @@ class ParityAudit
                 continue;
             }
 
-            if (str_contains($text, $needle)) {
+            if ($this->appearsAsWords($text, $needle)) {
                 $out[$key] = $english;
             }
         }
@@ -385,6 +412,36 @@ class ParityAudit
      * Returns null when nothing long enough survives, which is the honest
      * outcome for a string that is almost entirely placeholder.
      */
+    /**
+     * Does this English run appear in the text AS WORDS, rather than inside one?
+     *
+     * ⚠️ A plain substring match accuses the translator of leaving English in
+     * precisely the cases where they did the work: French «Commentaire» contains
+     * the English "Comment", «Continuer» contains "Continue", and a naive
+     * `str_contains` reported both as untranslated on a page where neither word
+     * appears. Three of the five "leaks" on the French poster were this, and
+     * chasing them would have meant rewriting correct French to get past the
+     * audit — which is the wrong way round.
+     *
+     * So the needle has to start and end on a word boundary. It costs nothing in
+     * sensitivity: real English that reaches the page reaches it whole, and a
+     * whole word still matches. The assertions are added only at ends that are
+     * word characters, so a needle beginning or ending in punctuation is
+     * unaffected.
+     *
+     * Unicode-aware (`/u`), because the text either side of the needle is as
+     * likely to be Arabic or Japanese as Latin.
+     */
+    private function appearsAsWords(string $text, string $needle): bool
+    {
+        $quoted = preg_quote($needle, '/');
+
+        $lead = preg_match('/^[\p{L}\p{N}_]/u', $needle) ? '(?<![\p{L}\p{N}_])' : '';
+        $tail = preg_match('/[\p{L}\p{N}_]$/u', $needle) ? '(?![\p{L}\p{N}_])' : '';
+
+        return (bool) preg_match('/'.$lead.$quoted.$tail.'/u', $text);
+    }
+
     private function longestLiteralRun(string $message): ?string
     {
         $parts = preg_split('/:\w+|\{[^}]*\}|%s|%d/u', $message) ?: [];

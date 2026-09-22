@@ -127,7 +127,7 @@
                                         </span>
                                     </template>
                                     <template x-if="aka && aka.country">
-                                        <img :src="'https://flagcdn.com/w40/' + aka.country + '.png'" alt="" class="w-8 rounded shadow-sm mt-2">
+                                        <img :src="'/images/flags/' + aka.country + '.svg'" alt="" class="w-8 rounded shadow-sm mt-2">
                                     </template>
                                 </span>
                             </span>
@@ -168,7 +168,7 @@
                                         </span>
                                     </template>
                                     <template x-if="ao && ao.country">
-                                        <img :src="'https://flagcdn.com/w40/' + ao.country + '.png'" alt="" class="w-8 rounded shadow-sm mt-2">
+                                        <img :src="'/images/flags/' + ao.country + '.svg'" alt="" class="w-8 rounded shadow-sm mt-2">
                                     </template>
                                 </span>
                             </span>

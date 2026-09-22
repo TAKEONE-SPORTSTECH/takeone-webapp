@@ -210,57 +210,49 @@ class PersonalEventCharacterizationTest extends ContractTestCase
             ->assertForbidden();
     }
 
-    public function test_bracket_renders_device_split_boards_and_opens_on_a_division(): void
+    /**
+     * The old bracket page is RETIRED and answers as a redirect.
+     *
+     * Three tests used to pin what it rendered — its device-split views, the
+     * division it opened on, the fallback for a foreign category id. That page
+     * no longer exists: `brackets/manage` is the one draw screen, and this
+     * route survives only so the addresses already out in the world keep
+     * working. What is worth pinning now is that they DO, and that the two
+     * deep-link parameters still land on the right division.
+     */
+    public function test_bracket_redirects_to_the_board(): void
+    {
+        [$organiser, $club, $event] = $this->scenario();
+        $this->drawnDivision($event, $club);
+
+        $this->asDesktop($organiser)->get(route('me.events.bracket', $event->uuid))
+            ->assertRedirect(route('me.events.bracket.manage', $event->uuid));
+    }
+
+    public function test_bracket_carries_its_category_deep_link_to_the_board(): void
     {
         [$organiser, $club, $event] = $this->scenario();
         [$category] = $this->drawnDivision($event, $club);
 
-        $desktop = $this->asDesktop($organiser)->get(route('me.events.bracket', $event->uuid));
-        $desktop->assertOk()->assertViewIs('personal.desktop.event-bracket');
-        $desktop->assertViewHas('canManage', true);
-        $desktop->assertViewHas('canArrange', true);
-
-        $categories = $desktop->viewData('categories');
-        $this->assertNotEmpty($categories, 'a drawn division must appear on the board');
-        // NOTE: runData() keys `categories` BY CATEGORY ID, not 0..n — a consumer
-        // that indexes it as a list breaks. Pinned so a package move keeps it.
-        $this->assertSame([$category->id], array_keys($categories));
-        $this->assertSame('c'.$category->id, $desktop->viewData('initialCategory'));
-        $this->assertSame(collect($categories)->first()['key'], $desktop->viewData('initialCategory'));
-
-        $this->asMobile($organiser)->get(route('me.events.bracket', $event->uuid))
-            ->assertOk()->assertViewIs('personal.mobile.event-bracket');
+        $this->asDesktop($organiser)
+            ->get(route('me.events.bracket', ['event' => $event->uuid, 'category' => $category->id]))
+            ->assertRedirect(route('me.events.bracket.manage', [
+                'event' => $event->uuid, 'division' => $category->id,
+            ]));
     }
 
-    public function test_bracket_opens_on_the_division_named_by_the_bout_query(): void
+    public function test_bracket_resolves_a_bout_deep_link_to_its_division(): void
     {
         [$organiser, $club, $event] = $this->scenario();
         [$category] = $this->drawnDivision($event, $club);
 
         $match = \App\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
 
-        $response = $this->asDesktop($organiser)
-            ->get(route('me.events.bracket', ['event' => $event->uuid, 'bout' => $match->match_no]));
-
-        $response->assertOk();
-        $expected = collect($response->viewData('categories'))->firstWhere('id', $category->id)['key'];
-        $this->assertSame($expected, $response->viewData('initialCategory'));
-    }
-
-    public function test_bracket_falls_back_to_the_first_division_for_a_foreign_category_id(): void
-    {
-        [$organiser, $club, $event] = $this->scenario();
-        $this->drawnDivision($event, $club);
-
-        $response = $this->asDesktop($organiser)
-            ->get(route('me.events.bracket', ['event' => $event->uuid, 'category' => 999999]));
-
-        $response->assertOk();
-        $this->assertSame(
-            collect($response->viewData('categories'))->first()['key'],
-            $response->viewData('initialCategory'),
-            'an id belonging to no division of this event falls back to the first'
-        );
+        $this->asDesktop($organiser)
+            ->get(route('me.events.bracket', ['event' => $event->uuid, 'bout' => $match->match_no]))
+            ->assertRedirect(route('me.events.bracket.manage', [
+                'event' => $event->uuid, 'division' => $category->id,
+            ]));
     }
 
     public function test_bracket_is_readable_but_not_arrangeable_by_an_ordinary_member(): void
@@ -269,11 +261,14 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         $this->drawnDivision($event, $club);
         $member = $this->clubMember($club);
 
-        $response = $this->asDesktop($member)->get(route('me.events.bracket', $event->uuid));
+        $response = $this->asDesktop($member)->get(route('me.events.bracket.manage', $event->uuid));
         $response->assertOk();
         $response->assertViewHas('canManage', false);
         $response->assertViewHas('canArrange', false);
-        $response->assertViewHas('actions', []);
+        // The board's own verbs — build the draw, clear it — are the
+        // organiser's. A reader is offered none, and the addresses behind them
+        // are not built into their page at all.
+        $response->assertViewHas('drawActions', []);
     }
 
     public function test_gallery_renders_device_split_views(): void
@@ -460,9 +455,13 @@ class PersonalEventCharacterizationTest extends ContractTestCase
             ->viewData('bout');
 
         $this->assertNull($bout['video_url']);
-        // The bracket link is scoped to THIS bout's own division.
-        $this->assertStringContainsString('category='.$match->category_id, $bout['bracket_url']);
-        $this->assertStringContainsString('bout='.$match->match_no, $bout['bracket_url']);
+        /* The draw link is scoped to THIS bout's own division. Unscoped it
+           opened whichever division sorts first — a different bracket and a
+           different match. It points at the board now (the bracket page it
+           used to name is retired), so the division travels as `division`
+           rather than `category`. */
+        $this->assertStringContainsString('/brackets/manage', $bout['bracket_url']);
+        $this->assertStringContainsString('division='.$match->category_id, $bout['bracket_url']);
     }
 
     /* =====================================================================
@@ -796,15 +795,64 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         $this->assertNull($event->fresh()->started_at);
     }
 
+    /**
+     * Calling a competition off needs the typed code, like deleting it.
+     *
+     * The gate is the server's (App\Events\Support\DestructiveChallenge): the
+     * code is asked for, read back, and carried by the request that does the
+     * work. A request without one is refused even from the organiser.
+     */
     public function test_cancel_event_sets_the_status_and_returns_the_events_list(): void
     {
         [$organiser, , $event] = $this->scenario();
 
+        // No code: refused, and the event is untouched.
         $this->actingAs($organiser)->patchJson(route('me.events.cancel-event', $event->uuid))
+            ->assertStatus(422);
+        $this->assertSame('active', $event->fresh()->status);
+
+        $code = $this->actingAs($organiser)
+            ->postJson(route('me.events.danger-code', $event->uuid), ['action' => 'cancel'])
+            ->assertOk()->json('code');
+
+        $this->actingAs($organiser)->patchJson(route('me.events.cancel-event', $event->uuid), ['code' => $code])
             ->assertOk()
             ->assertJson(['success' => true, 'redirect' => route('me.events')]);
 
         $this->assertSame('cancelled', $event->fresh()->status);
+    }
+
+    /** A cancel code is not a delete code, and a spent one is not a code at all. */
+    public function test_a_danger_code_is_bound_to_its_action_and_is_single_use(): void
+    {
+        [$organiser, , $event] = $this->scenario();
+
+        $cancelCode = $this->actingAs($organiser)
+            ->postJson(route('me.events.danger-code', $event->uuid), ['action' => 'cancel'])
+            ->assertOk()->json('code');
+
+        // The cancel code cannot delete.
+        $this->actingAs($organiser)->deleteJson(route('me.events.destroy', $event->uuid), ['code' => $cancelCode])
+            ->assertStatus(422);
+        $this->assertDatabaseHas('club_events', ['id' => $event->id]);
+
+        // It cancels once...
+        $this->actingAs($organiser)->patchJson(route('me.events.cancel-event', $event->uuid), ['code' => $cancelCode])
+            ->assertOk();
+
+        // ...and the same code is spent.
+        $this->actingAs($organiser)->patchJson(route('me.events.cancel-event', $event->uuid), ['code' => $cancelCode])
+            ->assertStatus(422);
+    }
+
+    /** Somebody who may not manage the event may not even ask for a code. */
+    public function test_a_danger_code_is_refused_to_a_non_organiser(): void
+    {
+        [, $club, $event] = $this->scenario();
+
+        $this->actingAs($this->clubMember($club))
+            ->postJson(route('me.events.danger-code', $event->uuid), ['action' => 'delete'])
+            ->assertForbidden();
     }
 
     public function test_cancel_event_is_denied_to_a_non_organiser(): void
@@ -828,7 +876,17 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         $this->assertDatabaseHas('club_events', ['id' => $event->id]);
 
         $organiser = User::find($event->created_by);
+
+        // Even the organiser needs the typed code (DestructiveChallenge).
         $this->actingAs($organiser)->deleteJson(route('me.events.destroy', $event->uuid))
+            ->assertStatus(422);
+        $this->assertDatabaseHas('club_events', ['id' => $event->id]);
+
+        $code = $this->actingAs($organiser)
+            ->postJson(route('me.events.danger-code', $event->uuid), ['action' => 'delete'])
+            ->assertOk()->json('code');
+
+        $this->actingAs($organiser)->deleteJson(route('me.events.destroy', $event->uuid), ['code' => $code])
             ->assertOk()
             ->assertJson(['success' => true, 'redirect' => route('me.events')]);
 
@@ -890,7 +948,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
 
         $response->assertOk()->assertJson([
             'success' => true,
-            'redirect' => route('me.events.bracket', $event->uuid),
+            'redirect' => route('me.events.bracket.manage', $event->uuid),
         ]);
 
         // OUTPUT, not implementation: 4 entrants → a 4-slot knockout = 3 bouts.

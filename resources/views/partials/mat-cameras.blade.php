@@ -114,6 +114,7 @@
 .mc-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--mc-green);}
 .mc-dot.is-off{background:var(--mc-gold);}
 .mc-rec{font-size:11px;font-weight:800;letter-spacing:.12em;background:#e5342c;color:#fff;border-radius:6px;padding:2px 6px;}
+.mc-rolling{border-color:#e5342c66;}
 .mc-cam-facts{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--mc-muted);}
 .mc-warn{color:var(--mc-gold);font-weight:700;}
 
@@ -193,6 +194,8 @@
     'live' => __('events.mat_cameras_live'),
     'offline' => __('events.mat_cameras_offline'),
     'rec' => __('events.mat_cameras_rec'),
+    'rolling' => __('events.mat_cameras_rolling'),
+    'stop' => __('events.mat_cameras_stop'),
     'angle' => __('events.mat_cameras_angle', ['n' => '%n%']),
     'storage' => __('events.mat_cameras_storage'),
     'battery' => __('events.mat_cameras_battery'),
@@ -426,9 +429,51 @@
       railEl.appendChild(railCard(c, c.id === picked));
     });
 
+    if (cam.recording) bodyEl.appendChild(rolling(cam));
     bodyEl.appendChild(tiles(cam));
     bodyEl.appendChild(capture(cam));
     bodyEl.appendChild(footage(cam));
+  }
+
+  /* ROLLING — and the one control that stops it.
+
+     The mat normally drives this: hajime rolls the cameras, the result stops
+     them. Normally is not always. A command that ENDS a bout can be refused —
+     a result cannot be filed before the competition day is started — and the
+     refusal never reaches the fleet, so the phones carry on recording a bout
+     that finished minutes ago with nothing left that will stop them. Unpairing
+     the camera was the only way out, and that sends a working camera back to a
+     pairing code in the middle of a competition.
+
+     So: while a camera is rolling, the panel says so and offers a stop. It
+     files no result and scores nothing — it closes the clip, which is what the
+     phone was going to do anyway. */
+  function rolling(c) {
+    var sec = document.createElement('div');
+    sec.className = 'mc-sec mc-rolling';
+
+    var row = document.createElement('div');
+    row.className = 'mc-row';
+
+    var badge = document.createElement('span');
+    badge.className = 'mc-rec';
+    badge.textContent = T.rec;
+    row.appendChild(badge);
+
+    var label = document.createElement('span');
+    label.className = 'mc-sec-h';
+    label.style.flex = '1';
+    label.textContent = T.rolling;
+    row.appendChild(label);
+
+    var stop = button(T.stop, function () {
+      send(c.id, { do: 'stop' }, T.asked);
+    }, busy);
+    stop.className = 'mc-btn is-danger';
+    row.appendChild(stop);
+
+    sec.appendChild(row);
+    return sec;
   }
 
   function name(c) {

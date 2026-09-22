@@ -159,6 +159,46 @@ class EntryIdentityEditingTest extends TestCase
         $this->assertSame('Female', $athlete->fresh()->gender);
     }
 
+    public function test_a_corrected_name_follows_the_person_onto_the_draw(): void
+    {
+        // ⚠️ event_matches.a_name is a SNAPSHOT taken when the draw was cut,
+        // and it is what the bracket, the running order and the wall's
+        // upcoming board all read. Without this the correction landed on the
+        // person and every board in the venue went on announcing the old
+        // spelling, with nothing anywhere saying why.
+        [, $event, $entry, $athlete] = $this->scenario();
+
+        $category = \App\Models\EventCategory::create([
+            'event_id' => $event->id,
+            'name' => 'Adult Blue -76kg',
+        ]);
+
+        $bout = \App\Models\EventMatch::create([
+            'event_id' => $event->id,
+            'category_id' => $category->id,
+            'round' => 'Final',
+            'slot' => 0,
+            'a_name' => 'Mohamed Rami',
+            'a_competitor_id' => $entry->id,
+            'b_name' => 'Somebody Else',
+        ]);
+
+        $super = $this->createUser();
+        $this->makeSuperAdmin($super);
+
+        $result = app(EntryEditor::class)->apply(
+            $event, $entry, ['name' => 'Mohammed Ramadan'], $super->fresh()
+        );
+
+        $this->assertTrue($result['ok'], $result['message'] ?? '');
+        $this->assertSame('Mohammed Ramadan', $athlete->fresh()->full_name);
+        $this->assertSame('Mohammed Ramadan', $bout->fresh()->a_name);
+
+        // The other corner belongs to somebody else and must not be touched —
+        // the re-stamp is scoped by competitor id, never by the old string.
+        $this->assertSame('Somebody Else', $bout->fresh()->b_name);
+    }
+
     public function test_an_organiser_save_is_refused_and_changes_nothing(): void
     {
         [$owner, $event, $entry, $athlete] = $this->scenario();

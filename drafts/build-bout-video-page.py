@@ -106,8 +106,10 @@ rep('''    <link rel="icon" type="image/png" href="https://video.takeone.bh/stor
     <link rel="apple-touch-icon" href="https://video.takeone.bh/storage/images/logo.png">''',
     '''    <link rel="icon" href="{{ asset('favicon.ico') }}">''')
 
+# Our own sheet, our own files. Never a CDN: a hall with no internet is the
+# normal case, and a flag that needs jsdelivr is a flag that vanishes there.
 rep('<link rel="stylesheet" href="https://video.takeone.bh/vendor/flag-icons/css/flag-icons.min.css">',
-    '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">')
+    '<link rel="stylesheet" href="{{ asset(\'images/flags/flag-icons.css\') }}">')
 
 rep('''    <link rel="stylesheet" href="https://video.takeone.bh/css/cropme.min.css">
     <script src="https://video.takeone.bh/js/cropme.min.js"></script>''',
@@ -116,7 +118,7 @@ rep('''    <link rel="stylesheet" href="https://video.takeone.bh/css/cropme.min.
 
 # The flag the on-video scoreboard paints comes from the same CDN as the rest.
 rep("el.style.backgroundImage = 'url(https://video.takeone.bh/vendor/flag-icons/flags/4x3/' + code + '.svg)';",
-    "el.style.backgroundImage = 'url(https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/flags/4x3/' + code + '.svg)';")
+    "el.style.backgroundImage = 'url(/images/flags/' + code + '.svg)';")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. Site chrome — header, sidebar, bottom nav.

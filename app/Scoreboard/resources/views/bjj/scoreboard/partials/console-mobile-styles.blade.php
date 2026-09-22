@@ -42,9 +42,18 @@
   --surface-base:#0a0b10; --surface-panel:#111320; --surface-raised:#1f2230;
   --surface-divider:#2a2e40; --surface-overlay:rgba(5,5,7,.72);
   --text-primary:#e8eaf2; --text-secondary:#7d8296; --text-muted:#5c6175; --text-inverse:#0a0b10;
-  --corner-blue:#1362d1; --corner-blue-accent:#8ab4ff;
-  --corner-white:#e6ebf2; --corner-white-muted:#aab6c6;
-  --status-advantage:#ffd666; --status-penalty:#ff3b47; --status-confirmed:#ffe135; --status-review:#c4b5fd;
+  /* Names are the SIDE, not the colour — see the note in console-styles. */
+  --corner-blue:#c1121f; --corner-blue-accent:#ff9aa0;      /* side A — RED  */
+  --corner-white:#1362d1; --corner-white-muted:#2f7bdb;     /* side B — BLUE */
+  /* ⚠️ Not a corner — the console's cool accent, for what only BORROWED
+     the blue. Same reason as `--accent` on the laptop console: red here
+     means a penalty, and a point chip must never wear it. */
+  --accent:#8ab4ff;
+  --status-advantage:#ffd666; --status-alarm:#ff3b47; --status-confirmed:#ffe135; --status-review:#c4b5fd;
+  /* ⚠️ A PENALTY IS WHITE — see the note on the laptop console. Red became
+     a CORNER when side A was repainted, so a penalty can no longer wear it.
+     `--status-alarm` keeps the red for what is genuinely an alarm. */
+  --status-penalty:#ffffff;
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
 }
 *, *::before, *::after { box-sizing:border-box; }
@@ -85,7 +94,7 @@ button { font-family:inherit; color:inherit; cursor:pointer; }
 .btn { background:var(--surface-raised); border:1px solid var(--surface-divider); border-radius:12px;
   min-height:56px; padding:0 var(--s3); font-size:15px; font-weight:600;
   transition:background .12s, border-color .12s, transform .08s; }
-.btn:active:not(:disabled) { transform:scale(.97); border-width:2px; border-color:var(--corner-blue-accent); }
+.btn:active:not(:disabled) { transform:scale(.97); border-width:2px; border-color:var(--accent); }
 .btn:focus-visible { outline:3px solid var(--status-advantage); outline-offset:0; }
 .btn:disabled { opacity:.45; }
 /* Scoring is the biggest thing on the screen, because it is what gets pressed
@@ -98,15 +107,16 @@ button { font-family:inherit; color:inherit; cursor:pointer; }
    laptop console and on the wall: the thumb finds the side before the eye
    reads the label, and a referee holding this is looking at the fight. */
 .side.blue .btn.score  { background:var(--corner-blue); border-color:transparent; color:#fff; }
-/* The WHITE corner is white — the gi, not a grey stand-in for it. Matched to
-   the laptop console (2026-09-06), or the same corner reads as two colours
-   depending on which screen an official happens to be holding. */
-.side.white .btn.score { background:#fff; border-color:transparent; color:#000; }
-.side.white .btn.score .l { color:rgba(0,0,0,.72); }
+/* Side B's buttons are BLUE, like its corner. They were white paint and black
+   ink while the corner was the white gi; both corners are dark plates since
+   2026-09-20, so both take the same white ink. Matched to the laptop console,
+   or the same corner reads as two colours depending on which screen an
+   official happens to be holding. */
+.side.white .btn.score { background:var(--corner-white); border-color:transparent; color:#fff; }
 .btn.adv { min-height:88px; border-color:var(--status-advantage); color:var(--status-advantage); }
 .btn.pen { min-height:88px; border-color:var(--status-penalty); color:var(--status-penalty); }
 .btn.ok { background:var(--status-confirmed); color:var(--text-inverse); border-color:var(--status-confirmed); font-weight:700; }
-.btn.danger { background:transparent; border-color:var(--status-penalty); color:var(--status-penalty); }
+.btn.danger { background:transparent; border-color:var(--status-alarm); color:var(--status-alarm); }
 
 .counters { display:flex; gap:var(--s2); }
 .counters .c { flex:1; display:flex; align-items:center; justify-content:space-between;
@@ -124,7 +134,7 @@ button { font-family:inherit; color:inherit; cursor:pointer; }
   flex-direction:column; gap:var(--s2); }
 #clockRow { display:flex; align-items:center; gap:var(--s3); }
 #clockVal { font-size:56px; line-height:1; letter-spacing:.03em; }
-#clockVal.warn { color:var(--status-penalty); animation:p7glow 1s ease-in-out infinite; }
+#clockVal.warn { color:var(--status-alarm); animation:p7glow 1s ease-in-out infinite; }
 #clockState { font-size:13px; font-weight:700; letter-spacing:.28em; text-transform:uppercase; color:var(--text-secondary); }
 #transport { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:var(--s2); }
 /* The destructive row is kept a clear gap away from the transport above it. */
@@ -156,7 +166,7 @@ button { font-family:inherit; color:inherit; cursor:pointer; }
 .logRow .ts { font-family:'Anton', Impact, sans-serif; font-size:16px; min-width:48px; color:var(--text-secondary); }
 .logChip { padding:2px 8px; border-radius:8px; font-size:12px; font-weight:700; letter-spacing:.12em;
   text-transform:uppercase; border:1px solid currentColor; }
-.logChip.point { color:var(--corner-blue-accent); }
+.logChip.point { color:var(--accent); }
 .logChip.advantage { color:var(--status-advantage); }
 .logChip.penalty { color:var(--status-penalty); }
 .logChip.reverse { color:var(--text-muted); }
@@ -167,7 +177,7 @@ button { font-family:inherit; color:inherit; cursor:pointer; }
   transform:scaleX(0); transform-origin:left; }
 .logRow .undo.holding .sweep { transform:scaleX(1); transition:transform 1s linear; }
 
-#stallCount { font-family:'Anton', Impact, sans-serif; font-size:40px; color:var(--status-penalty); }
+#stallCount { font-family:'Anton', Impact, sans-serif; font-size:40px; color:var(--status-alarm); }
 
 /* ── Modal and toast: the same furniture as the desktop console ─────────── */
 #scrim { position:fixed; inset:0; background:var(--surface-overlay); display:grid; place-items:end center; z-index:50; }

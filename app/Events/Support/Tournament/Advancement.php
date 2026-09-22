@@ -21,7 +21,7 @@ use Illuminate\Support\Collection;
  * division out: within a round, bout i feeds bout ⌊i/2⌋ of the next round,
  * taking side A when i is even and side B when it is odd.
  */
-abstract class Advancement
+abstract class Advancement implements PropagatesResults
 {
     /**
      * The play-off for bronze, cut by `DrawEngine` for a sport whose
@@ -91,8 +91,30 @@ abstract class Advancement
             ];
         }
 
-        $match->a_score = $this->score($payload['a_score'] ?? null);
-        $match->b_score = $this->score($payload['b_score'] ?? null);
+        /*
+         * ⚠️ ABSENT IS NOT BLANK (CLAUDE.md, Part 8).
+         *
+         * These two lines used to write BOTH scores on every call, reading a
+         * key that was never sent as an instruction to clear. Every caller
+         * that changes one thing at a time therefore erased the rest of the
+         * bout: the board posts `{a_score: "5"}` when a score box is typed in,
+         * and `{winner: "a"}` when a corner is tapped — so picking a winner
+         * wiped the scoreline that explained it, and typing the red score
+         * wiped the blue one. The record on this event shows exactly that,
+         * 63 bouts with a winner and not one score among them.
+         *
+         * A key that IS sent, empty, still clears — that is how a score is
+         * taken back off — and a caller that sends both (the mat console
+         * does) behaves as it always has.
+         */
+        if (array_key_exists('a_score', $payload)) {
+            $match->a_score = $this->score($payload['a_score']);
+        }
+
+        if (array_key_exists('b_score', $payload)) {
+            $match->b_score = $this->score($payload['b_score']);
+        }
+
         $match->winner = $winner;
 
         // Why, when the score was not the answer — a disqualification, a
@@ -109,6 +131,13 @@ abstract class Advancement
             $match->win_reason = null;
             $match->win_note = null;
         }
+        /*
+         * A result somebody RECORDED is never a walkover, whatever it looks
+         * like. An organiser may now declare a winner with no score and no
+         * reason — which is shaped exactly like a bye — so the flag is cleared
+         * here rather than left to be guessed at afterwards.
+         */
+        $match->won_by_bye = false;
         $match->status = $winner ? 'done' : (in_array($payload['status'] ?? null, ['upcoming', 'live'], true) ? $payload['status'] : 'upcoming');
         $match->save();
 
@@ -338,27 +367,28 @@ abstract class Advancement
         // decided its final is.
         $settled = true;
 
-        if ($this->sport->bronzeRule() === 'third_place_match') {
+        /* The EVENT's answer, not only the sport's — an organiser can say what
+           their own championship does (App\Events\Support\BronzeRule), and a
+           NULL there still means the sport's rule book. */
+        if (\App\Events\Support\BronzeRule::playsOff($category->event)) {
             $third = $matches->firstWhere('round', self::ROUND_THIRD);
 
             if ($third?->winner) {
                 $podium[] = $this->medal(3, $third, $third->winner);
 
                 /*
-                 * FOURTH — the athlete who lost the play-off for bronze.
+                 * ⚠️ THREE PLACES. NO FOURTH.
                  *
-                 * Not a medal, and the reason to record it anyway is that a
-                 * championship's own result sheet has four names on it: fourth
-                 * place is a placing an athlete carries, a seeding a federation
-                 * reads, and the one line a competitor who came off the podium
-                 * by a single bout can point at. It is only ever written where
-                 * a bout actually decided it — never inferred.
+                 * The loser of the play-off used to be recorded as place 4 —
+                 * "not a medal, but a placing an athlete carries". The owner,
+                 * who runs these championships, settled it on 2026-09-21: a
+                 * podium here is gold, silver and ONE bronze, and nothing
+                 * else. A fourth line on the sheet is a place nobody awards,
+                 * and it read as a second bronze on every surface that drew it.
+                 *
+                 * Deliberately not made configurable: one convention, decided,
+                 * in the one method that writes a podium.
                  */
-                $fourthSide = $third->winner === 'a' ? 'b' : 'a';
-
-                if ($third->{$fourthSide.'_name'}) {
-                    $podium[] = $this->medal(4, $third, $fourthSide);
-                }
             } elseif ($third && filled($third->a_name) && filled($third->b_name)) {
                 // Both semi-finalists are waiting on the mat: the division has
                 // a gold and a silver, and is not over.

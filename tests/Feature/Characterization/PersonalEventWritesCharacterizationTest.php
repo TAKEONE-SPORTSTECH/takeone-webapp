@@ -691,7 +691,7 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
     }
 
     /** The venue board is deliberately impersonal — and NOT device-split. */
-    public function test_board_is_one_shared_view_and_carries_nothing_about_the_viewer(): void
+    public function test_board_is_one_shared_view_and_carries_nothing_about_other_people(): void
     {
         [$organiser, $club, $event] = $this->scenario();
         $this->drawnDivision($event, $club);
@@ -701,9 +701,27 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
 
         $payload = $this->actingAs($organiser)->getJson(route('me.events.board', $event->uuid));
         $payload->assertOk()->assertJson(['success' => true]);
-        // Only the event's identity and the mats — nothing tied to a viewer.
-        $this->assertSame(['success', 'e', 'mats'], array_keys($payload->json()));
-        $this->assertSame(['key', 'title'], array_keys($payload->json('e')));
+
+        /*
+         * The event's identity, its mats, and ONE fact about the reader
+         * themselves.
+         *
+         * This used to pin "nothing tied to a viewer" at all. `canManage` was
+         * added deliberately on 2026-09-08: the board is `assertVisible` only,
+         * so any member who can see the event may open this chrome-less page,
+         * and its single control used to point at the console for everybody —
+         * a competitor who tapped it was thrown to the platform home by the 403
+         * handler, with no tab bar to escape through. The flag decides where
+         * that one control goes.
+         *
+         * It is not a disclosure: it says what THIS reader may do, which they
+         * discover by tapping anyway. What the rule was really protecting — that
+         * the board says nothing about any OTHER person — is unchanged, and the
+         * key list below is what keeps it that way.
+         */
+        $this->assertSame(['success', 'e', 'mats', 'canManage'], array_keys($payload->json()));
+        $this->assertSame(['key', 'title', 'color'], array_keys($payload->json('e')));
+        $this->assertIsBool($payload->json('canManage'));
     }
 
     public function test_board_and_next_up_are_denied_to_someone_the_event_does_not_reach(): void
@@ -734,19 +752,19 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
 
     /* =====================================================================
      * The verification desk
+     *
+     * REMOVED 2026-09-15. This characterized `me.events.verify` — a desk screen
+     * of its own, rendering `personal.event-verification`. Both went on
+     * 2026-09-03 when the desk was folded onto the entry list: the gates open
+     * from a person's card there, and two doors to one job was one too many.
+     * The route, the controller method and the view are all gone, so the test
+     * could only ever throw RouteNotFoundException.
+     *
+     * What it was protecting is covered next door, on the screen that inherited
+     * the job: `test_people_and_officiating_screens_are_shared_views` pins the
+     * one shared view, and Tests\Feature\Events\OfficialVerificationTest pins
+     * who gets the gates on it and who gets nothing.
      * ===================================================================== */
-
-    public function test_verify_screen_is_one_shared_view_reachable_by_the_organiser_only(): void
-    {
-        [$organiser, $club, $event] = $this->scenario();
-
-        $this->asDesktop($organiser)->get(route('me.events.verify', $event->uuid))
-            ->assertOk()->assertViewIs('personal.event-verification');
-
-        $member = $this->clubMember($club);
-        $this->asDesktop($member)->get(route('me.events.verify', $event->uuid))
-            ->assertRedirect('/');
-    }
 
     public function test_people_and_officiating_screens_are_shared_views(): void
     {

@@ -226,6 +226,59 @@ class BracketArrangementTest extends TestCase
         $this->assertSame($before, $bout->fresh()->a_name);
     }
 
+    /**
+     * ...AND A FINISHED CHAMPIONSHIP IS STILL CORRECTABLE.
+     *
+     * Asked for explicitly on 2026-09-20: "the unlock can work even after the
+     * competition is over as I need it." A result filed against the wrong
+     * corner, or an athlete left off a board, is found when somebody reads the
+     * sheet in the days AFTER — and a board that sealed itself at the final
+     * whistle preserved the mistake instead of the history.
+     *
+     * The rules underneath are unchanged: this is the same narrow, re-checked
+     * move it always was, and the test above still holds for a bout live on a
+     * mat. All that changed is that the verb is still OFFERED once the event
+     * has ended.
+     */
+    public function test_an_organiser_can_still_put_a_draw_right_after_the_event_has_ended(): void
+    {
+        /* ⚠️ BRAZILIAN JIU-JITSU, and the sport matters here.
+        
+           That package's Arrangement extends the shared
+           App\Events\Support\Tournament\Arrangement, which allows the narrow
+           organiser moves once an event is under way. Karate and Taekwondo
+           still carry their own copies of that class, which refuse every move
+           from the start — the triplication CLAUDE.md records under "Shared
+           Stays Shared", and the reason those two still withdraw the verb at
+           the start rather than offering one that always refuses.
+        
+           When they are ported to the shared base this test should be widened
+           to cover all three. */
+        $event = $this->event(['sport' => 'bjj']);
+        $category = $this->drawnDivision($event);
+        $bout = $this->firstRound($category)[0];
+
+        // Over: it ran yesterday and nothing is on a mat.
+        $event->update([
+            'date' => now()->subDays(2)->toDateString(),
+            'end_date' => now()->subDay()->toDateString(),
+        ]);
+        $this->assertTrue($event->fresh()->hasEnded(), 'the fixture is not a finished event');
+
+        $name = $bout->fresh()->a_name;
+
+        $res = $this->actingAs($this->organiser)
+            ->putJson("/me/events/{$event->uuid}/brackets/arrange", [
+                'category_id' => $category->id,
+                'from' => ['type' => 'slot', 'match_id' => $bout->id, 'side' => 'a'],
+                'to' => ['type' => 'bench'],
+            ]);
+        $res->assertOk()->assertJson(['success' => true]);
+
+        $this->assertNull($bout->fresh()->a_name, 'the correction was not applied');
+        $this->assertNotNull($name);
+    }
+
     public function test_a_later_round_cannot_be_arranged(): void
     {
         $event = $this->event();

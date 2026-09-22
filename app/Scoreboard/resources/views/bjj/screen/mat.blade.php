@@ -82,6 +82,24 @@
 
 <div id="root"><div id="stage">
 
+  {{-- ── REHEARSAL ──────────────────────────────────────────────────────────
+       A practice bout must never be mistakable for a real one — not by an
+       official at the table, and not by anybody reading the wall or
+       photographing it. This band says so across the top of the board for as
+       long as a rehearsal is running, and is not drawn at all otherwise.
+
+       Absolutely positioned ON TOP of the 1920x1080 stage rather than in its
+       flow: the board's layout is fixed and measured, and a band that pushed it
+       down would change every screen in the hall for a state that is meant to
+       be temporary (Design Rule #1). --}}
+  <div id="rehearsalBand" hidden
+       style="position:absolute; top:0; left:0; right:0; height:52px; z-index:90;
+              background:repeating-linear-gradient(135deg,#b45309,#b45309 28px,#92400e 28px,#92400e 56px);
+              color:#fff; font-weight:800; font-size:26px; letter-spacing:.34em;
+              display:flex; align-items:center; justify-content:center; text-transform:uppercase;">
+    {{ __('events.rehearsal_running') }}
+  </div>
+
   {{-- ── Waiting ────────────────────────────────────────────────────────────
        A scoreboard hung over one mat goes QUIET between matches. It does not
        become the running order — that is the corridor screen's job — and it
@@ -112,7 +130,7 @@
 
     <div style="flex:1; display:flex; position:relative;">
       {{-- BLUE --}}
-      <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(135deg,#1362d1 0%,#082a55 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(135deg,#c1121f 0%,#5c0a10 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbBlueWin" hidden style="position:absolute; inset:0; border:14px solid #ffd666; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
         {{-- The referee's stalling count, on the wall.
              Sits over the corner it is against — over BOTH when the count is a
@@ -168,7 +186,7 @@
       </div>
 
       {{-- WHITE --}}
-      <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(225deg,#f4f7fb 0%,#9fadc0 100%); color:#0a0b10; position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(225deg,#1362d1 0%,#08284f 100%); color:#fff; position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbWhiteWin" hidden style="position:absolute; inset:0; border:14px solid #b3861f; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
         {{-- The referee's stalling count, on the wall.
              Sits over the corner it is against — over BOTH when the count is a
@@ -186,21 +204,21 @@
           <img id="sbWhiteFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.35);">
           <div style="display:flex; flex-direction:column; align-items:flex-end;">
             <div id="sbWhiteCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
-            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(10,11,16,.6); margin-top:6px;">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
+            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
           </div>
         </div>
         <div id="sbWhiteName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:120px; line-height:1; text-transform:uppercase; margin-top:36px; text-shadow:0 6px 30px rgba(255,255,255,.35); padding-bottom:14px;"></div>
-        <div id="sbWhiteClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(10,11,16,.72); margin-top:10px;"></div>
+        <div id="sbWhiteClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.8); margin-top:10px;"></div>
         <div style="flex:1; display:flex; align-items:center; justify-content:center; align-self:stretch;">
-          <div id="sbWhiteScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:#0a0b10; text-shadow:0 10px 60px rgba(255,255,255,.4); font-variant-numeric:tabular-nums;">0</div>
+          <div id="sbWhiteScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:#fff; text-shadow:0 10px 60px rgba(0,0,0,.5); font-variant-numeric:tabular-nums;">0</div>
         </div>
         <div style="display:flex; flex-direction:column; gap:12px; min-height:180px; justify-content:flex-end; align-items:flex-end;">
           <div style="display:flex; align-items:center; gap:20px; flex-direction:row-reverse;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(10,11,16,.65); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
             <div id="sbWhiteAdv" style="display:flex; gap:10px; flex-direction:row-reverse;"></div>
           </div>
           <div style="display:flex; align-items:center; gap:20px; flex-direction:row-reverse;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(10,11,16,.65); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
             <div id="sbWhitePen" style="display:flex; gap:10px; flex-direction:row-reverse;"></div>
           </div>
         </div>
@@ -228,12 +246,12 @@
 
   {{-- ── The introduction, over the top of it ──────────────────────────────── --}}
   <div id="vs" class="layer" hidden style="z-index:12; background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
-    <div style="position:absolute; inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%); overflow:hidden; background:#10233f; animation:panelL 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%); overflow:hidden; background:#3f1013; animation:panelL 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsBluePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite;"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg, rgba(40,86,152,0.55) 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
     </div>
-    <div style="position:absolute; inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%); overflow:hidden; background:#2c3340; animation:panelR 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%); overflow:hidden; background:#10233f; animation:panelR 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsWhitePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite reverse;"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(245deg, rgba(226,232,240,0.42) 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
@@ -248,7 +266,7 @@
          the strip came down with it to buy the room. The canvas is a fixed
          1920x1080, which is why these can be hand-measured at all. --}}
     <div style="position:absolute; left:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; z-index:6; max-width:44%; min-width:0; animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1362d1; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_blue') }}</div>
+      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#c1121f; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_blue') }}</div>
       <div style="display:flex; align-items:center; gap:15.1px;">
         <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
         <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#a9c6ea;"></div>
@@ -262,7 +280,7 @@
     </div>
 
     <div style="position:absolute; right:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-end; gap:10px; z-index:6; max-width:44%; min-width:0; text-align:right; animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#0a0b10; background:#e6ebf2; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
+      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1362d1; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
       <div style="display:flex; align-items:center; gap:15.1px; flex-direction:row-reverse;">
         <div id="vsWhiteFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
         <div id="vsWhiteCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#dfe6ef;"></div>
@@ -337,7 +355,8 @@
         <div id="qEvent" style="font-weight:700; font-size:34px; letter-spacing:0.24em; text-transform:uppercase; color:rgba(232,230,224,0.85); max-width:520px;"></div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-        <div style="font-family:'Anton',sans-serif; font-size:64px; letter-spacing:0.2em; padding-left:0.2em; text-transform:uppercase; white-space:nowrap; background:linear-gradient(100deg, #fdc436 40%, #fffdf0 50%, #fdc436 60%); background-size:200% 100%; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation:titleShimmer 3.5s linear infinite;">{{ __('scoreboard::bjj_messages.court_title') }}</div>
+        {{-- Solid gold, not a shimmer. The title used to animate its own background-position behind clipped text, so the one word on the board that never changes was the one thing always moving. Stopped 2026-09-20. Painted rather than merely un-animated: the gradient exists ONLY to be slid, and left parked it renders the text as an off-centre band. --}}
+        <div style="font-family:'Anton',sans-serif; font-size:64px; letter-spacing:0.2em; padding-left:0.2em; text-transform:uppercase; white-space:nowrap; color:#fdc436;">{{ __('scoreboard::bjj_messages.court_title') }}</div>
         <div style="height:3px; width:100%; background:linear-gradient(to right, transparent, #fdc436, transparent);"></div>
       </div>
       <div style="flex:1; display:flex; justify-content:flex-end; align-items:center; gap:18px;">
@@ -345,7 +364,7 @@
           <span style="font-weight:600; font-size:32px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.court_court') }}</span>
           <span id="qCourtNumber" style="font-family:'Anton',sans-serif; font-size:52px; color:#fff;"></span>
         </div>
-        <div style="width:10px; height:64px; background:#e6ebf2;"></div>
+        <div style="width:10px; height:64px; background:#1362d1;"></div>
       </div>
     </div>
 
@@ -529,10 +548,10 @@
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitNames);
 
-  // TODO(offline): flags come from flagcdn. Harmless on 4G, but the screen
-  // agent should mirror them to disk so a dead uplink never empties them.
+  // Our own files, served from this box — a hall with no uplink is the
+  // ordinary case (CLAUDE.md -> Flags Come From One Local Source).
   function flagUrl(code) {
-    return /^[a-z]{2}$/.test(String(code || '')) ? 'https://flagcdn.com/w1280/' + code + '.png' : null;
+    return /^[a-z]{2}$/.test(String(code || '')) ? '/images/flags/' + code + '.svg' : null;
   }
 
   /* ── The clock ──────────────────────────────────────────────────────────
@@ -809,7 +828,7 @@
 
     var host = el('sbCallout');
     var blue = ev.side === 'blue';
-    var colour = blue ? '#4d9aff' : '#e6ebf2';
+    var colour = blue ? '#ff5a63' : '#4d9aff';
     host.textContent = '';
     host.style.left = (blue ? '25%' : '75%');
     host.style.top = '44%';
@@ -1098,33 +1117,69 @@
     var blue = corner === 'blue';
     var wrap = node('div', 'flex:1; min-width:0; display:flex; align-items:stretch;' +
       (blue
-        ? 'background:linear-gradient(90deg, #1362d1 0%, #08284f 100%);' +
+        ? 'background:linear-gradient(90deg, #c1121f 0%, #5c0a10 100%);' +
           'clip-path:polygon(0 0, 100% 0, calc(100% - 60px) 100%, 0 100%); margin-right:-30px; color:#fff;'
         : 'flex-direction:row-reverse;' +
-          'background:linear-gradient(270deg, #eef2f7 0%, #93a1b3 100%);' +
-          'clip-path:polygon(60px 0, 100% 0, 100% 100%, 0 100%); margin-left:-30px; color:#0a0b10;'));
+          'background:linear-gradient(270deg, #1362d1 0%, #08284f 100%);' +
+          'clip-path:polygon(60px 0, 100% 0, 100% 100%, 0 100%); margin-left:-30px; color:#fff;'));
 
-    var photo = node('div', 'width:230px; flex:0 0 auto; background-color:' + (blue ? '#0e3f80' : '#7f8b9c') + ';' +
+    // ⚠️ The box is the PICTURE'S OWN SHAPE, not a fixed width.
+    //
+    // Every profile picture on the platform is portrait 3:4 — stored 600x800,
+    // cropped by the member through a 300x400 viewport (CLAUDE.md, "Profile
+    // Pictures Are Portrait 3:4"). This box was 230px wide by whatever height
+    // the row happened to be — landscape — so `cover` filled the width and ate
+    // the top and bottom of the crop the member chose. From ten metres that is
+    // a forehead and a chin.
+    //
+    // Tying the width to the height at 3:4 makes `cover` an exact fit: the
+    // whole crop, at its own ratio, whatever height the rows settle at when
+    // four of them share the screen.
+    var photo = node('div', 'align-self:stretch; aspect-ratio:3/4; width:auto; flex:0 0 auto; background-color:' + (blue ? '#6e1219' : '#0e3f80') + ';' +
       'background-size:cover; background-position:center 12%;');
-    bgOrHide(photo, m[corner + 'Photo']);
+    // Their own face, and the drawn stand-in when there is none — the same
+    // rule as the introduction panel. The stand-in sits well back, so nobody
+    // reads it as a photograph of the athlete about to walk on.
+    var face = m[corner + 'Photo'] || m[corner + 'Fallback'];
+    bgOrHide(photo, face);
+    photo.style.opacity = (face && !m[corner + 'Photo']) ? '.45' : '1';
     wrap.appendChild(photo);
 
     var col = node('div', 'flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:6px;' +
       (blue ? 'padding:10px 60px 10px 26px;' : 'align-items:flex-end; padding:10px 26px 10px 60px; text-align:right;'));
+
+    // The country goes ABOVE the name: flag, then the country spelled out.
+    // A reader scanning four rows from the back of a hall finds the nation
+    // first and the person second, which is the order a competition is read
+    // in. The plate below the name keeps the club, which is the smaller claim.
+    //
+    // The flag is smaller here than it was in the club strip — it sits over a
+    // 56px name rather than beside a 30px club, and a 76px plate above the
+    // name out-shouted it.
+    var nat = node('div', 'display:flex; align-items:center; gap:12px; max-width:100%;' + (blue ? '' : 'flex-direction:row-reverse;'));
+
+    // Stretched to fill the box — `100% 100%`, not `cover` and not `contain`.
+    // National flags run from 1.43:1 to 2:1 while this box is 4:3, so the three
+    // options are crop (which ate a third off a 2:1 flag), letterbox (grey
+    // bands), or stretch — which keeps every flag WHOLE and fills the plate.
+    var flag = node('div', 'width:58px; flex:0 0 auto; aspect-ratio:4/3; background-color:rgba(0,0,0,0.25); background-size:100% 100%; image-rendering:auto; background-repeat:no-repeat; background-position:center; border:1px solid rgba(255,255,255,0.4);');
+    var hasFlag = bgOrHide(flag, flagUrl(m[corner + 'Flag']));
+    nat.appendChild(flag);
+
+    var country = node('div', 'min-width:0; font-weight:700; font-size:26px; letter-spacing:0.14em; text-transform:uppercase; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;');
+    var hasCountry = textOrHide(country, m[corner + 'Country']);
+    nat.appendChild(country);
+
+    // Neither one — the line steps aside rather than leaving its gap over the
+    // name. Same rule as the club strip below.
+    show(nat, hasFlag || hasCountry);
+    col.appendChild(nat);
 
     // The one field that never hides: a nameless half looks broken from ten
     // metres, so an undrawn slot says so instead.
     col.appendChild(node('div', "font-family:'Anton',sans-serif; font-size:56px; line-height:1; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;", m[corner + 'Name'] || TBD));
 
     var meta = node('div', 'display:flex; align-items:center; gap:12px; max-width:100%;' + (blue ? '' : 'flex-direction:row-reverse;'));
-
-    // Stretched to fill the box — `100% 100%`, not `cover` and not `contain`.
-    // National flags run from 1.43:1 to 2:1 while this box is 4:3, so the three
-    // options are crop (which ate a third off a 2:1 flag), letterbox (grey
-    // bands), or stretch — which keeps every flag WHOLE and fills the plate.
-    var flag = node('div', 'width:76px; flex:0 0 auto; aspect-ratio:4/3; background-color:rgba(0,0,0,0.25); background-size:100% 100%; image-rendering:auto; background-repeat:no-repeat; background-position:center; border:1px solid rgba(255,255,255,0.4);');
-    var hasFlag = bgOrHide(flag, flagUrl(m[corner + 'Flag']));
-    meta.appendChild(flag);
 
     var crest = node('div', 'width:66px; height:66px; flex:0 0 auto; border-radius:50%; background-color:rgba(255,255,255,0.12); background-size:cover; background-position:center; border:1px solid rgba(255,255,255,0.35);');
     var hasCrest = bgOrHide(crest, m[corner + 'Logo']);
@@ -1134,9 +1189,9 @@
     var hasClub = textOrHide(club, m[corner + 'Club']);
     meta.appendChild(club);
 
-    // With flag, crest and club all absent the strip is an empty flex row that
+    // With crest and club both absent the strip is an empty flex row that
     // would still eat its gap under the name — so the row itself steps aside.
-    show(meta, hasFlag || hasCrest || hasClub);
+    show(meta, hasCrest || hasClub);
 
     col.appendChild(meta);
     wrap.appendChild(col);
@@ -1194,49 +1249,82 @@
    */
   function qRow(m, i, isNext, enter) {
     var GOLD = '#fdc436';
-    var anim = enter ? ' animation:' + (i % 2 === 0 ? 'rowEnterL' : 'rowEnterR') + ' 0.7s ' + (0.2 + i * 0.15) + 's cubic-bezier(0.22,1,0.36,1) both;' : '';
+    /* ⚠️ MOVEMENT BELONGS TO THE FIRST ROW ONLY (2026-09-20).
 
-    var r = node('div', 'flex:1; min-height:0; position:relative; display:flex; align-items:stretch;' +
-      (isNext ? 'border:1px solid rgba(253,196,54,0.8);' : 'border:1px solid rgba(255,255,255,0.15);') +
-      'background:#101016;' +
+       Four rows each carrying an entrance, and a shine crossing all four on
+       four staggered clocks, meant something was always moving somewhere on
+       the wall — and a reader looking for the bout that is NEXT had nothing to
+       look at, because everything was equally alive. The gold ring, the breath
+       and the beating number on row 0 were competing with three rows of
+       decoration rather than standing out from them.
+
+       So the queue below the first row is STILL. Row 0 keeps everything it
+       had; rows 1-3 draw and stay drawn. Nothing is removed — it is scoped,
+       which is what makes the top row read as the top row. */
+    var anim = (enter && isNext) ? ' animation:rowEnterL 0.7s 0.2s cubic-bezier(0.22,1,0.36,1) both;' : '';
+
+    /* ── Rounded corners, and the two layers that make them possible ───────
+       Asked for 2026-09-20. A radius alone would not have shown: the two
+       halves are CLIP-PATH polygons, which replace the border box entirely,
+       so their outer corners stay square however the row is rounded. They
+       have to be clipped by an ancestor.
+
+       But that ancestor cannot be the row itself, because `overflow:hidden`
+       clips a CHILD'S box-shadow — and the breath on row 0 is exactly that: a
+       child whose 110px glow is meant to spread OUTSIDE the row. Clipping it
+       would delete the thing that marks the next bout.
+
+       So the row splits in two. `r` is unclipped and carries everything that
+       belongs outside the edge (the glow, the running border); `body` is the
+       rounded, clipped box and carries everything that belongs inside it. */
+    var R = 16;
+
+    var r = node('div', 'flex:1; min-height:0; position:relative; border-radius:' + R + 'px;' +
       // The quiet half of the breath, as a plain static shadow. The loud half
-      // is the layer below, faded over the top of it.
+      // is the layer below, faded over the top of it. An element's OWN shadow
+      // is not clipped by its own overflow, so this one is safe here.
       (isNext ? 'box-shadow:0 0 16px rgba(253,196,54,0.35), 0 0 44px rgba(253,196,54,0.15);' : '') + anim);
-
-    var sweepWrap = node('div', 'position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2;');
-    sweepWrap.appendChild(node('div', 'position:absolute; top:0; bottom:0; width:26%; background:linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent); animation:rowSweep 4.5s ' + (1.2 + i * 0.55) + 's ease-in-out infinite;'));
-    r.appendChild(sweepWrap);
 
     if (isNext) {
       // The breath: the strong shadow rasterised ONCE and faded in and out,
       // rather than a 110px blur re-drawn around a full-width row every frame.
       r.appendChild(node('div', 'position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:0;' +
-        'box-shadow:0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35);' +
+        'border-radius:' + R + 'px; box-shadow:0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35);' +
         'animation:glowPulse 2.2s 1.2s ease-in-out infinite;'));
 
-      // The running border, as four thin strips rather than one masked box: a
-      // mask forces a render surface, and this is the same picture without it.
-      var ring = node('div', 'position:absolute; inset:-2px; pointer-events:none; z-index:2;');
-      var GRAD = 'background:linear-gradient(90deg, ' + GOLD + ', #fffdf0 25%, ' + GOLD + ' 50%, #6b5310 75%, ' + GOLD + ');';
-      ['top:0;', 'bottom:0;'].forEach(function (edge) {
-        var band = node('div', 'position:absolute; left:0; right:0; ' + edge + ' height:3px; overflow:hidden;');
-        // The gradient repeats every 50% of its own width, so a -50% slide
-        // loops with no seam.
-        band.appendChild(node('div', 'position:absolute; top:0; bottom:0; left:0; width:300%;' + GRAD + 'animation:goldSlide 2.5s linear infinite;'));
-        ring.appendChild(band);
-      });
-      ['left:0;', 'right:0;'].forEach(function (edge) {
-        ring.appendChild(node('div', 'position:absolute; top:0; bottom:0; ' + edge + ' width:3px; background:' + GOLD + ';'));
-      });
+      /* The running border: one rounded plate carrying the sliding gradient,
+         with the body laid over it 2px in. It used to be four straight strips
+         — no mask, and no render surface, which was the point — but four
+         straight strips cannot follow a curve, and rounding them left a notch
+         on each corner. Two stacked rounded boxes need no mask either. */
+      var ring = node('div', 'position:absolute; inset:-2px; border-radius:' + (R + 2) + 'px; overflow:hidden; pointer-events:none; z-index:0;');
+      // The gradient repeats every 50% of its own width, so a -50% slide loops
+      // with no seam.
+      ring.appendChild(node('div', 'position:absolute; top:0; bottom:0; left:0; width:300%;' +
+        'background:linear-gradient(90deg, ' + GOLD + ', #fffdf0 25%, ' + GOLD + ' 50%, #6b5310 75%, ' + GOLD + ');' +
+        'animation:goldSlide 2.5s linear infinite;'));
       r.appendChild(ring);
     }
 
-    r.appendChild(half(m, 'blue'));
-    r.appendChild(half(m, 'white'));
+    // Everything that must be clipped to the rounded shape lives in here.
+    var body = node('div', 'position:absolute; inset:0; display:flex; align-items:stretch; overflow:hidden;' +
+      'border-radius:' + R + 'px; background:#101016; z-index:1;' +
+      (isNext ? '' : 'border:1px solid rgba(255,255,255,0.15);'));
+    r.appendChild(body);
+
+    // The travelling shine, on the next bout and nowhere else.
+    if (isNext) {
+      var sweepWrap = node('div', 'position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2;');
+      sweepWrap.appendChild(node('div', 'position:absolute; top:0; bottom:0; width:26%; background:linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent); animation:rowSweep 4.5s 1.2s ease-in-out infinite;'));
+      body.appendChild(sweepWrap);
+    }
+
+    body.appendChild(half(m, 'blue'));
+    body.appendChild(half(m, 'white'));
 
     var pl = plate(m, isNext);
     if (enter) pl.style.animation = 'platePop 0.55s ' + (0.55 + i * 0.15) + 's cubic-bezier(0.22,1,0.36,1) both';
-    r.appendChild(pl);
+    body.appendChild(pl);
     return r;
   }
 
@@ -1306,6 +1394,12 @@
     if (onQueue) paintQueue();
     if (onBoard || onVs) paintScoreboard();
     if (onVs) paintVs();
+
+    // Whether this mat is rehearsing rides on the state itself, so the band
+    // follows a rehearsal being started or ended with no reload — the same
+    // push that carries the score (MatState::present).
+    var band = el('rehearsalBand');
+    if (band) band.hidden = !S.rehearsal;
 
     // The handover: the introduction WIPES itself off the scoreboard already
     // drawn behind it, rather than the page changing. That transition is what

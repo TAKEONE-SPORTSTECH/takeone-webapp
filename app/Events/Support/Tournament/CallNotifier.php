@@ -45,6 +45,22 @@ abstract class CallNotifier
             return 0;
         }
 
+        /*
+         * A REHEARSAL calls nobody.
+         *
+         * Everything else about a rehearsal is reversible — the bracket, the
+         * result, the podium all come back off a snapshot. A message does not.
+         * An athlete who is told at nine in the evening that they are due on
+         * Mat 1 has been told, and no restore unsends it.
+         *
+         * So the calls are suppressed at the source rather than cleaned up
+         * afterwards, which also means no claim row is written and the REAL
+         * call on the day is not read as already sent.
+         */
+        if (app(\App\Events\Support\Rehearsal::class)->active($event)) {
+            return 0;
+        }
+
         $sent = 0;
         $thresholds = config('event_notifications.call_thresholds', []);
 
@@ -116,6 +132,11 @@ abstract class CallNotifier
     public function pushResult(ClubEvent $event, EventMatch $bout): int
     {
         if (! config('event_notifications.enabled', true)) {
+            return 0;
+        }
+
+        // A rehearsal tells nobody they won. See pushDue.
+        if (app(\App\Events\Support\Rehearsal::class)->active($event)) {
             return 0;
         }
 

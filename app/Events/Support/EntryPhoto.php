@@ -2,6 +2,8 @@
 
 namespace App\Events\Support;
 
+use App\Models\ClubEvent;
+use App\Models\ClubEventRegistration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -88,6 +90,76 @@ class EntryPhoto
     }
 
     /**
+     * Give a face to the PERSON, across every entry they hold in this event.
+     *
+     * ── Why this is not one row ────────────────────────────────────────────
+     *
+     * `photo` is a column on the ENTRY, and one athlete legitimately holds
+     * several entries in one competition — a division each. The Victory BJJ
+     * championship had ALI ALSAIBAI entered in Gi and No-Gi and carrying a
+     * third, unplaced row: three registrations, three photo columns, one face.
+     *
+     * The people list shows him ONCE (CLAUDE.md → one card per person), so the
+     * organiser's editor opens on whichever of his rows comes first and writes
+     * the new photograph there. The draw, meanwhile, placed his No-Gi row on
+     * the mat. The photo was replaced, correctly, on a row nothing was looking
+     * at — and the wall carried on showing the old face with every part of the
+     * system behaving exactly as written. That is the bug this closes, and it
+     * closes it wherever a photo is set rather than at each screen that reads
+     * one.
+     *
+     * A photograph is a picture of a PERSON. Weight and the weigh-in are not —
+     * they are measured per entry and stay there.
+     *
+     * @param  string|null  $path  the stored path, or null to clear the face
+     * @return int  how many entries now carry it
+     */
+    public static function assign(ClubEvent $event, ClubEventRegistration $registration, ?string $path): int
+    {
+        $registration->forceFill(['photo' => $path])->save();
+
+        $userId = (int) $registration->user_id;
+
+        // An entry with no account behind it (a name on a paper list) is only
+        // ever itself — there is no person to fan out to.
+        if (! $userId) {
+            return 1;
+        }
+
+        $siblings = ClubEventRegistration::where('event_id', $event->id)
+            ->where('user_id', $userId)
+            ->where('id', '!=', $registration->id)
+            ->get();
+
+        // Each row may be carrying a DIFFERENT old file. Collect them, write
+        // every row FIRST, and only then decide what may go — two of this
+        // athlete's entries routinely share one file, and purging inside the
+        // loop would delete a picture the row after it still pointed at.
+        $replaced = [];
+
+        foreach ($siblings as $sibling) {
+            if ($sibling->photo && $sibling->photo !== $path) {
+                $replaced[$sibling->photo] = true;
+            }
+
+            $sibling->forceFill(['photo' => $path])->save();
+        }
+
+        foreach (array_keys($replaced) as $was) {
+            // `discard()` asks whether a PERSON's record still names the file.
+            // It does not ask whether another ENTRY does — nothing needed it to
+            // until entries came in groups — so that half is asked here.
+            $stillUsed = ClubEventRegistration::where('photo', $was)->exists();
+
+            if (! $stillUsed) {
+                self::discard($was);
+            }
+        }
+
+        return $siblings->count() + 1;
+    }
+
+    /**
      * Is this entry photo actually SHOWABLE — a path with bytes behind it?
      *
      * Naming a file and having one are different things, and the gap between
@@ -162,6 +234,11 @@ class EntryPhoto
             return true;
         }
 
+        if (Schema::hasTable('event_officials')
+            && DB::table('event_officials')->where('photo', $path)->exists()) {
+            return true;
+        }
+
         $entries = DB::table('club_event_registrations')->where('photo', $path);
 
         if ($exceptRegistrationId !== null) {
@@ -211,6 +288,13 @@ class EntryPhoto
 
         if (Schema::hasTable('user_photos')
             && DB::table('user_photos')->where('path', $path)->exists()) {
+            return true;
+        }
+
+        // An appointment's photograph is the official's own picture now, stored
+        // under them like everybody else's. A row naming it is a claim on it.
+        if (Schema::hasTable('event_officials')
+            && DB::table('event_officials')->where('photo', $path)->exists()) {
             return true;
         }
 

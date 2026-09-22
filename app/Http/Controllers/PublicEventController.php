@@ -2,15 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Support\DrawWaitingRoom;
+use App\Events\Support\EntryGates;
 use App\Events\Support\EventAccess;
+use App\Events\Support\EventFee;
 use App\Events\Support\EventVisitors;
 use App\Events\Support\PublicBrand;
 use App\Events\Support\PublicEvent;
 use App\Events\Support\PublicEventSkin;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Members\Models\User;
 use App\Models\ClubEvent;
+use App\Models\ClubEventRegistration;
 use App\Models\EventDocument;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -121,7 +127,26 @@ class PublicEventController extends Controller
         }
 
         return view('entry.public.mobile', ['e' => $e, 'console' => $console, 'mine' => $mine,
-            'visitors' => $visitors, 'visitorsCanDrill' => $canManage]);
+            'visitors' => $visitors, 'visitorsCanDrill' => $canManage,
+            /*
+             * Whether a DIVISION CHIP on the detail card is a door.
+             *
+             * The same pair the section pages compute for a participant card's
+             * chips, for the same two reasons — so the two surfaces answer a
+             * tap on a division identically. `drawOpen` is "would that page
+             * have anything on it", reveal setting and all; `drawNote` is what
+             * to say instead when it would not: "opens on…" while the organiser
+             * is holding the draw back, "no draw yet" when it simply has not
+             * been cut. A chip that says WHEN is the answer the reader came
+             * for; a chip that does nothing reads as a fault.
+             */
+            'drawOpen' => (bool) ($e['draw']['published'] ?? false),
+            'drawNote' => ($e['draw']['published'] ?? false)
+                ? null
+                : ($event->drawRevealed()
+                    ? __('events.public_draw_empty_title')
+                    : app(EventAccess::class)->drawHiddenMessage($event)),
+        ]);
     }
 
     /**
@@ -260,6 +285,89 @@ class PublicEventController extends Controller
 
         return view('entry.public.section-mobile', [
             'canManage' => $me !== null && app(EventAccess::class)->canManage($event, $me),
+            /*
+             * ===== Readiness, and who is allowed to read it =====
+             *
+             * The participant card carries a payment / weigh-in pill and the
+             * declared weight. Neither may ride in `$e`: that payload is cached
+             * per EVENT and served to strangers, and CLAUDE.md scopes both to
+             * the organiser, the officials who sign them off, and the athlete's
+             * own row (PersonalEventController::scopeRosterStatus states the
+             * rule; this is the same rule on the public surface). These events
+             * run Kids divisions — another family's child's body weight is not
+             * a fact a link may publish.
+             *
+             * So it is resolved PER VIEWER, outside the cache, and is an empty
+             * map for everybody else. The card then renders without those two
+             * rows rather than with grey ones: an absent badge discloses
+             * nothing, a greyed one discloses that there is something to grey.
+             */
+            'readiness' => $this->readinessFor($event, $me),
+            /*
+             * ===== May a reader open a group's bracket from here? =====
+             *
+             * A division chip on a participant card goes to that group's draw —
+             * but only where there IS one to read. `PublicEvent::draw()` already
+             * answers the question this surface has to ask: it returns nothing
+             * unless `EventAccess::drawVisible($event, null)` says the draw is
+             * out for the PUBLIC, which is the organiser's own setting
+             * (`draw_reveal`) plus the calendar. So the chip is a door exactly
+             * when the draw page it points at would have something on it.
+             *
+             * When it is not, the chip says WHEN rather than nothing — the same
+             * sentence <x-draw-veil> prints, and for the same reason: a reader
+             * who cannot tell "not published yet" from "nobody entered" phones
+             * the organiser, and that call is what the setting exists to
+             * prevent. Two silences, told apart: revealed but not yet cut is
+             * "no draw yet"; withheld is "opens on…".
+             */
+            'drawOpen' => (bool) ($e['draw']['published'] ?? false),
+            'drawNote' => ($e['draw']['published'] ?? false)
+                ? null
+                : ($event->drawRevealed()
+                    ? __('events.public_draw_empty_title')
+                    : app(EventAccess::class)->drawHiddenMessage($event)),
+
+            /*
+             * ===== The verification sheet, ON THIS PAGE =====
+             *
+             * The desk used to be reached by leaving: the card sent an organiser
+             * to /e/{uuid}/admin/people with a deep link, which is a second
+             * entry list opening over the one they were already reading. Asked
+             * on 2026-09-16 to stop doing that — the sheet opens over the card
+             * that was tapped.
+             *
+             * Null for anybody who may not officiate, and the page then renders
+             * no sheet at all rather than an empty one.
+             */
+            'desk' => $this->deskFor($event, $me, $e),
+
+            /*
+             * WHICH ENTRY that sheet opens on, per athlete — organiser only.
+             *
+             * The sheet is addressed by a REGISTRATION and this page knows
+             * PEOPLE, so the two are joined here. The card used to go and ASK
+             * for the id over the network when tapped, which meant any hiccup —
+             * a redirect, a slow answer, a response that was not JSON — fell
+             * through to the bare entry list (reported 2026-09-16). Resolved
+             * with the page, the tap has nothing left to fail at.
+             *
+             * A registration id is internal, and the only reader who can do
+             * anything with one is the reader the desk belongs to.
+             */
+            'deskEntries' => ($me && app(EventAccess::class)->canManage($event, $me))
+                ? $event->participantRegistrations()
+                    ->with('user:id,uuid')
+                    ->orderBy('id')
+                    ->get(['id', 'user_id'])
+                    ->filter(fn (ClubEventRegistration $r) => $r->user !== null)
+                    /* The FIRST entry of each person: an athlete in two
+                       divisions has two, the sheet opens one and offers a
+                       switcher between the rest (EntryGates::attach). */
+                    ->groupBy(fn (ClubEventRegistration $r) => $r->user->uuid)
+                    ->map(fn (Collection $rows) => (int) $rows->first()->id)
+                    ->all()
+                : [],
             'signedIn' => $me !== null,
             /*
              * Where the band's gear goes, resolved exactly as show() resolves
@@ -272,6 +380,29 @@ class PublicEventController extends Controller
                 ? app(PublicEventSkin::class)->payload($event)['console']
                 : null,
             'e' => $e,
+            /*
+             * ===== The draw page, before there is a draw =====
+             *
+             * A reader who opens /e/{uuid}/draw early used to get one line —
+             * "the draw has not been made" — which is true and tells them
+             * nothing they came for. The event already knows the shape of the
+             * field, so the page shows that instead: a clock to the weigh-in
+             * and the entry counts (App\Events\Support\DrawWaitingRoom).
+             *
+             * Built OUTSIDE `$e` deliberately. That payload is memoised per
+             * event and shared between readers; these are live counts on a page
+             * people refresh in the days before a competition, and a stale head
+             * count is worse than none.
+             *
+             * Discloses only what this page already publishes: how many are
+             * entered, across which divisions, under which flags, from which
+             * clubs. No names, no weights, no payment or weigh-in state — the
+             * same line `readiness` above is drawn on. The event is public at
+             * all or this method 404'd at the top.
+             */
+            'waitingRoom' => ($section === 'draw' && ! ($e['draw']['published'] ?? false))
+                ? app(DrawWaitingRoom::class)->build($event)
+                : null,
             'section' => $section,
             'sectionIcon' => $meta[0],
             'sectionLabel' => $meta[1],
@@ -282,6 +413,188 @@ class PublicEventController extends Controller
                 ? route('me.events.show', ['event' => $event->uuid])
                 : route('events.public', ['event' => $event->uuid]),
         ]);
+    }
+
+    /**
+     * Everything the verification sheet needs to render on the public page.
+     *
+     * ── Why it is assembled here and not reused wholesale ──────────────────
+     *
+     * The sheet itself is shared — `personal/partials/event-people` in its
+     * sheet-only shape, the same markup the organiser's own entry list opens,
+     * so there is one verification desk on the platform and not two. What it
+     * READS is a member-shaped payload, and this page has the public one; so
+     * the missing keys are supplied here rather than the sheet being forked.
+     *
+     * The gates themselves come from App\Events\Support\EntryGates, which is
+     * the same object the member list calls: the decision about which official
+     * may hold a body weight and which may see a bank receipt is made in one
+     * place, for both screens.
+     *
+     * @param  array<string, mixed>  $public  the poster's own payload
+     * @return array<string, mixed>|null      null when this reader has no desk
+     */
+    private function deskFor(ClubEvent $event, ?User $me, array $public): ?array
+    {
+        if ($me === null) {
+            return null;
+        }
+
+        $access = app(EventAccess::class);
+        $canWeigh = $access->canVerifyWeighIn($event, $me);
+        $canPay = $access->canVerifyPayments($event, $me);
+
+        if (! $canWeigh && ! $canPay) {
+            return null;
+        }
+
+        /* One row per PERSON carrying every entry they hold — the shape
+           EntryGates::attach() folds its payload onto, and the same shape
+           RosterPeople::byPerson() produces for the member list. Built from the
+           registrations rather than from the poster's rows, because the gates
+           are about ENTRIES and the poster is a list of people. */
+        $rows = $event->participantRegistrations()
+            ->with(['user:id,uuid,full_name,name,gender', 'category:id,name,weight_class'])
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (ClubEventRegistration $r) => $r->user !== null)
+            ->groupBy('user_id')
+            ->map(function (Collection $entries) {
+                $first = $entries->first();
+
+                return [
+                    'id' => (int) $first->user_id,
+                    'uuid' => $first->user->uuid,
+                    'name' => $first->user->full_name ?: $first->user->name,
+                    'gender' => $first->user->gender ?: null,
+                    'meta' => $first->user->gender ?: '',
+                    'registration' => (int) $first->id,
+                    'entries' => $entries->map(fn (ClubEventRegistration $r) => [
+                        'registration' => (int) $r->id,
+                        'division' => $r->category?->name ?: $r->category?->weight_class,
+                    ])->values()->all(),
+                ];
+            })
+            ->values()->all();
+
+        $gates = app(EntryGates::class);
+
+        return [
+            /*
+             * The member-shaped payload the sheet and its host script read. The
+             * poster's own values where they mean the same thing, and honest
+             * blanks where this page simply has no answer: nothing on this
+             * surface offers joining, ticketing or moderation counts, and the
+             * sheet does not draw them.
+             */
+            'e' => array_merge($public, [
+                'participants' => $gates->attach($event, $rows, $canWeigh, $canPay),
+                'participants_total' => count($rows),
+                'participants_people' => count($rows),
+                'cancelled' => $event->status === 'cancelled',
+                'joined' => false,
+                'watching' => false,
+                'payment_pending' => false,
+                'fee_due' => false,
+                'bans_list' => [],
+                'spectators_list' => [],
+            ]),
+            'canWeigh' => $canWeigh,
+            'canPay' => $canPay,
+            'canManage' => $access->canManage($event, $me),
+            'payment' => $gates->paymentInstructions($event),
+            'feeTypes' => $canPay ? $gates->feeTypes($event) : [],
+            'feeSingle' => EventFee::selection($event) === 'single',
+            'feeCurrency' => EventFee::currency($event),
+        ];
+    }
+
+    /**
+     * Payment and weigh-in state, keyed by the athlete's public uuid.
+     *
+     * Empty unless the viewer may hold it:
+     *
+     *   · whoever runs the event, and any official appointed to it — the people
+     *     who sign these two facts off;
+     *   · the athlete themselves, for their own row and nobody else's, because
+     *     "have I paid?" is a question they must be able to answer without
+     *     phoning anyone.
+     *
+     * `status` is the pill's own vocabulary — pending / paid / ready — derived
+     * exactly as the card's contract states: not paid is pending, paid without
+     * a weigh-in is paid, both is ready. An athlete holding two entries is one
+     * card, so the answer is over ALL of their entries: paid means every entry
+     * is paid for, which is the honest reading when a fee is charged per entry.
+     *
+     * @return array<string, array{status: string, paid: bool, weighed: bool, weight: ?string, weight_verified: bool}>
+     */
+    private function readinessFor(ClubEvent $event, ?User $me): array
+    {
+        if ($me === null) {
+            return [];
+        }
+
+        $access = app(EventAccess::class);
+        $staff = $access->canManage($event, $me) || $access->canOfficiate($event, $me);
+
+        $rows = $event->participantRegistrations()
+            ->when(! $staff, fn ($q) => $q->where('user_id', $me->id))
+            ->with('user:id,uuid')
+            ->get(['id', 'user_id', 'paid', 'paid_by', 'weight', 'weighed_in_at', 'weighed_in_by']);
+
+        return $rows
+            ->filter(fn (ClubEventRegistration $r) => $r->user !== null)
+            ->groupBy(fn (ClubEventRegistration $r) => $r->user->uuid)
+            ->map(function (Collection $entries) {
+                $paid = $entries->every(fn (ClubEventRegistration $r) => (bool) $r->paid);
+                $weighed = $entries->contains(fn (ClubEventRegistration $r) => $r->weighed_in_at !== null);
+
+                /* The weight whichever entry it was taken against — one body,
+                   one weight. An official's signature on any of them is the
+                   strongest answer, which is also what makes it green. */
+                $signed = $entries->first(fn (ClubEventRegistration $r) => $r->weighed_in_by !== null);
+                $declared = $entries->first(fn (ClubEventRegistration $r) => $r->weight !== null);
+                $reg = $signed ?: $declared;
+
+                return [
+                    /*
+                     * TWO FACTS, TWO BADGES — split on 2026-09-16 at the user's
+                     * request. They were one pill wearing one colour, which
+                     * meant an athlete who had paid but not weighed in coloured
+                     * the word "Paid" amber: the badge said one thing and its
+                     * colour said another. Each now carries its own state.
+                     *
+                     * `status` stays because it is the CARD's own attribute —
+                     * the draft's data-status contract, which nothing else
+                     * reads — and it is the honest summary of the pair: not
+                     * paid at all is the loudest, then waiting on the scale,
+                     * then ready to be drawn.
+                     */
+                    'status' => match (true) {
+                        ! $paid => 'pending',
+                        ! $weighed => 'paid',
+                        default => 'ready',
+                    },
+                    'paid' => $paid,
+                    /* HOW MANY of their entries are settled. A fee is per
+                       ENTRY, so somebody in Gi and No-Gi owes twice and `paid`
+                       above is true only when both are — without the counts the
+                       card can only say "Not paid", which is the wrong sentence
+                       for somebody who has paid one of two (2026-09-18). The
+                       organiser's own roster already sends these; this is the
+                       same two numbers so the two lists explain a red badge the
+                       same way. */
+                    'paid_count' => $entries->filter(fn (ClubEventRegistration $r) => (bool) $r->paid)->count(),
+                    'entries_count' => $entries->count(),
+                    'weighed' => $weighed,
+                    // Trailing zeros go: a scale reading of 62.00 is written 62.
+                    'weight' => $reg?->weight === null
+                        ? null
+                        : rtrim(rtrim(number_format((float) $reg->weight, 2, '.', ''), '0'), '.'),
+                    'weight_verified' => $signed !== null,
+                ];
+            })
+            ->all();
     }
 
     /**

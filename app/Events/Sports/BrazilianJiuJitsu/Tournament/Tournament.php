@@ -41,7 +41,7 @@ use Illuminate\Validation\Rule;
  * every scoring act is an append-only ledger row and the score is DERIVED by
  * replaying them. See Scoreboard/Ledger.
  */
-class Tournament extends AbstractEventType
+class Tournament extends AbstractEventType implements \App\Events\Contracts\AwardsDivisions
 {
     use SyncsDivisions;
 
@@ -318,7 +318,23 @@ class Tournament extends AbstractEventType
         $match = EventMatch::with('category')->where('event_id', $event->id)->findOrFail($unitId);
 
         // A finished championship is a historical record.
-        abort_if($event->hasEnded(), 422, __('event-bjj_tournament::messages.ended_locked'));
+        /*
+         * ⚠️ A FINISHED CHAMPIONSHIP IS STILL CORRECTABLE (2026-09-20, at the
+         * owner's instruction).
+         *
+         * This used to refuse outright — "a finished championship is a
+         * historical record" — and that reading is wrong in the one case that
+         * matters: the record is wrong. A winner entered against the wrong
+         * corner on the day is found when somebody reads the sheet afterwards,
+         * and refusing the correction does not protect the history, it
+         * preserves the mistake in it.
+         *
+         * Nothing else changed. This door is me.events.outcome, which asks for
+         * canManage on every call; the change is appended to the officiating
+         * log exactly as any other; and Advancement re-cuts whatever followed
+         * the bout, which is what correcting a result means. The board offers
+         * it only behind its padlock.
+         */
 
         $result = $this->advancement()->record($match, $payload);
 
@@ -370,6 +386,8 @@ class Tournament extends AbstractEventType
         return match ($action) {
             'generate_draw' => $this->generateDraw($event),
             'arrange_draw' => $this->arrangeDraw($event, $payload),
+            'grow_draw' => $this->growDraw($event, $payload),
+            'admit_late_entry' => $this->admitLateEntry($event, $payload),
             'clear_draw' => $this->clearDraw($event, $payload),
             'end_next_bout' => $this->endNextBout($event),
             default => ['success' => false, 'message' => __('events.action_unsupported')],
@@ -380,26 +398,99 @@ class Tournament extends AbstractEventType
     {
         $actions = [];
 
-        if (! $event->hasStarted() && $event->categories()->exists()) {
+        $hasDivisions = $event->categories()->exists();
+
+        if (! $event->hasStarted() && $hasDivisions) {
             $actions[] = [
                 'action' => 'generate_draw',
                 'label' => __('event-bjj_tournament::messages.action_generate_draw'),
                 'icon' => 'bi-diagram-3',
             ];
 
-            // Arranging is offered as an action rather than a route of its own,
-            // so the "may this run?" check stays in one place: an action the
-            // package does not currently offer can never be performed.
+            $actions[] = [
+                'action' => 'clear_draw',
+                'label' => __('event-bjj_tournament::messages.action_clear_draw'),
+                'icon' => 'bi-eraser',
+            ];
+        }
+
+        /*
+         * Arranging is offered as an action rather than a route of its own, so
+         * the "may this run?" check stays in one place: an action the package
+         * does not currently offer can never be performed.
+         *
+         * ⚠️ It OUTLIVES THE START, unlike the two above (2026-09-18, at the
+         * user's instruction). Generating and clearing re-cut a division from
+         * scratch and must never run once people are fighting on it. Arranging
+         * after the start is a different act: Arrangement::move() narrows it to
+         * one shape — somebody off the bench into an EMPTY first-round corner —
+         * which adds a missing athlete and cannot disturb a drawn one.
+         *
+         * Withdrawing it entirely is what left nine enrolled athletes with no
+         * way onto a board on the morning of 2026-09-18: the organiser could
+         * see them on the bench, and the only control that could place them had
+         * been taken off the screen. The narrow move is safe; having no move at
+         * all was not.
+         */
+        /*
+         * ⚠️ AND IT OUTLIVES THE END, not only the start (2026-09-20, at the
+         * owner's instruction: "the unlock can work even after the competition
+         * is over as I need it").
+         *
+         * A championship does not stop needing corrections when the last bout
+         * finishes. A result filed against the wrong corner, an athlete left
+         * off a board, a name spelled wrong on a medal list — all of it is
+         * found in the days AFTER, when somebody reads the sheet properly, and
+         * a board that seals itself at the final whistle is a board that cannot
+         * be put right.
+         *
+         * Nothing underneath was relaxed to allow this. Arrangement::move()
+         * applies exactly the same rules it always did, including the one thing
+         * it still refuses outright — the bout currently loaded on a mat — and
+         * every call re-authorises. This only decides whether the verb is
+         * OFFERED, and it is now offered for as long as the organiser holds the
+         * event.
+         */
+        if ($hasDivisions) {
             $actions[] = [
                 'action' => 'arrange_draw',
                 'label' => __('event-bjj_tournament::messages.action_arrange_draw'),
                 'icon' => 'bi-arrows-move',
             ];
 
+            /*
+             * Growing a division to the next bracket size, so a late entrant
+             * has somewhere to stand.
+             *
+             * Offered alongside Arrange and for the same reason it outlives the
+             * start: a bracket whose corners are all occupied has no empty slot
+             * to drag anybody into, and a competitor who turns up entered and
+             * eligible cannot be told the shape of a power of two is the reason
+             * they are not fighting. It refuses a division that has been
+             * fought — see growDraw() — so it can add room without ever
+             * spending a result.
+             */
             $actions[] = [
-                'action' => 'clear_draw',
-                'label' => __('event-bjj_tournament::messages.action_clear_draw'),
-                'icon' => 'bi-eraser',
+                'action' => 'grow_draw',
+                'label' => __('event-bjj_tournament::messages.action_grow_draw'),
+                'icon' => 'bi-arrows-angle-expand',
+            ];
+
+            /*
+             * Admitting somebody to a division that is ALREADY BEING FOUGHT.
+             *
+             * The other three all re-cut or rearrange a board that nothing has
+             * happened on yet. This one is for the desk at 10am: an entered,
+             * eligible competitor turns up for a division three bouts deep, and
+             * the answer has to be "yes" without spending a result. It refuses
+             * nothing on the grounds of the event having started — see
+             * App\Events\Support\Tournament\LateEntry, which protects the
+             * results themselves rather than the clock.
+             */
+            $actions[] = [
+                'action' => 'admit_late_entry',
+                'label' => __('event-bjj_tournament::messages.action_admit_late_entry'),
+                'icon' => 'bi-person-plus',
             ];
         }
 
@@ -565,9 +656,192 @@ class Tournament extends AbstractEventType
      * the bench), so the broadcast is a refresh signal — the division's data
      * comes back only to the operator who moved it, for their in-place patch.
      */
+    /**
+     * Re-lay one division at the size its entrant list now needs.
+     *
+     * ── What this is for ───────────────────────────────────────────────────
+     *
+     * A knockout bracket is a power of two. A division drawn for eight holds
+     * eight, and the ninth entrant — the late one, the one found in the wrong
+     * weight class, the one nobody enrolled until the morning — has nowhere to
+     * be put. Arrange cannot help: there is no empty corner to drag them into.
+     * Before this, the only answer was to re-draw the whole event before it
+     * started, which is no answer at all once it has.
+     *
+     * So this rebuilds ONE division at whatever size its current entrants
+     * require, byes filling the remainder, and leaves everybody free to be
+     * rearranged afterwards.
+     *
+     * ── What it refuses, and why that is the whole safety of it ────────────
+     *
+     * `build()` deletes the division's bouts and lays new ones. That is
+     * acceptable for a bracket nobody has fought on and unforgivable for one
+     * they have, so a division holding any decided contest is refused outright
+     * rather than partially preserved — half a re-laid bracket is worse than
+     * none. A bye does not count as a contest: it is an artefact of the shape
+     * we are about to change.
+     *
+     * A bout loaded on a mat is refused too, even with no result yet, because
+     * the mat scores against the row it loaded and this deletes rows.
+     *
+     * Entrants are taken WITHOUT the paid-and-weighed filter. Mid-competition
+     * the point is to seat everybody who is entered; dropping the unverified
+     * here would re-create the disappearance this whole day has been spent
+     * undoing.
+     */
+    private function growDraw(ClubEvent $event, array $payload): array
+    {
+        $category = $event->categories()->find($payload['category_id'] ?? null);
+
+        if (! $category || $category->isHeading()) {
+            return ['success' => false, 'message' => __('events.division_not_found')];
+        }
+
+        if (($category->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN) {
+            return ['success' => false, 'message' => __('event-bjj_tournament::messages.grow_not_a_bracket')];
+        }
+
+        $fought = $category->matches()
+            ->whereNotNull('winner')
+            ->whereNotNull('a_name')
+            ->whereNotNull('b_name')
+            ->exists();
+
+        if ($fought) {
+            return ['success' => false, 'message' => __('event-bjj_tournament::messages.grow_already_fought')];
+        }
+
+        $onMats = \App\Scoreboard\Fleet::matchesOnMats($event);
+
+        if ($onMats !== [] && $category->matches()->whereIn('id', $onMats)->exists()) {
+            return ['success' => false, 'message' => __('event-bjj_tournament::messages.grow_bout_on_mat')];
+        }
+
+        $entrants = $category->registrations()->where('role', 'participant')->count();
+
+        if ($entrants < 2) {
+            return ['success' => false, 'message' => __('event-bjj_tournament::messages.grow_needs_two')];
+        }
+
+        $this->draws->build($event, $category, paidOnly: false);
+        $this->advanceByes($category);
+        $this->scheduler->scheduleAndNumber($event->fresh());
+
+        return $this->arrangedResponse(
+            $event,
+            $category->fresh(),
+            __('event-bjj_tournament::messages.draw_grown', ['count' => $entrants])
+        );
+    }
+
+    /**
+     * Put a late entrant onto a division's board, whatever state it is in.
+     *
+     * The division may be mid-competition; that is the whole point. What it may
+     * not do is cost anybody a result, and the engine — not this method — is
+     * what guarantees that. Here we only resolve WHO and WHERE, including the
+     * common case where the athlete is entered in the championship but sitting
+     * in no division at all (or in the wrong one, which is the same repair).
+     */
+    private function admitLateEntry(ClubEvent $event, array $payload): array
+    {
+        $category = $event->categories()->find($payload['category_id'] ?? null);
+
+        if (! $category || $category->isHeading()) {
+            return ['success' => false, 'message' => __('events.division_not_found')];
+        }
+
+        $entry = $event->registrations()
+            ->where('id', (int) ($payload['competitor_id'] ?? 0))
+            ->where('role', 'participant')
+            ->with('user:id,full_name,name')
+            ->first();
+
+        if (! $entry) {
+            return ['success' => false, 'message' => __('events.late_entry_not_an_entrant')];
+        }
+
+        /*
+         * "He says he is supposed to be in this division."
+         *
+         * ⚠️ A PERSON IS ONE; THEIR ENTRIES ARE MANY — one per division, which
+         * is ordinary (Gi and No-Gi in the same championship) and is enforced by
+         * a unique key on (event, user, division). So the entry the desk picked
+         * is not necessarily the entry that belongs here: this athlete may
+         * ALREADY hold one in this division, sitting off the board. Moving the
+         * picked row on top of it violates that key and used to be a 500.
+         *
+         * So the entry for THIS division wins if there is one, and the picked
+         * row is left exactly where it is. Only when there is no such entry is
+         * the picked one moved — which is the repair for somebody entered in
+         * the championship and placed in no division at all.
+         */
+        $mine = $event->registrations()
+            ->where('role', 'participant')
+            ->where('user_id', $entry->user_id)
+            ->where('category_id', $category->id)
+            ->with('user:id,full_name,name')
+            ->first();
+
+        if ($mine) {
+            $entry = $mine;
+        } else {
+            $from = $entry->category;
+
+            try {
+                $entry->category_id = $category->id;
+                $entry->save();
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                // Somebody else moved them while this request was in flight.
+                return ['success' => false, 'message' => __('events.late_entry_already_drawn')];
+            }
+
+            if ($from) {
+                rescue(fn () => $this->arrangement()->syncEntrants($from->fresh()), null, false);
+            }
+        }
+
+        $result = $this->lateEntry()->admit($event, $category, $entry->fresh(['user']));
+
+        if (! ($result['ok'] ?? false)) {
+            return ['success' => false, 'message' => $result['message'] ?? __('events.action_unsupported')];
+        }
+
+        $this->scheduler->scheduleAndNumber($event->fresh());
+
+        $name = $entry->user?->full_name ?: $entry->user?->name ?: __('events.athlete');
+
+        $message = match (true) {
+            $result['how'] === 'grown' => __('events.late_entry_grown', ['name' => $name, 'opponent' => $result['opponent']]),
+            filled($result['opponent'] ?? null) => __('events.late_entry_placed', ['name' => $name, 'opponent' => $result['opponent']]),
+            default => __('events.late_entry_placed_bye', ['name' => $name]),
+        };
+
+        return $this->arrangedResponse($event, $category->fresh(), $message);
+    }
+
     private function arrangedResponse(ClubEvent $event, EventCategory $category, string $message): array
     {
         $this->broadcast($event, ['action' => 'draw', 'division' => $category->id]);
+
+        /*
+         * And the WALL. broadcast() reaches USER topics — an athlete's phone,
+         * an organiser's console — and a hall screen is not a user: it has no
+         * session and nothing in that scheme fits it, so it heard none of this.
+         *
+         * Every path into this method changes who is standing in a first-round
+         * slot: arranging, clearing, growing a division, admitting a late
+         * entry. The scheduler has just re-numbered and re-mat'd the bouts
+         * above, so a competitor moved between brackets is now queued on a
+         * different board — and both the board they left and the board they
+         * joined were showing the old draw until somebody power-cycled a
+         * television.
+         *
+         * Fleet is the scoreboard module's one public door (CLAUDE.md → "The
+         * Platform Is a Set of Modules"), and it is silent and best-effort: an
+         * arrangement must never fail because a screen is unreachable.
+         */
+        rescue(fn () => app(\App\Scoreboard\Fleet::class)->boardsChanged($event), null, false);
 
         return [
             'success' => true,
@@ -977,6 +1251,18 @@ class Tournament extends AbstractEventType
         return new Enrolment($this->sport());
     }
 
+    /**
+     * Award one division again, on request — App\Events\Contracts\AwardsDivisions.
+     *
+     * Shared code changes things a podium depends on (the play-off for bronze
+     * being switched on or off) and cannot construct this package's own
+     * Advancement to settle the consequence. This is the door it knocks on.
+     */
+    public function awardDivision(\App\Models\EventCategory $category): array
+    {
+        return $this->advancement()->awardIfComplete($category);
+    }
+
     private function advancement(): Advancement
     {
         return new Advancement($this->sport());
@@ -985,6 +1271,11 @@ class Tournament extends AbstractEventType
     private function arrangement(): Arrangement
     {
         return new Arrangement($this->advancement());
+    }
+
+    private function lateEntry(): \App\Events\Support\Tournament\LateEntry
+    {
+        return new \App\Events\Support\Tournament\LateEntry($this->advancement());
     }
 
     private function sport(): \App\Sports\Combat\CombatSport

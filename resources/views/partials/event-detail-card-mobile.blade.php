@@ -100,6 +100,17 @@
                                 // with several phases cannot claim the id twice.
                                 $isStart = $pdate && $pdate->toDateString() === ($e['date_iso'] ?? null) && ! ($startTagged ?? false);
                                 $startTagged = ($startTagged ?? false) || $isStart;
+
+                                /* The day's HOURS belong to the day's title, not to a line of
+                                   their own underneath it: "Tournament Day 1 · 10:00 AM – 7:30 PM"
+                                   is one fact, and splitting it put a lonely clock between the
+                                   heading and the running order it describes. Only when the day
+                                   is ONE block of play — a derived play/break/play day still
+                                   lists its three parts below, because that is three different
+                                   things to be somewhere for. */
+                                $segs   = $ph['segments'] ?? [];
+                                $hours  = (count($segs) === 1 && ($segs[0]['kind'] ?? '') !== 'break')
+                                    ? ($segs[0]['time'] ?? null) : null;
                             @endphp
                             <div @if($isStart) id="run-start" @endif
                                  {{-- Never dimmed. A phase that has happened is not less true than one
@@ -133,6 +144,14 @@
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <p class="text-[15px] font-bold leading-tight {{ $active ? 'ev-now-text' : 'text-foreground' }}"
                                            style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $ph['label'] }}</p>
+                                        {{-- The day's hours, read as part of its name: "Tournament Day 1
+                                             (10:00 AM – 7:30 PM)". Before the NOW pill, because the pill
+                                             is a state and belongs at the end of the phrase it qualifies. --}}
+                                        @if($hours)
+                                            <span @class(['text-[13px] font-bold tabular-nums -ms-1', 'ev-now-text' => $active, 'text-muted-foreground' => ! $active])
+                                                  style="{{ $active ? 'color:'.$e['color'].';' : '' }}">({{ $hours }})</span>
+                                        @endif
+
                                         @if($active)
                                             <span class="ev-now px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide" style="background: {{ $e['color'] }};">{{ __('personal.event_show_now') }}</span>
                                         @elseif($done)
@@ -143,6 +162,7 @@
                                                 <i class="bi bi-check-circle-fill text-[8px]"></i>{{ __('personal.event_show_phase_done') }}
                                             </span>
                                         @endif
+
                                     </div>
 
                                     {{-- Time reads as a fact you act on, so it is set
@@ -157,7 +177,7 @@
                                     {{-- A competition day runs play → break → play.
                                          Three lines, because that is three different
                                          things to be somewhere for. --}}
-                                    @if(!empty($ph['segments']))
+                                    @if(!empty($ph['segments']) && ! $hours)
                                         <div class="mt-2 space-y-1">
                                             @foreach($ph['segments'] as $seg)
                                                 @php $isBreak = ($seg['kind'] ?? '') === 'break'; @endphp
@@ -178,7 +198,18 @@
                                          the edge. `note` is the fallback for an
                                          entry the engine has not given items to
                                          (enrolment opens, weigh-in, awards). --}}
-                                    @if(!empty($ph['note_items']))
+                                    {{-- The organiser's own running order, when they have written one: what
+                                         happens on this day and when, part by part. It stands in for the
+                                         derived bullets below — those describe the day, this IS the day.
+                                         An event with no running order is unchanged. --}}
+                                    @if(!empty($ph['run_slots']))
+                                        {{-- The same `$divisionLink` the division chips below are given, so a
+                                             group opens the same board whether a reader taps its name in the
+                                             list of divisions or its line in the running order. Null while
+                                             the draw is withheld, and the rows are then plain text. --}}
+                                        <x-event-run-order :rows="$ph['run_slots']" :color="$e['color']"
+                                                           :division-link="$divisionLink ?? null" />
+                                    @elseif(!empty($ph['note_items']))
                                         <ul class="mt-1.5 space-y-0.5">
                                             @foreach($ph['note_items'] as $item)
                                                 <li class="flex items-start gap-1.5 text-[12px] text-muted-foreground leading-snug">
@@ -332,10 +363,22 @@
                                             <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}"></i>{{ $g['label'] }}
                                         </p>
                                     @endif
+                                    {{-- A division chip is a DOOR to that division's draw —
+                                         see the desktop twin for the whole note. --}}
                                     <div class="flex flex-wrap gap-1.5">
-                                        @foreach($g['items'] as $w)
-                                            <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
-                                                  style="background: {{ $tint }}14;">{{ $w }}</span>
+                                        @foreach(($g['entries'] ?? []) as $chip)
+                                            @if(($divisionLink ?? null) && $chip['id'])
+                                                <a href="{{ $divisionLink.$chip['id'] }}"
+                                                   class="m-press px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground no-underline inline-flex items-center gap-1.5"
+                                                   style="background: {{ $tint }}14;">{{ $chip['name'] }}<i class="bi bi-diagram-3 bracket-icon text-[10px] opacity-50"></i></a>
+                                            @elseif($divisionNote ?? null)
+                                                <button type="button" onclick="{{ $noteTap ?? '' }}"
+                                                        class="m-press px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground inline-flex items-center gap-1.5"
+                                                        style="background: {{ $tint }}14;">{{ $chip['name'] }}<i class="bi bi-lock-fill text-[10px] opacity-40"></i></button>
+                                            @else
+                                                <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
+                                                      style="background: {{ $tint }}14;">{{ $chip['name'] }}</span>
+                                            @endif
                                         @endforeach
                                     </div>
                                 </div>

@@ -50,6 +50,7 @@ return [
     'notify_draw_title' => 'Le tirage est publié — :title',
     'notify_weigh_in_body' => 'La pesée commence à :time à :place. Apportez votre pièce d’identité.',
     'notify_weigh_in_title' => 'Pesée demain — :title',
+    'pool_not_arranged' => 'Ce cours est en format libre — chacun rencontre tout le monde, il n\'y a donc rien à planifier. Ajoutez ou retirez des personnes du cours à la place.',
     'result_body_done' => 'C’était votre dernier combat de la journée.',
     'result_body_next' => 'Suivant :round sur :mat, environ :minutes min',
     'result_loss_title' => 'Combat terminé',

@@ -124,6 +124,25 @@
            because the band's control slot is phrasing content. */
         .ev-ctl-row { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; }
         .ev-ctl-spacer { flex: 1 1 auto; }
+
+        /* WHAT THIS SCREEN IS, beside the back arrow.
+           Optional — only a screen that is not the event's own front page says
+           it (the draw, the officials sheet), because the poster's title is
+           already the band's headline. Colour is INHERITED, never named: this
+           row sits on the event's gradient in the band and on the same gradient
+           in the draw stage's bar, and a `text-foreground` here would be a dark
+           title on a coloured header. `min-width: 0` is what lets the truncate
+           below it actually truncate inside a flex row. */
+        .ev-ctl-title { min-width: 0; flex: 0 1 auto; line-height: 1.05; }
+        .ev-ctl-eyebrow {
+            font-size: 10px; font-weight: 800; letter-spacing: .14em;
+            text-transform: uppercase; opacity: .72; line-height: 1;
+            margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ev-ctl-name {
+            font-size: 14px; font-weight: 700; line-height: 1.2; margin: 2px 0 0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
         .ev-ctl {
             width: 40px; height: 40px; flex: none;
             display: grid; place-items: center;

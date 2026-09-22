@@ -50,6 +50,7 @@ return [
     'notify_draw_title' => '抽選が発表されました— :title',
     'notify_weigh_in_body' => '体重計測は :time に :place で開始します。身分証明書をご持参ください。',
     'notify_weigh_in_title' => '明日の体重計測— :title',
+    'pool_not_arranged' => 'このクラスはプール形式で実施されます。参加者全員が対戦するため、特別な調整は不要です。クラスの参加者を追加または削除してください。',
     'result_body_done' => '今日はこれで一日の最後の試合です。',
     'result_body_next' => '次: :round は :mat で、およそ :minutes 分',
     'result_loss_title' => '試合終了',

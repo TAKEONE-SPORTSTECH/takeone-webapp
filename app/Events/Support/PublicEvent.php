@@ -411,8 +411,9 @@ class PublicEvent
         $divisions = $this->registry->for($event)->bracketView($event, null);
 
         return $this->drawn[$event->id] = array_values(array_map(function (array $d) {
+            /* The ENTRANTS BENCH is the organiser's working list of people not
+               yet placed. It is not part of the wall sheet and never was. */
             $d['bench'] = [];
-            unset($d['podium']);
 
             $d['rounds'] = array_map(function (array $round) {
                 $round['matches'] = array_map(function (array $m) {
@@ -420,7 +421,32 @@ class PublicEvent
                         if (! isset($m[$side]) || ! is_array($m[$side])) {
                             continue;
                         }
-                        $m[$side]['photo'] = null;
+
+                        /*
+                         * ⚠️ THE FACE IS NO LONGER BLANKED HERE.
+                         *
+                         * It was `$m[$side]['photo'] = null` — every competitor
+                         * on the public board drawn as a silhouette, including
+                         * the ones whose picture this very page prints on their
+                         * participant card two taps away. Reported 2026-09-18:
+                         * "why can't I see the pictures of the participants".
+                         *
+                         * Blanking here was the wrong instrument. Whether a face
+                         * may be shown is already decided, once, by
+                         * BracketView::photo(): the ENTRY's own photograph —
+                         * taken for this competition and scoped to it — or their
+                         * profile picture and only if they published it
+                         * (`profile_picture_is_public`), or nothing at all. That
+                         * is the same order PublicEvent::face() applies to the
+                         * cards on this page, so the board and the cards now
+                         * agree instead of contradicting each other.
+                         *
+                         * What is still withheld is what was always the point:
+                         * the bench above, and `provisional` below.
+                         */
+
+                        /* Whether a draw is still the organiser's working copy
+                           is their business, not the hall's. */
                         $m[$side]['provisional'] = false;
                     }
 
@@ -579,9 +605,32 @@ class PublicEvent
             ])
             ->get();
 
+        /*
+         * ===== THE OTHER KIND OF CLUB =====
+         *
+         * A competitor's club is one of TWO things, and this list knew only the
+         * first: a TENANT (a club with an account, reached through
+         * `competingClub()`), or an EVENT CLUB — a name and a crest the
+         * organiser wrote down for a team the platform has never met
+         * (`event_clubs`, linked through `event_club_entrants`). Most of a real
+         * competition is the second kind.
+         *
+         * So the public entry list showed 25 of 66 people with a club while the
+         * organiser's own roster showed 57 across eight clubs — BAHRAIN
+         * FIGHTERS, House Of Athletes, RMAC-BAHRAIN and the rest simply do not
+         * exist in `tenants` (reported 2026-09-18: "the clubs here are wrong
+         * and many of them have clubs but it's not showing"). The flags went
+         * with them, because the flag follows the club.
+         *
+         * `App\Events\Support\EntryClub` is the one place that answers this
+         * for both kinds, and it exists precisely because surfaces kept
+         * resolving only tenants. One query for the whole list.
+         */
+        $written = EntryClub::forMany($event, $rows->pluck('id'));
+
         $people = $rows
             ->filter(fn (ClubEventRegistration $r) => $r->user !== null)
-            ->map(function (ClubEventRegistration $r) use ($tr) {
+            ->map(function (ClubEventRegistration $r) use ($tr, $written) {
                 /* The SAME answer the organiser's roster gives
                    (RosterPeople::participant): what the entry says wins,
                    including when it says unattached, and only an entry that
@@ -607,9 +656,28 @@ class PublicEvent
                     'division' => $r->category
                         ? $tr->get('divisions.'.$r->category->id, (string) ($r->category->name ?: $r->category->weight_class))
                         : null,
-                    'club' => $club?->club_name,
-                    'club_logo' => $club?->logo ? file_url($club->logo) : null,
-                    'country' => ($cc = $club?->country ?: $r->countryCode()) ? strtoupper($cc) : null,
+                    /*
+                     * The same division, with the id that addresses it.
+                     *
+                     * `division` is prose for a chip; this is what a chip that
+                     * OPENS something needs. The id is not a disclosure — the
+                     * draw section of this same page lists every division by
+                     * name and id already — and it is the group's own id rather
+                     * than the entry's, because an entry id is internal and
+                     * belongs nowhere near a payload cached for the public.
+                     */
+                    'division_id' => $r->category?->id,
+                    /* A TENANT wins when the entry names one — it is the
+                       stronger claim and carries a country and a page — and the
+                       organiser's written-down club answers for everybody else.
+                       EntryClub's own rule, applied here rather than restated. */
+                    'club' => $club?->club_name ?: ($written[$r->id]['name'] ?? null),
+                    'club_logo' => $club?->logo
+                        ? file_url($club->logo)
+                        : ($written[$r->id]['logo'] ?? null),
+                    'country' => ($cc = $club?->country
+                        ?: ($written[$r->id]['country'] ?? null)
+                        ?: $r->countryCode()) ? strtoupper($cc) : null,
                     /*
                      * A face, and only if THEY said so.
                      *
@@ -640,10 +708,37 @@ class PublicEvent
                      * EDGE until 2026-09-06, when the edge became the gender.
                      */
                     'belt' => $r->belt_colour ?: null,
+                    /*
+                     * The rank, ready to DRAW — the band, the knot, the outline
+                     * a pale belt needs, and the wording.
+                     *
+                     * The participant card draws a tied belt at 44px rather
+                     * than a coloured chip, and the colour maths for one lives
+                     * in App\Sports\Combat\BeltIcon and nowhere else
+                     * (CLAUDE.md → the belt component). Resolved here, once per
+                     * entrant, so the card is only told which colours to paint:
+                     * the same reason the division picker's rows carry it.
+                     *
+                     * Null when the ladder does not know the rank, exactly as
+                     * `belt` is null — one silence, so a reader never sees a
+                     * belt on one surface and not another.
+                     */
+                    'belt_icon' => \App\Sports\Combat\BeltIcon::for($r->belt_colour ?: null),
                     // Drawn beside the name on every entry list in the sport.
                     // Both are already on the draw this same page publishes.
                     'gender' => $r->user->gender ?: null,
                     'age' => $r->user->birthdate ? $r->user->age : null,
+                    /*
+                     * The age GROUP in the platform's own words — "Child",
+                     * "Teenager", "Young Adult". `User::lifeStage()` is where
+                     * that vocabulary lives and it is already translated, so the
+                     * chip on a participant card and the badge on a member card
+                     * cannot end up calling the same person two different
+                     * things. Null with no birthdate on file, and the chip is
+                     * then simply absent (Who Fills The Form Decides What It
+                     * Demands — a blank birthdate is the ordinary case).
+                     */
+                    'life_stage' => $r->user->lifeStage,
                     /*
                      * The PUBLIC key, and whether the public profile behind it
                      * will actually open for a stranger.
@@ -684,6 +779,38 @@ class PublicEvent
             ->map(function (Collection $entries) {
                 $row = $entries->first();
                 $row['divisions'] = $entries->pluck('division')->filter()->unique()->values()->all();
+
+                /*
+                 * ⚠️ THE CLUB IS THE PERSON'S, NOT THE FIRST ENTRY'S.
+                 *
+                 * An organiser links an athlete to a written-down club ONCE,
+                 * against one of their entries — and this list keeps the first
+                 * entry's row. So somebody entered in Gi and No-Gi whose club
+                 * was recorded against the No-Gi entry came out clubless, and
+                 * flagless with it. Ten of sixty-six on the event that reported
+                 * it (2026-09-18).
+                 *
+                 * Taking the first entry that HAS one is the same rule the rest
+                 * of this fold already follows: the person is one, and a fact
+                 * recorded against any of their entries is a fact about them.
+                 */
+                if (blank($row['club'] ?? null)) {
+                    $named = $entries->first(fn (array $e) => filled($e['club'] ?? null));
+
+                    if ($named) {
+                        $row['club'] = $named['club'];
+                        $row['club_logo'] = $named['club_logo'];
+                        $row['country'] = $row['country'] ?: $named['country'];
+                    }
+                }
+                /* The same list with the ids, for a chip that opens the group's
+                   own page. Keyed by id so an athlete entered twice in one
+                   division cannot draw it twice. */
+                $row['division_rows'] = $entries
+                    ->filter(fn (array $e) => ($e['division_id'] ?? null) && ($e['division'] ?? null))
+                    ->keyBy('division_id')
+                    ->map(fn (array $e) => ['id' => (int) $e['division_id'], 'name' => $e['division']])
+                    ->values()->all();
                 /* WHICH ACTIVITIES — "Gi", "No-Gi", "Gi + No-Gi" — read off the
                    organiser's own division names (App\Events\Support\ActivityTag).
                    The one thing a reader scanning this list wants about an
@@ -737,6 +864,20 @@ class PublicEvent
      */
     private function results(ClubEvent $event, TranslatedDocument $tr, ?EventType $type = null): array
     {
+        /*
+         * A rehearsal's medals are not medals.
+         *
+         * A practice bout can complete a division and award its podium, and the
+         * podium is put back when the rehearsal ends — but until then it is
+         * sitting in `event_categories.podium` looking exactly like a result.
+         * The public page is where it would be read as one, so this is where it
+         * stops. The draw closes for the same reason and by the same flag (see
+         * EventAccess::drawVisible).
+         */
+        if (app(Rehearsal::class)->active($event)) {
+            return [];
+        }
+
         $divisions = [];
 
         foreach ($event->categories()->orderBy('sort_order')->get() as $division) {
@@ -750,6 +891,11 @@ class PublicEvent
                 ->map(fn ($row) => [
                     'place' => (int) $row['place'],
                     'name' => (string) $row['name'],
+                    /* Carried so the row can be drawn with the competitor's
+                       face, flag and crest — read off the entry by
+                       PodiumFaces below, never stored a second time. The id
+                       itself never reaches the page. */
+                    'competitor_id' => $row['competitor_id'] ?? null,
                 ])
                 ->values()->all();
 
@@ -793,6 +939,25 @@ class PublicEvent
                 }
             }
         }
+
+        /* The same enrichment the organiser's sheet gets, from the same class:
+           a face (only where the member publishes one), the CLUB's flag and
+           the crest the hall is showing. The entry id is dropped once it has
+           done its work — a public page hands out no internal identifiers. */
+        $divisions = array_map(function (array $row) {
+            $row['places'] = array_map(function (array $place) {
+                unset($place['competitor_id']);
+
+                return $place;
+            }, $row['places']);
+
+            return $row;
+        }, PodiumFaces::enrich($divisions));
+
+        /* `person` survives, and it is not a leak: it is the uuid PodiumFaces
+           only attaches where THIS viewer could open that profile, and
+           /people/{uuid} is the reference implementation of the unpredictable
+           public key. The entry id is the one that goes. */
 
         return ['count' => count($divisions), 'divisions' => $divisions];
     }

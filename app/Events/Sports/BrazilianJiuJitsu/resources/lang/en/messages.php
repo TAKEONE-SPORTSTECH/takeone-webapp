@@ -38,8 +38,14 @@ return [
 
     // The corners. Never red: red belongs to penalties and disqualification on
     // every screen this sport draws.
-    'corner_blue' => 'BLUE',
-    'corner_white' => 'WHITE',
+    /* ⚠️ THE KEY IS THE SIDE, NOT THE COLOUR. `corner_blue` is side A, the
+       LEFT corner, and it is RED since 2026-09-20; `corner_white` is side B,
+       the RIGHT corner, and it is BLUE. The old names are what the mat's own
+       columns and 1,100 recorded ledger rows are keyed by, so renaming them is
+       a migration — registered in Documentation/HOUSE-CLEANING.md. Translate
+       these as the colours below, never as 'blue' and 'white'. */
+    'corner_blue' => 'RED',
+    'corner_white' => 'BLUE',
 
     // The belt ladder, as an organiser picks a division.
     'belt_white' => 'White',

@@ -37,8 +37,10 @@
         $natCode = strtoupper($user->nationality);
         $info = $countries->first(fn($c) => strtoupper($c['iso2'] ?? '') === $natCode || strtoupper($c['iso3'] ?? '') === $natCode);
         if ($info) {
-            $flag = implode('', array_map(fn($ch) => mb_chr(ord($ch) + 127397), str_split(strtoupper($info['iso2']))));
-            $natDisplay = $flag . ' ' . $info['name'];
+            /* The name alone; the flag beside it is <x-flag>, our own file
+               (CLAUDE.md -> Flags Come From One Local Source). */
+            $natIso = $info['iso2'];
+            $natDisplay = $info['name'];
         }
     }
 @endphp
@@ -383,15 +385,21 @@
                 $meta[] = ['icon' => $gIcon, 'text' => ucfirst($user->gender)];
             }
             if ($natDisplay) {
-                $meta[] = ['icon' => null, 'text' => $natDisplay];
+                $meta[] = ['icon' => null, 'text' => $natDisplay, 'flag' => $natIso ?? null];
             }
         @endphp
         @if(count($meta))
             <div class="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 mt-1.5 mb-3 text-[13px] font-medium text-white/85 mp-reveal" style="animation-delay:.2s">
                 @foreach($meta as $i => $m)
                     @if($i > 0)<span class="w-1 h-1 rounded-full bg-white/40"></span>@endif
+                    @php $mFlag = $m['flag'] ?? null; @endphp
                     <span class="inline-flex items-center gap-1.5">
-                        @if($m['icon'])<i class="bi {{ $m['icon'] }} text-white/55 text-xs"></i>@endif{{ $m['text'] }}
+                        {{-- ⚠️ `@endif@if(` does NOT compile — Blade leaves the
+                             second directive as literal text and the closing
+                             @endif then has no opener. Keep them apart. --}}
+                        @if($m['icon'])<i class="bi {{ $m['icon'] }} text-white/55 text-xs"></i>@endif
+                        @if($mFlag)<x-flag :code="$mFlag" :h="11" />@endif
+                        {{ $m['text'] }}
                     </span>
                 @endforeach
             </div>

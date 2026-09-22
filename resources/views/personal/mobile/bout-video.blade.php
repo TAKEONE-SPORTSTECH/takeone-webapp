@@ -136,7 +136,7 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
+    <link rel="stylesheet" href="{{ asset('images/flags/flag-icons.css') }}">
     
     <link rel="stylesheet" href="https://unpkg.com/cropme@1.4.1/dist/cropme.min.css">
     <script src="https://unpkg.com/cropme@1.4.1/dist/cropme.min.js"></script>
@@ -4479,7 +4479,7 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
                 if (!/^[a-z]{2}$/.test(code) || code === 'xx') return;
                 el.textContent = '';
                 el.style.background     = '#000';
-                el.style.backgroundImage = 'url(https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/flags/4x3/' + code + '.svg)';
+                el.style.backgroundImage = 'url(/images/flags/' + code + '.svg)';
                 el.style.backgroundSize  = 'cover';
                 el.style.backgroundPosition = 'center';
             };

@@ -109,8 +109,12 @@ class EventConsoleTest extends TestCase
 
         // Their job is there…
         $this->assertStringContainsString('eventChecklist', $html, 'an official must still reach the preparations list');
-        // The desk is a screen of its own; "who's joined" is reading only.
-        $this->assertStringContainsString('/verify', $html, 'an official must still reach their verification desk');
+        // CHANGED — the desk stopped being a screen of its own on 2026-09-03.
+        // The gates open from a person's card on the entry list, so what the
+        // console owes an official is that door.
+        $this->assertStringContainsString(
+            'href="'.route('me.events.people', $event->uuid).'"',
+            $html, 'an official must still reach the entry list, where the gates now open');
 
         // …and nothing else is.
         // Assert on the CLICK BINDINGS, not the method names: cancelEvent() and
@@ -120,15 +124,12 @@ class EventConsoleTest extends TestCase
         $this->assertStringNotContainsString('@click="financeOpen=true"', $html, 'an official was offered the P&L');
         $this->assertStringNotContainsString('@click="deleteEvent()"', $html, 'an official was offered the danger zone');
         $this->assertStringNotContainsString('@click="cancelEvent()"', $html, 'an official was offered the danger zone');
-        // CHANGED — '/entry-roster' is ALSO a bare URL string inside the shared
-        // Alpine root (partials/event-show-script) that the console and the
-        // public page both include, so its presence proves nothing either: the
-        // same false positive the comment above describes for cancelEvent().
-        // What matters is that no LINK offers it and the endpoint itself
-        // refuses them, which is the stronger claim.
-        $this->assertStringNotContainsString(
-            'href="'.route('me.events.entry-roster', $event->uuid).'"',
-            $html, 'an official was offered entry management');
+        /* Entry management. `me.events.entry-roster` is a JSON endpoint fetched
+           by the shared Alpine root, never an href — so asserting on a LINK to
+           it could only ever pass vacuously. The organiser's actual control is
+           <x-event-add-person>, whose people search is unique to it; that plus
+           the endpoint's own refusal is the honest pair. */
+        $this->assertStringNotContainsString('entry-search', $html, 'an official was offered entry management');
         $this->actingAs($scale)
             ->getJson(route('me.events.entry-roster', $event->uuid))
             ->assertForbidden();
@@ -153,7 +154,7 @@ class EventConsoleTest extends TestCase
             '@click="deleteEvent()"',
             '@click="cancelEvent()"',
             '@click="openResults()"',
-            'href="'.route('me.events.entry-roster', $event->uuid).'"',
+            'entry-search',   // <x-event-add-person>, the organiser's own door into the entry list
             'href="'.route('me.events.officiating', $event->uuid).'"',
             'eventChecklist',
         ];
@@ -229,67 +230,72 @@ class EventConsoleTest extends TestCase
         ]);
 
         $scale = $this->official($event, $club);
-        $html = $this->actingAs($scale)->get("/me/events/{$event->uuid}/verify")->assertOk()->getContent();
+        $html = $this->actingAs($scale)->get("/me/events/{$event->uuid}/people")->assertOk()->getContent();
 
         $this->assertStringContainsString('openPerson(', $html, 'the official lost their verification desk');
     }
-    /* ===================== The bracket page shows, it does not run ===================== */
+    /* ===================== What a READER is handed ===================== */
 
-    public function test_the_public_bracket_page_is_read_only_even_for_the_organiser(): void
+    /**
+     * A reader's board carries no write addresses at all.
+     *
+     * This used to be asserted of the separate public bracket page, for the
+     * organiser as well — that page was read-only by design, so neither viewer
+     * could be handed an editing endpoint on it. That page is retired: the
+     * board at `brackets/manage` is the one draw screen and the organiser is
+     * SUPPOSED to have the verbs on it.
+     *
+     * What survives, and matters more, is the half about the reader: an
+     * ordinary member opening the same address gets the same board with no
+     * arrange mode and with the endpoints that move people not built into
+     * their page source. Authorization is re-checked on every one of those
+     * endpoints regardless — this is about what is OFFERED.
+     */
+    public function test_a_readers_board_is_handed_no_editing_endpoints(): void
     {
         $organiser = $this->createUser();
         $club = $this->clubFor($organiser);
         $event = $this->event($club, $organiser);
 
-        foreach ([$organiser->fresh(), $this->memberOf($club)] as $viewer) {
-            $html = $this->actingAs($viewer)->get("/me/events/{$event->uuid}/brackets")->assertOk()->getContent();
+        $html = $this->actingAs($this->memberOf($club))
+            ->get("/me/events/{$event->uuid}/brackets/manage")->assertOk()->getContent();
 
-            // The board is mounted without arrange mode, and without ever being
-            // handed the endpoints that move people.
-            $this->assertStringNotContainsString('data-can-arrange="1"', $html, 'the public board offers arrange mode');
-            // Both spellings: @json() escapes slashes, so a bare "/brackets/arrange"
-            // check alone would pass even with the endpoint sitting right there.
-            foreach (['/brackets/arrange', '\/brackets\/arrange', '/brackets/clear', '\/brackets\/clear'] as $endpoint) {
-                $this->assertStringNotContainsString($endpoint, $html, "an editing endpoint reached the public board: {$endpoint}");
-            }
+        $this->assertStringNotContainsString('data-can-arrange="1"', $html, "a reader's board offers arrange mode");
 
-            // And no organiser controls around it.
-            $this->assertStringNotContainsString('/brackets/manage', $html, 'the public bracket page still links to the editor');
-            $this->assertStringNotContainsString('generateNewDraw()"', $html, 'the public bracket page still offers a re-draw');
+        // Both spellings: @json() escapes slashes, so a bare "/brackets/arrange"
+        // check alone would pass even with the endpoint sitting right there.
+        foreach ([
+            '/brackets/arrange', '\/brackets\/arrange',
+            '/brackets/clear', '\/brackets\/clear',
+            '/brackets/third-place', '\/brackets\/third-place',
+        ] as $endpoint) {
+            $this->assertStringNotContainsString($endpoint, $html, "an editing endpoint reached a reader's board: {$endpoint}");
         }
     }
 
-    public function test_the_organiser_still_reaches_the_arrangeable_board_through_the_console(): void
-    {
-        $organiser = $this->createUser();
-        $club = $this->clubFor($organiser);
-        $event = $this->event($club, $organiser);
-        // arrange_draw is only offered once there is something to arrange.
-        EventCategory::create(['event_id' => $event->id, 'name' => 'Kids Men -30 kg', 'sort_order' => 1]);
-
-        // The console offers it…
-        $console = $this->actingAs($organiser->fresh())
-            ->get("/me/events/{$event->uuid}/manage")->assertOk()->getContent();
-        $this->assertStringContainsString('/brackets/manage', $console, 'the console lost the draw editor');
-
-        // …and the editor itself is where arranging lives.
-        $board = $this->actingAs($organiser->fresh())
-            ->get("/me/events/{$event->uuid}/brackets/manage")->assertOk()->getContent();
-        // Escaped, because the component hands it to the client through @json().
-        $this->assertStringContainsString('\/brackets\/arrange', $board, 'the draw editor cannot arrange');
-    }
-
-    public function test_a_plain_member_cannot_reach_the_draw_editor(): void
+    /**
+     * ...but a draw the organiser is HOLDING BACK is still not readable, and an
+     * empty full-screen board says nothing at all. It is answered with a page
+     * that says WHEN the draw opens.
+     *
+     * ⚠️ IT MUST NOT REDIRECT. This used to send the reader to the bracket
+     * page, and that page is now itself a redirect BACK to this one — two
+     * pages pointing at each other is an endless bounce, which on a hall
+     * screen nobody can stop. Pinned here for that reason: a 200 with the veil
+     * on it, never a 302.
+     */
+    public function test_a_withheld_draw_is_answered_in_place_and_never_bounces(): void
     {
         $organiser = $this->createUser();
         $club = $this->clubFor($organiser);
         $event = $this->event($club, $organiser);
         EventCategory::create(['event_id' => $event->id, 'name' => 'Kids Men -30 kg', 'sort_order' => 1]);
+        $event->update(['draw_reveal' => 'hidden']);
         $nobody = $this->memberOf($club);
 
-        // It bounces back to the read-only board rather than opening.
         $this->actingAs($nobody)
             ->get("/me/events/{$event->uuid}/brackets/manage")
-            ->assertRedirect(route('me.events.bracket', $event->uuid));
+            ->assertOk()
+            ->assertViewIs('personal.event-draw-hidden');
     }
 }

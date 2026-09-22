@@ -14,7 +14,8 @@
       "Bash(sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 root@192.168.0.31 'echo \"=== HOST ===\"; hostname; uname -a; echo; echo \"=== PROJECT ROOT ===\"; ls -la /var/www/videoplatform | head -40; echo; echo \"=== STACK HINTS ===\"; for f in composer.json package.json artisan go.mod requirements.txt docker-compose.yml Dockerfile README.md; do [ -e /var/www/videoplatform/$f ] && echo \"--- $f present ---\"; done')",
       "Bash(ssh videoplatform *)",
       "Bash(flutter --version)",
-      "Bash(awk '{ if \\(length\\($0\\) > 300\\) printf \"%d: [LONG LINE %d chars] %s\\\\n\", NR, length\\($0\\), substr\\($0,1,200\\); else printf \"%d: %s\\\\n\", NR, $0 }' winner-red.html)"
+      "Bash(awk '{ if \\(length\\($0\\) > 300\\) printf \"%d: [LONG LINE %d chars] %s\\\\n\", NR, length\\($0\\), substr\\($0,1,200\\); else printf \"%d: %s\\\\n\", NR, $0 }' winner-red.html)",
+      "Bash(cat *)"
     ]
   }
 }

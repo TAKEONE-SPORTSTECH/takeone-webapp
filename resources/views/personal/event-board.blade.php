@@ -295,7 +295,7 @@
                     window.removeEventListener('realtime:events', window.__boardHandler);
                 }
                 window.__boardHandler = (ev) => {
-                    if (['outcome', 'draw', 'entrants'].includes(ev.detail?.action)) this.refresh();
+                    if (['outcome', 'draw', 'entrants', 'entry-updated'].includes(ev.detail?.action)) this.refresh();
                 };
                 window.addEventListener('realtime:events', window.__boardHandler);
 

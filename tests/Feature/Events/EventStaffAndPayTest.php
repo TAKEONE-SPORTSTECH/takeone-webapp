@@ -21,6 +21,22 @@ use Tests\TestCase;
  */
 class EventStaffAndPayTest extends TestCase
 {
+    /**
+     * The page's own gate payload, in a form a test can ask questions of.
+     *
+     * The desk's data reaches the browser through `@js()`, which escapes every
+     * quote as `\u0022` and every slash as `\/`. Asserting against the raw HTML
+     * without undoing that is how the two tests below used to pass for the
+     * wrong reason: `'"weight"'` never matched the payload at all — it matched
+     * the markup attribute `data-ec="weight"` on an empty hidden span, so the
+     * assertion held whether or not a body weight was actually being handed to
+     * the cashier. (It was.)
+     */
+    private function payload(string $body): string
+    {
+        return str_replace(['\u0022', '\\/'], ['"', '/'], $body);
+    }
+
     private function clubFor(User $user, array $attrs = []): Tenant
     {
         $club = $this->createClub($user, array_merge(['country' => 'BH'], $attrs));
@@ -65,7 +81,22 @@ class EventStaffAndPayTest extends TestCase
             ->assertDontSee('Blocked Person');
     }
 
-    public function test_an_organiser_is_still_shown_who_is_blocked(): void
+    /**
+     * ⚠️ RECORDS A GAP, not a satisfying rule.
+     *
+     * This used to assert that the organiser reads the blocked list on the
+     * verification desk while a competitor cannot. The desk went on 2026-09-03
+     * and its blocked tab went with it: `me.events.ban.lift` still exists and
+     * has no screen behind it, so nobody — organiser included — can see or lift
+     * a ban from the entry list today.
+     *
+     * So what is pinned here is the half that is a SECURITY rule and must hold
+     * however the UI is rebuilt: a moderated member's name is not in this
+     * page's source for anybody. It leaked until 2026-09-15, serialised into
+     * the roster partial's client-side search index for a tab the page does not
+     * render.
+     */
+    public function test_nobody_reads_the_blocked_list_from_the_entry_list(): void
     {
         $organiser = $this->createUser();
         $club = $this->clubFor($organiser);
@@ -76,13 +107,6 @@ class EventStaffAndPayTest extends TestCase
             'event_id' => $event->id, 'tenant_id' => $club->id,
             'user_id' => $blocked->id, 'scope' => 'event',
         ]);
-
-        // The blocked list lives with the organiser's other work, on the desk —
-        // "who's joined" is reading only and shows nobody's moderation state.
-        $this->actingAs($organiser->fresh())
-            ->get("/me/events/{$event->uuid}/verify")
-            ->assertOk()
-            ->assertSee('Blocked Person');
 
         $this->actingAs($organiser->fresh())
             ->get("/me/events/{$event->uuid}/people")
@@ -112,16 +136,19 @@ class EventStaffAndPayTest extends TestCase
         return $athlete;
     }
 
-    public function test_the_verification_desk_url_opens_the_desk_for_the_organiser(): void
+    public function test_the_entry_list_opens_the_desk_for_the_organiser(): void
     {
         $organiser = $this->createUser();
         $club = $this->clubFor($organiser);
         $event = $this->event($club, $organiser);
 
         // This URL is linked from the event screen and gets bookmarked, so it
-        // must open the desk itself rather than bounce anywhere.
+        // must open rather than bounce anywhere. It used to be /verify, a desk
+        // of its own; since 2026-09-03 the gates open from a person's card on
+        // the entry list and /verify is gone — the write endpoints under it are
+        // unchanged and still carry that prefix.
         $this->actingAs($organiser->fresh())
-            ->get("/me/events/{$event->uuid}/verify")
+            ->get("/me/events/{$event->uuid}/people")
             ->assertOk();
     }
 
@@ -161,7 +188,7 @@ class EventStaffAndPayTest extends TestCase
         ]);
 
         $body = $this->actingAs($scaler->fresh())
-            ->get("/me/events/{$event->uuid}/verify")
+            ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
             ->assertSee('Weighed Athlete')
             ->getContent();
@@ -169,10 +196,13 @@ class EventStaffAndPayTest extends TestCase
         // The scale is theirs; the money is not. The whole payment section is
         // withheld, not just its buttons — so there is no receipt link, no
         // has_proof, and no way to approve.
-        $this->assertStringContainsString('reg_id', $body);
+        $gates = $this->payload($body);
+
+        $this->assertStringContainsString('"reg_id":', $gates, 'the desk needs an entry to sign for');
+        $this->assertStringContainsString('"weight":55', $gates, 'the scale is this official\'s job');
         $this->assertStringContainsString('sheet-weight', $body);
-        $this->assertStringNotContainsString('/proof', $body);
-        $this->assertStringNotContainsString('has_proof', $body);
+        $this->assertStringNotContainsString('/proof', $gates);
+        $this->assertStringNotContainsString('"has_proof"', $gates);
         $this->assertStringNotContainsString('event_verify_confirm_cash', $body);
         $this->assertStringNotContainsString('Confirm cash received', $body);
     }
@@ -192,7 +222,7 @@ class EventStaffAndPayTest extends TestCase
         ]);
 
         $body = $this->actingAs($cashier->fresh())
-            ->get("/me/events/{$event->uuid}/verify")
+            ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
             ->assertSee('Paying Athlete')
             ->getContent();
@@ -200,11 +230,17 @@ class EventStaffAndPayTest extends TestCase
         // These are Kids divisions. Someone checking bank transfers has no
         // business holding another family's child's body weight — so the scale
         // section and the number behind it are both absent.
-        $this->assertStringContainsString('/proof', $body);
+        $gates = $this->payload($body);
+
+        $this->assertStringContainsString('"has_proof":true', $gates, 'the receipt is this official\'s job');
+        $this->assertStringContainsString('/verify/', $gates);
+        $this->assertStringContainsString('/proof', $gates);
         $this->assertStringNotContainsString('sheet-weight', $body);
         $this->assertStringNotContainsString('Weight on the scale', $body);
-        // @js() escapes the quotes, so the key lands as "weight".
-        $this->assertStringNotContainsString('"weight"', $body);
+        // The point of the test: the number itself never reaches them. Asked of
+        // the DECODED payload, so a weight handed over as `\u0022weight\u0022:55`
+        // is caught.
+        $this->assertStringNotContainsString('"weight":', $gates);
     }
 
     public function test_the_payments_official_gets_the_receipt(): void
@@ -221,11 +257,13 @@ class EventStaffAndPayTest extends TestCase
             'role' => EventOfficial::ROLE_PAYMENTS, 'compensation' => 'volunteer',
         ]);
 
-        $this->actingAs($cashier->fresh())
-            ->get("/me/events/{$event->uuid}/verify")
+        $body = $this->actingAs($cashier->fresh())
+            ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
             ->assertSee('Paying Athlete')
-            ->assertSee('/proof', false);
+            ->getContent();
+
+        $this->assertStringContainsString('/proof', $this->payload($body));
     }
 
     /* ===================== Volunteer vs paid ===================== */
@@ -398,14 +436,25 @@ class EventStaffAndPayTest extends TestCase
         $this->assertSame('25.000', EventExpense::firstOrFail()->amount);
     }
 
-    public function test_the_organiser_role_grants_no_extra_access(): void
+    /**
+     * Appointing somebody the event's ORGANISER hands them this event, and
+     * nothing beyond it.
+     *
+     * This test used to assert the opposite — that the organiser role was a pay
+     * grade and conferred nothing. It widened deliberately on 2026-09-03
+     * (EventAccess::canManage, whose docblock records why): a club owner who
+     * could not open their own club's event console had to be appointed to it
+     * by somebody else first, and "this person runs it too" is exactly what the
+     * appointment means. So the test now pins the widening — and, more usefully,
+     * pins its EDGE: the grant is scoped to the one event it was made on.
+     */
+    public function test_the_organiser_role_runs_this_event_and_no_other(): void
     {
         $organiser = $this->createUser();
         $club = $this->clubFor($organiser);
         $event = $this->event($club, $organiser);
+        $other = $this->event($club, $organiser);
 
-        // Someone recorded as "organiser" for pay purposes is NOT thereby able
-        // to manage the event — that comes from ClubEvent::created_by.
         $helper = $this->createUser();
         $helper->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
 
@@ -416,12 +465,15 @@ class EventStaffAndPayTest extends TestCase
         $access = app(\App\Events\Support\EventAccess::class);
         $helper = $helper->fresh();
 
-        $this->assertFalse($access->canManage($event, $helper));
-        $this->assertFalse($access->canArrange($event, $helper), 'organiser role must not confer jury rights');
-        $this->assertFalse($access->canVerifyWeighIn($event, $helper));
-        $this->assertFalse($access->canVerifyPayments($event, $helper));
+        $this->assertTrue($access->canManage($event, $helper));
+        $this->assertTrue($access->canVerifyWeighIn($event, $helper));
+        $this->assertTrue($access->canVerifyPayments($event, $helper));
 
-        // …but the fee is still on the books.
+        // The edge, which is the part worth a test: one appointment, one event.
+        $this->assertFalse($access->canManage($other, $helper), 'an appointment must not travel to the next event');
+        $this->assertFalse($access->canArrange($other, $helper));
+
+        // …and the fee is still on the books.
         $this->assertSame('50.000', EventExpense::firstOrFail()->amount);
     }
 }

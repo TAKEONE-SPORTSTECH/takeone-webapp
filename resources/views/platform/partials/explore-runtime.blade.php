@@ -1231,8 +1231,11 @@ function exploreApp() {
             if (!iso2) return null;
             const country = this.countriesData.find(c => c.iso2 === iso2);
             if (country) {
-                const flag = iso2.split('').map(char => String.fromCodePoint(127397 + char.charCodeAt(0))).join('');
-                return { flag, name: country.name, iso3: country.iso3 };
+                // `flagClass` for our own sheet, not an emoji (CLAUDE.md ->
+                // Flags Come From One Local Source). `flag` kept as the class
+                // so existing bindings keep working unchanged.
+                const flag = 'fi fi-' + iso2.toLowerCase();
+                return { flag, flagClass: flag, name: country.name, iso3: country.iso3 };
             }
             return null;
         },

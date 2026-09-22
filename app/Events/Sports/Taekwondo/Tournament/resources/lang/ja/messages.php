@@ -65,6 +65,7 @@ return [
     'notify_draw_title' => '抽選が発表されました— :title',
     'notify_weigh_in_body' => '公式体重計測 :time, :place。重量級の上限に達する必要があります。',
     'notify_weigh_in_title' => '明日の体重計測— :title',
+    'pool_not_arranged' => 'このクラスはプール形式で実施されます。全員が対戦するため、特別な調整は必要ありません。代わりに、クラスの参加者を追加または削除してください。',
     'result_body_done' => '今日はこれで最後の試合です。',
     'result_body_next' => '次: :round :mat で、およそ :minutes 分',
     'result_loss_title' => '試合終了',

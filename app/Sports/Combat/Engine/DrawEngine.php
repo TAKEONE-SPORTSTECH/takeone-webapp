@@ -7,6 +7,8 @@ use App\Models\ClubEvent;
 use App\Models\EventCategory;
 use App\Models\EventMatch;
 use App\Sports\Combat\SportRegistry;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Single-elimination draw generation + lifecycle for a combat championship.
@@ -77,7 +79,39 @@ class DrawEngine
                  * housekeeping pass may delete one. The division is marked
                  * final so it is never asked again.
                  */
-                if ($this->hasResults($cat)) {
+                if ($this->hasResults($cat) || $this->isBeingFought($cat, $event)) {
+                    $cat->update(['draw_state' => 'final']);
+
+                    continue;
+                }
+
+                /*
+                 * ⚠️ A BOARD THAT ALREADY EXISTS IS FROZEN, NEVER RE-CUT
+                 * (2026-09-18, at the user's instruction).
+                 *
+                 * Starting the day used to rebuild every division as the final
+                 * paid-and-weighed-in-only draw. That is defensible on paper —
+                 * a final draw is supposed to hold only verified entries — and
+                 * it is brutal in a hall: the moment the day starts, anybody
+                 * without a weigh-in row DISAPPEARS from a bracket that was on
+                 * the wall a second earlier. It happened to nine athletes
+                 * across six divisions at 08:01 on 2026-09-18, and the first
+                 * anybody knew of it was coaches asking where their fighters
+                 * had gone.
+                 *
+                 * So the rule is now about the BOARD, not the entries: a
+                 * division that has already been drawn keeps the draw it has,
+                 * and the organiser adds or removes people deliberately through
+                 * Arrange. A division that has never been drawn is still cut
+                 * paid-only below — that is a first cut, and it cannot take
+                 * anybody off a board they were never on.
+                 *
+                 * The two checks above are now subsumed by this one (a fought
+                 * or in-progress division has bouts by definition). They are
+                 * kept deliberately: they name the two things that must never
+                 * be re-cut under ANY future relaxation of this broader rule.
+                 */
+                if ($cat->matches_count > 0) {
                     $cat->update(['draw_state' => 'final']);
 
                     continue;
@@ -101,6 +135,90 @@ class DrawEngine
         if ($changed) {
             $this->scheduler->scheduleAndNumber($event);
         }
+
+        $this->pruneBronzeBouts($event);
+    }
+
+    /**
+     * Take back a third-place bout the sport no longer awards.
+     *
+     * ── Why this exists ───────────────────────────────────────────────────
+     *
+     * `bronzeRule()` is the sport's answer, and an answer can change: jiu-jitsu
+     * was read as running a play-off for bronze and does not — corrected on
+     * 2026-09-18. Changing the rule stops the engine CUTTING the bout; it does
+     * nothing about the ones already on the board, and those carry a mat and a
+     * number, so they sit on the running order as a bout nobody will ever call.
+     * On the event that reported it there were thirteen.
+     *
+     * A rebuild would have taken them: `build()` lays the division again from
+     * scratch. But it is refused for a hand-arranged draw and skipped for a
+     * provisional one whose entrant count has not moved — which is every
+     * division here — and forcing one would throw away the organiser's own
+     * matchups to fix a bout that is merely surplus. So this removes exactly
+     * the surplus bout and touches nothing else.
+     *
+     * ── What it will not touch ────────────────────────────────────────────
+     *
+     * A bout that was FOUGHT, in any sense: a winner, a name in either corner,
+     * or a recording filed against it. A result is a fact and no housekeeping
+     * pass may delete one — the same rule the re-cut guard above states. If a
+     * sport's convention changes after a division has been fought, that
+     * division keeps the bout and its result, and the podium it already awarded
+     * stands.
+     *
+     * The mat is renumbered afterwards so the ORDER is unchanged and only the
+     * integers close up: `match_no` is a position, and a gap in it is a caller
+     * announcing bout 99 after bout 97.
+     */
+    private function pruneBronzeBouts(ClubEvent $event): void
+    {
+        if (\App\Events\Support\BronzeRule::playsOff($event)) {
+            return;
+        }
+
+        $surplus = EventMatch::where('event_id', $event->id)
+            ->where('round', self::ROUND_THIRD)
+            ->whereNull('winner')
+            ->whereNull('a_name')
+            ->whereNull('b_name')
+            ->get()
+            ->reject(fn (EventMatch $m) => DB::table('event_recordings')->where('match_id', $m->id)->exists());
+
+        if ($surplus->isEmpty()) {
+            return;
+        }
+
+        // The mats to close up, noted before the rows go.
+        $mats = $surplus
+            ->filter(fn (EventMatch $m) => filled($m->court))
+            ->map(fn (EventMatch $m) => [(int) ($m->day ?: 1), (string) $m->court])
+            ->unique(fn (array $k) => implode('|', $k));
+
+        EventMatch::whereIn('id', $surplus->pluck('id'))->delete();
+
+        foreach ($mats as [$day, $court]) {
+            $no = 0;
+
+            $bouts = EventMatch::where('event_id', $event->id)
+                ->where('day', $day)
+                ->where('court', $court)
+                ->orderByRaw('CASE WHEN match_no IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('match_no')
+                ->orderBy('slot')
+                ->get();
+
+            foreach ($bouts as $bout) {
+                // A bye has no number and never gains one — Scheduler decides
+                // what is a bye, and this is not that.
+                if ($bout->match_no === null) {
+                    continue;
+                }
+
+                $bout->match_no = ++$no;
+                $bout->save();
+            }
+        }
     }
 
     /**
@@ -113,6 +231,35 @@ class DrawEngine
      */
     public function build(ClubEvent $event, EventCategory $cat, bool $paidOnly): void
     {
+        /*
+         * ⚠️ THE DOOR, NOT THE DOORMEN: A FOUGHT DIVISION IS NEVER RE-CUT.
+         *
+         * Everything below this line deletes the division's bouts and lays new
+         * ones. `ensure()` guards that — and only on the branch where the event
+         * has STARTED, which is a button somebody presses, not a fact about
+         * whether anybody has fought. An organiser who never pressed Start had
+         * no guard at all: every entrant added, every weigh-in placement, every
+         * view of the bracket page could delete a morning's results, and the
+         * three other callers (`generateDraw`, `growDraw`, `onEntrantsChanged`)
+         * each carried their own version of the check or none.
+         *
+         * So it lives HERE, beside the delete, where no caller can forget it —
+         * the same reason `carryByes()` was moved into this method. A result is
+         * a fact; a housekeeping pass may not spend one, whatever the clock says.
+         *
+         * The way to change a division that HAS been fought is
+         * `App\Events\Support\Tournament\LateEntry`, which grafts onto the
+         * board instead of re-cutting it.
+         */
+        if ($cat->matches()->contested()->exists()) {
+            Log::warning('Refused to re-cut a division that has been fought.', [
+                'event_id' => $event->id,
+                'category_id' => $cat->id,
+            ]);
+
+            return;
+        }
+
         /*
          * A division can be run as a GROUP instead of a ladder.
          *
@@ -223,12 +370,51 @@ class DrawEngine
                 'b_country' => $b['country'] ?? null,
                 'b_provisional' => $b['provisional'] ?? false,
                 'winner' => $bye ? ($a ? 'a' : 'b') : null,
+                /*
+                 * SAID, not inferred. A walkover and a bout somebody won are
+                 * both "a winner and done", and the only thing that ever told
+                 * them apart was the other corner being empty — which stops
+                 * being true the moment an organiser drops a late entrant into
+                 * it. Everything that must not treat a bye as a result reads
+                 * this flag now rather than guessing from the shape.
+                 */
+                'won_by_bye' => $bye,
                 'status' => $bye ? 'done' : 'upcoming',
             ]);
         }
 
         for ($r = 1; $r < count($rounds); $r++) {
             $count = $size / (2 ** ($r + 1));
+
+            /*
+             * ===== The play-off for bronze, BEFORE the final =====
+             *
+             * Cut here — immediately ahead of the last round — so it takes the
+             * slot before the final and therefore runs before it. That is the
+             * order a hall actually wants: the two beaten semi-finalists fight
+             * for third while the finalists rest, and the day ends on the final
+             * rather than on an appendix after the medals have been imagined.
+             * Asked for on 2026-09-18; it used to be written after the final.
+             *
+             * The slot is presentation and running order ONLY. It takes no part
+             * in the winner-walk: `Advancement::rounds()` rejects this round
+             * before it groups anything, so the final's winner is never walked
+             * into it and the bracket geometry is unchanged by where it sits.
+             * It is fed by `syncThirdPlace()` from the semi-finals' losers.
+             *
+             * Only for a sport that says so, and only when there are semi-finals
+             * to lose (a field of four or more).
+             */
+            if ($r === count($rounds) - 1 && $this->awardsThirdPlaceBout($event, $rounds)) {
+                $cat->matches()->create([
+                    'event_id' => $event->id,
+                    'round' => self::ROUND_THIRD,
+                    'phase' => 'finals',
+                    'slot' => $slot++,
+                    'status' => 'upcoming',
+                ]);
+            }
+
             for ($i = 0; $i < $count; $i++) {
                 $cat->matches()->create([
                     'event_id' => $event->id,
@@ -238,38 +424,6 @@ class DrawEngine
                     'status' => 'upcoming',
                 ]);
             }
-        }
-
-        /*
-         * ===== The play-off for bronze =====
-         *
-         * A sport whose convention is `third_place_match` awards ONE bronze,
-         * to the winner of a bout between the two beaten semi-finalists — and
-         * that bout has to EXIST for anybody to fight it. It never did:
-         * `Advancement::awardIfComplete()` has always looked for a bout
-         * `round = 'Third place'` and nothing in the platform ever created one,
-         * so every knockout division in such a sport stopped at silver.
-         *
-         * It is cut here, with the rest of the ladder, because it is part of
-         * the draw — not something a desk remembers to add on the day.
-         *
-         * Written LAST, after the final, so it sits at the end of the slot
-         * order and reads as the appendix it is. It takes no part in the
-         * winner-walk: `Advancement` excludes this round from the bracket
-         * geometry and feeds it the semi-final LOSERS instead.
-         *
-         * Only for a sport that says so, and only when there are semi-finals to
-         * lose (a field of four or more). Karate and taekwondo settle bronze by
-         * repechage and are untouched.
-         */
-        if ($this->awardsThirdPlaceBout($event, $rounds)) {
-            $cat->matches()->create([
-                'event_id' => $event->id,
-                'round' => self::ROUND_THIRD,
-                'phase' => 'finals',
-                'slot' => $slot++,
-                'status' => 'upcoming',
-            ]);
         }
 
         /*
@@ -372,6 +526,36 @@ class DrawEngine
     }
 
     /**
+     * Is one of this division's bouts ON A MAT right now?
+     *
+     * The companion to `hasResults`, and it exists because that question is
+     * asked a moment too late. A division's FIRST contested bout carries no
+     * result until the officials file one — so between the athletes being
+     * called and the winner being declared, `hasResults` says the division is
+     * untouched and `build()` is free to delete the very bout being fought.
+     *
+     * That window used to be narrow. It stopped being narrow when the mat was
+     * allowed to start the day itself (BJJ Scoring::startTheDay): the first
+     * thing that happens there is a draw lock, triggered BY the result coming
+     * in, with that result's own bout loaded on the mat and not yet written.
+     * Without this check the lock would delete the bout mid-command.
+     *
+     * Deliberately not folded into `hasResults`: that one answers "has anything
+     * been decided here", which a bye satisfies on paper and must not. This
+     * answers "is somebody fighting", which no bye ever does.
+     */
+    private function isBeingFought(EventCategory $cat, ClubEvent $event): bool
+    {
+        $onMats = \App\Scoreboard\Fleet::matchesOnMats($event);
+
+        if ($onMats === []) {
+            return false;
+        }
+
+        return $cat->matches()->whereIn('id', $onMats)->exists();
+    }
+
+    /**
      * Does this event's sport settle bronze with a play-off, and is there a
      * semi-final for its two losers to come out of?
      *
@@ -380,7 +564,7 @@ class DrawEngine
     private function awardsThirdPlaceBout(ClubEvent $event, array $rounds): bool
     {
         return in_array('Semifinal', $rounds, true)
-            && $this->sports->get($event->sport)?->bronzeRule() === 'third_place_match';
+            && \App\Events\Support\BronzeRule::playsOff($event);
     }
 
     /** Standard single-elimination seed positions (index = slot, value = seed #). */

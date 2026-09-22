@@ -42,17 +42,26 @@
     /* No verification tile: the desk's sheet opens from a person's card on
        "Who's joined" now, and the separate desk screen is gone with it. */
 
+    /* ===== "Who's joined" — for the OFFICIALS too =====
+       Everybody who may open this console gets this row, not only whoever
+       manages the event. The note above says the verification desk's sheet now
+       opens from a person's card here — and the row that says so was inside the
+       organiser's block, so a weigh-in or payments official arrived at the
+       console and found no door to the one screen their job lives on. They
+       could still reach it by typing the URL, which is not a door.
+
+       Safe to widen: the page authorises per viewer (people() re-checks, and
+       the gates are attached only for the role that signs them), so linking it
+       discloses nothing an official could not already read there. Fixed
+       2026-09-15; the tests that caught it are in EventConsoleTest. */
+    $cards[] = [
+        'icon' => 'bi-people-fill', 'tone' => 'bg-amber-50 text-amber-600',
+        'label' => __('personal.event_show_whos_joined'),
+        'sub' => trans_choice('personal.event_manage_entrants', $counts['entrants'], ['count' => $counts['entrants']]),
+        'href' => route('me.events.people', $e['key']),
+    ];
+
     if ($canManage) {
-        // Who is on the list. The console had no door to the roster at all:
-        // the Entries card opens the ENTERING flow, and reading down the
-        // entrants — which is where an organiser strikes names off — was
-        // reachable only from the public event page.
-        $cards[] = [
-            'icon' => 'bi-people-fill', 'tone' => 'bg-amber-50 text-amber-600',
-            'label' => __('personal.event_show_whos_joined'),
-            'sub' => trans_choice('personal.event_manage_entrants', $counts['entrants'], ['count' => $counts['entrants']]),
-            'href' => route('me.events.people', $e['key']),
-        ];
         /* ===== "Enter your athletes" — HIDDEN until it exists =====
          *
          * This tile is not another door to the roster. It is for a CLUB OWNER
@@ -175,11 +184,18 @@
              somebody else: the athlete, their coach, or a stranger following
              the public link. Same component as the mobile console. --}}
         <div class="mb-6">
+            {{-- ⚠️ ORGANISER ONLY — the comment above said so and nothing
+                 enforced it, so an appointed official was shown a control
+                 whose every endpoint would refuse them (entry-search and
+                 entries both assert canManage). A button that 403s is worse
+                 than no button. Added 2026-09-15. --}}
+            @if($canManage)
             <x-event-add-person :event="$e['key']"
                                 :fees="$e['fees'] ?? []"
                                 :clubs="$entryClubs ?? []"
                                 :color="$mgColor"
                                 :title="$e['title']" />
+            @endif
         </div>
 
         {{-- Clubs, immediately under it: the two doors an organiser uses on the
@@ -320,6 +336,35 @@
                 <x-event-entry-review :event="$e['key']" :entries="$publicEntries ?? []"
                                       :color="$mgColor ?? $e['color']" :title="$e['title']" />
 
+                {{-- Who is barred, and why — the moderation list, which had no
+                     screen at all between 2026-09-03 and 2026-09-15: the desk
+                     that carried it was removed and its tab went with it, so
+                     `me.events.ban.lift` was an endpoint with no door. Beside
+                     the review queue on purpose: who is waiting to be let in,
+                     then who may not come in at all. --}}
+                <x-event-bans :event="$e['key']" :count="count($e['bans_list'] ?? [])"
+                              :color="$mgColor" :title="$e['title']"
+                              :club="$e['club'] ?? null" />
+
+                {{-- The running order: ONE screen with two views — the day part
+                     by part (where a ceremony or a prayer break gets its place,
+                     and the one board that can say an athlete is in two parts
+                     running), and the bouts on each mat. They were two boards on
+                     two addresses, and this console row was the only door to the
+                     first of them — the mat board had none at all on desktop. --}}
+                <a href="{{ route('me.events.order.page', $e['key']) }}" data-shell-link
+                   class="block bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-3">
+                        <span class="w-11 h-11 rounded-xl grid place-items-center flex-shrink-0"
+                              style="background: {{ $mgColor }}14; color: {{ $mgColor }};"><i class="bi bi-list-ol text-lg"></i></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-bold text-gray-900 truncate">{{ __('events.order_title') }}</p>
+                            <p class="text-[12px] text-muted-foreground mt-0.5 truncate">{{ __('events.order_console_sub') }}</p>
+                        </div>
+                        <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
+                    </div>
+                </a>
+
                 {{-- When the draw stops being the organiser's working copy and
                      becomes the sheet on the wall. Only for a type that draws
                      one — an event with no divisions has nothing to reveal. --}}
@@ -376,6 +421,10 @@
                     </a>
                 </div>
 
+                {{-- The dress rehearsal, above the danger zone: it is the
+                     opposite of destructive and must not read as part of it. --}}
+                @include('partials.event-rehearsal-card')
+
                 <div class="bg-white rounded-xl shadow-sm border border-red-100 p-6 space-y-2">
                     <h2 class="text-sm font-bold text-red-700 flex items-center gap-2 mb-3">
                         <i class="bi bi-exclamation-triangle"></i>{{ __('personal.event_manage_danger') }}
@@ -404,6 +453,11 @@
         @include(($manual_results ?? true) ? 'partials.event-results-sheet' : 'partials.event-podium-sheet')
         @include('partials.event-finance-sheet')
     @endif
+
+    {{-- The gate in front of Cancel and Delete. Inside the x-data above (it
+         reads `danger`), outside the owner-only block (the two buttons it
+         guards are not owner-only), and teleported to <body> from there. --}}
+    @include('partials.event-danger-sheet')
     </div>{{-- /cards --}}
 </div>
 @include('partials.event-action-runner')

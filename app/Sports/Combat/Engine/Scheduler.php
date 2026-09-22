@@ -104,12 +104,113 @@ class Scheduler
      * Byes and walkovers get no number — every bout already decided, whether
      * one corner was empty or both.
      *
+     * ⚠️ UNLESS THE ORGANISER HAS WRITTEN THE DAY DOWN. A running order
+     * (`event_run_slots`, arranged on the day board and published on the event
+     * page) says "10:00 Group B, 10:30 Group E, …" — and a mat that then
+     * interleaves every division across the whole day contradicts the sheet the
+     * hall is standing there reading. So when a sheet exists, a mat runs
+     * DIVISION BY DIVISION in the order the organiser arranged: all of Group B,
+     * prelims through its final, until it has a first, second and third — then
+     * the next division. Phase order still decides the sequence WITHIN a
+     * division; it simply stops reaching across them.
+     *
+     * The sheet already assumed this: `App\Events\Support\RunSheet` sizes each
+     * slot from that division's own bout count, which is only a truthful clock
+     * if the division runs as one block.
+     *
+     * Additive: an event with no running order is numbered exactly as before,
+     * down to the bout number. Divisions the sheet does not mention keep their
+     * old interleaved behaviour and run after the ones it does.
+     *
      * @return array<int,array{matches:int,capacity:int,suggested:int,courts:int}> per-day plan
      */
+    /**
+     * A mat's bouts, as groups to be run one after another.
+     *
+     * WITHOUT a running order (`$sheetPos` empty) a group is a PHASE: every
+     * division's preliminaries interleaved, then every quarter-final, then
+     * every final — the behaviour this engine has always had, returned
+     * unchanged so an event nobody has written a day for is numbered exactly
+     * as it was before.
+     *
+     * WITH one, a group is a DIVISION, in the order the organiser arranged it:
+     * that division's bouts, phase by phase, until it has produced a podium —
+     * then the next division. Divisions the sheet does not mention have no
+     * place in it, so they keep the phase-interleaved shape and run after
+     * everything that does (PHP's sort is stable, so their relative order is
+     * the one they already had).
+     *
+     * @param  array<int, array<int, array<int, EventMatch>>>  $ranks  phase rank => division id => bouts
+     * @param  array<int, int>  $sheetPos  division id => its place in the running order
+     * @return array<int, array<int, array<int, EventMatch>>>  groups of division queues
+     */
+    private function matOrder(array $ranks, array $sheetPos): array
+    {
+        if (! $sheetPos) {
+            return array_values($ranks);
+        }
+
+        // Division-major: division id => phase rank => bouts.
+        $byDivision = [];
+        foreach ($ranks as $rank => $divGroups) {
+            foreach ($divGroups as $catId => $bouts) {
+                $byDivision[$catId][$rank] = $bouts;
+            }
+        }
+
+        $onSheet = [];
+        $rest = [];
+        foreach ($byDivision as $catId => $byRank) {
+            isset($sheetPos[$catId]) ? $onSheet[$catId] = $byRank : $rest[$catId] = $byRank;
+        }
+
+        uksort($onSheet, fn ($a, $b) => $sheetPos[$a] <=> $sheetPos[$b]);
+
+        $groups = [];
+        foreach ($onSheet as $catId => $byRank) {
+            ksort($byRank);
+            // One division = one group holding one queue, so the caller's
+            // round-robin drains it in phase order and nothing interleaves.
+            foreach ($byRank as $bouts) {
+                $groups[] = [$bouts];
+            }
+        }
+
+        /*
+         * Anything the sheet never mentions runs after it, in the phase-by-
+         * phase shape it had — a division left off the running order is not a
+         * division the organiser has re-ordered, and silently promoting it to
+         * the front of the mat would be this engine inventing a decision.
+         */
+        foreach ($ranks as $rank => $divGroups) {
+            $tail = array_intersect_key($divGroups, $rest);
+            if ($tail) {
+                $groups[] = $tail;
+            }
+        }
+
+        return $groups;
+    }
+
     public function scheduleAndNumber(ClubEvent $event): array
     {
         $phaseRank = ['preliminary' => 0, 'quarterfinals' => 1, 'finals' => 2];
         $cats = $event->categories()->get()->keyBy('id');
+
+        /*
+         * The organiser's own order, division => its place in the day.
+         * Read across every day and keyed by division, because a mat's order
+         * is decided per (day, mat) further down and a division sits on one
+         * day only. Empty for an event nobody has written a running order for,
+         * which is the switch that keeps the old behaviour exactly as it was.
+         */
+        $sheetPos = \App\Models\EventRunSlot::where('event_id', $event->id)
+            ->whereNotNull('category_id')
+            ->orderBy('day')->orderBy('position')->orderBy('id')
+            ->pluck('category_id')
+            ->values()
+            ->flip()          // category_id => rank
+            ->all();
         $capacity = $this->dailyCapacityPerCourt($event);
 
         $matches = EventMatch::where('event_id', $event->id)->orderBy('slot')->get();
@@ -183,22 +284,26 @@ class Scheduler
             foreach ($byCourt as $court => $ranks) {
                 ksort($ranks);
                 $no = 0;
-                foreach ($ranks as $divGroups) {
-                    $queues = array_values($divGroups);
+
+                // Numbering restarts per mat per day, so the day is part of a
+                // bout's identity in the running order — persisted here because
+                // it is resolved here, and everything downstream (the wall
+                // board, the scoring queue, "bouts ahead") has to be able to
+                // order by it. See the migration.
+                $number = function (EventMatch $m) use (&$no, $court, $day) {
+                    $m->court = 'Mat '.$court;
+                    $m->day = (int) $day;
+                    $m->match_no = ++$no;
+                    $m->save();
+                };
+
+                foreach ($this->matOrder($ranks, $sheetPos) as $group) {
+                    $queues = array_values($group);
                     do {
                         $any = false;
                         foreach ($queues as &$q) {
                             if ($m = array_shift($q)) {
-                                $m->court = 'Mat '.$court;
-                                // Numbering restarts per mat per day, so the day
-                                // is part of a bout's identity in the running
-                                // order — persisted here because it is resolved
-                                // here, and everything downstream (the wall
-                                // board, the scoring queue, "bouts ahead") has
-                                // to be able to order by it. See the migration.
-                                $m->day = (int) $day;
-                                $m->match_no = ++$no;
-                                $m->save();
+                                $number($m);
                                 $any = true;
                             }
                         }

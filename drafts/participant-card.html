@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<!-- ============================================================================
+  PARTICIPANT CARD — TakeOne (stage.takeone.bh/e/:eventId/participants)
+  Self-contained reference implementation + AI implementation instructions.
+
+  INSTRUCTIONS FOR AI (Claude Code or similar):
+  This file is the design contract. Port it to the app's stack (keep class
+  names and data-* attributes). Every wiring point is marked "TODO:".
+  Read every comment block marked "AI:" — they carry the rules that are not
+  obvious from the markup alone.
+============================================================================ -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Participant Card — TakeOne</title>
+<!-- AI: Bootstrap Icons via CDN here; bundle locally in production -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+:root{
+  --male:#3b82f6; --male-chip-bg:#eff6ff; --male-chip-fg:#2563eb;
+  --female:#ec4899; --female-chip-bg:#fdf2f8; --female-chip-fg:#db2777;
+  --ok-fg:#15803d; --ok-bg:#f0fdf4; --ok-border:#bbf7d0;
+  --warn-fg:#b45309; --warn-bg:#fffbeb; --warn-border:#fde68a;
+  --danger-fg:#dc2626; --danger-bg:#fef2f2; --danger-border:#fecaca;
+  --ink:#0f172a; --muted:#64748b; --line:#eef0f3;
+}
+body{margin:0;background:#f4f6f8;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:500px;margin:0 auto;padding:28px 16px}
+
+/* ===== Card shell =====
+   AI: data-gender="male|female" on .pcard drives the left stripe AND the
+   category chip / gender icon / division icon colors (blue vs pink). */
+.pcard{position:relative;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(15,23,42,.05);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.pcard:hover{box-shadow:0 4px 14px rgba(15,23,42,.10);transform:translateY(-1px)}
+.pcard .gbar{position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--male)}
+.pcard[data-gender="female"] .gbar{background:var(--female)}
+.pcard .body{display:flex;gap:12px;padding:10px 14px 8px 18px}
+
+/* ===== Photo =====
+   AI: HARD REQUIREMENT — the member photo is ALWAYS 3:4 (width:height),
+   taller than wide. Fixed 66x88 box, overflow hidden, object-fit:cover.
+   Never let it flex, never let the ratio drift regardless of source image.
+   Fallback when no photo: /images/avatars/male.jpg or female.jpg. */
+.pcard .photo{position:relative;flex-shrink:0;width:66px;height:88px;border-radius:10px;overflow:hidden;background:#e2e8f0;cursor:zoom-in;transition:opacity .15s}
+.pcard .photo:hover{opacity:.85}
+.pcard .photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
+
+/* ===== Info column =====
+   AI: min-width:0 + ellipsis on every text node is what prevents the old
+   card's warping. Every field except name+category is optional; rows must
+   collapse cleanly when data is missing. */
+.pcard .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.pcard .row{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
+.pcard .row.nowrap{flex-wrap:nowrap}
+.pcard .name{font-weight:700;font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* AI: name needs dir="auto" in markup — Arabic names must render RTL correctly */
+.pcard .flag{height:13px;width:17px;border-radius:3px;flex-shrink:0;object-fit:cover}
+
+/* ===== Right column: format badge + big belt symbol =====
+   AI: format badge ("Gi + No Gi") sits on top; the tied-belt SVG renders
+   BIG (44px) below it with the rank name underneath. Do NOT shrink the
+   belt symbol into a small pill — it becomes illegible. Hide the whole
+   column's badge when the athlete has no format; hide belt rows when no
+   belt rank. */
+.pcard .side{flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding-left:4px}
+.pcard .fmt{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:var(--ink);color:#fff;white-space:nowrap}
+.pcard .belt-name{font-size:10px;font-weight:700;color:var(--muted)}
+/* AI: in the belt SVG, .belt-fill rects carry the belt color
+   (white #f8fafc, blue #2563eb, purple #7c3aed, brown #92400e, black #0f172a)
+   and .belt-knot is a darker shade of the same color. */
+
+/* ===== Enrollment status pill =====
+   AI: readiness = payment AND weigh-in — two facts, each icon sits directly
+   next to the word it describes. data-status on .pcard:
+   - "pending": not paid                 -> red;   x-circle Not paid  · x-circle No weigh-in
+   - "paid":    paid, awaiting weigh-in  -> amber;  check Paid        · hourglass Awaiting weigh-in
+   - "ready":   paid and weighed in      -> green;  check Paid        · check Weighed in
+   Derivation: !paid -> pending; paid && !weighedIn -> paid; both -> ready. */
+.status{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;border:1px solid;white-space:nowrap}
+.status>span{display:inline-flex;align-items:center;gap:4px}
+.status .dot{opacity:.45}
+.status[data-status="pending"]{color:var(--danger-fg);background:var(--danger-bg);border-color:var(--danger-border)}
+.status[data-status="paid"]{color:var(--warn-fg);background:var(--warn-bg);border-color:var(--warn-border)}
+.status[data-status="ready"]{color:var(--ok-fg);background:var(--ok-bg);border-color:var(--ok-border)}
+
+.chip{padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;background:var(--male-chip-bg);color:var(--male-chip-fg)}
+.pcard[data-gender="female"] .chip{background:var(--female-chip-bg);color:var(--female-chip-fg)}
+.meta{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--ink)}
+.meta .bi{color:var(--male-chip-fg);font-size:11px}
+.pcard[data-gender="female"] .meta .bi{color:var(--female-chip-fg)}
+
+/* ===== Weight =====
+   AI: color rule — weight DECLARED by participant but NOT verified -> amber;
+   declared AND verified at official weigh-in -> green (add bi-patch-check-fill).
+   Driven by data-weight-verified="true|false" on .pcard. Omit entirely if
+   no weight declared. */
+.weight{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#d97706}
+.pcard[data-weight-verified="true"] .weight{color:var(--ok-fg)}
+.pcard:not([data-weight-verified="true"]) .weight .verified{display:none}
+
+.club{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);min-width:0}
+.club img{width:16px;height:16px;object-fit:contain;flex-shrink:0}
+.club span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* AI: unattached athletes: replace logo with <i class="bi bi-people"> + "Unattached" */
+
+/* ===== Divisions footer band =====
+   AI: one chip per enrolled division, auto-fill grid so chips never warp;
+   text ellipsizes, never wraps. Hide the whole band when no divisions. */
+.divs{border-top:1px solid #f1f5f9;padding:8px 14px 10px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:5px}
+.divs .div{display:flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #f1f5f9;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;color:#334155;min-width:0;cursor:pointer;transition:background .15s,border-color .15s}
+.divs .div:hover{background:#eff6ff;border-color:#bfdbfe}
+.divs .div .bi{color:var(--male-chip-fg);font-size:10px;flex-shrink:0}
+.pcard[data-gender="female"] .divs .bi{color:var(--female-chip-fg)}
+.divs .div span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== Photo lightbox =====
+   AI: photo tap (both roles) opens the full photo — still 3:4 — over a black
+   tint; tapping ANYWHERE closes it. Swap the photo URL s=card -> s=full. */
+.lightbox{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;cursor:zoom-out}
+.lightbox.open{display:flex}
+.lightbox img{width:min(66vh,84vw);aspect-ratio:3/4;object-fit:cover;object-position:center top;border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,.5)}
+
+/* ===== Organizer bottom sheet =====
+   AI: ONLY shown when the viewer's role is "organizer" and they tap the card.
+   Participants tapping the card go straight to the member's public profile. */
+.sheet-backdrop{position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.45);display:none}
+.sheet-backdrop.open{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;display:none;justify-content:center}
+.sheet.open{display:flex}
+.sheet .panel{width:100%;max-width:500px;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -12px 40px rgba(15,23,42,.25);padding:10px 18px 22px;display:flex;flex-direction:column;gap:4px;max-height:78vh;overflow:auto;animation:sheetUp .22s ease}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet .grab{align-self:center;width:40px;height:4px;border-radius:999px;background:#e2e8f0;margin-bottom:8px}
+.sheet .head{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid #f1f5f9;margin-bottom:6px}
+.sheet .head img{width:36px;height:48px;border-radius:8px;object-fit:cover;object-position:center top;background:#e2e8f0}
+.sheet .action{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
+.sheet .action:hover{background:#f8fafc}
+.sheet .action .lead{color:#2563eb;font-size:17px}
+.sheet .action .chev{margin-left:auto;color:#cbd5e1;font-size:12px}
+.sheet .sec{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:6px 0 4px}
+/* AI: enroll view — compatible groups solid border, incompatible groups DASHED
+   border with a reason line. BOTH remain checkable: organizers may override
+   compatibility. Already-enrolled groups arrive pre-checked + ENROLLED tag. */
+.group{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #e2e8f0;background:#fff;border-radius:12px;cursor:pointer;margin-bottom:5px;transition:background .15s,border-color .15s}
+.group.incompat{border-style:dashed}
+.group.checked{border-color:#93c5fd;background:#eff6ff}
+.group .box{width:20px;height:20px;border-radius:6px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border:2px solid #cbd5e1;background:#fff;color:#fff;font-size:12px}
+.group.checked .box{border-color:#2563eb;background:#2563eb}
+.group .lbl{min-width:0;font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.group .why{font-size:10.5px;color:var(--warn-fg)}
+.group .tag{margin-left:auto;flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--ok-fg);background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:999px;padding:2px 7px;text-transform:uppercase}
+.sheet .foot{display:flex;gap:8px;padding-top:14px}
+.sheet .foot button{font-size:13px;font-weight:700;padding:11px;border-radius:12px;cursor:pointer}
+.sheet .btn-cancel{flex:1;border:1px solid #e2e8f0;background:#fff;color:#334155}
+.sheet .btn-save{flex:2;border:none;background:#2563eb;color:#fff}
+</style>
+</head>
+<body data-role="participant"><!-- AI: set data-role from the session: "participant" | "organizer" -->
+<div class="wrap">
+
+<!-- ============ PARTICIPANT CARD ============
+  AI: attributes on .pcard are the state contract:
+    data-gender="male|female"            -> theme (stripe, chips, icons)
+    data-status="pending|paid|ready"     -> status pill (see CSS block)
+    data-weight-verified="true|false"    -> weight color amber/green
+    data-member-id                       -> profile/verification routes
+-->
+<article class="pcard" data-gender="male" data-status="paid" data-weight-verified="false"
+         data-member-id="2eefc405-360a-469b-966e-f7eda4d188c9"
+         role="button" tabindex="0" onclick="onCardTap(this)">
+  <span class="gbar"></span>
+  <div class="body">
+    <!-- Photo: 3:4 locked; tap = lightbox (stopPropagation so card tap doesn't fire) -->
+    <div class="photo" onclick="event.stopPropagation();openLightbox(this.querySelector('img').src)">
+      <img src="https://stage.takeone.bh/file/members/2eefc405-360a-469b-966e-f7eda4d188c9/profile/bf573f70-08f6-47a5-adbc-61e87841bdd0.jpg?v=1789202851&amp;s=card" alt="Mohammed Ali Saloom">
+    </div>
+    <div class="info">
+      <div class="row nowrap">
+        <span class="name" dir="auto">Mohammed Ali Saloom</span>
+        <img class="flag" src="https://stage.takeone.bh/images/flags/bh.svg" alt="Bahrain">
+      </div>
+      <div class="row">
+        <span class="status" data-status="paid">
+          <span><i class="bi bi-check-circle-fill" style="font-size:10px"></i>Paid</span>
+          <span class="dot">·</span>
+          <span><i class="bi bi-hourglass-split" style="font-size:10px"></i>Awaiting weigh-in</span>
+        </span>
+      </div>
+      <div class="row">
+        <span class="chip">Young Adult</span>
+        <span class="meta"><i class="bi bi-gender-male"></i>34 yrs</span>
+        <span class="weight"><i class="bi bi-speedometer2"></i>72.4 kg<i class="bi bi-patch-check-fill verified" style="font-size:10px"></i></span>
+      </div>
+      <div class="club">
+        <img src="https://stage.takeone.bh/file/clubs/BHR/victorian-academy-jiu-jitsu/branding/logo_8b1fOvP5P9HKtZFgfQdvW7HA.png" alt="">
+        <span>Victorian Academy Jiu-Jitsu</span>
+      </div>
+    </div>
+    <!-- Right column: format badge on top, BIG belt symbol (44px) + rank name under it -->
+    <div class="side">
+      <span class="fmt"><i class="bi bi-collection" style="font-size:9px"></i>Gi + No Gi</span>
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+        <rect x="0.6" y="9.8" width="9.4" height="4.4" rx="1.3" fill="rgba(15,23,42,.38)" stroke="rgba(15,23,42,.38)" stroke-width="1.1" stroke-linejoin="round"></rect>
+        <rect x="14" y="9.8" width="9.4" height="4.4" rx="1.3" fill="rgba(15,23,42,.38)" stroke="rgba(15,23,42,.38)" stroke-width="1.1" stroke-linejoin="round"></rect>
+        <rect x="9.1" y="13.2" width="2.6" height="9" rx="1" transform="rotate(15 10.4 13.8)" fill="rgba(15,23,42,.38)" stroke="rgba(15,23,42,.38)" stroke-width="1.1" stroke-linejoin="round"></rect>
+        <rect x="12.4" y="13.2" width="2.6" height="7.2" rx="1" transform="rotate(-7 13.7 13.8)" fill="rgba(15,23,42,.38)" stroke="rgba(15,23,42,.38)" stroke-width="1.1" stroke-linejoin="round"></rect>
+        <rect x="8.6" y="8.8" width="6.8" height="6" rx="2" fill="rgba(15,23,42,.38)" stroke="rgba(15,23,42,.38)" stroke-width="1.1" stroke-linejoin="round"></rect>
+        <rect x="11.1" y="8.8" width="1.8" height="6" rx="0.3" fill="rgba(15,23,42,.38)" stroke="rgba(15,23,42,.38)" stroke-width="1.1" stroke-linejoin="round"></rect>
+        <rect class="belt-fill" x="0.6" y="9.8" width="9.4" height="4.4" rx="1.3" fill="#f8fafc"></rect>
+        <rect class="belt-fill" x="14" y="9.8" width="9.4" height="4.4" rx="1.3" fill="#f8fafc"></rect>
+        <rect class="belt-fill" x="9.1" y="13.2" width="2.6" height="9" rx="1" transform="rotate(15 10.4 13.8)" fill="#f8fafc"></rect>
+        <rect class="belt-fill" x="12.4" y="13.2" width="2.6" height="7.2" rx="1" transform="rotate(-7 13.7 13.8)" fill="#f8fafc"></rect>
+        <rect class="belt-knot" x="8.6" y="8.8" width="6.8" height="6" rx="2" fill="#c1c3c5"></rect>
+        <rect class="belt-fill" x="11.1" y="8.8" width="1.8" height="6" rx="0.3" fill="#f8fafc"></rect>
+      </svg>
+      <span class="belt-name">White Belt</span>
+    </div>
+  </div>
+  <!-- Divisions: tap navigates to that group's brackets / league table -->
+  <div class="divs">
+    <div class="div" data-division-id="grp-c-60-adult-gi" onclick="event.stopPropagation();onDivisionTap(this)"><i class="bi bi-rulers"></i><span>Group C (-60) Adult [Gi]</span></div>
+    <div class="div" data-division-id="grp-e-60-adult-nogi" onclick="event.stopPropagation();onDivisionTap(this)"><i class="bi bi-rulers"></i><span>Group E (+60) Adult [No Gi]</span></div>
+    <div class="div" data-division-id="grp-b-60-adult-nogi" onclick="event.stopPropagation();onDivisionTap(this)"><i class="bi bi-rulers"></i><span>Group B (-60) Adult [No Gi]</span></div>
+  </div>
+</article>
+</div>
+
+<!-- Photo lightbox: black tint, tap anywhere to close -->
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('open')"><img id="lightbox-img" src="" alt=""></div>
+
+<!-- Organizer bottom sheet -->
+<div class="sheet-backdrop" id="sheet-backdrop" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="panel">
+    <span class="grab"></span>
+    <div class="head">
+      <img id="sheet-photo" src="" alt="">
+      <div style="min-width:0">
+        <div id="sheet-name" style="font-weight:700;font-size:14px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+        <div style="font-size:11px;color:#64748b">Organizer actions</div>
+      </div>
+      <span onclick="closeSheet()" style="margin-left:auto;cursor:pointer;color:#94a3b8;font-size:18px;padding:4px"><i class="bi bi-x-lg"></i></span>
+    </div>
+    <div id="sheet-actions">
+      <div class="action" onclick="onVerify()"><i class="bi bi-patch-check lead"></i>Open verification page<i class="bi bi-chevron-right chev"></i></div>
+      <div class="action" onclick="showEnroll()"><i class="bi bi-diagram-3 lead"></i>Enroll in groups<i class="bi bi-chevron-right chev"></i></div>
+      <div class="action" onclick="onProfile()"><i class="bi bi-person lead"></i>View public profile<i class="bi bi-chevron-right chev"></i></div>
+    </div>
+    <div id="sheet-enroll" style="display:none">
+      <div class="action" style="padding:2px 0 8px;font-size:12px;color:#2563eb;gap:6px" onclick="showActions()"><i class="bi bi-arrow-left"></i>Back</div>
+      <div class="sec" style="color:var(--ok-fg)">Compatible groups</div>
+      <div id="groups-compat"></div>
+      <div class="sec" style="color:var(--warn-fg)"><i class="bi bi-exclamation-triangle" style="font-size:10px"></i> Not compatible</div>
+      <div id="groups-incompat"></div>
+      <div class="foot">
+        <button class="btn-cancel" onclick="closeSheet()">Cancel</button>
+        <button class="btn-save" id="btn-save" onclick="onSaveEnrollment()">Save enrollment</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   AI: WIRING POINTS — replace every TODO with real routes / API calls.
+   Behavior matrix:
+     PARTICIPANT: card tap -> member public profile
+     ORGANIZER:   card tap -> bottom sheet (verify / enroll / profile)
+     BOTH:        photo tap -> lightbox; division tap -> brackets/league table
+============================================================================ */
+var ROLE = document.body.dataset.role || 'participant'; // TODO: set from auth/session
+
+function onCardTap(card){
+  if (ROLE === 'organizer') openSheet(card);
+  else location.assign('/m/' + card.dataset.memberId); // TODO: member public profile route
+}
+function onDivisionTap(el){
+  location.assign('/e/EVENT_ID/brackets/' + el.dataset.divisionId); // TODO: brackets / league table route
+}
+function onVerify(){ closeSheet(); location.assign('/e/EVENT_ID/verify/' + currentCard.dataset.memberId); } // TODO
+function onProfile(){ closeSheet(); location.assign('/m/' + currentCard.dataset.memberId); } // TODO
+function onSaveEnrollment(){
+  var picked = [].map.call(document.querySelectorAll('.group.checked'), function(g){ return g.dataset.groupId; });
+  console.log('POST enrollment', currentCard.dataset.memberId, picked); // TODO: API call
+  closeSheet();
+}
+/* AI: groups for the enroll view — fetch from API with compatibility computed
+   SERVER-SIDE (age category + gender vs group requirements). Shape: */
+var GROUPS = [
+  { id:'grp-c-60-adult-gi',    label:'Group C (-60) Adult [Gi]',        compatible:true,  enrolled:true  },
+  { id:'grp-e-60-adult-nogi',  label:'Group E (+60) Adult [No Gi]',     compatible:true,  enrolled:true  },
+  { id:'grp-b-60-adult-nogi',  label:'Group B (-60) Adult [No Gi]',     compatible:true,  enrolled:true  },
+  { id:'grp-d-70-adult-gi',    label:'Group D (+70) Adult [Gi]',        compatible:true,  enrolled:false },
+  { id:'grp-b-60-youth-gi',    label:'Group B (-60) Youth [Gi]',        compatible:false, enrolled:false, reason:'Age category mismatch' },
+  { id:'grp-a-60-adult-f-gi',  label:'Group A (-60) Adult Female [Gi]', compatible:false, enrolled:false, reason:'Different gender division' }
+];
+
+/* ===== UI plumbing (port as-is; no business logic below) ===== */
+var currentCard = null;
+function openLightbox(src){ document.getElementById('lightbox-img').src = src.replace('s=card','s=full'); document.getElementById('lightbox').classList.add('open'); }
+function openSheet(card){
+  currentCard = card;
+  document.getElementById('sheet-photo').src = card.querySelector('.photo img').src;
+  document.getElementById('sheet-name').textContent = card.querySelector('.name').textContent;
+  renderGroups(); showActions();
+  document.getElementById('sheet-backdrop').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+}
+function closeSheet(){ document.getElementById('sheet-backdrop').classList.remove('open'); document.getElementById('sheet').classList.remove('open'); }
+function showActions(){ document.getElementById('sheet-actions').style.display=''; document.getElementById('sheet-enroll').style.display='none'; }
+function showEnroll(){ document.getElementById('sheet-actions').style.display='none'; document.getElementById('sheet-enroll').style.display=''; }
+function renderGroups(){
+  var c = document.getElementById('groups-compat'), n = document.getElementById('groups-incompat');
+  c.innerHTML = ''; n.innerHTML = '';
+  GROUPS.forEach(function(g){
+    var el = document.createElement('div');
+    el.className = 'group' + (g.compatible ? '' : ' incompat') + (g.enrolled ? ' checked' : '');
+    el.dataset.groupId = g.id;
+    el.innerHTML = '<span class="box"><i class="bi bi-check-lg"></i></span>' +
+      '<span style="min-width:0"><span class="lbl">' + g.label + '</span>' +
+      (g.reason ? '<div class="why">' + g.reason + '</div>' : '') + '</span>' +
+      (g.enrolled ? '<span class="tag">Enrolled</span>' : '');
+    el.onclick = function(){ el.classList.toggle('checked'); updateSaveCount(); };
+    (g.compatible ? c : n).appendChild(el);
+  });
+  updateSaveCount();
+}
+function updateSaveCount(){
+  document.getElementById('btn-save').textContent = 'Save enrollment (' + document.querySelectorAll('.group.checked').length + ')';
+}
+/* AI: accessibility to add when porting — Enter/Space keydown mirrors clicks on
+   role="button" elements; Escape closes lightbox + sheet; trap focus in sheet;
+   status pill meaning is carried by its text, never color alone. */
+</script>
+</body>
+</html>

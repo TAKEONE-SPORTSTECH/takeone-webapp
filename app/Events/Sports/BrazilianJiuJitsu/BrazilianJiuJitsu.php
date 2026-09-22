@@ -134,10 +134,28 @@ class BrazilianJiuJitsu extends AbstractCombatSport
     }
 
     /**
-     * IBJJF runs a third-place MATCH rather than repechage: the two losing
-     * semi-finalists meet, and the winner takes bronze. Verify against your
-     * federation's current rules before a real competition — the other
-     * conventions the engine accepts are listed in config/combat.php.
+     * ONE BRONZE, FOUGHT FOR — and fought BEFORE the final.
+     *
+     * The two beaten semi-finalists meet, and the winner takes third.
+     *
+     * ⚠️ This has now been set both ways in one day, so the history matters
+     * more than usual. It was `third_place_match` on a reading of the IBJJF
+     * rule book; it was changed to `both_sf_losers` on 2026-09-18 on the
+     * grounds that the mat does not bear that reading out, which also had the
+     * engine cutting a bout AFTER the final that nobody would ever call; and it
+     * was set back the same day by the owner, who runs these championships and
+     * wants the play-off. The complaint that drove the first change — a bout
+     * sitting after the final as a pointless appendix — is answered separately
+     * in `DrawEngine::build()`, which now cuts it BEFORE the final so it runs
+     * while the finalists rest.
+     *
+     * The consequence is one extra bout per division of four or more, and a
+     * podium that waits for it: `Advancement` fills third from this bout's
+     * winner rather than awarding it to both losing semi-finalists.
+     *
+     * The other conventions the engine accepts are listed in config/combat.php.
+     * Karate and Taekwondo reach two bronzes through repechage, which is a
+     * different route to a different podium and stays theirs.
      */
     public function bronzeRule(): string
     {
@@ -189,22 +207,33 @@ class BrazilianJiuJitsu extends AbstractCombatSport
     }
 
     /**
-     * BLUE and WHITE — never red.
+     * RED and BLUE, like every other combat sport here.
      *
-     * The contract's array is keyed red/blue because every other combat sport
-     * has a red corner. Jiu-jitsu does not: the competitors wear a blue gi and
-     * a white one, and red is reserved for penalties and disqualification on
-     * every screen this sport draws. So the 'red' key carries the WHITE corner,
-     * and everything in this package speaks blue/white rather than reading the
-     * key's name as a colour.
+     * ── This used to be BLUE and WHITE ─────────────────────────────────────
+     * The competitors wear a blue gi and a white one, so the corners were
+     * painted to match and the 'red' key carried the WHITE corner. Changed
+     * 2026-09-20 at the owner's request: a white corner cannot be told from
+     * the board's own light furniture at ten metres, and every other sport in
+     * the hall fights red against blue. Side A is red, side B is blue.
+     *
+     * ⚠️ `corner_blue` is now the RED corner's label and `corner_white` the
+     * BLUE one — the KEYS are the side, not the colour. They are what
+     * `bjj_mat_states.blue` / `.white` and 1,100 recorded ledger rows are
+     * keyed by, so renaming them is a migration rather than a lick of paint;
+     * registered in Documentation/HOUSE-CLEANING.md.
+     *
+     * ⚠️ Red now means two things on this sport's screens — a corner, and a
+     * penalty. The corner plate is a deep crimson (#c1121f) and the alarm is
+     * the brighter #ff3b47, which is what keeps them apart. Anything new that
+     * reaches for red must pick a side of that line deliberately.
      *
      * @return array{red: string, blue: string}
      */
     public function cornerLabels(): array
     {
         return [
-            'red' => __('sport-brazilianjiujitsu::messages.corner_white'),
-            'blue' => __('sport-brazilianjiujitsu::messages.corner_blue'),
+            'red' => __('sport-brazilianjiujitsu::messages.corner_blue'),
+            'blue' => __('sport-brazilianjiujitsu::messages.corner_white'),
         ];
     }
 }

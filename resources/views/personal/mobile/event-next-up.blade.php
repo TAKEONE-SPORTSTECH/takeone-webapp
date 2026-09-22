@@ -209,7 +209,7 @@
                 }
                 window.__nextUpHandler = (ev) => {
                     const action = ev.detail?.action;
-                    if (['outcome', 'draw', 'entrants', 'podium'].includes(action)) this.refresh();
+                    if (['outcome', 'draw', 'entrants', 'podium', 'entry-updated'].includes(action)) this.refresh();
                 };
                 window.addEventListener('realtime:events', window.__nextUpHandler);
             },

@@ -95,13 +95,28 @@
         </div>
     </div>
 
-    {{-- A draw the organiser has not let out yet: the page is the veil and
-         nothing else. Not merely the board — this page also prints the same
-         bouts underneath in readable form, so both halves go quiet together
-         (PersonalEventController::bracket empties $categories to match). --}}
-    @if($drawHidden ?? null)
+    {{-- ===== The draw is not out =====
+         Withheld by the organiser's `draw_reveal`, or simply not cut. Either
+         way the waiting room is the WHOLE page — the division selector and the
+         per-division entry lists are held back with the bracket itself.
+
+         Asked of `$waitingRoom` (which the controller sets from the EVENT) and
+         not of `$drawHidden` (which is set per READER): the organiser and their
+         officials read through their own veil, and showing them the division
+         strip while every other reader gets a padlock meant the page said two
+         different things about the same event. Hidden for them too, at the
+         user's request, 2026-09-16 — managing the draw is the console's job
+         (the gear in the band above), never this page's.
+
+         The bare veil survives for the one case where it is still the whole
+         truth: nothing to count down to and nobody entered. --}}
+    @if(($waitingRoom ?? null) !== null)
         <div class="max-w-xl mx-auto">
-            <x-draw-veil :message="$drawHidden" :color="$color" />
+            @if(($waitingRoom['at'] ?? null) || ($waitingRoom['entries'] ?? 0))
+                <x-draw-waiting-room :data="$waitingRoom" :color="$color" />
+            @else
+                <x-draw-veil :message="$drawHidden ?? __('events.public_draw_empty_title')" :color="$color" />
+            @endif
         </div>
     @else
 
@@ -217,9 +232,7 @@
                                 <div class="space-y-2">
                                     @foreach($c['podium'] as $p)
                                         <div class="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
-                                            <span class="text-lg leading-none">
-                                                {{ ['1' => '🥇', '2' => '🥈', '3' => '🥉'][(string) ($p['place'] ?? '')] ?? '🏅' }}
-                                            </span>
+                                            <x-medal-icon :place="$p['place'] ?? null" :size="22" />
                                             <span class="text-sm font-semibold text-foreground truncate">{{ $p['name'] ?? '' }}</span>
                                         </div>
                                     @endforeach

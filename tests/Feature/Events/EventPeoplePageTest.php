@@ -99,9 +99,12 @@ class EventPeoplePageTest extends TestCase
             ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
             ->assertSee('Athlete One')
-            // The public key, never the numeric id.
+            // The public key, never the numeric id. The negative carries the
+            // closing quote on purpose: `/people/2` is a PREFIX of any uuid
+            // beginning with a 2, so the bare form failed at random depending on
+            // which uuid the run happened to generate.
             ->assertSee(route('people.show', $athlete->uuid))
-            ->assertDontSee(route('people.show', $athlete->id));
+            ->assertDontSee(route('people.show', $athlete->id).'"', false);
     }
 
     public function test_it_lists_the_clubs_behind_the_athletes_and_links_to_the_club_page(): void

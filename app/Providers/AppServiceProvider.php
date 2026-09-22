@@ -27,6 +27,17 @@ class AppServiceProvider extends ServiceProvider
         \App\Translation\Translations::useDatabaseStrings($this->app);
 
         $this->watchUntranslatedStrings();
+
+        /*
+         * One rehearsal reader per request.
+         *
+         * "Is this event rehearsing?" is asked by every mat payload, and a
+         * payload is built on every scoring command and every screen poll — so
+         * it caches the answer. `scoped` is what keeps that cache honest: one
+         * instance for the life of a request (and of a test), a fresh one after,
+         * never a static that outlives the thing it was true for.
+         */
+        $this->app->scoped(\App\Events\Support\Rehearsal::class);
     }
 
     /**
@@ -428,6 +439,32 @@ class AppServiceProvider extends ServiceProvider
         // this is a cheap write, but not a free one.
         RateLimiter::for('bracket-arrange', function (Request $request) {
             return Limit::perMinute(90)->by($request->user()?->id ?: $request->ip());
+        });
+
+        /*
+         * THE DESK, ON AN EVENT DAY.
+         *
+         * A weigh-in desk is not "normal admin use". An official works a queue:
+         * a weight signed, a receipt approved, the fee types corrected, the
+         * athlete enrolled in a second division — four writes for one person,
+         * and the next person is already on the scale. Thirty a minute is a
+         * queue of seven.
+         *
+         * These sat on two buckets that were sized for something else. The
+         * verification trio was on `member-write` (30/min — written for a
+         * member editing their own health records), and enrolment on
+         * `admin-write` (60/min, shared with messaging, notifications and
+         * ownership transfer). An organiser hit "Too many attempts" enrolling
+         * ONE person on an event morning (2026-09-18).
+         *
+         * So the desk gets its own bucket, exactly as arranging a draw did and
+         * for exactly the same reason — see `bracket-arrange` below. Still
+         * bounded: these are cheap writes, and every one of them re-authorises
+         * for itself. What the limit protects against is a script, and a script
+         * doing 180 signed weigh-ins a minute is still stopped.
+         */
+        RateLimiter::for('event-desk', function (Request $request) {
+            return Limit::perMinute(180)->by('event-desk|'.($request->user()?->id ?: $request->ip()));
         });
 
         // Sensitive admin operations (messaging, notifications, ownership transfer):

@@ -208,18 +208,22 @@ export default function ConsoleIsland({ props }) {
         });
     }, [send, flash, words]);
 
-    /** The one action that cannot be taken back from this console at all. */
+    /*
+     * No confirmation at all (2026-09-18, at the user's instruction). The name
+     * is kept because the call sites read it; it confirms nothing. Commit and a
+     * DQ ending fire on the press.
+     *
+     * It was a typing test (the bout number), then one tap, then nothing — all
+     * on the same day, because the step sits on the commands used at the end of
+     * every bout and was blocking the run of a live championship.
+     *
+     * ⚠️ Nothing now stands between a mis-tap and an advanced competitor. Undo
+     * lives in the score log and in re-recording from the bracket. Mirrors
+     * runtime.blade.php and ConsoleMobile.jsx.
+     */
     const confirmWithNumber = useCallback((title, run) => {
-        setDialog({
-            title,
-            fields: [{ name: 'number', type: 'text', label: words.ctl_type_match_no, placeholder: state.matchNo || '' }],
-            confirm: (out) => {
-                if (String(out.number || '').trim() !== String(state.matchNo || '')) { flash(words.ctl_type_match_no); return; }
-                setDialog(null);
-                run();
-            },
-        });
-    }, [state.matchNo, flash, words]);
+        run();
+    }, []);
 
     const onEnd = useCallback(() => {
         setDialog({
@@ -356,7 +360,7 @@ export default function ConsoleIsland({ props }) {
                             {/* Never disabled with the rest: a stuck screen is most
                                 likely to need this when the mat is empty. */}
                             <button type="button" className="btn"
-                                    style={{ color: 'var(--blue-ink)', borderColor: 'rgba(138,180,255,.45)' }}
+                                    style={{ color: 'var(--accent)', borderColor: 'rgba(138,180,255,.45)' }}
                                     onClick={() => send('resync')}>
                                 ↻
                             </button>
@@ -441,12 +445,12 @@ export default function ConsoleIsland({ props }) {
                             <StallCount stall={stall} />
                             <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                                 <button type="button" className="btn small" disabled={boutDisabled}
-                                        style={{ color: 'var(--blue-ink)', borderColor: 'rgba(138,180,255,.45)' }}
+                                        style={{ color: 'var(--blue-ink)', borderColor: 'rgba(255,154,160,.45)' }}
                                         onClick={() => guarded(() => send('stall', { side: 'blue', phase: 'start' }))}>
                                     {words.corner_blue}
                                 </button>
                                 <button type="button" className="btn small" disabled={boutDisabled}
-                                        style={{ color: 'var(--white-ink)', borderColor: 'rgba(230,235,242,.4)' }}
+                                        style={{ color: 'var(--white-ink)', borderColor: 'rgba(138,180,255,.45)' }}
                                         onClick={() => guarded(() => send('stall', { side: 'white', phase: 'start' }))}>
                                     {words.corner_white}
                                 </button>
@@ -458,7 +462,7 @@ export default function ConsoleIsland({ props }) {
                                 {words.ctl_stall_cancel}
                             </button>
                             <button type="button" className="btn small pen" id="stallApply" disabled={!stall || !stall.until}
-                                    onClick={() => setDialog({ title: words.penalties, fields: [], confirm: () => { setDialog(null); send('stall', { phase: 'apply' }); } })}>
+                                    onClick={() => send('stall', { phase: 'apply' })}>
                                 {words.ctl_stall_apply}
                             </button>
                         </div>
@@ -470,7 +474,12 @@ export default function ConsoleIsland({ props }) {
                 to the clock: open it, load a match, and it closes itself. ── */}
             {queueOpen && (
                 <div className="scrim" onMouseDown={(e) => { if (e.currentTarget === e.target) setQueueOpen(false); }}>
-                    <div className="modal" style={{ width: 1100, height: 860 }}>
+                    {/* Sized to the CONSOLE, not to the glass — `.modal.stagefit`
+                        in console-styles does the arithmetic, the same way the
+                        blade console's own bouts card does. It was a fixed
+                        1100x860, so on a small window it was a card bigger than
+                        the board it belongs to. */}
+                    <div className="modal stagefit">
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
                             <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 36, letterSpacing: '.06em', textTransform: 'uppercase' }}>
                                 {words.ctl_queue}

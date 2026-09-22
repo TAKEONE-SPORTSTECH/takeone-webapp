@@ -38,7 +38,7 @@
     $isMale = ($member->gender ?? 'Male') === 'Male';
     $sinceDate = $memberSince ?? $member->created_at;
 
-    // Nationality: resolve ISO2/ISO3 code → flag emoji + full name
+    // Nationality: resolve ISO2/ISO3 code → country name (the flag is a file)
     static $countriesMap = null;
     if ($countriesMap === null) {
         $jsonData = @file_get_contents(public_path('data/countries.json'));
@@ -52,12 +52,12 @@
     }
     $natCode    = strtoupper($member->nationality ?? '');
     $countryInfo = $countriesMap[$natCode] ?? null;
-    if ($countryInfo) {
-        $flagEmoji       = implode('', array_map(fn($ch) => mb_chr(ord($ch) + 127397), str_split(strtoupper($countryInfo['iso2']))));
-        $nationalityDisplay = $flagEmoji . ' ' . $countryInfo['name'];
-    } else {
-        $nationalityDisplay = $member->nationality ?? 'N/A';
-    }
+    /* The NAME only — the flag beside it is drawn by <x-flag> from our own
+       files. It used to be an emoji built from the ISO-2 code, which renders as
+       the letters "BH" on Windows (CLAUDE.md -> Flags Come From One Local
+       Source). */
+    $nationalityIso     = $countryInfo['iso2'] ?? null;
+    $nationalityDisplay = $countryInfo['name'] ?? ($member->nationality ?? 'N/A');
 
     // Taekwondo classification
     $latestRecord = $member->relationLoaded('latestHealthRecord')
@@ -146,7 +146,10 @@
                         </div>
                         {{-- Identity meta: nationality · horoscope --}}
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mt-1.5 min-w-0">
-                            <span class="inline-flex items-center font-medium truncate max-w-[55%]">{{ $nationalityDisplay }}</span>
+                            <span class="inline-flex items-center gap-1 font-medium truncate max-w-[55%]">
+                                @if($nationalityIso)<x-flag :code="$nationalityIso" :h="11" :title="$nationalityDisplay" />@endif
+                                <span class="truncate">{{ $nationalityDisplay }}</span>
+                            </span>
                             <span class="text-gray-300">·</span>
                             <span class="inline-flex items-center gap-1 font-medium whitespace-nowrap">{{ $symbol }} {{ $horoscope }}</span>
                         </div>

@@ -20,7 +20,7 @@ use Illuminate\Support\Collection;
  * division out: within a round, bout i feeds bout ⌊i/2⌋ of the next round,
  * taking side A when i is even and side B when it is odd.
  */
-class Advancement
+class Advancement implements \App\Events\Support\Tournament\PropagatesResults
 {
     public function __construct(private CombatSport $sport) {}
 
@@ -42,8 +42,19 @@ class Advancement
             $winner = null;
         }
 
-        $match->a_score = $this->score($payload['a_score'] ?? null);
-        $match->b_score = $this->score($payload['b_score'] ?? null);
+        /* ⚠️ ABSENT IS NOT BLANK — the same fix as the shared
+           App\Events\Support\Tournament\Advancement, which this file is a
+           copy of (CLAUDE.md records the triplication as known debt). Writing
+           both scores on every call meant a winner-only post erased the
+           scoreline that explained the result. */
+        if (array_key_exists('a_score', $payload)) {
+            $match->a_score = $this->score($payload['a_score']);
+        }
+
+        if (array_key_exists('b_score', $payload)) {
+            $match->b_score = $this->score($payload['b_score']);
+        }
+
         $match->winner = $winner;
         $match->status = $winner ? 'done' : (in_array($payload['status'] ?? null, ['upcoming', 'live'], true) ? $payload['status'] : 'upcoming');
         $match->save();

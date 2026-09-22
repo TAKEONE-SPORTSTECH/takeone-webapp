@@ -249,6 +249,32 @@
         // with it. `PublicEvent` supplies download URLs on the public route —
         // the member route's auth stack is untouched.
         'documents' => $e['documents'] ?? [],
+
+        /* Where a division chip goes: the draw section, opened on that one
+           group. `?division=` is the parameter that section already reads, and
+           the same door a participant card's chip uses — one convention.
+
+           Only when the draw is actually out. `$drawOpen` is the controller's
+           single answer to "would that page have anything on it", reveal
+           setting and all; without it the chips stay plain labels rather than
+           becoming doors onto a padlock. */
+        'divisionLink' => ($drawOpen ?? false)
+            ? route('events.public.section', ['event' => $e['key'], 'section' => 'draw']).'?division='
+            : null,
+
+        /* And when there is no door: the chip still answers. `$drawNote` is the
+           controller's own sentence — "opens on…" when the organiser is holding
+           the draw back, "no draw yet" when it simply has not been cut — the
+           same words the draw veil and a participant card's chip use. A chip
+           that does nothing on tap reads as a broken chip; one that says WHEN
+           is the answer the reader came for.
+
+           `notice()` rather than window.showToast: the app shell is not loaded
+           on this page and this page has always carried its own on-palette
+           notice (see the script at the foot of this file). Never a native
+           dialog. */
+        'divisionNote' => ($drawOpen ?? false) ? null : ($drawNote ?? null),
+        'noteTap' => ($drawOpen ?? false) ? null : 'notice('.json_encode((string) ($drawNote ?? '')).')',
     ])
 
     {{-- ===== The doors =====

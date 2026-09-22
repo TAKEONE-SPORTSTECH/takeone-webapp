@@ -114,17 +114,13 @@ export default function ConsoleMobileIsland({ props }) {
         });
     }, [send, flash, words]);
 
+    /*
+     * No confirmation at all — see the note in Console.jsx. Fires on the press
+     * (2026-09-18, at the user's instruction).
+     */
     const confirmWithNumber = useCallback((title, run) => {
-        setDialog({
-            title,
-            fields: [{ name: 'number', type: 'text', label: words.ctl_type_match_no, placeholder: state.matchNo || '' }],
-            confirm: (out) => {
-                if (String(out.number || '').trim() !== String(state.matchNo || '')) { flash(words.ctl_type_match_no); return; }
-                setDialog(null);
-                run();
-            },
-        });
-    }, [state.matchNo, flash, words]);
+        run();
+    }, []);
 
     const onEnd = useCallback(() => {
         setDialog({
@@ -263,7 +259,7 @@ export default function ConsoleMobileIsland({ props }) {
                                             {words.ctl_stall_cancel}
                                         </button>
                                         <button type="button" className="btn pen" id="stallApply" style={{ flex: 1, minHeight: 56 }} disabled={!stall || !stall.until}
-                                                onClick={() => setDialog({ title: words.penalties, fields: [], confirm: () => { setDialog(null); send('stall', { phase: 'apply' }); } })}>
+                                                onClick={() => send('stall', { phase: 'apply' })}>
                                             {words.ctl_stall_apply}
                                         </button>
                                     </div>

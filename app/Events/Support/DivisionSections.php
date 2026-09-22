@@ -67,14 +67,14 @@ class DivisionSections
         // The run of divisions before the first heading. Kept with a null
         // heading rather than dropped: an event that never used a heading is
         // ALL of this, and it must render exactly as it always has.
-        $open = ['heading' => null, 'items' => [], 'items_source' => []];
+        $open = ['heading' => null, 'items' => [], 'items_source' => [], 'items_ids' => []];
 
         foreach ($rows as $c) {
             $name = (string) $tr->get('divisions.'.$c->id, (string) $c->name);
 
             if ($this->isHeading($c)) {
                 $sections[] = $open;
-                $open = ['heading' => $name, 'items' => [], 'items_source' => []];
+                $open = ['heading' => $name, 'items' => [], 'items_source' => [], 'items_ids' => []];
 
                 continue;
             }
@@ -84,6 +84,10 @@ class DivisionSections
 
             $open['items'][] = $name;
             $open['items_source'][] = (string) $c->name;
+            // Carried so a chip can be a DOOR to that division's draw. The
+            // grouping below reorders and renames the chips, so the id has to
+            // travel with each one rather than be looked up again by name.
+            $open['items_ids'][] = (int) $c->id;
         }
 
         $sections[] = $open;
@@ -91,7 +95,7 @@ class DivisionSections
         // Each section's chips, grouped the way the detail card has always
         // grouped them (see genderGroups).
         $sections = array_map(function (array $sec) {
-            $sec['groups'] = $this->genderGroups($sec['items'], $sec['items_source']);
+            $sec['groups'] = $this->genderGroups($sec['items'], $sec['items_source'], $sec['items_ids'] ?? []);
 
             return $sec;
         }, $sections);
@@ -145,9 +149,11 @@ class DivisionSections
      *
      * @param  list<string>  $items       translated names
      * @param  list<string>  $source      the same names, untranslated
-     * @return list<array{label: string, female: bool, fallback: bool, items: list<string>}>
+     * @param  list<int>     $ids         the divisions' own ids, in the same order
+     * @return list<array{label: string, female: bool, fallback: bool, items: list<string>,
+     *                    entries: list<array{name: string, id: ?int}>}>
      */
-    private function genderGroups(array $items, array $source): array
+    private function genderGroups(array $items, array $source, array $ids = []): array
     {
         $groups = [];
 
@@ -193,8 +199,14 @@ class DivisionSections
 
             $key = ($female ? 'f' : 'm').'|'.$label;
 
-            $groups[$key] ??= ['label' => $label, 'female' => $female, 'fallback' => $fallback, 'items' => []];
+            $groups[$key] ??= ['label' => $label, 'female' => $female, 'fallback' => $fallback,
+                'items' => [], 'entries' => []];
             $groups[$key]['items'][] = $chip;
+            // `items` stays a plain list of strings — several readers print it
+            // and none of them should have to learn a new shape. `entries` is
+            // the same chips WITH the id each one belongs to, for the readers
+            // that make them clickable.
+            $groups[$key]['entries'][] = ['name' => $chip, 'id' => $ids[$i] ?? null];
         }
 
         // No sort: PHP keeps insertion order, which is the divisions' own

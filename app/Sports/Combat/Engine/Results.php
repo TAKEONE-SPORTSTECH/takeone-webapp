@@ -4,6 +4,7 @@ namespace App\Sports\Combat\Engine;
 
 use App\Support\Cldr;
 use App\Models\ClubEvent;
+use App\Sports\Combat\SportRegistry;
 
 /** Derives medalists and the public lifecycle timeline from the bracket data. */
 class Results
@@ -55,13 +56,17 @@ class Results
                     continue;   // genuinely undecided
                 }
 
-                $medals = $this->derive($cat, $final);
+                $medals = $this->derive($event, $cat, $final);
             }
 
             $out[] = ['division' => $cat->name, 'class' => $cat->weight_class, 'medals' => $medals];
         }
 
-        return $out;
+        /* A stored medal is a place, a name and the entry that won it. A medal
+           DRAWN in a hall carries a face, a flag and a crest — read off that
+           entry here, in one query for the whole sheet, by the one class both
+           podium surfaces call. */
+        return \App\Events\Support\PodiumFaces::enrich($out);
     }
 
     /**
@@ -71,7 +76,7 @@ class Results
      *
      * @return array<int, array{place: int, name: ?string, competitor_id: ?int}>
      */
-    private function derive($cat, $final): array
+    private function derive(ClubEvent $event, $cat, $final): array
     {
         // Medals carry the ENTRY that won them, so a result can reach the
         // athlete's profile, a club medal tally and ranking points — not
@@ -86,6 +91,33 @@ class Results
         $lose = $win === 'a' ? 'b' : 'a';
 
         $medals = [$medal(1, $final, $win), $medal(2, $final, $lose)];
+
+        /*
+         * ⚠️ THE FALLBACK OBEYS THE SPORT TOO.
+         *
+         * Two beaten semi-finalists both taking bronze is ONE convention, and
+         * it used to be written in here as though it were the only one — so a
+         * division with no stored podium was handed back two bronzes even for
+         * a sport that plays third place off. It is the reading that resurrects
+         * itself the moment a stored podium is cleared, which is exactly how a
+         * corrected division came back wearing the convention it had just been
+         * taken out of.
+         *
+         * A sport with a play-off reads its bronze off THAT bout, and only when
+         * it has been fought: an unfought play-off means third is still open,
+         * which is the truth and reads as such.
+         */
+        if (\App\Events\Support\BronzeRule::playsOff($event)) {
+            $third = $cat->matches->firstWhere('round', DrawEngine::ROUND_THIRD);
+
+            if ($third?->winner) {
+                // Three places: gold, silver, one bronze. The athlete who lost
+                // the play-off is not recorded — see Advancement::awardIfComplete.
+                $medals[] = $medal(3, $third, $third->winner);
+            }
+
+            return $medals;
+        }
 
         foreach ($cat->matches->where('round', 'Semifinal') as $sf) {
             if (! $sf->winner) {
@@ -183,6 +215,9 @@ class Results
         ];
 
         $lastCompetitionDay = null;
+        // The last day's running order, so the derived finish below can tell
+        // whether the organiser has already written one.
+        $lastDayRunSlots = [];
 
         for ($d = 1, $days = $this->scheduler->eventDayCount($event); $d <= $days; $d++) {
             $phasesOnDay = [];
@@ -203,11 +238,33 @@ class Results
             $names = array_map(fn ($p) => $phaseLabel[$p], array_keys($phasesOnDay));
             $lastCompetitionDay = $start->copy()->addDays($d - 1);
 
+            /*
+             * The organiser's own running order for this day, when they have
+             * written one. It SUPERSEDES the derived `note_items` below — those
+             * say "Preliminaries · Quarter-finals · 16 weight classes", which is
+             * a description of the day; this says what happens and when, which
+             * is what somebody standing in the hall opened the page for.
+             *
+             * Additive on purpose: an event with no running order keeps exactly
+             * the timeline it had, and the view falls back to the bullets.
+             */
+            $runSlots = (new \App\Events\Support\RunSheet)->rows($event, $d);
+            $lastDayRunSlots = $runSlots;
+
             $entries[] = [
                 'label' => __('events.timeline_day', ['day' => $d]),
                 'date' => $lastCompetitionDay->toDateString(),
-                // Play / break / play, each its own line.
-                'segments' => $segments,
+                /*
+                 * Play / break / play, each its own line — UNLESS the organiser
+                 * has written the day down, in which case the hours come from
+                 * the day itself rather than from the event's nominal window.
+                 * A header that says "10:00 AM – 9:00 PM" over a list whose last
+                 * part ends at 7:30 is contradicting the list directly beneath
+                 * it, and the list is the one somebody plans their day around.
+                 */
+                'segments' => $this->runOrderSegments($runSlots) ?? $segments,
+                // The day, part by part — empty unless an organiser wrote it.
+                'run_slots' => $runSlots,
                 'note' => implode(' · ', $names).' — '
                     .trans_choice('events.timeline_weight_classes', $classCount, ['count' => $classCount])
                     .$breakNote,
@@ -227,7 +284,19 @@ class Results
         // The finish. A timeline that stops at the last bout leaves out the part
         // everyone came for, and a competitor's family needs to know whether to
         // stay for it.
-        if ($lastCompetitionDay) {
+        /*
+         * ...UNLESS the organiser has already written the finish into the day.
+         * A running order that ends with a ceremony ("التتويج النهائي وختام
+         * البطولة", 7:00 PM) IS the finish, and appending our own derived one
+         * beneath it printed the same moment twice — at two different times,
+         * because this one comes from the event's nominal end_time while theirs
+         * comes from the sheet. The organiser's line wins; ours is the fallback
+         * for an event with no running order.
+         */
+        $sheetEndsInCeremony = $lastDayRunSlots
+            && (($lastDayRunSlots[count($lastDayRunSlots) - 1]['kind'] ?? null) === \App\Models\EventRunSlot::KIND_CEREMONY);
+
+        if ($lastCompetitionDay && ! $sheetEndsInCeremony) {
             $entries[] = [
                 'label' => __('events.timeline_finish'),
                 'date' => $lastCompetitionDay->toDateString(),
@@ -257,6 +326,39 @@ class Results
      *
      * @return array<int, array{label:string, time:string, kind:string, approx:bool}>
      */
+    /**
+     * The day's hours, taken from the running order the organiser wrote.
+     *
+     * One block, first part to last: the break is already a row in the list
+     * below, so splitting the header around it would print it twice.
+     *
+     * Min and max rather than first and last, because a pinned part may sit
+     * anywhere in the order — a pin is a clock time, not a position.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array{label:string, time:string, kind:string, approx:bool}>|null
+     */
+    private function runOrderSegments(array $rows): ?array
+    {
+        if (! $rows) {
+            return null;
+        }
+
+        $from = min(array_column($rows, 'starts_at'));
+        $to = max(array_column($rows, 'ends_at'));
+
+        if ($to <= $from) {
+            return null;
+        }
+
+        return [[
+            'label' => __('events.timeline_play'),
+            'kind' => 'play',
+            'approx' => false,
+            'time' => $this->clock((int) $from).' – '.$this->clock((int) $to),
+        ]];
+    }
+
     private function daySegments(ClubEvent $event): array
     {
         if (! $event->start_time || ! $event->end_time) {

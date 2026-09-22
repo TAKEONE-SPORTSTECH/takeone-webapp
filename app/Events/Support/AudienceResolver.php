@@ -103,9 +103,26 @@ class AudienceResolver
     }
 
     /**
-     * Everyone who should be told when one entry changes: the athlete, everyone
-     * who may manage the event, and every official whose desk reads the entry
-     * list (weigh-in, payments, jury arranging a draw).
+     * Everyone who should be told when one entry changes.
+     *
+     * The athlete, everyone who may manage the event, every official whose desk
+     * reads the entry list (weigh-in, payments, jury arranging a draw) — and
+     * EVERYBODY ELSE ENTERED IN THE EVENT.
+     *
+     * That last group was the gap. A competitor's card is on the people list,
+     * the divisions and the draw, which their team-mates, their coach and their
+     * opponents all have open on the day; none of them was told anything, so a
+     * name or a photograph corrected at the desk reached three people and
+     * everyone else went on reading yesterday's until they reloaded the page.
+     * The platform's rule is that nobody refreshes anything, and a message to a
+     * few of the people looking at a screen does not satisfy it.
+     *
+     * It is a REFRESH signal to each of them, never a crafted payload, so
+     * widening the audience discloses nothing: each page re-fetches only what
+     * its own viewer is allowed to see (CLAUDE.md → Realtime, rule 4 and 7).
+     *
+     * One batched publish, on the one connection `publishMany` opens. An entry
+     * edit happens at a desk, a few times an hour — this is not a hot path.
      *
      * @return array<int, int>
      */
@@ -115,6 +132,7 @@ class AudienceResolver
             [$athleteId],
             $this->managers($event),
             $event->officials()->pluck('user_id')->map('intval')->all(),
+            $event->registrations()->pluck('user_id')->map('intval')->all(),
         ))));
     }
 

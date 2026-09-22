@@ -42,6 +42,36 @@ final class Countries
     }
 
     /**
+     * Every country a phone number can come from, as a dial-code picker wants
+     * them: `[['code' => '+973', 'name' => 'Bahrain', 'flag' => 'bh'], …]`,
+     * sorted by name.
+     *
+     * ⚠️ Read from the SAME list as everything else. `<x-country-code-dropdown>`
+     * used to carry a hand-written array of sixty countries inside its x-data,
+     * which is how the platform came to have no Syria (+963), no Yemen, no
+     * Sudan, no Afghanistan and no Libya — a member from any of them could not
+     * enter their own phone number. A list typed by hand is a list that is
+     * wrong the day after it is typed.
+     *
+     * @return list<array{code: string, name: string, flag: string}>
+     */
+    public static function dialCodes(): array
+    {
+        return Cache::remember('countries.dial_codes', now()->addDay(), function () {
+            return collect(self::rows())
+                ->map(fn ($c) => [
+                    'code' => trim((string) ($c['call_code'] ?? '')),
+                    'name' => trim((string) ($c['name'] ?? '')),
+                    'flag' => strtolower(trim((string) ($c['iso2'] ?? ''))),
+                ])
+                ->filter(fn ($c) => $c['code'] !== '' && $c['name'] !== '' && preg_match('/^[a-z]{2}$/', $c['flag']))
+                ->sortBy('name')
+                ->values()
+                ->all();
+        });
+    }
+
+    /**
      * The full name for an ISO code, or null when we do not have one.
      *
      * Accepts alpha-2 or alpha-3, in any case. Null rather than a guess: a code
@@ -142,6 +172,23 @@ final class Countries
 
         foreach (self::rows() as $row) {
             if (strtoupper(trim((string) ($row['iso3'] ?? ''))) === $code) {
+                $iso2 = strtoupper(trim((string) ($row['iso2'] ?? '')));
+
+                if ($iso2 !== '') {
+                    return strtolower($iso2);
+                }
+            }
+        }
+
+        // A NAME, last. The mirror of label(), which already accepts both: a
+        // club's `country` column holds 'BH', but an organiser typing a team
+        // into an event writes 'Bahrain', and a screen that can print the word
+        // but not the flag beside it is reading the same field two ways.
+        //
+        // Last on purpose — a two- or three-letter code is never guessed at
+        // from this list, so 'CHAD' stays the country and not a near-miss.
+        foreach (self::rows() as $row) {
+            if (strtoupper(trim((string) ($row['name'] ?? ''))) === $code) {
                 $iso2 = strtoupper(trim((string) ($row['iso2'] ?? '')));
 
                 if ($iso2 !== '') {

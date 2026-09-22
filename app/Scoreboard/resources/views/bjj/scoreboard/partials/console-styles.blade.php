@@ -47,12 +47,40 @@
     --muted:#7d8296;
     --faint:#5c6175;
     --alarm:#ff3b47;
-    --blue:#1362d1;
-    --blue-ink:#8ab4ff;
-    --blue-plate:#2f7bdb;
-    --white:#e6ebf2;
-    --white-ink:#f4f7fb;
-    --white-plate:#aab6c6;
+    /* ⚠️ A PENALTY IS WHITE ON THIS CONSOLE (2026-09-20).
+       It was alarm red, and red became a CORNER when side A was repainted —
+       so a penalty button sat in the same colour as the man it was about to
+       be given to. White is the one ink on a dark console that no corner and
+       no state has a claim on. `--alarm` is untouched and still means the
+       clock and the things that are genuinely an alarm. */
+    --penalty:#ffffff;
+    --penalty-rim:rgba(255,255,255,.55);
+    /* ── THE TWO CORNERS ARE RED (left) AND BLUE (right) ──────────────────
+       Changed 2026-09-20 at the owner's request: this sport's corners used to
+       be blue and WHITE, and a white corner cannot be told from the board's
+       own light furniture at ten metres — the same reason every other sport
+       here fights red against blue.
+
+       ⚠️ THE VARIABLE NAMES ARE THE SIDE, NOT THE COLOUR. `--blue*` is side
+       A, the LEFT corner, and it is painted RED; `--white*` is side B, the
+       RIGHT corner, and it is painted blue. The names are what the mat's own
+       columns are called (`bjj_mat_states.blue` / `.white`) and what 1,100
+       recorded ledger rows are keyed by, so renaming them is a migration and
+       not a lick of paint. Renaming is registered in
+       Documentation/HOUSE-CLEANING.md; until then, read these as A and B. */
+    --blue:#c1121f;          /* side A — RED  */
+    --blue-ink:#ff9aa0;
+    --blue-plate:#e03a43;
+    --white:#1362d1;         /* side B — BLUE */
+    --white-ink:#8ab4ff;
+    --white-plate:#2f7bdb;
+    /* ⚠️ Not a corner. The console's cool accent, for the controls that only
+       ever BORROWED the blue ink because it happened to be the calm colour on
+       a dark panel — Resync, Board, the score log's point chip. They were all
+       `--blue-ink`, so repainting side A red turned every one of them red, and
+       red on this console means a penalty. A name of their own is what stops
+       the next corner change reaching them. */
+    --accent:#8ab4ff;
     --gold:#ffe135;     /* always solid, never transparent          */
     --adv:#ffd666;
     --green:#7ae582;
@@ -90,14 +118,25 @@
      would snap the card back to full size the instant the animation
      filled, which is exactly how it ended up bigger than the board. */
   /* ⚠️ --popup-scale, NOT --stage-scale.
-     A pop-up follows the console UP but never DOWN. The console is authored on
-     a 1920x1080 canvas and letterboxed into whatever glass it is given, so on a
-     1366x768 laptop --stage-scale is 0.71 — and a card that took that scale had
-     its 21px button labels drawn at 15px and its body text at 18px, on the one
-     surface an official actually has to READ rather than glance at. Growing on
-     a bigger screen is wanted; shrinking below the size the text was written at
-     is not. Hence max(1, …), and every pop-up rule below uses this variable. */
-  :root{--popup-scale:max(1, var(--stage-scale, 1));}
+     A pop-up rides the console's own scale, up AND down, with a floor.
+
+     ── It used to be max(1, …) ────────────────────────────────────────────
+     A card followed the console up but never down, so that on a 1366x768
+     laptop (--stage-scale 0.71) its 21px button labels were not drawn at
+     15px. The cost of that only shows on a SMALL window, and it is worse than
+     the thing it was avoiding: the console shrinks to 0.5 while the card stays
+     at 1, so the card is drawn at TWICE the size of the board behind it —
+     every row enormous, the list barely a few bouts tall, and an official
+     jabbing at the wrong bout because the one they want is off the bottom.
+     Reported 2026-09-20 from a small screen, which is exactly where a
+     never-shrink rule does its damage.
+
+     So it follows the stage. The floor is what is left of the old worry: 0.45
+     draws a 36px control at 16px and 21px body text at 9.5px, and below that
+     the card would stop being readable rather than merely small. It only
+     engages under ~870px of glass, which is narrower than any laptop a mat is
+     run from. Every pop-up rule below uses this variable. */
+  :root{--popup-scale:max(0.45, var(--stage-scale, 1));}
 
   @keyframes winIn{0%{opacity:0;transform:scale(calc(var(--popup-scale) * .92))}
                    100%{opacity:1;transform:scale(var(--popup-scale))}}
@@ -191,10 +230,11 @@
   .btn.score .l{font-size:19px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.82);text-align:center;line-height:1.05;}
   .btn.score:active:not(:disabled){transform:scale(.96);filter:brightness(1.25);}
   #blueScoreGrid .btn.score{background:var(--blue);}
-  /* The WHITE corner is white — the gi, not a grey stand-in for it. Ink goes
-     black with it, label included, or the action under the value disappears. */
-  #whiteScoreGrid .btn.score{background:#fff;color:#000;}
-  #whiteScoreGrid .btn.score .l{color:rgba(0,0,0,.72);}
+  /* Side B's buttons are BLUE, like its corner — they used to be white paint
+     and black ink, because the corner was the white gi. Both corners are dark
+     plates now, so both take the same white ink `.btn.score` already sets and
+     neither needs an override. */
+  #whiteScoreGrid .btn.score{background:var(--white);}
 
   /* ── The take-back column ───────────────────────────────────────────────
      Same size and same reach as the button beside it — a wrong number has to
@@ -203,12 +243,14 @@
      three AMOUNTS, each with a solid give and an outlined take, and a hand
      moving down the panel cannot mistake one column for the other.
 
-     Deliberately NOT alarm-red: red on this console means a penalty and the
-     end of a match, and a score correction is neither. */
+     Deliberately NOT alarm-red: red on this console is a CORNER and the alarm
+     is the end of a match, and a score correction is neither. */
   .btn.score.minus{background:var(--inset);border:2px solid var(--line-2);}
-  #blueScoreGrid .btn.score.minus{background:var(--inset);color:var(--blue-ink);border-color:rgba(138,180,255,.5);}
-  #whiteScoreGrid .btn.score.minus{background:var(--inset);color:var(--text);border-color:rgba(255,255,255,.42);}
-  #whiteScoreGrid .btn.score.minus .l{color:var(--muted);}
+  #blueScoreGrid .btn.score.minus{background:var(--inset);color:var(--blue-ink);border-color:rgba(255,154,160,.5);}
+  /* The take-back beside it, hollow in the corner's own colour — the same
+     treatment side A gets, which is the whole point of the pair reading as
+     one grid. It was white-on-console when the corner was white. */
+  #whiteScoreGrid .btn.score.minus{background:var(--inset);color:var(--white-ink);border-color:rgba(138,180,255,.5);}
   .btn.score.minus .l{color:var(--muted);}
 
   .scoreGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -224,7 +266,7 @@
   .btn:active:not(:disabled){transform:scale(.97);filter:brightness(1.2);}
   .btn:disabled{opacity:.35;cursor:not-allowed;filter:none;}
   .btn.adv{color:var(--adv);border-color:rgba(255,214,102,.55);}
-  .btn.pen{color:var(--alarm);border-color:rgba(255,59,71,.5);}
+  .btn.pen{color:var(--penalty);border-color:var(--penalty-rim);}
   .btn.ok{background:var(--gold);color:#000;border-color:var(--gold);}
   .btn.danger{background:transparent;color:#ff6b78;border-color:rgba(255,107,120,.5);}
   .btn.small{min-height:44px;font-size:21px;letter-spacing:.06em;padding:6px 14px;}
@@ -237,14 +279,14 @@
        background:var(--inset);border:1px solid var(--line);border-radius:12px;padding:10px 18px;}
   .counters .c .l{font-size:20px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;}
   .counters .c.a .l{color:var(--adv);}
-  .counters .c.p .l{color:var(--alarm);}
+  .counters .c.p .l{color:var(--penalty);}
   .counters .c .n{font-family:'Anton',sans-serif;font-size:44px;line-height:1;color:var(--text);}
 
   /* ⚠️ `.warnDq`, NOT `.warn`: the shared runtime writes `class="num warn"` onto
      the CLOCK for the final minute, and a `.warn` rule that set a 20px type
      size would have shrunk the clock to a caption exactly when it matters
      most. The two warnings are different things and are named differently. */
-  .warnDq{font-size:20px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--alarm);
+  .warnDq{font-size:20px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--penalty);
         text-align:center;animation:blink 1.4s ease-in-out infinite;}
 
   /* The final minute, and the mat's own light. Both are written by the runtime
@@ -290,13 +332,13 @@
   .logRow .ts{font-family:'Anton',sans-serif;font-size:28px;min-width:86px;color:var(--muted);}
   .logChip{padding:4px 14px;border-radius:8px;font-size:17px;font-weight:700;letter-spacing:.14em;
        text-transform:uppercase;border:1px solid currentColor;}
-  .logChip.point{color:var(--blue-ink);}
+  .logChip.point{color:var(--accent);}
   .logChip.advantage{color:var(--adv);}
-  .logChip.penalty{color:var(--alarm);}
+  .logChip.penalty{color:var(--penalty);}
   .logChip.reverse{color:var(--muted);}
-  /* A correction TOOK points, so it reads in the alarm ink a penalty does —
+  /* A correction TOOK points, so it reads in the same ink a penalty does —
      the log is scanned, and the two rows that subtract should look alike. */
-  .logChip.correction{color:var(--alarm);}
+  .logChip.correction{color:var(--penalty);}
   .logChip.other{color:var(--text);}
   .logRow .d{flex:1;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* Hold-to-confirm: a 1s gold sweep, and releasing cancels it. */

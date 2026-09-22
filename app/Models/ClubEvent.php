@@ -170,6 +170,9 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         // mobile Events extensions
         'event_type',
         'sport',
+        // Whether this championship plays third place off; NULL defers to the
+        // sport's own rule (App\Events\Support\BronzeRule).
+        'third_place_match',
         'league',
         'icon',
         // `*_fee` is the DISPLAY line; `*_fee_amount` + `fee_currency` are the
@@ -202,6 +205,8 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
 
     protected $casts = [
         'date' => 'date',
+        // Nullable on purpose: NULL means "whatever the sport says".
+        'third_place_match' => 'boolean',
         'end_date' => 'date',
         'weigh_in_at' => 'datetime',
         'entry_deadline_enforced' => 'boolean',
@@ -365,6 +370,19 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
     }
 
     /**
+     * The running order — what happens on a competition day, in order.
+     *
+     * `chaperone()` so each slot already knows its event: the slots'
+     * translations live in THIS event's document, and without it every slot
+     * reading its own label would re-query the event it came from.
+     */
+    public function runSlots(): HasMany
+    {
+        return $this->hasMany(EventRunSlot::class, 'event_id')
+            ->orderBy('day')->orderBy('position')->orderBy('id')->chaperone();
+    }
+
+    /**
      * Nothing on the checklist is still outstanding.
      *
      * An event with no checklist is ready by definition — the organiser who
@@ -488,6 +506,17 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         foreach ($this->feeOptions as $option) {
             if (filled($option->translationSource('label'))) {
                 $document['fees.'.$option->id] = $option->translationSource('label');
+            }
+        }
+
+        /*
+         * The day's own parts — the ceremony, the prayer break, the closing.
+         * A division slot is not here: it has no words of its own and reads its
+         * name from the category, which this document already carries.
+         */
+        foreach ($this->runSlots as $slot) {
+            if (filled($slot->translationSource('label'))) {
+                $document['run_order.'.$slot->id] = $slot->translationSource('label');
             }
         }
 

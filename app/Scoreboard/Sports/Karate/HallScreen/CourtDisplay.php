@@ -4,6 +4,8 @@ namespace App\Scoreboard\Sports\Karate\HallScreen;
 
 use App\Events\Sports\Karate\Tournament\RunningOrder;
 use App\Scoreboard\Sports\Karate\Mat\MatState;
+use App\Events\Support\CompetitorPhoto;
+use App\Events\Support\EntryClub;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
@@ -37,7 +39,25 @@ class CourtDisplay
     /** Rows the board shows at once. The design is built for four. */
     public const ROWS = 4;
 
-    public function __construct(private RunningOrder $order) {}
+    /**
+     * The clubs the organiser WROTE DOWN for this event, keyed by entry id.
+     *
+     * A competitor's club is one of two things and the wall has to print both:
+     * a TENANT (a club with an account here) or an EVENT CLUB (a name and a
+     * crest the organiser typed in for a team the platform has never met).
+     * Most of a real championship is the second kind — at the Victory BJJ
+     * Championship, seven of the eight clubs — and this board knew only about
+     * the first, so it printed one club's name over and over and left every
+     * other competitor with a blank plate.
+     *
+     * App\Events\Support\EntryClub is the one place that rule lives; the
+     * scoring table's running order already reads through it.
+     *
+     * @var array<int, array{name: string, logo: ?string, country: ?string}>
+     */
+    private array $written = [];
+
+    public function __construct(private RunningOrder $order, private CompetitorPhoto $photos) {}
 
     /**
      * The whole screen, ready to render — the exact shape board.blade.php draws.
@@ -123,8 +143,8 @@ class CourtDisplay
             'stage' => $this->stage($m),
             'weightClass' => $m->category?->weight_class ?: ($m->category?->name ?: ''),
 
-            ...$this->corner('red', $m, $entries),
-            ...$this->corner('blue', $m, $entries),
+            ...$this->corner('red', $m, $entries, $event),
+            ...$this->corner('blue', $m, $entries, $event),
         ])->all();
     }
 
@@ -138,7 +158,7 @@ class CourtDisplay
      * @param  array<int, ClubEventRegistration>  $entries
      * @return array<string, ?string>
      */
-    private function corner(string $corner, EventMatch $bout, array $entries): array
+    private function corner(string $corner, EventMatch $bout, array $entries, ClubEvent $event): array
     {
         $side = $corner === 'red' ? 'a' : 'b';
         $entry = $entries[$bout->{$side.'_competitor_id'}] ?? null;
@@ -146,34 +166,87 @@ class CourtDisplay
         // The club they COMPETE FOR — see ClubEventRegistration::competingClub().
         $club = $entry?->competingClub();
 
+        // A tenant WINS when the entry names one: it is the stronger claim and
+        // it carries a country and a page. Otherwise the club the organiser
+        // wrote down stands in — name, crest and country alike.
+        $named = $club
+            ? ['name' => (string) $club->club_name, 'logo' => $club->logo ? file_url($club->logo) : null, 'country' => $club->country ?: null]
+            : ($entry ? ($this->written[$entry->id] ?? null) : null);
+
+        /*
+         * One source for both halves of the same fact — the flag and the word.
+         *
+         * Three candidates, in this order:
+         *
+         *  1. What the DRAW recorded, or an official typed at the table. An
+         *     override entered by a human beats anything derived.
+         *  2. The country of the club they compete for. An athlete representing
+         *     a Bahraini club is on the sheet as Bahrain whatever their passport
+         *     says — that rule is unchanged and still comes before the passport.
+         *  3. ClubEventRegistration::countryCode(), which is the ONE place the
+         *     rest of the rule lives: the entry's own country, then the
+         *     ATHLETE'S NATIONALITY.
+         *
+         * ⚠️ The third was missing here, and it is most of a real field. This
+         * event has 84 bouts with no country on the draw and seven written-down
+         * clubs with no country of their own, while the nationalities were on
+         * the athletes all along — Saudi, Norwegian, Iraqi, Brazilian, American,
+         * Turkmen, Kuwaiti. Every one of them showed as Bahrain's flag or as
+         * nothing, because the chain stopped at the club. The scoring table has
+         * always read through countryCode(); the wall did not.
+         */
+        $country = (string) (
+            $bout->{$side.'_country'}
+            ?: ($named['country'] ?? '')
+            ?: ($entry?->countryCode() ?: '')
+        );
+
         return [
-            $corner.'Name' => $bout->{$side.'_name'} ?: __('scoreboard::karate_messages.court_tbd'),
-            $corner.'Club' => $club?->club_name ?? '',
-            // The match records the competitor's country at draw time; failing
-            // that, the country of the club they compete for. Never their own
-            // nationality — a competitor here represents a club, and the club
-            // has the country. Their passport is a fact about them, not about
-            // this bout.
-            $corner.'Flag' => strtolower((string) ($bout->{$side.'_country'} ?: $club?->country ?: '')) ?: null,
-            $corner.'Photo' => $this->photo($user),
-            $corner.'Logo' => $club?->logo ? file_url($club->logo) : null,
+            // Two parts, however many the competitor wrote down. A hall row
+            // carries a photo, a flag, a country, a crest, a club and a centre
+            // plate beside this, and "Mohammed Abdulla Mansoor Almaqabi" is
+            // four of them and 33 characters. App\Support\PersonName::short
+            // drops the middle and keeps both names WHOLE — the way a
+            // competitor is announced and called to the mat — rather than
+            // cutting one off with an ellipsis.
+            //
+            // Display only: the full name stays on the record, and the
+            // member's own profile, the bracket and the medal list print it.
+            $corner.'Name' => \App\Support\PersonName::short($bout->{$side.'_name'}) ?: __('scoreboard::karate_messages.court_tbd'),
+            $corner.'Club' => $named['name'] ?? '',
+            // Derived, not lower-cased: the same country arrives as 'BH',
+            // 'BHR' and 'Bahrain' depending on which of the three sources
+            // above answered, and all three must reach the same flag file.
+            // Null rather than a guess — the row then prints the country
+            // without a flag instead of the wrong country's colours.
+            $corner.'Flag' => \App\Support\Countries::iso2($country),
+            // The country SPELLED OUT, to sit beside the flag above the name:
+            // 'BAHRAIN', never 'BH'. Two letters on a wall is a puzzle, and the
+            // flag is already the short form of the same fact.
+            //
+            // App\Support\Countries::label is the one place that rule lives —
+            // the same field arrives as a code from a club's `country` column
+            // and as a name from an official who picked one at the mat, and it
+            // passes through anything it cannot place rather than blanking a
+            // value somebody typed on purpose.
+            $corner.'Country' => \App\Support\Countries::label($country),
+            // The SAME question the introduction and the mat ask, answered in
+            // the same place — so a picture added at the scoring desk shows on
+            // the upcoming board too, and on every later bout this competitor
+            // has in this event. See App\Events\Support\CompetitorPhoto.
+            $corner.'Photo' => $this->photos->url($entry, $user, $event->id),
+            // The drawn stand-in for a competitor with no picture — the same
+            // pair of avatars the rest of the platform falls back to, and the
+            // same pair the introduction panel on this very screen already
+            // used. A row that hid its photo left a coloured rectangle where a
+            // person should be, next to three rows that had one.
+            //
+            // It is drawn back (see the board's own opacity rule): this panel
+            // is two metres of wall, and a drawing at full strength would read
+            // as a photograph of the athlete standing on the mat.
+            $corner.'Fallback' => \App\Support\Avatar::placeholder($user?->gender),
+            $corner.'Logo' => $this->photos->crestUrl($entry, $club, $event->id) ?: ($named['logo'] ?? null),
         ];
-    }
-
-    /**
-     * The competitor's picture, or null when they have not published one.
-     *
-     * `profile_picture_is_public` is the member's own choice about whether their
-     * face may be shown to people who are not their club. A hall screen is the
-     * most public surface in the product, so a false here means the silhouette.
-     */
-    private function photo(?\App\Members\Models\User $user): ?string
-    {
-        if (! $user?->profile_picture || ! $user->profile_picture_is_public) {
-            return null;
-        }
-
-        return file_url($user->profile_picture);
     }
 
     /**
@@ -219,12 +292,20 @@ class CourtDisplay
             ->all();
 
         if (! $ids) {
+            $this->written = [];
+
             return [];
         }
 
+        // One query for the whole board — see the $written docblock above.
+        $this->written = EntryClub::forMany(
+            (int) ($queue->first()?->event_id ?: 0),
+            $ids
+        );
+
         return ClubEventRegistration::whereIn('id', $ids)
             ->with([
-                'user:id,name,nationality,profile_picture,profile_picture_is_public,updated_at',
+                'user:id,name,gender,nationality,profile_picture,profile_picture_is_public,updated_at',
                 'user.memberClubs:id,club_name,logo,country',
                 // The club they compete FOR, which is what the wall prints.
                 'representingTenant:id,club_name,logo,country',

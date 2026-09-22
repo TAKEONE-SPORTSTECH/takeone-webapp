@@ -19,7 +19,25 @@ Never build the path by hand — `<x-flag :code="$iso" />` resolves it, falls ba
 to the code when a country has no file, and is the one place the size and the
 rounding are decided.
 
+## The generated stylesheet
+
+`flag-icons.css` beside them is GENERATED from these SVGs. It is what makes the
+`fi fi-{iso2}` class work for markup JavaScript builds, where a Blade component
+cannot be called. It replaced `https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/...`
+on six layouts — a CDN is somebody else's uptime on the critical path of a board
+in a hall with no internet.
+
+Regenerate after adding or removing flags:
+
+```python
+import glob, os
+codes = sorted(os.path.splitext(os.path.basename(f))[0] for f in glob.glob('*.svg'))
+print("\n".join(f'.fi-{c}{{background-image:url("{c}.svg")}}' for c in codes))
+```
+
+...and paste the rules under the base `.fi` / `.fis` block that file already has.
+
 ## Updating
 
-Replace the SVGs from the same package and keep the licence file. Nothing else
-reads this directory.
+Replace the SVGs from the same package, keep the licence file, and regenerate
+`flag-icons.css`. Nothing else reads this directory.

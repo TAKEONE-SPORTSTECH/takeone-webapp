@@ -242,7 +242,13 @@
         </div>
     </div>
 
-    @include('partials.event-detail-card-mobile')
+    {{-- `?category=` is the bracket page's own parameter (the public page's is
+         `?division=`); each host names its own door. The member page links
+         whatever the draw's state, because that page says WHEN it opens when it
+         is not out — which is the answer, not a dead end. --}}
+    @include('partials.event-detail-card-mobile', [
+        'divisionLink' => route('me.events.bracket.manage', $e['key']).'?division=',
+    ])
 
     {{-- ===== The doors =====
          The same partial, the same order and the same tiles the PUBLIC poster
@@ -262,7 +268,7 @@
             // nobody has entered a single one of them.
             $athleteTotal = collect($e['categories'])->sum('joined');
             $doors['draw'] = [
-                'href' => route('me.events.bracket', $e['key']),
+                'href' => route('me.events.bracket.manage', $e['key']),
                 'shell' => true,
                 'icon' => 'bi-diagram-3-fill bracket-icon',
                 'label' => __('personal.event_show_tile_draw'),
@@ -276,7 +282,7 @@
            member reads a table. */
         if ((($typePublic ?? [])['key'] ?? null) === 'table') {
             $doors['table'] = [
-                'href' => route('me.events.bracket', $e['key']),
+                'href' => route('me.events.bracket.manage', $e['key']),
                 'shell' => true,
                 'icon' => $typePublic['icon'] ?? 'bi-table',
                 'label' => $typePublic['label'] ?? '',
@@ -584,23 +590,21 @@
                                            numeral rather than a fourth colour of disc, and a
                                            place this sheet does not know falls back to its own
                                            number rather than fataling on a missing key. */
+                                        /* The DRAWING is `x-medal-icon`; the tint
+                                           of the row and the word beside the name
+                                           are what is decided here. */
                                         $medal = [
-                                            1 => ['🥇', '#f59e0b', __('personal.event_show_champion')],
-                                            2 => ['🥈', '#9ca3af', __('personal.event_show_runner_up')],
-                                            3 => ['🥉', '#b45309', __('personal.event_show_third_place')],
-                                            4 => ['',   '#64748b', __('personal.event_show_fourth_place')],
-                                        ][$m['place']] ?? ['', '#64748b', '#'.$m['place']];
+                                            1 => ['#f59e0b', __('personal.event_show_champion')],
+                                            2 => ['#9ca3af', __('personal.event_show_runner_up')],
+                                            3 => ['#b45309', __('personal.event_show_third_place')],
+                                            4 => ['#64748b', __('personal.event_show_fourth_place')],
+                                        ][$m['place']] ?? ['#64748b', '#'.$m['place']];
                                     @endphp
-                                    <div class="flex items-center gap-3 rounded-xl p-2" style="background: {{ $medal[1] }}12;">
-                                        @if($medal[0] !== '')
-                                            <span class="text-2xl flex-shrink-0 leading-none">{{ $medal[0] }}</span>
-                                        @else
-                                            <span class="w-8 h-8 rounded-full grid place-items-center flex-shrink-0 text-xs font-black"
-                                                  style="background: {{ $medal[1] }}20; color: {{ $medal[1] }};">{{ $m['place'] }}</span>
-                                        @endif
+                                    <div class="flex items-center gap-3 rounded-xl p-2" style="background: {{ $medal[0] }}12;">
+                                        <x-medal-icon :place="$m['place']" :size="26" :label="$medal[1]" />
                                         <div class="min-w-0 flex-1">
                                             <p class="text-sm font-bold text-foreground truncate">{{ $m['name'] }}</p>
-                                            <p class="text-[11px] text-muted-foreground">{{ $medal[2] }}</p>
+                                            <p class="text-[11px] text-muted-foreground">{{ $medal[1] }}</p>
                                         </div>
                                     </div>
                                 @endforeach

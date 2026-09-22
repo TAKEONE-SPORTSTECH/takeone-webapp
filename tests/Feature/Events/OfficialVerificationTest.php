@@ -226,18 +226,14 @@ class OfficialVerificationTest extends TestCase
         $this->entry($event, $category, $this->member('Athlete One'));
         $nobody = $this->member('Just A Member');
 
-        // A browser GET to a forbidden page is a redirect, not a 403 — see the
-        // global handler in bootstrap/app.php.
-        $this->actingAs($nobody)
-            ->get("/me/events/{$event->uuid}/verify")
-            ->assertRedirect('/');
-
-        $this->actingAs($nobody)
-            ->getJson("/me/events/{$event->uuid}/verify")
-            ->assertForbidden();
-
-        // The roster itself: no registration ids to act on, no officiating
-        // wiring, and no link to anyone's proof of payment.
+        // The desk's own URL is gone — the gates open from a person's card on
+        // the entry list now (2026-09-03), and the write endpoints that kept the
+        // /verify prefix are covered above, each refusing this member by name.
+        //
+        // The entry list itself is where the question lives: it is readable by
+        // everyone in the event, and it must hand an ordinary member nothing to
+        // act with — no registration ids, no officiating wiring, no link to
+        // anyone's proof of payment.
         $this->actingAs($nobody)
             ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
@@ -248,10 +244,19 @@ class OfficialVerificationTest extends TestCase
     }
 
     /**
-     * An ORGANISER gets the same plain list as everyone else. This is the point
-     * of the split: the screen does not change shape depending on who opened it.
+     * The organiser DOES get controls on this list — and that reverses what
+     * this test used to say.
+     *
+     * When the desk was a screen of its own (f5dd4585, "who's joined is a page
+     * you read, not a desk you work at") the point was that the roster looked
+     * the same to everybody. The desk was folded back onto this page on
+     * 2026-09-03 at the owner's request — "tapping a person here must open that
+     * person's sheet, not navigate to another screen" — so the shape now
+     * depends on the reader again, deliberately, and what has to hold is that
+     * the dependency runs the right way round: the ordinary member above gets
+     * nothing, and the people who sign entries off get their gates.
      */
-    public function test_even_an_organiser_gets_no_controls_on_the_roster(): void
+    public function test_the_organiser_gets_the_desk_on_the_entry_list(): void
     {
         $event = $this->event();
         $category = $this->division($event);
@@ -261,8 +266,8 @@ class OfficialVerificationTest extends TestCase
             ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
             ->assertSee('Athlete One')
-            ->assertDontSee('reg_id')
-            ->assertDontSee('officiating: true', false);
+            ->assertSee('officiating: true', false)
+            ->assertSee('openPerson(', false);
     }
 
     public function test_the_gates_render_on_the_desk_for_an_appointed_official(): void
@@ -278,7 +283,7 @@ class OfficialVerificationTest extends TestCase
         ]);
 
         $this->actingAs($scale)
-            ->get("/me/events/{$event->uuid}/verify")
+            ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
             ->assertSee('Athlete One')
             ->assertSee('officiating: true', false)

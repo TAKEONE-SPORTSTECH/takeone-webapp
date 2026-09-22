@@ -188,7 +188,7 @@
                     window.removeEventListener('realtime:events', window.__nextUpDeskHandler);
                 }
                 window.__nextUpDeskHandler = (ev) => {
-                    if (['outcome', 'draw', 'entrants', 'podium'].includes(ev.detail?.action)) this.refresh();
+                    if (['outcome', 'draw', 'entrants', 'podium', 'entry-updated'].includes(ev.detail?.action)) this.refresh();
                 };
                 window.addEventListener('realtime:events', window.__nextUpDeskHandler);
             },

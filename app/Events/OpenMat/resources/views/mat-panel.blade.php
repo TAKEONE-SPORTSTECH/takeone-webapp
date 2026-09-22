@@ -198,7 +198,7 @@
      The country beside somebody at a mat is their CLUB's country and never their
      nationality — an athlete competes for the club that brought them — which is
      why it is resolved from the club row and stored beside it. Same source as
-     every other board in the product (flagcdn), so a hall shows one kind of flag.
+     every other board in the product (our own /images/flags), so a hall shows one kind of flag.
 
      Built rather than interpolated, like every other node on this panel: names
      and club names are typed by people, and this markup is one string
@@ -207,7 +207,7 @@
     if (!p || !p.country) return null;
 
     var img = document.createElement('img');
-    img.src = 'https://flagcdn.com/w40/' + p.country + '.png';
+    img.src = '/images/flags/' + p.country + '.svg';
     img.alt = '';
     img.style.cssText = 'height:' + height + 'px;border-radius:3px;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.5);';
     return img;

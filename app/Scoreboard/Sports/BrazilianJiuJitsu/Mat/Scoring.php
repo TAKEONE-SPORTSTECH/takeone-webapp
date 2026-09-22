@@ -81,6 +81,7 @@ class Scoring
         'dismiss',    // put the celebration away — on the table AND the wall
         'celebrate',  // bring it back
         'resync',     // tell every screen on this mat to reload itself
+        'refresh',    // re-read both corners from the entries — a corrected photo, belt, weight
         'bell',       // the clock reached zero — settle it and see what that means
         'corner',     // {side, name, club, country, flag} — fix what is announced
         'meta',       // {tournament, division, matchNo, courtLabel, stage, referee, ruleset}
@@ -94,6 +95,12 @@ class Scoring
      * `load` and `clear` change WHICH match is there; `duration`, `meta`,
      * `rules` and `theme` prepare the mat before one arrives. Those are the six
      * that may run on an empty mat.
+     *
+     * `refresh` is deliberately absent too: it re-reads the corners of whatever
+     * is loaded, and on an empty mat that is nothing at all. It answers by
+     * changing nothing rather than by refusing, because it is sent by an entry
+     * being edited somewhere else entirely — a caller with no way to know, and
+     * no business being told, what is on a mat.
      */
     private const NEEDS_MATCH = [
         'start', 'pause', 'resume', 'point', 'advantage', 'penalty', 'reverse', 'deduct',
@@ -130,7 +137,7 @@ class Scoring
      *
      * Scoring, the clock, the wall board, the introduction, penalties, the
      * stalling count — all still work with the event unstarted, because that is
-     * the rehearsal. What is refused is the three acts that OUTLIVE the mat:
+     * the rehearsal. These are the three acts that OUTLIVE the mat:
      *
      *   commit    writes the winner into the bracket and advances the draw
      *   end       declares how a bout finished, which is what commit files
@@ -139,10 +146,19 @@ class Scoring
      * The rehearsal is still cleared with `reset`, which is allowed — it is how
      * a mat is put back after a test.
      *
-     * The gate is `started_at`: an organiser pressing Start on the event's own
-     * console. Not the date, and not the start TIME — a competition that begins
-     * late is still not under way, and one that begins early is. That is a
-     * person's decision and it already has a button.
+     * ── These three no longer REFUSE (changed 2026-09-18) ──────────────────
+     *
+     * They used to be refused outright until an organiser pressed Start, on the
+     * reasoning that starting the day is a person's decision with a button of
+     * its own. The decision part was right; the placement was not. The refusal
+     * landed at a scoring table with a finished bout on the mat and the button
+     * on somebody else's screen, and it stopped a live championship dead.
+     *
+     * So the list now marks the three commands that START THE DAY if it has not
+     * been started — see startTheDay(), which also locks the draw so the result
+     * cannot be re-cut out of existence afterwards. A declared rehearsal is
+     * exempt at the call site and still cannot reach the bracket, which is what
+     * this constant was always actually protecting.
      */
     private const NEEDS_EVENT_STARTED = ['end', 'decision', 'commit'];
 
@@ -201,11 +217,18 @@ class Scoring
             throw new \RuntimeException(__('scoreboard::bjj_messages.match_over'));
         }
 
-        // Nothing reaches the RECORD before the day has been started. See
-        // NEEDS_EVENT_STARTED — the mat is fully usable for rehearsal, but a
-        // rehearsal cannot file a result.
-        if (in_array($command, self::NEEDS_EVENT_STARTED, true) && ! $event->hasStarted()) {
-            throw new \RuntimeException(__('scoreboard::bjj_messages.event_not_started'));
+        /*
+         * The day starts ITSELF rather than refusing. See startTheDay().
+         *
+         * A REHEARSAL is exempt and never reaches here: it exists to run
+         * exactly these three commands with the event's state snapshotted and
+         * every athlete-facing message held back (App\Events\Support\Rehearsal),
+         * so a practice bout still cannot start a competition by accident.
+         */
+        if (in_array($command, self::NEEDS_EVENT_STARTED, true)
+            && ! $event->hasStarted()
+            && ! app(\App\Events\Support\Rehearsal::class)->active($event)) {
+            $this->startTheDay($event);
         }
 
         // The clock is stored as "remaining as of a moment"; before anything
@@ -252,6 +275,7 @@ class Scoring
             // publishes afterwards, which is the one recovery a screen with no
             // keyboard has.
             'resync' => null,
+            'refresh' => $this->refresh($event, $state),
             /*
              * Also a no-op — and that is the whole point of it.
              *
@@ -341,6 +365,64 @@ class Scoring
         );
 
         return $state;
+    }
+
+    /* ---------------- The day ---------------- */
+
+    /**
+     * Put the competition under way because somebody is filing a real result.
+     *
+     * ── Why this replaced a refusal ────────────────────────────────────────
+     *
+     * `end`, `decision` and `commit` are the three acts that outlive the mat —
+     * they write a winner into the bracket. They used to be refused outright
+     * until an organiser pressed Start on the event console, and the argument
+     * was that starting the day is a person's decision which already has a
+     * button. The argument was right about the decision and wrong about the
+     * place: the refusal lands on a SCORING TABLE, mid-competition, with a
+     * finished bout on the mat and a hall waiting, and the button that clears
+     * it is on somebody else's screen. The official reads "the competition has
+     * not been started" about a competition that visibly has.
+     *
+     * It cost a real championship its flow on 2026-09-18 — two bouts fought,
+     * neither recordable, the running order stuck behind them.
+     *
+     * A rehearsal never reaches here (it is exempt at the call site), so an
+     * official arriving at this line has declared no practice and is filing a
+     * real result. The honest reading is that the day began and the button was
+     * missed, so this records that rather than arguing with it.
+     *
+     * ── What it must do, and why the second half matters ───────────────────
+     *
+     * Writing `started_at` alone is the trap: the draw stays `provisional`, and
+     * the next thing to call DrawEngine::ensure() re-cuts the division as the
+     * final paid-only draw — DELETING the bout that was just filed along with
+     * every other result on it. A ten-bout championship was lost that way on
+     * 2026-09-13. So the draw is locked here, through the package's own hook,
+     * exactly as the console's Start does it, before the result is written.
+     *
+     * Best-effort by design: this is bookkeeping around somebody's result, and
+     * a failure here must never cost them the result itself. If the lock throws,
+     * the day is still started and the bout is still filed — and DrawEngine's
+     * own guard refuses to re-cut a division that has been fought, which is the
+     * belt to this pair of braces.
+     */
+    private function startTheDay(ClubEvent $event): void
+    {
+        $event->started_at = now();
+        // The official at the table, not the organiser who never pressed it —
+        // the record should say who actually put the day under way.
+        $event->started_by = $this->operator?->id ?? $event->created_by;
+        // Started from the mat, so the organiser's pre-flight checklist was by
+        // definition not walked. Flagged rather than hidden.
+        $event->start_overridden = true;
+        $event->save();
+
+        try {
+            app(EventTypeRegistry::class)->for($event)->onEntrantsChanged($event->fresh());
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /* ---------------- The clock ---------------- */
@@ -584,6 +666,54 @@ class Scoring
             'height' => $user?->height_cm ?: null,
             'weight' => $reg?->weight ? (float) $reg->weight : null,
         ];
+    }
+
+    /**
+     * Re-read the two people on the mat, without disturbing the match.
+     *
+     * Everything a screen announces is assembled ONCE, by `load`, and then
+     * lives in the mat's row. That is what makes the board instant and what
+     * makes it survive a reload — but it also means the board is a SNAPSHOT.
+     * Correct a competitor's photograph, belt or weight afterwards (from the
+     * event's people list, or from this console's own photo control) and the
+     * database changes while the wall carries on showing what was true when the
+     * bout was called. That is what this fixes.
+     *
+     * It touches nothing else: not the clock, not the score, not the mode, not
+     * the result. Both corners are rebuilt exactly as `load` builds them, from
+     * the entry rows the loaded match already names — which does mean a name a
+     * table official typed over with the `corner` command goes back to what the
+     * record says. That is the intention: the record has just been corrected.
+     *
+     * Named `refresh` because Taekwondo's engine has had this command under
+     * that name since it was written, and the same thing must not be called two
+     * things in two packages.
+     *
+     * A match that has gone (deleted, or the mat re-loaded meanwhile) leaves the
+     * corners exactly as they are — a blank board is worse than a stale one.
+     */
+    private function refresh(ClubEvent $event, MatState $state): void
+    {
+        $match = EventMatch::where('event_id', $event->id)
+            ->with('category:id,name,weight_class')
+            ->find((int) $state->match_id);
+
+        if (! $match) {
+            return;
+        }
+
+        $registrations = ClubEventRegistration::where('event_id', $event->id)
+            ->whereIn('id', array_filter([$match->a_competitor_id, $match->b_competitor_id]))
+            ->with(['user:id,full_name,name,gender,birthdate,nationality,height_cm,profile_picture,profile_picture_is_public',
+                'user.skillAcquisitions:id,user_id,proficiency_level,start_date',
+                'user.memberClubs:id,club_name,logo,country',
+                'representingTenant:id,club_name,logo,country'])
+            ->get()->keyBy('id');
+
+        $written = \App\Events\Support\EntryClub::forMany($event, $registrations->keys()->all());
+
+        $state->blue = $this->corner($match, 'a', $registrations, $written);
+        $state->white = $this->corner($match, 'b', $registrations, $written);
     }
 
     private function start(MatState $state): void
@@ -1386,8 +1516,39 @@ class Scoring
      * Correct what a corner is ANNOUNCED as.
      *
      * The names come from the draw, but a hall is not a database: a competitor
-     * turns up under a different spelling, or a club is wrong on the entry. This
-     * changes the SCREEN, never the registration.
+     * turns up under a different spelling, or a club is wrong on the entry.
+     *
+     * ── This used to change the SCREEN and nothing else ────────────────────
+     *
+     * It wrote the correction onto the mat's own row and stopped there, which
+     * had two consequences an official at the table could not have guessed:
+     *
+     *  1. The wall beside them went on announcing the old spelling in the
+     *     upcoming queue, and so did the bracket and the running order. Those
+     *     read the DRAW (`event_matches.{a,b}_name`), not the mat.
+     *  2. The correction did not survive. `refresh` rebuilds both corners from
+     *     the record — and is now sent whenever anything about that person is
+     *     edited anywhere — so a typed name was silently replaced by the
+     *     spelling it had just been corrected from.
+     *
+     * So the correction goes to the DRAW row for this bout as well as to the
+     * mat, which is what makes it reach every other screen and what makes it
+     * last. Asked for 2026-09-20.
+     *
+     * ⚠️ It stops at the BOUT, deliberately. It does not touch the athlete's
+     * account, their other entries, or their profile: somebody standing at a
+     * mat is fixing what this hall announces for this fight, not editing a
+     * member of the platform. The event desk's entry editor is where a person
+     * is corrected, and that one does reach everything.
+     *
+     * ⚠️ `club` is the exception and stays mat-only — a known limit, not an
+     * oversight. A club is not a string on the draw: it is a tenant the entry
+     * names, or a row in `event_clubs` an organiser wrote down (see
+     * App\Events\Support\EntryClub). Propagating a typed one means creating
+     * or re-pointing a club RECORD, which is not a decision a scoring table
+     * should make on its own — the event desk's club picker is where that
+     * belongs. So a club corrected here shows on this mat's plate and nowhere
+     * else, and `refresh` will put the record's answer back.
      */
     private function cornerEdit(MatState $state, array $payload): void
     {
@@ -1412,6 +1573,51 @@ class Scoring
         }
 
         $state->$side = $corner;
+
+        $this->writeCornerToDraw($state, $side, $payload);
+    }
+
+    /**
+     * The half of a corner correction that belongs on the draw.
+     *
+     * Blue is side 'a' and white is side 'b' — the same order the board, the
+     * console and the ledger use.
+     *
+     * Absent means UNCHANGED, and an empty string means unchanged too rather
+     * than "erase it": a console that sends a blank field is a console that had
+     * nothing in that box, and a nameless corner on a wall reads as broken.
+     */
+    private function writeCornerToDraw(MatState $state, string $side, array $payload): void
+    {
+        if (! $state->match_id) {
+            return;
+        }
+
+        $column = $side === 'blue' ? 'a' : 'b';
+        $updates = [];
+
+        if (array_key_exists('name', $payload)) {
+            $name = trim((string) $payload['name']);
+
+            if ($name !== '') {
+                $updates[$column.'_name'] = mb_substr($name, 0, 120);
+            }
+        }
+
+        // The flag and the spelled-out country are two halves of one column, so
+        // whichever the console sent goes in it — App\Support\Countries reads
+        // both a code and a name, which is the whole reason it can.
+        $country = trim((string) ($payload['flag'] ?? $payload['country'] ?? ''));
+
+        if ($country !== '') {
+            $updates[$column.'_country'] = mb_substr($country, 0, 60);
+        }
+
+        if (! $updates) {
+            return;
+        }
+
+        rescue(fn () => EventMatch::where('id', $state->match_id)->update($updates), null, false);
     }
 
     /** The header line: tournament, division, match number, mat, round. */
@@ -1529,7 +1735,7 @@ class Scoring
      */
     private function worthRecording(string $command): bool
     {
-        return ! in_array($command, ['resync', 'theme', 'dismiss', 'celebrate', 'bell'], true);
+        return ! in_array($command, ['resync', 'refresh', 'theme', 'dismiss', 'celebrate', 'bell'], true);
     }
 
     /** The camera fleet's own vocabulary, which is smaller than this one. */

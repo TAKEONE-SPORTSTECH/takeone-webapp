@@ -175,8 +175,55 @@
                            browser sent nothing. */
                         : ($platformBack ?? route('me.people')));
             @endphp
-            <a href="{{ $backHref }}" class="prof-press"
+            {{-- ⚠️ The href above is still the answer; the handler below is an
+                 OPTIMISATION over it, and only in the one case where it is
+                 provably safe.
+
+                 Asked for on 2026-09-16: a competitor scrolling a long entry
+                 list, tapping a rival and coming back was landing on a freshly
+                 loaded list at the top. The list restores its own scroll
+                 position now (entry/public/sections/participants-mobile), but a
+                 reload it does not need is still a reload — and going BACK is
+                 what a browser does without one, keeping the page exactly as it
+                 was left.
+
+                 Neither of the two failures the note above describes can happen
+                 here, which is the whole reason this is allowed:
+
+                   · the history is not empty — the guard requires a referrer,
+                     and a referrer is what an empty history does not have;
+                   · it cannot escape the seal — the guard requires that
+                     referrer to be the SAME page the href already points at,
+                     so the destination is identical either way. Only the
+                     mechanism differs.
+
+                 Anything else — a shared link, a fresh tab, arriving from
+                 anywhere else at all — never calls preventDefault and follows
+                 the address, exactly as before. --}}
+            <a href="{{ $backHref }}" class="prof-press" data-prof-back
                style="{{ $glassBtn }};font-size:17px;text-decoration:none" aria-label="{{ __('shared.back') }}"><i class="bi bi-chevron-left"></i></a>
+            <script>
+                (function () {
+                    var link = document.currentScript.previousElementSibling;
+                    if (! link || ! link.hasAttribute('data-prof-back')) return;
+
+                    link.addEventListener('click', function (ev) {
+                        if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button) return;
+
+                        var ref = document.referrer;
+                        if (! ref || history.length <= 1) return;
+
+                        /* Same page, same origin — compared without the query
+                           string, which carries `?from=` on the way in and
+                           nothing on the way back. */
+                        var strip = function (u) { try { var x = new URL(u, location.href); return x.origin + x.pathname; } catch (e) { return null; } };
+                        if (strip(ref) === null || strip(ref) !== strip(link.getAttribute('href'))) return;
+
+                        ev.preventDefault();
+                        history.back();
+                    });
+                })();
+            </script>
             <button type="button" class="prof-press" @click="share()"
                     style="{{ $glassBtn }};font-size:15px" aria-label="{{ __('shared.share') }}"><i class="bi bi-share"></i></button>
         </div>

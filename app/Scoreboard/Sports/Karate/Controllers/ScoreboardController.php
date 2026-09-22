@@ -414,7 +414,10 @@ class ScoreboardController extends Controller
         $previous = $registration->photo;
 
         if ($remove) {
-            $registration->update(['photo' => null]);
+            // Across every entry this person holds in this event — they are
+            // entered once per division and each row has its own photo column.
+            // See App\Events\Support\EntryPhoto::assign.
+            \App\Events\Support\EntryPhoto::assign($event, $registration, null);
 
             if ($previous) {
                 // Through EntryPhoto, never a raw delete: an entry settled at
@@ -424,7 +427,9 @@ class ScoreboardController extends Controller
                 \App\Events\Support\EntryPhoto::discard($previous);
             }
 
-            $fresh = $this->scoring->apply($event, $court, 'resync');
+            // 'refresh' re-reads both corners from the entries — 'resync' was
+            // used here and is a NO-OP, so the wall kept the removed face.
+            $fresh = $this->scoring->apply($event, $court, 'refresh');
             ScreenChannel::notifyCourt($event, $court, ['action' => 'mat', 'state' => $fresh->toArray()]);
 
             return response()->json([
@@ -436,7 +441,12 @@ class ScoreboardController extends Controller
             ]);
         }
 
-        $path = $this->storeBase64Image(
+        // Stored under the PERSON, not under the event — the entry keeps a
+        // reference (CLAUDE.md → A Person's Photo Has One Home). A face
+        // photographed at the mat used to exist for the hall screens and
+        // nowhere else, so the same athlete was a silhouette on their profile.
+        $path = \App\Members\Support\ProfilePhoto::capture(
+            $registration->user_id ? \App\Members\Models\User::find($registration->user_id) : null,
             $request->input('image'),
             'events/'.$event->uuid.'/competitors',
             'c'.$registration->id.'-'.\Illuminate\Support\Str::random(16),
@@ -449,7 +459,21 @@ class ScoreboardController extends Controller
             ], 422);
         }
 
-        $registration->update(['photo' => $path]);
+        // As above: the face goes on the person, not on one division's row.
+        \App\Events\Support\EntryPhoto::assign($event, $registration, $path);
+
+        /*
+         * Every OTHER mat, and every upcoming board.
+         *
+         * photoResponse() below refreshes and pushes THIS mat, which is the
+         * one the official is standing at. It is not the only screen showing
+         * this competitor: they are queued on the walls — routinely on a mat
+         * they are not currently fighting on — and they may be loaded on a
+         * second mat in another division. Those screens heard nothing, so a
+         * face fixed at one table stayed wrong everywhere else in the hall.
+         */
+        rescue(fn () => app(\App\Scoreboard\MatEntries::class)
+            ->entryChanged($event, (int) $registration->id), null, false);
 
         if ($previous && $previous !== $path) {
             // See above: this file may be the athlete's profile picture rather
@@ -457,12 +481,15 @@ class ScoreboardController extends Controller
             \App\Events\Support\EntryPhoto::discard($previous);
         }
 
-        // The corner is rebuilt from the registration, so the wall shows the face
-        // as soon as it is told the state changed.
-        // 'resync' is the defined no-op: it changes nothing, saves the state as
-        // it stands, and hands it back — which is exactly what is needed to push
-        // a corner the registration behind it just changed.
-        $fresh = $this->scoring->apply($event, $court, 'resync');
+        /*
+         * Rebuild the corner from the registration that just changed.
+         *
+         * This used to send 'resync', on the belief that it rebuilt a corner.
+         * It does not — it is the defined NO-OP, it saves the state exactly as
+         * it stands, and the photograph on the wall never moved. 'refresh' is
+         * the command that re-reads both corners and touches nothing else.
+         */
+        $fresh = $this->scoring->apply($event, $court, 'refresh');
         ScreenChannel::notifyCourt($event, $court, ['action' => 'mat', 'state' => $fresh->toArray()]);
 
         return response()->json([

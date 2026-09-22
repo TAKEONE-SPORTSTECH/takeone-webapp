@@ -887,7 +887,7 @@
   var popFlip = { aka: false, ao: false };
 
   function flagUrl(code) {
-    return /^[a-z]{2}$/.test(code || '') ? 'url("https://flagcdn.com/w1280/' + code + '.png")' : 'none';
+    return /^[a-z]{2}$/.test(code || '') ? 'url("/images/flags/' + code + '.png")' : 'none';
   }
 
   function paintSide(side) {

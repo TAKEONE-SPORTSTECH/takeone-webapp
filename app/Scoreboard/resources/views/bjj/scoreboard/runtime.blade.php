@@ -542,12 +542,19 @@
         tickSound(left === 0);
       }
 
-      /* A DOUBLE stall applies itself.
-         Neither man was working, so there is nothing to ask: at zero both
-         corners take a stalling penalty. Sent from here for the same reason
-         `bell` is — the server has no timer, so the only thing that knows the
-         count has run out is whatever is watching it, and this console is
-         watching it five times a second.
+      /* A stalling count APPLIES ITSELF at zero — every count, not only a
+         double one.
+
+         By the time a referee has started a count against a corner they have
+         already decided; the count is the warning, and what follows it is the
+         penalty. So nothing is asked. This used to raise a card at zero for a
+         single corner (penalty / award / dismiss) while a double stall applied
+         itself; asked 2026-09-20, both now behave the same way. A correction
+         is made the ordinary way, from the score log.
+
+         Sent from here for the same reason `bell` is — the server has no
+         timer, so the only thing that knows the count has run out is whatever
+         is watching it, and this console is watching it five times a second.
 
          Guarded on the count's own arrival stamp so it is sent ONCE per count
          and never again for the same one. A second console at the same mat
@@ -555,7 +562,7 @@
          because the first apply cleared the stall — which is the right answer
          and costs nothing. flash() is skipped for that one case: a refusal
          nobody caused is not a message anybody needs. */
-      if (stall && stall.side === 'both' && left === 0 && stallAppliedFor !== stallAt) {
+      if (stall && left === 0 && stallAppliedFor !== stallAt) {
         stallAppliedFor = stallAt;
         send('stall', { phase: 'apply' }, null, true);
       }
@@ -603,28 +610,22 @@
     var p = el('stallPrompt');
     if (!p) return;
 
-    // Asked from the STATE, not from a timer this page keeps: the count has run
-    // out for as long as the server still holds the stall, so dismissing it has
-    // to cancel the count or the card would simply come back.
-    //
-    // ⚠️ Never for a DOUBLE stall. That one has no question in it: neither man
-    // was working, so both are penalised and the count applies itself the
-    // moment it runs out (see the trigger in paintClock). A card asking which
-    // of the two ways out the referee wants would be a card with one button on
-    // it, in front of a referee who has already decided.
-    var due = !both && !!side && left === 0;
-    p.hidden = !due;
-    if (!due) return;
+    /* ⚠️ THE THRESHOLD CARD NEVER OPENS (2026-09-20, at the user's request).
 
-    var corner = side === 'blue' ? T.blue : T.white;
-    var other = side === 'blue' ? T.white : T.blue;
-    text('stallPromptTitle', (T.stall_prompt || '').replace(':corner', corner));
-    text('stallPromptApply', (T.stall_penalty_to || '').replace(':corner', corner));
-    // The award goes to the corner that was BEING stalled against, so the label
-    // names the other man. The server decides that too — this only says so.
-    text('stallPromptAwardTo', (T.stall_award_to || '').replace(':corner', other));
-    var accent = el('stallPromptAccent');
-    if (accent) accent.style.background = side === 'blue' ? 'var(--blue-plate)' : 'var(--white)';
+       Every count now applies its penalty at zero — see the trigger in
+       paintClock — so there is nothing left to ask, and a card in front of
+       somebody watching a mat is a card read late.
+
+       Kept hidden rather than torn out: the markup, its strings and the
+       server's `award` phase all still work, and removing them is a
+       house-cleaning pass of its own (CLAUDE.md → "House Cleaning"). Restore
+       the card by putting `due` back to `!both && !!side && left === 0`.
+
+       ⚠️ Consequence, stated plainly: awarding points to the corner that was
+       BEING stalled against — `stall {phase:'award'}`, added 2026-09-10 — has
+       no button anywhere any more. The command is untouched and still answers;
+       nothing in either console reaches it. */
+    p.hidden = true;
   }
 
   function paintCorners() {
@@ -1018,7 +1019,7 @@
      other across the "vs". It paints ONLY when the desktop console's card is
      on the page, so the mobile sheet keeps its own compact rows untouched. */
   function flagUrl(code) {
-    return /^[a-z]{2}$/.test(code || '') ? 'url("https://flagcdn.com/w1280/' + code + '.png")' : 'none';
+    return /^[a-z]{2}$/.test(code || '') ? 'url("/images/flags/' + code + '.png")' : 'none';
   }
 
   function competitorCell(side, colour, ink, mirror) {
@@ -1137,9 +1138,9 @@
     row.appendChild(stage);
     // Blue is mirrored so the two portraits meet either side of the "vs" —
     // the same order the board and the wall put the corners in.
-    row.appendChild(competitorCell(b.blue, '#1362d1', '#8ab4ff', true));
+    row.appendChild(competitorCell(b.blue, '#c1121f', '#ff9aa0', true));
     row.appendChild(vs);
-    row.appendChild(competitorCell(b.white, '#aab6c6', '#f4f7fb', false));
+    row.appendChild(competitorCell(b.white, '#2f7bdb', '#8ab4ff', false));
 
     // A bout already fought is listed and not loadable. Reloading it would put
     // a decided result back on a wall as an idle bout about to start.
@@ -1482,8 +1483,8 @@
 
     if (!people.length) { boutsEmpty(host, T.find_none); return; }
 
-    var ink = side === 'a' ? '#8ab4ff' : '#f4f7fb';
-    var rim = side === 'a' ? '#1362d1' : '#aab6c6';
+    var ink = side === 'a' ? '#ff9aa0' : '#8ab4ff';
+    var rim = side === 'a' ? '#c1121f' : '#2f7bdb';
 
     people.forEach(function (p) {
       var row = document.createElement('button');
@@ -1890,7 +1891,39 @@
       .catch(function (err) { flash(err.message || T.failed); });
   }
 
+  /* ── REHEARSAL ────────────────────────────────────────────────────────────
+     An official at this table must never be unable to tell a practice bout
+     from a real one. The flag rides on the mat state itself, so this follows a
+     rehearsal being started or ended with no reload, and the table and the wall
+     can never disagree about it (MatState::present).
+
+     Built here rather than in the two control blades because the runtime is
+     shared: one band, both consoles, and a console that never rehearses never
+     grows the element at all. It sits in the normal flow above #top, which is
+     also in flow, so nothing overlaps and nothing moves until it appears. */
+  function paintRehearsal() {
+    var band = el('rehearsalBand');
+
+    if (! S.rehearsal) {
+      if (band) band.hidden = true;
+      return;
+    }
+
+    if (! band) {
+      band = document.createElement('div');
+      band.id = 'rehearsalBand';
+      band.textContent = @json(__('events.rehearsal_running'));
+      band.style.cssText = 'background:repeating-linear-gradient(135deg,#b45309,#b45309 16px,#92400e 16px,#92400e 32px);'
+        + 'color:#fff; font-weight:800; font-size:12px; letter-spacing:.28em; text-transform:uppercase;'
+        + 'text-align:center; padding:7px 10px;';
+      document.body.insertBefore(band, document.body.firstChild);
+    }
+
+    band.hidden = false;
+  }
+
   function paintMeta() {
+    paintRehearsal();
     text('topMeta', [S.division, S.stage, S.matchNo ? '#' + S.matchNo : null].filter(Boolean).join(' · '));
     text('topRuleset', S.ruleset || '');
     text('topReferee', S.referee || '');
@@ -2276,21 +2309,39 @@
     modal(T.reset, [], function () { closeModal(); send('reset'); });
   });
 
-  // Finalizing writes the result into the bracket. Modal AND the match number
-  // typed in: it is the one action here that cannot be taken back from this
-  // console at all.
+  // Finalizing writes the result into the bracket — the one action here that
+  // cannot be taken back from this console at all. It used to be guarded by a
+  // modal and the typed bout number; both were removed on 2026-09-18 and it
+  // now fires on the press. See confirmWithNumber below.
   if (el('btnCommit')) el('btnCommit').addEventListener('click', function () {
     confirmWithNumber(T.commit, function () { send('commit'); });
   });
 
+  /*
+   * ⚠️ NO CONFIRMATION AT ALL (changed 2026-09-18, at the user's instruction).
+   *
+   * The name is kept only because three call sites read it; it confirms
+   * nothing. Commit and a DQ ending now fire on the press.
+   *
+   * It began as a typing test — the bout number, entered before the write would
+   * go through, because a result written into the bracket cannot be taken back
+   * from this console. That reasoning is still true, and the cost is what
+   * killed it: the step sits on the commands used at the end of EVERY bout, and
+   * it was reported blocking the run of a live championship. It was reduced to
+   * one tap, then removed outright on the same day for the same reason.
+   *
+   * ⚠️ So there is now NOTHING between a mis-tap and an advanced competitor.
+   * The undo lives in the score log and in re-recording the outcome from the
+   * bracket, not here. If a wrong winner ever reaches a draw at speed, this is
+   * the line that stopped catching it — put the one-tap modal back rather than
+   * the keyboard.
+   *
+   * The callers close their own furniture before calling this (`closeModal()`
+   * at the dialog site, `endPanel.hidden` at the card site), which is why this
+   * closes nothing: doing so here would shut whatever else happened to be open.
+   */
   function confirmWithNumber(title, run) {
-    modal(title, [
-      { name: 'number', type: 'text', label: T.type_match_no, placeholder: S.matchNo || '' }
-    ], function (out) {
-      if (String(out.number || '').trim() !== String(S.matchNo || '')) { flash(T.type_match_no); return; }
-      closeModal();
-      run();
-    });
+    run();
   }
 
   if (el('themeToggle')) el('themeToggle').addEventListener('change', function () {
