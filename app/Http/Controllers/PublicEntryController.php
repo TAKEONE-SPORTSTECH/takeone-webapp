@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\Support\PublicEntry;
 use App\Events\Support\PublicEvent;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventClub;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

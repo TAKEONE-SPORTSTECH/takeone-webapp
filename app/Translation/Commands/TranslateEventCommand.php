@@ -2,7 +2,7 @@
 
 namespace App\Translation\Commands;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Translation\Jobs\TranslateContent;
 use App\Translation\Services\ContentLocales;
 use App\Translation\Services\TranslationAgent;

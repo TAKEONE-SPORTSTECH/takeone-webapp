@@ -93,7 +93,7 @@ class ClubAdminController extends Controller
                 'activities' => ClubActivity::where('tenant_id', $clubId)->count(),
                 'packages' => ClubPackage::where('tenant_id', $clubId)->count(),
                 'instructors' => ClubInstructor::where('tenant_id', $clubId)->where('is_active', true)->count(),
-                'events' => \App\Models\ClubEvent::where('tenant_id', $clubId)->where('is_archived', false)->get()->filter(fn ($e) => ! $e->hasEnded())->count(),
+                'events' => \App\Events\Models\ClubEvent::where('tenant_id', $clubId)->where('is_archived', false)->get()->filter(fn ($e) => ! $e->hasEnded())->count(),
                 'rating' => $club->reviews()->avg('rating') ?? 0,
                 'access' => $accessStat,
                 'classes' => count($distinctSlots),

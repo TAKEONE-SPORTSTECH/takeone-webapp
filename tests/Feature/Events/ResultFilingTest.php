@@ -5,7 +5,7 @@ namespace Tests\Feature\Events;
 use App\Events\Support\EventNotUnderWay;
 use App\Events\Support\Rehearsal;
 use App\Events\Support\ResultFiling;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Tests\TestCase;
 
 /**

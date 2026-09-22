@@ -112,7 +112,7 @@ class SealedRequest
     private static function stillPublic(string $uuid): bool
     {
         try {
-            $event = \App\Models\ClubEvent::where('uuid', $uuid)->first();
+            $event = \App\Events\Models\ClubEvent::where('uuid', $uuid)->first();
 
             return $event !== null && app(\App\Events\Support\PublicEvent::class)->isPublic($event);
         } catch (\Throwable) {

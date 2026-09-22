@@ -2,7 +2,7 @@
 
 namespace App\Events\Models;
 
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventFeeOption;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

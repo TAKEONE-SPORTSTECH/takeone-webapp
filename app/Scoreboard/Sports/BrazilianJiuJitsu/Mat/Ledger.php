@@ -2,7 +2,7 @@
 
 namespace App\Scoreboard\Sports\BrazilianJiuJitsu\Mat;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;

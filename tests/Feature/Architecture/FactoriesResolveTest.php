@@ -3,15 +3,15 @@
 namespace Tests\Feature\Architecture;
 
 use App\Clubs\Models\ClubActivity;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Clubs\Models\ClubInstructor;
 use App\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use Database\Factories\ClubEventRegistrationFactory;
+use Database\Factories\Events\Models\ClubEventRegistrationFactory;
 use Tests\TestCase;
 
 /**

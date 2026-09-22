@@ -61,8 +61,8 @@ class MorphMap
             'perk_collection' => \App\Shop\Models\PerkCollection::class,
 
             // ---- Events (stay in the events module) ------------------------
-            'club_event' => \App\Models\ClubEvent::class,
-            'club_event_registration' => \App\Models\ClubEventRegistration::class,
+            'club_event' => \App\Events\Models\ClubEvent::class,
+            'club_event_registration' => \App\Events\Models\ClubEventRegistration::class,
 
             // ---- Member-owned records -------------------------------------
             'duel' => \App\Challenges\Models\Duel::class,

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Events;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventExpense;
 use App\Events\Models\EventOfficial;
 use App\Events\Models\EventParticipantBan;
@@ -125,7 +125,7 @@ class EventStaffAndPayTest extends TestCase
         $athlete = $this->createUser(['full_name' => $name]);
         $athlete->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
 
-        \App\Models\ClubEventRegistration::create([
+        \App\Events\Models\ClubEventRegistration::create([
             'event_id' => $event->id, 'tenant_id' => $club->id, 'user_id' => $athlete->id,
             'role' => 'participant', 'status' => 'joined',
             'weight' => 55, 'paid' => false,

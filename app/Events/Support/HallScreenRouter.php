@@ -2,7 +2,7 @@
 
 namespace App\Events\Support;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Scoreboard\Fleet;
 use Illuminate\Http\Request;
 

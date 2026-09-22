@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Support\ProfileHistorySync;
 
 /**

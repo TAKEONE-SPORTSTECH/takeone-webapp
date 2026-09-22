@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Events\Contracts\AwardsDivisions;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Sports\Combat\Engine\DrawEngine;

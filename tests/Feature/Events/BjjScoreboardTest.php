@@ -5,7 +5,7 @@ namespace Tests\Feature\Events;
 use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\Ledger;
 use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatchEvent;
 use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatState;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Members\Models\User;

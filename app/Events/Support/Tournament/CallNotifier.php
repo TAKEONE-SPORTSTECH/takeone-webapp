@@ -2,8 +2,8 @@
 
 namespace App\Events\Support\Tournament;
 
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventNotificationSent;
 use App\Members\Models\User;

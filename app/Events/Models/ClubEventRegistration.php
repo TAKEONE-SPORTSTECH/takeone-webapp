@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Events\Models;
 
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Model;

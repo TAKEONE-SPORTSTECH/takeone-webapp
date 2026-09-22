@@ -101,7 +101,7 @@ class ChallengeController extends Controller
             ->values()->all();
 
         // Upcoming events of the user's clubs — a challenge can be attached to one and inherit its location.
-        $events = \App\Models\ClubEvent::whereIn('tenant_id', $clubIds)
+        $events = \App\Events\Models\ClubEvent::whereIn('tenant_id', $clubIds)
             ->where('status', 'published')
             ->whereDate('date', '>=', now()->toDateString())
             ->with('tenant:id,club_name')
@@ -172,7 +172,7 @@ class ChallengeController extends Controller
         $eventId = null;
         if (! empty($data['event_id'])) {
             $clubIds = $me->memberClubs()->pluck('tenants.id');
-            $event = \App\Models\ClubEvent::whereKey($data['event_id'])->whereIn('tenant_id', $clubIds)->first();
+            $event = \App\Events\Models\ClubEvent::whereKey($data['event_id'])->whereIn('tenant_id', $clubIds)->first();
             if (! $event) {
                 return response()->json(['success' => false, 'message' => 'That event is not available.'], 422);
             }

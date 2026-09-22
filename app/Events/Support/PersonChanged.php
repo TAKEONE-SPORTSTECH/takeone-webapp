@@ -3,8 +3,8 @@
 namespace App\Events\Support;
 
 use App\Members\Models\User;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 
 /**
  * A person's own details changed — put them back on every mat and wall.

@@ -4,7 +4,7 @@ namespace Tests\Feature\Events;
 
 use App\Scoreboard\Sports\Karate\Mat\MatState as KarateMatState;
 use App\Scoreboard\Sports\Taekwondo\Mat\MatState as TaekwondoMatState;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Members\Models\User;

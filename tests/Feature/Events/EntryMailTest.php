@@ -7,7 +7,7 @@ use App\Events\Support\EntryMail;
 use App\Events\Support\PublicEntry;
 use App\Mail\EventEntryEmail;
 use App\Members\Models\User;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventPublicEntry;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -125,7 +125,7 @@ class EntryMailTest extends TestCase
         $event = $this->event(['participant_fee_amount' => 10, 'participant_fee_currency' => 'BHD']);
         $athlete = $this->createUser(['email' => 'payer@example.com']);
 
-        $registration = \App\Models\ClubEventRegistration::create([
+        $registration = \App\Events\Models\ClubEventRegistration::create([
             'event_id' => $event->id, 'user_id' => $athlete->id,
             'role' => 'participant', 'status' => 'joined', 'registered_at' => now(),
         ]);

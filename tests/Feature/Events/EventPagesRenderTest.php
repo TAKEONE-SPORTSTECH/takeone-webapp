@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Events;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
@@ -133,7 +133,7 @@ class EventPagesRenderTest extends TestCase
            re-cut that cost a ten-bout championship on 2026-09-13, and it is why
            this fixture is two real registrations rather than two names. */
         foreach (['Ali', 'Bader'] as $name) {
-            \App\Models\ClubEventRegistration::create([
+            \App\Events\Models\ClubEventRegistration::create([
                 'event_id' => $event->id,
                 'user_id' => $this->createUser(['full_name' => $name])->id,
                 'category_id' => $division->id,
@@ -190,7 +190,7 @@ class EventPagesRenderTest extends TestCase
            bracket at all, and no entrants means the division is re-cut to
            nothing the moment the page brings derived state up to date. */
         foreach (['Ali', 'Bader'] as $name) {
-            \App\Models\ClubEventRegistration::create([
+            \App\Events\Models\ClubEventRegistration::create([
                 'event_id' => $event->id,
                 'user_id' => $this->createUser(['full_name' => $name])->id,
                 'category_id' => $division->id,

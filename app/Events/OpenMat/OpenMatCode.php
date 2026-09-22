@@ -2,7 +2,7 @@
 
 namespace App\Events\OpenMat;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 

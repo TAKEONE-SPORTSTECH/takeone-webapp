@@ -3,8 +3,8 @@
 namespace Tests\Feature\Events;
 
 use App\Scoreboard\Sports\Karate\Mat\Scoring as KarateScoring;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventMatchEvent;

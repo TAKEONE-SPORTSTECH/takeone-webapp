@@ -2,7 +2,7 @@
 
 namespace App\Sports\Combat;
 
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Members\Models\MemberCertification;
 use App\Members\Models\SkillAcquisition;
 use App\Members\Models\User;

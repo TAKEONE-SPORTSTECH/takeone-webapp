@@ -1,16 +1,28 @@
 <?php
 
-namespace Database\Factories;
+namespace Database\Factories\Events\Models;
 
+use App\Events\Models\ClubEvent;
 use App\Clubs\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ClubEvent>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Events\Models\ClubEvent>
  */
 class ClubEventFactory extends Factory
 {
+    /*
+     * Named explicitly, not derived.
+     *
+     * Factory::modelName() guesses from the factory's namespace and
+     * falls back to App\<Name> when the guess does not exist. Both are
+     * wrong once the model lives in a module: the failure is "Class App\ClubEvent
+     * not found" at the first make(), nowhere near the cause. Every
+     * factory under database/factories/<Module>/Models/ states its model.
+     */
+    protected $model = ClubEvent::class;
+
     /**
      * Define the model's default state.
      *

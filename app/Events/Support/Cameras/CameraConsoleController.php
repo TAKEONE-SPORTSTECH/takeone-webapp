@@ -4,7 +4,7 @@ namespace App\Events\Support\Cameras;
 
 use App\Events\Support\EventAccess;
 use App\Http\Controllers\Controller;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCamera;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

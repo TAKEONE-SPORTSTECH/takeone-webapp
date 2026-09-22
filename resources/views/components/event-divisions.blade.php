@@ -850,7 +850,7 @@
                                                      DrawEngine's ladder; a group is GroupEngine's
                                                      all-play-all feeding a knockout final. The server still
                                                      validates `format` against
-                                                     App\Models\EventCategory::RUNNABLE_FORMATS, which now
+                                                     App\Events\Models\EventCategory::RUNNABLE_FORMATS, which now
                                                      holds them both — a format an organiser can choose is
                                                      always one the mats can honour. --}}
                         </section>

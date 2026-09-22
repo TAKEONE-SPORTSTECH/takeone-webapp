@@ -13,7 +13,7 @@ use App\Http\Requests\UploadImageRequest;
 use App\Http\Requests\StoreCertificationRequest;
 use App\Http\Requests\StoreWorkHistoryRequest;
 use App\Members\Models\Attendance;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Members\Models\Goal;
 use App\Models\Invoice;
 use App\Members\Models\MemberCertification;

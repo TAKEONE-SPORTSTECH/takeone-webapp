@@ -2,7 +2,7 @@
 
 namespace App\Events\Support;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Support\Carbon;
 
 /**

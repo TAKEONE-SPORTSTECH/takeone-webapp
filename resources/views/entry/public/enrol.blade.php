@@ -71,7 +71,7 @@
         late fee, and each block that uses them is guarded, so that form is the
         form it was before multi-pricing.
     */
-    $feeEvent = \App\Models\ClubEvent::where('uuid', $e['uuid'])->first();
+    $feeEvent = \App\Events\Models\ClubEvent::where('uuid', $e['uuid'])->first();
     $feeOptions = $feeEvent ? \App\Events\Support\EventFee::options($feeEvent, 'participant') : collect();
     $feeCurrency = $feeEvent ? \App\Events\Support\EventFee::currency($feeEvent) : '';
     $feeCurrencyLabel = $feeCurrency ? \App\Events\Support\EventFee::currencyLabel($feeCurrency) : '';

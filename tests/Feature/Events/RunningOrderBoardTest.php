@@ -5,9 +5,9 @@ namespace Tests\Feature\Events;
 use App\Clubs\Models\Tenant;
 use App\Events\Support\Tournament\OrderBoard;
 use App\Members\Models\User;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventMatch;
 use Tests\TestCase;
 

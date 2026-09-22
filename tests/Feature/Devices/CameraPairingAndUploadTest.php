@@ -3,7 +3,7 @@
 namespace Tests\Feature\Devices;
 
 use App\Jobs\IngestClipMedia;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCamera;
 use App\Events\Models\EventCameraClip;
 use App\Events\Models\EventCategory;

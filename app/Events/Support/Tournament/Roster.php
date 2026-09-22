@@ -2,7 +2,7 @@
 
 namespace App\Events\Support\Tournament;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 
 /**
  * How a bracketed championship reads its entrant list.

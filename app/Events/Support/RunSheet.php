@@ -2,7 +2,7 @@
 
 namespace App\Events\Support;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventRunSlot;
@@ -252,7 +252,7 @@ class RunSheet
 
     private function entrantCounts(ClubEvent $event): array
     {
-        return \App\Models\ClubEventRegistration::query()
+        return \App\Events\Models\ClubEventRegistration::query()
             ->where('event_id', $event->id)
             ->where('role', 'participant')
             ->whereNotNull('category_id')

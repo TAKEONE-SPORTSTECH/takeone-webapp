@@ -4,8 +4,8 @@ namespace App\Events\Support;
 
 use App\Support\Cldr;
 use App\Events\EventTypeRegistry;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventParticipantBan;
 use App\Members\Models\SkillAcquisition;
 use App\Clubs\Models\Tenant;
@@ -1266,7 +1266,7 @@ class EntryService
             $athlete,
             \App\Mail\EventEntryEmail::ENTERED,
             $division,
-            \App\Models\ClubEventRegistration::where('event_id', $event->id)
+            \App\Events\Models\ClubEventRegistration::where('event_id', $event->id)
                 ->where('user_id', $athlete->id)->first(),
         );
 

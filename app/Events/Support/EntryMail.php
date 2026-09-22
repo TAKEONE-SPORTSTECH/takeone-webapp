@@ -4,8 +4,8 @@ namespace App\Events\Support;
 
 use App\Mail\EventEntryEmail;
 use App\Members\Models\User;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use Illuminate\Support\Facades\Mail;
 
 /**

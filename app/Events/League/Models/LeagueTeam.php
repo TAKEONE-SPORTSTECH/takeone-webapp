@@ -3,7 +3,7 @@
 namespace App\Events\League\Models;
 
 use App\Clubs\Models\Tenant;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;

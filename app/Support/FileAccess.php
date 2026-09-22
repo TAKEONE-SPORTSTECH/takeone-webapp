@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Members\Models\UserRelationship;
@@ -167,7 +167,7 @@ class FileAccess
      */
     private static function isPublicEntryPhoto(string $path): bool
     {
-        return \App\Models\ClubEventRegistration::query()
+        return \App\Events\Models\ClubEventRegistration::query()
             ->where('photo', $path)
             ->whereHas('event', fn ($q) => $q
                 ->where('entry_mode', 'public')

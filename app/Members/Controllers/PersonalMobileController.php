@@ -3,7 +3,7 @@
 namespace App\Members\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackageActivity;
 use App\Clubs\Models\ClubTimelinePost;
@@ -2694,7 +2694,7 @@ class PersonalMobileController extends Controller
         $allSkills = $clubAffiliations->flatMap(fn ($a) => $a->skillAcquisitions->pluck('skill_name'))->unique()->sort()->values();
         $totalInstructors = $clubAffiliations->flatMap(fn ($a) => $a->skillAcquisitions->pluck('instructor'))->filter()->unique('id')->count();
 
-        $joinedEventRegistrations = \App\Models\ClubEventRegistration::where('user_id', $user->id)
+        $joinedEventRegistrations = \App\Events\Models\ClubEventRegistration::where('user_id', $user->id)
             ->with(['event.tenant'])->orderBy('registered_at', 'desc')->get();
 
         return view('members::profile.mobile.show', [

@@ -27,7 +27,7 @@ use App\Clubs\Models\ClubNotification;
 use App\Clubs\Models\ClubReview;
 use App\Clubs\Models\ClubTransaction;
 use App\Models\Business;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Models\ClubMemberSubscription;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubTimelinePostLike;

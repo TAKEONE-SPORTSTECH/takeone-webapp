@@ -3,7 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Events\Support\EventVisitors;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Cookie;

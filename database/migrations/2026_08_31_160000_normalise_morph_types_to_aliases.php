@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
  * Rewrite fully-qualified class names in morph columns to their MorphMap alias.
  *
  * Several call sites wrote `X::class` straight into a `*_type` column instead of
- * `$model->getMorphClass()`, so the row stored `App\Models\ClubEvent` where every
+ * `$model->getMorphClass()`, so the row stored `App\Events\Models\ClubEvent` where every
  * other row stored `club_event`. Nothing is broken while the class sits at that
  * namespace — but the moment it moves the row resolves to nothing, silently, and
  * that is exactly how the audit trail was welded to the namespace before.

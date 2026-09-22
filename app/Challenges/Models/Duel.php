@@ -4,7 +4,7 @@ namespace App\Challenges\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Members\Models\User;
 
 class Duel extends Model

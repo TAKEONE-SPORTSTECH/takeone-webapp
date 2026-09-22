@@ -2,7 +2,7 @@
 
 namespace App\Scoreboard\Sports\BrazilianJiuJitsu\Mat;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -382,7 +382,7 @@ class MatState extends Model
              * whole risk of the feature.
              */
             'rehearsal' => app(\App\Events\Support\Rehearsal::class)
-                ->active($this->relationLoaded('event') ? $this->event : \App\Models\ClubEvent::find($this->event_id)),
+                ->active($this->relationLoaded('event') ? $this->event : \App\Events\Models\ClubEvent::find($this->event_id)),
 
             /*
              * The stalling count — ON the board since 2026-09-12.

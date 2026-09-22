@@ -39,7 +39,7 @@ class SectionActivityTest extends TestCase
         $me = $this->createUser();
         $this->joinClub($me, $club);
 
-        \App\Models\ClubEvent::create([
+        \App\Events\Models\ClubEvent::create([
             'tenant_id' => $club->id, 'title' => 'Open Mat', 'date' => now()->addWeek()->toDateString(),
             'start_time' => '18:00', 'end_time' => '19:00', 'status' => 'published', 'is_archived' => false,
         ]);

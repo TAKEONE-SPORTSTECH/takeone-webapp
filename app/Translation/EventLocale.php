@@ -143,7 +143,7 @@ class EventLocale
             return self::$checked[$key];
         }
 
-        $event = \App\Models\ClubEvent::where('uuid', $uuid)->first(['id', 'uuid', 'source_locale', 'offered_locales']);
+        $event = \App\Events\Models\ClubEvent::where('uuid', $uuid)->first(['id', 'uuid', 'source_locale', 'offered_locales']);
 
         // No event, no opinion. An unknown uuid is somebody else's 404 to
         // raise; forgetting a language here would be this class deciding

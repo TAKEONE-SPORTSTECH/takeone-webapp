@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Shop\Models\ClubProduct;
 use App\Challenges\Models\Duel;
 use App\Members\Models\User;

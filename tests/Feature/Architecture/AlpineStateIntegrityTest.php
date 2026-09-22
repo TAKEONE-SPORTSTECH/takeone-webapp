@@ -4,7 +4,7 @@ namespace Tests\Feature\Architecture;
 
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventParticipantBan;
 use Tests\TestCase;
 

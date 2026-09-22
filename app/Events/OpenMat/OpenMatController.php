@@ -5,7 +5,7 @@ namespace App\Events\OpenMat;
 use App\Events\Support\EntryService;
 use App\Events\Support\EventAccess;
 use App\Http\Controllers\Controller;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Illuminate\Http\JsonResponse;

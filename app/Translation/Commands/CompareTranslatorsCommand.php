@@ -3,7 +3,7 @@
 namespace App\Translation\Commands;
 
 use App\Models\AiProvider;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Translation\Services\ContentLocales;
 use App\Translation\Services\ProviderChain;
 use App\Translation\Services\TranslationAgent;

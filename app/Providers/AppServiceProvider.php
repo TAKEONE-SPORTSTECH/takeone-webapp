@@ -109,7 +109,7 @@ class AppServiceProvider extends ServiceProvider
          * not be written. See App\Support\ProfileHistorySync.
          */
         \App\Members\Models\Membership::observe(\App\Observers\MembershipObserver::class);
-        \App\Models\ClubEventRegistration::observe(\App\Observers\ClubEventRegistrationObserver::class);
+        \App\Events\Models\ClubEventRegistration::observe(\App\Observers\ClubEventRegistrationObserver::class);
 
         // A new avatar joins the profile's own pictures, whichever path set it.
         \App\Members\Models\User::observe(\App\Observers\UserObserver::class);

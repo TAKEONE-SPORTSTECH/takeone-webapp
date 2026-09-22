@@ -5,8 +5,8 @@ namespace Tests\Feature\Events;
 use App\Events\Support\EntryEditor;
 use App\Members\Models\User;
 use App\Members\Models\UserRelationship;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

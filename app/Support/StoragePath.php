@@ -4,7 +4,7 @@ namespace App\Support;
 
 use App\Models\Business;
 use App\Challenges\Models\Challenge;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Challenges\Models\Duel;
 use App\Events\Models\EventMatch;
 use App\Clubs\Models\Tenant;

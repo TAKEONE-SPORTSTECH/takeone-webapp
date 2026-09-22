@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Translation;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventFeeOption;
 use App\Translation\Jobs\TranslateContent;

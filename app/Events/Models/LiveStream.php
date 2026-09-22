@@ -2,7 +2,7 @@
 
 namespace App\Events\Models;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventMatch;
 use App\Models\MediaFile;
 use App\Events\Support\EventAccess;

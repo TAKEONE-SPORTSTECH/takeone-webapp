@@ -5,11 +5,11 @@ namespace App\Events\Support;
 use App\Events\Contracts\EventType;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\EventAccess;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Support\Cldr;
 use App\Translation\TranslatedDocument;
 use App\Translation\Translations;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 

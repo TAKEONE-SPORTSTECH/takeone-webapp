@@ -3,7 +3,7 @@
 namespace Tests\Feature\Events;
 
 use App\Scoreboard\Sports\Karate\Mat\MatState;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use Tests\TestCase;

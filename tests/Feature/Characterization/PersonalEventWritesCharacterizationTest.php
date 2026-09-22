@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Characterization;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventExpense;
 use App\Events\Models\EventMatch;
@@ -10,7 +10,7 @@ use App\Events\Models\EventOfficial;
 use App\Events\Models\EventParticipantBan;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use Database\Factories\ClubEventRegistrationFactory;
+use Database\Factories\Events\Models\ClubEventRegistrationFactory;
 use Tests\Feature\Contracts\ContractTestCase;
 
 /**

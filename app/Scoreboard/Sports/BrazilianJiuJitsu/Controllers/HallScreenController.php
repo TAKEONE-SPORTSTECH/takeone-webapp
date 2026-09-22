@@ -7,7 +7,7 @@ use App\Events\Support\EventAccess;
 use App\Events\Support\ScreenMedia;
 use App\Events\Support\HallScreenRouter;
 use App\Http\Controllers\Controller;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;

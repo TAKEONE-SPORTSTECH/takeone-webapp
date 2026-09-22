@@ -3,7 +3,7 @@
 namespace App\Events\Sparring;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Clubs\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
 use Illuminate\Http\RedirectResponse;

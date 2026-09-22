@@ -4,8 +4,8 @@ namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\EventRequest;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventFeeOption;
 use App\Clubs\Models\ClubFacility;
 use App\Clubs\Models\Tenant;

@@ -4,7 +4,7 @@ namespace Tests\Feature\Translation;
 
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventChecklistItem;
 use App\Events\Models\EventFeeOption;

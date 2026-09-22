@@ -2,8 +2,8 @@
 
 namespace App\Media;
 
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Challenges\Models\DuelMedia;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;

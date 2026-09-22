@@ -2,7 +2,7 @@
 
 namespace App\Scoreboard;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventMatch;
 
 /**
@@ -64,9 +64,9 @@ class MatEntries
          * corrected photograph failed to reach the wall. Only the mats are
          * widened by this: nothing here reads or returns an entry.
          */
-        $entryIds = \App\Models\ClubEventRegistration::where('event_id', $event->id)
+        $entryIds = \App\Events\Models\ClubEventRegistration::where('event_id', $event->id)
             ->where(fn ($q) => $q->where('id', $registrationId)
-                ->orWhereIn('user_id', \App\Models\ClubEventRegistration::query()
+                ->orWhereIn('user_id', \App\Events\Models\ClubEventRegistration::query()
                     ->where('id', $registrationId)
                     ->whereNotNull('user_id')
                     ->select('user_id')))

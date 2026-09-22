@@ -5,7 +5,7 @@ namespace App\Scoreboard\Sports\Karate\Controllers;
 use App\Scoreboard\Sports\Karate\Mat\MatState;
 use App\Events\Support\EventAccess;
 use App\Http\Controllers\Controller;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventMatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;

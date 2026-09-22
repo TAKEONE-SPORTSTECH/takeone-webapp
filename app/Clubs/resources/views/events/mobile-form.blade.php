@@ -11,7 +11,7 @@
      * Only ACTIVE options are offered: a withdrawn one still exists, because the
      * frozen fee lines on entries already taken point at it.
      */
-    $feeOptionEventIds = \App\Models\ClubEvent::where('tenant_id', $club->id)->pluck('id');
+    $feeOptionEventIds = \App\Events\Models\ClubEvent::where('tenant_id', $club->id)->pluck('id');
 
     $feeOptionsByEvent = \App\Events\Models\EventFeeOption::query()
         ->whereIn('event_id', $feeOptionEventIds)
@@ -29,7 +29,7 @@
         ])->values())
         ->all();
 
-    $lateFeeByEvent = \App\Models\ClubEvent::where('tenant_id', $club->id)
+    $lateFeeByEvent = \App\Events\Models\ClubEvent::where('tenant_id', $club->id)
         ->whereNotNull('late_fee_from')
         ->get(['id', 'late_fee_amount', 'late_fee_from'])
         ->mapWithKeys(function ($event) {

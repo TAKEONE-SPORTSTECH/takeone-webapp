@@ -2,7 +2,7 @@
 
 namespace App\Events\Support;
 
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 
 /**
  * A competitor's face, decided ONCE for every surface that draws one.

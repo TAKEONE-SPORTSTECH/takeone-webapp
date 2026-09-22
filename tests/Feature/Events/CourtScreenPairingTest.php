@@ -4,7 +4,7 @@ namespace Tests\Feature\Events;
 
 use App\Events\Support\PendingScreen;
 use App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplayDevice;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Clubs\Models\Tenant;

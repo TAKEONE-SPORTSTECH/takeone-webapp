@@ -5,7 +5,7 @@ namespace App\Media\Http;
 use App\Events\Support\EventAccess;
 use App\Http\Controllers\Controller;
 use App\Media\MediaVaults;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Models\MediaFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -231,7 +231,7 @@ class MediaStreamController extends Controller
             return false;
         }
 
-        $mine = \App\Models\ClubEventRegistration::where('user_id', $user->id)
+        $mine = \App\Events\Models\ClubEventRegistration::where('user_id', $user->id)
             ->whereIn('id', array_filter([$match->a_competitor_id, $match->b_competitor_id]))
             ->exists();
 

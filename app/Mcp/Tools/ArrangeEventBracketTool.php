@@ -4,7 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Events\EventTypeRegistry;
 use App\Events\Support\EventAccess;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;

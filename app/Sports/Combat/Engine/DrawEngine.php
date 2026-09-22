@@ -3,7 +3,7 @@
 namespace App\Sports\Combat\Engine;
 
 use App\Events\Support\EventFee;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Sports\Combat\SportRegistry;

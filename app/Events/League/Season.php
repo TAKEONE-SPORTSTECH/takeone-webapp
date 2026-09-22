@@ -4,7 +4,7 @@ namespace App\Events\League;
 
 use App\Events\League\Models\LeagueFixture;
 use App\Events\League\Models\LeagueTeam;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;

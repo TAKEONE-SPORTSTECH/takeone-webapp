@@ -9,8 +9,8 @@ use App\Events\Support\BracketView;
 use App\Events\Support\EnrolmentDecision;
 use App\Events\Support\Milestone;
 use App\Events\Support\SyncsDivisions;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Members\Models\User;
@@ -1073,7 +1073,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
             ->where('paid', true)
             ->pluck('registration_id');
 
-        $paid = \App\Models\ClubEventRegistration::whereIn('id', $billed)
+        $paid = \App\Events\Models\ClubEventRegistration::whereIn('id', $billed)
             ->get(['id', 'category_id']);
 
         $charged = \App\Events\Support\EventFee::chargedForMany($event, $paid->pluck('id'), 'participant')['amounts'];
@@ -1104,7 +1104,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
          * revenue — ten paid entrants with no division carried a hundred dinars
          * that appeared in the total and in no line of the table.
          */
-        $unplaced = \App\Models\ClubEventRegistration::where('event_id', $event->id)
+        $unplaced = \App\Events\Models\ClubEventRegistration::where('event_id', $event->id)
             ->where('role', 'participant')
             ->whereNull('category_id')
             ->get(['id', 'paid']);

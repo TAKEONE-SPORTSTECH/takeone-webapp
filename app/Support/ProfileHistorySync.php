@@ -3,8 +3,8 @@
 namespace App\Support;
 
 use App\Clubs\Models\ClubAffiliation;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\TournamentEvent;

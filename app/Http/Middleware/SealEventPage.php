@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Events\Support\PublicEvent;
 use App\Events\Support\PublicEventSkin;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;

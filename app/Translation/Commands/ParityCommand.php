@@ -126,7 +126,7 @@ class ParityCommand extends Command
             return [];
         }
 
-        $event = \App\Models\ClubEvent::query()->where('uuid', strtolower($m[1]))->first();
+        $event = \App\Events\Models\ClubEvent::query()->where('uuid', strtolower($m[1]))->first();
 
         if ($event === null) {
             return [];

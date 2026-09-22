@@ -5,7 +5,7 @@ namespace App\Members\Controllers;
 use App\Http\Controllers\Controller;
 use App\Clubs\Models\ClubAchievement;
 use App\Events\Support\EntryPhoto;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Models\ClubMemberSubscription;
 use App\Challenges\Models\Duel;
 use App\Events\Models\EventMatch;
@@ -105,7 +105,7 @@ class PeopleController extends Controller
      * the event here consumes it as a bound model, so the scalar that follows is
      * the person's uuid.
      */
-    public function showInEvent(Request $request, \App\Models\ClubEvent $event, string $uuid)
+    public function showInEvent(Request $request, \App\Events\Models\ClubEvent $event, string $uuid)
     {
         // Where BACK goes. This page is reachable from several places inside
         // the sealed app — the public participants list, the draw, an
@@ -132,7 +132,7 @@ class PeopleController extends Controller
      * everybody else — so the fallback is at least a page the reader is allowed
      * to open.
      */
-    private function sealedBackUrl(Request $request, \App\Models\ClubEvent $event): string
+    private function sealedBackUrl(Request $request, \App\Events\Models\ClubEvent $event): string
     {
         $uuid = $event->uuid;
 
@@ -553,7 +553,7 @@ class PeopleController extends Controller
          * draw, not off a form the member filled in.
          */
         $entered = $compRegs->pluck('event_id')->filter()->unique();
-        $enteredEvents = $entered->isEmpty() ? collect() : \App\Models\ClubEvent::whereIn('id', $entered)
+        $enteredEvents = $entered->isEmpty() ? collect() : \App\Events\Models\ClubEvent::whereIn('id', $entered)
             ->whereNotNull('sport')
             ->get(['id', 'sport', 'date']);
 

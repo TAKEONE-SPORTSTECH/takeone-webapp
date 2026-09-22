@@ -64,7 +64,7 @@ class LocaleController extends Controller
              * already in, which is the same nothing-happened they would get
              * from any other unavailable language.
              */
-            $event = \App\Models\ClubEvent::where('uuid', $data['event'])->first();
+            $event = \App\Events\Models\ClubEvent::where('uuid', $data['event'])->first();
 
             if ($event && ! \App\Translation\Translations::offers($event, $data['locale'])) {
                 unset($data['locale']);

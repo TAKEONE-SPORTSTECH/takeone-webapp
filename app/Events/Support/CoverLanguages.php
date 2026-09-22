@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Events\EventTypeRegistry;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Support\Cldr;
 use App\Support\SportLabel;
 use App\Translation\Translations;

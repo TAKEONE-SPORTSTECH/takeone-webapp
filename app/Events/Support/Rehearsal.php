@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Members\Models\User;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventRehearsal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;

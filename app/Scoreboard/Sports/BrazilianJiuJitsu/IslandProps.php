@@ -2,7 +2,7 @@
 
 namespace App\Scoreboard\Sports\BrazilianJiuJitsu;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenBoard;
 use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\Ledger;
 use App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\MatState;

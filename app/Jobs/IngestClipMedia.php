@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Media\MediaIngest;
 use App\Media\MediaVaults;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCameraClip;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventRecording;
@@ -14,7 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use App\Models\MediaFileSubject;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 
 /**
  * One clip, from this server's scratch disk into our own storage.
@@ -249,13 +249,13 @@ class IngestClipMedia implements ShouldQueue
     private function announce(int $eventId): void
     {
         rescue(function () use ($eventId) {
-            $event = \App\Models\ClubEvent::find($eventId);
+            $event = \App\Events\Models\ClubEvent::find($eventId);
 
             if ($event === null) {
                 return;
             }
 
-            $audience = \App\Models\ClubEventRegistration::where('event_id', $eventId)
+            $audience = \App\Events\Models\ClubEventRegistration::where('event_id', $eventId)
                 ->pluck('user_id')
                 ->push($event->created_by)
                 ->filter()

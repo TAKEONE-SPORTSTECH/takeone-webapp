@@ -8,8 +8,8 @@ use App\Events\Sports\Karate\Tournament\RunningOrder;
 use App\Events\Support\EventAccess;
 use App\Events\Support\ScreenMedia;
 use App\Http\Controllers\Controller;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventMatch;
 use App\Events\Support\Cameras\MatCameraController;
 use Illuminate\Http\JsonResponse;
@@ -407,7 +407,7 @@ class ScoreboardController extends Controller
             ], 422);
         }
 
-        $registration = \App\Models\ClubEventRegistration::where('event_id', $event->id)->find($registrationId);
+        $registration = \App\Events\Models\ClubEventRegistration::where('event_id', $event->id)->find($registrationId);
 
         abort_unless($registration, 404);
 

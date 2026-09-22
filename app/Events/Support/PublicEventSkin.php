@@ -2,7 +2,7 @@
 
 namespace App\Events\Support;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 
 /**
  * The sealed public event surface: what it looks like, and where its edges are.

@@ -66,7 +66,7 @@
     /* Every language the carousel offers, already rendered into every language
        — see App\Events\Support\CoverLanguages for why the whole set has to
        arrive with the page rather than be fetched per scroll. */
-    $coverEvent = \App\Models\ClubEvent::where('uuid', $e['uuid'] ?? $e['key'])->first();
+    $coverEvent = \App\Events\Models\ClubEvent::where('uuid', $e['uuid'] ?? $e['key'])->first();
     $coverLangs = $coverEvent ? CoverLanguages::for($coverEvent, $e) : [];
 
     /* ===== Where the strip starts =====

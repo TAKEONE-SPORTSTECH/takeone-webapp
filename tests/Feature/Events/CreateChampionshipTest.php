@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Events;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Tests\TestCase;

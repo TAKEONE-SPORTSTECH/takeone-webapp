@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Members\Models\Membership;
 use App\Support\ProfileHistorySync;
 use Illuminate\Console\Command;

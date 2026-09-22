@@ -6,7 +6,7 @@ use App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenDevice as BjjScreen
 use App\Scoreboard\Sports\Karate\HallScreen\CourtDisplayDevice as KarateDevice;
 use App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplayDevice as TaekwondoDevice;
 use App\Events\Support\PendingScreen;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Clubs\Models\Tenant;

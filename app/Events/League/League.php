@@ -6,7 +6,7 @@ use App\Events\AbstractEventType;
 use App\Events\League\Models\LeagueFixture;
 use App\Events\League\Models\LeagueTeam;
 use App\Members\Models\User;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Support\Carbon;
 
 /**

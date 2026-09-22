@@ -2,7 +2,7 @@
 
 namespace App\Events\Models;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Traits\TranslatesAttributes;
 use Illuminate\Database\Eloquent\Model;

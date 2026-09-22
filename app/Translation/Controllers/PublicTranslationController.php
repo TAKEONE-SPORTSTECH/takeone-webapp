@@ -4,7 +4,7 @@ namespace App\Translation\Controllers;
 
 use App\Events\Support\PublicEvent;
 use App\Http\Controllers\Controller;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Translation\Services\ContentLocales;
 use App\Translation\Services\Translator;
 use App\Translation\Translations;

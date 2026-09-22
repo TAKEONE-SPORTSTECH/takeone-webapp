@@ -2,7 +2,7 @@
 
 namespace App\Scoreboard;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Scoreboard\Sports\BrazilianJiuJitsu\Controllers\HallScreenController;
 use App\Scoreboard\Sports\Karate\Controllers\CourtDisplayController as KarateCourtDisplay;
 use App\Scoreboard\Sports\Taekwondo\Controllers\CourtDisplayController as TaekwondoCourtDisplay;

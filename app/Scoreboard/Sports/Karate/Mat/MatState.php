@@ -2,7 +2,7 @@
 
 namespace App\Scoreboard\Sports\Karate\Mat;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Support\Facades\Cache;
 
 /**

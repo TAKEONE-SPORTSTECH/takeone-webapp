@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Events;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventChecklistItem;
 use App\Events\Models\EventOfficial;
 use App\Clubs\Models\Tenant;

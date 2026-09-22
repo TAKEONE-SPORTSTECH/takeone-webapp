@@ -2,7 +2,7 @@
 
 namespace App\Sports\Combat\Engine;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use Illuminate\Support\Collection;

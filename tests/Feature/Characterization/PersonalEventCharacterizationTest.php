@@ -2,13 +2,13 @@
 
 namespace Tests\Feature\Characterization;
 
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventChecklistItem;
 use App\Events\Models\EventParticipantBan;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use Database\Factories\ClubEventRegistrationFactory;
+use Database\Factories\Events\Models\ClubEventRegistrationFactory;
 use Illuminate\Support\Facades\Event as EventFacade;
 use Tests\Feature\Contracts\ContractTestCase;
 

@@ -4,8 +4,8 @@ namespace Tests\Feature\Events;
 
 use App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplay;
 use App\Scoreboard\Sports\Taekwondo\HallScreen\CourtDisplayDevice;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Clubs\Models\Tenant;

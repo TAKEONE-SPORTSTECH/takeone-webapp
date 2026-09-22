@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Events\Support\EventNotifier;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Console\Command;
 
 /**

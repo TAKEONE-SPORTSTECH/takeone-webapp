@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Events\Models;
 
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventOfficial;

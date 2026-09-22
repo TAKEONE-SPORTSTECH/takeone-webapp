@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Contracts;
 
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Members\Models\User;
 
 /**

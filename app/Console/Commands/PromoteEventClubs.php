@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Events\Support\Clubs\ClubPromotion;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventClub;
 use Illuminate\Console\Command;
 

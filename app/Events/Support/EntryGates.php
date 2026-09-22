@@ -2,8 +2,8 @@
 
 namespace App\Events\Support;
 
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventFeeOption;
 use App\Events\Models\EventRegistrationFeeLine;
 

@@ -4,7 +4,7 @@ namespace App\Events\Support;
 
 use App\Events\EventTypeRegistry;
 use App\Members\Models\User;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 
 /**
  * Whether a result may be FILED against this event yet, and how the day starts.

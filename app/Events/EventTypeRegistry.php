@@ -3,7 +3,7 @@
 namespace App\Events;
 
 use App\Events\Contracts\EventType;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 
 /**
  * Resolves the package that owns an event, from config/event_types.php.

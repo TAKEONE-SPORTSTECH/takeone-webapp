@@ -5,7 +5,7 @@ namespace App\Mcp\Tools;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\EventAccess;
 use App\Events\Support\RosterPeople;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;

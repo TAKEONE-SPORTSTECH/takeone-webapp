@@ -4,7 +4,7 @@ namespace App\Events\Generic;
 
 use App\Events\AbstractEventType;
 use App\Events\Support\SyncsDivisions;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Members\Models\User;
 
 /**

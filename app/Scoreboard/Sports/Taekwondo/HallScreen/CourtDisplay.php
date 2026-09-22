@@ -5,8 +5,8 @@ namespace App\Scoreboard\Sports\Taekwondo\HallScreen;
 use App\Events\Sports\Taekwondo\Tournament\RunningOrder;
 use App\Scoreboard\Sports\Taekwondo\Mat\MatState;
 use App\Events\Support\EntryClub;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEvent;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventMatch;
 use Illuminate\Support\Facades\Lang;
 

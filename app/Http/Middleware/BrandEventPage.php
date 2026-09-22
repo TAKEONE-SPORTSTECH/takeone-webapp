@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Events\EventTypeRegistry;
 use App\Events\Support\PublicEventSkin;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;

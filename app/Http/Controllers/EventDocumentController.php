@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\Support\EventAccess;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventDocument;
 use App\Support\DocumentUpload;
 use Illuminate\Http\Request;

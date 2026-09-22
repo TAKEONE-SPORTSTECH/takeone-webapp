@@ -3,7 +3,7 @@
 namespace App\Sports\Combat\Engine;
 
 use App\Support\Cldr;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Sports\Combat\SportRegistry;
 
 /** Derives medalists and the public lifecycle timeline from the bracket data. */

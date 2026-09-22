@@ -2,7 +2,7 @@
 
 namespace App\Events\Support;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventMatchEvent;
 use Illuminate\Support\Facades\Log;
 use Throwable;

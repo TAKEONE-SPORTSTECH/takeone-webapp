@@ -13,9 +13,9 @@ use App\Events\Support\EventFee;
 use App\Events\Support\EventStreams;
 use App\Events\Support\RosterPeople;
 use App\Events\Support\PublicEntry;
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventFeeOption;
-use App\Models\ClubEventRegistration;
+use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventEntryClaim;
@@ -477,7 +477,7 @@ class PersonalEventController extends Controller
             // it on. Organiser only: withholding a draw is not an official's
             // decision, though an official always reads it (EventAccess::
             // drawVisible).
-            'drawReveal' => $event->draw_reveal ?: \App\Models\ClubEvent::DRAW_ALWAYS,
+            'drawReveal' => $event->draw_reveal ?: \App\Events\Models\ClubEvent::DRAW_ALWAYS,
             'drawRevealDate' => $event->date ? Cldr::skeleton($event->date, 'EEEdMMM', 'D j M') : null,
             // Strangers who followed the public link and are waiting to be let
             // in. Rendered by the organiser's console only — accepting one is

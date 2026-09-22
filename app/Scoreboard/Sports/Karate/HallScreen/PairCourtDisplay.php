@@ -2,7 +2,7 @@
 
 namespace App\Scoreboard\Sports\Karate\HallScreen;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventMatch;
 use Illuminate\Console\Command;
 

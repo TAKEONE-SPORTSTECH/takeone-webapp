@@ -2,7 +2,7 @@
 
 namespace App\Scoreboard\Sports\Taekwondo\HallScreen;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;

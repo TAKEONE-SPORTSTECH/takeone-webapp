@@ -2,7 +2,7 @@
 
 namespace App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 
 /**
  * The realtime channel belonging to one hall screen.

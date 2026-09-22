@@ -2,7 +2,7 @@
 
 namespace App\Events\Support\Cameras;
 
-use App\Models\ClubEvent;
+use App\Events\Models\ClubEvent;
 use App\Events\Models\EventCamera;
 use App\Events\Models\EventCameraClip;
 use Illuminate\Support\Collection;

@@ -435,7 +435,7 @@ class McpServerTest extends TestCase
         $club = $this->createClub($coach, ['country' => 'BH']);
         $coach->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
 
-        $event = \App\Models\ClubEvent::create([
+        $event = \App\Events\Models\ClubEvent::create([
             'tenant_id' => $club->id, 'created_by' => $coach->id, 'title' => 'Spring Open',
             'event_type' => 'championship', 'sport' => 'taekwondo', 'scope' => 'internal',
             'date' => now()->addWeeks(2)->toDateString(), 'start_time' => '09:00',
@@ -468,7 +468,7 @@ class McpServerTest extends TestCase
         $owner = $this->createUser();
         $club = $this->createClub($owner, ['country' => 'BH']);
 
-        $event = \App\Models\ClubEvent::create([
+        $event = \App\Events\Models\ClubEvent::create([
             'tenant_id' => $club->id, 'created_by' => $owner->id, 'title' => 'Spring Open',
             'event_type' => 'championship', 'sport' => 'taekwondo', 'scope' => 'internal',
             'date' => now()->addWeeks(2)->toDateString(), 'start_time' => '09:00',
@@ -492,7 +492,7 @@ class McpServerTest extends TestCase
     /**
      * A championship with a generated draw, plus the organiser who runs it.
      *
-     * @return array{0: \App\Models\ClubEvent, 1: \App\Members\Models\User, 2: \App\Events\Models\EventCategory}
+     * @return array{0: \App\Events\Models\ClubEvent, 1: \App\Members\Models\User, 2: \App\Events\Models\EventCategory}
      */
     private function drawnChampionship(): array
     {
@@ -500,7 +500,7 @@ class McpServerTest extends TestCase
         $club = $this->createClub($organiser, ['country' => 'BH']);
         $organiser->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
 
-        $event = \App\Models\ClubEvent::create([
+        $event = \App\Events\Models\ClubEvent::create([
             'tenant_id' => $club->id, 'created_by' => $organiser->id, 'title' => 'Spring Open',
             'event_type' => 'championship', 'sport' => 'taekwondo', 'scope' => 'internal',
             'date' => now()->addWeeks(2)->toDateString(), 'end_date' => now()->addWeeks(2)->toDateString(),
@@ -516,7 +516,7 @@ class McpServerTest extends TestCase
                 'birthdate' => now()->subYears(25)->toDateString(),
             ]);
             $athlete->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
-            \App\Models\ClubEventRegistration::create([
+            \App\Events\Models\ClubEventRegistration::create([
                 'event_id' => $event->id, 'user_id' => $athlete->id, 'category_id' => $category->id,
                 'role' => 'participant', 'paid' => true, 'weight' => 57,
             ]);
@@ -535,7 +535,7 @@ class McpServerTest extends TestCase
      * Attach a real-looking recording to the first bout of a drawn championship,
      * plus an officiating log the timeline is derived from.
      */
-    private function filmFirstBout(\App\Models\ClubEvent $event): \App\Events\Models\EventMatch
+    private function filmFirstBout(\App\Events\Models\ClubEvent $event): \App\Events\Models\EventMatch
     {
         $match = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('match_no')->firstOrFail();
         $match->forceFill(['a_corner' => 'red', 'b_corner' => 'blue', 'court' => '1'])->save();
@@ -637,7 +637,7 @@ class McpServerTest extends TestCase
         // says no — but the fighter still reaches their own bout.
         $event->forceFill(['scope' => 'internal', 'is_archived' => true])->save();
 
-        $athlete = \App\Models\ClubEventRegistration::find($match->a_competitor_id)->user;
+        $athlete = \App\Events\Models\ClubEventRegistration::find($match->a_competitor_id)->user;
         $this->actingAs($athlete->fresh());
 
         $result = $this->callTool(\App\Mcp\Tools\GetBoutVideoTool::class, [
@@ -920,7 +920,7 @@ class McpServerTest extends TestCase
         $club = $this->createClub($organiser, ['country' => 'BH']);
         $organiser->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
 
-        $event = \App\Models\ClubEvent::create([
+        $event = \App\Events\Models\ClubEvent::create([
             'tenant_id' => $club->id, 'created_by' => $organiser->id, 'title' => 'Gulf Open',
             'event_type' => 'championship', 'sport' => 'bjj', 'scope' => 'internal',
             'date' => now()->addWeek()->toDateString(), 'end_date' => now()->addWeek()->toDateString(),
@@ -1029,12 +1029,12 @@ class McpServerTest extends TestCase
     // -------------------------------------------------------------------------
 
     /** An event with one division and one priced entry line, ready to translate. */
-    private function translatableEvent(\App\Members\Models\User $organiser): \App\Models\ClubEvent
+    private function translatableEvent(\App\Members\Models\User $organiser): \App\Events\Models\ClubEvent
     {
         $club = $this->createClub($organiser, ['country' => 'BH']);
         $organiser->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
 
-        $event = \App\Models\ClubEvent::create([
+        $event = \App\Events\Models\ClubEvent::create([
             'tenant_id' => $club->id, 'created_by' => $organiser->id,
             'title' => 'Spring Open', 'description' => 'Come and compete.',
             'location' => 'Isa Sports City', 'event_type' => 'championship',
