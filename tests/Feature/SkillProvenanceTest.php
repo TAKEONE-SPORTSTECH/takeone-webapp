@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubInstructor;
 use App\Clubs\Models\ClubAffiliation;

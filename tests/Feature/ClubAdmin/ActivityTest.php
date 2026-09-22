@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\ClubAdmin;
 
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 use App\Clubs\Models\ClubActivity;
 use Tests\TestCase;
 

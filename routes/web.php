@@ -619,43 +619,18 @@ Route::middleware(['auth', 'two-factor'])->group(function () {
 // no data access. Defined BEFORE the {activity:uuid} route so the literal path
 // isn't captured by uuid binding. Remove before go-live.
 Route::get('/lab/activity-video', function () {
-    $activity = \App\Models\ActivityCatalog::where('uuid', '7c4afd25-1a69-48c1-8ba2-c1b136af0cea')->first();
+    $activity = \App\Platform\Models\ActivityCatalog::where('uuid', '7c4afd25-1a69-48c1-8ba2-c1b136af0cea')->first();
 
     return view('lab.activity-video', ['activity' => $activity]);
 })->middleware(['auth', 'verified', 'role:super-admin', 'throttle:60,1'])->name('lab.activity-video');
 
-// PUBLIC viewer for a global-directory activity — rich, shareable content page
-// (QR-linked). No auth: general sport knowledge, no tenant/personal data. Bound
-// by a non-guessable uuid and throttled to blunt scraping/enumeration; guests
-// are prompted to sign in on the page itself.
-Route::get('/activity/{activity:uuid}', [App\Http\Controllers\ActivityCatalogController::class, 'show'])
-    ->middleware('throttle:120,1')
-    ->name('activity.show');
 
 Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', [App\Http\Controllers\Admin\PlatformController::class, 'home'])->name('platform.index');
 
     // Start impersonating a user (super-admin only — enforced by group middleware).
     Route::post('/impersonate/{user}', [App\Http\Controllers\ImpersonationController::class, 'start'])->name('impersonate.start')->middleware('throttle:admin-write');
 
-    // All Clubs Management
-    Route::get('/clubs', [App\Http\Controllers\Admin\PlatformController::class, 'clubs'])->name('platform.clubs');
-    Route::get('/clubs/create', [App\Http\Controllers\Admin\PlatformController::class, 'createClub'])->name('platform.clubs.create');
-    Route::get('/clubs/{club}/edit', [App\Http\Controllers\Admin\PlatformController::class, 'editClub'])->name('platform.clubs.edit');
-    Route::delete('/clubs/{club}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyClub'])->name('platform.clubs.destroy')->middleware('throttle:admin-write');
-    Route::post('/clubs/{club}/upload-logo', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubLogo'])->name('platform.clubs.upload-logo')->middleware('throttle:uploads');
-    Route::post('/clubs/{club}/upload-cover', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubCover'])->name('platform.clubs.upload-cover')->middleware('throttle:uploads');
 
-    // Global activity directory (shared catalog reused across clubs)
-    Route::get('/activities', [App\Http\Controllers\Admin\PlatformActivityController::class, 'index'])->name('platform.activities');
-    Route::post('/activities', [App\Http\Controllers\Admin\PlatformActivityController::class, 'store'])->name('platform.activities.store')->middleware('throttle:admin-write');
-    Route::post('/activities/generate-content', [App\Http\Controllers\Admin\PlatformActivityController::class, 'generateContent'])->name('platform.activities.generate')->middleware('throttle:copilot');
-    Route::post('/activities/verify-video', [App\Http\Controllers\Admin\PlatformActivityController::class, 'verifyVideo'])->name('platform.activities.verify-video')->middleware('throttle:copilot');
-    Route::put('/activities/{activity:uuid}', [App\Http\Controllers\Admin\PlatformActivityController::class, 'update'])->name('platform.activities.update')->middleware('throttle:admin-write');
-    Route::post('/activities/{activity:uuid}/image', [App\Http\Controllers\Admin\PlatformActivityController::class, 'generateImage'])->name('platform.activities.image')->middleware('throttle:admin-write');
-    Route::post('/activities/upload-image', [App\Http\Controllers\Admin\PlatformActivityController::class, 'uploadImageStore'])->name('platform.activities.upload-image')->middleware('throttle:uploads');
-    Route::post('/activities/{activity:uuid}/set-image', [App\Http\Controllers\Admin\PlatformActivityController::class, 'setImage'])->name('platform.activities.set-image')->middleware('throttle:admin-write');
-    Route::delete('/activities/{activity:uuid}', [App\Http\Controllers\Admin\PlatformActivityController::class, 'destroy'])->name('platform.activities.destroy')->middleware('throttle:admin-write');
 
     // AI provider settings (text / voice / image — local or cloud)
 
@@ -691,44 +666,10 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     // Club create/update and the club-modal lookup endpoints now live in the
     // Clubs module: app/Clubs/routes.php (same prefix, names and middleware).
 
-    // All Members Management
-    Route::get('/members', [App\Http\Controllers\Admin\PlatformController::class, 'members'])->name('platform.members');
-    Route::post('/members', [App\Http\Controllers\Admin\PlatformController::class, 'storeMember'])->name('platform.members.store')->middleware('throttle:admin-write');
-    Route::get('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'showMember'])->name('platform.members.show');
-    Route::get('/members/{id}/edit', [App\Http\Controllers\Admin\PlatformController::class, 'editMember'])->name('platform.members.edit');
-    Route::put('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'updateMember'])->name('platform.members.update')->middleware('throttle:admin-write');
-    Route::delete('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyMember'])->name('platform.members.destroy')->middleware('throttle:admin-write');
-    Route::post('/members/{id}/upload-picture', [App\Http\Controllers\Admin\PlatformController::class, 'uploadMemberPicture'])->name('platform.members.upload-picture')->middleware('throttle:uploads');
-    Route::delete('/members/{id}/profile-picture', [App\Http\Controllers\Admin\PlatformController::class, 'removeMemberPicture'])->name('platform.members.remove-picture')->middleware('throttle:admin-write');
-    Route::put('/members/{id}/profile-picture/visibility', [App\Http\Controllers\Admin\PlatformController::class, 'updateMemberPictureVisibility'])->name('platform.members.picture-visibility')->middleware('throttle:admin-write');
-    Route::post('/members/{id}/health', [App\Http\Controllers\Admin\PlatformController::class, 'storeMemberHealth'])->name('platform.members.store-health')->middleware('throttle:admin-write');
-    Route::put('/members/{id}/health/{recordId}', [App\Http\Controllers\Admin\PlatformController::class, 'updateMemberHealth'])->name('platform.members.update-health')->middleware('throttle:admin-write');
-    Route::post('/members/{id}/tournament', [App\Http\Controllers\Admin\PlatformController::class, 'storeMemberTournament'])->name('platform.members.store-tournament')->middleware('throttle:admin-write');
-    Route::get('/members/{user}/popup', [App\Http\Controllers\Admin\PlatformController::class, 'memberPopup'])->name('platform.members.popup');
-    Route::get('/members/{user}/enroll-data', [App\Http\Controllers\Admin\PlatformController::class, 'memberEnrollData'])->name('platform.members.enroll-data');
-    Route::post('/members/{user}/verify-email', [App\Http\Controllers\Admin\PlatformController::class, 'verifyMemberEmail'])->name('platform.members.verify-email')->middleware('throttle:admin-write');
 
-    // Database Backup & Restore
-    // The error log. Read-only, super-admin only (inherited from this group), and
-    // throttled: it reads a file that grows on the worst day of the year.
-    Route::get('/logs', [App\Http\Controllers\Admin\PlatformController::class, 'logs'])
-        ->middleware('throttle:60,1')->name('platform.logs');
-    Route::get('/settings', [App\Http\Controllers\Admin\PlatformController::class, 'settings'])->name('platform.settings');
-    Route::put('/settings', [App\Http\Controllers\Admin\PlatformController::class, 'updateSettings'])->name('platform.settings.update')->middleware('throttle:admin-write');
-    Route::put('/settings/whatsapp', [App\Http\Controllers\Admin\PlatformController::class, 'updateWhatsAppSettings'])->name('platform.settings.whatsapp.update')->middleware('throttle:admin-write');
-    Route::post('/settings/whatsapp/test', [App\Http\Controllers\Admin\PlatformController::class, 'testWhatsAppConnection'])->name('platform.settings.whatsapp.test')->middleware('throttle:admin-write');
-    Route::post('/settings/whatsapp/send-test', [App\Http\Controllers\Admin\PlatformController::class, 'sendTestWhatsAppMessage'])->name('platform.settings.whatsapp.send-test')->middleware('throttle:admin-write');
 
-    // DANGER ZONE — wipe the platform back to its clean baseline (super-admin only, very tightly throttled).
-    Route::post('/settings/reset-baseline', [App\Http\Controllers\Admin\PlatformController::class, 'resetBaseline'])->name('platform.settings.reset-baseline')->middleware('throttle:reset-baseline');
 
-    Route::get('/backup', [App\Http\Controllers\Admin\PlatformController::class, 'backup'])->name('platform.backup');
-    Route::get('/backup/download', [App\Http\Controllers\Admin\PlatformController::class, 'downloadBackup'])->name('platform.backup.download');
-    Route::post('/backup/restore', [App\Http\Controllers\Admin\PlatformController::class, 'restoreBackup'])->name('platform.backup.restore')->middleware('throttle:backup');
-    Route::get('/backup/export-users', [App\Http\Controllers\Admin\PlatformController::class, 'exportAuthUsers'])->name('platform.backup.export-users');
 
-    // Audit Log
-    Route::get('/audit-log', [App\Http\Controllers\Admin\PlatformController::class, 'auditLog'])->name('platform.audit-log');
 
     // Business (Chain) approvals
     Route::get('/businesses', [App\Http\Controllers\Admin\BusinessApprovalController::class, 'index'])->name('platform.businesses');

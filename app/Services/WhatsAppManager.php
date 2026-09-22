@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 
 /*
  * Shared kernel — deliberately NOT private to a module.
- * Consumed by App\Http\Controllers\Admin\PlatformController (the platform-wide
+ * Consumed by the Platform module's settings screen (the platform-wide
  * gateway settings) and wrapped by the clubs module's own ClubWhatsAppManager. The
  * gateway connection is platform-owned; only the per-club session choice is
  * club-private, and that half moved into App\Clubs.

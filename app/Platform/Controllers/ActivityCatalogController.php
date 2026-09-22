@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Platform\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Platform\Models\ActivityCatalog;
 use Illuminate\Http\Request;
 

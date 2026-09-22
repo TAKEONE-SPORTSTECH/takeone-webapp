@@ -60,14 +60,14 @@ class McpServerTest extends TestCase
         $user = $this->createUser();
         $this->actingAs($user);
 
-        \App\Models\ActivityCatalog::create([
+        \App\Platform\Models\ActivityCatalog::create([
             'name' => 'Taekwondo',
             'videos' => [
                 ['id' => 'aqz-KE-bpKQ', 'title' => 'Poomsae demo', 'source' => 'WT'],
                 ['id' => 'bad-id', 'title' => 'should be dropped'],     // invalid id → filtered out
             ],
         ]);
-        \App\Models\ActivityCatalog::create(['name' => 'Underwater Basket Weaving']);
+        \App\Platform\Models\ActivityCatalog::create(['name' => 'Underwater Basket Weaving']);
 
         $all = $this->callTool(ListActivityCatalogTool::class);
         $this->assertGreaterThanOrEqual(2, $all['total']);

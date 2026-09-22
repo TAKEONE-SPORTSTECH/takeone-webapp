@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 
 /*
  * Shared kernel — deliberately NOT private to a module.
- * Consumed by the platform layer (App\Http\Controllers\Admin\PlatformActivityController).
+ * Consumed by the platform layer (the Platform module's activity screens).
  * The activity catalog is platform-wide, owned by no club, so this stays shared.
  */
 

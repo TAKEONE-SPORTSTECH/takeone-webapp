@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Platform\Controllers;
 
 use App\Events\Support\EntryPhoto;
 use App\Http\Controllers\Controller;

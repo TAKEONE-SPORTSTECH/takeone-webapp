@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 use App\Services\ActivityVideoResearcher;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;

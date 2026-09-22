@@ -66,7 +66,7 @@ class ClubAdminMobileTest extends TestCase
             ->assertOk()
             ->assertDontSee('/activity/', false);
 
-        $entry = \App\Models\ActivityCatalog::contribute(['name' => 'Karate (Kyokushin)']);
+        $entry = \App\Platform\Models\ActivityCatalog::contribute(['name' => 'Karate (Kyokushin)']);
 
         foreach ([true, false] as $isMobile) {
             $req = $isMobile ? $this->actingAs($owner)->mobile() : $this->actingAs($owner);
@@ -107,7 +107,7 @@ class ClubAdminMobileTest extends TestCase
 
         // Same two links on the PUBLIC club page (mobile + desktop), which renders
         // the package cards from its own component.
-        $entry = \App\Models\ActivityCatalog::contribute(['name' => 'Karate']);
+        $entry = \App\Platform\Models\ActivityCatalog::contribute(['name' => 'Karate']);
         $url = '/'.strtolower($club->country ?: 'bh').'/clubs/'.$club->slug;
 
         foreach ([true, false] as $isMobile) {
