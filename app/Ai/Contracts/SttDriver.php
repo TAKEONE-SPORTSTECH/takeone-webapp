@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Ai\Contracts;
+namespace App\Ai\Contracts;
 
 /**
  * Speech-to-text provider. Takes base64-encoded audio + its MIME type and

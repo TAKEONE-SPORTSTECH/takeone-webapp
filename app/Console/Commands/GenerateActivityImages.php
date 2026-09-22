@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ActivityCatalog;
-use App\Services\Ai\AiManager;
+use App\Ai\AiManager;
 use App\Traits\StoresBase64Images;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;

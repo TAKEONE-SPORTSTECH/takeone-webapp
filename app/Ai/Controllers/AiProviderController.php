@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Ai\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\AiProvider;
-use App\Services\Ai\AiManager;
+use App\Ai\Models\AiProvider;
+use App\Ai\AiManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -24,9 +24,9 @@ class AiProviderController extends Controller
         $providers = AiProvider::query()->orderBy('modality')->orderByDesc('is_default')->orderBy('name')->get()
             ->map(fn ($p) => $this->providerPayload($p));
 
-        $mobile = $request->attributes->get('is_mobile') && view()->exists('admin.ai.mobile');
+        $mobile = $request->attributes->get('is_mobile') && view()->exists('ai::mobile');
 
-        return view($mobile ? 'admin.ai.mobile' : 'admin.ai.index', [
+        return view($mobile ? 'ai::mobile' : 'ai::index', [
             'providers' => $providers,
             'modalities' => AiProvider::MODALITIES,
             'drivers' => self::DRIVERS,

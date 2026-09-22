@@ -1,20 +1,20 @@
 <?php
 
-namespace App\Services\Ai;
+namespace App\Ai;
 
-use App\Models\AiProvider;
-use App\Services\Ai\Contracts\ImageDriver;
-use App\Services\Ai\Contracts\SttDriver;
-use App\Services\Ai\Contracts\TextDriver;
-use App\Services\Ai\Contracts\TtsDriver;
-use App\Services\Ai\Drivers\AnthropicTextDriver;
-use App\Services\Ai\Drivers\GeminiImageDriver;
-use App\Services\Ai\Drivers\GeminiSttDriver;
-use App\Services\Ai\Drivers\GeminiTextDriver;
-use App\Services\Ai\Drivers\GeminiTtsDriver;
-use App\Services\Ai\Drivers\OllamaTextDriver;
-use App\Services\Ai\Drivers\OpenAiImageDriver;
-use App\Services\Ai\Drivers\OpenAiTextDriver;
+use App\Ai\Models\AiProvider;
+use App\Ai\Contracts\ImageDriver;
+use App\Ai\Contracts\SttDriver;
+use App\Ai\Contracts\TextDriver;
+use App\Ai\Contracts\TtsDriver;
+use App\Ai\Drivers\AnthropicTextDriver;
+use App\Ai\Drivers\GeminiImageDriver;
+use App\Ai\Drivers\GeminiSttDriver;
+use App\Ai\Drivers\GeminiTextDriver;
+use App\Ai\Drivers\GeminiTtsDriver;
+use App\Ai\Drivers\OllamaTextDriver;
+use App\Ai\Drivers\OpenAiImageDriver;
+use App\Ai\Drivers\OpenAiTextDriver;
 
 /**
  * Resolves the configured AI provider for a modality into a concrete driver.

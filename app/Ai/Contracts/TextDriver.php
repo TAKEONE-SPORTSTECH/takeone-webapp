@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Ai\Contracts;
+namespace App\Ai\Contracts;
 
 /**
  * A text/chat provider that supports tool-calling.

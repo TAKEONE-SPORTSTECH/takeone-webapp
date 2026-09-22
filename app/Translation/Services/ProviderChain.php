@@ -2,11 +2,11 @@
 
 namespace App\Translation\Services;
 
-use App\Models\AiProvider;
-use App\Services\Ai\AiManager;
-use App\Services\Ai\Contracts\TextDriver;
-use App\Services\Ai\Drivers\OllamaTextDriver;
-use App\Services\Ai\Drivers\OpenAiTextDriver;
+use App\Ai\Models\AiProvider;
+use App\Ai\AiManager;
+use App\Ai\Contracts\TextDriver;
+use App\Ai\Drivers\OllamaTextDriver;
+use App\Ai\Drivers\OpenAiTextDriver;
 
 /**
  * Which models may write a translation, in what order.

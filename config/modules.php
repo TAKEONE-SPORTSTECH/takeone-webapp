@@ -43,6 +43,14 @@ return [
          * questionnaire. Its one surface is /f/{uuid}; app/Forms/Forms.php
          * says why this is a vertical of its own rather than part of the club.
          */
+        /*
+         * Language, image, speech and transcription models. Reached from the
+         * super-admin screens, but Translation and the club Copilot both call
+         * it too — see app/Ai/Ai.php for why its door sits at the module root
+         * rather than in a Services/ folder.
+         */
+        \App\Ai\Ai::class,
+
         \App\Forms\Forms::class,
     ],
 

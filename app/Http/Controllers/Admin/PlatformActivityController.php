@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityCatalog;
-use App\Services\Ai\AiManager;
+use App\Ai\AiManager;
 use App\Support\HtmlSanitizer;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;

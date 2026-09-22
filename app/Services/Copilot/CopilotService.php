@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
 class CopilotService
 {
     public function __construct(
-        private \App\Services\Ai\AiManager $ai,
+        private \App\Ai\AiManager $ai,
         private WebSearch $webSearch,
         private WebFetch $webFetch,
     ) {}

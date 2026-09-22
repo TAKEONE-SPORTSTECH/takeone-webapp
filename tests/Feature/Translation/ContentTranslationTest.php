@@ -485,9 +485,9 @@ class ContentTranslationTest extends TestCase
     // ── 9. Not tied to any one AI company ───────────────────────────────────
 
     /** A configured provider row, so the chain has something to pick up. */
-    private function provider(string $driver, array $attrs = []): \App\Models\AiProvider
+    private function provider(string $driver, array $attrs = []): \App\Ai\Models\AiProvider
     {
-        return \App\Models\AiProvider::create(array_merge([
+        return \App\Ai\Models\AiProvider::create(array_merge([
             'name' => ucfirst($driver),
             'modality' => 'text',
             'driver' => $driver,
@@ -575,7 +575,7 @@ class ContentTranslationTest extends TestCase
     {
         $event = $this->makeEvent();
 
-        $this->assertSame(0, \App\Models\AiProvider::count());
+        $this->assertSame(0, \App\Ai\Models\AiProvider::count());
 
         Http::fake(['*' => Http::response(['message' => ['content' => json_encode([
             'title' => 'Abertura da Primavera',

@@ -2,7 +2,7 @@
 
 namespace App\Translation\Services;
 
-use App\Services\Ai\Contracts\TextDriver;
+use App\Ai\Contracts\TextDriver;
 
 /**
  * One model the translator may try: the driver, and enough about it to name in

@@ -613,11 +613,7 @@ Route::middleware(['auth', 'two-factor'])->group(function () {
 });
 
 // Platform Admin routes (Super Admin only)
-// "Write with AI" for rich-text fields — available to any authenticated user
-// (generation only; no data access or writes).
-Route::post('/ai/compose', [App\Http\Controllers\AiComposeController::class, 'compose'])
-    ->middleware(['auth', 'verified', 'throttle:copilot'])
-    ->name('ai.compose');
+// "Write with AI" moved to app/Ai/routes.php with its module.
 
 // TEST/LAB — activity video-section design exploration (mobile). Static mock,
 // no data access. Defined BEFORE the {activity:uuid} route so the literal path
@@ -662,11 +658,6 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::delete('/activities/{activity:uuid}', [App\Http\Controllers\Admin\PlatformActivityController::class, 'destroy'])->name('platform.activities.destroy')->middleware('throttle:admin-write');
 
     // AI provider settings (text / voice / image — local or cloud)
-    Route::get('/ai', [App\Http\Controllers\Admin\AiProviderController::class, 'index'])->name('ai.index');
-    Route::post('/ai/providers', [App\Http\Controllers\Admin\AiProviderController::class, 'store'])->name('ai.store')->middleware('throttle:admin-write');
-    Route::put('/ai/providers/{provider}', [App\Http\Controllers\Admin\AiProviderController::class, 'update'])->name('ai.update')->middleware('throttle:admin-write');
-    Route::delete('/ai/providers/{provider}', [App\Http\Controllers\Admin\AiProviderController::class, 'destroy'])->name('ai.destroy')->middleware('throttle:admin-write');
-    Route::post('/ai/providers/{provider}/test', [App\Http\Controllers\Admin\AiProviderController::class, 'test'])->name('ai.test')->middleware('throttle:admin-write');
 
     /*
      * The platform's own languages. Super-admin only, and inside this group's
@@ -681,11 +672,6 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     // top of the admin-write one — the same guard the public door has.
     Route::post('/languages/{locale}/translate', [App\Http\Controllers\Admin\LanguageController::class, 'translate'])
         ->name('languages.translate')->middleware(['throttle:admin-write', 'throttle:translate']);
-
-    // Which model writes the event translations — Claude, a local Ollama, or
-    // anything else configured above. Separate from the Copilot's default on
-    // purpose; see AiProviderController::translationPrimary().
-    Route::post('/ai/translation-primary', [App\Http\Controllers\Admin\AiProviderController::class, 'translationPrimary'])->name('ai.translation-primary')->middleware('throttle:admin-write');
 
     // Storage — the media vaults video is kept on. None attached is the default
     // and a complete configuration; attaching one moves new media onto it.

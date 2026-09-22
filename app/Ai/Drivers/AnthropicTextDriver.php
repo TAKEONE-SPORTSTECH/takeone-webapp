@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Ai\Drivers;
+namespace App\Ai\Drivers;
 
-use App\Services\Ai\Contracts\TextDriver;
+use App\Ai\Contracts\TextDriver;
 use Illuminate\Support\Facades\Http;
 
 /**

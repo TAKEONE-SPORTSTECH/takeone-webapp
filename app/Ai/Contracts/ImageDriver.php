@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Ai\Contracts;
+namespace App\Ai\Contracts;
 
 /**
  * An image-generation provider. Returns the generated image as a

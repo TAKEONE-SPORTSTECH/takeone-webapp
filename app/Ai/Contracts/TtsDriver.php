@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Ai\Contracts;
+namespace App\Ai\Contracts;
 
 /**
  * Text-to-speech provider. Returns ready-to-play audio.

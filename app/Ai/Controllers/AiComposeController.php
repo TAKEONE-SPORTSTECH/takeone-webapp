@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Ai\Controllers;
 
-use App\Services\Ai\AiManager;
+use App\Http\Controllers\Controller;
+use App\Ai\AiManager;
 use App\Support\HtmlSanitizer;
 use Illuminate\Http\Request;
 

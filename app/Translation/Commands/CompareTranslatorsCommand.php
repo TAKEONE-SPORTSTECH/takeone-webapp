@@ -2,7 +2,7 @@
 
 namespace App\Translation\Commands;
 
-use App\Models\AiProvider;
+use App\Ai\Models\AiProvider;
 use App\Events\Models\ClubEvent;
 use App\Translation\Services\ContentLocales;
 use App\Translation\Services\ProviderChain;

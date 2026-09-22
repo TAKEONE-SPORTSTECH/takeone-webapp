@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\Ai\AiManager;
+use App\Ai\AiManager;
 use App\Services\ClubCreationService;
 use App\Services\Copilot\CopilotService;
 use Illuminate\Http\Request;
