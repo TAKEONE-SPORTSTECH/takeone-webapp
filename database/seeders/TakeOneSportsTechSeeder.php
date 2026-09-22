@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\Tenant;

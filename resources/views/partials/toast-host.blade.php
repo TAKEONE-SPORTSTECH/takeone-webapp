@@ -20,7 +20,7 @@
       · the platform-wide toasts_enabled switch, errors and warnings always through
 --}}
     <!-- Toast Container (Alpine.js) -->
-    @php $toastsEnabled = \App\Models\PlatformSetting::getBool('toasts_enabled', true); @endphp
+    @php $toastsEnabled = \App\Platform\Models\PlatformSetting::getBool('toasts_enabled', true); @endphp
     <div x-data="toastManager()" class="fixed top-20 right-4 z-[200] space-y-2 pointer-events-none">
         <template x-for="toast in toasts" :key="toast.id">
             <div x-show="toast.visible"

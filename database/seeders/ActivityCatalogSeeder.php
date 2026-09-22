@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 use App\Clubs\Models\ClubActivity;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Eloquent\Builder;

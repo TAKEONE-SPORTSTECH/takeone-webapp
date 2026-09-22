@@ -2,7 +2,7 @@
 
 namespace Database\Seeders\Concerns;
 
-use App\Models\ActivityCatalog;
+use App\Platform\Models\ActivityCatalog;
 
 /**
  * Shared machinery for the activity-content seeders: turns a compact per-sport

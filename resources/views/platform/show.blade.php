@@ -593,7 +593,7 @@
                     })->toArray();
 
                     // Public directory page per activity name — one query for the grid.
-                    $activityLinks = \App\Models\ActivityCatalog::linksForNames(
+                    $activityLinks = \App\Platform\Models\ActivityCatalog::linksForNames(
                         $club->packages->flatMap(fn ($p) => $p->activities ?? [])->pluck('name')
                     );
                 @endphp

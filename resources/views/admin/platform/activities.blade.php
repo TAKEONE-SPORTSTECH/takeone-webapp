@@ -246,7 +246,7 @@
                 <div>
                     <div class="flex items-center justify-between mb-1">
                         <label class="block text-sm font-medium text-gray-700">Videos <span class="text-muted-foreground font-normal">(the first is the featured “what is it” clip)</span></label>
-                        <span class="text-xs text-muted-foreground" x-text="form.videos.length + '/' + {{ \App\Models\ActivityCatalog::MAX_VIDEOS }}"></span>
+                        <span class="text-xs text-muted-foreground" x-text="form.videos.length + '/' + {{ \App\Platform\Models\ActivityCatalog::MAX_VIDEOS }}"></span>
                     </div>
                     <p class="text-xs text-muted-foreground mb-2">Generated with the write-up, or add your own. Reorder with the arrows — the top one is featured. All links are verified before saving.</p>
 
@@ -277,7 +277,7 @@
                             <i class="bi bi-youtube absolute left-3 top-1/2 -translate-y-1/2 text-red-500"></i>
                             <input type="text" x-model="videoUrl" @keydown.enter.prevent="addVideoByUrl()" placeholder="Paste a YouTube link to add…" class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
                         </div>
-                        <button type="button" @click="addVideoByUrl()" :disabled="vidBusy || !videoUrl.trim() || form.videos.length >= {{ \App\Models\ActivityCatalog::MAX_VIDEOS }}"
+                        <button type="button" @click="addVideoByUrl()" :disabled="vidBusy || !videoUrl.trim() || form.videos.length >= {{ \App\Platform\Models\ActivityCatalog::MAX_VIDEOS }}"
                                 class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-primary text-primary hover:bg-primary hover:text-white transition-colors disabled:opacity-50 flex-shrink-0">
                             <i class="bi" :class="vidBusy ? 'bi-arrow-repeat animate-spin' : 'bi-plus-lg'"></i><span>Add</span>
                         </button>
@@ -388,7 +388,7 @@ function activityDirectory(initial) {
         async addVideoByUrl() {
             const url = (this.videoUrl || '').trim();
             if (this.vidBusy || !url) return;
-            if (this.form.videos.length >= {{ \App\Models\ActivityCatalog::MAX_VIDEOS }}) { window.showToast && window.showToast('error', 'Maximum videos reached.'); return; }
+            if (this.form.videos.length >= {{ \App\Platform\Models\ActivityCatalog::MAX_VIDEOS }}) { window.showToast && window.showToast('error', 'Maximum videos reached.'); return; }
             this.vidBusy = true;
             try {
                 const res = await fetch(this.verifyVideoUrl, {

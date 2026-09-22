@@ -17,7 +17,7 @@
 
 @php
     $vids = collect($videos)
-        ->filter(fn ($v) => is_array($v) && preg_match(\App\Models\ActivityCatalog::YOUTUBE_ID, (string) ($v['id'] ?? '')))
+        ->filter(fn ($v) => is_array($v) && preg_match(\App\Platform\Models\ActivityCatalog::YOUTUBE_ID, (string) ($v['id'] ?? '')))
         ->values();
 @endphp
 
