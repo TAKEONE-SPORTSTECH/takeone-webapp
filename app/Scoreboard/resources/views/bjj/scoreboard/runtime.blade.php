@@ -126,6 +126,12 @@
         'pen_short' => __('scoreboard::bjj_messages.pen_short'),
     ];
 @endphp
+{{-- The shared "Start the competition?" prompt. One wording, one look, one
+     behaviour across all three sports, because the rule behind it is shared —
+     see App\Events\Support\ResultFiling. @once-guarded, so the desktop and
+     mobile consoles including this runtime cannot double it. --}}
+@include('scoreboard::partials.start-day-prompt')
+
 <script>
 (function () {
   'use strict';
@@ -206,7 +212,7 @@
    * the system working, and it is not a sentence to put in front of an
    * official mid-bout.
    */
-  function send(command, payload, done, quiet) {
+  function send(command, payload, done, quiet, again) {
     var body = Object.assign({ mat: MAT, command: command }, payload || {});
 
     return fetch(URL_CMD, {
@@ -231,7 +237,15 @@
 
         paint();
 
-        if (!res.ok) { if (!quiet) flash(res.body.message || ''); return null; }
+        if (!res.ok) {
+          // The one refusal with a way FORWARD — see offerStartDay().
+          if (res.body.can_start_day && again !== false) {
+            offerStartDay(command, payload, done, quiet);
+            return null;
+          }
+          if (!quiet) flash(res.body.message || '');
+          return null;
+        }
         if (done) done(res.body);
         return res.body;
       })
@@ -327,6 +341,27 @@
   }
 
   function closeModal() { var s = el('scrim'); if (s) s.hidden = true; modalOk = null; }
+
+  /*
+   * The day has not been started, and an official is holding a finished bout.
+   *
+   * Refusing and stopping there is what cost a championship its flow on
+   * 2026-09-18: the message said the competition had not started, about a
+   * competition that visibly had, and the button that would have cleared it
+   * was on somebody else's screen. So the refusal carries an offer, the
+   * official takes it in one more tap, and the command they actually pressed
+   * is sent again straight afterwards.
+   *
+   * `again` is false on the retry, so a second refusal cannot re-offer and
+   * trap the console in a loop.
+   */
+  function offerStartDay(command, payload, done, quiet) {
+    StartDayPrompt.ask(function () {
+      send('start_day', {}, function () {
+        send(command, payload, done, quiet, false);
+      });
+    });
+  }
 
   /* ── The console's own beeper ──────────────────────────────────────────
      The draft's (drafts/Score Control Board.html), verbatim: a short square

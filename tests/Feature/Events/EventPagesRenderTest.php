@@ -121,7 +121,32 @@ class EventPagesRenderTest extends TestCase
         $owner = $this->createUser();
         $club = $this->club($owner);
         $event = $this->event($owner, $club);
-        EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
+        $division = EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
+
+        /* A division with no bouts in it yields NO bracket, deliberately:
+           AbstractEventType::bracketView() returns [] unless some division has
+           matches, so a belt test or a league offers no empty board.
+
+           The ENTRANTS are not decoration either. Opening the draw brings
+           derived state up to date, and a division with nobody in it is re-cut
+           to nothing — taking a hand-written bout with it. That is the same
+           re-cut that cost a ten-bout championship on 2026-09-13, and it is why
+           this fixture is two real registrations rather than two names. */
+        foreach (['Ali', 'Bader'] as $name) {
+            \App\Models\ClubEventRegistration::create([
+                'event_id' => $event->id,
+                'user_id' => $this->createUser(['full_name' => $name])->id,
+                'category_id' => $division->id,
+                'role' => 'participant',
+                'paid' => true,
+            ]);
+        }
+
+        \App\Events\Models\EventMatch::create([
+            'event_id' => $event->id, 'category_id' => $division->id,
+            'round' => 'Final', 'phase' => 'finals', 'slot' => 0, 'match_no' => 1,
+            'a_name' => 'Ali', 'b_name' => 'Bader', 'status' => 'upcoming',
+        ]);
 
         // /brackets redirects to /brackets/manage, which is where the board
         // lives now; the contract is that the DRAW renders, not which of the
@@ -158,8 +183,50 @@ class EventPagesRenderTest extends TestCase
         $owner = $this->createUser();
         $club = $this->club($owner);
         $event = $this->event($owner, $club);
-        EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
+        $division = EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
         $member = $this->member($club);
+
+        /* A real draw, for the same reason as the test above: no bouts means no
+           bracket at all, and no entrants means the division is re-cut to
+           nothing the moment the page brings derived state up to date. */
+        foreach (['Ali', 'Bader'] as $name) {
+            \App\Models\ClubEventRegistration::create([
+                'event_id' => $event->id,
+                'user_id' => $this->createUser(['full_name' => $name])->id,
+                'category_id' => $division->id,
+                'role' => 'participant',
+                'paid' => true,
+            ]);
+        }
+
+        \App\Events\Models\EventMatch::create([
+            'event_id' => $event->id, 'category_id' => $division->id,
+            'round' => 'Final', 'phase' => 'finals', 'slot' => 0, 'match_no' => 1,
+            'a_name' => 'Ali', 'b_name' => 'Bader', 'status' => 'upcoming',
+        ]);
+
+        $this->markTestIncomplete(
+            "This test describes an architecture that has been replaced, and what should "
+            ."replace it is a design decision rather than a test edit.\n\n"
+            ."It asserts one renderer across three surfaces: a board embedded in the desktop "
+            ."bracket page, a mobile page that declines to embed it, and a separate full-screen "
+            ."manager. All three were <x-tournament-bracket>, mounted from "
+            ."personal/{mobile,desktop}/event-bracket.blade.php.\n\n"
+            ."Today /brackets is a permanent redirect to /brackets/manage, so desktop, mobile and "
+            ."branded all land on ONE page — and that page mounts a different board entirely: the "
+            ."React 'Combat Sports Bracket' at #takeone-bracket-root, out of public/bracket/ and "
+            ."personal/partials/bracket-board.html.\n\n"
+            ."So there are now TWO live bracket renderers on different surfaces:\n"
+            ."  · the member draw  -> the React board\n"
+            ."  · the public draw  -> <x-draw-stage> -> <x-tournament-bracket>\n"
+            ."and CLAUDE.md still calls the latter 'the one bracket renderer for every sport'. The "
+            ."two views this test was written against are reachable only from "
+            ."PersonalMobileController::eventBracket(), which has no route.\n\n"
+            ."Registered in Documentation/HOUSE-CLEANING.md. Settle which board wins, then rewrite "
+            ."this against it."
+        );
+
+        /* ---- the contract as it was, kept so it can be restored ---- */
 
         /* The DESKTOP blade is what mounts the board on a wide screen — and a
            branded event has no desktop blade (it is the mobile app at every

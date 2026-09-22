@@ -1621,4 +1621,21 @@ return [
     'run_order_place_here' => 'Place it here',
     'third_place_on' => 'Third place is played off. :count division(s) gained a bronze bout.',
     'third_place_off' => 'Third place is shared between both beaten semi-finalists. :count bout(s) removed, :kept kept because they already had a result.',
+    /*
+     * A result offered before the organiser has started the day.
+     *
+     * Shared across every sport (App\Events\Support\ResultFiling): whether a
+     * competition has begun is not a rule-book question, so it is not a
+     * per-sport string either. It says what to do INSTEAD, because a refusal
+     * with no way forward is how an official ends up phoning somebody.
+     */
+    'result_before_start' => 'The competition has not been started, so no result can be recorded yet. Run the mat as much as you like — then start the event when the day begins.',
+    /*
+     * The console's offer after a filing command was refused, and the reason
+     * the refusal is not a dead end. Shared across every sport because the rule
+     * behind it is (App\Events\Support\ResultFiling).
+     */
+    'start_day_title' => 'Start the competition?',
+    'start_day_body' => 'This result cannot be recorded until the day has started. Starting it here records that you did, and notes that the pre-event checks were not walked.',
+    'start_day_confirm' => 'Start and record',
 ];

@@ -1399,4 +1399,10 @@ return [
     'run_order_tap_to_move' => 'اضغط على جزء لتحريكه.',
     'run_order_tap_to_place' => 'الآن اضغط على مكانه الجديد.',
     'run_order_place_here' => 'ضعه هنا',
+    // See lang/en/events.php — App\Events\Support\ResultFiling.
+    'result_before_start' => 'لم تبدأ المنافسة بعد، لذا لا يمكن تسجيل أي نتيجة. يمكنك تشغيل البساط للتجربة، ثم ابدأ الحدث عند بداية اليوم.',
+    // See lang/en/events.php — App\Events\Support\ResultFiling.
+    'start_day_title' => 'هل تريد بدء المنافسة؟',
+    'start_day_body' => 'لا يمكن تسجيل هذه النتيجة قبل بدء اليوم. البدء من هنا يُسجّل باسمك، ويُشار إلى أن فحوصات ما قبل الحدث لم تُستكمل.',
+    'start_day_confirm' => 'ابدأ وسجّل',
 ];

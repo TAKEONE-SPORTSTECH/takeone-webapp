@@ -68,6 +68,8 @@ class Scoring
         'corner',      // {side, name, club, country, flag} — fix what is announced
         'meta',        // {tournament, division, matchNo, courtLabel, stage} — header text
         'rules',       // {senshuRule, autoSenshu, winByPenalties, atoshiWarn, timeUpBuzzer, gapOn, gap, warning}
+        'start_day',   // put the competition under way FROM THE MAT, after a
+                       //   filing command was refused — ResultFiling::startDay()
     ];
 
     /**
@@ -83,6 +85,20 @@ class Scoring
     ];
 
     public function __construct(private BeltRank $belts) {}
+
+    /**
+     * Commands that put a result on the RECORD.
+     *
+     * The command NAMES are this sport's own vocabulary; the RULE about them is
+     * not. Whether a competition has begun is common to every martial art, so
+     * the decision lives in App\Events\Support\ResultFiling and this constant
+     * only says which of our commands it applies to.
+     *
+     * This sport had NO such check until 2026-09-22: a result could be written
+     * into the bracket for an event nobody had started, with nothing recorded
+     * about who did it.
+     */
+    private const FILES_A_RESULT = ['finish', 'commit'];
 
     /**
      * Apply one command and hand back the new state.
@@ -106,6 +122,18 @@ class Scoring
             throw new \RuntimeException(__('scoreboard::karate_messages.commit_no_bout'));
         }
 
+        /*
+         * A result cannot be filed against a competition nobody has started.
+         *
+         * Shared rule, shared message, shared escape hatch: the console turns
+         * the EventNotUnderWay this throws into a "Start the day?" confirmation
+         * so a scoring table with a finished bout is never stuck waiting for
+         * somebody else's screen.
+         */
+        if (in_array($command, self::FILES_A_RESULT, true)) {
+            app(\App\Events\Support\ResultFiling::class)->refuseUnlessUnderWay($event);
+        }
+
         // The clock is stored as "remaining as of a moment"; before anything
         // else touches it, bring it up to now. Otherwise a pause five seconds
         // after a start would record the time as though nothing had elapsed.
@@ -124,6 +152,14 @@ class Scoring
             'finish' => $this->declareEnd($state, $payload),
             'clear' => $this->clear($state),
             'commit' => $this->commit($event, $court, $state),
+            /*
+             * Start the competition from the scoring table. Offered by the
+             * console only after a filing command was refused, so it is always
+             * a deliberate second tap. Locks the draw as well as stamping
+             * started_at — see ResultFiling::startDay().
+             */
+            'start_day' => app(\App\Events\Support\ResultFiling::class)
+                ->startDay($event, \Illuminate\Support\Facades\Auth::user()),
             // Neither of these touches the bout: they decide whether the hall is
             // still being shown a celebration for a result that is already
             // decided and not yet filed.

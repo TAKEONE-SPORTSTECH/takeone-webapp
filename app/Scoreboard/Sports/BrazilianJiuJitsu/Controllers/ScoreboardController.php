@@ -370,6 +370,16 @@ class ScoreboardController extends Controller
                 'state' => $fresh->present(),
                 'log' => $this->ledger->timeline($event, $data['mat'], $fresh->match_id),
                 'queue' => $this->queue($event, $data['mat']),
+                /*
+                 * Tells the console this refusal has a way FORWARD.
+                 *
+                 * Every other refusal means "do something different"; this one
+                 * means "do the same thing after one more tap", so the console
+                 * offers a Start-the-day confirmation instead of a dead end.
+                 * Refusing with no way forward is what stopped a championship
+                 * on 2026-09-18. See App\Events\Support\EventNotUnderWay.
+                 */
+                'can_start_day' => $e instanceof \App\Events\Support\EventNotUnderWay,
             ], 422);
         }
 

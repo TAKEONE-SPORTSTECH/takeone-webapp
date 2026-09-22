@@ -50,6 +50,12 @@ class KarateScoringSafetyTest extends TestCase
             // (5626c24a) — it re-reads both corners from the entries and
             // touches nothing else, which is why it is not in NEEDS_BOUT.
             'resync', 'refresh', 'board', 'intro', 'duration', 'corner', 'meta', 'rules',
+            // 'start_day' puts the competition under way FROM THE MAT. It is
+            // offered by the console only after a filing command came back
+            // refused, so the day still begins by a deliberate act — just not
+            // one that requires the organiser's screen, which is what stopped a
+            // championship on 2026-09-18.
+            'start_day',
         ], Scoring::COMMANDS);
     }
 

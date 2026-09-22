@@ -87,6 +87,7 @@ class Scoring
         'meta',       // {tournament, division, matchNo, courtLabel, stage, referee, ruleset}
         'rules',      // {warning, penalty_limit, penalty_warn_at, referee_decision, …}
         'theme',      // {theme: arena|venue} — dark hall, or a bright one
+        'start_day',  // put the competition under way FROM THE MAT — see below
     ];
 
     /**
@@ -218,17 +219,22 @@ class Scoring
         }
 
         /*
-         * The day starts ITSELF rather than refusing. See startTheDay().
+         * A result cannot be filed against a competition nobody has started.
          *
-         * A REHEARSAL is exempt and never reaches here: it exists to run
-         * exactly these three commands with the event's state snapshotted and
-         * every athlete-facing message held back (App\Events\Support\Rehearsal),
-         * so a practice bout still cannot start a competition by accident.
+         * The rule is SHARED — App\Events\Support\ResultFiling — and this is
+         * the only sport that ever had it. Karate and taekwondo had no check at
+         * all, so on those mats a result went into the bracket for an event
+         * that had not begun, with nothing recorded about who did it.
+         *
+         * This used to START THE DAY here instead of refusing, which is
+         * convenient and wrong: a competition is put under way by the
+         * organiser, deliberately, after their pre-flight checks — not as a
+         * side effect of an official on one mat pressing a button. A REHEARSAL
+         * is the sanctioned way to run the mat beforehand, and ResultFiling
+         * lets one through.
          */
-        if (in_array($command, self::NEEDS_EVENT_STARTED, true)
-            && ! $event->hasStarted()
-            && ! app(\App\Events\Support\Rehearsal::class)->active($event)) {
-            $this->startTheDay($event);
+        if (in_array($command, self::NEEDS_EVENT_STARTED, true)) {
+            app(\App\Events\Support\ResultFiling::class)->refuseUnlessUnderWay($event);
         }
 
         // The clock is stored as "remaining as of a moment"; before anything
@@ -265,6 +271,18 @@ class Scoring
             'reset' => $this->reset($state),
             'clear' => $this->clear($state),
             'commit' => $this->commit($event, $court, $state),
+            /*
+             * Start the competition from the scoring table.
+             *
+             * The console offers this only after a filing command came back
+             * EventNotUnderWay, so it is always a deliberate second tap by an
+             * official who has just been told the day has not begun — never a
+             * silent side effect of the result itself. Shared with every other
+             * sport, and it locks the draw as well as stamping started_at; see
+             * App\Events\Support\ResultFiling::startDay().
+             */
+            'start_day' => app(\App\Events\Support\ResultFiling::class)
+                ->startDay($event, $this->operator),
             // Neither of these touches the match: they decide whether the hall
             // is still being shown a celebration for a result that is already
             // decided and not yet filed.
@@ -368,62 +386,6 @@ class Scoring
     }
 
     /* ---------------- The day ---------------- */
-
-    /**
-     * Put the competition under way because somebody is filing a real result.
-     *
-     * ── Why this replaced a refusal ────────────────────────────────────────
-     *
-     * `end`, `decision` and `commit` are the three acts that outlive the mat —
-     * they write a winner into the bracket. They used to be refused outright
-     * until an organiser pressed Start on the event console, and the argument
-     * was that starting the day is a person's decision which already has a
-     * button. The argument was right about the decision and wrong about the
-     * place: the refusal lands on a SCORING TABLE, mid-competition, with a
-     * finished bout on the mat and a hall waiting, and the button that clears
-     * it is on somebody else's screen. The official reads "the competition has
-     * not been started" about a competition that visibly has.
-     *
-     * It cost a real championship its flow on 2026-09-18 — two bouts fought,
-     * neither recordable, the running order stuck behind them.
-     *
-     * A rehearsal never reaches here (it is exempt at the call site), so an
-     * official arriving at this line has declared no practice and is filing a
-     * real result. The honest reading is that the day began and the button was
-     * missed, so this records that rather than arguing with it.
-     *
-     * ── What it must do, and why the second half matters ───────────────────
-     *
-     * Writing `started_at` alone is the trap: the draw stays `provisional`, and
-     * the next thing to call DrawEngine::ensure() re-cuts the division as the
-     * final paid-only draw — DELETING the bout that was just filed along with
-     * every other result on it. A ten-bout championship was lost that way on
-     * 2026-09-13. So the draw is locked here, through the package's own hook,
-     * exactly as the console's Start does it, before the result is written.
-     *
-     * Best-effort by design: this is bookkeeping around somebody's result, and
-     * a failure here must never cost them the result itself. If the lock throws,
-     * the day is still started and the bout is still filed — and DrawEngine's
-     * own guard refuses to re-cut a division that has been fought, which is the
-     * belt to this pair of braces.
-     */
-    private function startTheDay(ClubEvent $event): void
-    {
-        $event->started_at = now();
-        // The official at the table, not the organiser who never pressed it —
-        // the record should say who actually put the day under way.
-        $event->started_by = $this->operator?->id ?? $event->created_by;
-        // Started from the mat, so the organiser's pre-flight checklist was by
-        // definition not walked. Flagged rather than hidden.
-        $event->start_overridden = true;
-        $event->save();
-
-        try {
-            app(EventTypeRegistry::class)->for($event)->onEntrantsChanged($event->fresh());
-        } catch (\Throwable $e) {
-            report($e);
-        }
-    }
 
     /* ---------------- The clock ---------------- */
 

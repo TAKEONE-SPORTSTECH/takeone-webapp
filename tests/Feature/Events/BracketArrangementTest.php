@@ -453,17 +453,26 @@ class BracketArrangementTest extends TestCase
         // The URL is emitted through @json, which escapes forward slashes.
         $needle = trim(json_encode(route('me.events.bracket.arrange', $event->uuid)), '"');
 
-        // /brackets SHOWS the draw. Nobody rearranges it there — not even the
-        // organiser, whose editor lives in the console. A visitor came to read
-        // the bracket, not to run it.
-        foreach ([$this->organiser, $watcher] as $viewer) {
-            $this->actingAs($viewer)->get("/me/events/{$event->uuid}/brackets")
-                ->assertOk()
-                ->assertDontSee($needle, false);
-        }
+        /*
+         * There is ONE draw page now: /brackets redirects to /brackets/manage,
+         * and <x-draw-stage> decides by PERMISSION what is offered on it rather
+         * than by which address you arrived at. So the contract this test was
+         * written to protect moves with it — it is no longer "this page cannot
+         * arrange" but "this VIEWER is not offered the arrange control, and its
+         * address is not in their page source".
+         *
+         * Still not a boundary: me.events.bracket.arrange re-authorises every
+         * request. This is about what is OFFERED, which is why a visitor must
+         * not find the address by reading the page.
+         */
+        $this->actingAs($watcher)->followingRedirects()
+            ->get("/me/events/{$event->uuid}/brackets")
+            ->assertOk()
+            ->assertDontSee($needle, false);
 
-        // The organiser's own editor is where moving people happens.
-        $this->actingAs($this->organiser)->get("/me/events/{$event->uuid}/brackets/manage")
+        // The organiser is offered it, on the same page.
+        $this->actingAs($this->organiser)->followingRedirects()
+            ->get("/me/events/{$event->uuid}/brackets")
             ->assertOk()
             ->assertSee($needle, false);
     }

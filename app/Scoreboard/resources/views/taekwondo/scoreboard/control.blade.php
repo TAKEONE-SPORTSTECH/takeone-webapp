@@ -578,7 +578,11 @@
      worse than one that lags 40ms, because the hall is watching the other
      screen and the two would disagree. */
   var busy = false;
-  function send(command, payload) {
+  /*
+   * `again` is false on the retry that follows a Start-the-day confirmation,
+   * so a second refusal cannot re-offer and trap the console in a loop.
+   */
+  function send(command, payload, again) {
     if (busy) return Promise.resolve();
     busy = true;
     return fetch(URL_CMD, {
@@ -597,7 +601,21 @@
         if (d.queue) { QUEUE = d.queue; }
         if (d.corners) { CORNERS = d.corners; }
         if (d.state || d.queue) { paint(); }
-        if (!d.success) throw new Error(d.message || 'Command failed');
+        if (!d.success) {
+          /*
+           * The one refusal with a way FORWARD: the day has not been started
+           * and this console is holding a finished bout. Offer it rather than
+           * sending the official to find the organiser's screen — see
+           * App\Events\Support\ResultFiling.
+           */
+          if (d.can_start_day && again !== false) {
+            StartDayPrompt.ask(function () {
+              send('start_day', {}).then(function () { send(command, payload, false); });
+            });
+            return;
+          }
+          throw new Error(d.message || 'Command failed');
+        }
       })
       .catch(function (e) { alertBar(e.message); })
       .finally(function () { busy = false; });
@@ -1461,5 +1479,6 @@
   }
 })();
 </script>
+@include('scoreboard::partials.start-day-prompt')
 </body>
 </html>
