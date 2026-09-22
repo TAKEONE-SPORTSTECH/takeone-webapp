@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 
 class ClubPackage extends Model
 {

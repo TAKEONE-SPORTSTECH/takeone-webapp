@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Members\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

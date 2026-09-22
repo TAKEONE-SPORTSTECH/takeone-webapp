@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Members\Models\AffiliationMedia;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Members\Models\SkillAcquisition;
 use App\Members\Models\User;
 

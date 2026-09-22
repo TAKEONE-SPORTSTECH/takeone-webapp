@@ -30,7 +30,7 @@ return new class extends Migration
         });
 
         // Backfill existing active/pending rows using Eloquent (DB-agnostic)
-        \App\Models\ClubMemberSubscription::whereIn('status', ['active', 'pending'])
+        \App\Clubs\Models\ClubMemberSubscription::whereIn('status', ['active', 'pending'])
             ->each(function ($sub) {
                 $sub->update(['active_key' => "{$sub->tenant_id}:{$sub->user_id}:" . ($sub->package_id ?? 'null')]);
             });

@@ -41,7 +41,7 @@ class MorphMap
             'club_facility' => \App\Clubs\Models\ClubFacility::class,
             'club_gallery_image' => \App\Clubs\Models\ClubGalleryImage::class,
             'club_instructor' => \App\Clubs\Models\ClubInstructor::class,
-            'club_member_subscription' => \App\Models\ClubMemberSubscription::class,
+            'club_member_subscription' => \App\Clubs\Models\ClubMemberSubscription::class,
             'club_message' => \App\Clubs\Models\ClubMessage::class,
             'club_notification' => \App\Clubs\Models\ClubNotification::class,
             'club_package' => \App\Clubs\Models\ClubPackage::class,
@@ -56,7 +56,7 @@ class MorphMap
             'club_timeline_post' => \App\Clubs\Models\ClubTimelinePost::class,
             'club_transaction' => \App\Clubs\Models\ClubTransaction::class,
             'membership' => \App\Members\Models\Membership::class,
-            'invoice' => \App\Models\Invoice::class,
+            'invoice' => \App\Clubs\Models\Invoice::class,
             'order' => \App\Shop\Models\Order::class,
             'perk_collection' => \App\Shop\Models\PerkCollection::class,
 

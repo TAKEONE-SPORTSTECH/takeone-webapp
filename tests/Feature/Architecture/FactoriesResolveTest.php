@@ -6,7 +6,7 @@ use App\Clubs\Models\ClubActivity;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
 use App\Clubs\Models\ClubInstructor;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;

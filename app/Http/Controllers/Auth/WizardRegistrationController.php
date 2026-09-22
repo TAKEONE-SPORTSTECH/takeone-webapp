@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\WelcomeEmail;
 use App\Mail\WizardOtpMail;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
 use App\Members\Models\Membership;

@@ -4,7 +4,7 @@ namespace Tests\Feature\Characterization;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use App\Clubs\Models\ClubAffiliation;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubPackageActivity;
 use App\Clubs\Models\ClubActivity;

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Mail\WelcomeEmail;
-use App\Models\Invoice;
+use App\Clubs\Models\Invoice;
 use App\Members\Models\User;
 use App\Members\Models\UserRelationship;
 use Illuminate\Support\Facades\Mail;

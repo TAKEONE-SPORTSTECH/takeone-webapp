@@ -4,7 +4,7 @@ namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RoleRequest;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Members\Models\Permission;
 use App\Members\Models\Role;
 use App\Clubs\Models\Tenant;

@@ -3,7 +3,7 @@
 namespace App\Members\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Invoice;
+use App\Clubs\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 

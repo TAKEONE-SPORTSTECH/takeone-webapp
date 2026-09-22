@@ -2,7 +2,7 @@
 
 namespace App\Traits;
 
-use App\Models\Business;
+use App\Clubs\Models\Business;
 use App\Clubs\Models\Tenant;
 use Illuminate\Support\Facades\Auth;
 

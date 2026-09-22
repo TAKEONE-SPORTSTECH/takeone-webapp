@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Business;
+use App\Clubs\Models\Business;
 use App\Challenges\Models\Challenge;
 use App\Challenges\Models\ChallengeParticipation;
 use App\Clubs\Models\ClubActivity;
@@ -10,14 +10,14 @@ use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
 use App\Clubs\Models\ClubFacility;
 use App\Clubs\Models\ClubInstructor;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubPackageActivity;
 use App\Shop\Models\ClubProduct;
 use App\Shop\Models\ClubProductCategory;
 use App\Clubs\Models\ClubTimelinePost;
-use App\Models\ClubTimelinePostComment;
-use App\Models\ClubTimelinePostLike;
+use App\Clubs\Models\ClubTimelinePostComment;
+use App\Clubs\Models\ClubTimelinePostLike;
 use App\Clubs\Models\ClubTransaction;
 use App\Challenges\Models\Duel;
 use App\Members\Models\Membership;

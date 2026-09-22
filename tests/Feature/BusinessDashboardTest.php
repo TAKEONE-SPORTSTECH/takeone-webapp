@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Business;
+use App\Clubs\Models\Business;
 use Tests\TestCase;
 
 /**

@@ -87,7 +87,7 @@
                 <p class="text-sm text-muted-foreground mt-4 leading-relaxed">{{ __('business.pending_text') }}</p>
             </div>
 
-        @elseif($business->status === \App\Models\Business::STATUS_REJECTED)
+        @elseif($business->status === \App\Clubs\Models\Business::STATUS_REJECTED)
             {{-- ===== Rejected — resubmit ===== --}}
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
                 <span class="w-16 h-16 mx-auto rounded-2xl bg-red-100 text-red-600 flex items-center justify-center m-float"><i class="bi bi-x-circle text-3xl"></i></span>

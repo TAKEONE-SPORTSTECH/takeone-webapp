@@ -11,7 +11,7 @@ use App\Members\Models\AffiliationMedia;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubInstructor;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackageActivity;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;

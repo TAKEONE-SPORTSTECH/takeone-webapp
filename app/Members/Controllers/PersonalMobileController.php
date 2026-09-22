@@ -4,7 +4,7 @@ namespace App\Members\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Events\Models\ClubEvent;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackageActivity;
 use App\Clubs\Models\ClubTimelinePost;
 use App\Members\Models\Goal;
@@ -443,7 +443,7 @@ class PersonalMobileController extends Controller
     {
         // Upcoming covers (from today on) — the weekly strip renders them on their
         // weekday, so a cover assigned for next week still shows immediately.
-        $rows = \App\Models\ClassSubstitution::where('substitute_user_id', Auth::id())
+        $rows = \App\Clubs\Models\ClassSubstitution::where('substitute_user_id', Auth::id())
             ->whereDate('date', '>=', \Carbon\Carbon::now()->toDateString())
             ->with([
                 'packageActivity.package:id,name,tenant_id,translations',
@@ -710,7 +710,7 @@ class PersonalMobileController extends Controller
         }
 
         // 4) Other classes they're already covering that same date.
-        $others = \App\Models\ClassSubstitution::where('substitute_user_id', $userId)
+        $others = \App\Clubs\Models\ClassSubstitution::where('substitute_user_id', $userId)
             ->whereDate('date', $date)
             ->where('package_activity_id', '!=', $excludePaId)
             ->get();
@@ -766,7 +766,7 @@ class PersonalMobileController extends Controller
             return $cards->values();
         }
 
-        $rows = \App\Models\ClassSubstitution::whereIn('package_activity_id', $paIds)
+        $rows = \App\Clubs\Models\ClassSubstitution::whereIn('package_activity_id', $paIds)
             ->whereDate('date', '>=', $weekStart->toDateString())
             ->whereDate('date', '<=', $weekStart->copy()->addDays(6)->toDateString())
             ->with('substitute:id,name,full_name')
@@ -801,7 +801,7 @@ class PersonalMobileController extends Controller
             return $cards->values();
         }
 
-        $rows = \App\Models\ClassCancellation::whereIn('package_activity_id', $paIds)
+        $rows = \App\Clubs\Models\ClassCancellation::whereIn('package_activity_id', $paIds)
             ->whereDate('date', '>=', $weekStart->toDateString())
             ->whereDate('date', '<=', $weekStart->copy()->addDays(6)->toDateString())
             ->get();
@@ -889,7 +889,7 @@ class PersonalMobileController extends Controller
     /** User ids of substitutes covering this slot from today onward (notify on edits). */
     private function slotSubstituteUserIds(int $paId, string $day, string $start): array
     {
-        return \App\Models\ClassSubstitution::where('package_activity_id', $paId)
+        return \App\Clubs\Models\ClassSubstitution::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', '>=', \Carbon\Carbon::now()->toDateString())
             ->pluck('substitute_user_id')->all();
@@ -991,7 +991,7 @@ class PersonalMobileController extends Controller
             ], 422);
         }
 
-        \App\Models\ClassSubstitution::updateOrCreate(
+        \App\Clubs\Models\ClassSubstitution::updateOrCreate(
             ['package_activity_id' => $paId, 'slot_day' => $day, 'slot_start' => $start, 'date' => $data['date']],
             [
                 'original_user_id' => $pa->instructor?->user_id,
@@ -1038,12 +1038,12 @@ class PersonalMobileController extends Controller
         $data = $request->validate(['date' => ['required', 'date']]);
 
         // Capture who was covering (to notify them their cover was cancelled).
-        $removedIds = \App\Models\ClassSubstitution::where('package_activity_id', $paId)
+        $removedIds = \App\Clubs\Models\ClassSubstitution::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $data['date'])
             ->pluck('substitute_user_id')->all();
 
-        \App\Models\ClassSubstitution::where('package_activity_id', $paId)
+        \App\Clubs\Models\ClassSubstitution::where('package_activity_id', $paId)
             ->where('slot_day', $day)
             ->where('slot_start', (string) $start)
             ->whereDate('date', $data['date'])
@@ -1127,7 +1127,7 @@ class PersonalMobileController extends Controller
             ->where('package_id', $pa->package_id)
             ->whereIn('status', ['active', 'pending'])
             ->exists();
-        $isSubstitute = \App\Models\ClassSubstitution::where('package_activity_id', $paId)
+        $isSubstitute = \App\Clubs\Models\ClassSubstitution::where('package_activity_id', $paId)
             ->where('substitute_user_id', Auth::id())
             ->whereDate('date', '>=', \Carbon\Carbon::now()->toDateString())
             ->exists();
@@ -1174,7 +1174,7 @@ class PersonalMobileController extends Controller
 
         // A one-time program variation for THIS exact date overrides the recurring
         // intensity/focus/notes/workout for display, without touching the base slot.
-        $programOverride = \App\Models\ClassProgramOverride::where('package_activity_id', $paId)
+        $programOverride = \App\Clubs\Models\ClassProgramOverride::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $occDate)
             ->with('setBy:id,name,full_name')
@@ -1199,7 +1199,7 @@ class PersonalMobileController extends Controller
         $classStarted = empty($slot['start_time'])
             ? true   // unknown start → don't block marking
             : \Carbon\Carbon::parse($occDate.' '.$slot['start_time'], $clubTz)->isPast();
-        $subRow = \App\Models\ClassSubstitution::where('package_activity_id', $paId)
+        $subRow = \App\Clubs\Models\ClassSubstitution::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $occDate)
             ->with('substitute:id,name,full_name,profile_picture,updated_at')->first();
@@ -1246,7 +1246,7 @@ class PersonalMobileController extends Controller
         $roster = [];
         if (true) {
             // Who's already marked present for the shown occurrence.
-            $attendedIds = \App\Models\ClassAttendance::where('package_activity_id', $pa->id)
+            $attendedIds = \App\Clubs\Models\ClassAttendance::where('package_activity_id', $pa->id)
                 ->where('slot_day', $day)->where('slot_start', (string) $start)
                 ->whereDate('date', $occDate)
                 ->pluck('user_id')->map(fn ($i) => (int) $i)->all();
@@ -1319,11 +1319,11 @@ class PersonalMobileController extends Controller
 
             // Cancellations + attendance across the WHOLE package, keyed pa|day|start|date.
             $cancelSet = [];
-            foreach (\App\Models\ClassCancellation::whereIn('package_activity_id', $packagePaIds)->get() as $c) {
+            foreach (\App\Clubs\Models\ClassCancellation::whereIn('package_activity_id', $packagePaIds)->get() as $c) {
                 $cancelSet[$c->package_activity_id.'|'.$c->slot_day.'|'.(string) $c->slot_start.'|'.$c->date->toDateString()] = true;
             }
             $attSet = [];
-            foreach (\App\Models\ClassAttendance::whereIn('package_activity_id', $packagePaIds)->get() as $a) {
+            foreach (\App\Clubs\Models\ClassAttendance::whereIn('package_activity_id', $packagePaIds)->get() as $a) {
                 $attSet[$a->user_id][$a->package_activity_id.'|'.$a->slot_day.'|'.(string) $a->slot_start.'|'.$a->date->toDateString()] = true;
             }
             // The occurrence key for THIS class's shown session (for live updates on mark).
@@ -1390,7 +1390,7 @@ class PersonalMobileController extends Controller
         }
 
         // Is the shown occurrence cancelled?
-        $cancelRow = \App\Models\ClassCancellation::where('package_activity_id', $paId)
+        $cancelRow = \App\Clubs\Models\ClassCancellation::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $occDate)->first();
         $cancelled = (bool) $cancelRow;
@@ -1398,11 +1398,11 @@ class PersonalMobileController extends Controller
         $cancelCreditable = $cancelRow?->creditable ?? false;
 
         // Make-up credits the VIEWER is owed for this class (member-facing).
-        $myCredits = \App\Models\ClassMakeupCredit::where('package_activity_id', $paId)
+        $myCredits = \App\Clubs\Models\ClassMakeupCredit::where('package_activity_id', $paId)
             ->where('user_id', Auth::id())->where('status', 'open')->count();
 
         // ----- Trainee fun: emoji reaction + trainer rating (enrolled members) -----
-        $reactRows = \App\Models\ClassReaction::where('package_activity_id', $paId)
+        $reactRows = \App\Clubs\Models\ClassReaction::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $occDate)->get();
         $reactions = $reactRows->groupBy('emoji')->map->count();           // {emoji: count}
@@ -1424,7 +1424,7 @@ class PersonalMobileController extends Controller
         $canEngage = $enrolled;     // reactions + rating are a trainee thing
 
         // ----- Class rating (about the CLASS itself, not the trainer) + its comments -----
-        $classRows = \App\Models\ClassRating::with('user:id,name,full_name,profile_picture,updated_at')
+        $classRows = \App\Clubs\Models\ClassRating::with('user:id,name,full_name,profile_picture,updated_at')
             ->where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->orderByDesc('updated_at')->get();
@@ -1439,7 +1439,7 @@ class PersonalMobileController extends Controller
         // ----- Who may review: enrolled + attended a session of this class that has already started -----
         // (Attendance can be marked before a class starts, but you can't review until it has — and only
         //  if you attended. One review per class, editable; creating a new one is what's gated.)
-        $iAttendedAny = \App\Models\ClassAttendance::where('package_activity_id', $paId)
+        $iAttendedAny = \App\Clubs\Models\ClassAttendance::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->where('user_id', Auth::id())->exists();
         $canReview = $enrolled && $this->attendedStartedClass($paId, $day, (string) $start);
@@ -1528,7 +1528,7 @@ class PersonalMobileController extends Controller
     private function attendedStartedClass(int $paId, string $day, string $start, ?int $userId = null): bool
     {
         $userId = $userId ?? Auth::id();
-        $dates = \App\Models\ClassAttendance::where('package_activity_id', $paId)
+        $dates = \App\Clubs\Models\ClassAttendance::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->where('user_id', $userId)->pluck('date');
         foreach ($dates as $d) {
@@ -1592,7 +1592,7 @@ class PersonalMobileController extends Controller
         // One review per member per class (the unique key below guarantees it). You may edit
         // an existing review freely, but a NEW one requires you to have attended a session of
         // this class that has already started.
-        $existing = \App\Models\ClassRating::where('package_activity_id', $paId)
+        $existing = \App\Clubs\Models\ClassRating::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->where('user_id', Auth::id())->first();
         if (! $existing && ! $this->attendedStartedClass($paId, $day, (string) $start)) {
@@ -1602,12 +1602,12 @@ class PersonalMobileController extends Controller
             ], 422);
         }
 
-        \App\Models\ClassRating::updateOrCreate(
+        \App\Clubs\Models\ClassRating::updateOrCreate(
             ['package_activity_id' => $paId, 'slot_day' => $day, 'slot_start' => (string) $start, 'user_id' => Auth::id()],
             ['rating' => $data['rating'], 'comment' => $data['comment'] ?? null],
         );
 
-        $rows = \App\Models\ClassRating::with('user:id,name,full_name,profile_picture,updated_at')
+        $rows = \App\Clubs\Models\ClassRating::with('user:id,name,full_name,profile_picture,updated_at')
             ->where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->orderByDesc('updated_at')->get();
@@ -1632,12 +1632,12 @@ class PersonalMobileController extends Controller
         }
         [$paId, $day, $start] = $this->decodeSyncedToken($token);
 
-        \App\Models\ClassRating::where('package_activity_id', $paId)
+        \App\Clubs\Models\ClassRating::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->where('user_id', Auth::id())
             ->delete();
 
-        $rows = \App\Models\ClassRating::with('user:id,name,full_name,profile_picture,updated_at')
+        $rows = \App\Clubs\Models\ClassRating::with('user:id,name,full_name,profile_picture,updated_at')
             ->where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->orderByDesc('updated_at')->get();
@@ -1674,7 +1674,7 @@ class PersonalMobileController extends Controller
             return true;
         }
 
-        return \App\Models\ClassSubstitution::where('package_activity_id', $pa->id)
+        return \App\Clubs\Models\ClassSubstitution::where('package_activity_id', $pa->id)
             ->where('substitute_user_id', Auth::id())
             ->whereDate('date', '>=', \Carbon\Carbon::now()->toDateString())
             ->exists();
@@ -1714,7 +1714,7 @@ class PersonalMobileController extends Controller
 
         // NB: the `date` column stores a datetime — match it with whereDate, never
         // an exact string compare (that misses the row and re-inserts → dup error).
-        $base = \App\Models\ClassAttendance::where('package_activity_id', $paId)
+        $base = \App\Clubs\Models\ClassAttendance::where('package_activity_id', $paId)
             ->where('slot_day', $day)
             ->where('slot_start', (string) $start)
             ->where('user_id', $data['user_id'])
@@ -1725,7 +1725,7 @@ class PersonalMobileController extends Controller
             $existing->delete();
             $attended = false;
         } else {
-            \App\Models\ClassAttendance::create([
+            \App\Clubs\Models\ClassAttendance::create([
                 'package_activity_id' => $paId,
                 'slot_day' => $day,
                 'slot_start' => (string) $start,
@@ -1761,7 +1761,7 @@ class PersonalMobileController extends Controller
         if (! $pa) {
             return null;
         }
-        $sub = \App\Models\ClassSubstitution::where('package_activity_id', $pa->id)
+        $sub = \App\Clubs\Models\ClassSubstitution::where('package_activity_id', $pa->id)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $date)->first();
         if ($sub) {
@@ -1809,7 +1809,7 @@ class PersonalMobileController extends Controller
             'date' => ['required', 'date'],
         ]);
 
-        $row = \App\Models\ClassReaction::where('package_activity_id', $paId)
+        $row = \App\Clubs\Models\ClassReaction::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $data['date'])->where('user_id', Auth::id())->first();
 
@@ -1820,14 +1820,14 @@ class PersonalMobileController extends Controller
             $row->update(['emoji' => $data['emoji']]);
             $mine = $data['emoji'];
         } else {
-            \App\Models\ClassReaction::create([
+            \App\Clubs\Models\ClassReaction::create([
                 'package_activity_id' => $paId, 'slot_day' => $day, 'slot_start' => (string) $start,
                 'date' => $data['date'], 'user_id' => Auth::id(), 'emoji' => $data['emoji'],
             ]);
             $mine = $data['emoji'];
         }
 
-        $counts = \App\Models\ClassReaction::where('package_activity_id', $paId)
+        $counts = \App\Clubs\Models\ClassReaction::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $data['date'])->get()->groupBy('emoji')->map->count();
 
@@ -1922,14 +1922,14 @@ class PersonalMobileController extends Controller
         $affected = [];
         foreach ($dates as $d) {
             // Skip dates already cancelled (whereDate — the column stores a datetime).
-            $already = \App\Models\ClassCancellation::where('package_activity_id', $paId)
+            $already = \App\Clubs\Models\ClassCancellation::where('package_activity_id', $paId)
                 ->where('slot_day', $day)->where('slot_start', (string) $start)
                 ->whereDate('date', $d)->exists();
             if ($already) {
                 continue;
             }
 
-            \App\Models\ClassCancellation::create([
+            \App\Clubs\Models\ClassCancellation::create([
                 'package_activity_id' => $paId,
                 'slot_day' => $day,
                 'slot_start' => (string) $start,
@@ -1939,7 +1939,7 @@ class PersonalMobileController extends Controller
                 'cancelled_by' => Auth::id(),
             ]);
             // A cancelled class can't also have a substitute.
-            \App\Models\ClassSubstitution::where('package_activity_id', $paId)
+            \App\Clubs\Models\ClassSubstitution::where('package_activity_id', $paId)
                 ->where('slot_day', $day)->where('slot_start', (string) $start)
                 ->whereDate('date', $d)->delete();
 
@@ -1985,13 +1985,13 @@ class PersonalMobileController extends Controller
         [$paId, $day, $start] = $this->decodeSyncedToken($token);
         $data = $request->validate(['date' => ['required', 'date']]);
 
-        \App\Models\ClassCancellation::where('package_activity_id', $paId)
+        \App\Clubs\Models\ClassCancellation::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $data['date'])->delete();
 
         // Reverse OPEN credits from this date (pull back the end_date nudge). Used
         // credits are left as history — the member already took that make-up.
-        $credits = \App\Models\ClassMakeupCredit::where('package_activity_id', $paId)
+        $credits = \App\Clubs\Models\ClassMakeupCredit::where('package_activity_id', $paId)
             ->whereDate('source_date', $data['date'])->get();
         $affected = [];
         foreach ($credits as $cr) {
@@ -2036,7 +2036,7 @@ class PersonalMobileController extends Controller
         [$paId, $day, $start] = $this->decodeSyncedToken($token);
         $data = $request->validate(['date' => ['required', 'date']]);
 
-        \App\Models\ClassProgramOverride::where('package_activity_id', $paId)
+        \App\Clubs\Models\ClassProgramOverride::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $data['date'])->delete();
 
@@ -2070,7 +2070,7 @@ class PersonalMobileController extends Controller
         $ids = [];
         foreach ($subs as $sub) {
             $ids[] = $sub->user_id;
-            $exists = \App\Models\ClassMakeupCredit::where('package_activity_id', $pa->id)
+            $exists = \App\Clubs\Models\ClassMakeupCredit::where('package_activity_id', $pa->id)
                 ->where('user_id', $sub->user_id)
                 ->whereDate('source_date', $date)->exists();
             if ($exists) {
@@ -2084,7 +2084,7 @@ class PersonalMobileController extends Controller
                 $sub->save();
             }
 
-            \App\Models\ClassMakeupCredit::create([
+            \App\Clubs\Models\ClassMakeupCredit::create([
                 'package_activity_id' => $pa->id,
                 'user_id' => $sub->user_id,
                 'subscription_id' => $sub->id,
@@ -2256,10 +2256,10 @@ class PersonalMobileController extends Controller
             // existing row (the cast serializes with a time part), throwing a unique-
             // constraint violation on the second save instead of updating. Look the row
             // up with whereDate() (as everywhere else in this file) and save explicitly.
-            $override = \App\Models\ClassProgramOverride::where('package_activity_id', $paId)
+            $override = \App\Clubs\Models\ClassProgramOverride::where('package_activity_id', $paId)
                 ->where('slot_day', $origDay)->where('slot_start', $origStart)
                 ->whereDate('date', $data['date'])
-                ->first() ?? new \App\Models\ClassProgramOverride([
+                ->first() ?? new \App\Clubs\Models\ClassProgramOverride([
                     'package_activity_id' => $paId, 'slot_day' => $origDay, 'slot_start' => $origStart, 'date' => $data['date'],
                 ]);
             $override->intensity = ($data['intensity'] ?? null) ?: null;
@@ -2627,7 +2627,7 @@ class PersonalMobileController extends Controller
         $healthRecords = $user->healthRecords()->orderBy('recorded_at', 'desc')->paginate(10);
         $comparisonRecords = $user->healthRecords()->orderBy('recorded_at', 'desc')->take(2)->get();
 
-        $invoices = \App\Models\Invoice::where('student_user_id', $user->id)
+        $invoices = \App\Clubs\Models\Invoice::where('student_user_id', $user->id)
             ->orWhere('payer_user_id', $user->id)
             ->with(['student', 'tenant'])->get();
 
@@ -2824,7 +2824,7 @@ class PersonalMobileController extends Controller
      * to review it. The owner's approval (SubscriptionService::approvePayment)
      * marks it paid and stamps settled_at.
      */
-    public function settlePayment(Request $request, \App\Models\ClubMemberSubscription $subscription): JsonResponse
+    public function settlePayment(Request $request, \App\Clubs\Models\ClubMemberSubscription $subscription): JsonResponse
     {
         // A bill may be settled by the member themselves, their guardian, or a
         // super-admin (the same people who can see the member's billing tab).

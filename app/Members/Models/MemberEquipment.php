@@ -11,7 +11,7 @@ use App\Shop\Models\ClubProductVariant;
 use App\Clubs\Models\Tenant;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubActivityEquipment;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 
 /**
  * Equipment a member owns (or is acquiring). Serves as both the frozen

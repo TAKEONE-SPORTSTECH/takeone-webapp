@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Clubs\Models\ClubTimelinePost;
-use App\Models\ClubTimelinePostComment;
-use App\Models\ClubTimelinePostLike;
+use App\Clubs\Models\ClubTimelinePostComment;
+use App\Clubs\Models\ClubTimelinePostLike;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Members\Models\UserPost;

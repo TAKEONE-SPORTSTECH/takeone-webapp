@@ -13,7 +13,7 @@ use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Requests\UploadImageRequest;
 use App\Members\Models\Attendance;
 use App\Members\Models\Goal;
-use App\Models\Invoice;
+use App\Clubs\Models\Invoice;
 use App\Members\Models\TournamentEvent;
 use App\Members\Models\Person;
 use App\Members\Models\User;

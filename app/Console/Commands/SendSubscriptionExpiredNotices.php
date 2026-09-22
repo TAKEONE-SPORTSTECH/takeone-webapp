@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubNotification;
 use App\Members\Models\UserNotification;
 use Carbon\Carbon;

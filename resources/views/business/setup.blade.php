@@ -64,7 +64,7 @@
             </div>
         </div>
 
-    @elseif($business->status === \App\Models\Business::STATUS_REJECTED)
+    @elseif($business->status === \App\Clubs\Models\Business::STATUS_REJECTED)
         {{-- Rejected — allow resubmission --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div class="flex items-start gap-4 mb-4">

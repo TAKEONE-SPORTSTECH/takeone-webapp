@@ -99,7 +99,7 @@ class WizardRegistrationCreatesAffiliationTest extends TestCase
         $member = $this->registerViaWizard($club, $package);
 
         // Enrol the same member in another package the same way the service would.
-        $sub = \App\Models\ClubMemberSubscription::where('user_id', $member->id)->firstOrFail();
+        $sub = \App\Clubs\Models\ClubMemberSubscription::where('user_id', $member->id)->firstOrFail();
         app(\App\Services\SubscriptionService::class)->syncAffiliation($club, $member->id, $sub, $second);
 
         $this->assertSame(

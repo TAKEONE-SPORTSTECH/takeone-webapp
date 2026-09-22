@@ -2,16 +2,16 @@
 
 namespace Tests\Feature\Characterization;
 
-use App\Models\ClassAttendance;
-use App\Models\ClassCancellation;
-use App\Models\ClassMakeupCredit;
-use App\Models\ClassProgramOverride;
-use App\Models\ClassRating;
-use App\Models\ClassReaction;
-use App\Models\ClassSubstitution;
+use App\Clubs\Models\ClassAttendance;
+use App\Clubs\Models\ClassCancellation;
+use App\Clubs\Models\ClassMakeupCredit;
+use App\Clubs\Models\ClassProgramOverride;
+use App\Clubs\Models\ClassRating;
+use App\Clubs\Models\ClassReaction;
+use App\Clubs\Models\ClassSubstitution;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubInstructor;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubPackageActivity;
 use App\Trainers\Models\InstructorReview;

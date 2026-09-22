@@ -6,8 +6,8 @@ use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\ClubTimelinePostComment;
-use App\Models\ClubTimelinePostLike;
+use App\Clubs\Models\ClubTimelinePostComment;
+use App\Clubs\Models\ClubTimelinePostLike;
 
 class ClubTimelinePost extends Model
 {

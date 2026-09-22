@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Clubs\Models;
 
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Clubs\Models;
 
+use App\Clubs\Models\Business;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Members\Models\User;

@@ -5,7 +5,7 @@ namespace App\Clubs\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreMembersRequest;
 use App\Http\Requests\Admin\WalkInRegistrationRequest;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
 use App\Members\Models\Membership;

@@ -4,7 +4,7 @@ namespace Tests\Feature\Contracts;
 
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventRecording;

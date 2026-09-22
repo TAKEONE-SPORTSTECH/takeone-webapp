@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Clubs\Models\ClubAchievement;
 use App\Events\Support\EntryPhoto;
 use App\Events\Models\ClubEventRegistration;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Challenges\Models\Duel;
 use App\Events\Models\EventMatch;
 use App\Members\Models\User;

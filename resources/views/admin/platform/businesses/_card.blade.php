@@ -1,5 +1,5 @@
 @php
-    use App\Models\Business;
+    use App\Clubs\Models\Business;
     $badge = match($business->status) {
         Business::STATUS_APPROVED => 'bg-green-100 text-green-700',
         Business::STATUS_REJECTED => 'bg-red-100 text-red-700',
@@ -36,17 +36,17 @@
 
     <p class="biz-desc text-sm text-muted-foreground mt-3 {{ $business->description ? '' : 'hidden' }}">{{ $business->description }}</p>
 
-    <p class="biz-reject-reason text-xs text-red-600 mt-3 {{ ($business->status === \App\Models\Business::STATUS_REJECTED && $business->rejection_reason) ? '' : 'hidden' }}">
-        @if($business->status === \App\Models\Business::STATUS_REJECTED && $business->rejection_reason)
+    <p class="biz-reject-reason text-xs text-red-600 mt-3 {{ ($business->status === \App\Clubs\Models\Business::STATUS_REJECTED && $business->rejection_reason) ? '' : 'hidden' }}">
+        @if($business->status === \App\Clubs\Models\Business::STATUS_REJECTED && $business->rejection_reason)
             <span class="font-medium">Rejection reason:</span> {{ $business->rejection_reason }}
         @endif
     </p>
 
     <div class="biz-actions mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-2">
-        @if($business->status === \App\Models\Business::STATUS_PENDING)
+        @if($business->status === \App\Clubs\Models\Business::STATUS_PENDING)
             <button type="button" data-biz-action="approve" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"><i class="bi bi-check-lg mr-1"></i>Approve</button>
             <button type="button" data-biz-action="reject" class="border border-red-300 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors font-medium text-sm"><i class="bi bi-x-lg mr-1"></i>Reject</button>
-        @elseif($business->status === \App\Models\Business::STATUS_REJECTED)
+        @elseif($business->status === \App\Clubs\Models\Business::STATUS_REJECTED)
             <button type="button" data-biz-action="approve" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"><i class="bi bi-check-lg mr-1"></i>Approve anyway</button>
         @endif
         <button type="button" data-biz-action="edit" class="border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors font-medium text-sm"><i class="bi bi-pencil mr-1"></i>Edit</button>

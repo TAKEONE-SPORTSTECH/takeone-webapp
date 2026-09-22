@@ -26,14 +26,14 @@ use App\Clubs\Models\ClubMessage;
 use App\Clubs\Models\ClubNotification;
 use App\Clubs\Models\ClubReview;
 use App\Clubs\Models\ClubTransaction;
-use App\Models\Business;
+use App\Clubs\Models\Business;
 use App\Events\Models\ClubEventRegistration;
-use App\Models\ClubMemberSubscription;
-use App\Models\ClubTimelinePostComment;
-use App\Models\ClubTimelinePostLike;
+use App\Clubs\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubTimelinePostComment;
+use App\Clubs\Models\ClubTimelinePostLike;
 use App\Events\Models\EventOfficial;
 use App\Trainers\Models\InstructorReview;
-use App\Models\Invoice;
+use App\Clubs\Models\Invoice;
 
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {

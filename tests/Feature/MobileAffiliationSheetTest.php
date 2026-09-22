@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Clubs\Models\ClubAffiliation;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;

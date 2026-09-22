@@ -3,7 +3,7 @@
 @section('hide-navbar', true)
 @section('title', 'Businesses')
 
-@php use App\Models\Business; @endphp
+@php use App\Clubs\Models\Business; @endphp
 
 @section('content')
 <div class="min-h-screen bg-background pb-20">

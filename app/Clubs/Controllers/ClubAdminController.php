@@ -9,7 +9,7 @@ use App\Http\Requests\Admin\TransferOwnershipRequest;
 use App\Http\Requests\Admin\UpdateClubRequest;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubInstructor;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
 use App\Members\Models\Membership;

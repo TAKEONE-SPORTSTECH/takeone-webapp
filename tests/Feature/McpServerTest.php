@@ -285,14 +285,14 @@ class McpServerTest extends TestCase
         $club = $this->createClub($owner, ['slug' => 'people-club']);
 
         $me = $this->createUser();
-        \App\Models\ClubMemberSubscription::create([
+        \App\Clubs\Models\ClubMemberSubscription::create([
             'tenant_id' => $club->id, 'user_id' => $me->id, 'type' => 'regular',
             'status' => 'active', 'payment_status' => 'paid',
             'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),
         ]);
 
         $confirmedMate = $this->createUser(['full_name' => 'Confirmed Mate']);
-        \App\Models\ClubMemberSubscription::create([
+        \App\Clubs\Models\ClubMemberSubscription::create([
             'tenant_id' => $club->id, 'user_id' => $confirmedMate->id, 'type' => 'regular',
             'status' => 'active', 'payment_status' => 'paid',
             'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),
@@ -300,7 +300,7 @@ class McpServerTest extends TestCase
 
         // Same club, but membership never confirmed by the owner — must not surface.
         $pendingMate = $this->createUser(['full_name' => 'Pending Mate']);
-        \App\Models\ClubMemberSubscription::create([
+        \App\Clubs\Models\ClubMemberSubscription::create([
             'tenant_id' => $club->id, 'user_id' => $pendingMate->id, 'type' => 'regular',
             'status' => 'pending', 'payment_status' => 'pending_approval',
             'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),
@@ -310,7 +310,7 @@ class McpServerTest extends TestCase
         $otherClubOwner = $this->createUser();
         $otherClub = $this->createClub($otherClubOwner, ['slug' => 'other-people-club']);
         $stranger = $this->createUser(['full_name' => 'Stranger Person']);
-        \App\Models\ClubMemberSubscription::create([
+        \App\Clubs\Models\ClubMemberSubscription::create([
             'tenant_id' => $otherClub->id, 'user_id' => $stranger->id, 'type' => 'regular',
             'status' => 'active', 'payment_status' => 'paid',
             'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),

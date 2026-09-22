@@ -1,17 +1,25 @@
 <?php
 
-namespace Database\Factories;
+namespace Database\Factories\Clubs\Models;
 
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ClubMemberSubscription>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Clubs\Models\ClubMemberSubscription>
  */
 class ClubMemberSubscriptionFactory extends Factory
 {
+    /*
+     * Named explicitly, not derived — see the note in the Events
+     * factories. The guess becomes App\ClubMemberSubscription once the
+     * model lives in a module, and fails at the first make().
+     */
+    protected $model = ClubMemberSubscription::class;
+
     /**
      * Define the model's default state.
      *

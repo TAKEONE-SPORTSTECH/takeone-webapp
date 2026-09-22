@@ -98,13 +98,13 @@ class TrainerController extends Controller
         // Emoji reactions on classes this person actually taught — their own
         // classes (minus dates substituted away) plus sessions they covered.
         $myPaIds = \App\Clubs\Models\ClubPackageActivity::whereIn('instructor_id', $instructorIds)->pluck('id');
-        $subRows = \App\Models\ClassSubstitution::where('substitute_user_id', $user->id)->get();
+        $subRows = \App\Clubs\Models\ClassSubstitution::where('substitute_user_id', $user->id)->get();
         $coveredKeys = $subRows->map(fn ($r) => $r->package_activity_id.'|'.$r->slot_day.'|'.(string) $r->slot_start.'|'.$r->date->toDateString())->flip();
-        $awayKeys = \App\Models\ClassSubstitution::whereIn('package_activity_id', $myPaIds)
+        $awayKeys = \App\Clubs\Models\ClassSubstitution::whereIn('package_activity_id', $myPaIds)
             ->where('substitute_user_id', '!=', $user->id)->get()
             ->map(fn ($r) => $r->package_activity_id.'|'.$r->slot_day.'|'.(string) $r->slot_start.'|'.$r->date->toDateString())->flip();
 
-        $reactionRows = \App\Models\ClassReaction::whereIn('package_activity_id', $myPaIds->merge($subRows->pluck('package_activity_id'))->unique())
+        $reactionRows = \App\Clubs\Models\ClassReaction::whereIn('package_activity_id', $myPaIds->merge($subRows->pluck('package_activity_id'))->unique())
             ->get()
             ->filter(function ($r) use ($myPaIds, $coveredKeys, $awayKeys) {
                 $key = $r->package_activity_id.'|'.$r->slot_day.'|'.(string) $r->slot_start.'|'.$r->date->toDateString();

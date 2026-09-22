@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Business;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\Business;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubTransaction;
 use App\Members\Models\Membership;
 use Illuminate\Support\Collection;

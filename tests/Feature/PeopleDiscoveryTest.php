@@ -125,7 +125,7 @@ class PeopleDiscoveryTest extends TestCase
         $owner = $this->createUser();
         $club = $this->createClub($owner);
         $me = $this->createUser();
-        \App\Models\ClubMemberSubscription::create([
+        \App\Clubs\Models\ClubMemberSubscription::create([
             'tenant_id' => $club->id, 'user_id' => $me->id, 'type' => 'regular',
             'status' => 'pending', 'payment_status' => 'pending_approval',
             'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),
@@ -140,7 +140,7 @@ class PeopleDiscoveryTest extends TestCase
         $club = $this->createClub($owner);
         $me = $this->createUser();
         $confirmedMate = $this->createUser(['full_name' => 'Confirmed Mate']);
-        \App\Models\ClubMemberSubscription::create([
+        \App\Clubs\Models\ClubMemberSubscription::create([
             'tenant_id' => $club->id, 'user_id' => $me->id, 'type' => 'regular',
             'status' => 'pending', 'payment_status' => 'pending_approval',
             'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),
@@ -158,7 +158,7 @@ class PeopleDiscoveryTest extends TestCase
         $me = $this->createUser();
         $pending = $this->createUser(['full_name' => 'Still Pending']);
         $this->joinClub($me, $club);
-        \App\Models\ClubMemberSubscription::create([
+        \App\Clubs\Models\ClubMemberSubscription::create([
             'tenant_id' => $club->id, 'user_id' => $pending->id, 'type' => 'regular',
             'status' => 'pending', 'payment_status' => 'pending_approval',
             'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),
@@ -178,7 +178,7 @@ class PeopleDiscoveryTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        \App\Models\ClubMemberSubscription::create([
+        \App\Clubs\Models\ClubMemberSubscription::create([
             'tenant_id' => $club->id,
             'user_id' => $user->id,
             'type' => 'regular',

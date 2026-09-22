@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Clubs\Models\ClubAffiliation;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
 use App\Members\Models\Membership;

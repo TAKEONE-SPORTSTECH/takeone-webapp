@@ -5,7 +5,7 @@ namespace App\Clubs\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreTransactionRequest;
 use App\Http\Requests\Admin\UpdateTransactionRequest;
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubRecurringExpense;
 use App\Clubs\Models\ClubTransaction;
 use App\Shop\Models\Order;

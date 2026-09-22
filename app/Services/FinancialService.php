@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubTransaction;
 use App\Clubs\Models\Tenant;
 use App\Support\ClubCache;

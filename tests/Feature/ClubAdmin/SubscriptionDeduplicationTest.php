@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\ClubAdmin;
 
-use App\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Tests\TestCase;

@@ -3,7 +3,7 @@
 @section('title', __('platform.platform_businesses_index_title'))
 
 @php
-    use App\Models\Business;
+    use App\Clubs\Models\Business;
 @endphp
 
 @section('admin-content')

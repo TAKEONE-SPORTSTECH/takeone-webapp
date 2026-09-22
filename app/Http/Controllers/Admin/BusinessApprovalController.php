@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Business;
+use App\Clubs\Models\Business;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use Illuminate\Http\JsonResponse;

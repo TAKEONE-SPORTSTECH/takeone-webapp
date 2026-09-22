@@ -15,7 +15,7 @@ use App\Http\Requests\StoreWorkHistoryRequest;
 use App\Members\Models\Attendance;
 use App\Events\Models\ClubEventRegistration;
 use App\Members\Models\Goal;
-use App\Models\Invoice;
+use App\Clubs\Models\Invoice;
 use App\Members\Models\MemberCertification;
 use App\Members\Models\MemberWorkHistory;
 use App\Members\Models\Membership;
