@@ -26,7 +26,16 @@ Something about FOOTAGE (ingest, vaults, transcode, streaming)
 Member-vs-member duels           → app/Challenges/    views: challenges::
 Personal training                → app/Trainers/      views: trainers::
 Reading the product in another language → app/Translation/
+A model writing, drawing or transcribing → app/Ai/      views: ai::
+A form a club built for itself   → app/Forms/         views: forms::
+The super-admin's own room, and ops → app/Platform/
 ```
+
+⚠️ **Two classes are called PlatformController and they mean opposite things.**
+`App\Platform\Controllers\PlatformController` is the super-admin's screens.
+`App\Http\Controllers\PlatformController` is the PUBLIC club browser —
+`/explore`, `/{country}/clubs/{slug}`, joining, perks, timeline. The second is
+misnamed and is on the house-cleaning register to move into Clubs.
 
 **The rule of thumb:** a vertical owns a top-level folder under `app/`, and
 everything it needs lives inside it. If you are opening files from three
@@ -47,6 +56,9 @@ folders to change one thing, you are probably in the wrong one.
 | **Trainers** | `app/Trainers/` | `trainers::` (2) | `routes.php` | — |
 | **Media** | `app/Media/` — `MediaVaults`, `Ffmpeg`, `BoutFilm`, `BoutTimeline` | none | `app/Media/Http/` | `cache/hls/{uuid}/` (derived, disposable) |
 | **Translation** | `app/Translation/` | `translation::` (empty) | `routes.php`, `routes-member.php` | — |
+| **AI** | `app/Ai/` — `AiManager` at the ROOT, plus `Contracts/`, `Drivers/` | `ai::` (2) | `routes.php` | — |
+| **Forms** | `app/Forms/` — `FormEngine` at the root | `forms::` (1) | `routes.php` (`/f/{uuid}`) | — |
+| **Platform** | `app/Platform/` — super-admin, activity catalogue, ops commands | ⚠️ still `resources/views/admin/platform/` | `routes.php` | — |
 
 **Module wiring is automatic.** Modules are listed in `config/modules.php` and
 bound by `App\Support\Modules\ModuleServiceProvider`. Event packages are
@@ -143,34 +155,28 @@ These cost real time. Each one is a bug that does **not** throw.
 
 ## 6. Still in the legacy flat folders
 
-Not yet moved into a module. Audited 2026-09-22; this section shrinks as the
-reorganisation proceeds.
+Audited 2026-09-22, after the reorganisation pass. **`app/Models` is empty** —
+all 49 models are in the module that owns them. What is left:
 
-| Folder | Files | Mostly belongs to |
+| Folder | Files | What they are |
 |---|---|---|
-| `app/Models/` | 49 | Events (24), Clubs (12), Media (3), Platform (3) |
-| `app/Http/Controllers/` | 33 | Events (8), Members `Auth/` (7), Platform (6), Clubs (4), Media (2) |
-| `app/Services/` | 28 | Platform `Ai/` (11), Clubs (6), Members (5) |
-| `app/Console/Commands/` | 23 | Platform (7), Members (5), Media (3), Events (3) |
-| `app/Traits/` | 10 | Translation (3), Members (1), Clubs (2), shared (4) |
+| `app/Models/` | 1 | only `Scopes/TenantScope.php` — multi-tenancy itself, belongs to nobody |
+| `app/Http/Controllers/` | 27 | `Auth/` (6), the event surfaces around `PersonalEventController` (7), business/chain (3), and the shared `Controller` + `FileController` |
+| `app/Services/` | 15 | Members (5), Clubs (6), Copilot (3), and the two documented shared-kernel ones |
+| `app/Console/Commands/` | 16 | Members (5), Clubs (3), Media (3), Events (3) |
+| `app/Traits/` | 10 | Translation (3), Clubs (2), shared (4), Members (1) |
+
+**Why the controllers are still here, and it is not neglect:** moving a
+controller drags its ROUTES with it (ModuleBoundaryTest treats `Controllers/`
+as private, and routing is the one legitimate caller). For `Auth/` those are
+the login routes; for the event surfaces they sit around
+`PersonalEventController`, which imports from seven modules and is not being
+moved. Each is its own deliberate step.
 
 **Genuinely shared — these stay put:** `Controller.php` (base),
-`FileController.php` (the one file door), `Models/Scopes/TenantScope.php`,
-`Services/ActivityVideoResearcher.php` and `Services/WhatsAppManager.php`
-(both documented as shared kernel).
-
-**Five files are DB-coupled** and can only move with a `MorphMap` edit in the
-same commit: `ClubEvent`, `ClubEventRegistration`, `ClubMemberSubscription`,
-`Invoice`, `MediaFile`.
-
-**Needs an owner decision, not a guess:** `Form`/`FormSubmission`/`FormEngine`
-(its own vertical?), `Invoice` (Clubs or Members?), `BoutComment`/
-`BoutCoachNote` (Events or Media?), `ImpersonationController` and
-`BusinessApprovalController` (Platform acting on another module's entity), and
-`PersonalEventController`, which imports from seven modules and is too large to
-assign whole.
-
----
+`FileController.php` (the single door to stored files),
+`Models/Scopes/TenantScope.php`, and `Services/{ActivityVideoResearcher,
+WhatsAppManager}.php`, both documented in their own headers as shared kernel.
 
 ## 7. Known duplication — do not add to it
 
