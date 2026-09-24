@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+body{margin:0;background:#eef1f6;font-family:'Poppins',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#8a6d20;text-decoration:none}
+a:hover{color:#1e2c4f;text-decoration:underline}
+button:focus-visible,[tabindex]:focus-visible,a:focus-visible{outline:2px solid #edcd85;outline-offset:2px}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}
+@keyframes bar{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+.leaflet-container{background:#eef1f6;font-family:'Poppins',system-ui,sans-serif}
+
+.leaflet-tooltip{background:#fff;color:#1e2c4f;border:1px solid rgba(216,178,95,.45);font-size:12px;box-shadow:none}
+.leaflet-tooltip-top:before{border-top-color:rgba(216,178,95,.45)}
+</style>
+</helmet>
+<div style="{{ shellStyle }}">
+<div style="{{ innerStyle }}">
+<sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;top:0;left:0;right:0;height:3px;z-index:200;overflow:hidden;background:rgba(216,178,95,.15)"><div style="width:30%;height:100%;background:#edcd85;animation:bar 1s ease-in-out infinite"></div></div>
+</sc-if>
+
+<header style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 24px;padding:clamp(20px,3vw,34px) 0 18px">
+  <div style="flex:1 1 420px;min-width:0">
+    <nav aria-label="Breadcrumb" style="display:flex;gap:8px;align-items:center;font-size:.74rem;color:#6b7689;margin-bottom:12px">
+      <a href="Events Dashboard.dc.html" style="color:#5d6880">Federation</a><span aria-hidden="true">/</span><span style="color:#1e2c4f;font-weight:500">Statistics</span>
+    </nav>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="display:block;width:38px;height:3px;border-radius:2px;background:#d8b25f"></span>
+      <h1 style="margin:0;font-size:clamp(1.45rem,2.6vw,2.05rem);font-weight:700;letter-spacing:-.02em;line-height:1.15">Karate Federation Statistics</h1>
+      <span style="font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a8620f;border:1px solid rgba(240,169,75,.5);border-radius:999px;padding:3px 9px">Mock data</span>
+    </div>
+    <p style="margin:0 0 10px;font-size:.88rem;line-height:1.55;color:#5d6880;max-width:760px;text-wrap:pretty">A complete overview of athletes, clubs, competitions, performance, rankings, and federation activity.</p>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.74rem;color:#6b7689">
+      <span style="width:7px;height:7px;border-radius:50%;background:#4fbf8a"></span>
+      <span>Last updated {{ updatedLabel }}</span><span aria-hidden="true">·</span><span>Bahrain Karate Federation · Season {{ season }}</span>
+    </div>
+  </div>
+  <sc-if value="{{ notMobile }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button onClick="{{ doRefresh }}" style="height:42px;padding:0 16px;display:flex;align-items:center;gap:8px;border:1px solid rgba(30,44,79,0.161);border-radius:11px;background:transparent;font-family:inherit;font-size:.8rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="border-color:#d8b25f;background:rgba(216,178,95,.08)">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>Refresh data</button>
+      <button onClick="{{ doPrint }}" style="height:42px;padding:0 16px;display:flex;align-items:center;gap:8px;border:1px solid rgba(30,44,79,0.161);border-radius:11px;background:transparent;font-family:inherit;font-size:.8rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="border-color:#d8b25f;background:rgba(216,178,95,.08)">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6"></path></svg>Generate report</button>
+      <button onClick="{{ doExport }}" style="height:42px;padding:0 18px;display:flex;align-items:center;gap:8px;border:0;border-radius:11px;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.8rem;font-weight:600;color:#0b132b;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.28)" style-hover="transform:translateY(-1px)">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>Export report</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative;margin-left:auto">
+      <button onClick="{{ toggleMore }}" aria-label="More actions" style="width:44px;height:44px;border:1px solid rgba(30,44,79,0.161);border-radius:11px;background:transparent;color:#1e2c4f;font-size:1.1rem;cursor:pointer">&#8943;</button>
+      <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ stop }}" style="position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:210px;background:#fff;border:1px solid rgba(216,178,95,.35);border-radius:14px;padding:6px;box-shadow:0 20px 50px rgba(30,44,79,.2)">
+          <div onClick="{{ doRefresh }}" style="padding:12px;border-radius:9px;font-size:.82rem;cursor:pointer" style-hover="background:rgba(30,44,79,0.069)">Refresh data</div>
+          <div onClick="{{ doExport }}" style="padding:12px;border-radius:9px;font-size:.82rem;cursor:pointer" style-hover="background:rgba(30,44,79,0.069)">Export report (CSV)</div>
+          <div onClick="{{ doPrint }}" style="padding:12px;border-radius:9px;font-size:.82rem;cursor:pointer" style-hover="background:rgba(30,44,79,0.069)">Generate report</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</header>
+
+<div style="{{ filterBarStyle }}">
+  <sc-if value="{{ notMobile }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:#d8b25f;stroke-width:2;stroke-linecap:round;flex:none;margin-right:2px"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>
+      <sc-for list="{{ filters }}" as="fl" hint-placeholder-count="9">
+        <div style="position:relative;flex:0 1 auto;min-width:0">
+          <button onClick="{{ fl.onToggle }}" style="{{ fl.btnStyle }}">
+            <span style="font-size:.6rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:#6b7689">{{ fl.label }}</span>
+            <span style="font-size:.78rem;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ fl.value }}</span>
+            <span style="position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:.6rem;color:#8a6d20">&#9662;</span>
+          </button>
+          <sc-if value="{{ fl.open }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ stop }}" style="position:absolute;left:0;top:calc(100% + 6px);z-index:70;min-width:230px;max-height:320px;overflow:auto;background:#fff;border:1px solid rgba(216,178,95,.35);border-radius:14px;padding:6px;box-shadow:0 22px 60px rgba(30,44,79,.2);animation:rise .18s ease both">
+              <sc-for list="{{ fl.opts }}" as="o" hint-placeholder-count="4">
+                <div onClick="{{ o.onPick }}" style="{{ o.style }}" style-hover="background:rgba(30,44,79,0.069)">
+                  <span style="flex:1">{{ o.label }}</span>
+                  <sc-if value="{{ o.on }}" hint-placeholder-val="{{ false }}"><span>&#10003;</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+      <sc-if value="{{ hasActive }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+          <span style="font-size:.7rem;font-weight:700;color:#0b132b;background:#edcd85;border-radius:999px;padding:4px 10px">{{ activeCount }}</span>
+          <button onClick="{{ resetFilters }}" style="height:36px;padding:0 14px;border:1px solid rgba(30,44,79,0.161);border-radius:10px;background:transparent;font-family:inherit;font-size:.76rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="border-color:#ef7b7b;color:#b4483c">Reset filters</button>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;gap:10px;align-items:center">
+      <button onClick="{{ openFilters }}" style="height:44px;padding:0 16px;display:flex;align-items:center;gap:8px;border:1px solid rgba(216,178,95,.5);border-radius:11px;background:rgba(216,178,95,.1);font-family:inherit;font-size:.82rem;font-weight:600;color:#1e2c4f;cursor:pointer">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:#d8b25f;stroke-width:2;stroke-linecap:round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Filters</button>
+      <span style="font-size:.76rem;color:#5d6880">Season {{ season }} · {{ activeLabel }}</span>
+    </div>
+  </sc-if>
+</div>
+
+<sc-if value="{{ showError }}" hint-placeholder-val="{{ false }}">
+  <div role="alert" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px;padding:14px 16px;border-radius:14px;background:rgba(239,91,91,.1);border:1px solid rgba(239,91,91,.45)">
+    <span style="width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;font-weight:700;color:#b4483c;background:rgba(239,91,91,.15)">!</span>
+    <div style="flex:1;min-width:220px">
+      <div style="font-size:.84rem;font-weight:600">Couldn't refresh statistics</div>
+      <div style="font-size:.76rem;color:#5d6880">The results service did not respond. You are viewing cached figures from 08:42 today.</div>
+    </div>
+    <button onClick="{{ retry }}" style="height:38px;padding:0 16px;border:1px solid rgba(239,91,91,.6);border-radius:10px;background:transparent;font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="background:rgba(239,91,91,.15)">Try again</button>
+  </div>
+</sc-if>
+
+<div style="{{ kpiGridStyle }}">
+  <div onClick="{{ goAthletes }}" role="button" tabindex="0" style="{{ kpiWideStyle }}" style-hover="border-color:rgba(94,200,229,.55);transform:translateY(-2px)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:rgba(94,200,229,.14);color:#1f7fa0;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+      <span style="flex:1;font-size:.78rem;font-weight:500;color:#5d6880">Active athletes</span>
+      <span onMouseEnter="{{ tipOn.ath }}" onMouseLeave="{{ tipOff }}" aria-label="About active athletes" style="width:20px;height:20px;border-radius:50%;border:1px solid rgba(30,44,79,0.22);display:grid;place-items:center;font-size:.64rem;font-weight:700;color:#5d6880;cursor:help">i</span>
+    </div>
+    <sc-if value="{{ tip.ath }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:12px;top:44px;z-index:5;width:240px;padding:10px 12px;border-radius:10px;background:#fff;box-shadow:0 14px 34px rgba(30,44,79,.16);border:1px solid rgba(216,178,95,.4);font-size:.72rem;line-height:1.5;color:#2c3a5e">Athletes with a valid license and at least one training or competition record this season. {{ k.registered }} athlete profiles are registered in total.</div></sc-if>
+    <div style="display:flex;align-items:flex-end;gap:16px">
+      <div style="flex:1;min-width:0">
+        <div style="{{ kv }}">{{ k.ath }}</div>
+        <div style="{{ k.athDeltaStyle }}">{{ k.athDelta }}</div>
+        <div style="font-size:.7rem;color:#6b7689;margin-top:2px">{{ k.registered }} registered in total</div>
+      </div>
+      <svg ref="{{ vb.spark }}" viewBox="0 0 160 48" aria-hidden="true" style="width:46%;max-width:240px;height:60px;flex:none;overflow:visible">
+        <path d="{{ k.athArea }}" style="fill:rgba(94,200,229,.14)"></path>
+        <path d="{{ k.athLine }}" style="fill:none;stroke:#5ec8e5;stroke-width:2.2;vector-effect:non-scaling-stroke;stroke-linejoin:round"></path>
+      </svg>
+    </div>
+  </div>
+
+  <div onClick="{{ goClubs }}" role="button" tabindex="0" style="position:relative;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:18px;cursor:pointer;transition:transform .18s ease,border-color .18s ease;scroll-snap-align:start;min-width:0" style-hover="border-color:rgba(216,178,95,.45);transform:translateY(-2px)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:rgba(216,178,95,.14);color:#8a6d20;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span>
+      <span style="flex:1;font-size:.78rem;font-weight:500;color:#5d6880">Affiliated clubs</span>
+      <span onMouseEnter="{{ tipOn.clubs }}" onMouseLeave="{{ tipOff }}" style="width:20px;height:20px;border-radius:50%;border:1px solid rgba(30,44,79,0.22);display:grid;place-items:center;font-size:.64rem;font-weight:700;color:#5d6880;cursor:help">i</span>
+    </div>
+    <sc-if value="{{ tip.clubs }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:12px;top:44px;z-index:5;width:220px;padding:10px 12px;border-radius:10px;background:#fff;box-shadow:0 14px 34px rgba(30,44,79,.16);border:1px solid rgba(216,178,95,.4);font-size:.72rem;line-height:1.5;color:#2c3a5e">Clubs with a current federation affiliation for the selected season and region.</div></sc-if>
+    <div style="{{ kv }}">{{ k.clubs }}</div>
+    <div style="font-size:.74rem;font-weight:600;margin-top:4px;color:#2f7a4f">{{ k.clubsSub }}</div>
+  </div>
+
+  <div onClick="{{ goComps }}" role="button" tabindex="0" style="position:relative;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:18px;cursor:pointer;transition:transform .18s ease,border-color .18s ease;scroll-snap-align:start;min-width:0" style-hover="border-color:rgba(216,178,95,.45);transform:translateY(-2px)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:rgba(79,191,138,.14);color:#2f7a4f;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></span>
+      <span style="flex:1;font-size:.78rem;font-weight:500;color:#5d6880">Competitions this season</span>
+      <span onMouseEnter="{{ tipOn.comps }}" onMouseLeave="{{ tipOff }}" style="width:20px;height:20px;border-radius:50%;border:1px solid rgba(30,44,79,0.22);display:grid;place-items:center;font-size:.64rem;font-weight:700;color:#5d6880;cursor:help">i</span>
+    </div>
+    <sc-if value="{{ tip.comps }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:12px;top:44px;z-index:5;width:220px;padding:10px 12px;border-radius:10px;background:#fff;box-shadow:0 14px 34px rgba(30,44,79,.16);border:1px solid rgba(216,178,95,.4);font-size:.72rem;line-height:1.5;color:#2c3a5e">All sanctioned competitions on the season calendar, including cancelled and pending events.</div></sc-if>
+    <div style="{{ kv }}">{{ k.comps }}</div>
+    <div style="font-size:.74rem;font-weight:600;margin-top:4px;color:#1f7fa0">{{ k.compsSub }}</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px" aria-hidden="true">
+      <sc-for list="{{ k.compDots }}" as="d" hint-placeholder-count="14"><span style="{{ d.style }}"></span></sc-for>
+    </div>
+  </div>
+
+  <div onClick="{{ goMedals }}" role="button" tabindex="0" style="position:relative;background:#fff;border:1px solid rgba(227,189,92,.22);border-radius:18px;padding:18px;cursor:pointer;transition:transform .18s ease,border-color .18s ease;scroll-snap-align:start;min-width:0" style-hover="border-color:rgba(227,189,92,.6);transform:translateY(-2px)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:rgba(227,189,92,.16);color:#94701a;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="15" r="6"></circle><path d="M8.5 9.5 6 2h4l2 5 2-5h4l-2.5 7.5"></path></svg></span>
+      <span style="flex:1;font-size:.78rem;font-weight:500;color:#5d6880">Medals awarded</span>
+      <span onMouseEnter="{{ tipOn.medals }}" onMouseLeave="{{ tipOff }}" style="width:20px;height:20px;border-radius:50%;border:1px solid rgba(30,44,79,0.22);display:grid;place-items:center;font-size:.64rem;font-weight:700;color:#5d6880;cursor:help">i</span>
+    </div>
+    <sc-if value="{{ tip.medals }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:12px;top:44px;z-index:5;width:220px;padding:10px 12px;border-radius:10px;background:#fff;box-shadow:0 14px 34px rgba(30,44,79,.16);border:1px solid rgba(216,178,95,.4);font-size:.72rem;line-height:1.5;color:#2c3a5e">Individual medals from completed, approved results. Team events count one medal per team.</div></sc-if>
+    <div style="{{ kv }}">{{ k.medals }}</div>
+    <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:10px 0 8px;background:rgba(30,44,79,0.069)"><span style="{{ k.gW }}"></span><span style="{{ k.sW }}"></span><span style="{{ k.bW }}"></span></div>
+    <div style="display:flex;gap:10px;font-size:.7rem;color:#5d6880;font-variant-numeric:tabular-nums"><span><b style="color:#94701a">{{ k.gold }}</b> gold</span><span><b style="color:#2c3a5e">{{ k.silver }}</b> silver</span><span><b style="color:#9a5a2e">{{ k.bronze }}</b> bronze</span></div>
+  </div>
+
+  <div onClick="{{ goOfficials }}" role="button" tabindex="0" style="position:relative;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:18px;cursor:pointer;transition:transform .18s ease,border-color .18s ease;scroll-snap-align:start;min-width:0" style-hover="border-color:rgba(216,178,95,.45);transform:translateY(-2px)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:rgba(157,140,240,.16);color:#5b49c2;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
+      <span style="flex:1;font-size:.78rem;font-weight:500;color:#5d6880">Licensed officials</span>
+      <span onMouseEnter="{{ tipOn.off }}" onMouseLeave="{{ tipOff }}" style="width:20px;height:20px;border-radius:50%;border:1px solid rgba(30,44,79,0.22);display:grid;place-items:center;font-size:.64rem;font-weight:700;color:#5d6880;cursor:help">i</span>
+    </div>
+    <sc-if value="{{ tip.off }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:12px;top:44px;z-index:5;width:220px;padding:10px 12px;border-radius:10px;background:#fff;box-shadow:0 14px 34px rgba(30,44,79,.16);border:1px solid rgba(216,178,95,.4);font-size:.72rem;line-height:1.5;color:#2c3a5e">Referees and judges with a valid license. Athlete filters do not change this figure.</div></sc-if>
+    <div style="{{ kv }}">{{ k.officials }}</div>
+    <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:.7rem;font-weight:600;color:#a8620f;background:rgba(240,169,75,.12);border-radius:999px;padding:4px 10px">&#9650; 6 licenses expiring soon</div>
+  </div>
+
+  <div onClick="{{ goAthletes }}" role="button" tabindex="0" style="position:relative;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:18px;cursor:pointer;transition:transform .18s ease,border-color .18s ease;scroll-snap-align:start;min-width:0" style-hover="border-color:rgba(216,178,95,.45);transform:translateY(-2px)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:rgba(216,178,95,.14);color:#8a6d20;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg></span>
+      <span style="flex:1;font-size:.78rem;font-weight:500;color:#5d6880">Participation rate</span>
+      <span onMouseEnter="{{ tipOn.part }}" onMouseLeave="{{ tipOff }}" style="width:20px;height:20px;border-radius:50%;border:1px solid rgba(30,44,79,0.22);display:grid;place-items:center;font-size:.64rem;font-weight:700;color:#5d6880;cursor:help">i</span>
+    </div>
+    <sc-if value="{{ tip.part }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:12px;top:44px;z-index:5;width:220px;padding:10px 12px;border-radius:10px;background:#fff;box-shadow:0 14px 34px rgba(30,44,79,.16);border:1px solid rgba(216,178,95,.4);font-size:.72rem;line-height:1.5;color:#2c3a5e">Share of active athletes who entered at least one competition this season.</div></sc-if>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="flex:1;min-width:0"><div style="{{ kv }}">{{ k.part }}</div></div>
+      <svg ref="{{ vb.ring }}" viewBox="0 0 40 40" width="46" height="46" aria-hidden="true" style="flex:none"><circle cx="20" cy="20" r="17" style="fill:none;stroke:rgba(30,44,79,0.092);stroke-width:5"></circle><circle cx="20" cy="20" r="17" style="{{ k.ringStyle }}"></circle></svg>
+    </div>
+    <div style="{{ k.partDeltaStyle }}">{{ k.partDelta }}</div>
+  </div>
+</div>
+
+<sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+  <div style="margin-top:18px;background:#fff;border:1px dashed rgba(216,178,95,.45);border-radius:18px;padding:clamp(28px,5vw,56px) 24px;text-align:center">
+    <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:16px;display:grid;place-items:center;background:rgba(216,178,95,.12);color:#8a6d20"><svg width="26" height="26" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></div>
+    <h2 style="margin:0 0 8px;font-size:1.1rem;font-weight:600">No statistics match these filters</h2>
+    <p style="margin:0 auto 18px;max-width:460px;font-size:.84rem;line-height:1.55;color:#5d6880">{{ emptyWhy }}</p>
+    <button onClick="{{ resetFilters }}" style="height:44px;padding:0 20px;border:0;border-radius:11px;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.84rem;font-weight:600;color:#0b132b;cursor:pointer">Reset filters</button>
+  </div>
+</sc-if>
+
+<sc-if value="{{ notEmpty }}" hint-placeholder-val="{{ true }}">
+<div style="{{ dataStyle }}">
+
+<div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:18px">
+  <section id="growth" aria-labelledby="h-growth" style="{{ g.cardStyle }}">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;margin-bottom:12px">
+      <div style="flex:1 1 220px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Participation</span></div>
+        <h2 id="h-growth" style="margin:0;font-size:1.02rem;font-weight:600">Athlete Participation Growth</h2>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <sc-for list="{{ g.ranges }}" as="r" hint-placeholder-count="5"><button onClick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button></sc-for>
+        <button onClick="{{ g.toggleExpand }}" aria-label="{{ g.expandLabel }}" title="{{ g.expandLabel }}" style="width:32px;height:32px;border:1px solid rgba(30,44,79,0.115);border-radius:9px;background:transparent;color:#5d6880;display:grid;place-items:center;cursor:pointer" style-hover="color:#1e2c4f;border-color:#d8b25f"><svg width="14" height="14" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></button>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-bottom:14px">
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:rgba(79,191,138,.12);border:1px solid rgba(79,191,138,.35);font-size:.74rem;font-weight:500;color:#2f7a4f"><span style="color:#2f7a4f;font-weight:700">&#9650;</span>{{ g.insight }}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-left:auto">
+        <sc-for list="{{ g.legend }}" as="l" hint-placeholder-count="4"><button onClick="{{ l.onClick }}" style="{{ l.style }}"><span style="{{ l.sw }}"></span>{{ l.label }}</button></sc-for>
+      </div>
+    </div>
+    <div style="{{ g.chartStyle }}">
+      <div onMouseLeave="{{ g.leave }}" style="position:relative;width:100%;height:100%">
+        <svg ref="{{ vb.chart }}" viewBox="0 0 1000 1000" preserveAspectRatio="none" role="img" aria-label="Line chart of registered, active and participating athletes over time, with new registrations as bars" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+          <path d="{{ g.grid }}" style="fill:none;stroke:rgba(30,44,79,0.081);stroke-width:1;vector-effect:non-scaling-stroke"></path>
+          <path d="M0,780 H1000" style="fill:none;stroke:rgba(30,44,79,0.081);stroke-width:1;vector-effect:non-scaling-stroke;stroke-dasharray:3 4"></path>
+          <path d="{{ g.regArea }}" opacity="{{ g.regOp }}" style="fill:rgba(94,200,229,.07)"></path>
+          <path d="{{ g.actArea }}" opacity="{{ g.actOp }}" style="fill:rgba(216,178,95,.13)"></path>
+          <path d="{{ g.partArea }}" opacity="{{ g.partOp }}" style="fill:rgba(79,191,138,.12)"></path>
+          <path d="{{ g.regLine }}" opacity="{{ g.regOp }}" style="fill:none;stroke:#5ec8e5;stroke-width:2.2;vector-effect:non-scaling-stroke;stroke-linejoin:round"></path>
+          <path d="{{ g.actLine }}" opacity="{{ g.actOp }}" style="fill:none;stroke:#d8b25f;stroke-width:2.6;vector-effect:non-scaling-stroke;stroke-linejoin:round"></path>
+          <path d="{{ g.partLine }}" opacity="{{ g.partOp }}" style="fill:none;stroke:#4fbf8a;stroke-width:2.2;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-dasharray:6 4"></path>
+          <path d="{{ g.bars }}" opacity="{{ g.nwOp }}" style="fill:rgba(157,140,240,.45)"></path>
+          <path d="{{ g.barHi }}" opacity="{{ g.nwOp }}" style="fill:#9d8cf0"></path>
+        </svg>
+        <sc-for list="{{ g.yl }}" as="y" hint-placeholder-count="5"><div style="{{ y.style }}">{{ y.label }}</div></sc-for>
+        <div style="position:absolute;right:calc(100% + 8px);top:88%;transform:translateY(-50%);font-size:.6rem;color:#5b49c2;white-space:nowrap">New</div>
+        <sc-for list="{{ g.xl }}" as="x" hint-placeholder-count="9"><div style="{{ x.style }}">{{ x.label }}</div></sc-for>
+        <div style="{{ g.guide }}"></div>
+        <sc-for list="{{ g.dots }}" as="d" hint-placeholder-count="3"><div style="{{ d.style }}"></div></sc-for>
+        <div style="position:absolute;inset:0;display:flex">
+          <sc-for list="{{ g.hits }}" as="hh" hint-placeholder-count="9"><div onMouseEnter="{{ hh.on }}" style="flex:1;height:100%;cursor:crosshair"></div></sc-for>
+        </div>
+        <div style="{{ g.tip.style }}">
+          <div style="font-size:.72rem;font-weight:600;color:#8a6d20;margin-bottom:6px">{{ g.tip.label }}</div>
+          <div style="display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center;font-size:.72rem;font-variant-numeric:tabular-nums">
+            <span style="width:8px;height:3px;background:#5ec8e5;border-radius:2px"></span><span style="color:#5d6880">Registered</span><b>{{ g.tip.reg }}</b>
+            <span style="width:8px;height:3px;background:#d8b25f;border-radius:2px"></span><span style="color:#5d6880">Active</span><b>{{ g.tip.act }}</b>
+            <span style="width:8px;height:3px;background:#4fbf8a;border-radius:2px"></span><span style="color:#5d6880">Participants</span><b>{{ g.tip.part }}</b>
+            <span style="width:8px;height:8px;background:#9d8cf0;border-radius:2px"></span><span style="color:#5d6880">New in period</span><b>{{ g.tip.nw }}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:.68rem;color:#6b7689;margin-top:4px">Athletes (count). Registered = all licensed profiles; active = trained or competed this season; participants = entered at least one competition.</div>
+  </section>
+
+  <section aria-labelledby="h-comp" style="flex:1 1 330px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Athletes</span></div>
+    <h2 id="h-comp" style="margin:0 0 12px;font-size:1.02rem;font-weight:600">Athlete Composition</h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      <sc-for list="{{ cp.modes }}" as="m" hint-placeholder-count="4"><button onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button></sc-for>
+    </div>
+    <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+      <div style="position:relative;width:min(190px,100%);aspect-ratio:1/1;margin:0 auto;flex:none">
+        <svg ref="{{ vb.donut }}" viewBox="0 0 200 200" role="img" aria-label="Donut chart of athlete composition" style="width:100%;height:100%">
+          <circle cx="100" cy="100" r="76" style="fill:none;stroke:rgba(30,44,79,0.057);stroke-width:20"></circle>
+          <circle cx="100" cy="100" r="76" style="{{ cp.c0 }}"></circle>
+          <circle cx="100" cy="100" r="76" style="{{ cp.c1 }}"></circle>
+          <circle cx="100" cy="100" r="76" style="{{ cp.c2 }}"></circle>
+          <circle cx="100" cy="100" r="76" style="{{ cp.c3 }}"></circle>
+          <circle cx="100" cy="100" r="76" style="{{ cp.c4 }}"></circle>
+          <circle cx="100" cy="100" r="76" style="{{ cp.c5 }}"></circle>
+        </svg>
+        <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none">
+          <div><div style="font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums">{{ cp.center }}</div><div style="font-size:.66rem;color:#5d6880;max-width:110px;line-height:1.35">{{ cp.centerLabel }}</div></div>
+        </div>
+      </div>
+      <div style="flex:1 1 170px;display:flex;flex-direction:column;gap:9px;min-width:0">
+        <sc-for list="{{ cp.rows }}" as="r" hint-placeholder-count="6">
+          <div onMouseEnter="{{ r.on }}" onMouseLeave="{{ r.off }}" style="cursor:default">
+            <div style="display:flex;align-items:center;gap:8px;font-size:.76rem">
+              <span style="{{ r.sw }}"></span><span style="flex:1;color:#2c3a5e">{{ r.name }}</span>
+              <b style="font-variant-numeric:tabular-nums">{{ r.val }}</b><span style="width:46px;text-align:right;color:#6b7689;font-variant-numeric:tabular-nums">{{ r.pct }}</span>
+            </div>
+            <div style="height:4px;border-radius:2px;background:rgba(30,44,79,0.057);margin-top:5px"><div style="{{ r.bar }}"></div></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <p style="margin:14px 0 0;font-size:.68rem;line-height:1.5;color:#6b7689">{{ cp.note }}</p>
+  </section>
+</div>
+
+<div id="clubs" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:18px">
+  <section aria-labelledby="h-clubs" style="flex:2 1 600px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div style="flex:1 1 220px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Clubs</span></div>
+        <h2 id="h-clubs" style="margin:0;font-size:1.02rem;font-weight:600">Top Performing Clubs</h2>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:.7rem;color:#6b7689;margin-right:2px">Sort by</span>
+        <sc-for list="{{ cl.sorts }}" as="o" hint-placeholder-count="6"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for>
+      </div>
+    </div>
+    <sc-if value="{{ cl.none }}" hint-placeholder-val="{{ false }}"><div style="padding:30px;text-align:center;font-size:.8rem;color:#5d6880">No clubs in this region.</div></sc-if>
+    <sc-if value="{{ clubTable }}" hint-placeholder-val="{{ true }}">
+      <div style="overflow-x:auto" role="table" aria-label="Top performing clubs">
+        <div role="row" style="display:grid;grid-template-columns:34px minmax(210px,1.7fr) 92px 74px 74px 62px 70px 56px minmax(120px,1fr) 58px;gap:10px;padding:0 8px 8px;min-width:940px;border-bottom:1px solid rgba(30,44,79,0.081);font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7689">
+          <span role="columnheader">#</span><span role="columnheader">Club</span><span role="columnheader">Region</span><span role="columnheader" style="text-align:right">Athletes</span><span role="columnheader" style="text-align:right">Entries</span><span role="columnheader" style="text-align:right">Wins</span><span role="columnheader" style="text-align:right">Medals</span><span role="columnheader" style="text-align:right">Gold</span><span role="columnheader">Performance</span><span role="columnheader" style="text-align:right">Trend</span>
+        </div>
+        <sc-for list="{{ cl.rows }}" as="c" hint-placeholder-count="5">
+          <div role="row" onClick="{{ c.onOpen }}" style="{{ c.rowStyle }}" style-hover="background:rgba(30,44,79,0.046)">
+            <span style="{{ c.rankStyle }}">{{ c.rank }}</span>
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <span style="width:32px;height:32px;flex:none;border-radius:10px;display:grid;place-items:center;background:rgba(216,178,95,.12);border:1px solid rgba(216,178,95,.3);font-size:.66rem;font-weight:700;color:#8a6d20">{{ c.initials }}</span>
+              <div style="min-width:0"><div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.name }}</div><div style="font-size:.66rem;color:#6b7689">{{ c.partTxt }} participation</div></div>
+            </div>
+            <span style="font-size:.76rem;color:#5d6880">{{ c.region }}</span>
+            <span style="font-size:.8rem;text-align:right;font-variant-numeric:tabular-nums">{{ c.athletesTxt }}</span>
+            <span style="font-size:.8rem;text-align:right;font-variant-numeric:tabular-nums">{{ c.entriesTxt }}</span>
+            <span style="font-size:.8rem;text-align:right;font-variant-numeric:tabular-nums">{{ c.winsTxt }}</span>
+            <span style="font-size:.8rem;font-weight:600;text-align:right;font-variant-numeric:tabular-nums">{{ c.medals }}</span>
+            <span style="display:flex;align-items:center;justify-content:flex-end;gap:5px;font-size:.8rem;font-weight:600;color:#94701a;font-variant-numeric:tabular-nums"><span style="width:8px;height:8px;border-radius:50%;background:#e3bd5c"></span>{{ c.gold }}</span>
+            <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:6px;border-radius:3px;background:rgba(30,44,79,0.069)"><div style="{{ c.scoreBar }}"></div></div><b style="font-size:.76rem;font-variant-numeric:tabular-nums;width:32px;text-align:right">{{ c.score }}</b></div>
+            <span style="text-align:right"><span style="{{ c.trendStyle }}">{{ c.trendTxt }}</span></span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ clubCards }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ cl.rows }}" as="c" hint-placeholder-count="5">
+          <div onClick="{{ c.onOpen }}" style="padding:14px;border-radius:14px;background:rgba(30,44,79,0.034);border:1px solid rgba(30,44,79,0.081);cursor:pointer">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <span style="{{ c.rankStyle }}">{{ c.rank }}</span>
+              <div style="flex:1;min-width:0"><div style="font-size:.84rem;font-weight:600">{{ c.name }}</div><div style="font-size:.68rem;color:#6b7689">{{ c.region }}</div></div>
+              <span style="{{ c.trendStyle }}">{{ c.trendTxt }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:.66rem;color:#6b7689">
+              <div>Athletes<b style="display:block;font-size:.84rem;color:#1e2c4f">{{ c.athletesTxt }}</b></div><div>Wins<b style="display:block;font-size:.84rem;color:#1e2c4f">{{ c.winsTxt }}</b></div><div>Medals<b style="display:block;font-size:.84rem;color:#1e2c4f">{{ c.medals }}</b></div><div>Gold<b style="display:block;font-size:.84rem;color:#94701a">{{ c.gold }}</b></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px"><div style="flex:1;height:6px;border-radius:3px;background:rgba(30,44,79,0.069)"><div style="{{ c.scoreBar }}"></div></div><b style="font-size:.76rem">{{ c.score }}</b></div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ cl.hasMore }}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{ cl.toggleAll }}" style="margin-top:12px;height:38px;padding:0 16px;border:1px solid rgba(30,44,79,0.138);border-radius:10px;background:transparent;font-family:inherit;font-size:.76rem;font-weight:600;color:#8a6d20;cursor:pointer" style-hover="border-color:#d8b25f">{{ cl.moreLabel }}</button>
+    </sc-if>
+  </section>
+
+  <section aria-labelledby="h-act" style="flex:1 1 300px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Club activity</span></div>
+    <h2 id="h-act" style="margin:0 0 4px;font-size:1.02rem;font-weight:600">Activity distribution</h2>
+    <div style="font-size:.7rem;color:#6b7689;margin-bottom:14px">36 affiliated clubs · last 90 days</div>
+    <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;margin-bottom:18px" aria-hidden="true">
+      <sc-for list="{{ cl.activity }}" as="a" hint-placeholder-count="4"><span style="{{ a.seg }}"></span></sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <sc-for list="{{ cl.activity }}" as="a" hint-placeholder-count="4">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="{{ a.sw }}"></span><span style="flex:1;font-size:.8rem;font-weight:600">{{ a.label }}</span><b style="font-size:.9rem;font-variant-numeric:tabular-nums">{{ a.n }}</b><span style="width:38px;text-align:right;font-size:.7rem;color:#6b7689">{{ a.pct }}</span></div>
+          <div style="height:8px;border-radius:4px;background:rgba(30,44,79,0.057)"><div style="{{ a.bar }}"></div></div>
+          <div style="font-size:.66rem;color:#6b7689;margin-top:4px">{{ a.desc }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;padding:12px;border-radius:12px;background:rgba(239,91,91,.08);border:1px solid rgba(239,91,91,.3)">
+      <span style="color:#b4483c;font-weight:700">!</span><span style="font-size:.76rem;line-height:1.5;color:#8f2f25">8 clubs have not entered an athlete in the last 90 days.</span>
+    </div>
+  </section>
+</div>
+
+<section id="competitions" aria-labelledby="h-cm" style="margin-top:18px;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Competitions</span></div>
+  <h2 id="h-cm" style="margin:0 0 16px;font-size:1.02rem;font-weight:600">Competition Analytics</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+    <sc-for list="{{ cm.summary }}" as="t" hint-placeholder-count="6">
+      <div style="padding:12px 14px;border-radius:12px;background:rgba(30,44,79,0.034);border:1px solid rgba(30,44,79,0.069)">
+        <div style="display:flex;align-items:center;gap:7px;font-size:.7rem;color:#5d6880"><span style="{{ t.dot }}"></span>{{ t.label }}</div>
+        <div style="font-size:1.4rem;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums">{{ t.n }}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;margin-bottom:22px" role="img" aria-label="14 competitions: 9 completed, 3 upcoming, 1 pending approval, 1 cancelled">
+    <sc-for list="{{ cm.stack }}" as="t" hint-placeholder-count="4"><span style="{{ t.style }}"></span></sc-for>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px">
+    <div style="flex:1.5 1 520px;min-width:0">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:10px">
+        <div style="font-size:.86rem;font-weight:600;flex:1">Participation by competition</div>
+        <div style="display:flex;gap:14px;font-size:.7rem;color:#5d6880"><span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:6px;border-radius:3px;background:#d8b25f"></span>Athletes</span><span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:6px;border-radius:3px;background:#5ec8e5"></span>Matches / rounds</span></div>
+      </div>
+      <div style="overflow-x:auto">
+        <div style="display:grid;grid-template-columns:minmax(170px,1.3fr) minmax(150px,1.6fr) 48px 64px;gap:12px;padding:0 8px 8px;min-width:500px;border-bottom:1px solid rgba(30,44,79,0.081);font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7689"><span>Competition</span><span>Athletes · matches</span><span style="text-align:right">Clubs</span><span>Done</span></div>
+        <sc-for list="{{ cm.rows }}" as="c" hint-placeholder-count="9">
+          <div onClick="{{ c.onOpen }}" style="{{ c.rowStyle }}" style-hover="background:rgba(30,44,79,0.046)">
+            <div style="min-width:0"><div style="font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.name }}</div><div style="font-size:.66rem;color:#6b7689">{{ c.date }}</div></div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:7px;border-radius:4px;background:rgba(30,44,79,0.057)"><div style="{{ c.aBar }}"></div></div><span style="width:34px;text-align:right;font-size:.7rem;font-variant-numeric:tabular-nums">{{ c.athletes }}</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:7px;border-radius:4px;background:rgba(30,44,79,0.057)"><div style="{{ c.mBar }}"></div></div><span style="width:34px;text-align:right;font-size:.7rem;color:#5d6880;font-variant-numeric:tabular-nums">{{ c.matches }}</span></div>
+            </div>
+            <span style="text-align:right;font-size:.8rem;font-variant-numeric:tabular-nums">{{ c.clubs }}</span>
+            <span style="{{ c.compStyle }}">{{ c.completion }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="flex:1 1 300px;min-width:0">
+      <div style="font-size:.86rem;font-weight:600;margin-bottom:10px">Operational performance</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+        <sc-for list="{{ cm.ops }}" as="o" hint-placeholder-count="6">
+          <div style="padding:12px 14px;border-radius:12px;background:rgba(30,44,79,0.034);border:1px solid rgba(30,44,79,0.069)">
+            <div style="font-size:.7rem;color:#5d6880;margin-bottom:4px">{{ o.label }}</div>
+            <div style="font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums">{{ o.value }}</div>
+            <div style="font-size:.64rem;color:#6b7689;margin:2px 0 6px">{{ o.sub }}</div>
+            <span style="{{ o.stStyle }}"><span style="{{ o.dot }}"></span>{{ o.status }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:22px">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:10px">
+      <div style="font-size:.86rem;font-weight:600;flex:1">Season timeline</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:.68rem;color:#5d6880">
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:#4fbf8a"></span>Completed</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:#5ec8e5"></span>Upcoming</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:#f0a94b"></span>Pending approval</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:#ef5b5b"></span>Cancelled</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:2px;height:12px;background:#edcd85"></span>Today</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <div style="min-width:640px">
+        <div style="position:relative;height:56px;border-radius:12px;background:rgba(30,44,79,0.034)">
+          <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(30,44,79,0.115)"></div>
+          <div style="{{ cm.todayStyle }}"></div>
+          <sc-for list="{{ cm.marks }}" as="m" hint-placeholder-count="14"><div onClick="{{ m.onOpen }}" title="{{ m.title }}" style="{{ m.style }}"></div></sc-for>
+        </div>
+        <div style="display:flex"><sc-for list="{{ cm.months }}" as="m" hint-placeholder-count="12"><span style="{{ m.style }}">{{ m.label }}</span></sc-for></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:18px">
+  <section aria-labelledby="h-ku" style="flex:1 1 460px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#5ec8e5"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#1f7fa0">Discipline</span></div>
+    <h2 id="h-ku" style="margin:0 0 14px;font-size:1.02rem;font-weight:600">Kumite analytics</h2>
+    <sc-if value="{{ ku.off }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:34px 16px;text-align:center;border-radius:14px;border:1px dashed rgba(30,44,79,0.161);font-size:.8rem;color:#5d6880">Kumite is excluded by the Kata discipline filter.</div>
+    </sc-if>
+    <sc-if value="{{ ku.on }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px">
+        <sc-for list="{{ ku.stats }}" as="t" hint-placeholder-count="8"><div style="padding:10px 12px;border-radius:11px;background:rgba(94,200,229,.06);border:1px solid rgba(94,200,229,.14)"><div style="font-size:.64rem;color:#5d6880">{{ t.label }}</div><div style="font-size:1.05rem;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums">{{ t.value }}</div></div></sc-for>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><sc-for list="{{ ku.charts }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button></sc-for></div>
+      <sc-if value="{{ ku.isMethod }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <sc-for list="{{ ku.methods }}" as="m" hint-placeholder-count="6">
+            <div><div style="display:flex;gap:8px;font-size:.74rem;margin-bottom:5px"><span style="flex:1;color:#2c3a5e">{{ m.label }}</span><b style="font-variant-numeric:tabular-nums">{{ m.value }}</b><span style="width:44px;text-align:right;color:#6b7689">{{ m.pct }}</span></div>
+            <div style="height:8px;border-radius:4px;background:rgba(30,44,79,0.057)"><div style="{{ m.bar }}"></div></div></div>
+          </sc-for>
+        </div>
+        <div style="font-size:.66rem;color:#6b7689;margin-top:10px">Matches won, by how the bout was decided.</div>
+      </sc-if>
+      <sc-if value="{{ ku.isMargin }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:flex-end;gap:6px;height:170px;padding:0 4px;border-bottom:1px solid rgba(30,44,79,0.115)">
+          <sc-for list="{{ ku.margins }}" as="m" hint-placeholder-count="9">
+            <div title="{{ m.value }} matches" style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px"><span style="font-size:.62rem;color:#5d6880;font-variant-numeric:tabular-nums">{{ m.value }}</span><div style="{{ m.col }}"></div></div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:6px;padding:6px 4px 0"><sc-for list="{{ ku.margins }}" as="m" hint-placeholder-count="9"><span style="flex:1;text-align:center;font-size:.68rem;color:#5d6880">{{ m.label }}</span></sc-for></div>
+        <div style="font-size:.66rem;color:#6b7689;margin-top:8px">Point difference at the end of the bout (matches). 8+ = technical superiority.</div>
+      </sc-if>
+      <sc-if value="{{ ku.isWeight }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ ku.weights }}" as="w" hint-placeholder-count="10">
+            <div style="display:grid;grid-template-columns:104px 1fr auto;gap:10px;align-items:center">
+              <span style="font-size:.74rem;color:#2c3a5e">{{ w.label }}</span>
+              <div style="height:8px;border-radius:4px;background:rgba(30,44,79,0.057)" title="{{ w.value }}"><div style="{{ w.bar }}"></div></div>
+              <span style="{{ w.mStyle }}">{{ w.margin }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size:.66rem;color:#6b7689;margin-top:10px">Bar = matches contested. Amber = closest categories (average winning margin ≤ 1.6 points).</div>
+      </sc-if>
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(30,44,79,0.081)">
+        <div style="font-size:.7rem;font-weight:600;color:#5d6880;margin-bottom:8px">Most successful kumite clubs</div>
+        <sc-for list="{{ ku.topClubs }}" as="t" hint-placeholder-count="3"><div style="display:flex;justify-content:space-between;gap:10px;font-size:.76rem;padding:4px 0"><span>{{ t.a }}</span><b style="color:#1f7fa0">{{ t.b }}</b></div></sc-for>
+      </div>
+    </sc-if>
+  </section>
+
+  <section aria-labelledby="h-ka" style="flex:1 1 460px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#9d8cf0"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#5b49c2">Discipline</span></div>
+    <h2 id="h-ka" style="margin:0 0 14px;font-size:1.02rem;font-weight:600">Kata analytics</h2>
+    <sc-if value="{{ ka.off }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:34px 16px;text-align:center;border-radius:14px;border:1px dashed rgba(30,44,79,0.161);font-size:.8rem;color:#5d6880">{{ ka.offMsg }}</div>
+    </sc-if>
+    <sc-if value="{{ ka.on }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px">
+        <sc-for list="{{ ka.stats }}" as="t" hint-placeholder-count="8"><div style="padding:10px 12px;border-radius:11px;background:rgba(157,140,240,.07);border:1px solid rgba(157,140,240,.18)"><div style="font-size:.64rem;color:#5d6880">{{ t.label }}</div><div style="font-size:1.05rem;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums">{{ t.value }}</div></div></sc-for>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><sc-for list="{{ ka.charts }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button></sc-for></div>
+      <sc-if value="{{ ka.isCat }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <sc-for list="{{ ka.cats }}" as="m" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:64px 1fr 40px;gap:10px;align-items:center"><span style="font-size:.74rem;color:#2c3a5e">{{ m.label }}</span><div style="height:8px;border-radius:4px;background:rgba(30,44,79,0.057)"><div style="{{ m.bar }}"></div></div><b style="font-size:.76rem;text-align:right;font-variant-numeric:tabular-nums">{{ m.value }}</b></div>
+          </sc-for>
+        </div>
+        <div style="font-size:.66rem;color:#6b7689;margin-top:10px">Average final score out of 10 (scale shown from 6.0). Technical 70% · athletic 30%.</div>
+      </sc-if>
+      <sc-if value="{{ ka.isSeason }}" hint-placeholder-val="{{ false }}">
+        <div style="position:relative;height:170px;margin:18px 10px 26px">
+          <svg ref="{{ vb.chart }}" viewBox="0 0 1000 1000" preserveAspectRatio="none" role="img" aria-label="Average kata score by season, 2022 to 2026" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+            <path d="M0,880 H1000 M0,490 H1000 M0,100 H1000" style="fill:none;stroke:rgba(30,44,79,0.081);stroke-width:1;vector-effect:non-scaling-stroke"></path>
+            <path d="{{ ka.line }}" style="fill:none;stroke:#9d8cf0;stroke-width:2.6;vector-effect:non-scaling-stroke;stroke-linejoin:round"></path>
+          </svg>
+          <sc-for list="{{ ka.pts }}" as="p" hint-placeholder-count="5"><div style="{{ p.dot }}"></div><div style="{{ p.lab }}">{{ p.value }}</div><div style="{{ p.xl }}">{{ p.label }}</div></sc-for>
+          <div style="position:absolute;left:-6px;top:88%;transform:translate(-100%,-50%);font-size:.6rem;color:#6b7689">6.8</div>
+          <div style="position:absolute;left:-6px;top:10%;transform:translate(-100%,-50%);font-size:.6rem;color:#6b7689">7.6</div>
+        </div>
+        <div style="font-size:.66rem;color:#6b7689">Average kata score per season (out of 10).</div>
+      </sc-if>
+      <sc-if value="{{ ka.isJudges }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:flex-end;gap:6px;height:170px;padding:0 4px;border-bottom:1px solid rgba(30,44,79,0.115)">
+          <sc-for list="{{ ka.judges }}" as="m" hint-placeholder-count="10">
+            <div title="{{ m.value }} judge scores" style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px"><span style="font-size:.6rem;color:#5d6880">{{ m.value }}</span><div style="{{ m.col }}"></div></div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:6px;padding:6px 4px 0"><sc-for list="{{ ka.judges }}" as="m" hint-placeholder-count="10"><span style="flex:1;text-align:center;font-size:.62rem;color:#5d6880">{{ m.label }}</span></sc-for></div>
+        <div style="font-size:.66rem;color:#6b7689;margin-top:8px">Distribution of individual judge scores (count). Narrow spread = consistent judging.</div>
+      </sc-if>
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(30,44,79,0.081)">
+        <div style="font-size:.7rem;font-weight:600;color:#5d6880;margin-bottom:8px">Highest-performing kata clubs</div>
+        <sc-for list="{{ ka.topClubs }}" as="t" hint-placeholder-count="3"><div style="display:flex;justify-content:space-between;gap:10px;font-size:.76rem;padding:4px 0"><span>{{ t.a }}</span><b style="color:#5b49c2">{{ t.b }}</b></div></sc-for>
+      </div>
+    </sc-if>
+  </section>
+</div>
+
+<div id="medals" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:18px">
+  <section aria-labelledby="h-md" style="flex:1 1 420px;min-width:0;background:#fff;border:1px solid rgba(227,189,92,.2);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#e3bd5c"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#94701a">Medals</span></div>
+    <h2 id="h-md" style="margin:0 0 4px;font-size:1.02rem;font-weight:600">Medal table</h2>
+    <div style="font-size:.7rem;color:#6b7689;margin-bottom:14px">Ordered by gold, then total. Efficiency = medals per registered athlete.</div>
+    <div style="overflow-x:auto">
+      <div style="min-width:440px">
+        <div style="display:grid;grid-template-columns:22px minmax(150px,1.4fr) 34px 34px 34px 42px 58px;gap:8px;padding:0 6px 8px;border-bottom:1px solid rgba(30,44,79,0.081);font-size:.6rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b7689">
+          <span>#</span><span>Club</span><span style="text-align:center;color:#94701a">G</span><span style="text-align:center;color:#2c3a5e">S</span><span style="text-align:center;color:#9a5a2e">B</span><span style="text-align:right">Total</span><span style="text-align:right">Effic.</span>
+        </div>
+        <sc-for list="{{ md.rows }}" as="m" hint-placeholder-count="8">
+          <div onClick="{{ m.onOpen }}" style="padding:9px 6px;border-radius:10px;cursor:pointer" style-hover="background:rgba(30,44,79,0.046)">
+            <div style="display:grid;grid-template-columns:22px minmax(150px,1.4fr) 34px 34px 34px 42px 58px;gap:8px;align-items:center;font-size:.78rem;font-variant-numeric:tabular-nums">
+              <span style="color:#6b7689;font-weight:600">{{ m.rank }}</span>
+              <div style="min-width:0"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.name }}</div><div style="font-size:.64rem;color:#6b7689">{{ m.athletes }} athletes</div></div>
+              <span style="text-align:center;font-weight:700;color:#94701a">{{ m.gold }}</span><span style="text-align:center">{{ m.silver }}</span><span style="text-align:center;color:#9a5a2e">{{ m.bronze }}</span>
+              <b style="text-align:right">{{ m.total }}</b><span style="text-align:right;color:#5d6880">{{ m.eff }}</span>
+            </div>
+            <div style="display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:6px;background:rgba(30,44,79,0.046)"><span style="{{ m.g }}"></span><span style="{{ m.s }}"></span><span style="{{ m.b }}"></span></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-rk" style="flex:1.4 1 520px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div style="flex:1 1 200px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Rankings</span></div>
+        <h2 id="h-rk" style="margin:0;font-size:1.02rem;font-weight:600">Ranking movement</h2>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ rk.tabs }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button></sc-for></div>
+    </div>
+    <sc-if value="{{ rk.none }}" hint-placeholder-val="{{ false }}"><div style="padding:30px 16px;text-align:center;border-radius:14px;border:1px dashed rgba(30,44,79,0.161);font-size:.8rem;color:#5d6880">No ranked athletes in this group for the current filters.</div></sc-if>
+    <div style="overflow-x:auto">
+      <div style="min-width:720px">
+        <sc-if value="{{ notMobile }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:minmax(170px,1.5fr) minmax(140px,1.2fr) 56px 56px 62px 60px 90px;gap:10px;padding:0 8px 8px;border-bottom:1px solid rgba(30,44,79,0.081);font-size:.6rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b7689">
+            <span>Athlete</span><span>Recent result</span><span style="text-align:right">Now</span><span style="text-align:right">Before</span><span style="text-align:right">Points</span><span style="text-align:right">Move</span><span>Last 6 lists</span>
+          </div>
+        </sc-if>
+        <sc-for list="{{ rk.rows }}" as="r" hint-placeholder-count="4">
+          <div onClick="{{ r.onOpen }}" style="display:grid;grid-template-columns:minmax(170px,1.5fr) minmax(140px,1.2fr) 56px 56px 62px 60px 90px;gap:10px;align-items:center;padding:10px 8px;border-radius:12px;cursor:pointer" style-hover="background:rgba(30,44,79,0.046)">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <span style="width:30px;height:40px;flex:none;border-radius:7px;background:#fdf6e6;border:1px solid #caa14f;display:grid;place-items:center;font-size:.64rem;font-weight:700;color:#8a6d20">{{ r.initials }}</span>
+              <div style="min-width:0"><div style="font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</div><div style="font-size:.64rem;color:#6b7689;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.club }} · {{ r.cat }}</div></div>
+            </div>
+            <span style="font-size:.72rem;color:#5d6880">{{ r.recent }}</span>
+            <b style="text-align:right;font-size:.84rem;font-variant-numeric:tabular-nums">{{ r.cur }}</b>
+            <span style="text-align:right;font-size:.78rem;color:#6b7689;font-variant-numeric:tabular-nums">{{ r.prev }}</span>
+            <span style="text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">{{ r.pts }}</span>
+            <span style="text-align:right"><span style="{{ r.mvStyle }}">{{ r.mv }}</span></span>
+            <svg ref="{{ vb.rank }}" viewBox="0 0 84 28" preserveAspectRatio="none" aria-hidden="true" style="width:84px;height:28px"><path d="{{ r.path }}" style="{{ r.stroke }}"></path></svg>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="font-size:.66rem;color:#6b7689;margin-top:8px">Sparkline: rank on the last six official lists (higher line = better rank).</div>
+  </section>
+</div>
+
+<section aria-labelledby="h-em" style="margin-top:18px;background:linear-gradient(135deg,#fdf8ec 0%,#fff 60%);border:1px solid rgba(216,178,95,.28);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Talent pipeline</span></div>
+  <h2 id="h-em" style="margin:0 0 16px;font-size:1.02rem;font-weight:600">Emerging Athletes</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px">
+    <sc-for list="{{ em }}" as="a" hint-placeholder-count="4">
+      <div onClick="{{ a.onOpen }}" role="button" tabindex="0" style="display:flex;gap:14px;padding:14px;border-radius:14px;background:#f7f8fb;border:1px solid rgba(30,44,79,0.081);cursor:pointer;transition:border-color .18s ease" style-hover="border-color:rgba(216,178,95,.5)">
+        <div style="width:66px;height:88px;flex:none;border-radius:10px;background:#fdf6e6;border:1px solid #caa14f;display:grid;place-items:center;font-size:1rem;font-weight:700;color:#8a6d20">{{ a.initials }}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.86rem;font-weight:600">{{ a.name }}</div>
+          <div style="font-size:.68rem;color:#6b7689;margin-bottom:6px">{{ a.club }} · {{ a.meta }}</div>
+          <div style="font-size:.72rem;line-height:1.45;color:#2c3a5e;margin-bottom:8px">{{ a.txt }}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px"><span style="font-size:.68rem;font-weight:700;color:#2f7a4f">{{ a.mv }}</span><span style="font-size:.64rem;color:#6b7689">Season goal {{ a.prog }}</span></div>
+          <div style="height:6px;border-radius:3px;background:rgba(30,44,79,0.081)"><div style="{{ a.bar }}"></div></div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+<div id="geo" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:18px">
+  <section aria-labelledby="h-geo" style="flex:1.3 1 480px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div style="flex:1 1 200px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Geography</span></div>
+        <h2 id="h-geo" style="margin:0;font-size:1.02rem;font-weight:600">Federation map</h2>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ geo.metrics }}" as="m" hint-placeholder-count="4"><button onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button></sc-for></div>
+    </div>
+    <div ref="{{ geo.mapRef }}" role="img" aria-label="Map of Bahrain with circles sized by the selected metric per region" style="height:clamp(300px,34vw,420px);border-radius:14px;overflow:hidden;border:1px solid rgba(30,44,79,0.092)"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:.68rem;color:#5d6880">
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:rgba(216,178,95,.35);border:1.5px solid #d8b25f"></span>{{ geo.legendLabel }}</span>
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid #1f7fa0"></span>Competition venue</span>
+    </div>
+  </section>
+  <section aria-labelledby="h-reg" style="flex:1 1 380px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <h2 id="h-reg" style="margin:0 0 4px;font-size:1.02rem;font-weight:600">Participation by region</h2>
+    <div style="font-size:.7rem;color:#6b7689;margin-bottom:12px">Shading follows the selected map metric. Select a region to focus the map.</div>
+    <div style="overflow-x:auto">
+      <div style="display:grid;grid-template-columns:minmax(90px,1.2fr) 48px 70px 64px 58px 64px;gap:8px;padding:0 10px 8px;min-width:430px;font-size:.6rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b7689;border-bottom:1px solid rgba(30,44,79,0.081)">
+        <span>Region</span><span style="text-align:right">Clubs</span><span style="text-align:right">Athletes</span><span style="text-align:right">Entries</span><span style="text-align:right">Medals</span><span style="text-align:right">Growth</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">
+        <sc-for list="{{ geo.rows }}" as="r" hint-placeholder-count="6">
+          <div onClick="{{ r.onPick }}" style="{{ r.rowStyle }}" style-hover="background:rgba(30,44,79,0.034)">
+            <span style="{{ r.heat }}"></span>
+            <span style="position:relative;font-size:.8rem;font-weight:600">{{ r.name }}</span>
+            <span style="position:relative;text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums">{{ r.clubs }}</span>
+            <span style="position:relative;text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums">{{ r.athletes }}</span>
+            <span style="position:relative;text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums">{{ r.entries }}</span>
+            <span style="position:relative;text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums">{{ r.medals }}</span>
+            <span style="position:relative;display:block;text-align:right"><span style="{{ r.gStyle }}">{{ r.growth }}</span></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:18px">
+  <section aria-labelledby="h-hl" style="flex:1.3 1 480px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div style="flex:1 1 200px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Compliance</span></div>
+        <h2 id="h-hl" style="margin:0;font-size:1.02rem;font-weight:600">Federation Health</h2>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <sc-for list="{{ hl.counts }}" as="c" hint-placeholder-count="4"><span style="display:flex;align-items:center;gap:6px;font-size:.7rem;color:#5d6880"><span style="{{ c.dot }}"></span>{{ c.label }} <b style="color:#1e2c4f">{{ c.n }}</b></span></sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <sc-for list="{{ hl.rows }}" as="a" hint-placeholder-count="5">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;background:rgba(30,44,79,0.029);border:1px solid rgba(30,44,79,0.069)">
+          <span style="{{ a.iconStyle }}" aria-hidden="true">{{ a.icon }}</span>
+          <div style="flex:1 1 220px;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="{{ a.sevStyle }}">{{ a.sev }}</span><span style="font-size:.66rem;color:#6b7689">{{ a.due }}</span></div>
+            <div style="font-size:.82rem;font-weight:600;margin-top:2px">{{ a.text }}</div>
+            <div style="font-size:.7rem;color:#5d6880">{{ a.sub }}</div>
+          </div>
+          <sc-if value="{{ a.hasAction }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ a.onAct }}" style="height:34px;padding:0 14px;flex:none;border:1px solid rgba(30,44,79,0.161);border-radius:9px;background:transparent;font-family:inherit;font-size:.72rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="border-color:#d8b25f;color:#8a6d20">{{ a.action }}</button>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <button onClick="{{ hl.toggleAll }}" style="margin-top:12px;height:38px;padding:0 16px;border:1px solid rgba(30,44,79,0.138);border-radius:10px;background:transparent;font-family:inherit;font-size:.76rem;font-weight:600;color:#8a6d20;cursor:pointer" style-hover="border-color:#d8b25f">{{ hl.allLabel }}</button>
+  </section>
+
+  <section id="officials" aria-labelledby="h-of" style="flex:1 1 360px;min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Officials</span></div>
+    <h2 id="h-of" style="margin:0 0 14px;font-size:1.02rem;font-weight:600">Referees &amp; judges</h2>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px">
+      <sc-for list="{{ of.stats }}" as="t" hint-placeholder-count="4"><div style="padding:10px 12px;border-radius:11px;background:rgba(30,44,79,0.034);border:1px solid rgba(30,44,79,0.069)"><div style="font-size:.64rem;color:#5d6880">{{ t.label }}</div><div style="font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums">{{ t.value }}</div></div></sc-for>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:11px;background:rgba(240,169,75,.1);border:1px solid rgba(240,169,75,.3);font-size:.74rem;color:#7a4a0c;margin-bottom:16px"><b style="color:#a8620f">&#9650; 6</b> license expirations in the next 45 days</div>
+    <div style="font-size:.7rem;font-weight:600;color:#5d6880;margin-bottom:8px">Officials by license level</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      <sc-for list="{{ of.lic }}" as="l" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:118px 1fr 26px;gap:10px;align-items:center"><span style="font-size:.72rem;color:#2c3a5e">{{ l.label }}</span><div style="height:8px;border-radius:4px;background:rgba(30,44,79,0.057)"><div style="{{ l.bar }}"></div></div><b style="font-size:.74rem;text-align:right">{{ l.value }}</b></div></sc-for>
+    </div>
+    <div style="font-size:.7rem;font-weight:600;color:#5d6880;margin-bottom:8px">Officials by region</div>
+    <div style="display:flex;align-items:flex-end;gap:8px;height:90px;border-bottom:1px solid rgba(30,44,79,0.115)">
+      <sc-for list="{{ of.regions }}" as="r" hint-placeholder-count="6"><div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px"><span style="font-size:.62rem;color:#2c3a5e">{{ r.value }}</span><div style="{{ r.bar }}"></div></div></sc-for>
+    </div>
+    <div style="display:flex;gap:8px;padding-top:5px"><sc-for list="{{ of.regions }}" as="r" hint-placeholder-count="6"><span style="flex:1;text-align:center;font-size:.6rem;color:#5d6880;overflow:hidden;text-overflow:ellipsis">{{ r.label }}</span></sc-for></div>
+  </section>
+</div>
+
+<sc-if value="{{ showInsights }}" hint-placeholder-val="{{ true }}">
+  <section aria-labelledby="h-ins" style="margin-top:18px;position:relative;overflow:hidden;background:radial-gradient(700px 240px at 0% 0%,rgba(157,140,240,.14),transparent 70%),radial-gradient(600px 240px at 100% 100%,rgba(216,178,95,.12),transparent 70%),#fff;border:1px solid rgba(157,140,240,.3);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:#b3a6f5;stroke-width:2;stroke-linejoin:round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path></svg>
+      <span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#5b49c2">Analysis of this season's data</span>
+    </div>
+    <h2 id="h-ins" style="margin:0 0 16px;font-size:1.02rem;font-weight:600">Federation Insights</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
+      <sc-for list="{{ ins }}" as="i" hint-placeholder-count="5">
+        <div style="position:relative;display:flex;flex-direction:column;gap:8px;padding:16px 16px 14px 18px;border-radius:14px;background:#f7f8fb;border:1px solid rgba(30,44,79,0.081)">
+          <span style="{{ i.edge }}"></span>
+          <span style="{{ i.tag }}">{{ i.type }}</span>
+          <div style="font-size:.84rem;font-weight:500;line-height:1.5;text-wrap:pretty">{{ i.text }}</div>
+          <div style="font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums">{{ i.stat }}</div>
+          <button onClick="{{ i.onAct }}" style="margin-top:auto;align-self:flex-start;padding:0;border:0;background:none;font-family:inherit;font-size:.74rem;font-weight:600;color:#8a6d20;cursor:pointer" style-hover="color:#1e2c4f">{{ i.act }} &#8594;</button>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</sc-if>
+
+<p style="margin:22px 0 0;font-size:.7rem;color:#6b7689;text-align:center">All figures on this page are mock data for the prototype. Athlete and club names are fictional.</p>
+
+</div>
+</sc-if>
+
+<sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeDrawer }}" style="position:fixed;inset:0;z-index:150;background:rgba(30,44,79,.35)">
+    <aside onClick="{{ stop }}" role="dialog" aria-modal="true" aria-label="{{ dw.title }}" style="position:absolute;top:0;right:0;bottom:0;width:min(440px,100vw);background:#fff;border-left:1px solid rgba(216,178,95,.3);box-shadow:-24px 0 60px rgba(30,44,79,.2);overflow:auto;padding:24px;box-sizing:border-box;animation:rise .22s ease both">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:18px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20;margin-bottom:6px">{{ dw.eyebrow }}</div>
+          <div style="font-size:1.2rem;font-weight:700;line-height:1.3">{{ dw.title }}</div>
+          <div style="font-size:.76rem;color:#5d6880;margin-top:4px;line-height:1.5">{{ dw.sub }}</div>
+        </div>
+        <button onClick="{{ closeDrawer }}" aria-label="Close preview" style="width:36px;height:36px;flex:none;border:1px solid rgba(30,44,79,0.161);border-radius:10px;background:transparent;color:#5d6880;font-size:.9rem;cursor:pointer" style-hover="color:#1e2c4f;border-color:#d8b25f">&#10005;</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:20px">
+        <sc-for list="{{ dw.stats }}" as="t" hint-placeholder-count="6"><div style="padding:12px;border-radius:12px;background:rgba(30,44,79,0.046);border:1px solid rgba(30,44,79,0.081)"><div style="font-size:.66rem;color:#5d6880">{{ t.label }}</div><div style="font-size:.98rem;font-weight:700;margin-top:2px">{{ t.value }}</div></div></sc-for>
+      </div>
+      <sc-if value="{{ dw.hasList }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:.72rem;font-weight:600;color:#5d6880;margin-bottom:8px">{{ dw.listTitle }}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px">
+          <sc-for list="{{ dw.list }}" as="l" hint-placeholder-count="3"><div style="padding:10px 12px;border-radius:10px;background:rgba(30,44,79,0.034)"><div style="font-size:.8rem;font-weight:600">{{ l.a }}</div><div style="font-size:.7rem;color:#5d6880;margin-top:2px">{{ l.b }}</div></div></sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ dw.hasCta }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ dw.onCta }}" style="width:100%;height:46px;border:0;border-radius:11px;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.84rem;font-weight:600;color:#0b132b;cursor:pointer">{{ dw.cta }}</button>
+      </sc-if>
+    </aside>
+  </div>
+</sc-if>
+
+<sc-if value="{{ fDrawerOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeFilters }}" style="position:fixed;inset:0;z-index:150;background:rgba(30,44,79,.4)">
+    <div onClick="{{ stop }}" style="position:absolute;left:0;right:0;bottom:0;max-height:86vh;overflow:auto;background:#fff;border-top:3px solid #d8b25f;border-radius:20px 20px 0 0;padding:18px 16px 24px;box-sizing:border-box;animation:rise .22s ease both">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="flex:1;font-size:1rem;font-weight:700">Filters</div>
+        <button onClick="{{ closeFilters }}" aria-label="Close filters" style="width:40px;height:40px;border:1px solid rgba(30,44,79,0.161);border-radius:10px;background:transparent;color:#5d6880;cursor:pointer">&#10005;</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ filters }}" as="fl" hint-placeholder-count="9">
+          <div>
+            <button onClick="{{ fl.onToggle }}" style="{{ fl.btnStyle }}">
+              <span style="font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:#6b7689">{{ fl.label }}</span>
+              <span style="font-size:.84rem;font-weight:600">{{ fl.value }}</span>
+              <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:.6rem;color:#8a6d20">&#9662;</span>
+            </button>
+            <sc-if value="{{ fl.open }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:6px;padding:4px;border-radius:12px;background:rgba(30,44,79,0.034)">
+                <sc-for list="{{ fl.opts }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.onPick }}" style="{{ o.style }}"><span style="flex:1">{{ o.label }}</span></div></sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button onClick="{{ resetFilters }}" style="flex:1;height:46px;border:1px solid rgba(30,44,79,0.161);border-radius:11px;background:transparent;font-family:inherit;font-size:.84rem;font-weight:600;color:#1e2c4f;cursor:pointer">Reset</button>
+        <button onClick="{{ closeFilters }}" style="flex:1;height:46px;border:0;border-radius:11px;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.84rem;font-weight:600;color:#0b132b;cursor:pointer">Show results</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div role="status" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:160;padding:12px 18px;border-radius:12px;background:#fff;border:1px solid rgba(79,191,138,.5);box-shadow:0 16px 40px rgba(30,44,79,.2);font-size:.8rem;color:#1e2c4f;animation:rise .2s ease both">{{ toast }}</div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;embedded&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Layout&quot;}, &quot;demoState&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;live&quot;, &quot;loading&quot;, &quot;empty&quot;, &quot;error&quot;], &quot;default&quot;: &quot;live&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Preview states&quot;}, &quot;showInsights&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Layout&quot;}}">
+class Component extends DCLogic {
+  DEF = {season: '2026', range: 'Full season', comp: 'All competitions', disc: 'All', gender: 'All', age: 'All', weight: 'All', club: 'All clubs', region: 'All regions'};
+  state = {f: null, fOpen: null, gRange: 'Current season', gHover: null, gHide: {}, compMode: 'Age', compHover: null,
+    clubSort: 'score', clubAll: false, kum: 'method', kata: 'category', rankTab: 'Rising', geoMetric: 'athletes', geoSel: null,
+    alertsAll: false, resolved: {}, drawer: null, loading: false, updated: Date.now(), expand: null, kpiTip: null,
+    isMobile: false, fDrawer: false, more: false, toast: null, errCleared: false};
+  fv() { return this.state.f || this.DEF; }
+  css(str) { const o = {}; str.split(';').forEach(p => { const i = p.indexOf(':'); if (i < 0) return; const k = p.slice(0, i).trim(); if (!k) return; o[k.replace(/-([a-z])/g, (m, c) => c.toUpperCase())] = p.slice(i + 1).trim(); }); return o; }
+  h(str) { let x = 2166136261; for (let i = 0; i < str.length; i++) { x ^= str.charCodeAt(i); x = Math.imul(x, 16777619); } return ((x >>> 0) % 10000) / 10000; }
+  fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+  fmtK(n) { return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace('.0', '') + 'k' : String(Math.round(n)); }
+  nice(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p; return 10 * p; }
+  vbFix(vb, par) { return el => { if (el) { el.setAttribute('viewBox', vb); if (par) el.setAttribute('preserveAspectRatio', par); } }; }
+  constructor(p) {
+    super(p);
+    this._vb = {chart: this.vbFix('0 0 1000 1000', 'none'), spark: this.vbFix('0 0 160 48', 'none'), donut: this.vbFix('0 0 200 200'), ring: this.vbFix('0 0 40 40'), rank: this.vbFix('0 0 84 28', 'none')};
+  }
+  data() {
+    if (this._d) return this._d;
+    const clubs = [
+      ['Al Muharraq Karate Club', 'Muharraq', 142, 318, 214, 64, 22, 92.4, 4, 86],
+      ['Bahrain National Karate Academy', 'Manama', 128, 296, 198, 58, 19, 89.7, 2, 84],
+      ['Riffa Karate Center', 'Riffa', 104, 241, 162, 47, 15, 84.1, 6, 81],
+      ['Manama Martial Arts Club', 'Manama', 116, 254, 149, 41, 11, 80.6, -1, 77],
+      ['Northern Governorate Karate Club', 'Northern', 96, 207, 128, 36, 10, 76.3, 3, 79],
+      ['Busaiteen Shotokan Dojo', 'Muharraq', 84, 176, 101, 27, 8, 71.8, 5, 74],
+      ['Hamad Town Karate Club', 'Northern', 72, 149, 84, 21, 6, 67.2, -2, 70],
+      ['Zallaq Karate Academy', 'Southern', 64, 128, 69, 17, 5, 63.5, 1, 68],
+      ['Sitra Budokan Club', 'Other', 58, 104, 52, 12, 3, 58.9, -3, 61],
+      ['Awali Karate Club', 'Southern', 49, 87, 38, 9, 2, 54.0, 0, 57]
+    ].map(r => ({name: r[0], region: r[1], athletes: r[2], entries: r[3], wins: r[4], medals: r[5], gold: r[6], score: r[7], trend: r[8], part: r[9],
+      initials: r[0].split(' ').filter(w => w[0] === w[0].toUpperCase()).map(w => w[0]).slice(0, 2).join('')}));
+    const comps = [
+      ['Masters Cup', 0, 24, 'Club', 'Cancelled', 0, 0, 0, 0, 'Isa Sports City'],
+      ['Muharraq Club Invitational', 1, 15, 'Club', 'Completed', 14, 132, 198, 100, 'Muharraq Sports Hall'],
+      ['National Karate Championship', 2, 14, 'Federation', 'Completed', 31, 412, 684, 99, 'Isa Sports City'],
+      ['Riffa Kumite League · Round 1', 3, 11, 'Club', 'Completed', 12, 118, 176, 97, 'Riffa Club Arena'],
+      ['Federation Cup', 4, 9, 'Federation', 'Completed', 27, 338, 552, 98, 'Isa Sports City'],
+      ['Youth Development Championship', 5, 20, 'Federation', 'Completed', 24, 296, 471, 96, 'Isa Sports City'],
+      ['Northern Cup', 5, 27, 'Club', 'Completed', 11, 104, 149, 95, 'Hamad Town Hall'],
+      ['Cadet & Junior Selection', 6, 11, 'Federation', 'Completed', 18, 164, 238, 100, 'Isa Sports City'],
+      ['National Kata Challenge', 6, 25, 'Federation', 'Completed', 19, 184, 236, 98, 'Muharraq Sports Hall'],
+      ['Riffa Kumite League · Round 2', 7, 22, 'Club', 'Completed', 13, 126, 184, 94, 'Riffa Club Arena'],
+      ['Bahrain Open Karate Tournament', 8, 26, 'Federation', 'Upcoming', 34, 458, 0, 0, 'Isa Sports City'],
+      ['Kids Karate Festival', 9, 17, 'Federation', 'Upcoming', 22, 260, 0, 0, 'Isa Sports City'],
+      ['Southern Open', 10, 7, 'Club', 'Pending approval', 9, 0, 0, 0, 'Zallaq Hall'],
+      ['Winter Kata Open', 11, 12, 'Federation', 'Upcoming', 0, 0, 0, 0, 'Muharraq Sports Hall']
+    ].map(r => ({name: r[0], month: r[1], day: r[2], org: r[3], status: r[4], clubs: r[5], athletes: r[6], matches: r[7], completion: r[8], venue: r[9]}));
+    const regions = [
+      ['Muharraq', 26.2572, 50.6119, .24, 8, 612, 118, 14.2, 18],
+      ['Manama', 26.2235, 50.5822, .27, 9, 684, 124, 9.8, 24],
+      ['Riffa', 26.1300, 50.5550, .17, 6, 402, 76, 16.5, 14],
+      ['Northern', 26.1880, 50.4800, .16, 6, 356, 58, 11.3, 13],
+      ['Southern', 26.0400, 50.5000, .09, 4, 174, 34, 21.7, 8],
+      ['Other', 26.1550, 50.6250, .07, 3, 118, 18, -4.2, 5]
+    ].map(r => ({name: r[0], lat: r[1], lng: r[2], share: r[3], clubs: r[4], entries: r[5], medals: r[6], growth: r[7], officials: r[8]}));
+    const ages = [['Kids', .22], ['U14', .19], ['Cadet', .18], ['Junior', .15], ['Senior', .19], ['Master', .07]].map(a => ({name: a[0], share: a[1]}));
+    const ath = [
+      ['Hamad Al Sayed', 'Riffa Karate Center', 'Cadet Male -63 kg', 'Kumite', 'M', 'Cadet', 8, 24, 1840, '1st · Youth Development Ch.', [31, 27, 24, 17, 12, 8], 'Rising'],
+      ['Noor Abdulla', 'Al Muharraq Karate Club', 'Junior Female', 'Kata', 'F', 'Junior', 3, 11, 2215, '1st · National Kata Challenge', [15, 13, 11, 7, 5, 3], 'Rising'],
+      ['Ali Jaber', 'Northern Governorate Karate Club', 'Senior Male -75 kg', 'Kumite', 'M', 'Senior', 5, 14, 2060, '2nd · Federation Cup', [18, 16, 14, 10, 7, 5], 'Rising'],
+      ['Reem Al Noaimi', 'Bahrain National Karate Academy', 'U14 Female', 'Kata', 'F', 'U14', 6, 15, 1390, '1st · Cadet & Junior Selection', [19, 17, 15, 11, 8, 6], 'Rising'],
+      ['Omar Janahi', 'Manama Martial Arts Club', 'Senior Male -67 kg', 'Kumite', 'M', 'Senior', 9, 3, 1720, '5th · Federation Cup', [2, 2, 3, 4, 7, 9], 'Falling'],
+      ['Sara Mubarak', 'Hamad Town Karate Club', 'Junior Female -53 kg', 'Kumite', 'F', 'Junior', 12, 5, 1310, 'Round 2 · Kumite League R2', [4, 4, 5, 7, 10, 12], 'Falling'],
+      ['Hussain Al Aradi', 'Zallaq Karate Academy', 'Master Male', 'Kata', 'M', 'Master', 7, 2, 980, '4th · Muharraq Invitational', [1, 2, 2, 4, 6, 7], 'Falling'],
+      ['Layla Buhiji', 'Busaiteen Shotokan Dojo', 'Cadet Female -54 kg', 'Kumite', 'F', 'Cadet', 14, null, 1120, '3rd · Kumite League R2', [null, null, null, null, 20, 14], 'New'],
+      ['Yusuf Karimi', 'Sitra Budokan Club', 'Kids Male', 'Kata', 'M', 'Kids', 10, null, 640, '2nd · Northern Cup', [null, null, null, null, 16, 10], 'New'],
+      ['Fatema Al Ansari', 'Al Muharraq Karate Club', 'Senior Female -61 kg', 'Kumite', 'F', 'Senior', 1, 1, 3120, '1st · National Championship', [1, 1, 1, 2, 1, 1], 'Consistent'],
+      ['Ahmed Al Qassab', 'Bahrain National Karate Academy', 'Senior Male', 'Kata', 'M', 'Senior', 2, 2, 2940, '1st · Federation Cup', [2, 1, 2, 2, 2, 2], 'Consistent'],
+      ['Zainab Radhi', 'Riffa Karate Center', 'Junior Female -48 kg', 'Kumite', 'F', 'Junior', 4, 5, 2110, '2nd · National Championship', [5, 4, 5, 4, 5, 4], 'Consistent']
+    ].map(r => ({name: r[0], club: r[1], cat: r[2], disc: r[3], gender: r[4], age: r[5], cur: r[6], prev: r[7], pts: r[8], recent: r[9], hist: r[10], group: r[11]}));
+    this._d = {clubs, comps, regions, ages, ath,
+      weights: ['-47 kg', '-52 kg', '-55 kg', '-57 kg', '-61 kg', '-63 kg', '-68 kg', '-70 kg', '+70 kg'],
+      venues: [['Isa Sports City', 26.168, 50.545], ['Muharraq Sports Hall', 26.259, 50.616], ['Riffa Club Arena', 26.121, 50.566], ['Hamad Town Hall', 26.115, 50.505]],
+      compAthTotal: 1874};
+    return this._d;
+  }
+  factors() {
+    const f = this.fv(), D = this.data();
+    const seasonF = {'2026': 1, '2025': .89, '2024': .79}[f.season];
+    const discF = {All: 1, Kata: .42, Kumite: .58}[f.disc];
+    const genderF = {All: 1, Male: .61, Female: .39}[f.gender];
+    const ageF = f.age === 'All' ? 1 : D.ages.find(a => a.name === f.age).share;
+    const weightF = f.weight === 'All' ? 1 : .13;
+    const club = D.clubs.find(c => c.name === f.club) || null;
+    const regionF = f.region === 'All regions' ? 1 : D.regions.find(r => r.name === f.region).share;
+    const locF = club ? club.athletes / 1248 : regionF;
+    const rangeF = {'Full season': 1, 'Last 90 days': .38, 'Last 30 days': .14}[f.range];
+    const comp = D.comps.find(c => c.name === f.comp) || null;
+    const compF = comp ? comp.athletes / D.compAthTotal : 1;
+    const popF = seasonF * discF * genderF * ageF * weightF * locF;
+    const actF = popF * (comp ? compF : rangeF);
+    let emptyWhy = '';
+    if (f.disc === 'Kata' && f.weight !== 'All') emptyWhy = 'Kata has no weight categories. Clear the weight filter or switch discipline to Kumite.';
+    else if (club && f.region !== 'All regions' && club.region !== f.region) emptyWhy = club.name + ' is in ' + club.region + ', not ' + f.region + '.';
+    else if (comp && comp.athletes === 0) emptyWhy = comp.name + ' has no results yet (' + comp.status.toLowerCase() + ').';
+    if (this.props.demoState === 'empty') emptyWhy = emptyWhy || 'No records match the current filter combination.';
+    return {seasonF, discF, genderF, ageF, weightF, locF, rangeF, compF, popF, actF, club, comp, empty: !!emptyWhy, emptyWhy,
+      kAth: popF / locF, kAct: actF / locF};
+  }
+  setFilter(k, v) { this.setState({f: {...this.fv(), [k]: v}, fOpen: null}); this.pulse(); }
+  setFilters(patch, msg) { this.setState({f: {...this.fv(), ...patch}, fOpen: null}); this.pulse(); if (msg) this.toast(msg); }
+  pulse(ms) { this.setState({loading: true}); clearTimeout(this._lt); this._lt = setTimeout(() => this.setState({loading: false}), ms || 450); }
+  toast(t) { this.setState({toast: t}); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({toast: null}), 2600); }
+  scrollTo(id) { const el = document.getElementById(id); if (el) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - 76, behavior: 'smooth'}); }
+  componentDidMount() {
+    this._rs = () => this.setState({isMobile: window.innerWidth < 760});
+    this._rs(); window.addEventListener('resize', this._rs);
+    this._dc = () => { if (this.state.fOpen || this.state.more) this.setState({fOpen: null, more: false}); };
+    document.addEventListener('click', this._dc);
+    this._kd = e => { if (e.key === 'Escape') this.setState({drawer: null, fOpen: null, fDrawer: false, more: false}); };
+    document.addEventListener('keydown', this._kd);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._rs); document.removeEventListener('click', this._dc); document.removeEventListener('keydown', this._kd); }
+  componentDidUpdate() { this.updateGeo(); }
+  initMap(el) {
+    if (!el || el._leaflet_id) return;
+    const go = () => {
+      if (typeof L === 'undefined') return setTimeout(go, 250);
+      if (el._leaflet_id) return;
+      const m = L.map(el, {zoomControl: false, scrollWheelZoom: false}).setView([26.14, 50.56], 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '&copy; OpenStreetMap', maxZoom: 18}).addTo(m);
+      L.control.zoom({position: 'bottomright'}).addTo(m);
+      this._map = m; this._geo = {};
+      this.data().regions.forEach(r => {
+        const c = L.circleMarker([r.lat, r.lng], {radius: 12, color: '#d8b25f', weight: 1.5, fillColor: '#d8b25f', fillOpacity: .32}).addTo(m);
+        c.bindTooltip(r.name, {direction: 'top'}); c.on('click', () => this.setState({geoSel: r.name}));
+        this._geo[r.name] = c;
+      });
+      this.data().venues.forEach(v => L.circleMarker([v[1], v[2]], {radius: 5, color: '#5ec8e5', weight: 2, fillColor: '#ffffff', fillOpacity: 1}).addTo(m).bindTooltip('Venue · ' + v[0], {direction: 'top'}));
+      setTimeout(() => m.invalidateSize(), 300);
+      this.updateGeo();
+    };
+    go();
+  }
+  updateGeo() {
+    if (!this._geo || !this._geoRows) return;
+    this._geoRows.forEach(r => { const c = this._geo[r.name]; if (!c) return; const sel = this.state.geoSel === r.name;
+      c.setRadius(r.radius); c.setStyle({fillOpacity: sel ? .62 : .3, weight: sel ? 3 : 1.5, color: sel ? '#edcd85' : '#d8b25f'});
+      c.setTooltipContent(r.name + ' · ' + r.metricLabel); });
+  }
+  segBtn(on) { return this.css('height:32px;padding:0 12px;border-radius:9px;font-family:inherit;font-size:.74rem;cursor:pointer;white-space:nowrap;' + (on ? 'font-weight:600;color:#0b132b;background:linear-gradient(100deg,#edcd85,#d0a854);border:0' : 'font-weight:500;color:#5d6880;background:transparent;border:1px solid rgba(30,44,79,0.115)')); }
+  exportCsv(v) {
+    const q = x => '"' + String(x).replace(/"/g, '""') + '"';
+    const rows = [['Bahrain Karate Federation — statistics export (mock data)'], ['Season', this.fv().season], ['Filters', v.activeLabel], [], ['Metric', 'Value']];
+    v.k.list.forEach(k => rows.push([k[0], k[1]]));
+    rows.push([], ['Rank', 'Club', 'Region', 'Athletes', 'Entries', 'Wins', 'Medals', 'Gold', 'Score']);
+    v.clubRowsAll.forEach(c => rows.push([c.rank, c.name, c.region, c.athletes, c.entries, c.wins, c.medals, c.gold, c.score]));
+    const blob = new Blob([rows.map(r => r.map(q).join(',')).join('\n')], {type: 'text/csv'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'karate-statistics-' + this.fv().season + '.csv'; a.click();
+    this.toast('Report exported as CSV');
+  }
+  refresh() { this.setState({loading: true, errCleared: true, more: false}); clearTimeout(this._lt); this._lt = setTimeout(() => { this.setState({loading: false, updated: Date.now()}); this.toast('Statistics refreshed'); }, 1100); }
+
+  renderVals() {
+    const s = this.state, f = this.fv(), D = this.data(), F = this.factors();
+    const loading = s.loading || this.props.demoState === 'loading';
+    const key = JSON.stringify(f), isDef = key === JSON.stringify({...this.DEF, season: f.season});
+    const jit = (t, a) => isDef ? 0 : (this.h(key + t) * 2 - 1) * a;
+    const E = F.empty;
+    const v = {};
+    // ---------- filters
+    const defs = [['season', 'Season', ['2026', '2025', '2024']], ['range', 'Date range', ['Full season', 'Last 90 days', 'Last 30 days']],
+      ['comp', 'Competition', ['All competitions', ...D.comps.filter(c => c.status !== 'Cancelled').map(c => c.name)]],
+      ['disc', 'Discipline', ['All', 'Kata', 'Kumite']], ['gender', 'Gender', ['All', 'Male', 'Female']],
+      ['age', 'Age category', ['All', ...D.ages.map(a => a.name)]], ['weight', 'Weight', ['All', ...D.weights]],
+      ['club', 'Club', ['All clubs', ...D.clubs.map(c => c.name)]], ['region', 'Region', ['All regions', ...D.regions.map(r => r.name)]]];
+    const activeN = defs.filter(([k]) => k !== 'season' && f[k] !== this.DEF[k]).length;
+    v.filters = defs.map(([k, label, opts]) => { const on = k !== 'season' && f[k] !== this.DEF[k], open = s.fOpen === k;
+      return {label, value: f[k], open,
+        btnStyle: this.css('display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;height:44px;padding:0 30px 0 12px;position:relative;border-radius:11px;font-family:inherit;cursor:pointer;text-align:left;max-width:230px;box-sizing:border-box;width:100%;' + (on ? 'background:#fdf6e6;border:1px solid #caa14f;color:#1e2c4f' : 'background:#fff;border:1px solid rgba(30,44,79,0.115);color:#1e2c4f')),
+        onToggle: e => { e.stopPropagation(); this.setState({fOpen: open ? null : k}); },
+        opts: opts.map(o => ({label: o, on: o === f[k], style: this.css('display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:.8rem;cursor:pointer;' + (o === f[k] ? 'color:#8a6d20;font-weight:600;background:rgba(216,178,95,.1)' : 'color:#2c3a5e')),
+          onPick: e => { e.stopPropagation(); this.setFilter(k, o); }}))};
+    });
+    v.hasActive = activeN > 0; v.activeCount = activeN + ' active';
+    v.activeLabel = activeN ? activeN + ' filter' + (activeN > 1 ? 's' : '') + ' active' : 'All data';
+    v.resetFilters = () => { this.setState({f: {...this.DEF, season: f.season}, fOpen: null, fDrawer: false}); this.pulse(); };
+    v.season = f.season;
+    // ---------- KPIs
+    const ath = E ? 0 : Math.round(1248 * F.popF);
+    const athD = {'2026': 12.4, '2025': 9.1, '2024': 6.3}[f.season] + jit('a', 3);
+    const clubsN = E ? 0 : (F.club ? 1 : Math.max(1, Math.round((f.region === 'All regions' ? 36 : D.regions.find(r => r.name === f.region).clubs) * {'2026': 1, '2025': .92, '2024': .86}[f.season])));
+    const compsN = E ? 0 : (F.comp ? 1 : Math.round(14 * (f.range === 'Full season' ? 1 : f.range === 'Last 90 days' ? 4 / 14 : 2 / 14)));
+    const medals = E ? 0 : Math.round(428 * F.actF);
+    const gM = Math.round(medals * .26), sM = Math.round(medals * .31), bM = medals - gM - sM;
+    const part = E ? 0 : Math.min(96, {'2026': 78.6, '2025': 74.1, '2024': 71.3}[f.season] + jit('p', 5));
+    const partD = {'2026': 8.2, '2025': 4.6, '2024': 3.1}[f.season] + jit('pd', 2);
+    const sp = Array.from({length: 12}, (_, i) => .72 + .28 * i / 11 + (this.h('sp' + i + key) - .5) * .06);
+    const spPts = sp.map((x, i) => [(i / 11 * 160).toFixed(1), (46 - (x - .64) / .42 * 42).toFixed(1)]);
+    const spLine = spPts.map((p, i) => (i ? 'L' : 'M') + p[0] + ',' + p[1]).join(' ');
+    const dStyle = up => this.css('font-size:.74rem;font-weight:600;margin-top:4px;color:' + (up ? '#2f7a4f' : '#b4483c'));
+    const tip = k => ({on: () => this.setState({kpiTip: k}), off: () => this.setState({kpiTip: null})});
+    const C17 = 2 * Math.PI * 17;
+    v.k = {
+      ath: this.fmt(ath), athDelta: (athD >= 0 ? '▲ +' : '▼ ') + athD.toFixed(1) + '% from previous season', athDeltaStyle: dStyle(athD >= 0),
+      athLine: spLine, athArea: spLine + ' L160,48 L0,48 Z', registered: this.fmt(Math.round(ath / .86)),
+      clubs: this.fmt(clubsN), clubsSub: F.club ? F.club.region + ' region' : '+' + {'2026': 3, '2025': 2, '2024': 4}[f.season] + ' new clubs this season',
+      comps: this.fmt(compsN), compsSub: F.comp ? F.comp.status : '3 upcoming · 9 completed',
+      compDots: D.comps.map(c => ({style: this.css('width:8px;height:8px;border-radius:2px;background:' + ({Completed: '#4fbf8a', Upcoming: '#5ec8e5', Cancelled: '#ef5b5b', 'Pending approval': '#f0a94b'}[c.status]) + ';opacity:' + (F.comp && F.comp !== c ? '.25' : '1'))})),
+      medals: this.fmt(medals), gold: this.fmt(gM), silver: this.fmt(sM), bronze: this.fmt(bM),
+      gW: this.css('background:#e3bd5c;height:100%;width:' + (medals ? gM / medals * 100 : 0) + '%'), sW: this.css('background:#c3cad6;height:100%;width:' + (medals ? sM / medals * 100 : 0) + '%'), bW: this.css('background:#c9895b;height:100%;width:' + (medals ? bM / medals * 100 : 0) + '%'),
+      officials: '82', part: part.toFixed(1) + '%', partDelta: (partD >= 0 ? '▲ +' : '▼ ') + partD.toFixed(1) + '% from previous season', partDeltaStyle: dStyle(partD >= 0),
+      ringStyle: this.css('fill:none;stroke:#d8b25f;stroke-width:5;stroke-linecap:round;transform:rotate(-90deg);transform-origin:20px 20px;stroke-dasharray:' + (part / 100 * C17).toFixed(1) + ' ' + C17.toFixed(1)),
+      list: [['Active athletes', ath], ['Affiliated clubs', clubsN], ['Competitions this season', compsN], ['Medals awarded', medals], ['Licensed officials', 82], ['Participation rate', part.toFixed(1) + '%']]
+    };
+    v.tip = {ath: s.kpiTip === 'ath', clubs: s.kpiTip === 'clubs', comps: s.kpiTip === 'comps', medals: s.kpiTip === 'medals', off: s.kpiTip === 'off', part: s.kpiTip === 'part'};
+    v.tipOn = {ath: tip('ath').on, clubs: tip('clubs').on, comps: tip('comps').on, medals: tip('medals').on, off: tip('off').on, part: tip('part').on};
+    v.tipOff = () => this.setState({kpiTip: null});
+    v.kv = this.css('font-size:clamp(1.55rem,2.3vw,2.05rem);font-weight:700;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums;' + (loading ? 'color:transparent;background:linear-gradient(90deg,rgba(30,44,79,0.069),rgba(30,44,79,0.184),rgba(30,44,79,0.069));background-size:200px 100%;animation:shimmer 1.1s linear infinite;border-radius:8px;min-width:90px;display:inline-block' : ''));
+    v.kpiGridStyle = this.css(s.isMobile ? 'display:grid;grid-auto-flow:column;grid-auto-columns:78%;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;margin-top:18px' : 'display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:14px;margin-top:18px');
+    v.kpiWideStyle = this.css('position:relative;background:linear-gradient(145deg,#f1f9fc,#fff);border:1px solid rgba(94,200,229,.22);border-radius:18px;padding:18px;cursor:pointer;transition:transform .18s ease,border-color .18s ease;scroll-snap-align:start;min-width:0;' + (s.isMobile ? '' : 'grid-column:span 2'));
+    ['Athletes', 'Clubs', 'Comps', 'Medals', 'Officials'].forEach(n => { v['go' + n] = () => this.scrollTo({Athletes: 'growth', Clubs: 'clubs', Comps: 'competitions', Medals: 'medals', Officials: 'officials'}[n]); });
+    v.vb = this._vb;
+    // ---------- growth chart
+    const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let labels, tt, endK = 1;
+    const gr = s.gRange;
+    if (gr === '30 days') { labels = ['25 Aug', '28 Aug', '31 Aug', '3 Sep', '6 Sep', '9 Sep', '12 Sep', '15 Sep', '18 Sep', '21 Sep']; tt = labels.map((_, i) => .94 + .06 * i / 9); }
+    else if (gr === '6 months') { labels = mon.slice(3, 9); tt = labels.map((_, i) => .8 + .2 * i / 5); }
+    else if (gr === 'Current season') { labels = mon.slice(0, 9); tt = labels.map((_, i) => .64 + .36 * i / 8); }
+    else if (gr === 'Previous season') { labels = mon.slice(); tt = labels.map((_, i) => .64 + .36 * i / 11); endK = 1 / 1.124; }
+    else { labels = ["Q4 '23", "Q1 '24", 'Q2', 'Q3', 'Q4', "Q1 '25", 'Q2', 'Q3', 'Q4', "Q1 '26", 'Q2', 'Q3']; tt = labels.map((_, i) => .5 + .5 * i / 11); }
+    const n = labels.length, Aend = 1248 * F.popF * endK;
+    const wob = (i, t) => 1 + (this.h(gr + t + i + key) - .5) * .035;
+    const S = {
+      reg: tt.map((t, i) => Aend / .86 * (.88 + .12 * t) * wob(i, 'r')),
+      act: tt.map((t, i) => Aend * t * wob(i, 'a')),
+      part: tt.map((t, i) => Aend * t * (.5 + .29 * t) * wob(i, 'p')),
+      nw: tt.map((t, i) => Aend * (gr === '3 years' ? .09 : gr === '30 days' ? .008 : .032) * (.6 + this.h(gr + 'n' + i + key) * .9))
+    };
+    const maxL = this.nice(Math.max(1, ...S.reg)), maxN = this.nice(Math.max(1, ...S.nw));
+    const gx = i => 20 + 960 * (n > 1 ? i / (n - 1) : .5), gy = x => 700 - x / maxL * 670;
+    const line = arr => arr.map((x, i) => (i ? 'L' : 'M') + gx(i).toFixed(1) + ',' + gy(x).toFixed(1)).join(' ');
+    const area = arr => line(arr) + ' L' + gx(n - 1).toFixed(1) + ',700 L' + gx(0).toFixed(1) + ',700 Z';
+    const hi = s.gHover == null || s.gHover >= n ? n - 1 : s.gHover;
+    const bw = 960 / n * .42;
+    const hide = s.gHide;
+    const ser = [['reg', 'Registered athletes', '#5ec8e5'], ['act', 'Active athletes', '#d8b25f'], ['part', 'Competition participants', '#4fbf8a'], ['nw', 'New registrations', '#9d8cf0']];
+    v.g = {
+      ranges: ['30 days', '6 months', 'Current season', 'Previous season', '3 years'].map(r => ({label: r, style: this.segBtn(r === gr), onClick: () => this.setState({gRange: r, gHover: null})})),
+      legend: ser.map(([k, label, col]) => ({label, onClick: () => this.setState({gHide: {...hide, [k]: !hide[k]}}),
+        style: this.css('display:flex;align-items:center;gap:7px;font-size:.74rem;cursor:pointer;background:none;border:0;font-family:inherit;padding:2px 0;color:' + (hide[k] ? '#9aa3b5' : '#2c3a5e') + ';text-decoration:' + (hide[k] ? 'line-through' : 'none')),
+        sw: this.css('width:12px;height:' + (k === 'nw' ? '10px' : '3px') + ';border-radius:2px;background:' + col + ';opacity:' + (hide[k] ? '.3' : '1'))})),
+      grid: [0, .25, .5, .75, 1].map(q => 'M0,' + (700 - q * 670).toFixed(0) + ' H1000').join(' '),
+      yl: [0, .25, .5, .75, 1].map(q => ({label: this.fmtK(q * maxL), style: this.css('position:absolute;right:calc(100% + 8px);top:' + ((700 - q * 670) / 10) + '%;transform:translateY(-50%);font-size:.66rem;color:#6b7689;font-variant-numeric:tabular-nums;white-space:nowrap')})),
+      xl: labels.map((l, i) => ({label: l, style: this.css('position:absolute;top:calc(100% + 8px);left:' + (gx(i) / 10) + '%;transform:translateX(-50%);font-size:.66rem;white-space:nowrap;color:' + (i === hi ? '#1e2c4f' : '#6b7689') + ';display:' + (n > 9 && i % 2 && i !== hi ? 'none' : 'block'))})),
+      regLine: line(S.reg), regArea: area(S.reg), actLine: line(S.act), actArea: area(S.act), partLine: line(S.part), partArea: area(S.part),
+      regOp: hide.reg ? '0' : '1', actOp: hide.act ? '0' : '1', partOp: hide.part ? '0' : '1', nwOp: hide.nw ? '0' : '1',
+      bars: S.nw.map((x, i) => { const hgt = x / maxN * 170, x0 = gx(i) - bw / 2; return 'M' + x0.toFixed(1) + ',1000 V' + (1000 - hgt).toFixed(1) + ' H' + (x0 + bw).toFixed(1) + ' V1000 Z'; }).join(' '),
+      barHi: (() => { const hgt = S.nw[hi] / maxN * 170, x0 = gx(hi) - bw / 2; return 'M' + x0.toFixed(1) + ',1000 V' + (1000 - hgt).toFixed(1) + ' H' + (x0 + bw).toFixed(1) + ' V1000 Z'; })(),
+      guide: this.css('position:absolute;top:0;height:70%;width:1px;background:rgba(30,44,79,0.22);left:' + (gx(hi) / 10) + '%'),
+      dots: ser.slice(0, 3).filter(([k]) => !hide[k]).map(([k, , col]) => ({style: this.css('position:absolute;width:10px;height:10px;border-radius:50%;background:' + col + ';border:2px solid #fff;transform:translate(-50%,-50%);left:' + (gx(hi) / 10) + '%;top:' + (gy(S[k][hi]) / 10) + '%')})),
+      hits: labels.map((_, i) => ({on: () => this.setState({gHover: i})})),
+      leave: () => this.setState({gHover: null}),
+      tip: {label: gr === '3 years' ? labels[hi] : labels[hi] + (gr === '30 days' ? ' 2026' : ' ' + (gr === 'Previous season' ? +f.season - 1 : f.season)),
+        reg: this.fmt(S.reg[hi]), act: this.fmt(S.act[hi]), part: this.fmt(S.part[hi]), nw: this.fmt(S.nw[hi]),
+        style: this.css('position:absolute;top:2%;z-index:3;pointer-events:none;background:#fff;border:1px solid rgba(216,178,95,.45);border-radius:12px;padding:10px 12px;min-width:176px;box-shadow:0 14px 34px rgba(30,44,79,.18);left:' + (gx(hi) / 10) + '%;transform:translateX(' + (hi > n * .62 ? 'calc(-100% - 12px)' : '12px') + ')')},
+      insight: 'Participation increased by ' + ({'2026': 18.2, '2025': 13.6, '2024': 9.4}[f.season] + jit('gi', 3)).toFixed(1) + '% compared with the previous season.',
+      expanded: s.expand === 'growth', toggleExpand: () => this.setState({expand: s.expand === 'growth' ? null : 'growth'}),
+      expandLabel: s.expand === 'growth' ? 'Collapse chart' : 'Expand chart',
+      cardStyle: this.css('flex:' + (s.expand === 'growth' ? '1 1 100%' : '2 1 540px') + ';min-width:0;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)'),
+      chartStyle: this.css('position:relative;padding:8px 8px 30px 46px;box-sizing:border-box;height:' + (s.expand === 'growth' ? 'clamp(320px,42vw,480px)' : 'clamp(240px,26vw,320px)'))
+    };
+    v.lb = {reg: 'Registered', act: 'Active', part: 'Participants', nw: 'New'};
+    // ---------- composition
+    const modes = {
+      Age: D.ages.map((a, i) => [a.name, a.share]),
+      Gender: [['Male', .61], ['Female', .39]],
+      Discipline: [['Kumite only', .46], ['Kata only', .30], ['Kata & Kumite', .24]],
+      Status: [['Active', .86], ['Inactive', .09], ['Pending approval', .03], ['Suspended', .02]]
+    };
+    const cm = s.compMode, segsRaw = modes[cm];
+    const totBase = cm === 'Status' ? Math.round(ath / .86) : ath;
+    const pal = ['#d8b25f', '#5ec8e5', '#4fbf8a', '#9d8cf0', '#f0a94b', '#ef7b8b'];
+    const Cd = 2 * Math.PI * 76; let acc = 0;
+    const segs = segsRaw.map(([name, sh], i) => { const len = sh * Cd; const o = {name, val: Math.round(totBase * sh), pct: (sh * 100).toFixed(1) + '%', col: pal[i], len, off: acc}; acc += len; return o; });
+    const ch = s.compHover != null && s.compHover < segs.length ? s.compHover : null;
+    v.cp = {};
+    v.cp = {
+      modes: Object.keys(modes).map(m => ({label: m, style: this.segBtn(m === cm), onClick: () => this.setState({compMode: m, compHover: null})})),
+      circles: Array.from({length: 6}, (_, i) => { const sg = segs[i]; return {style: this.css('fill:none;stroke:' + (sg ? sg.col : 'transparent') + ';stroke-width:' + (ch === i ? 26 : 20) + ';transform:rotate(-90deg);transform-origin:100px 100px;transition:stroke-width .15s ease;stroke-dasharray:' + (sg ? Math.max(0, sg.len - 3).toFixed(1) + ' ' + Cd.toFixed(1) : '0 ' + Cd.toFixed(1)) + ';stroke-dashoffset:' + (sg ? (-sg.off).toFixed(1) : 0) + ';opacity:' + (ch == null || ch === i ? 1 : .35))}; }),
+      center: ch == null ? this.fmt(totBase) : this.fmt(segs[ch].val), centerLabel: ch == null ? (cm === 'Status' ? 'Registered athletes' : 'Active athletes') : segs[ch].name + ' · ' + segs[ch].pct,
+      rows: segs.map((sg, i) => ({name: sg.name, val: this.fmt(sg.val), pct: sg.pct, sw: this.css('width:10px;height:10px;border-radius:3px;flex:none;background:' + sg.col),
+        bar: this.css('height:4px;border-radius:2px;background:' + sg.col + ';width:' + sg.pct),
+        on: () => this.setState({compHover: i}), off: () => this.setState({compHover: null})})),
+      note: cm === 'Status' ? 'Status counts all registered athlete profiles. Other views count active athletes only.' : cm === 'Discipline' ? 'Athletes entered in both disciplines are counted once, in “Kata & Kumite”.' : 'Active athletes: valid license and at least one training or competition record this season.'
+    };
+    v.cp.circles.forEach((c, i) => { v.cp['c' + i] = c.style; });
+    // ---------- clubs
+    const sortKey = s.clubSort;
+    const clubRowsAll = D.clubs.filter(c => f.region === 'All regions' || c.region === f.region).map(c => ({...c,
+      athletes: Math.round(c.athletes * F.kAth / Math.max(F.discF, .0001) * F.discF), entries: Math.round(c.entries * F.kAct), wins: Math.round(c.wins * F.kAct),
+      medals: Math.round(c.medals * F.kAct), gold: Math.round(c.gold * F.kAct)}))
+      .sort((a, b) => (b[sortKey] - a[sortKey]) || (b.score - a.score)).map((c, i) => ({...c, rank: i + 1}));
+    const topMed = Math.max(1, ...clubRowsAll.map(c => c.medals));
+    const shown = s.clubAll ? clubRowsAll : clubRowsAll.slice(0, 5);
+    v.clubRowsAll = clubRowsAll;
+    v.cl = {
+      sorts: [['score', 'Score'], ['medals', 'Medals'], ['gold', 'Gold'], ['wins', 'Wins'], ['athletes', 'Athletes'], ['part', 'Participation']].map(([k, l]) => ({label: l, style: this.segBtn(k === sortKey), onClick: () => this.setState({clubSort: k})})),
+      rows: shown.map(c => ({...c, score: c.score.toFixed(1), partTxt: c.part + '%', athletesTxt: this.fmt(c.athletes), entriesTxt: this.fmt(c.entries), winsTxt: this.fmt(c.wins),
+        trendTxt: c.trend > 0 ? '▲ ' + c.trend : c.trend < 0 ? '▼ ' + Math.abs(c.trend) : '— 0',
+        trendStyle: this.css('font-size:.74rem;font-weight:600;font-variant-numeric:tabular-nums;color:' + (c.trend > 0 ? '#2f7a4f' : c.trend < 0 ? '#b4483c' : '#6b7689')),
+        rankStyle: this.css('width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:.74rem;font-weight:700;' + (c.rank === 1 ? 'background:#e3bd5c;color:#0b132b' : c.rank === 2 ? 'background:#c3cad6;color:#0b132b' : c.rank === 3 ? 'background:#c9895b;color:#0b132b' : 'background:rgba(30,44,79,0.069);color:#5d6880')),
+        scoreBar: this.css('height:6px;border-radius:3px;background:linear-gradient(90deg,#d0a854,#edcd85);width:' + c.score + '%'),
+        rowStyle: this.css('display:grid;grid-template-columns:34px minmax(210px,1.7fr) 92px 74px 74px 62px 70px 56px minmax(120px,1fr) 58px;gap:10px;align-items:center;padding:10px 8px;border-radius:12px;cursor:pointer;min-width:940px;' + (F.club && F.club.name === c.name ? 'background:rgba(216,178,95,.12);box-shadow:inset 0 0 0 1px rgba(216,178,95,.45)' : '')),
+        onOpen: () => this.setState({drawer: {type: 'club', name: c.name}})})),
+      hasMore: clubRowsAll.length > 5, moreLabel: s.clubAll ? 'Show top 5' : 'View all clubs (' + clubRowsAll.length + ')',
+      toggleAll: () => this.setState({clubAll: !s.clubAll}), none: clubRowsAll.length === 0,
+      activity: [['Highly active', 11, '#4fbf8a', 'Entered 3+ events in the last 90 days'], ['Active', 12, '#5ec8e5', 'Entered 1–2 events in the last 90 days'], ['Low activity', 5, '#f0a94b', 'Training records only, no entries in 60 days'], ['Inactive', 8, '#ef5b5b', 'No athlete entered in the last 90 days']]
+        .map(([l, nn, col, d]) => ({label: l, n: String(nn), desc: d, pct: Math.round(nn / 36 * 100) + '%', seg: this.css('height:100%;background:' + col + ';width:' + (nn / 36 * 100) + '%'), bar: this.css('height:8px;border-radius:4px;background:' + col + ';width:' + (nn / 12 * 100) + '%'), sw: this.css('width:10px;height:10px;border-radius:3px;flex:none;background:' + col)}))
+    };
+    // ---------- competitions
+    const kC = F.seasonF * F.discF * F.genderF * F.ageF * F.weightF * F.locF;
+    const done = D.comps.filter(c => c.status === 'Completed');
+    const maxA = Math.max(...done.map(c => c.athletes)), maxM = Math.max(...done.map(c => c.matches));
+    const stCol = {Completed: '#4fbf8a', Upcoming: '#5ec8e5', Cancelled: '#ef5b5b', 'Pending approval': '#f0a94b'};
+    v.cm = {
+      summary: [['Completed', '9', '#4fbf8a'], ['Upcoming', '3', '#5ec8e5'], ['Cancelled', '1', '#ef5b5b'], ['Pending approval', '1', '#f0a94b'], ['Federation-organized', '8', '#d8b25f'], ['Club-organized', '6', '#9d8cf0']]
+        .map(([l, nn, col]) => ({label: l, n: nn, dot: this.css('width:8px;height:8px;border-radius:50%;flex:none;background:' + col)})),
+      stack: [['Completed', 9], ['Upcoming', 3], ['Pending approval', 1], ['Cancelled', 1]].map(([l, nn]) => ({style: this.css('height:100%;background:' + stCol[l] + ';width:' + (nn / 14 * 100) + '%')})),
+      rows: done.map(c => { const a = Math.round(c.athletes * kC), m = Math.round(c.matches * kC); const sel = F.comp === c;
+        return {name: c.name, date: c.day + ' ' + mon[c.month] + ' · ' + c.org, clubs: String(c.clubs), athletes: this.fmt(a), matches: this.fmt(m), completion: c.completion + '%',
+          aBar: this.css('height:7px;border-radius:4px;background:#d8b25f;width:' + (c.athletes / maxA * 100) + '%'), mBar: this.css('height:7px;border-radius:4px;background:#5ec8e5;width:' + (c.matches / maxM * 100) + '%'),
+          compStyle: this.css('font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:999px;justify-self:start;' + (c.completion >= 98 ? 'color:#2f7a4f;background:rgba(79,191,138,.12)' : 'color:#a8620f;background:rgba(240,169,75,.12)')),
+          rowStyle: this.css('display:grid;grid-template-columns:minmax(170px,1.3fr) minmax(150px,1.6fr) 48px 64px;gap:12px;align-items:center;padding:10px 8px;border-radius:12px;cursor:pointer;min-width:500px;' + (sel ? 'background:rgba(216,178,95,.12);box-shadow:inset 0 0 0 1px rgba(216,178,95,.45)' : '')),
+          onOpen: () => this.setState({drawer: {type: 'comp', name: c.name}})}; }),
+      months: mon.map((m, i) => ({label: m, style: this.css('flex:1;text-align:center;font-size:.64rem;padding-top:6px;border-left:1px solid rgba(30,44,79,0.069);color:' + (i === 8 ? '#8a6d20' : '#6b7689'))})),
+      marks: D.comps.map((c, i) => ({title: c.name + ' · ' + c.day + ' ' + mon[c.month] + ' · ' + c.status,
+        style: this.css('position:absolute;width:14px;height:14px;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;border:2px solid #fff;background:' + stCol[c.status] + ';left:' + ((c.month + c.day / 31) / 12 * 100) + '%;top:' + (i % 2 ? 66 : 34) + '%;box-shadow:0 0 0 ' + (F.comp === c ? '3px rgba(237,205,133,.8)' : '0 transparent')),
+        onOpen: () => this.setState({drawer: {type: 'comp', name: c.name}})})),
+      todayStyle: this.css('position:absolute;top:0;bottom:0;width:2px;background:#edcd85;left:' + ((8 + 23 / 30) / 12 * 100) + '%'),
+      ops: [['Match completion rate', '97.4%', 'Target ≥ 95%', 'On target', '#2f7a4f'], ['No-show rate', '3.8%', 'Target < 5%', 'On target', '#2f7a4f'], ['Avg. matches per athlete', '2.6', 'Per competition entered', 'Stable', '#1f7fa0'],
+        ['Protests', '4', '3 resolved · 1 open', 'Needs action', '#b4483c'], ['Result corrections', '3', 'After official sign-off', 'Watch', '#a8620f'], ['Avg. event duration', '7.4 h', 'Opening bow to final medal', 'Stable', '#1f7fa0']]
+        .map(([l, val, sub, st, col]) => ({label: l, value: val, sub, status: st, stStyle: this.css('display:inline-flex;align-items:center;gap:6px;font-size:.66rem;font-weight:600;color:' + col), dot: this.css('width:7px;height:7px;border-radius:50%;background:' + col)}))
+    };
+    // ---------- disciplines
+    const kK = F.actF / F.discF;
+    const kumOff = f.disc === 'Kata', kataOff = f.disc === 'Kumite' || f.weight !== 'All';
+    const methods = [['Points decision', 1066], ['Senshu (first-score advantage)', 296], ['Technical superiority (8-pt gap)', 212], ['Hantei (judges’ decision)', 184], ['Kiken (withdrawal)', 61], ['Disqualification (Hansoku / Shikkaku)', 17]];
+    const margins = [480, 338, 296, 224, 168, 114, 72, 56, 88];
+    const wcat = [['Male -60 kg', 186, 2.1], ['Male -67 kg', 224, 1.3], ['Male -75 kg', 208, 2.4], ['Male -84 kg', 142, 2.9], ['Male +84 kg', 96, 3.4], ['Female -50 kg', 118, 1.8], ['Female -55 kg', 134, 1.6], ['Female -61 kg', 128, 2.2], ['Female -68 kg', 84, 2.7], ['Female +68 kg', 58, 3.1]];
+    const maxMg = Math.max(...margins);
+    v.ku = {
+      off: kumOff, on: !kumOff,
+      stats: [['Total matches', this.fmt(1836 * kK)], ['Win rate · top seeds', '64.1%'], ['Avg. points scored', '4.7'], ['Avg. points conceded', '2.9'], ['Avg. match duration', '2:41'], ['Technical superiority wins', this.fmt(212 * kK)], ['Disqualifications', this.fmt(17 * kK)], ['Penalties issued', this.fmt(386 * kK)]].map(([l, x]) => ({label: l, value: x})),
+      charts: [['method', 'Wins by result method'], ['margin', 'Score difference'], ['weight', 'By weight category']].map(([k, l]) => ({label: l, style: this.segBtn(s.kum === k), onClick: () => this.setState({kum: k})})),
+      isMethod: s.kum === 'method', isMargin: s.kum === 'margin', isWeight: s.kum === 'weight',
+      methods: methods.map(([l, x]) => ({label: l, value: this.fmt(x * kK), pct: (x / 1836 * 100).toFixed(1) + '%', bar: this.css('height:8px;border-radius:4px;background:linear-gradient(90deg,#d0a854,#edcd85);width:' + (x / 1066 * 100) + '%')})),
+      margins: margins.map((x, i) => ({label: i === 8 ? '8+' : String(i), value: this.fmt(x * kK), col: this.css('width:100%;border-radius:6px 6px 0 0;background:' + (i >= 8 ? '#4fbf8a' : '#5ec8e5') + ';height:' + (x / maxMg * 100) + '%;opacity:' + (i === 0 ? .75 : 1))})),
+      weights: wcat.filter(w => f.gender === 'All' || (f.gender === 'Male') === w[0].startsWith('Male')).map(([l, m, mg]) => ({label: l, value: this.fmt(m * kK) + ' matches', margin: 'avg margin ' + mg.toFixed(1), close: mg <= 1.6,
+        bar: this.css('height:8px;border-radius:4px;width:' + (m / 224 * 100) + '%;background:' + (mg <= 1.6 ? '#f0a94b' : '#5ec8e5')),
+        mStyle: this.css('font-size:.7rem;font-variant-numeric:tabular-nums;white-space:nowrap;color:' + (mg <= 1.6 ? '#a8620f' : '#6b7689') + ';font-weight:' + (mg <= 1.6 ? 600 : 400))})),
+      topClubs: [['Al Muharraq Karate Club', '71% win rate'], ['Riffa Karate Center', '68% win rate'], ['Bahrain National Karate Academy', '66% win rate']].map(([a, b]) => ({a, b}))
+    };
+    const kcat = [['Kids', 6.62], ['U14', 6.98], ['Cadet', 7.31], ['Junior', 7.58], ['Senior', 7.94], ['Master', 7.46]];
+    const kseason = [['2022', 6.94], ['2023', 7.05], ['2024', 7.18], ['2025', 7.29], ['2026', 7.42]];
+    const judges = [['≤6.6', 38], ['6.8', 96], ['7.0', 188], ['7.2', 342], ['7.4', 516], ['7.6', 604], ['7.8', 488], ['8.0', 312], ['8.2', 146], ['≥8.4', 62]];
+    const kxs = i => 60 + 880 * i / 4, kys = x => 880 - (x - 6.8) / .8 * 780;
+    v.ka = {
+      off: kataOff, on: !kataOff, offMsg: f.disc === 'Kumite' ? 'Kata is excluded by the Kumite discipline filter.' : 'Kata has no weight categories, so it is hidden while a weight filter is set.',
+      stats: [['Total performances', this.fmt(942 * (F.actF / (f.disc === 'All' ? .42 : 1) * .42 / (f.disc === 'All' ? .42 : 1)))], ['Average score', '7.42'], ['Highest score', '8.64'], ['Avg. technical score', '7.51'], ['Avg. athletic score', '7.21'], ['Judge variation (σ)', '±0.21'], ['Most performed kata', 'Jion · 132'], ['Improvement vs 2025', '+0.13']].map(([l, x]) => ({label: l, value: x})),
+      charts: [['category', 'Score by category'], ['season', 'Season progression'], ['judges', 'Judge scores']].map(([k, l]) => ({label: l, style: this.segBtn(s.kata === k), onClick: () => this.setState({kata: k})})),
+      isCat: s.kata === 'category', isSeason: s.kata === 'season', isJudges: s.kata === 'judges',
+      cats: kcat.map(([l, x]) => ({label: l, value: x.toFixed(2), bar: this.css('height:8px;border-radius:4px;background:linear-gradient(90deg,#7b6fd8,#9d8cf0);width:' + ((x - 6) / 2.5 * 100) + '%;opacity:' + (f.age === 'All' || f.age === l ? 1 : .3))})),
+      line: kseason.map(([, x], i) => (i ? 'L' : 'M') + kxs(i) + ',' + kys(x).toFixed(1)).join(' '),
+      pts: kseason.map(([l, x], i) => ({label: l, value: x.toFixed(2), dot: this.css('position:absolute;width:10px;height:10px;border-radius:50%;background:#9d8cf0;border:2px solid #fff;transform:translate(-50%,-50%);left:' + (kxs(i) / 10) + '%;top:' + (kys(x) / 10) + '%'),
+        lab: this.css('position:absolute;transform:translate(-50%,-150%);font-size:.7rem;font-weight:600;color:#2c3a5e;left:' + (kxs(i) / 10) + '%;top:' + (kys(x) / 10) + '%'),
+        xl: this.css('position:absolute;top:calc(100% + 6px);transform:translateX(-50%);font-size:.66rem;color:' + (l === f.season ? '#8a6d20' : '#6b7689') + ';left:' + (kxs(i) / 10) + '%')})),
+      judges: judges.map(([l, x]) => ({label: l, value: String(x), col: this.css('width:100%;border-radius:6px 6px 0 0;background:#9d8cf0;height:' + (x / 604 * 100) + '%')})),
+      topClubs: [['Al Muharraq Karate Club', '7.71 avg'], ['Bahrain National Karate Academy', '7.64 avg'], ['Riffa Karate Center', '7.52 avg']].map(([a, b]) => ({a, b}))
+    };
+    v.ka.stats[0].value = this.fmt(942 * F.actF / F.discF);
+    // ---------- medals & rankings
+    const medRows = clubRowsAll.slice().sort((a, b) => (b.gold - a.gold) || (b.medals - a.medals)).slice(0, 8);
+    const maxTot = Math.max(1, ...medRows.map(c => c.medals));
+    v.md = {rows: medRows.map((c, i) => { const sv = Math.round((c.medals - c.gold) * .45), br = c.medals - c.gold - sv;
+      return {rank: String(i + 1), name: c.name, initials: c.initials, athletes: this.fmt(c.athletes), gold: String(c.gold), silver: String(sv), bronze: String(br), total: String(c.medals),
+        eff: c.athletes ? (c.medals / c.athletes).toFixed(2) : '0.00',
+        g: this.css('height:100%;background:#e3bd5c;width:' + (c.gold / maxTot * 100) + '%'), s: this.css('height:100%;background:#c3cad6;width:' + (sv / maxTot * 100) + '%'), b: this.css('height:100%;background:#c9895b;width:' + (br / maxTot * 100) + '%'),
+        onOpen: () => this.setState({drawer: {type: 'club', name: c.name}})}; }), none: medRows.length === 0};
+    const athF = D.ath.filter(a => (f.disc === 'All' || a.disc === f.disc) && (f.gender === 'All' || (f.gender === 'Male') === (a.gender === 'M')) && (f.age === 'All' || a.age === f.age) && (!F.club || a.club === F.club.name));
+    const tabs = ['Rising', 'Falling', 'New', 'Consistent'];
+    const rp = hist => { let d = '', started = false; hist.forEach((r, i) => { if (r == null) return; const x = (i / 5 * 80 + 2).toFixed(1), y = (3 + (r - 1) / 31 * 22).toFixed(1); d += (started ? ' L' : 'M') + x + ',' + y; started = true; }); return d; };
+    const rows = athF.filter(a => a.group === s.rankTab);
+    v.rk = {
+      tabs: tabs.map(t => ({label: t + ' · ' + athF.filter(a => a.group === t).length, style: this.segBtn(t === s.rankTab), onClick: () => this.setState({rankTab: t})})),
+      rows: rows.map(a => { const mv = a.prev == null ? null : a.prev - a.cur;
+        return {name: a.name, club: a.club, cat: a.cat + ' · ' + a.disc, cur: '#' + a.cur, prev: a.prev == null ? '—' : '#' + a.prev, pts: this.fmt(a.pts), recent: a.recent,
+          initials: a.name.split(' ').map(w => w[0]).slice(0, 2).join(''),
+          mv: mv == null ? 'New' : mv > 0 ? '▲ ' + mv : mv < 0 ? '▼ ' + Math.abs(mv) : '— 0',
+          mvStyle: this.css('font-size:.74rem;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;color:' + (mv == null ? '#1f7fa0' : mv > 0 ? '#2f7a4f' : mv < 0 ? '#b4483c' : '#6b7689')),
+          path: rp(a.hist), stroke: this.css('fill:none;stroke-width:2;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke:' + (mv == null ? '#1f7fa0' : mv > 0 ? '#2f7a4f' : mv < 0 ? '#b4483c' : '#6b7689')),
+          onOpen: () => this.setState({drawer: {type: 'ath', name: a.name}})}; }),
+      none: rows.length === 0
+    };
+    const em = ['Hamad Al Sayed', 'Noor Abdulla', 'Reem Al Noaimi', 'Layla Buhiji'].map(nm => D.ath.find(a => a.name === nm));
+    const emTxt = {'Hamad Al Sayed': 'Moved from rank 24 to rank 8 in the current season.', 'Noor Abdulla': 'Highest kata score of the season: 8.64 at the National Kata Challenge.', 'Reem Al Noaimi': 'Won 3 of 4 U14 kata events entered this season.', 'Layla Buhiji': 'First ranking this season after a bronze at Kumite League R2.'};
+    const emProg = {'Hamad Al Sayed': 82, 'Noor Abdulla': 91, 'Reem Al Noaimi': 74, 'Layla Buhiji': 58};
+    v.em = em.map(a => ({name: a.name, club: a.club, meta: a.age + ' · ' + a.disc, txt: emTxt[a.name], initials: a.name.split(' ').map(w => w[0]).slice(0, 2).join(''),
+      mv: a.prev == null ? 'New · #' + a.cur : '▲ ' + (a.prev - a.cur) + ' places · #' + a.cur, prog: emProg[a.name] + '%',
+      bar: this.css('height:6px;border-radius:3px;background:linear-gradient(90deg,#d0a854,#edcd85);width:' + emProg[a.name] + '%'),
+      onOpen: () => this.setState({drawer: {type: 'ath', name: a.name}})}));
+    // ---------- geography
+    const gm = s.geoMetric;
+    const geoRows = D.regions.map(r => ({name: r.name, lat: r.lat, lng: r.lng, clubs: r.clubs, athletes: Math.round(1248 * r.share * F.kAth), entries: Math.round(r.entries * F.kAct), medals: Math.round(r.medals * F.kAct), growth: r.growth}));
+    const gMax = Math.max(1, ...geoRows.map(r => r[gm]));
+    const gLab = {athletes: 'athletes', clubs: 'clubs', entries: 'competition entries', medals: 'medals'};
+    this._geoRows = geoRows.map(r => ({name: r.name, radius: 7 + 26 * Math.sqrt(r[gm] / gMax), metricLabel: this.fmt(r[gm]) + ' ' + gLab[gm]}));
+    v.geo = {
+      metrics: [['athletes', 'Athletes'], ['clubs', 'Clubs'], ['entries', 'Entries'], ['medals', 'Medals']].map(([k, l]) => ({label: l, style: this.segBtn(k === gm), onClick: () => this.setState({geoMetric: k})})),
+      mapRef: el => this.initMap(el),
+      rows: geoRows.map(r => { const sel = s.geoSel === r.name || f.region === r.name;
+        return {name: r.name, clubs: String(r.clubs), athletes: this.fmt(r.athletes), entries: this.fmt(r.entries), medals: this.fmt(r.medals),
+          growth: (r.growth >= 0 ? '▲ ' : '▼ ') + Math.abs(r.growth).toFixed(1) + '%', gStyle: this.css('font-size:.74rem;font-weight:600;text-align:right;font-variant-numeric:tabular-nums;color:' + (r.growth >= 0 ? '#2f7a4f' : '#b4483c')),
+          heat: this.css('position:absolute;left:0;top:0;bottom:0;border-radius:10px;background:rgba(216,178,95,' + (.05 + .2 * r[gm] / gMax).toFixed(3) + ');width:' + (r[gm] / gMax * 100) + '%'),
+          rowStyle: this.css('position:relative;display:grid;grid-template-columns:minmax(90px,1.2fr) 48px 70px 64px 58px 64px;gap:8px;align-items:center;padding:10px;border-radius:10px;cursor:pointer;min-width:430px;' + (sel ? 'box-shadow:inset 0 0 0 1px rgba(237,205,133,.7)' : '')),
+          onPick: () => { this.setState({geoSel: r.name}); if (this._map) this._map.flyTo([r.lat, r.lng], 11, {duration: .6}); }}; }),
+      legendLabel: 'Circle size = ' + gLab[gm],
+      focus: s.geoSel ? s.geoSel : null
+    };
+    // ---------- health
+    const alerts = [
+      ['lic', 'Critical', '8 athletes with expired licenses', 'Cannot be entered into the Bahrain Open', 'Due 24 Sep', 'Review athletes'],
+      ['protest', 'Critical', '1 unresolved protest', 'Federation Cup · Male -67 kg semi-final', 'Open 6 days', 'Open case'],
+      ['results', 'Warning', '2 competition results awaiting approval', 'Riffa Kumite League R2, Northern Cup', 'Due 30 Sep', 'Approve'],
+      ['officials', 'Warning', '6 officials whose licenses expire soon', 'Within the next 45 days', 'Before 7 Nov', 'Notify officials'],
+      ['assign', 'Warning', '2 competitions with incomplete official assignments', 'Bahrain Open (4 judges short), Kids Karate Festival', 'Due 25 Sep', 'Assign officials'],
+      ['renew', 'Informational', '3 clubs awaiting renewal', 'Sitra Budokan, Awali KC, Zallaq KA', 'Window ends 15 Oct', 'Send reminder'],
+      ['docs', 'Informational', '5 athletes with incomplete documents', 'Missing medical certificates', 'Before registration closes', 'Request documents'],
+      ['rank', 'Completed', 'Season ranking list published', 'Round 3 · 214 athletes ranked', 'Completed 18 Sep', '']
+    ].map(a => ({id: a[0], sev: s.resolved[a[0]] ? 'Completed' : a[1], text: a[2], sub: s.resolved[a[0]] ? 'Marked as handled just now' : a[3], due: a[4], action: s.resolved[a[0]] ? '' : a[5]}));
+    const sevC = {Critical: ['#b4483c', '!'], Warning: ['#a8620f', '▲'], Informational: ['#1f7fa0', 'i'], Completed: ['#2f7a4f', '✓']};
+    const order = {Critical: 0, Warning: 1, Informational: 2, Completed: 3};
+    const alSorted = alerts.slice().sort((a, b) => order[a.sev] - order[b.sev]);
+    v.hl = {
+      counts: ['Critical', 'Warning', 'Informational', 'Completed'].map(sv => ({label: sv, n: String(alerts.filter(a => a.sev === sv).length), dot: this.css('width:8px;height:8px;border-radius:50%;background:' + sevC[sv][0])})),
+      rows: (s.alertsAll ? alSorted : alSorted.slice(0, 5)).map(a => ({...a, hasAction: !!a.action,
+        icon: sevC[a.sev][1], iconStyle: this.css('width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;font-size:.78rem;font-weight:700;color:' + sevC[a.sev][0] + ';background:' + sevC[a.sev][0] + '1f;border:1px solid ' + sevC[a.sev][0] + '55'),
+        sevStyle: this.css('font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:' + sevC[a.sev][0]),
+        onAct: () => { this.setState({resolved: {...s.resolved, [a.id]: true}}); this.toast('“' + a.action + '” started — alert marked as handled'); }})),
+      allLabel: s.alertsAll ? 'Show fewer' : 'View all alerts (' + alerts.length + ')', toggleAll: () => this.setState({alertsAll: !s.alertsAll})
+    };
+    // ---------- officials
+    const lic = [['WKF International', 6], ['AKF Continental', 11], ['National A', 24], ['National B', 27], ['Candidate', 14]];
+    v.of = {
+      stats: [['Active referees', '34'], ['Active judges', '48'], ['Assignments this season', '412'], ['Avg. per official', '5.0']].map(([l, x]) => ({label: l, value: x})),
+      lic: lic.map(([l, x]) => ({label: l, value: String(x), bar: this.css('height:8px;border-radius:4px;background:linear-gradient(90deg,#3aa7c7,#5ec8e5);width:' + (x / 27 * 100) + '%')})),
+      regions: D.regions.map(r => ({label: r.name, value: String(r.officials), bar: this.css('width:100%;border-radius:5px 5px 0 0;background:#d8b25f;height:' + (r.officials / 24 * 100) + '%;opacity:' + (f.region === 'All regions' || f.region === r.name ? 1 : .3))}))
+    };
+    // ---------- insights
+    v.ins = [
+      ['Participation', 'Female athlete participation increased by 14.8% this season.', '486 female athletes', 'Show female athletes', '#1f7fa0', () => this.setFilters({gender: 'Female'}, 'Filtered to female athletes')],
+      ['Categories', 'Kumite registrations are highest in the Cadet Male -63 kg division.', '64 entries', 'Filter to this division', '#8a6d20', () => this.setFilters({disc: 'Kumite', gender: 'Male', age: 'Cadet', weight: '-63 kg'}, 'Filtered to Kumite · Cadet Male -63 kg')],
+      ['Clubs', 'Al Muharraq Karate Club has the highest medal efficiency.', '0.45 medals per athlete', 'Open club', '#94701a', () => this.setState({drawer: {type: 'club', name: 'Al Muharraq Karate Club'}})],
+      ['Regions', '“Other” regions are the only area where athlete numbers fell this season.', '▼ 4.2% · 3 clubs', 'View on map', '#b4483c', () => { this.setState({geoSel: 'Other'}); this.scrollTo('geo'); const r = D.regions.find(x => x.name === 'Other'); if (this._map) this._map.flyTo([r.lat, r.lng], 11); }],
+      ['Youth', 'Youth competitions show the strongest registration growth.', '+27% U14 & Cadet entries', 'Show U14 athletes', '#2f7a4f', () => this.setFilters({age: 'U14'}, 'Filtered to U14')]
+    ].map(([type, text, stat, act, col, fn]) => ({type, text, stat, act, onAct: fn, tag: this.css('font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:' + col), edge: this.css('position:absolute;left:0;top:18px;bottom:18px;width:3px;border-radius:0 3px 3px 0;background:' + col)}));
+    v.showInsights = this.props.showInsights !== false;
+    // ---------- drawer
+    const dr = s.drawer;
+    v.drawerOpen = !!dr;
+    if (dr) {
+      let d = {};
+      if (dr.type === 'club') { const c = clubRowsAll.find(x => x.name === dr.name) || D.clubs.find(x => x.name === dr.name);
+        d = {eyebrow: 'Club preview', title: c.name, sub: c.region + ' region · performance score ' + (+c.score).toFixed(1),
+          stats: [['Athletes', this.fmt(c.athletes)], ['Competition entries', this.fmt(c.entries)], ['Wins', this.fmt(c.wins)], ['Medals', this.fmt(c.medals) + ' (' + c.gold + ' gold)'], ['Participation rate', c.part + '%'], ['Ranking trend', c.trend > 0 ? '▲ ' + c.trend + ' places' : c.trend < 0 ? '▼ ' + (-c.trend) + ' places' : 'No change']],
+          listTitle: 'Ranked athletes', list: D.ath.filter(a => a.club === c.name).map(a => ({a: a.name + ' · #' + a.cur, b: a.cat + ' · ' + a.recent})),
+          cta: 'Filter page to this club', onCta: () => { this.setFilters({club: c.name, region: 'All regions'}, 'Filtered to ' + c.name); this.setState({drawer: null}); }};
+      } else if (dr.type === 'comp') { const c = D.comps.find(x => x.name === dr.name);
+        d = {eyebrow: 'Competition preview', title: c.name, sub: c.day + ' ' + mon[c.month] + ' ' + f.season + ' · ' + c.venue + ' · ' + c.org + '-organized',
+          stats: [['Status', c.status], ['Clubs', String(c.clubs)], ['Athletes', this.fmt(c.athletes)], ['Matches / rounds', this.fmt(c.matches)], ['Completion', c.completion ? c.completion + '%' : '—'], ['Medals awarded', c.status === 'Completed' ? String(Math.round(c.athletes * .23)) : '—']],
+          listTitle: c.status === 'Completed' ? 'Top clubs by medals' : 'Preparation', list: c.status === 'Completed' ? D.clubs.slice(0, 3).map((x, i) => ({a: (i + 1) + '. ' + x.name, b: Math.max(1, Math.round(x.medals * c.athletes / 1874)) + ' medals'})) : [{a: 'Registrations', b: c.athletes ? this.fmt(c.athletes) + ' athletes from ' + c.clubs + ' clubs' : 'Not open yet'}, {a: 'Officials', b: c.name.startsWith('Bahrain Open') ? '4 judges still to assign' : 'Assignments pending'}],
+          cta: c.athletes ? 'Filter page to this competition' : '', onCta: () => { this.setFilters({comp: c.name}, 'Filtered to ' + c.name); this.setState({drawer: null}); }};
+      } else { const a = D.ath.find(x => x.name === dr.name);
+        d = {eyebrow: 'Athlete preview', title: a.name, sub: a.club + ' · ' + a.cat + ' · ' + a.disc,
+          stats: [['Current rank', '#' + a.cur], ['Previous rank', a.prev == null ? 'Unranked' : '#' + a.prev], ['Ranking points', this.fmt(a.pts)], ['Movement', a.prev == null ? 'Newly ranked' : a.prev > a.cur ? '▲ ' + (a.prev - a.cur) : a.prev < a.cur ? '▼ ' + (a.cur - a.prev) : 'No change'], ['Age category', a.age], ['Discipline', a.disc]],
+          listTitle: 'Recent results', list: [{a: a.recent, b: 'Latest event'}, {a: 'Rank history', b: a.hist.map(r => r == null ? '—' : '#' + r).join(' → ')}], cta: '', onCta: () => {}};
+      }
+      d.stats = d.stats.map(([l, x]) => ({label: l, value: x})); d.hasCta = !!d.cta; d.hasList = d.list.length > 0;
+      v.dw = d;
+    } else v.dw = {stats: [], list: []};
+    v.closeDrawer = () => this.setState({drawer: null});
+    v.stop = e => e.stopPropagation();
+    // ---------- ui
+    const up = new Date(s.updated);
+    v.updatedLabel = up.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) + ', ' + up.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+    v.loading = loading; v.isMobile = s.isMobile; v.notMobile = !s.isMobile;
+    v.dataStyle = this.css('transition:opacity .25s ease;opacity:' + (loading ? .45 : 1));
+    v.isEmpty = E; v.notEmpty = !E; v.emptyWhy = F.emptyWhy;
+    v.showError = this.props.demoState === 'error' && !s.errCleared;
+    v.retry = () => this.refresh();
+    v.doRefresh = () => this.refresh();
+    v.doExport = () => { this.setState({more: false}); this.exportCsv(v); };
+    v.doPrint = () => { this.setState({more: false}); setTimeout(() => window.print(), 50); };
+    v.toggleMore = e => { e.stopPropagation(); this.setState({more: !s.more}); };
+    v.moreOpen = s.more;
+    v.openFilters = () => this.setState({fDrawer: true}); v.closeFilters = () => this.setState({fDrawer: false, fOpen: null}); v.fDrawerOpen = s.fDrawer;
+    const emb = !!this.props.embedded;
+    v.shellStyle = this.css("color:#1e2c4f;font-family:'Poppins',system-ui,sans-serif;" + (emb ? '' : 'min-height:100vh;background:radial-gradient(1100px 480px at 88% -8%,rgba(216,178,95,.12),transparent 62%),#eef1f6'));
+    v.innerStyle = this.css(emb ? 'padding:0 0 24px;box-sizing:border-box' : 'max-width:1560px;margin:0 auto;padding:0 clamp(14px,2.4vw,32px) 56px;box-sizing:border-box');
+    v.filterBarStyle = this.css('position:sticky;top:' + (emb ? '64px' : '0') + ';z-index:40;margin:0 calc(-1 * ' + (emb ? 'clamp(18px,3vw,40px)' : 'clamp(14px,2.4vw,32px)') + ');padding:10px ' + (emb ? 'clamp(18px,3vw,40px)' : 'clamp(14px,2.4vw,32px)') + ';background:rgba(238,241,246,.94);backdrop-filter:blur(12px);border-top:1px solid rgba(30,44,79,0.069);border-bottom:1px solid rgba(30,44,79,0.069)');
+    v.hasToast = !!s.toast; v.toast = s.toast || '';
+    v.clubCards = s.isMobile; v.clubTable = !s.isMobile;
+    return v;
+  }
+}
+</script>
+</body>
+</html>

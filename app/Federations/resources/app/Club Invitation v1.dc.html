@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#eef1f6;font-family:'Poppins',system-ui,sans-serif;color:#1e2c4f}
+  a{color:#8a6d20;text-decoration:none} a:hover{text-decoration:underline}
+  input,select{font-family:'Poppins',system-ui,sans-serif}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div style="min-height:100vh;padding:clamp(16px,4vw,48px);box-sizing:border-box;display:flex;justify-content:center">
+  <div style="width:100%;max-width:820px">
+    <div style="background:linear-gradient(135deg,#1e2c4f,#16213c);border-radius:20px;border-top:4px solid #d8b25f;padding:clamp(24px,4vw,40px);color:#fff;box-shadow:0 20px 60px rgba(30,44,79,.25);animation:rise .4s cubic-bezier(.22,.68,.35,1) both">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <span style="display:block;width:38px;height:3px;border-radius:2px;background:#d8b25f"></span>
+        <span style="font-size:.7rem;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:#edcd85">Official club invitation</span>
+      </div>
+      <h1 style="margin:0 0 8px;font-size:clamp(1.4rem,3.4vw,2rem);font-weight:700;letter-spacing:-.01em">Gulf Karate Open 2026</h1>
+      <p style="margin:0 0 24px;font-size:.88rem;line-height:1.6;color:#97a1b4;max-width:560px">Your club is invited to compete. Review the key dates below, then register your club and the athletes who will join before the registration deadline.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px 22px">
+        <div><div style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:#97a1b4;margin-bottom:3px">Registration opens</div><div style="font-size:.92rem;font-weight:600">1 Oct 2026</div></div>
+        <div><div style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:#edcd85;margin-bottom:3px">Registration deadline</div><div style="font-size:.92rem;font-weight:700;color:#edcd85">2 Nov 2026 · 23:59</div></div>
+        <div><div style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:#97a1b4;margin-bottom:3px">Weigh-in</div><div style="font-size:.92rem;font-weight:600">13 Nov 2026 · 16:00–20:00</div><div style="font-size:.74rem;color:#97a1b4">Khalifa Sports City Hall — Hall B, Manama</div></div>
+        <div><div style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:#97a1b4;margin-bottom:3px">Draw</div><div style="font-size:.92rem;font-weight:600">13 Nov 2026 · 21:00</div></div>
+        <div><div style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:#97a1b4;margin-bottom:3px">Competition</div><div style="font-size:.92rem;font-weight:600">14 – 16 Nov 2026</div><div style="font-size:.74rem;color:#97a1b4">Starts 09:00 daily</div></div>
+        <div><div style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:#97a1b4;margin-bottom:3px">Break</div><div style="font-size:.92rem;font-weight:600">13:00 – 14:00 daily</div></div>
+      </div>
+    </div>
+
+    <sc-if value="{{ submitted }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#fff;border-radius:20px;border-top:4px solid #d8b25f;padding:clamp(24px,4vw,40px);margin-top:22px;box-shadow:0 14px 40px rgba(30,44,79,.1);animation:rise .3s cubic-bezier(.22,.68,.35,1) both">
+        <div style="width:52px;height:52px;border-radius:50%;background:rgba(47,122,79,.12);display:grid;place-items:center;font-size:1.3rem;color:#2f7a4f;margin-bottom:16px">&#10003;</div>
+        <h2 style="margin:0 0 8px;font-size:1.3rem;font-weight:700">Registration received</h2>
+        <p style="margin:0 0 6px;font-size:.88rem;line-height:1.6;color:#6b7689"><strong style="color:#1e2c4f">{{ subClub }}</strong> registered {{ subCount }} athlete(s). The organizing committee will confirm entries by email after review.</p>
+        <p style="margin:0;font-size:.8rem;color:#6b7689">Weigh-in: 13 Nov 2026, 16:00–20:00 at Khalifa Sports City Hall — Hall B, Manama. Bring athlete ID documents.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ notSubmitted }}" hint-placeholder-val="{{ true }}">
+      <div style="background:#fff;border-radius:20px;border-top:4px solid #d8b25f;padding:clamp(24px,4vw,40px);margin-top:22px;box-shadow:0 14px 40px rgba(30,44,79,.1)">
+        <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20;margin-bottom:16px">Club registration</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:16px">
+          <div>
+            <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px">Club name</label>
+            <input value="{{ clubName }}" onChange="{{ onClubName }}" placeholder="e.g. Manama Karate Club" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:11px;padding:0 14px;font-size:.86rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px">Coach / trainer registering the athletes</label>
+            <input value="{{ coachName }}" onChange="{{ onCoachName }}" placeholder="e.g. Hassan Al Doseri" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:11px;padding:0 14px;font-size:.86rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:16px">
+          <div>
+            <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px">Club phone number</label>
+            <div style="display:flex;gap:8px">
+              <div style="position:relative;flex:none">
+                <button onClick="{{ toggleDialDd }}" style="height:48px;display:flex;align-items:center;gap:8px;border:1px solid #d5dae3;border-radius:11px;padding:0 12px;font-family:inherit;font-size:.84rem;font-weight:600;color:#1e2c4f;background:#fff;cursor:pointer" style-hover="border-color:#caa14f">
+                  <div style="width:20px;height:14px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);background-image:{{ dialFlagBg }}"></div>
+                  {{ dialCode }}
+                  <span style="font-size:.7rem;color:#8a6d20">&#9662;</span>
+                </button>
+                <sc-if value="{{ dialDdOpen }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ stopEvt }}" style="position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:min(300px,90vw);background:#fff;border:1px solid #d5dae3;border-top:3px solid #d8b25f;border-radius:14px;box-shadow:0 18px 50px rgba(30,44,79,.18);padding:8px;animation:rise .2s cubic-bezier(.22,.68,.35,1) both">
+                    <input value="{{ dialQuery }}" onChange="{{ onDialQuery }}" placeholder="Search country or code…" style="width:100%;height:38px;border:1px solid #d5dae3;border-radius:9px;padding:0 12px;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;margin-bottom:6px" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <div style="max-height:220px;overflow:auto">
+                      <sc-for list="{{ dialOptions }}" as="c" hint-placeholder-count="6">
+                        <div onClick="{{ c.onPick }}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:.8rem;cursor:pointer" style-hover="background:#eef1f6">
+                          <div style="width:20px;height:14px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);flex:none;background-image:{{ c.flagBg }}"></div>
+                          <span style="font-weight:700;color:#8a6d20;font-size:.72rem;min-width:44px">{{ c.code }}</span>
+                          <span style="color:#1e2c4f">{{ c.name }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+              <input type="tel" value="{{ clubPhone }}" onChange="{{ onClubPhone }}" placeholder="3345 8821" style="flex:1;min-width:0;height:48px;border:1px solid #d5dae3;border-radius:11px;padding:0 14px;font-size:.86rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+            </div>
+          </div>
+          <div>
+            <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px">Club official email</label>
+            <input type="email" value="{{ clubEmail }}" onChange="{{ onClubEmail }}" placeholder="office@club.com" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:11px;padding:0 14px;font-size:.86rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+          </div>
+        </div>
+        <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px">Club address</label>
+        <input value="{{ clubAddress }}" onChange="{{ onClubAddress }}" placeholder="Building, road, block, city, country" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:11px;padding:0 14px;font-size:.86rem;color:#1e2c4f;outline:none;box-sizing:border-box;margin-bottom:16px" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+        <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px">Club logo <span style="color:#97a1b4;font-weight:400">(optional)</span></label>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:26px;flex-wrap:wrap">
+          <div style="{{ logoPreviewStyle }}">
+            <sc-if value="{{ hasLogo }}" hint-placeholder-val="{{ false }}"><span></span></sc-if>
+          </div>
+          <button onClick="{{ onLogoCam }}" style="height:38px;padding:0 14px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="border-color:#caa14f">Camera</button>
+          <button onClick="{{ onLogoFile }}" style="height:38px;padding:0 14px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="border-color:#caa14f">Choose file</button>
+          <sc-if value="{{ hasLogo }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onLogoRemove }}" style="height:38px;padding:0 12px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.76rem;color:#6b7689;cursor:pointer" style-hover="border-color:#c0392b;color:#c0392b">Remove</button>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Athletes ({{ athCount }})</div>
+          <button onClick="{{ addAthlete }}" style="margin-left:auto;height:38px;padding:0 16px;font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(202,161,79,.28)" style-hover="transform:translateY(-1px)">+ Add athlete</button>
+        </div>
+
+        <sc-for list="{{ rows }}" as="a" hint-placeholder-count="1">
+          <div style="border:1px solid #d5dae3;border-radius:14px;padding:16px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+              <div style="font-size:.68rem;font-weight:700;letter-spacing:.1em;color:#8a6d20">ATHLETE {{ a.num }}</div>
+              <sc-if value="{{ a.hasCategory }}" hint-placeholder-val="{{ false }}">
+                <span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:.66rem;font-weight:600;letter-spacing:.04em;color:#8a6d20;background:rgba(216,178,95,.18)">{{ a.category }}</span>
+              </sc-if>
+              <button onClick="{{ a.onRemove }}" style="margin-left:auto;height:30px;padding:0 12px;border:1px solid #d5dae3;border-radius:8px;background:#fff;font-family:inherit;font-size:.72rem;font-weight:500;color:#6b7689;cursor:pointer" style-hover="border-color:#c0392b;color:#c0392b">Remove</button>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+            <div style="flex:none">
+              <label style="display:block;font-size:.72rem;font-weight:500;color:#6b7689;margin-bottom:5px">Photo <span style="color:#97a1b4">(optional)</span></label>
+              <div style="{{ a.photoStyle }}">
+                <sc-if value="{{ a.hasPhoto }}" hint-placeholder-val="{{ false }}"><span></span></sc-if>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">
+                <button onClick="{{ a.onPhotoCam }}" style="height:26px;border:1px solid #d5dae3;border-radius:7px;background:#fff;font-family:inherit;font-size:.66rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="border-color:#caa14f">Camera</button>
+                <button onClick="{{ a.onPhotoFile2 }}" style="height:26px;border:1px solid #d5dae3;border-radius:7px;background:#fff;font-family:inherit;font-size:.66rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="border-color:#caa14f">File</button>
+                <sc-if value="{{ a.hasPhoto }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ a.onPhotoRemove }}" style="height:26px;border:1px solid #d5dae3;border-radius:7px;background:#fff;font-family:inherit;font-size:.66rem;color:#6b7689;cursor:pointer" style-hover="border-color:#c0392b;color:#c0392b">Remove</button>
+                </sc-if>
+              </div>
+            </div>
+            <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+              <div>
+                <label style="display:block;font-size:.72rem;font-weight:500;color:#6b7689;margin-bottom:5px">Full name</label>
+                <input value="{{ a.name }}" onChange="{{ a.onName }}" placeholder="Athlete name" style="width:100%;height:44px;border:1px solid #d5dae3;border-radius:10px;padding:0 12px;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+              </div>
+              <div>
+                <label style="display:block;font-size:.72rem;font-weight:500;color:#6b7689;margin-bottom:5px">Gender</label>
+                <select value="{{ a.gender }}" onChange="{{ a.onGender }}" style="width:100%;height:44px;border:1px solid #d5dae3;border-radius:10px;padding:0 10px;font-size:.82rem;color:#1e2c4f;outline:none;background:#fff;box-sizing:border-box">
+                  <option value="">Select…</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+              <div style="position:relative">
+                <label style="display:block;font-size:.72rem;font-weight:500;color:#6b7689;margin-bottom:5px">Nationality</label>
+                <button onClick="{{ a.onNatToggle }}" style="width:100%;height:44px;display:flex;align-items:center;gap:8px;border:1px solid #d5dae3;border-radius:10px;padding:0 12px;font-family:inherit;font-size:.82rem;color:#1e2c4f;background:#fff;cursor:pointer;box-sizing:border-box" style-hover="border-color:#caa14f">
+                  <div style="width:20px;height:14px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);flex:none;background-image:{{ a.natFlagBg }}"></div>
+                  <span style="font-weight:700;color:#8a6d20;font-size:.74rem">{{ a.natIso }}</span>
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:left">{{ a.natName }}</span>
+                  <span style="font-size:.7rem;color:#8a6d20">&#9662;</span>
+                </button>
+                <sc-if value="{{ a.natOpen }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ stopEvt }}" style="position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:min(280px,90vw);background:#fff;border:1px solid #d5dae3;border-top:3px solid #d8b25f;border-radius:14px;box-shadow:0 18px 50px rgba(30,44,79,.18);padding:8px;animation:rise .2s cubic-bezier(.22,.68,.35,1) both">
+                    <input value="{{ natQuery }}" onChange="{{ onNatQuery }}" placeholder="Search country or ISO…" style="width:100%;height:38px;border:1px solid #d5dae3;border-radius:9px;padding:0 12px;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;margin-bottom:6px" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <div style="max-height:220px;overflow:auto">
+                      <sc-for list="{{ natOptions }}" as="c" hint-placeholder-count="6">
+                        <div onClick="{{ c.onPick }}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:.8rem;cursor:pointer" style-hover="background:#eef1f6">
+                          <div style="width:20px;height:14px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);flex:none;background-image:{{ c.flagBg }}"></div>
+                          <span style="font-weight:700;color:#8a6d20;font-size:.72rem;min-width:32px">{{ c.i3 }}</span>
+                          <span style="color:#1e2c4f">{{ c.name }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+              <div>
+                <label style="display:block;font-size:.72rem;font-weight:500;color:#6b7689;margin-bottom:5px">Date of birth</label>
+                <input type="date" value="{{ a.dob }}" onChange="{{ a.onDob }}" style="width:100%;height:44px;border:1px solid #d5dae3;border-radius:10px;padding:0 12px;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+              </div>
+              <div>
+                <label style="display:block;font-size:.72rem;font-weight:500;color:#6b7689;margin-bottom:5px">Weight (KG)</label>
+                <input type="number" value="{{ a.weight }}" onChange="{{ a.onWeight }}" placeholder="e.g. 67" min="20" max="200" style="width:100%;height:44px;border:1px solid #d5dae3;border-radius:10px;padding:0 12px;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+              </div>
+            </div>
+            </div>
+          </div>
+        </sc-for>
+
+        <input type="file" accept="image/*" ref="{{ fileRef }}" onChange="{{ onPhotoFile }}" style="display:none">
+        <input type="file" accept="image/*" capture="user" ref="{{ camRef }}" onChange="{{ onPhotoFile }}" style="display:none">
+
+        <sc-if value="{{ cropOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:fixed;inset:0;background:rgba(11,19,43,.7);z-index:80;display:grid;place-items:center;padding:20px">
+            <div style="background:#fff;border-radius:20px;border-top:4px solid #d8b25f;max-width:420px;width:100%;max-height:92vh;overflow:auto;padding:22px;box-shadow:0 30px 80px rgba(30,44,79,.45);box-sizing:border-box">
+              <div style="font-size:.66rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20;margin-bottom:12px">Adjust photo</div>
+              <div onPointerDown="{{ onCropDown }}" onPointerMove="{{ onCropMove }}" onPointerUp="{{ onCropUp }}" onPointerLeave="{{ onCropUp }}" style="{{ cropAreaStyle }}">
+                <div style="{{ cropImgStyle }}"></div>
+                <div style="{{ cropGuideStyle }}"></div>
+              </div>
+              <sc-if value="{{ isAthCrop }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:.7rem;color:#6b7689;margin-top:8px;text-align:center">Keep the face inside the circle — drag to pan</div>
+              </sc-if>
+              <sc-if value="{{ isLogoCrop }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+                  <sc-for list="{{ cropShapeOpts }}" as="o" hint-placeholder-count="2">
+                    <button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <div style="margin-top:14px">
+                <label style="display:flex;align-items:center;gap:10px;font-size:.72rem;font-weight:500;color:#6b7689">Zoom
+                  <input type="range" min="1" max="4" step="0.01" value="{{ cropZoom }}" onChange="{{ onCropZoom }}" style="flex:1;accent-color:#caa14f">
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:.72rem;font-weight:500;color:#6b7689;margin-top:8px">Tilt
+                  <input type="range" min="-45" max="45" step="0.5" value="{{ cropTilt }}" onChange="{{ onCropTilt }}" style="flex:1;accent-color:#caa14f">
+                </label>
+              </div>
+              <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                <button onClick="{{ onCropCancel }}" style="height:42px;padding:0 18px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.8rem;font-weight:600;color:#6b7689;cursor:pointer" style-hover="border-color:#caa14f;color:#1e2c4f">Cancel</button>
+                <button onClick="{{ onCropSave }}" style="height:42px;padding:0 22px;border:0;border-radius:10px;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.8rem;font-weight:600;color:#1e2c4f;cursor:pointer;box-shadow:0 6px 18px rgba(202,161,79,.35)" style-hover="transform:translateY(-1px)">Save photo</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasCatGroups }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid rgba(216,178,95,.5);background:rgba(216,178,95,.08);border-radius:14px;padding:16px;margin:4px 0 14px">
+            <div style="font-size:.66rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20;margin-bottom:10px">Entries by weight category</div>
+            <sc-for list="{{ catGroups }}" as="g" hint-placeholder-count="2">
+              <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;padding:5px 0">
+                <div style="font-size:.78rem;font-weight:700;min-width:210px">{{ g.label }}</div>
+                <div style="font-size:.76rem;color:#6b7689;flex:1">{{ g.names }}</div>
+                <div style="font-size:.7rem;color:#8a6d20;font-weight:600">{{ g.count }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:.8rem;color:#c0392b;margin:4px 0 12px">{{ errorMsg }}</div>
+        </sc-if>
+        <button onClick="{{ onSubmit }}" style="width:100%;height:52px;margin-top:8px;font-family:inherit;font-size:.92rem;font-weight:700;letter-spacing:.03em;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;border-radius:13px;cursor:pointer;box-shadow:0 8px 24px rgba(202,161,79,.35)" style-hover="transform:translateY(-1px)">Submit registration</button>
+        <p style="margin:14px 0 0;font-size:.74rem;line-height:1.6;color:#6b7689;text-align:center">By submitting, the club confirms all athletes meet eligibility rules and will attend the weigh-in on 13 Nov 2026.</p>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;eventName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Gulf Karate Open 2026&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = {
+    clubName: '', clubPhone: '', clubDial: '', clubAddress: '', clubEmail: '',
+    athletes: [{name: '', gender: '', dob: '', weight: '', nat: ''}],
+    submitted: false, subClub: '', subCount: 0, error: '', natOpen: null, natQuery: '',
+    dialOpen: false, dialQuery: ''
+  };
+  countries() {
+    if (this._countries) return this._countries;
+    const raw = 'AF:AFG:Afghanistan|AL:ALB:Albania|DZ:DZA:Algeria|AO:AGO:Angola|AR:ARG:Argentina|AM:ARM:Armenia|AU:AUS:Australia|AT:AUT:Austria|AZ:AZE:Azerbaijan|BH:BHR:Bahrain|BD:BGD:Bangladesh|BY:BLR:Belarus|BE:BEL:Belgium|BJ:BEN:Benin|BO:BOL:Bolivia|BA:BIH:Bosnia and Herzegovina|BW:BWA:Botswana|BR:BRA:Brazil|BG:BGR:Bulgaria|BF:BFA:Burkina Faso|KH:KHM:Cambodia|CM:CMR:Cameroon|CA:CAN:Canada|CL:CHL:Chile|CN:CHN:China|CO:COL:Colombia|CD:COD:DR Congo|CR:CRI:Costa Rica|CI:CIV:Côte d\u2019Ivoire|HR:HRV:Croatia|CU:CUB:Cuba|CY:CYP:Cyprus|CZ:CZE:Czechia|DK:DNK:Denmark|DO:DOM:Dominican Republic|EC:ECU:Ecuador|EG:EGY:Egypt|SV:SLV:El Salvador|EE:EST:Estonia|ET:ETH:Ethiopia|FI:FIN:Finland|FR:FRA:France|GA:GAB:Gabon|GE:GEO:Georgia|DE:DEU:Germany|GH:GHA:Ghana|GR:GRC:Greece|GT:GTM:Guatemala|GN:GIN:Guinea|HT:HTI:Haiti|HN:HND:Honduras|HU:HUN:Hungary|IS:ISL:Iceland|IN:IND:India|ID:IDN:Indonesia|IR:IRN:Iran|IQ:IRQ:Iraq|IE:IRL:Ireland|IT:ITA:Italy|JM:JAM:Jamaica|JP:JPN:Japan|JO:JOR:Jordan|KZ:KAZ:Kazakhstan|KE:KEN:Kenya|KW:KWT:Kuwait|KG:KGZ:Kyrgyzstan|LA:LAO:Laos|LV:LVA:Latvia|LB:LBN:Lebanon|LY:LBY:Libya|LT:LTU:Lithuania|LU:LUX:Luxembourg|MG:MDG:Madagascar|MW:MWI:Malawi|MY:MYS:Malaysia|ML:MLI:Mali|MT:MLT:Malta|MR:MRT:Mauritania|MU:MUS:Mauritius|MX:MEX:Mexico|MD:MDA:Moldova|MN:MNG:Mongolia|ME:MNE:Montenegro|MA:MAR:Morocco|MZ:MOZ:Mozambique|MM:MMR:Myanmar|NA:NAM:Namibia|NP:NPL:Nepal|NL:NLD:Netherlands|NZ:NZL:New Zealand|NI:NIC:Nicaragua|NE:NER:Niger|NG:NGA:Nigeria|MK:MKD:North Macedonia|NO:NOR:Norway|OM:OMN:Oman|PK:PAK:Pakistan|PS:PSE:Palestine|PA:PAN:Panama|PY:PRY:Paraguay|PE:PER:Peru|PH:PHL:Philippines|PL:POL:Poland|PT:PRT:Portugal|QA:QAT:Qatar|RO:ROU:Romania|RU:RUS:Russia|RW:RWA:Rwanda|SA:SAU:Saudi Arabia|SN:SEN:Senegal|RS:SRB:Serbia|SG:SGP:Singapore|SK:SVK:Slovakia|SI:SVN:Slovenia|SO:SOM:Somalia|ZA:ZAF:South Africa|KR:KOR:South Korea|ES:ESP:Spain|LK:LKA:Sri Lanka|SD:SDN:Sudan|SE:SWE:Sweden|CH:CHE:Switzerland|SY:SYR:Syria|TW:TWN:Taiwan|TJ:TJK:Tajikistan|TZ:TZA:Tanzania|TH:THA:Thailand|TG:TGO:Togo|TN:TUN:Tunisia|TR:TUR:T\u00fcrkiye|TM:TKM:Turkmenistan|UG:UGA:Uganda|UA:UKR:Ukraine|AE:ARE:United Arab Emirates|GB:GBR:United Kingdom|US:USA:United States|UY:URY:Uruguay|UZ:UZB:Uzbekistan|VE:VEN:Venezuela|VN:VNM:Vietnam|YE:YEM:Yemen|ZM:ZMB:Zambia|ZW:ZWE:Zimbabwe';
+    const dial = 'AF93 AL355 DZ213 AO244 AR54 AM374 AU61 AT43 AZ994 BH973 BD880 BY375 BE32 BJ229 BO591 BA387 BW267 BR55 BG359 BF226 KH855 CM237 CA1 CL56 CN86 CO57 CD243 CR506 CI225 HR385 CU53 CY357 CZ420 DK45 DO1 EC593 EG20 SV503 EE372 ET251 FI358 FR33 GA241 GE995 DE49 GH233 GR30 GT502 GN224 HT509 HN504 HU36 IS354 IN91 ID62 IR98 IQ964 IE353 IT39 JM1 JP81 JO962 KZ7 KE254 KW965 KG996 LA856 LV371 LB961 LY218 LT370 LU352 MG261 MW265 MY60 ML223 MT356 MR222 MU230 MX52 MD373 MN976 ME382 MA212 MZ258 MM95 NA264 NP977 NL31 NZ64 NI505 NE227 NG234 MK389 NO47 OM968 PK92 PS970 PA507 PY595 PE51 PH63 PL48 PT351 QA974 RO40 RU7 RW250 SA966 SN221 RS381 SG65 SK421 SI386 SO252 ZA27 KR82 ES34 LK94 SD249 SE46 CH41 SY963 TW886 TJ992 TZ255 TH66 TG228 TN216 TR90 TM993 UG256 UA380 AE971 GB44 US1 UY598 UZ998 VE58 VN84 YE967 ZM260 ZW263';
+    const dm = {};
+    dial.split(' ').forEach(t => { dm[t.slice(0, 2)] = '+' + t.slice(2); });
+    this._countries = raw.split('|').map(s => {
+      const [i2, i3, name] = s.split(':');
+      const flag = 'https://flagcdn.com/w40/' + i2.toLowerCase() + '.png';
+      return {i2, i3, name, code: dm[i2] || '', flag, flagBg: 'url("' + flag + '")'};
+    });
+    return this._countries;
+  }
+  detectNat() {
+    let i2 = '';
+    try {
+      const m = (navigator.language || '').match(/-([A-Za-z]{2})\b/);
+      if (m) i2 = m[1].toUpperCase();
+      if (!i2) {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        const map = {'Asia/Bahrain':'BH','Asia/Dubai':'AE','Asia/Qatar':'QA','Asia/Riyadh':'SA','Asia/Kuwait':'KW','Asia/Muscat':'OM','Africa/Cairo':'EG','Europe/Paris':'FR','Europe/London':'GB','America/New_York':'US'};
+        i2 = map[tz] || '';
+      }
+    } catch (e) {}
+    const c = this.countries().find(c => c.i2 === i2);
+    return c ? c.i3 : 'BHR';
+  }
+  componentDidMount() {
+    const def = this.detectNat();
+    this.setState(s => ({clubDial: s.clubDial || def, athletes: s.athletes.map(a => a.nat ? a : {...a, nat: def})}));
+    this._onDocClick = () => { if (this.state.natOpen !== null || this.state.dialOpen) this.setState({natOpen: null, dialOpen: false}); };
+    document.addEventListener('click', this._onDocClick);
+  }
+  componentWillUnmount() { document.removeEventListener('click', this._onDocClick); }
+  openPhoto(target, camera) {
+    this._photoTarget = target;
+    const el = camera ? this._camEl : this._fileEl;
+    if (el) el.click();
+  }
+  onPhotoFile(e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      const img = new Image();
+      img.onload = () => this.setState({cropper: {target: this._photoTarget, src: rd.result,
+        iw: img.naturalWidth, ih: img.naturalHeight, scale: 1, x: 0, y: 0, rot: 0,
+        shape: this._photoTarget === 'logo' ? (this.state.clubLogoShape || 'circle') : 'portrait'}});
+      img.src = rd.result;
+    };
+    rd.readAsDataURL(f);
+  }
+  cropBox(c) { return c.target === 'logo' ? {w: 300, h: 300} : {w: 270, h: 360}; }
+  cssToObj(css) {
+    const o = {};
+    css.split(';').forEach(d => {
+      const i = d.indexOf(':'); if (i < 0) return;
+      const k = d.slice(0, i).trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      o[k] = d.slice(i + 1).trim();
+    });
+    return o;
+  }
+  saveCrop() {
+    const c = this.state.cropper; if (!c) return;
+    const box = this.cropBox(c);
+    const out = c.target === 'logo' ? {w: 640, h: 640} : {w: 720, h: 960};
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas'); cv.width = out.w; cv.height = out.h;
+      const ctx = cv.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      const isCircle = c.target === 'logo' && c.shape === 'circle';
+      if (isCircle) { ctx.beginPath(); ctx.arc(out.w / 2, out.h / 2, out.w / 2, 0, Math.PI * 2); ctx.clip(); }
+      const k = out.w / box.w;
+      const base = Math.max(box.w / c.iw, box.h / c.ih);
+      ctx.translate(out.w / 2 + c.x * k, out.h / 2 + c.y * k);
+      ctx.rotate(c.rot * Math.PI / 180);
+      const sc = base * c.scale * k;
+      ctx.scale(sc, sc);
+      ctx.drawImage(img, -c.iw / 2, -c.ih / 2);
+      const url = isCircle ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', .88);
+      if (c.target === 'logo') this.setState({clubLogo: url, clubLogoShape: c.shape, cropper: null});
+      else { this.setAth(parseInt(c.target.slice(4), 10), 'photo', url); this.setState({cropper: null}); }
+    };
+    img.src = c.src;
+  }
+  setAth(i, key, val) {
+    this.setState(s => ({athletes: s.athletes.map((a, j) => j === i ? {...a, [key]: val} : a), error: ''}));
+  }
+  classify(a) {
+    if (!a.gender || !a.dob || !a.weight) return null;
+    const d = new Date(a.dob), n = new Date();
+    let age = n.getFullYear() - d.getFullYear();
+    if (n.getMonth() < d.getMonth() || (n.getMonth() === d.getMonth() && n.getDate() < d.getDate())) age--;
+    if (!(age > 3)) return null;
+    const ag = age <= 5 ? 'Mini poussins' : age <= 7 ? 'Poussins' : age <= 9 ? 'Pupilles'
+      : age <= 11 ? 'Benjamins' : age <= 13 ? 'Minimes' : age <= 15 ? 'Cadets' : age <= 17 ? 'Juniors'
+      : age <= 34 ? 'Séniors' : age <= 45 ? 'Vétérans 1' : age <= 55 ? 'Vétérans 2'
+      : age <= 65 ? 'Vétérans 3' : age <= 74 ? 'Vétérans 4' : 'Vétérans 5';
+    const vm = ['-67','-75','-84','+84'], vf = ['-55','-61','-68','+68'];
+    const weights = {
+      M: {'Mini poussins': ['-25','-35','+35'], 'Poussins': ['-25','-35','+35'],
+        'Pupilles': ['-25','-30','-35','-40','-45','-50','+50'],
+        'Benjamins': ['-30','-35','-40','-45','-50','-55','+55'],
+        'Minimes': ['-35','-40','-45','-50','-55','-60','-65','+65'],
+        'Cadets': ['-52','-57','-63','-70','+70'], 'Juniors': ['-55','-61','-68','-76','+76'],
+        'Séniors': ['-60','-67','-75','-84','+84'],
+        'Vétérans 1': vm, 'Vétérans 2': vm, 'Vétérans 3': vm, 'Vétérans 4': vm, 'Vétérans 5': vm},
+      F: {'Mini poussins': ['-25','-35','+35'], 'Poussins': ['-25','-35','+35'],
+        'Pupilles': ['-25','-30','-35','-40','-45','+45'],
+        'Benjamins': ['-30','-35','-40','-45','-50','+50'],
+        'Minimes': ['-35','-40','-45','-50','-55','+55'],
+        'Cadets': ['-47','-54','-61','+61'], 'Juniors': ['-48','-53','-59','-66','+66'],
+        'Séniors': ['-50','-55','-61','-68','+68'],
+        'Vétérans 1': vf, 'Vétérans 2': vf, 'Vétérans 3': vf, 'Vétérans 4': vf, 'Vétérans 5': vf}
+    };
+    const g = a.gender === 'Female' ? 'F' : 'M';
+    const kg = parseFloat(a.weight);
+    if (!kg) return null;
+    const list = weights[g][ag];
+    let wc = 'Kumite ' + list[list.length - 1] + ' kg';
+    for (const w of list) if (w[0] === '-' && kg <= parseFloat(w.slice(1))) { wc = 'Kumite ' + w + ' kg'; break; }
+    return a.gender + ' \u00b7 ' + ag + ' \u00b7 ' + wc;
+  }
+  renderVals() {
+    const s = this.state;
+    return {
+      submitted: s.submitted, notSubmitted: !s.submitted,
+      subClub: s.subClub, subCount: s.subCount,
+      clubName: s.clubName,
+      onClubName: e => this.setState({clubName: e.target.value, error: ''}),
+      coachName: s.coachName || '', onCoachName: e => this.setState({coachName: e.target.value, error: ''}),
+      fileRef: el => { this._fileEl = el; },
+      camRef: el => { this._camEl = el; },
+      onPhotoFile: (e) => this.onPhotoFile(e),
+      logoPreviewStyle: Object.assign(this.cssToObj('width:56px;height:56px;flex:none;border:1px solid #d5dae3;background:#eef1f6;background-size:cover;background-position:center;display:grid;place-items:center;font-size:.6rem;color:#97a1b4;'
+        + ((s.clubLogoShape || 'circle') === 'circle' ? 'border-radius:50%' : 'border-radius:10px')),
+        s.clubLogo ? {backgroundImage: 'url("' + s.clubLogo + '")'} : {}),
+      hasLogo: !!s.clubLogo,
+      onLogoCam: () => this.openPhoto('logo', true),
+      onLogoFile: () => this.openPhoto('logo', false),
+      onLogoRemove: () => this.setState({clubLogo: null}),
+      clubPhone: s.clubPhone, onClubPhone: e => this.setState({clubPhone: e.target.value, error: ''}),
+      clubAddress: s.clubAddress, onClubAddress: e => this.setState({clubAddress: e.target.value, error: ''}),
+      clubEmail: s.clubEmail, onClubEmail: e => this.setState({clubEmail: e.target.value, error: ''}),
+      dialFlagBg: 'url("' + ((this.countries().find(c => c.i3 === s.clubDial) || {}).flag || 'https://flagcdn.com/w40/un.png') + '")',
+      dialCode: (this.countries().find(c => c.i3 === s.clubDial) || {}).code || '+',
+      dialDdOpen: s.dialOpen,
+      toggleDialDd: (e) => { e.stopPropagation(); this.setState({dialOpen: !s.dialOpen, natOpen: null, dialQuery: ''}); },
+      dialQuery: s.dialQuery, onDialQuery: e => this.setState({dialQuery: e.target.value}),
+      dialOptions: this.countries()
+        .filter(c => { const q = s.dialQuery.trim().toLowerCase(); return !q || c.name.toLowerCase().includes(q) || c.i3.toLowerCase().includes(q) || c.code.includes(q); })
+        .map(c => ({...c, onPick: (e) => { e.stopPropagation(); this.setState({clubDial: c.i3, dialOpen: false, dialQuery: ''}); }})),
+      athCount: s.athletes.length,
+      addAthlete: () => this.setState({athletes: [...s.athletes, {name: '', gender: '', dob: '', weight: '', nat: this.detectNat()}]}),
+      stopEvt: (e) => e.stopPropagation(),
+      natQuery: s.natQuery,
+      onNatQuery: e => this.setState({natQuery: e.target.value}),
+      natOptions: this.countries()
+        .filter(c => { const q = s.natQuery.trim().toLowerCase(); return !q || c.name.toLowerCase().includes(q) || c.i3.toLowerCase().includes(q); })
+        .map(c => ({...c, onPick: (e) => { e.stopPropagation(); this.setAth(s.natOpen, 'nat', c.i3); this.setState({natOpen: null, natQuery: ''}); }})),
+      rows: s.athletes.map((a, i) => {
+        const nc = this.countries().find(c => c.i3 === a.nat);
+        return {...a, num: i + 1,
+        hasPhoto: !!a.photo,
+        photoStyle: Object.assign(this.cssToObj('width:66px;height:88px;flex:none;border-radius:10px;background:#eef1f6;background-size:cover;background-position:center;display:grid;place-items:center;font-size:.6rem;color:#97a1b4;border:1px solid #d5dae3;' + (a.photo ? '' : 'border-style:dashed')),
+          a.photo ? {backgroundImage: 'url("' + a.photo + '")'} : {}),
+        onPhotoCam: () => this.openPhoto('ath-' + i, true),
+        onPhotoFile2: () => this.openPhoto('ath-' + i, false),
+        onPhotoRemove: () => this.setAth(i, 'photo', null),
+        natFlagBg: 'url("' + (nc ? nc.flag : 'https://flagcdn.com/w40/un.png') + '")', natIso: nc ? nc.i3 : '\u2014', natName: nc ? nc.name : 'Select country',
+        natOpen: s.natOpen === i,
+        onNatToggle: (e) => { e.stopPropagation(); this.setState({natOpen: s.natOpen === i ? null : i, natQuery: ''}); },
+        category: this.classify(a) || '', hasCategory: !!this.classify(a),
+        onName: e => this.setAth(i, 'name', e.target.value),
+        onGender: e => this.setAth(i, 'gender', e.target.value),
+        onDob: e => this.setAth(i, 'dob', e.target.value),
+        onWeight: e => this.setAth(i, 'weight', e.target.value),
+        onRemove: () => this.setState({athletes: s.athletes.length > 1 ? s.athletes.filter((_, j) => j !== i) : [{name: '', gender: '', dob: '', weight: '', nat: this.detectNat()}]})
+      };}),
+      cropOpen: !!s.cropper,
+      ...(s.cropper ? (() => {
+        const c = s.cropper;
+        const box = this.cropBox(c);
+        const base = Math.max(box.w / c.iw, box.h / c.ih);
+        const isLogo = c.target === 'logo';
+        return {
+          isLogoCrop: isLogo, isAthCrop: !isLogo,
+          cropAreaStyle: this.cssToObj('position:relative;width:' + box.w + 'px;height:' + box.h + 'px;margin:0 auto;overflow:hidden;border-radius:12px;background:#0b132b;touch-action:none;cursor:grab;user-select:none'),
+          cropImgStyle: Object.assign(this.cssToObj('position:absolute;left:50%;top:50%;width:' + (c.iw * base) + 'px;height:' + (c.ih * base) + 'px;background-size:100% 100%;pointer-events:none;transform:translate(calc(-50% + ' + c.x + 'px), calc(-50% + ' + c.y + 'px)) rotate(' + c.rot + 'deg) scale(' + c.scale + ')'),
+            {backgroundImage: 'url("' + c.src + '")'}),
+          cropGuideStyle: this.cssToObj(isLogo && c.shape === 'circle'
+            ? 'position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 999px rgba(11,19,43,.55);pointer-events:none'
+            : isLogo ? 'display:none'
+            : 'position:absolute;left:50%;top:46%;width:210px;height:210px;transform:translate(-50%,-50%);border:2px dashed rgba(237,205,133,.9);border-radius:50%;pointer-events:none'),
+          cropZoom: c.scale, cropTilt: c.rot,
+          onCropZoom: e => this.setState({cropper: {...this.state.cropper, scale: parseFloat(e.target.value)}}),
+          onCropTilt: e => this.setState({cropper: {...this.state.cropper, rot: parseFloat(e.target.value)}}),
+          onCropDown: e => { e.preventDefault(); this._drag = {x: e.clientX, y: e.clientY, ox: c.x, oy: c.y}; if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); },
+          onCropMove: e => { if (!this._drag) return; this.setState({cropper: {...this.state.cropper, x: this._drag.ox + e.clientX - this._drag.x, y: this._drag.oy + e.clientY - this._drag.y}}); },
+          onCropUp: () => { this._drag = null; },
+          cropShapeOpts: ['circle', 'rect'].map(sh => ({label: sh === 'circle' ? 'Circle' : 'Rectangle',
+            style: this.cssToObj('height:34px;padding:0 14px;border-radius:9px;font-family:inherit;font-size:.76rem;cursor:pointer;' + (c.shape === sh ? 'font-weight:600;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);border:0' : 'font-weight:500;color:#5d6880;background:#fff;border:1px solid #d5dae3')),
+            onClick: () => this.setState({cropper: {...this.state.cropper, shape: sh}})})),
+          onCropCancel: () => { this._drag = null; this.setState({cropper: null}); },
+          onCropSave: () => this.saveCrop()
+        };
+      })() : {}),
+      hasError: !!s.error, errorMsg: s.error,
+      catGroups: (() => {
+        const gm = {};
+        s.athletes.forEach(a => {
+          const c = this.classify(a);
+          if (c && a.name.trim()) (gm[c] = gm[c] || []).push(a.name.trim());
+        });
+        return Object.keys(gm).sort().map(k => ({label: k, names: gm[k].join(', '), count: gm[k].length}));
+      })(),
+      hasCatGroups: s.athletes.some(a => this.classify(a) && a.name.trim()),
+      onSubmit: () => {
+        if (!s.clubName.trim()) return this.setState({error: 'Please enter your club name.'});
+        if (!(s.coachName || '').trim()) return this.setState({error: 'Please enter the name of the coach or trainer registering the athletes.'});
+        if (!s.clubPhone.trim()) return this.setState({error: 'Please enter the club phone number.'});
+        if (!/.+@.+\..+/.test(s.clubEmail.trim())) return this.setState({error: 'Please enter a valid club email address.'});
+        if (!s.clubAddress.trim()) return this.setState({error: 'Please enter the club address.'});
+        const bad = s.athletes.findIndex(a => !a.name.trim() || !a.gender || !a.dob || !a.weight);
+        if (bad >= 0) return this.setState({error: 'Athlete ' + (bad + 1) + ' is missing a field — every athlete needs name, gender, date of birth and weight.'});
+        try {
+          const key = 'takeone_club_regs';
+          const cur = JSON.parse(localStorage.getItem(key) || '[]');
+          const dialC = this.countries().find(c => c.i3 === s.clubDial) || {};
+          cur.push({logo: s.clubLogo || null, logoShape: s.clubLogoShape || 'circle',
+            club: s.clubName.trim(), coach: (s.coachName || '').trim(), phone: (dialC.code || '') + ' ' + s.clubPhone.trim(),
+            email: s.clubEmail.trim(), address: s.clubAddress.trim(), ts: Date.now(), athletes: s.athletes});
+          localStorage.setItem(key, JSON.stringify(cur));
+        } catch (e) {}
+        this.setState({submitted: true, subClub: s.clubName.trim(), subCount: s.athletes.length});
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
