@@ -64,4 +64,27 @@ return [
     'voice_on' => 'الردود الصوتية مفعّلة',
     'voice_unsupported' => 'الإدخال الصوتي غير مدعوم على هذا الجهاز.',
 
+
+    // Coach with every skill (App\Ai\Copilot\SkillCopilot)
+    'skill_club' => 'إنشاء نادٍ رياضي',
+    'skill_federation' => 'إنشاء اتحاد رياضي',
+    'header_subtitle_any' => 'أنشئ أي شيء',
+    'placeholder_any' => 'ماذا تريد أن تنشئ؟',
+    'greeting_any' => 'مرحبًا، أنا كوتش. أستطيع إعداد نادٍ أو اتحاد لك — أخبرني فقط بما تريد إنشاءه.',
+    'nothing_to_create' => 'لا يوجد ما يمكنني إنشاؤه لحسابك بعد.',
+    'ask_what' => 'ماذا تريد أن تنشئ؟',
+    'creating_now' => 'اكتملت المعلومات — جارٍ الإنشاء الآن (:what)…',
+    'fed_president' => 'الرئيس',
+    'fed_secretary_general' => 'الأمين العام',
+    'placeholders_note' => 'قيم مؤقتة يجب تحديثها في السجل: :fields.',
+    'federation_finish_later' => 'أضف الباقي متى توفر لديك.',
+    'proposal_intro_any' => 'إليك المسودة (:what) — راجعها واضغط إنشاء، أو أخبرني بما تريد تغييره.',
+    'proposal_expired' => 'انتهت صلاحية هذه المسودة. اطلب من كوتش إعدادها مجددًا.',
+    'turned_off' => 'المساعد متوقف حاليًا.',
+    'ai_unreachable' => 'تعذّر الوصول إلى خدمة الذكاء الاصطناعي الآن. حاول مجددًا بعد قليل.',
+    'error_create_any' => 'تعذّر الإنشاء. حاول مجددًا.',
+    'open_federation' => 'فتح الاتحاد',
+    'open' => 'فتح',
+    'proposal_used' => 'تم استخدام هذه المسودة بالفعل.',
+    'toast_created_federation' => 'تم إنشاء الاتحاد: :name',
 ];

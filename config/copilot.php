@@ -18,6 +18,10 @@ return [
     // "unavailable" reply and the UI degrades gracefully.
     'enabled' => (bool) env('COPILOT_ENABLED', true),
 
+    // Coach with every module's skills (club, federation, …) instead of the
+    // club-only original. OFF until verified; the original keeps working.
+    'skills' => (bool) env('COPILOT_SKILLS', false),
+
     // Ollama server. Reached only from the Laravel backend.
     'base_url' => rtrim(env('COPILOT_OLLAMA_URL', 'https://ollama.innovator.bh'), '/'),
 

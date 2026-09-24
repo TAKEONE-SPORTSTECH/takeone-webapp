@@ -36,6 +36,11 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])
     ->group(function () {
         Route::get('/ai', [AiProviderController::class, 'index'])->name('ai.index');
 
+        // Coach with every module's skills (App\Ai\Copilot\SkillCopilot), beside the
+        // club-only /copilot/* endpoints until config('copilot.skills') cuts over.
+        Route::post('/copilot/skills/message', [\App\Ai\Controllers\CopilotSkillController::class, 'message'])->name('copilot.skills.message')->middleware('throttle:copilot');
+        Route::post('/copilot/skills/apply', [\App\Ai\Controllers\CopilotSkillController::class, 'apply'])->name('copilot.skills.apply')->middleware('throttle:copilot');
+
         Route::post('/ai/providers', [AiProviderController::class, 'store'])
             ->name('ai.store')->middleware('throttle:admin-write');
 

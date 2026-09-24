@@ -11,6 +11,8 @@
 --}}
 @php($copilotContext = $context ?? 'create_club')
 @php($copilotHideOn = $hideOn ?? [])
+{{-- Every module's skills (App\Ai\Copilot\SkillCopilot) when switched on; the club-only original otherwise. --}}
+@php($copilotSkills = (bool) config('copilot.skills'))
 @php($copilotI18n = [
     'greeting' => __('copilot.greeting'),
     'changed' => __('copilot.changed'),
@@ -21,12 +23,17 @@
     'voice_unsupported' => __('copilot.voice_unsupported'),
     'mic_denied' => __('copilot.mic_denied'),
     'voice_empty' => __('copilot.voice_empty'),
+    'error_create_any' => __('copilot.error_create_any'),
 ])
+@if ($copilotSkills)
+    @php($copilotI18n['greeting'] = __('copilot.greeting_any'))
+@endif
 
 <div x-data="copilotWidget(@js($copilotI18n))" x-cloak
      data-copilot-context="{{ $copilotContext }}"
-     data-message-url="{{ route('admin.copilot.message') }}"
-     data-apply-url="{{ route('admin.copilot.apply') }}"
+     data-message-url="{{ $copilotSkills ? route('admin.copilot.skills.message') : route('admin.copilot.message') }}"
+     data-apply-url="{{ $copilotSkills ? route('admin.copilot.skills.apply') : route('admin.copilot.apply') }}"
+     data-skills="{{ $copilotSkills ? '1' : '0' }}"
      data-stt-url="{{ route('admin.copilot.stt') }}"
      data-tts-url="{{ route('admin.copilot.tts') }}"
      data-hide-on='@json($copilotHideOn)'>
@@ -62,7 +69,7 @@
                 </span>
                 <div>
                     <p class="font-semibold leading-tight">{{ __('copilot.header_title') }}</p>
-                    <p class="text-[11px] text-white/70 leading-tight">{{ __('copilot.header_subtitle') }}</p>
+                    <p class="text-[11px] text-white/70 leading-tight">{{ $copilotSkills ? __('copilot.header_subtitle_any') : __('copilot.header_subtitle') }}</p>
                 </div>
             </div>
             <button type="button" @click="close()" class="w-8 h-8 rounded-lg hover:bg-white/15 flex items-center justify-center">
@@ -85,6 +92,34 @@
                     <template x-if="m.role === 'assistant'">
                         <div class="flex flex-col items-start gap-2">
                             <div class="max-w-[85%] px-3 py-2 rounded-2xl rounded-bl-sm bg-white border border-gray-100 text-sm text-foreground whitespace-pre-line" x-text="m.text"></div>
+
+                            {{-- Draft card for any skill: rows the skill built (x-text only). --}}
+                            <template x-if="m.rows && m.token && !m.created">
+                                <div class="w-full bg-white rounded-xl border border-primary/30 shadow-sm p-3">
+                                    <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{{ __('copilot.draft_label') }}</p>
+                                    <dl class="space-y-1 text-sm">
+                                        <template x-for="(r, ri) in m.rows" :key="ri">
+                                            <div :class="r.long ? 'pt-1' : 'flex justify-between gap-3'">
+                                                <dt class="text-muted-foreground" :class="r.long && 'mb-0.5'" x-text="r.label"></dt>
+                                                <dd :class="r.flag ? 'text-green-600 text-end' : (r.long ? 'text-foreground' : (r.mono ? 'font-mono text-xs text-foreground text-end break-all' : 'font-medium text-foreground text-end break-words'))">
+                                                    <i class="bi bi-check-circle-fill" x-show="r.flag"></i> <span x-text="r.value"></span>
+                                                </dd>
+                                            </div>
+                                        </template>
+                                    </dl>
+                                    <div class="flex gap-2 mt-3">
+                                        <button type="button" @click="applyProposal(m)" :disabled="m.creating"
+                                                class="flex-1 bg-primary text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                                            <span x-show="!m.creating"><i class="bi bi-check-lg"></i> {{ __('copilot.create') }}</span>
+                                            <span x-show="m.creating" class="flex items-center gap-2"><i class="bi bi-arrow-repeat animate-spin"></i> {{ __('copilot.creating') }}</span>
+                                        </button>
+                                        <button type="button" @click="dismissProposal(m)"
+                                                class="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 text-muted-foreground hover:bg-muted transition-colors">
+                                            {{ __('copilot.cancel') }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
 
                             {{-- Draft proposal card --}}
                             <template x-if="m.proposal && !m.created">
@@ -159,11 +194,11 @@
                                 <div class="w-full bg-green-50 rounded-xl border border-green-200 p-3">
                                     <p class="text-sm font-medium text-green-700 flex items-center gap-2">
                                         <i class="bi bi-check-circle-fill"></i>
-                                        <span x-text="i18n.created.replace(':name', m.created.club_name)"></span>
+                                        <span x-text="i18n.created.replace(':name', m.created.title || m.created.club_name)"></span>
                                     </p>
-                                    <a :href="m.created.dashboard_url"
+                                    <a :href="m.created.url || m.created.dashboard_url"
                                        class="inline-flex items-center gap-1 mt-2 text-sm font-medium text-primary hover:underline">
-                                        {{ __('copilot.open_club') }} <i class="bi bi-arrow-right"></i>
+                                        <span x-text="m.created.open_label || @js(__('copilot.open_club'))"></span> <i class="bi bi-arrow-right rtl:rotate-180"></i>
                                     </a>
                                 </div>
                             </template>
@@ -206,7 +241,7 @@
                     <i class="bi" :class="recording ? 'bi-stop-fill' : 'bi-mic-fill'"></i>
                 </button>
                 <textarea x-ref="input" x-model="input" @keydown.enter.prevent="send()" :disabled="loading"
-                          rows="1" placeholder="{{ __('copilot.placeholder') }}"
+                          rows="1" placeholder="{{ $copilotSkills ? __('copilot.placeholder_any') : __('copilot.placeholder') }}"
                           class="flex-1 resize-none px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent max-h-28"></textarea>
                 <button type="button" @click="send()" :disabled="loading || !input.trim()"
                         class="w-10 h-10 flex-shrink-0 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50">
@@ -229,6 +264,8 @@ window.copilotWidget = function (i18n) {
         input: '',
         messages: [],
         context: 'create_club',
+        skills: false,
+        convState: null,
         messageUrl: '',
         applyUrl: '',
         sttUrl: '',
@@ -248,6 +285,7 @@ window.copilotWidget = function (i18n) {
 
         init() {
             this.context = this.$root.dataset.copilotContext || 'create_club';
+            this.skills = this.$root.dataset.skills === '1';
             this.messageUrl = this.$root.dataset.messageUrl;
             this.applyUrl = this.$root.dataset.applyUrl;
             this.sttUrl = this.$root.dataset.sttUrl;
@@ -315,16 +353,23 @@ window.copilotWidget = function (i18n) {
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': this.csrf(),
                     },
-                    body: JSON.stringify({ context: this.context, messages: this.history() }),
+                    body: JSON.stringify(this.skills
+                        ? { page: document.querySelector('[data-shell-main]')?.dataset.route || '', messages: this.history(), state: this.convState }
+                        : { context: this.context, messages: this.history() }),
                 });
                 const data = await res.json();
+                // A skill with its own conversation keeps what it gathered here (signed by the server).
+                if (data.state) this.convState = data.state;
                 this.messages.push({
                     role: 'assistant',
                     text: data.reply || '…',
                     proposal: data.proposal || null,
+                    rows: data.rows || null,
                     token: data.token || null,
                 });
                 if (this.speak && data.reply) this.speakText(data.reply);
+                // The user said "done": create now, through the same signed apply.
+                if (data.commit && data.token) this.applyProposal(this.messages[this.messages.length - 1]);
             } catch (e) {
                 this.messages.push({ role: 'assistant', text: this.t('error_generic') });
             } finally {
@@ -429,7 +474,37 @@ window.copilotWidget = function (i18n) {
             }
         },
 
+        // Any skill: commit the signed draft, then open what was made.
+        async applyProposal(m) {
+            if (m.creating || m.created || !m.token) return;
+            m.creating = true;
+            try {
+                const res = await fetch(this.applyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                    body: JSON.stringify({ token: m.token }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (data.success) {
+                    m.created = { title: data.title, url: data.url, open_label: data.open_label };
+                    m.token = null;
+                    this.convState = null;
+                    window.showToast && window.showToast('success', data.message || this.t('created').replace(':name', data.title || ''));
+                    window.dispatchEvent(new CustomEvent('close-club-modal'));
+                    if (data.url) setTimeout(() => { window.location.href = data.url; }, 900);
+                } else {
+                    window.showToast && window.showToast('error', data.message || this.t('error_create_any'));
+                }
+            } catch (e) {
+                window.showToast && window.showToast('error', this.t('error_create_any'));
+            } finally {
+                m.creating = false;
+                this.scrollDown();
+            }
+        },
+
         dismissProposal(m) {
+            m.rows = null;
             m.proposal = null;
             m.token = null;
             this.messages.push({ role: 'assistant', text: this.t('changed') });
