@@ -181,7 +181,7 @@ window.facilityFormSheet = function () {
                 {{-- ===== Basic info ===== --}}
                 <div class="space-y-4">
                     <h6 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ __('admin.club_facilities_add_basic_information') }}</h6>
-                    <x-lang-toggle class="mb-1" />
+                    <x-fields.language-toggle class="mb-1" />
 
                     <div>
                         <label class="form-label">{{ __('admin.fac_name') }} <span class="text-red-500">*</span></label>
@@ -199,7 +199,7 @@ window.facilityFormSheet = function () {
                 {{-- ===== Location ===== --}}
                 <div class="space-y-3">
                     <h6 class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2"><i class="bi bi-geo-alt"></i>{{ __('admin.club_facilities_add_location') }}</h6>
-                    <x-location-map
+                    <x-fields.location-map
                         id="facilityMap"
                         latName="latitude"
                         lngName="longitude"

@@ -70,7 +70,7 @@
      now" — one definition, included @once, so the day's NOW badge and the row
      that is actually on breathe together instead of blinking at each other on
      two different clocks (CLAUDE.md → Shared Stays Shared). --}}
-@include('partials.event-now-glow')
+@include('events::partials.event-now-glow')
 
 @if(! empty($rows))
     <div class="mt-3" x-data="{ showDone: false }" style="--ro: {{ $rc }}; --ev-now: {{ $rc }};">
@@ -82,8 +82,8 @@
             <button type="button" @click="showDone = !showDone"
                     class="w-full flex items-center gap-2 py-1.5 text-start">
                 <i class="bi bi-check-circle-fill text-[11px] text-green-600"></i>
-                <span class="text-[12px] font-bold text-green-700">{{ trans_choice('events.run_order_finished', $doneCount, ['count' => $doneCount]) }}</span>
-                <span class="text-[11px] font-semibold text-muted-foreground" x-text="showDone ? @js(__('events.run_order_hide')) : @js(__('events.run_order_show'))"></span>
+                <span class="text-[12px] font-bold text-green-700">{{ trans_choice('events::events.run_order_finished', $doneCount, ['count' => $doneCount]) }}</span>
+                <span class="text-[11px] font-semibold text-muted-foreground" x-text="showDone ? @js(__('events::events.run_order_hide')) : @js(__('events::events.run_order_show'))"></span>
             </button>
         @endif
 
@@ -160,9 +160,9 @@
                     <span class="ev-now flex-none ms-auto px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide"
                           style="background: {{ $rc }};">{{ __('personal.event_show_now') }}</span>
                 @elseif(! $isDone && $kind === 'break')
-                    <span class="flex-none ms-auto px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-muted text-muted-foreground">{{ __('events.run_order_break') }}</span>
+                    <span class="flex-none ms-auto px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-muted text-muted-foreground">{{ __('events::events.run_order_break') }}</span>
                 @elseif(! $isDone && $kind === 'ceremony')
-                    <span class="flex-none ms-auto px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-muted text-muted-foreground">{{ __('events.run_order_medals') }}</span>
+                    <span class="flex-none ms-auto px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-muted text-muted-foreground">{{ __('events::events.run_order_medals') }}</span>
                 @elseif(! $isDone && ! empty($row['entrants']))
                     <span class="flex-none ms-auto px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-muted text-muted-foreground">{{ $row['entrants'] }}</span>
                 @endif

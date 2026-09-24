@@ -509,9 +509,9 @@ class Scoring
                     ? file_url($user->profile_picture)
                     : null),
             // The drawn stand-in, for a corner with no picture of their own.
-            // Always present — see App\Support\Avatar for why an unknown
+            // Always present — see App\Members\Support\Avatar for why an unknown
             // gender takes the male artwork rather than nothing.
-            'fallback' => \App\Support\Avatar::placeholder($user?->gender),
+            'fallback' => \App\Members\Support\Avatar::placeholder($user?->gender),
             'belt' => $belt['label'] ?? null,
             'record' => $this->record($user?->id),
             // The stat line. Each part is null when unknown, and the screen

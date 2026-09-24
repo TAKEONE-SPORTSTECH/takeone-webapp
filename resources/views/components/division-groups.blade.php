@@ -462,7 +462,7 @@
                     {{-- A calendar, never a native date input (Design Rule #4). --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1" x-text="words.birthdate"></label>
-                        <x-date-picker model="newPerson.birthdate" :max="now()->toDateString()" />
+                        <x-fields.date model="newPerson.birthdate" :max="now()->toDateString()" />
                     </div>
 
                     <div>

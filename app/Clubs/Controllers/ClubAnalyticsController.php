@@ -5,8 +5,8 @@ namespace App\Clubs\Controllers;
 use App\Http\Controllers\Controller;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\Tenant;
-use App\Support\ClubCache;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Support\ClubCache;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Support\Facades\Cache;
 
 class ClubAnalyticsController extends Controller
@@ -40,6 +40,6 @@ class ClubAnalyticsController extends Controller
                 ->get();
         });
 
-        return view(\App\Support\ClubView::pick('analytics', 'clubs'), compact('club', 'analytics', 'popularPackages'));
+        return view(\App\Clubs\Support\ClubView::pick('analytics', 'clubs'), compact('club', 'analytics', 'popularPackages'));
     }
 }

@@ -26,10 +26,10 @@ abstract class AbstractCombatSport implements CombatSport
     public function officialRoles(): array
     {
         return [
-            ['key' => 'referee',    'label' => __('events.official_referee')],
-            ['key' => 'judge',      'label' => __('events.official_judge')],
-            ['key' => 'timekeeper', 'label' => __('events.official_timekeeper')],
-            ['key' => 'recorder',   'label' => __('events.official_recorder')],
+            ['key' => 'referee',    'label' => __('events::events.official_referee')],
+            ['key' => 'judge',      'label' => __('events::events.official_judge')],
+            ['key' => 'timekeeper', 'label' => __('events::events.official_timekeeper')],
+            ['key' => 'recorder',   'label' => __('events::events.official_recorder')],
         ];
     }
 
@@ -58,8 +58,8 @@ abstract class AbstractCombatSport implements CombatSport
     public function cornerLabels(): array
     {
         return [
-            'red' => __('events.corner_red'),
-            'blue' => __('events.corner_blue'),
+            'red' => __('events::events.corner_red'),
+            'blue' => __('events::events.corner_blue'),
         ];
     }
 }

@@ -243,7 +243,7 @@
 
                 {{-- Map pin --}}
                 <div x-show="form.loc_type==='map'" x-cloak>
-                    <x-location-map
+                    <x-fields.location-map
                         :id="'schedFormMap'"
                         lat-name="schedFormMapLat" lng-name="schedFormMapLng" address-name="schedFormMapAddr"
                         height="13rem" />

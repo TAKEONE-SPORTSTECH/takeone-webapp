@@ -355,7 +355,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
             'clear_draw' => $this->clearDraw($event, $payload),
             'admit_late_entry' => $this->admitLateEntry($event, $payload),
             'end_next_bout' => $this->endNextBout($event),
-            default => ['success' => false, 'message' => __('events.action_unsupported')],
+            default => ['success' => false, 'message' => __('events::events.action_unsupported')],
         };
     }
 
@@ -559,7 +559,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
         $category = $event->categories()->find($payload['category_id'] ?? null);
 
         if (! $category) {
-            return ['success' => false, 'message' => __('events.division_not_found')];
+            return ['success' => false, 'message' => __('events::events.division_not_found')];
         }
 
         $result = $this->arrangement()->clear($event, $category);
@@ -596,7 +596,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
         $category = $event->categories()->find($payload['category_id'] ?? null);
 
         if (! $category || $category->isHeading()) {
-            return ['success' => false, 'message' => __('events.division_not_found')];
+            return ['success' => false, 'message' => __('events::events.division_not_found')];
         }
 
         $entry = $event->registrations()
@@ -606,7 +606,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
             ->first();
 
         if (! $entry) {
-            return ['success' => false, 'message' => __('events.late_entry_not_an_entrant')];
+            return ['success' => false, 'message' => __('events::events.late_entry_not_an_entrant')];
         }
 
         /*
@@ -633,7 +633,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
                 $entry->category_id = $category->id;
                 $entry->save();
             } catch (\Illuminate\Database\UniqueConstraintViolationException) {
-                return ['success' => false, 'message' => __('events.late_entry_already_drawn')];
+                return ['success' => false, 'message' => __('events::events.late_entry_already_drawn')];
             }
 
             if ($from) {
@@ -645,17 +645,17 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
             ->admit($event, $category, $entry->fresh(['user']));
 
         if (! ($result['ok'] ?? false)) {
-            return ['success' => false, 'message' => $result['message'] ?? __('events.action_unsupported')];
+            return ['success' => false, 'message' => $result['message'] ?? __('events::events.action_unsupported')];
         }
 
         $this->scheduler->scheduleAndNumber($event->fresh());
 
-        $name = $entry->user?->full_name ?: $entry->user?->name ?: __('events.athlete');
+        $name = $entry->user?->full_name ?: $entry->user?->name ?: __('events::events.athlete');
 
         $message = match (true) {
-            $result['how'] === 'grown' => __('events.late_entry_grown', ['name' => $name, 'opponent' => $result['opponent']]),
-            filled($result['opponent'] ?? null) => __('events.late_entry_placed', ['name' => $name, 'opponent' => $result['opponent']]),
-            default => __('events.late_entry_placed_bye', ['name' => $name]),
+            $result['how'] === 'grown' => __('events::events.late_entry_grown', ['name' => $name, 'opponent' => $result['opponent']]),
+            filled($result['opponent'] ?? null) => __('events::events.late_entry_placed', ['name' => $name, 'opponent' => $result['opponent']]),
+            default => __('events::events.late_entry_placed_bye', ['name' => $name]),
         };
 
         return $this->arrangedResponse($event, $category->fresh(), $message);
@@ -952,7 +952,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
 
         if ($unplaced->isNotEmpty()) {
             $rows[] = [
-                'division' => __('events.entry_no_division_yet'),
+                'division' => __('events::events.entry_no_division_yet'),
                 'entries' => $unplaced->count(),
                 'paid' => $unplaced->where('paid', true)->count(),
                 'revenue' => round($unplaced->where('paid', true)->sum(fn ($r) => $charged[$r->id] ?? 0.0), 3),

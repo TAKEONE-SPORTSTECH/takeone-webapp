@@ -3,7 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Members\Models\TournamentEvent;
-use App\Services\AchievementVerificationService;
+use App\Members\Support\AchievementVerificationService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;

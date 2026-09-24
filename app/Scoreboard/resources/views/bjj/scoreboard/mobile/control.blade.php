@@ -122,7 +122,7 @@
     <button class="btn" data-tab="more">{{ __('scoreboard::bjj_messages.ctl_settings') }}</button>
     {{-- Only when this door has camera addresses — see the desktop console. --}}
     @if ($cameraUrl ?? null)
-      <button class="btn" data-tab="cameras">{{ __('events.mat_cameras_tab') }}</button>
+      <button class="btn" data-tab="cameras">{{ __('events::events.mat_cameras_tab') }}</button>
     @endif
   </div>
 

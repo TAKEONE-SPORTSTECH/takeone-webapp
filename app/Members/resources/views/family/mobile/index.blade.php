@@ -1,14 +1,14 @@
 {{-- Inside the personal mobile shell: header (avatar → drawer), notifications,
      chat and bottom tabs come from the shell. -mx-4 -mt-4 cancels <main>'s padding. --}}
-@extends('layouts.personal-mobile')
+@extends('members::layouts.personal-mobile')
 
-@section('title', __('family.title'))
+@section('title', __('members::family.title'))
 
 {{-- Hoisted into the shared shell header (#shell-actions) instead of the page's own hero. --}}
 @push('header-actions')
     {{-- Dispatched on window so the listener doesn't depend on this button's Alpine scope. --}}
     <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-member-create-modal'))"
-            class="m-press w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('family.add_member') }}">
+            class="m-press w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('members::family.add_member') }}">
         <i class="bi bi-person-plus text-lg"></i>
     </button>
     <a href="{{ route('me.family') }}"
@@ -30,23 +30,23 @@
         <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
         <div class="flex items-center justify-between relative z-10">
             <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('family.title') }}</p>
-                <h1 class="text-2xl font-black mt-0.5">{{ __('family.my_family') }}</h1>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('members::family.title') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('members::family.my_family') }}</h1>
             </div>
         </div>
 
         <div class="flex gap-2 mt-5 relative z-10">
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
                 <p class="text-lg font-black leading-none" data-countup>{{ $dependents->count() }}</p>
-                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('family.members') }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('members::family.members') }}</p>
             </div>
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
                 <p class="text-lg font-black leading-none">{{ $adultCount }}</p>
-                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('family.adults') }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('members::family.adults') }}</p>
             </div>
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
                 <p class="text-lg font-black leading-none">{{ $minorCount }}</p>
-                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('family.minors') }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('members::family.minors') }}</p>
             </div>
         </div>
     </header>
@@ -79,7 +79,7 @@
                         <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-accent text-primary">{{ $relLabel }}</span>
                             @if($age !== null)
-                                <span class="text-[11px] text-muted-foreground flex items-center gap-1"><i class="bi bi-cake2"></i>{{ $age }} {{ __('family.years') }}</span>
+                                <span class="text-[11px] text-muted-foreground flex items-center gap-1"><i class="bi bi-cake2"></i>{{ $age }} {{ __('members::family.years') }}</span>
                             @endif
                         </div>
                     </div>
@@ -89,7 +89,7 @@
                     <button type="button"
                             onclick="event.preventDefault(); event.stopPropagation(); window.dispatchEvent(new CustomEvent('ft:manage', { detail: {{ Illuminate\Support\Js::from(['personId' => $relationship->person_id, 'personName' => $dependent->full_name, 'edges' => $relationship->edges]) }} }));"
                             class="absolute top-2.5 end-2.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-gray-100 flex items-center justify-center text-muted-foreground active:scale-95 transition-transform z-10"
-                            aria-label="{{ __('member.manage_relationships') }}">
+                            aria-label="{{ __('members::member.manage_relationships') }}">
                         <i class="bi bi-three-dots text-sm"></i>
                     </button>
                 @endif
@@ -97,15 +97,15 @@
         @empty
             <div class="bg-white rounded-2xl px-6 py-14 text-center shadow-sm border border-gray-100">
                 <i class="bi bi-people text-5xl text-gray-300 m-float inline-block"></i>
-                <p class="text-sm font-semibold text-foreground mt-4">{{ __('family.no_members_yet') }}</p>
-                <p class="text-[12px] text-muted-foreground mt-1">{{ __('family.empty_subtitle') }}</p>
+                <p class="text-sm font-semibold text-foreground mt-4">{{ __('members::family.no_members_yet') }}</p>
+                <p class="text-[12px] text-muted-foreground mt-1">{{ __('members::family.empty_subtitle') }}</p>
             </div>
         @endforelse
 
         {{-- Add member --}}
         <button type="button" @click="$dispatch('open-member-create-modal')"
                 class="m-press w-full flex items-center justify-center gap-2 bg-white rounded-2xl border-2 border-dashed border-primary/30 text-primary py-4 font-semibold hover:bg-accent/40 transition-colors">
-            <i class="bi bi-plus-circle text-lg"></i> {{ __('family.add_family_member') }}
+            <i class="bi bi-plus-circle text-lg"></i> {{ __('members::family.add_family_member') }}
         </button>
     </div>
 
@@ -139,7 +139,7 @@
                             <i class="bi bi-people-fill text-xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black leading-tight">{{ __('member.manage_relationships') }}</h3>
+                            <h3 class="text-lg font-black leading-tight">{{ __('members::member.manage_relationships') }}</h3>
                             <p class="text-[12px] text-white/85 mt-0.5"><span x-text="personName"></span></p>
                         </div>
                         <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"

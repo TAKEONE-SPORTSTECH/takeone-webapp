@@ -29,10 +29,10 @@
                     <i class="bi bi-person-plus text-xl"></i>
                 </span>
                 <div class="min-w-0 flex-1">
-                    <h3 class="text-lg font-black leading-tight">{{ __('member.add_family_member') }}</h3>
-                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.add_member_chooser_subtitle') }}</p>
+                    <h3 class="text-lg font-black leading-tight">{{ __('members::member.add_family_member') }}</h3>
+                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.add_member_chooser_subtitle') }}</p>
                 </div>
-                <button type="button" @click="open = false" aria-label="{{ __('member.close') }}"
+                <button type="button" @click="open = false" aria-label="{{ __('members::member.close') }}"
                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
                     <i class="bi bi-x-lg"></i>
                 </button>
@@ -45,8 +45,8 @@
                     class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-border">
                 <span class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0 bg-sky-500"><i class="bi bi-search text-lg"></i></span>
                 <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-bold text-foreground">{{ __('member.search_existing_title') }}</span>
-                    <span class="block text-[11px] text-muted-foreground">{{ __('member.search_existing_desc') }}</span>
+                    <span class="block text-sm font-bold text-foreground">{{ __('members::member.search_existing_title') }}</span>
+                    <span class="block text-[11px] text-muted-foreground">{{ __('members::member.search_existing_desc') }}</span>
                 </span>
                 <i class="bi bi-chevron-right text-gray-300"></i>
             </button>
@@ -56,8 +56,8 @@
                     class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-border">
                 <span class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0 bg-primary"><i class="bi bi-person-plus text-lg"></i></span>
                 <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-bold text-foreground">{{ __('member.add_new_title') }}</span>
-                    <span class="block text-[11px] text-muted-foreground">{{ __('member.add_new_desc') }}</span>
+                    <span class="block text-sm font-bold text-foreground">{{ __('members::member.add_new_title') }}</span>
+                    <span class="block text-[11px] text-muted-foreground">{{ __('members::member.add_new_desc') }}</span>
                 </span>
                 <i class="bi bi-chevron-right text-gray-300"></i>
             </button>

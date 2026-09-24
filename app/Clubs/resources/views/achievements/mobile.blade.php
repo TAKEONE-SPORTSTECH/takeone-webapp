@@ -1,4 +1,4 @@
-@extends('layouts.admin-club-mobile')
+@extends('clubs::layouts.admin-club-mobile')
 
 @section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_achievements'))
 
@@ -74,7 +74,7 @@ $achievementsJson = $achievements->map(function ($a) {
             </div>
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
                 <p class="text-lg font-black leading-none tabular-nums">🥇 {{ $achGold }}</p>
-                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('club.platform_show_gold') }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('clubs::club.platform_show_gold') }}</p>
             </div>
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
                 <p class="text-lg font-black leading-none tabular-nums">{{ $achMedals }}</p>

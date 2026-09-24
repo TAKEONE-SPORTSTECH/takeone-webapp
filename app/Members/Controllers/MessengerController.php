@@ -108,11 +108,15 @@ class MessengerController extends Controller
         $conversation->participants()->updateExistingPivot($me, ['last_read_at' => now()]);
 
         $other = $conversation->loadMissing('participants')->otherParticipant($me);
+        // A thread a module owns (not a 1:1 chat) has its own face, and says
+        // who wrote each message — several people write in it.
+        $owner = $conversation->threadModule();
 
         return response()->json([
             'success' => true,
-            'partner' => $this->presentUser($other),
-            'messages' => $messages->map(fn ($m) => $this->presentMessage($m, $me))->values(),
+            'partner' => $owner ? $owner->messengerPartner($conversation, $me) : $this->presentUser($other),
+            'messages' => $messages->map(fn ($m) => $this->presentMessage($m, $me)
+                + ($owner && (int) $m->sender_id !== $me ? ['sender_name' => $owner->messengerSenderName($conversation, $m)] : []))->values(),
         ]);
     }
 
@@ -679,10 +683,11 @@ class MessengerController extends Controller
         return $conversations->map(function (Conversation $c) use ($userId) {
             $other = $c->otherParticipant($userId);
             $last = $c->latestMessage;
+            $owner = $c->threadModule();
 
             return (object) [
                 'id' => $c->id,
-                'partner' => $this->presentUser($other),
+                'partner' => $owner ? $owner->messengerPartner($c, $userId) : $this->presentUser($other),
                 'last_body' => $last
                     ? ($last->isDeleted()
                         ? 'This message was deleted'
@@ -764,6 +769,16 @@ class MessengerController extends Controller
             ->whereKeyNot($message->sender_id)
             ->pluck('users.id');
 
+        // A thread a module owns hears about every post first (whoever else
+        // is in it, there may be nobody on this side to push to), and reads to
+        // its recipients under its own face, with the author named apart.
+        $owner = $conversation->threadModule();
+        if ($owner) {
+            $owner->messengerMessage($conversation, $message, $action);
+            $face = $owner->messengerPartner($conversation, (int) ($recipients->first() ?? 0));
+            $senderName = $owner->messengerSenderName($conversation, $message);
+        }
+
         // Attachment fan-out carries only a URL + metadata (no bytes).
         $attachment = null;
         $body = $deleted ? null : $message->body;
@@ -787,8 +802,8 @@ class MessengerController extends Controller
             'conversation_id' => $conversation->id,
             'id' => $message->id,
             'from_id' => (int) $message->sender_id,
-            'from_name' => $senderUi['name'],
-            'from_avatar' => $senderUi['avatar'],
+            'from_name' => $owner ? $face['name'] : $senderUi['name'],
+            'from_avatar' => $owner ? $face['avatar'] : $senderUi['avatar'],
             'body' => $body,
             'edited' => $message->edited_at !== null && ! $deleted,
             'deleted' => $deleted,
@@ -804,6 +819,9 @@ class MessengerController extends Controller
             'created_at' => $message->created_at->toIso8601String(),
             'time' => $message->created_at->format('g:i A'),
         ];
+        if ($owner) {
+            $payload['sender_name'] = $senderName;
+        }
 
         // Batch into ONE broker connection (a per-recipient connection would
         // open a separate socket for every participant).

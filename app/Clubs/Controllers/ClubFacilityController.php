@@ -3,12 +3,12 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreFacilityRequest;
-use App\Http\Requests\Admin\UpdateFacilityRequest;
+use App\Clubs\Requests\StoreFacilityRequest;
+use App\Clubs\Requests\UpdateFacilityRequest;
 use App\Http\Requests\UploadImageRequest;
 use App\Clubs\Models\ClubFacility;
 use App\Clubs\Models\Tenant;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use Illuminate\Support\Facades\Storage;
 use App\Support\StoragePath;
@@ -25,7 +25,7 @@ class ClubFacilityController extends Controller
         $this->authorizeClub($club);
         $facilities = ClubFacility::where('tenant_id', $club->id)->get();
 
-        return view(\App\Support\ClubView::pick('facilities', 'clubs'), compact('club', 'facilities'));
+        return view(\App\Clubs\Support\ClubView::pick('facilities', 'clubs'), compact('club', 'facilities'));
     }
 
     public function storeFacility(StoreFacilityRequest $request, Tenant $club)

@@ -1,0 +1,30 @@
+<?php
+
+namespace App\Clubs\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateFacilityRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'address' => 'nullable|string',
+            'gps_lat' => 'nullable|numeric',
+            'gps_long' => 'nullable|numeric',
+            'maps_url' => 'nullable|url|starts_with:http://,https://|max:500',
+            'is_available' => 'nullable|boolean',
+            'facility_images' => 'nullable|array',
+            'facility_images.*' => 'image|max:4096',
+            'translations' => ['nullable', 'array'],
+            'translations.*.*' => ['nullable', 'string', 'max:2000'],
+        ];
+    }
+}

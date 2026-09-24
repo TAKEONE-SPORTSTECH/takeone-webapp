@@ -262,7 +262,7 @@ class ScoreboardController extends Controller
         if (! $media) {
             return response()->json([
                 'success' => false,
-                'message' => __('events.screen_audio_rejected'),
+                'message' => __('events::events.screen_audio_rejected'),
             ], 422);
         }
 
@@ -274,7 +274,7 @@ class ScoreboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('events.screen_audio_saved'),
+            'message' => __('events::events.screen_audio_saved'),
             'slot' => $slot,
             'name' => $media->original_name,
             'bytes' => $media->bytes,
@@ -294,7 +294,7 @@ class ScoreboardController extends Controller
 
         ScreenChannel::notifyCourt($event, null, ['action' => 'reload']);
 
-        return response()->json(['success' => true, 'message' => __('events.screen_audio_removed'), 'slot' => $slot]);
+        return response()->json(['success' => true, 'message' => __('events::events.screen_audio_removed'), 'slot' => $slot]);
     }
 
     /**
@@ -815,7 +815,7 @@ class ScoreboardController extends Controller
                 // The drawn stand-in, so a row reads as a person rather than
                 // as a missing image. Always present — the same rule the member
                 // lists have always used.
-                'fallback' => \App\Support\Avatar::placeholder($user?->gender),
+                'fallback' => \App\Members\Support\Avatar::placeholder($user?->gender),
             ];
         };
 

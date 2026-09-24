@@ -168,7 +168,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('market.category') }}</label>
-                <x-select-menu model="cat" name="cat" :options="collect($cats)->map(fn($c) => ['value' => $c['key'], 'label' => $c['label']])->all()" />
+                <x-fields.select model="cat" name="cat" :options="collect($cats)->map(fn($c) => ['value' => $c['key'], 'label' => $c['label']])->all()" />
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('market.description') }}</label>
@@ -233,12 +233,12 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('market.badge') }}</label>
-                    <x-select-menu model="badge" name="badge" :placeholder="__('market.no_badge')"
+                    <x-fields.select model="badge" name="badge" :placeholder="__('market.no_badge')"
                         :options="collect($badgeChoices)->map(fn($b) => ['value' => $b, 'label' => $b === '' ? __('market.no_badge') : $b])->all()" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('market.availability') }}</label>
-                    <x-select-menu model="stock" name="stock" :options="$stockChoices" />
+                    <x-fields.select model="stock" name="stock" :options="$stockChoices" />
                 </div>
             </div>
             <label class="flex items-center gap-3 pt-1 cursor-pointer">

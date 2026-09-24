@@ -976,7 +976,7 @@ class ScoreboardController extends Controller
                     : (($user?->profile_picture && $user->profile_picture_is_public)
                         ? file_url($user->profile_picture)
                         : null),
-                'fallback' => \App\Support\Avatar::placeholder($user?->gender),
+                'fallback' => \App\Members\Support\Avatar::placeholder($user?->gender),
             ];
         };
     }
@@ -1143,7 +1143,7 @@ class ScoreboardController extends Controller
         if (! $media) {
             return response()->json([
                 'success' => false,
-                'message' => __('events.screen_audio_rejected'),
+                'message' => __('events::events.screen_audio_rejected'),
             ], 422);
         }
 
@@ -1155,7 +1155,7 @@ class ScoreboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('events.screen_audio_saved'),
+            'message' => __('events::events.screen_audio_saved'),
             'slot' => $slot,
             'name' => $media->original_name,
             'bytes' => $media->bytes,
@@ -1177,7 +1177,7 @@ class ScoreboardController extends Controller
 
         ScreenChannel::notifyCourt($event, null, ['action' => 'reload']);
 
-        return response()->json(['success' => true, 'message' => __('events.screen_audio_removed'), 'slot' => $slot]);
+        return response()->json(['success' => true, 'message' => __('events::events.screen_audio_removed'), 'slot' => $slot]);
     }
 
 }

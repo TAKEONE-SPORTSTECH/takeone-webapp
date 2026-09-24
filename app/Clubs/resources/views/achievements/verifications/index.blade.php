@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 @section('club-admin-content')
 
@@ -36,7 +36,7 @@
                 $u = $claim['user'];
                 $pic = $u['profile_picture'] ? file_url($u['profile_picture']) : null;
                 $isSkill = $claim['type'] === 'skill';
-                $medalMap = ['1st' => ['🥇', __('member.templates_member_show_first_place')], '2nd' => ['🥈', __('member.templates_member_show_second_place')], '3rd' => ['🥉', __('member.templates_member_show_third_place')], 'special' => ['🏆', __('member.templates_member_show_special_award')]];
+                $medalMap = ['1st' => ['🥇', __('members::member.templates_member_show_first_place')], '2nd' => ['🥈', __('members::member.templates_member_show_second_place')], '3rd' => ['🥉', __('members::member.templates_member_show_third_place')], 'special' => ['🏆', __('members::member.templates_member_show_special_award')]];
             @endphp
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col gap-3" data-claim="{{ $claim['uuid'] }}">
                 <div class="flex items-start gap-3">

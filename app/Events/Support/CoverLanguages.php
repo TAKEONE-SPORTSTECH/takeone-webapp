@@ -5,7 +5,7 @@ namespace App\Events\Support;
 use App\Events\EventTypeRegistry;
 use App\Events\Models\ClubEvent;
 use App\Support\Cldr;
-use App\Support\SportLabel;
+use App\Events\Support\SportLabel;
 use App\Translation\Translations;
 use Illuminate\Support\Facades\Cache;
 
@@ -147,9 +147,9 @@ class CoverLanguages
                     'ev_date' => trim(($date ? Cldr::skeleton($date, 'EEEdMMM', 'D j M') : '')
                         .($club !== '' ? ' · '.$club : '')),
 
-                    'label_language' => (string) trans('events.cover_language', [], $code),
-                    'label_search' => (string) trans('events.cover_search', [], $code),
-                    'label_enter' => (string) trans('events.cover_enter', [], $code),
+                    'label_language' => (string) trans('events::events.cover_language', [], $code),
+                    'label_search' => (string) trans('events::events.cover_search', [], $code),
+                    'label_enter' => (string) trans('events::events.cover_enter', [], $code),
                 ];
             }
         } finally {

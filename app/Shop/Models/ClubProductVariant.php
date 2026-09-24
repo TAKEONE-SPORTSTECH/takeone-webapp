@@ -2,7 +2,7 @@
 
 namespace App\Shop\Models;
 
-use App\Traits\BelongsToTenant;
+use App\Clubs\Concerns\BelongsToTenant;
 use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

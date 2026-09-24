@@ -233,7 +233,7 @@ class CourtDisplayTest extends TestCase
         //
         // The ONE exception is the face, and it is not an invention: a
         // competitor with no picture gets the platform's drawn stand-in
-        // (App\Support\Avatar), drawn back so nobody reads it as a photograph
+        // (App\Members\Support\Avatar), drawn back so nobody reads it as a photograph
         // of the athlete. `redPhoto` is still null — the stand-in travels in
         // `redFallback`, so the two can never be confused for one another.
         $organiser = $this->createUser();

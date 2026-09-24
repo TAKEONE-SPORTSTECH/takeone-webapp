@@ -254,7 +254,7 @@ window.packageFormSheet = function () {
 
                 {{-- ===== BASIC ===== --}}
                 <div x-show="tab === 'basic'" class="space-y-4">
-                    <x-lang-toggle class="mb-4" />
+                    <x-fields.language-toggle class="mb-4" />
                     {{-- Cover --}}
                     <div>
                         <label class="form-label">{{ __('admin.pkg_cover') }}</label>

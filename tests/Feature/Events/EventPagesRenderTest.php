@@ -230,7 +230,7 @@ class EventPagesRenderTest extends TestCase
 
         /* The DESKTOP blade is what mounts the board on a wide screen — and a
            branded event has no desktop blade (it is the mobile app at every
-           width, App\Http\Middleware\BrandEventPage), so this half of the
+           width, App\Events\Middleware\BrandEventPage), so this half of the
            contract is asserted with the branded surface off. That is not a
            workaround: it is where the desktop bracket screen still lives, for
            every type that has not opted in. */

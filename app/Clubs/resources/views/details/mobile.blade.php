@@ -1,4 +1,4 @@
-@extends('layouts.admin-club-mobile')
+@extends('clubs::layouts.admin-club-mobile')
 
 @section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_details'))
 
@@ -247,7 +247,7 @@
 
         {{-- ─────────── Identity ─────────── --}}
         <section x-show="panel === 'identity'" x-cloak class="px-4 py-5 space-y-4 m-panel-in">
-            <div class="flex justify-end"><x-lang-toggle /></div>
+            <div class="flex justify-end"><x-fields.language-toggle /></div>
 
             <div class="m-card p-4 space-y-4">
                 <div>
@@ -345,14 +345,14 @@
 
                 <div>
                     <label class="cs-lb">{{ __('admin.club_details_index_club_phone_label') }}</label>
-                    <x-country-code-dropdown name="phone_code" id="csPhoneCode" :value="$phoneCode" :error="$errors->first('phone_code')">
+                    <x-fields.phone-code name="phone_code" id="csPhoneCode" :value="$phoneCode" :error="$errors->first('phone_code')">
                         <input type="text" class="form-control border-0" name="phone_number" value="{{ $phoneNum }}" placeholder="12345678">
-                    </x-country-code-dropdown>
+                    </x-fields.phone-code>
                 </div>
 
-                <x-country-dropdown name="country" id="csCountry" :value="old('country', $club->country)" :label="__('admin.club_details_index_country_label')" />
-                <x-currency-dropdown name="currency" id="csCurrency" :value="old('currency', $club->currency)" :label="__('admin.club_details_index_currency_label')" />
-                <x-timezone-dropdown name="timezone" id="csTimezone" :value="old('timezone', $club->timezone)" :label="__('admin.club_details_index_timezone_label')" />
+                <x-fields.country name="country" id="csCountry" :value="old('country', $club->country)" :label="__('admin.club_details_index_country_label')" />
+                <x-fields.currency name="currency" id="csCurrency" :value="old('currency', $club->currency)" :label="__('admin.club_details_index_currency_label')" />
+                <x-fields.timezone name="timezone" id="csTimezone" :value="old('timezone', $club->timezone)" :label="__('admin.club_details_index_timezone_label')" />
             </div>
 
             <div class="pb-2"><button type="submit" class="m-press w-full py-3.5 rounded-2xl bg-primary text-white font-semibold text-sm">{{ __('admin.cs_save_all') }}</button></div>
@@ -360,7 +360,7 @@
 
         {{-- ─────────── Location ─────────── --}}
         <section x-show="panel === 'location'" x-cloak class="px-4 py-5 space-y-4 m-panel-in">
-            <div class="flex justify-end"><x-lang-toggle /></div>
+            <div class="flex justify-end"><x-fields.language-toggle /></div>
 
             <div class="m-card p-4 space-y-4">
                 <div>
@@ -368,7 +368,7 @@
                     <p class="cs-hint mb-2 mt-0">{{ __('admin.cs_pin_hint') }}</p>
                 </div>
 
-                <x-location-map
+                <x-fields.location-map
                     id="clubDetailsLoc"
                     :lat="old('gps_lat', $club->gps_lat)"
                     :lng="old('gps_long', $club->gps_long)"
@@ -540,10 +540,10 @@
                     <span class="cs-hint mt-0">{{ __('admin.club_details_index_reg_requirements_help') }}</span>
                 </div>
                 <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{{ __('admin.club_details_index_english') }}</p>
-                <x-rich-text-editor name="registration_requirements" :value="$club->registration_requirements ?? ''"
+                <x-fields.rich-text name="registration_requirements" :value="$club->registration_requirements ?? ''"
                     min-height="150px" :placeholder="__('admin.club_details_index_reg_requirements_placeholder')" />
                 <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide pt-1">{{ __('admin.club_details_index_arabic') }}</p>
-                <x-rich-text-editor name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
+                <x-fields.rich-text name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
                     min-height="150px" placeholder="ما يحتاجه الأعضاء للتسجيل…" />
             </div>
 
@@ -554,10 +554,10 @@
                     <span class="cs-hint mt-0">{{ __('admin.club_details_index_terms_help') }}</span>
                 </div>
                 <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{{ __('admin.club_details_index_english') }}</p>
-                <x-rich-text-editor name="registration_terms" :value="$club->registration_terms ?? ''"
+                <x-fields.rich-text name="registration_terms" :value="$club->registration_terms ?? ''"
                     min-height="150px" :placeholder="__('admin.club_details_index_terms_placeholder')" />
                 <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide pt-1">{{ __('admin.club_details_index_arabic') }}</p>
-                <x-rich-text-editor name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl"
+                <x-fields.rich-text name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl"
                     min-height="150px" placeholder="شروط وأحكام النادي للانضمام…" />
             </div>
 
@@ -568,7 +568,7 @@
         <section x-show="panel === 'social'" x-cloak class="px-4 py-5 space-y-4 m-panel-in">
             <div class="m-card p-4">
                 <p class="text-xs text-muted-foreground mb-3">{{ __('admin.club_details_index_social_media_help') }}</p>
-                <x-social-links-editor :links="$club->socialLinks" containerId="csSocialLinks" />
+                <x-fields.social-links :links="$club->socialLinks" containerId="csSocialLinks" />
             </div>
             <div class="pb-2"><button type="submit" class="m-press w-full py-3.5 rounded-2xl bg-primary text-white font-semibold text-sm">{{ __('admin.cs_save_all') }}</button></div>
         </section>

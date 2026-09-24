@@ -158,7 +158,7 @@
         },
 
         show() {
-            if (!this.division) { window.BracketBoard?.notice(@js(__('events.bracket_add_no_division'))); return; }
+            if (!this.division) { window.BracketBoard?.notice(@js(__('events::events.bracket_add_no_division'))); return; }
             this.open = true;
             this.search();
             this.loadClubs();
@@ -232,7 +232,7 @@
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || data.success === false) {
-                    window.BracketBoard?.notice(data.message || @js(__('events.bracket_move_failed')));
+                    window.BracketBoard?.notice(data.message || @js(__('events::events.bracket_move_failed')));
                     return;
                 }
                 window.BracketBoard?.notice(data.message);
@@ -244,7 +244,7 @@
                 const hit = this.rows.filter(r => (r.name || '').trim() === name);
                 if (hit.length === 1) await this.place(hit[0].id);
             } catch (e) {
-                window.BracketBoard?.notice(@js(__('events.bracket_move_failed')));
+                window.BracketBoard?.notice(@js(__('events::events.bracket_move_failed')));
             } finally {
                 this.busy = false;
             }
@@ -282,10 +282,10 @@
          class="bkadd-win"
          :style="`left:${x}px; top:${y}px;`"
          role="dialog" aria-modal="false"
-         :aria-label="@js(__('events.bracket_add_fighter'))">
+         :aria-label="@js(__('events::events.bracket_add_fighter'))">
 
         <div class="bkadd-bar" @pointerdown="grab($event)">
-            <span class="bkadd-bar-t">{{ __('events.bracket_add_fighter') }}</span>
+            <span class="bkadd-bar-t">{{ __('events::events.bracket_add_fighter') }}</span>
             <button type="button" class="bkadd-x" @click="open = false"
                     aria-label="{{ __('shared.close') }}">&#10005;</button>
         </div>
@@ -293,16 +293,16 @@
         <div class="bkadd-body">
             <div class="bkadd-tabs">
                 <button type="button" class="bkadd-tab" :class="tab === 'known' && 'is-on'"
-                        @click="tab = 'known'">{{ __('events.bracket_add_known') }}</button>
+                        @click="tab = 'known'">{{ __('events::events.bracket_add_known') }}</button>
                 <button type="button" class="bkadd-tab" :class="tab === 'new' && 'is-on'"
-                        @click="tab = 'new'; loadClubs()">{{ __('events.bracket_add_new') }}</button>
+                        @click="tab = 'new'; loadClubs()">{{ __('events::events.bracket_add_new') }}</button>
             </div>
 
             {{-- ===== Somebody already entered in this championship ===== --}}
             <div x-show="tab === 'known'">
                 <input type="text" class="bkadd-in" x-model="q" @input="search()"
-                       placeholder="{{ __('events.bracket_add_search') }}"
-                       aria-label="{{ __('events.bracket_add_search') }}">
+                       placeholder="{{ __('events::events.bracket_add_search') }}"
+                       aria-label="{{ __('events::events.bracket_add_search') }}">
 
                 <div class="bkadd-list">
                     <template x-for="r in rows" :key="r.id">
@@ -327,26 +327,26 @@
                                  no division at all is the case worth seeing. --}}
                             <span class="bkadd-where" x-text="r.division || ''"></span>
                             <button type="button" class="bkadd-go" :disabled="busy"
-                                    @click="place(r.id)">{{ __('events.bracket_add_place') }}</button>
+                                    @click="place(r.id)">{{ __('events::events.bracket_add_place') }}</button>
                         </div>
                     </template>
 
                     <div class="bkadd-empty" x-show="! loading && ! rows.length">
-                        {{ __('events.bracket_add_none') }}
+                        {{ __('events::events.bracket_add_none') }}
                     </div>
                 </div>
 
-                <p class="bkadd-note">{{ __('events.bracket_add_rules') }}</p>
+                <p class="bkadd-note">{{ __('events::events.bracket_add_rules') }}</p>
             </div>
 
             {{-- ===== Somebody who has just walked up to the desk ===== --}}
             <div x-show="tab === 'new'" x-cloak>
                 <div class="bkadd-fields">
                     <div style="flex:2;min-width:180px">
-                        <div class="bkadd-label">{{ __('events.bracket_add_name') }}</div>
+                        <div class="bkadd-label">{{ __('events::events.bracket_add_name') }}</div>
                         <input type="text" class="bkadd-in" x-model="name"
                                @keydown.enter.prevent="create()"
-                               aria-label="{{ __('events.bracket_add_name') }}">
+                               aria-label="{{ __('events::events.bracket_add_name') }}">
                     </div>
 
                     {{-- The event's own clubs — the ones with an account and the
@@ -356,12 +356,12 @@
                          The draft draws its own dropdown here (a trigger, a
                          rounded panel, the gold club mark on every row) and so
                          does this: the list arrives over the wire, which is
-                         exactly the case <x-select-menu> tells callers not to
+                         exactly the case <x-fields.select> tells callers not to
                          use it for, and a native <select> is banned in styled
                          UI (Design Rule #4). One control satisfies both. --}}
                     <div style="flex:2;min-width:180px;position:relative"
                          @click.outside="clubOpen = false">
-                        <div class="bkadd-label">{{ __('events.bracket_add_club') }}</div>
+                        <div class="bkadd-label">{{ __('events::events.bracket_add_club') }}</div>
 
                         <button type="button" class="bkadd-in bkadd-trigger"
                                 @click="clubOpen = ! clubOpen" :aria-expanded="clubOpen"
@@ -374,7 +374,7 @@
                                 </span>
                             </template>
                             <template x-if="! chosenClub">
-                                <span style="color:#97a1b4">{{ __('events.bracket_add_club') }}</span>
+                                <span style="color:#97a1b4">{{ __('events::events.bracket_add_club') }}</span>
                             </template>
                             <i class="bi bi-chevron-down" style="color:#97a1b4;font-size:.6rem"
                                :class="clubOpen && 'rotate-180'"></i>
@@ -398,17 +398,17 @@
                             </template>
                             <div class="bkadd-empty" x-show="! clubs.length" style="padding:10px 12px">
                                 <a href="{{ route('me.events.clubs', $event) }}"
-                                   style="color:#8a6d20;font-weight:600">{{ __('events.bracket_add_club') }}</a>
+                                   style="color:#8a6d20;font-weight:600">{{ __('events::events.bracket_add_club') }}</a>
                             </div>
                         </div>
                     </div>
 
                     <button type="button" class="bkadd-submit"
                             :disabled="busy || ! name.trim()"
-                            @click="create()">{{ __('events.bracket_add_submit') }}</button>
+                            @click="create()">{{ __('events::events.bracket_add_submit') }}</button>
                 </div>
 
-                <p class="bkadd-note">{{ __('events.bracket_add_rules') }}</p>
+                <p class="bkadd-note">{{ __('events::events.bracket_add_rules') }}</p>
             </div>
         </div>
     </div>

@@ -126,7 +126,7 @@
                     <div x-show="menu" x-cloak
                          x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                          class="absolute end-0 top-11 z-20 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1">
-                        <a :href="'{{ url('u') }}/' + (h.partner.slug || '')" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                        <a x-show="h.partner.kind !== 'thread'" :href="'{{ url('u') }}/' + (h.partner.slug || '')" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
                             <i class="bi bi-person"></i> {{ __('nav.partials_mobile_chat_view_profile') }}
                         </a>
                         <button type="button" @click="menu=false; clearHistory(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
@@ -135,11 +135,11 @@
                         <button type="button" @click="menu=false; deleteChat(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
                             <i class="bi bi-trash"></i> {{ __('nav.partials_mobile_chat_delete_chat') }}
                         </button>
-                        <div class="border-t border-gray-100 my-1"></div>
-                        <button type="button" x-show="!h.partner.blocked" @click="menu=false; blockPartner(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                        <div x-show="h.partner.kind !== 'thread'" class="border-t border-gray-100 my-1"></div>
+                        <button type="button" x-show="!h.partner.blocked && h.partner.kind !== 'thread'" @click="menu=false; blockPartner(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
                             <i class="bi bi-slash-circle"></i> {{ __('nav.partials_mobile_chat_block') }} <span x-text="(h.partner.name||'').split(' ')[0]"></span>
                         </button>
-                        <button type="button" x-show="h.partner.blocked" @click="menu=false; unblockPartner(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                        <button type="button" x-show="h.partner.blocked && h.partner.kind !== 'thread'" @click="menu=false; unblockPartner(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
                             <i class="bi bi-arrow-counterclockwise"></i> {{ __('nav.partials_mobile_chat_unblock') }} <span x-text="(h.partner.name||'').split(' ')[0]"></span>
                         </button>
                     </div>
@@ -175,6 +175,7 @@
                                         : (m.mine ? 'bg-primary text-white rounded-br-md' : 'bg-white text-foreground border border-border rounded-bl-md'))
                                      + ((m.kind === 'image' || m.kind === 'video') && m.attachment && !m.deleted ? ' p-1' : ' px-3.5 py-2 text-[15px]')
                                      + (m.id === h.lastAddedId ? ' m-in-pop' : '') + (m.pending ? ' opacity-60' : '')">
+                            <p x-show="!m.mine && m.sender_name && !m.deleted" class="mb-0.5 text-[11px] font-semibold text-primary truncate" :class="(m.kind === 'image' || m.kind === 'video') ? 'px-1.5 pt-0.5' : ''" x-text="m.sender_name"></p>
                             <p x-show="m.deleted" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-slash-circle"></i> {{ __('nav.partials_mobile_chat_message_deleted') }}</p>
                             <template x-if="!m.deleted && m.kind === 'image' && m.attachment">
                                 <a :href="m.attachment.url" target="_blank" rel="noopener" class="block"><img :src="m.attachment.url" :alt="m.attachment.name" loading="lazy" class="rounded-xl block" style="max-height:300px; max-width:100%;"></a>
@@ -301,7 +302,7 @@
                         <i class="bi bi-chat-dots-fill text-xl"></i>
                     </span>
                     <div class="min-w-0 flex-1">
-                        <h3 class="text-lg font-black leading-tight">{{ __('messenger.messenger_index_message_actions') }}</h3>
+                        <h3 class="text-lg font-black leading-tight">{{ __('members::messenger.messenger_index_message_actions') }}</h3>
                         <p class="text-[12px] text-white/85 mt-0.5">{{ __('Choose an action') }}</p>
                     </div>
                     <button type="button" @click="actionMsg = null" aria-label="{{ __('shared.close') }}"
@@ -570,9 +571,9 @@ function mobileChatHeads() {
             if (h) {
                 h.lastAddedId = detail.id;
                 if (detail.action === 'file') {
-                    h.messages.push({ id: detail.id, mine: false, time: detail.time || '', kind: detail.kind, attachment: detail.attachment });
+                    h.messages.push({ id: detail.id, mine: false, sender_name: detail.sender_name, time: detail.time || '', kind: detail.kind, attachment: detail.attachment });
                 } else {
-                    h.messages.push({ id: detail.id, body: detail.body, mine: false, time: detail.time || '' });
+                    h.messages.push({ id: detail.id, body: detail.body, mine: false, sender_name: detail.sender_name, time: detail.time || '' });
                 }
                 if (active) { this.scrollDown(h); this.markRead(h.id); }
                 else { h.unread = (h.unread || 0) + 1; }

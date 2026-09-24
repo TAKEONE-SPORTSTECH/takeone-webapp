@@ -7,7 +7,7 @@ use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Support\Qr;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 

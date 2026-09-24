@@ -180,11 +180,11 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Modality</label>
-                        <x-select-menu model="form.modality" :options="$modalityOptions" />
+                        <x-fields.select model="form.modality" :options="$modalityOptions" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Driver</label>
-                        <x-select-menu model="form.driver" :options="$driverOptions" />
+                        <x-fields.select model="form.driver" :options="$driverOptions" />
                     </div>
                 </div>
 

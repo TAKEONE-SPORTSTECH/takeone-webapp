@@ -49,7 +49,7 @@ class EventEntryExclusion extends Model
     /** The reason, in the reader's own language. */
     public function sentence(): string
     {
-        return __('events.entry_deadline_reason_'.$this->reason);
+        return __('events::events.entry_deadline_reason_'.$this->reason);
     }
 
     /** Which of the two gates this entry failed — the key the sweep writes. */

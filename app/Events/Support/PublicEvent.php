@@ -146,10 +146,10 @@ class PublicEvent
              * falling back to the old behaviour for a sport the schema does not
              * list, so nothing that renders today can start rendering blank.
              */
-            // Through App\Support\SportLabel, so the sport's name is in the
+            // Through App\Events\Support\SportLabel, so the sport's name is in the
             // reader's language too. The schema keeps deciding WHICH sports
             // exist; only the words are translatable now.
-            'sport_label' => \App\Support\SportLabel::for(
+            'sport_label' => \App\Events\Support\SportLabel::for(
                 $event->sport,
                 $event->sport ? (config('event_schema.sports.'.$event->sport.'.label') ?: ucfirst($event->sport)) : null,
             ),
@@ -190,7 +190,7 @@ class PublicEvent
             // here because it is a DATE here and only a sentence by the time a
             // template sees `end_date`.
             'end_date_short' => $event->end_date ? Cldr::shortDate($event->end_date) : null,
-            'time' => $start ? Cldr::time(Carbon::parse(date('Y-m-d H:i:s', $start))) : __('events.tba'),
+            'time' => $start ? Cldr::time(Carbon::parse(date('Y-m-d H:i:s', $start))) : __('events::events.tba'),
             'end' => $end ? Cldr::time(Carbon::parse(date('Y-m-d H:i:s', $end))) : '',
             'deadline' => $event->enrollment_ends_at ? Cldr::dayMonth($event->enrollment_ends_at) : null,
 

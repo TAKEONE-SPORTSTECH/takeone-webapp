@@ -4,8 +4,8 @@
 <div class="tf-container">
     <div class="flex justify-between items-center mb-4">
         <div>
-            <h1 class="mb-1 text-2xl font-bold">{{ __('member.family_index_title') }}</h1>
-            <p class="text-gray-500 mb-0">{{ __('member.family_index_subtitle') }}</p>
+            <h1 class="mb-1 text-2xl font-bold">{{ __('members::member.family_index_title') }}</h1>
+            <p class="text-gray-500 mb-0">{{ __('members::member.family_index_subtitle') }}</p>
         </div>
         <a href="{{ route('me.family') }}"
            class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium">
@@ -30,7 +30,7 @@
                     <button type="button"
                             onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('ft:manage', { detail: {{ Illuminate\Support\Js::from(['personId' => $relationship->person_id, 'personName' => $relationship->dependent->full_name, 'edges' => $relationship->edges]) }} }));"
                             class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-muted-foreground hover:text-red-600 hover:border-red-200 transition-colors z-10"
-                            aria-label="{{ __('member.manage_relationships') }}">
+                            aria-label="{{ __('members::member.manage_relationships') }}">
                         <i class="bi bi-three-dots text-sm"></i>
                     </button>
                 @endif
@@ -45,7 +45,7 @@
                     <div class="mb-3">
                         <i class="bi bi-plus-circle text-5xl"></i>
                     </div>
-                    <h5 class="font-semibold text-gray-500">{{ __('member.family_index_add_member') }}</h5>
+                    <h5 class="font-semibold text-gray-500">{{ __('members::member.family_index_add_member') }}</h5>
                 </div>
             </div>
         </div>
@@ -56,8 +56,8 @@
 <x-profile-modal
     mode="create"
     :eventName="'open-member-manual-sheet'"
-    :title="__('member.family_index_modal_title')"
-    :subtitle="__('member.family_index_modal_subtitle')"
+    :title="__('members::member.family_index_modal_title')"
+    :subtitle="__('members::member.family_index_modal_subtitle')"
     :showRelationshipFields="true"
     :showEmailField="false"
     :formAction="route('family.store')"
@@ -79,7 +79,7 @@
 
         <div class="flex-shrink-0 px-6 pt-5 pb-4 border-b border-gray-100 flex items-start justify-between">
             <div>
-                <h3 class="text-xl font-bold text-gray-900">{{ __('member.manage_relationships') }}</h3>
+                <h3 class="text-xl font-bold text-gray-900">{{ __('members::member.manage_relationships') }}</h3>
                 <p class="text-sm text-muted-foreground">
                     <span class="font-semibold text-primary" x-text="personName"></span>
                 </p>
@@ -94,7 +94,7 @@
         <div class="flex-shrink-0 px-6 py-4 border-t border-gray-100 flex justify-end">
             <button type="button" @click="close()"
                 class="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition">
-                {{ __('member.close') }}
+                {{ __('members::member.close') }}
             </button>
         </div>
     </div>
@@ -162,10 +162,10 @@
                 textWrap.className = 'min-w-0 flex-1';
                 const nameEl = document.createElement('span');
                 nameEl.className = 'block text-sm font-semibold text-foreground truncate';
-                nameEl.textContent = @json(__('member.suggest_existing_prefix')) + ' ' + m.name; // textContent — never parsed as HTML
+                nameEl.textContent = @json(__('members::member.suggest_existing_prefix')) + ' ' + m.name; // textContent — never parsed as HTML
                 const ctaEl = document.createElement('span');
                 ctaEl.className = 'block text-[11px] text-sky-700';
-                ctaEl.textContent = @json(__('member.suggest_existing_cta'));
+                ctaEl.textContent = @json(__('members::member.suggest_existing_cta'));
                 textWrap.append(nameEl, ctaEl);
 
                 const chevron = document.createElement('i');

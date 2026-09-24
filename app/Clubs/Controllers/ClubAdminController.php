@@ -3,10 +3,10 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\CreateOwnerRequest;
-use App\Http\Requests\Admin\StoreSocialLinkRequest;
-use App\Http\Requests\Admin\TransferOwnershipRequest;
-use App\Http\Requests\Admin\UpdateClubRequest;
+use App\Clubs\Requests\CreateOwnerRequest;
+use App\Clubs\Requests\StoreSocialLinkRequest;
+use App\Clubs\Requests\TransferOwnershipRequest;
+use App\Clubs\Requests\UpdateClubRequest;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubInstructor;
 use App\Clubs\Models\ClubMemberSubscription;
@@ -15,9 +15,9 @@ use App\Clubs\Models\ClubTransaction;
 use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use App\Services\FinancialService;
-use App\Support\ClubCache;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Support\FinancialService;
+use App\Clubs\Support\ClubCache;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
 use Illuminate\Support\Facades\Cache;
@@ -210,7 +210,7 @@ class ClubAdminController extends Controller
             'clubAffiliations' => fn ($q) => $q->latest()->take(1),
         ])->take(5)->get();
 
-        return view(\App\Support\ClubView::pick('dashboard', 'clubs'), compact(
+        return view(\App\Clubs\Support\ClubView::pick('dashboard', 'clubs'), compact(
             'club', 'stats', 'monthlyData', 'transactions', 'pendingSubscriptions', 'expiringSubscriptions',
             'nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups',
             'bloodTypeStats', 'goalStats', 'totalMembers', 'monthlyTrend',
@@ -237,7 +237,7 @@ class ClubAdminController extends Controller
         $averageRating = $reviews->avg('rating') ?? 0;
         $whatsappSettings = app(\App\Clubs\Services\ClubWhatsAppManager::class)->adminSettings($club);
 
-        return view(\App\Support\ClubView::pick('details', 'clubs'), compact('club', 'activeMembersCount', 'reviews', 'averageRating', 'whatsappSettings'));
+        return view(\App\Clubs\Support\ClubView::pick('details', 'clubs'), compact('club', 'activeMembersCount', 'reviews', 'averageRating', 'whatsappSettings'));
     }
 
     public function updateWhatsAppSettings(\Illuminate\Http\Request $request, Tenant $club, \App\Clubs\Services\ClubWhatsAppManager $whatsapp)

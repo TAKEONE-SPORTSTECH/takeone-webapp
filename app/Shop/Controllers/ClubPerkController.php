@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PerkRequest;
 use App\Shop\Models\ClubPerk;
 use App\Clubs\Models\Tenant;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,7 +22,7 @@ class ClubPerkController extends Controller
         $this->authorizeClub($club);
         $perks = ClubPerk::where('tenant_id', $club->id)->orderBy('sort_order')->orderBy('id')->get();
 
-        return view(\App\Support\ClubView::pick('perks', 'shop'), compact('club', 'perks'));
+        return view(\App\Clubs\Support\ClubView::pick('perks', 'shop'), compact('club', 'perks'));
     }
 
     /**

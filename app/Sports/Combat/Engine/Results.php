@@ -153,9 +153,9 @@ class Results
            shared by every combat sport (CLAUDE.md: put a string at the level
            that owns it). */
         $phaseLabel = [
-            'preliminary' => __('events.timeline_phase_preliminary'),
-            'quarterfinals' => __('events.timeline_phase_quarterfinals'),
-            'finals' => __('events.timeline_phase_finals'),
+            'preliminary' => __('events::events.timeline_phase_preliminary'),
+            'quarterfinals' => __('events::events.timeline_phase_quarterfinals'),
+            'finals' => __('events::events.timeline_phase_finals'),
         ];
 
         // A competition day is not one block of time — it is play, a break, then
@@ -174,7 +174,7 @@ class Results
         }
 
         $breakLabel = (! $breakShown && $event->break_minutes)
-            ? __('events.timeline_break_minutes', ['minutes' => $event->break_minutes])
+            ? __('events::events.timeline_break_minutes', ['minutes' => $event->break_minutes])
             : null;
 
         $breakNote = $breakLabel ? ' · '.$breakLabel : '';
@@ -185,18 +185,18 @@ class Results
         // which tells someone what they have missed, not what they can do.
         if ($event->enrollment_starts_at) {
             $entries[] = [
-                'label' => __('events.timeline_enrol_opens'),
+                'label' => __('events::events.timeline_enrol_opens'),
                 'date' => $event->enrollment_starts_at->toDateString(),
-                'note' => __('events.timeline_enrol_opens_note'),
+                'note' => __('events::events.timeline_enrol_opens_note'),
                 'icon' => 'bi-calendar-plus',
             ];
         }
 
         if ($event->enrollment_ends_at) {
             $entries[] = [
-                'label' => __('events.timeline_enrol_closes'),
+                'label' => __('events::events.timeline_enrol_closes'),
                 'date' => $event->enrollment_ends_at->toDateString(),
-                'note' => __('events.timeline_enrol_closes_note'),
+                'note' => __('events::events.timeline_enrol_closes_note'),
                 'icon' => 'bi-pencil-square',
             ];
         }
@@ -205,11 +205,11 @@ class Results
         // carries its time and its place, not just a date.
         $wi = $event->weigh_in_at ? \Carbon\Carbon::parse($event->weigh_in_at) : $start->copy();
         $entries[] = [
-            'label' => __('events.timeline_weigh_in'),
+            'label' => __('events::events.timeline_weigh_in'),
             'date' => $wi->toDateString(),
             // translatedFormat: an Arabic reader gets ص/م, not AM/PM.
             'time' => $event->weigh_in_at ? Cldr::time($wi) : null,
-            'note' => __('events.timeline_weigh_in_note')
+            'note' => __('events::events.timeline_weigh_in_note')
                 .($event->location ? ' · '.$event->location : ''),
             'icon' => 'bi-clipboard-data',
         ];
@@ -252,7 +252,7 @@ class Results
             $lastDayRunSlots = $runSlots;
 
             $entries[] = [
-                'label' => __('events.timeline_day', ['day' => $d]),
+                'label' => __('events::events.timeline_day', ['day' => $d]),
                 'date' => $lastCompetitionDay->toDateString(),
                 /*
                  * Play / break / play, each its own line — UNLESS the organiser
@@ -266,7 +266,7 @@ class Results
                 // The day, part by part — empty unless an organiser wrote it.
                 'run_slots' => $runSlots,
                 'note' => implode(' · ', $names).' — '
-                    .trans_choice('events.timeline_weight_classes', $classCount, ['count' => $classCount])
+                    .trans_choice('events::events.timeline_weight_classes', $classCount, ['count' => $classCount])
                     .$breakNote,
                 // The same facts as `note`, but as separate items so the view
                 // can set them as chips rather than printing one long line
@@ -274,7 +274,7 @@ class Results
                 // that has not been taught about this.
                 'note_items' => array_values(array_filter(array_merge(
                     $names,
-                    [trans_choice('events.timeline_weight_classes', $classCount, ['count' => $classCount])],
+                    [trans_choice('events::events.timeline_weight_classes', $classCount, ['count' => $classCount])],
                     [$breakLabel],
                 ))),
                 'icon' => 'bi-flag',
@@ -298,14 +298,14 @@ class Results
 
         if ($lastCompetitionDay && ! $sheetEndsInCeremony) {
             $entries[] = [
-                'label' => __('events.timeline_finish'),
+                'label' => __('events::events.timeline_finish'),
                 'date' => $lastCompetitionDay->toDateString(),
                 'time' => $event->end_time
                     ? Cldr::time(\Carbon\Carbon::parse($event->end_time))
                     : null,
-                'note' => __('events.timeline_finish_note')
+                'note' => __('events::events.timeline_finish_note')
                     .($event->prize ? ' · '.$event->prize : '')
-                    .' — '.__('events.timeline_finish_after'),
+                    .' — '.__('events::events.timeline_finish_after'),
                 'icon' => 'bi-award-fill',
             ];
         }
@@ -352,7 +352,7 @@ class Results
         }
 
         return [[
-            'label' => __('events.timeline_play'),
+            'label' => __('events::events.timeline_play'),
             'kind' => 'play',
             'approx' => false,
             'time' => $this->clock((int) $from).' – '.$this->clock((int) $to),
@@ -377,7 +377,7 @@ class Results
             : (int) ($event->break_minutes ?? 0);
 
         $wholeDay = [[
-            'label' => __('events.timeline_play'), 'kind' => 'play', 'approx' => false,
+            'label' => __('events::events.timeline_play'), 'kind' => 'play', 'approx' => false,
             'time' => $this->clock($s).' – '.$this->clock($t),
         ]];
 
@@ -415,11 +415,11 @@ class Results
         $bEnd = min($t, $bStart + $len);
 
         return [
-            ['label' => __('events.timeline_play'), 'kind' => 'play', 'approx' => false,
+            ['label' => __('events::events.timeline_play'), 'kind' => 'play', 'approx' => false,
                 'time' => $this->clock($s).' – '.$this->clock($bStart)],
-            ['label' => __('events.timeline_break'), 'kind' => 'break', 'approx' => ! $exact,
+            ['label' => __('events::events.timeline_break'), 'kind' => 'break', 'approx' => ! $exact,
                 'time' => $this->clock($bStart).' – '.$this->clock($bEnd)],
-            ['label' => __('events.timeline_play'), 'kind' => 'play', 'approx' => false,
+            ['label' => __('events::events.timeline_play'), 'kind' => 'play', 'approx' => false,
                 'time' => $this->clock($bEnd).' – '.$this->clock($t)],
         ];
     }

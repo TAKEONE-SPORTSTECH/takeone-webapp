@@ -10,7 +10,7 @@ use App\Clubs\Models\ClubMemberSubscription;
 use App\Challenges\Models\Duel;
 use App\Events\Models\EventMatch;
 use App\Members\Models\User;
-use App\Services\PeopleRecommendationService;
+use App\Members\Support\PeopleRecommendationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -432,7 +432,7 @@ class PeopleController extends Controller
                 'opponent_photo' => $opponentFaces[$b->{$their.'_competitor_id'}] ?? null,
                 'decided'     => $b->winner !== null,
                 'won'         => $b->winner === $mine,
-                'opponent'    => $b->{$their.'_name'} ?: __('events.bout_tbd'),
+                'opponent'    => $b->{$their.'_name'} ?: __('events::events.bout_tbd'),
                 'my_score'    => $b->{$mine.'_score'},
                 'their_score' => $b->{$their.'_score'},
                 'event'       => $b->event?->title,
@@ -496,7 +496,7 @@ class PeopleController extends Controller
         foreach ($awards as $a) {
             $honours->push([
                 'tier' => $this->honourTier((string) $a->member_award),
-                'place' => $a->member_award ?: __('member.award_default'),
+                'place' => $a->member_award ?: __('members::member.award_default'),
                 'event' => $a->tenant?->tr('club_name') ?? $a->tenant?->club_name,
                 'date' => $a->achievement_date,
             ]);

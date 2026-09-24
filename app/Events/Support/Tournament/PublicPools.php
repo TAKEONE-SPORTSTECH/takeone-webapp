@@ -92,8 +92,8 @@ class PublicPools
         return [
             'key' => 'table',
             'icon' => 'bi-table',
-            'label' => __('events.public_pools_title'),
-            'sub' => trans_choice('events.public_pools_count', count($tables), ['count' => count($tables)]),
+            'label' => __('events::events.public_pools_title'),
+            'sub' => trans_choice('events::events.public_pools_count', count($tables), ['count' => count($tables)]),
             'data' => ['tables' => $tables],
         ];
     }

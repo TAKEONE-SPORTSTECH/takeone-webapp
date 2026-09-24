@@ -7,7 +7,7 @@ use App\Clubs\Models\ClubMessage;
 use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -23,7 +23,7 @@ class ClubMessageController extends Controller
         $conversations = $this->conversationsFor($club, (int) Auth::id());
         $members = Membership::where('tenant_id', $club->id)->with('user')->get();
 
-        return view(\App\Support\ClubView::pick('messages', 'clubs'), compact('club', 'conversations', 'members'));
+        return view(\App\Clubs\Support\ClubView::pick('messages', 'clubs'), compact('club', 'conversations', 'members'));
     }
 
     /** Full thread between the admin and one member (JSON, marks inbound read). */

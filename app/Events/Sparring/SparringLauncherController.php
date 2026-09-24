@@ -5,7 +5,7 @@ namespace App\Events\Sparring;
 use App\Http\Controllers\Controller;
 use App\Events\Models\ClubEvent;
 use App\Clubs\Models\Tenant;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

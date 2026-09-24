@@ -15,7 +15,7 @@ use App\Members\Models\User;
 use App\Members\Models\UserScheduleSession;
 use App\Shop\Models\ClubProduct;
 use App\Shop\Models\ClubProductCategory;
-use App\Support\SyncedClassToken;
+use App\Members\Support\SyncedClassToken;
 use Tests\Feature\Contracts\ContractTestCase;
 
 /**

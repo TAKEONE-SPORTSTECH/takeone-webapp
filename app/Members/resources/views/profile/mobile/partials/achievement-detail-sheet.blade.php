@@ -64,7 +64,7 @@
                             </div>
                             <p x-show="ach.description" class="text-[13px] text-foreground/90 whitespace-pre-line" x-text="ach.description"></p>
                             <div x-show="ach.athletes && ach.athletes.length">
-                                <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1.5">{{ __('club.ach_athletes') }}</p>
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1.5">{{ __('clubs::club.ach_athletes') }}</p>
                                 <div class="space-y-1.5">
                                     <template x-for="athl in ach.athletes" :key="athl.name">
                                         <div class="flex items-center gap-2.5 rounded-xl bg-muted/50 px-2.5 py-2">

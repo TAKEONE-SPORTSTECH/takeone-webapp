@@ -170,7 +170,7 @@ class OrderBoard
         $bout = EventMatch::where('event_id', $event->id)->find($matchId);
 
         if (! $bout) {
-            return ['ok' => false, 'message' => __('events.order_bout_gone')];
+            return ['ok' => false, 'message' => __('events::events.order_bout_gone')];
         }
 
         /*
@@ -179,7 +179,7 @@ class OrderBoard
          * memory of the hall all already refer to.
          */
         if ($bout->winner !== null) {
-            return ['ok' => false, 'message' => __('events.order_bout_decided')];
+            return ['ok' => false, 'message' => __('events::events.order_bout_decided')];
         }
 
         $day = $day ?: ($bout->day ?: $this->scheduler->currentDay($event));
@@ -202,7 +202,7 @@ class OrderBoard
             // The bracket's own rule, checked against the order this move would
             // actually produce rather than against the one it started from.
             if ($clash = $this->feederClash($event, $bout, $target, $day)) {
-                return ['ok' => false, 'message' => __('events.order_after_feeder', ['bout' => $clash]),
+                return ['ok' => false, 'message' => __('events::events.order_after_feeder', ['bout' => $clash]),
                     'blocked_by' => ['bout' => $clash]];
             }
 
@@ -213,7 +213,7 @@ class OrderBoard
                 $this->renumber($this->matBouts($event, $from, $day));
             }
 
-            return ['ok' => true, 'message' => __('events.order_saved')];
+            return ['ok' => true, 'message' => __('events::events.order_saved')];
         });
     }
 

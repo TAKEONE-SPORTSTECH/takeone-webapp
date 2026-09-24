@@ -1,0 +1,453 @@
+@props([
+    'name' => 'date',
+    'id' => 'date',
+    'value' => '',
+    'required' => false,
+    'error' => null,
+    'label' => 'Date',
+    'minYear' => null,
+    'maxYear' => null,
+    'minAge' => null,
+    'maxAge' => null,
+    /* ── Alpine mode ───────────────────────────────────────────────────────
+       An Alpine state path in the PARENT scope (e.g. "fix.form.birthdate")
+       holding an ISO `YYYY-MM-DD`. Given one, this control reads and writes
+       that property instead of posting a hidden input, and its behaviour is
+       written INLINE rather than as a named function in a script tag — because a
+       script inside a `<template x-if>` never runs, and this control is now
+       used inside one. See the note on the gender dropdown.
+
+       Note the shape of this comment too: a component TAG written in angle
+       brackets is compiled by Blade even inside a PHP comment, and takes the
+       whole view down with `Undefined variable $component`. Names, not tags.
+
+       Omit `model` and everything below behaves exactly as it always has. */
+    'model' => null,
+
+    /* ── Inside a scrolling sheet ──────────────────────────────────────────
+       The day and month panels are absolutely positioned, which is right on a
+       page and WRONG inside a bottom sheet: an `overflow-y-auto` body clips
+       them, so the panel opens where nobody can see it and the control reads
+       as dead. It is the anti-pattern the Mobile Pattern Language names
+       outright, and it was reported on the event people sheet (2026-09-12).
+
+       Given `inline`, the panels expand IN THE NORMAL FLOW instead — the same
+       answer the date picker already gives for the same reason — so the sheet
+       simply grows and scrolls to them. Nothing else changes, and every
+       caller that does not pass it is untouched. */
+    'inline' => false,
+
+    /* ── …without shoving the fields below it ─────────────────────────────
+       Expanding in the flow fixed the clipping and introduced a second
+       complaint: opening the day list PUSHES the phone field, and everything
+       under it, down the sheet (reported 2026-09-14).
+
+       `float` is the answer to both — the panel is `position: fixed` and
+       anchored under its trigger by partials/float-panel, so it overlays the
+       fields like a dropdown should AND escapes the scrolling body's clip.
+       Opt-in, so every caller that does not pass it keeps exactly the
+       behaviour it has today. */
+    'float' => false,
+])
+
+@php
+    $currentYear = date('Y');
+
+    if ($minYear !== null && $maxYear !== null) {
+        $startYear = $maxYear;
+        $endYear = $minYear;
+    } elseif ($minAge !== null && $maxAge !== null) {
+        $startYear = $currentYear - $minAge;
+        $endYear = $currentYear - $maxAge;
+    } else {
+        $startYear = $currentYear;
+        $endYear = $currentYear - 100;
+    }
+
+    $selectedDay = '';
+    $selectedMonth = '';
+    $selectedYear = '';
+    if ($value) {
+        $parts = explode('-', $value);
+        if (count($parts) === 3) {
+            $selectedYear = $parts[0];
+            $selectedMonth = $parts[1];
+            $selectedDay = $parts[2];
+        }
+    }
+@endphp
+
+@if($float)
+    {{-- The anchoring runtime, published once per page. --}}
+    @include('components.fields.support.float-panel')
+@endif
+
+@php
+    /* Null-safe READ of the bound path — the sheet that holds this control sets
+       its state object to null when it closes, and `fix.form.x` would throw on
+       the way out (it did: an uncaught error on every close). Writes still use
+       the plain path: they only ever run while the sheet is open. */
+    $modelSafe = $model ? str_replace('.', '?.', $model) : null;
+
+    $state = $model
+        ? "{
+            dayOpen: false, monthOpen: false,
+            dayDropUp: false, monthDropUp: false,
+            selectedDay: '', selectedMonth: '', selectedMonthLabel: '', selectedYear: '',
+            age: null, horoscope: null, ageGroup: null,
+            days: Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')),
+            months: [
+                { value: '01', label: 'January', short: 'Jan' }, { value: '02', label: 'February', short: 'Feb' },
+                { value: '03', label: 'March', short: 'Mar' },   { value: '04', label: 'April', short: 'Apr' },
+                { value: '05', label: 'May', short: 'May' },     { value: '06', label: 'June', short: 'Jun' },
+                { value: '07', label: 'July', short: 'Jul' },    { value: '08', label: 'August', short: 'Aug' },
+                { value: '09', label: 'September', short: 'Sep' },{ value: '10', label: 'October', short: 'Oct' },
+                { value: '11', label: 'November', short: 'Nov' },{ value: '12', label: 'December', short: 'Dec' }
+            ],
+            minYear: {$endYear},
+            maxYear: {$startYear},
+
+            init() {
+                this.seed({$modelSafe});
+                /* The sheet fetches the entry AFTER this control is on screen,
+                   so the bound value arrives late — without this the three
+                   boxes would sit empty over a date that is already set. */
+                this.\$watch('{$modelSafe}', v => { if (v !== this.compose()) this.seed(v) });
+            },
+
+            /** Fill the three boxes from an ISO date (or clear them). */
+            seed(iso) {
+                const parts = String(iso || '').split('-');
+                if (parts.length === 3) {
+                    this.selectedYear = parts[0];
+                    this.selectedMonth = parts[1];
+                    this.selectedDay = parts[2];
+                } else {
+                    this.selectedYear = ''; this.selectedMonth = ''; this.selectedDay = '';
+                }
+                const m = this.months.find(x => x.value === this.selectedMonth);
+                this.selectedMonthLabel = m ? m.short : '';
+                this.badges();
+            },
+
+            /** The ISO the three boxes currently spell, or '' while incomplete. */
+            compose() {
+                const yearValid = /^\\d{4}\$/.test(this.selectedYear)
+                    && parseInt(this.selectedYear) >= this.minYear
+                    && parseInt(this.selectedYear) <= this.maxYear;
+                return (this.selectedDay && this.selectedMonth && yearValid)
+                    ? this.selectedYear + '-' + this.selectedMonth + '-' + this.selectedDay
+                    : '';
+            },
+
+            toggleDay() {
+                this.monthOpen = false;
+                if (! this.dayOpen) {
+                    const rect = this.\$refs.dayTrigger.getBoundingClientRect();
+                    this.dayDropUp = (window.innerHeight - rect.bottom) < 220;
+                }
+                this.dayOpen = ! this.dayOpen;
+            },
+            toggleMonth() {
+                this.dayOpen = false;
+                if (! this.monthOpen) {
+                    const rect = this.\$refs.monthTrigger.getBoundingClientRect();
+                    this.monthDropUp = (window.innerHeight - rect.bottom) < 220;
+                }
+                this.monthOpen = ! this.monthOpen;
+            },
+            selectDay(day) { this.selectedDay = day; this.dayOpen = false; this.updateValue() },
+            selectMonth(m) { this.selectedMonth = m.value; this.selectedMonthLabel = m.short; this.monthOpen = false; this.updateValue() },
+            onYearInput(e) { this.selectedYear = e.target.value.replace(/\\D/g, '').slice(0, 4); this.updateValue() },
+
+            /** Write through to the bound property, and redraw the badges. */
+            updateValue() { {$model} = this.compose(); this.badges() },
+
+            badges() {
+                const iso = this.compose();
+                if (! iso) { this.age = null; this.horoscope = null; this.ageGroup = null; return }
+                const today = new Date();
+                const birth = new Date(parseInt(this.selectedYear), parseInt(this.selectedMonth) - 1, parseInt(this.selectedDay));
+                let a = today.getFullYear() - birth.getFullYear();
+                const md = today.getMonth() - birth.getMonth();
+                if (md < 0 || (md === 0 && today.getDate() < birth.getDate())) a--;
+                this.age = a >= 0 ? a : null;
+                this.horoscope = this.getHoroscope(parseInt(this.selectedMonth), parseInt(this.selectedDay));
+                this.ageGroup = this.age !== null ? this.getAgeGroup(this.age) : null;
+            },
+
+            getHoroscope(m, d) {
+                if ((m === 3 && d >= 21) || (m === 4 && d <= 19)) return { sign: 'Aries', symbol: '♈' };
+                if ((m === 4 && d >= 20) || (m === 5 && d <= 20)) return { sign: 'Taurus', symbol: '♉' };
+                if ((m === 5 && d >= 21) || (m === 6 && d <= 20)) return { sign: 'Gemini', symbol: '♊' };
+                if ((m === 6 && d >= 21) || (m === 7 && d <= 22)) return { sign: 'Cancer', symbol: '♋' };
+                if ((m === 7 && d >= 23) || (m === 8 && d <= 22)) return { sign: 'Leo', symbol: '♌' };
+                if ((m === 8 && d >= 23) || (m === 9 && d <= 22)) return { sign: 'Virgo', symbol: '♍' };
+                if ((m === 9 && d >= 23) || (m === 10 && d <= 22)) return { sign: 'Libra', symbol: '♎' };
+                if ((m === 10 && d >= 23) || (m === 11 && d <= 21)) return { sign: 'Scorpio', symbol: '♏' };
+                if ((m === 11 && d >= 22) || (m === 12 && d <= 21)) return { sign: 'Sagittarius', symbol: '♐' };
+                if ((m === 12 && d >= 22) || (m === 1 && d <= 19)) return { sign: 'Capricorn', symbol: '♑' };
+                if ((m === 1 && d >= 20) || (m === 2 && d <= 18)) return { sign: 'Aquarius', symbol: '♒' };
+                return { sign: 'Pisces', symbol: '♓' };
+            },
+            getAgeGroup(age) {
+                if (age <= 2) return { label: ".json_encode(__('platform.age_infant')).", style: 'color:#0284c7;background:#f0f9ff;' };
+                if (age <= 12) return { label: ".json_encode(__('platform.age_child')).", style: 'color:#16a34a;background:#f0fdf4;' };
+                if (age <= 17) return { label: ".json_encode(__('platform.age_teenager')).", style: 'color:#ca8a04;background:#fefce8;' };
+                if (age <= 25) return { label: ".json_encode(__('platform.age_young_adult')).", style: 'color:#9333ea;background:#faf5ff;' };
+                if (age <= 45) return { label: ".json_encode(__('platform.age_adult')).", style: 'color:#4f46e5;background:#eef2ff;' };
+                if (age <= 64) return { label: 'Middle Aged', style: 'color:#ea580c;background:#fff7ed;' };
+                return { label: ".json_encode(__('platform.age_senior')).", style: 'color:#dc2626;background:#fef2f2;' };
+            }
+        }"
+        : "birthdateDropdown_{$id}()";
+@endphp
+
+<div class="mb-4" x-data="{{ $state }}">
+    <label class="tf-label">
+        {{ $label }}@if($required) <span class="text-red-500">*</span>@endif
+    </label>
+
+    <div class="grid grid-cols-3 gap-2">
+        {{-- Day --}}
+        <div class="relative" x-ref="dayWrapper">
+            <button type="button" x-ref="dayTrigger"
+                @click="toggleDay()@if($float); $nextTick(() => window.tkFloat($refs.dayTrigger, $refs.dayPanel, dayOpen))@endif"
+                @click.away="dayOpen = false @if($float); window.tkFloat(null, $refs.dayPanel, false)@endif"
+                class="tf-dropdown-trigger {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
+                <span class="flex items-center gap-2">
+                    <i class="bi bi-calendar-day text-primary/40" :class="{ 'text-primary': selectedDay }"></i>
+                    <span class="text-sm" :class="selectedDay ? 'text-gray-800' : 'text-gray-400'" x-text="selectedDay || 'Day'"></span>
+                </span>
+                <i class="bi bi-chevron-down text-xs text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': dayOpen }"></i>
+            </button>
+            <div x-show="dayOpen" x-cloak
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 @if(! $inline && ! $float) :class="dayDropUp ? 'bottom-full mb-1' : 'top-full mt-1'" @endif
+                 {{-- ⚠️ An inline style, not a new class: the Tailwind bundle
+                      is prebuilt, so a class nobody has used before ships with
+                      no CSS at all and the panel would stay absolute. `static`
+                      also makes the class's own left/right/z inert. --}}
+                 @if($inline && ! $float) style="position: static; margin-top: .5rem;" @endif
+                 @if($float) x-ref="dayPanel" style="z-index:78" @endif
+                 class="tf-dropdown-menu max-h-52">
+                <template x-for="day in days" :key="day">
+                    <div @click="selectDay(day)"
+                         class="tf-dropdown-item"
+                         :class="selectedDay == day ? 'bg-primary/5 font-semibold text-primary' : 'text-gray-700'"
+                         x-text="day"></div>
+                </template>
+            </div>
+        </div>
+
+        {{-- Month --}}
+        <div class="relative" x-ref="monthWrapper">
+            <button type="button" x-ref="monthTrigger"
+                @click="toggleMonth()@if($float); $nextTick(() => window.tkFloat($refs.monthTrigger, $refs.monthPanel, monthOpen))@endif"
+                @click.away="monthOpen = false @if($float); window.tkFloat(null, $refs.monthPanel, false)@endif"
+                class="tf-dropdown-trigger {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
+                <span class="flex items-center gap-2">
+                    <i class="bi bi-calendar-month text-primary/40" :class="{ 'text-primary': selectedMonth }"></i>
+                    <span class="text-sm" :class="selectedMonth ? 'text-gray-800' : 'text-gray-400'" x-text="selectedMonthLabel || 'Month'"></span>
+                </span>
+                <i class="bi bi-chevron-down text-xs text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': monthOpen }"></i>
+            </button>
+            <div x-show="monthOpen" x-cloak
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 @if(! $inline && ! $float) :class="monthDropUp ? 'bottom-full mb-1' : 'top-full mt-1'" @endif
+                 {{-- ⚠️ An inline style, not a new class: the Tailwind bundle
+                      is prebuilt, so a class nobody has used before ships with
+                      no CSS at all and the panel would stay absolute. `static`
+                      also makes the class's own left/right/z inert. --}}
+                 @if($inline && ! $float) style="position: static; margin-top: .5rem;" @endif
+                 @if($float) x-ref="monthPanel" style="z-index:78" @endif
+                 class="tf-dropdown-menu max-h-52">
+                <template x-for="m in months" :key="m.value">
+                    <div @click="selectMonth(m)"
+                         class="tf-dropdown-item"
+                         :class="selectedMonth == m.value ? 'bg-primary/5 font-semibold text-primary' : 'text-gray-700'"
+                         x-text="m.short"></div>
+                </template>
+            </div>
+        </div>
+
+        {{-- Year --}}
+        <div class="relative">
+            <span class="absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <i class="bi bi-calendar-event text-primary/40" :class="{ 'text-primary': selectedYear }"></i>
+            </span>
+            <input type="text" inputmode="numeric" maxlength="4" placeholder="Year"
+                   x-model="selectedYear"
+                   @input="onYearInput($event)"
+                   class="tf-dropdown-trigger tf-has-leading-icon ps-9 text-sm text-gray-800 placeholder:text-gray-400 {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
+        </div>
+    </div>
+
+    {{-- Age · Horoscope · Age-group badges --}}
+    <div x-show="age !== null" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 -translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="mt-1.5 flex items-center gap-1.5 flex-wrap">
+
+        {{-- Age --}}
+        <span class="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-0.5"
+              style="color: hsl(var(--primary) / 0.7); background: hsl(var(--primary) / 0.08);">
+            <i class="bi bi-person-lines-fill" style="font-size:0.6rem;"></i>
+            <span x-text="age + ' years old'"></span>
+        </span>
+
+        {{-- Horoscope --}}
+        <span x-show="horoscope"
+              class="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-0.5"
+              style="color: #7c3aed; background: #f5f3ff;">
+            <span x-text="horoscope ? horoscope.symbol : ''" style="font-size:0.75rem; line-height:1;"></span>
+            <span x-text="horoscope ? horoscope.sign : ''"></span>
+        </span>
+
+        {{-- Age group --}}
+        <span x-show="ageGroup"
+              class="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-0.5"
+              :style="ageGroup ? ageGroup.style : ''">
+            <i class="bi bi-people-fill" style="font-size:0.6rem;"></i>
+            <span x-text="ageGroup ? ageGroup.label : ''"></span>
+        </span>
+
+    </div>
+
+    {{-- Form mode only: in Alpine mode the bound property IS the value. --}}
+    @unless($model)
+        <input type="hidden" id="{{ $id }}" name="{{ $name }}" x-model="hiddenValue" {{ $required ? 'required' : '' }}>
+    @endunless
+
+    @if($error)
+        <span class="tf-error" role="alert">
+            <strong>{{ $error }}</strong>
+        </span>
+    @endif
+</div>
+
+@unless($model)
+<script>
+    function birthdateDropdown_{{ $id }}() {
+        return {
+            dayOpen: false, monthOpen: false,
+            dayDropUp: false, monthDropUp: false,
+            selectedDay: '{{ $selectedDay }}',
+            selectedMonth: '{{ $selectedMonth }}',
+            selectedMonthLabel: '',
+            selectedYear: '{{ $selectedYear }}',
+            hiddenValue: '{{ $value }}',
+            age: null,
+            horoscope: null,
+            ageGroup: null,
+            days: Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')),
+            months: [
+                { value: '01', label: 'January', short: 'Jan' },
+                { value: '02', label: 'February', short: 'Feb' },
+                { value: '03', label: 'March', short: 'Mar' },
+                { value: '04', label: 'April', short: 'Apr' },
+                { value: '05', label: 'May', short: 'May' },
+                { value: '06', label: 'June', short: 'Jun' },
+                { value: '07', label: 'July', short: 'Jul' },
+                { value: '08', label: 'August', short: 'Aug' },
+                { value: '09', label: 'September', short: 'Sep' },
+                { value: '10', label: 'October', short: 'Oct' },
+                { value: '11', label: 'November', short: 'Nov' },
+                { value: '12', label: 'December', short: 'Dec' }
+            ],
+            minYear: {{ $endYear }},
+            maxYear: {{ $startYear }},
+
+            init() {
+                if (this.selectedMonth) {
+                    const match = this.months.find(m => m.value === this.selectedMonth);
+                    if (match) this.selectedMonthLabel = match.short;
+                }
+                this.updateValue();
+            },
+
+            toggleDay() {
+                this.monthOpen = false; this.yearOpen = false;
+                if (!this.dayOpen) {
+                    const rect = this.$refs.dayTrigger.getBoundingClientRect();
+                    this.dayDropUp = (window.innerHeight - rect.bottom) < 220;
+                }
+                this.dayOpen = !this.dayOpen;
+            },
+            toggleMonth() {
+                this.dayOpen = false; this.yearOpen = false;
+                if (!this.monthOpen) {
+                    const rect = this.$refs.monthTrigger.getBoundingClientRect();
+                    this.monthDropUp = (window.innerHeight - rect.bottom) < 220;
+                }
+                this.monthOpen = !this.monthOpen;
+            },
+            selectDay(day) { this.selectedDay = day; this.dayOpen = false; this.updateValue(); },
+            selectMonth(m) { this.selectedMonth = m.value; this.selectedMonthLabel = m.short; this.monthOpen = false; this.updateValue(); },
+            onYearInput(e) {
+                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 4);
+                this.selectedYear = cleaned;
+                this.updateValue();
+            },
+
+            updateValue() {
+                const yearValid = /^\d{4}$/.test(this.selectedYear) &&
+                    parseInt(this.selectedYear) >= this.minYear &&
+                    parseInt(this.selectedYear) <= this.maxYear;
+                if (this.selectedDay && this.selectedMonth && yearValid) {
+                    this.hiddenValue = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
+                    const today = new Date();
+                    const birth = new Date(parseInt(this.selectedYear), parseInt(this.selectedMonth) - 1, parseInt(this.selectedDay));
+                    let a = today.getFullYear() - birth.getFullYear();
+                    const monthDiff = today.getMonth() - birth.getMonth();
+                    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) a--;
+                    this.age      = a >= 0 ? a : null;
+                    this.horoscope = this.getHoroscope(parseInt(this.selectedMonth), parseInt(this.selectedDay));
+                    this.ageGroup  = this.age !== null ? this.getAgeGroup(this.age) : null;
+                } else {
+                    this.hiddenValue = '';
+                    this.age = null;
+                    this.horoscope = null;
+                    this.ageGroup  = null;
+                }
+            },
+
+            getHoroscope(m, d) {
+                if ((m === 3 && d >= 21) || (m === 4 && d <= 19))  return { sign: 'Aries',       symbol: '♈' };
+                if ((m === 4 && d >= 20) || (m === 5 && d <= 20))  return { sign: 'Taurus',      symbol: '♉' };
+                if ((m === 5 && d >= 21) || (m === 6 && d <= 20))  return { sign: 'Gemini',      symbol: '♊' };
+                if ((m === 6 && d >= 21) || (m === 7 && d <= 22))  return { sign: 'Cancer',      symbol: '♋' };
+                if ((m === 7 && d >= 23) || (m === 8 && d <= 22))  return { sign: 'Leo',         symbol: '♌' };
+                if ((m === 8 && d >= 23) || (m === 9 && d <= 22))  return { sign: 'Virgo',       symbol: '♍' };
+                if ((m === 9 && d >= 23) || (m === 10 && d <= 22)) return { sign: 'Libra',       symbol: '♎' };
+                if ((m === 10 && d >= 23) || (m === 11 && d <= 21)) return { sign: 'Scorpio',    symbol: '♏' };
+                if ((m === 11 && d >= 22) || (m === 12 && d <= 21)) return { sign: 'Sagittarius',symbol: '♐' };
+                if ((m === 12 && d >= 22) || (m === 1 && d <= 19)) return { sign: 'Capricorn',   symbol: '♑' };
+                if ((m === 1 && d >= 20) || (m === 2 && d <= 18))  return { sign: 'Aquarius',    symbol: '♒' };
+                return                                                      { sign: 'Pisces',      symbol: '♓' };
+            },
+
+            getAgeGroup(age) {
+                if (age <= 2)  return { label: @json(__('platform.age_infant')),      style: 'color:#0284c7;background:#f0f9ff;' };
+                if (age <= 12) return { label: @json(__('platform.age_child')),       style: 'color:#16a34a;background:#f0fdf4;' };
+                if (age <= 17) return { label: @json(__('platform.age_teenager')),    style: 'color:#ca8a04;background:#fefce8;' };
+                if (age <= 25) return { label: @json(__('platform.age_young_adult')), style: 'color:#9333ea;background:#faf5ff;' };
+                if (age <= 45) return { label: @json(__('platform.age_adult')),       style: 'color:#4f46e5;background:#eef2ff;' };
+                if (age <= 64) return { label: 'Middle Aged', style: 'color:#ea580c;background:#fff7ed;' };
+                return                { label: @json(__('platform.age_senior')),      style: 'color:#dc2626;background:#fef2f2;' };
+            }
+        }
+    }
+</script>
+@endunless

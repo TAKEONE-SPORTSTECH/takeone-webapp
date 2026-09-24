@@ -79,23 +79,23 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.components_registration_walkin_phone_number') }} <span class="text-red-500">*</span></label>
-                                <x-country-code-dropdown name="walkIn_countryCode" id="walkIn_countryCode" value="+973" :required="true" :syncWithCountry="false">
+                                <x-fields.phone-code name="walkIn_countryCode" id="walkIn_countryCode" value="+973" :required="true" :syncWithCountry="false">
                                     <input type="text" id="walkIn_phone" x-model="data.guardian.phone" @input="errors.phone = ''"
                                            :class="errors.phone ? 'ring-2 ring-red-100' : ''"
                                            class="w-full px-4 py-3 text-base bg-transparent focus:outline-none" placeholder="{{ __('shared.components_registration_walkin_ph_phone_number') }}">
-                                </x-country-code-dropdown>
+                                </x-fields.phone-code>
                                 <span x-show="errors.phone" x-text="errors.phone" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div class="sm:col-span-2">
-                                <x-birthdate-dropdown name="walkIn_dob" id="walkIn_dob" label="{{ __('shared.components_registration_walkin_date_of_birth') }}" :required="true" :minAge="3" :maxAge="100" />
+                                <x-fields.date-of-birth name="walkIn_dob" id="walkIn_dob" label="{{ __('shared.components_registration_walkin_date_of_birth') }}" :required="true" :minAge="3" :maxAge="100" />
                                 <span x-show="errors.dob" x-text="errors.dob" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
-                                <x-gender-dropdown name="walkIn_gender" id="walkIn_gender" label="{{ __('shared.components_registration_walkin_gender') }}" :required="true" />
+                                <x-fields.gender name="walkIn_gender" id="walkIn_gender" label="{{ __('shared.components_registration_walkin_gender') }}" :required="true" />
                                 <span x-show="errors.gender" x-text="errors.gender" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
-                                <x-country-dropdown name="walkIn_nationality" id="walkIn_nationality" label="{{ __('shared.components_registration_walkin_nationality') }}" :required="false" />
+                                <x-fields.country name="walkIn_nationality" id="walkIn_nationality" label="{{ __('shared.components_registration_walkin_nationality') }}" :required="false" />
                                 <span x-show="errors.nationality" x-text="errors.nationality" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div class="sm:col-span-2">
@@ -165,11 +165,11 @@
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.components_registration_walkin_gender') }} <span class="text-red-500">*</span></label>
-                                        <x-gender-toggle model="child.gender" />
+                                        <x-fields.gender-toggle model="child.gender" />
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.components_registration_walkin_nationality') }} <span class="text-gray-400">{{ __('shared.components_registration_walkin_optional') }}</span></label>
-                                        <x-select-menu model="child.nationality"
+                                        <x-fields.select model="child.nationality"
                                             placeholder="{{ __('shared.components_registration_walkin_select') }}"
                                             :options="[
                                                 ['value' => 'Bahrain', 'label' => __('shared.components_registration_walkin_bahrain')],
@@ -185,7 +185,7 @@
                                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.components_registration_walkin_phone_number') }} <span class="text-red-500">*</span></label>
                                         <div class="flex gap-2">
                                             <div class="w-28 flex-shrink-0">
-                                                <x-select-menu model="child.countryCode"
+                                                <x-fields.select model="child.countryCode"
                                                     :options="[
                                                         ['value' => '+973', 'label' => '🇧🇭 +973'],
                                                         ['value' => '+966', 'label' => '🇸🇦 +966'],

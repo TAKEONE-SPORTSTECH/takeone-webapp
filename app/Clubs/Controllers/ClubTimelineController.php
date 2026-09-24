@@ -3,10 +3,10 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\TimelinePostRequest;
+use App\Clubs\Requests\TimelinePostRequest;
 use App\Clubs\Models\ClubTimelinePost;
 use App\Clubs\Models\Tenant;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Support\Facades\Storage;
 use App\Support\StoragePath;
 
@@ -22,7 +22,7 @@ class ClubTimelineController extends Controller
             ->orderBy('posted_at', 'desc')
             ->paginate(20);
 
-        return view(\App\Support\ClubView::pick('timeline', 'clubs'), compact('club', 'posts'));
+        return view(\App\Clubs\Support\ClubView::pick('timeline', 'clubs'), compact('club', 'posts'));
     }
 
     public function storeTimelinePost(TimelinePostRequest $request, Tenant $club)

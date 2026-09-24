@@ -1,6 +1,6 @@
 {{-- `$shell` is shared only on the sealed event routes; without it this is the
      member shell, exactly like every other event screen. --}}
-@extends($shell ?? 'layouts.personal-mobile')
+@extends($shell ?? 'members::layouts.personal-mobile')
 
 @section('title', __('event-league::messages.title'))
 

@@ -61,7 +61,7 @@
 
         @if($isPopular)
             <span class="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide text-white bg-primary shadow-sm">
-                <i class="bi bi-star-fill text-amber-300 text-[8px]"></i>{{ __('club.popular') }}
+                <i class="bi bi-star-fill text-amber-300 text-[8px]"></i>{{ __('clubs::club.popular') }}
             </span>
         @endif
     </div>
@@ -73,7 +73,7 @@
             <div class="flex-shrink-0 flex flex-col items-center justify-center text-center rounded-xl bg-primary/5 ring-1 ring-primary/10 px-3.5 py-2.5 min-w-[5rem]">
                 <span class="text-[9px] font-bold uppercase tracking-wide text-muted-foreground leading-none mb-0.5">{{ $currency }}</span>
                 <span class="text-2xl font-extrabold text-primary leading-none tracking-tight">{{ number_format($package->price, 2) }}</span>
-                <span class="text-[9px] text-muted-foreground leading-none mt-1">/ {{ $package->duration_months }} {{ trans_choice('club.month_short', (int) $package->duration_months) }}</span>
+                <span class="text-[9px] text-muted-foreground leading-none mt-1">/ {{ $package->duration_months }} {{ trans_choice('clubs::club.month_short', (int) $package->duration_months) }}</span>
                 @if(($package->discount_percentage ?? 0) > 0)
                     <span class="mt-1 px-1.5 rounded-full bg-green-100 text-green-700 text-[9px] font-bold">−{{ $package->discount_percentage }}%</span>
                 @endif
@@ -83,9 +83,9 @@
             <div class="flex-1 min-w-0">
                 <h3 class="text-sm font-bold text-foreground leading-snug line-clamp-2">{{ $package->tr('name') }}</h3>
                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
-                    <span class="inline-flex items-center gap-1"><i class="bi bi-people-fill text-primary/70"></i>{{ __('club.gender_' . strtolower($package->gender ?? 'mixed')) }}</span>
+                    <span class="inline-flex items-center gap-1"><i class="bi bi-people-fill text-primary/70"></i>{{ __('clubs::club.gender_' . strtolower($package->gender ?? 'mixed')) }}</span>
                     @if($ageLabel)
-                        <span class="inline-flex items-center gap-1"><i class="bi bi-person-arms-up text-primary/70"></i>{{ $ageLabel }}{{ __('club.years_short') }}</span>
+                        <span class="inline-flex items-center gap-1"><i class="bi bi-person-arms-up text-primary/70"></i>{{ $ageLabel }}{{ __('clubs::club.years_short') }}</span>
                     @endif
                     @if($package->session_count ?? 0)
                         <span class="inline-flex items-center gap-1"><i class="bi bi-lightning-charge-fill text-primary/70"></i>{{ $package->session_count }}</span>
@@ -102,7 +102,7 @@
             <div x-data="{ open: false }" class="mt-2.5 pt-2.5 border-t border-gray-100">
                 <button type="button" @click="open = !open" class="m-press w-full flex items-center justify-between gap-2 text-left">
                     <span class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground">
-                        <i class="bi bi-calendar2-week text-primary/70 text-[11px]"></i>{{ __('club.whats_included') }}
+                        <i class="bi bi-calendar2-week text-primary/70 text-[11px]"></i>{{ __('clubs::club.whats_included') }}
                         <span class="px-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">{{ $activityCount }}</span>
                     </span>
                     <i class="bi bi-chevron-down text-xs text-muted-foreground transition-transform duration-300" :class="open && 'rotate-180'"></i>
@@ -179,13 +179,13 @@
                                         @endforeach
                                     </span>
                                     <span class="inline-flex items-center gap-1"><i class="bi bi-clock text-gray-400 text-[10px]"></i>{{ \Carbon\Carbon::parse($tg['start'])->format('g:i A') }}–{{ \Carbon\Carbon::parse($tg['end'])->format('g:i A') }}</span>
-                                    <span class="text-gray-400">· {{ $groupDuration }}{{ __('club.minutes_short') }}</span>
+                                    <span class="text-gray-400">· {{ $groupDuration }}{{ __('clubs::club.minutes_short') }}</span>
                                     @if(!empty($tg['facility_name']))
                                         <span class="inline-flex items-center gap-1 text-sky-700 w-full"><i class="bi bi-geo-alt text-sky-400 text-[10px]"></i>{{ $tg['facility_name'] }}</span>
                                     @endif
                                 </div>
                             @empty
-                                <p class="text-[10px] text-muted-foreground italic">{{ __('club.flexible_schedule') }}</p>
+                                <p class="text-[10px] text-muted-foreground italic">{{ __('clubs::club.flexible_schedule') }}</p>
                             @endforelse
                         </div>
                     @endforeach

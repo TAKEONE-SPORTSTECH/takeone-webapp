@@ -244,6 +244,11 @@
         ]);
     }
 
+    // Federations (app/Federations) — only while that module is installed and switched on.
+    if (config('federations.enabled') && \Illuminate\Support\Facades\Route::has('admin.federations.index')) {
+        $navGroups['Management'][] = ['route' => 'admin.federations.index', 'pattern' => ['admin.federations.*'], 'icon' => 'bi-bank2', 'label' => __('federations::messages.admin_nav')];
+    }
+
     $isActive = fn ($item) => request()->routeIs(...$item['pattern']);
 @endphp
 
@@ -340,7 +345,8 @@
 @include('partials.admin-shell-nav')
 
 {{-- Copilot ("Coach") — AI assistant, mounted outside <main> so it persists across SPA nav --}}
-<x-copilot context="create_club" :hide-on="['admin.ai.index']" />
+{{-- The club-only copilot would offer the wrong thing on the Federations pages; the skills one knows them. --}}
+<x-copilot context="create_club" :hide-on="config('copilot.skills') ? ['admin.ai.index'] : ['admin.ai.index', 'admin.federations.index', 'admin.federations.create', 'admin.federations.edit']" />
 
 </div>{{-- x-data --}}
 

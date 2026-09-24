@@ -145,7 +145,7 @@ class MatCameraController extends Controller
             return response()->json([
                 'success' => true,
                 'asked' => 'stop',
-                'message' => __('events.mat_camera_asked'),
+                'message' => __('events::events.mat_camera_asked'),
             ]);
         }
 
@@ -169,7 +169,7 @@ class MatCameraController extends Controller
             'asked' => $data['do'],
             // What was ASKED, never what happened: this is a message to a phone
             // on a hall's wifi. What happened arrives on the camera's next beat.
-            'message' => __('events.mat_camera_asked'),
+            'message' => __('events::events.mat_camera_asked'),
         ]);
     }
 

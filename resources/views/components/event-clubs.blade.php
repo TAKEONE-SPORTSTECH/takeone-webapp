@@ -64,28 +64,28 @@
     ];
 
     $clubLabels = [
-        'tab_invite' => __('events.clubs_tab_invite'),
-        'tab_new' => __('events.clubs_tab_new'),
-        'state_listed' => __('events.club_state_listed'),
-        'state_invited' => __('events.club_state_invited'),
-        'state_accepted' => __('events.club_state_accepted'),
-        'state_declined' => __('events.club_state_declined'),
-        'remove_confirm' => __('events.club_remove_confirm'),
-        'remove_body' => __('events.club_remove_body'),
-        'remove_body_n' => __('events.club_remove_body_n'),
-        'shape_square' => __('events.shape_square'),
-        'shape_circle' => __('events.shape_circle'),
-        'edit' => __('events.club_edit'),
-        'save' => __('events.club_save'),
-        'add' => __('events.clubs_add'),
+        'tab_invite' => __('events::events.clubs_tab_invite'),
+        'tab_new' => __('events::events.clubs_tab_new'),
+        'state_listed' => __('events::events.club_state_listed'),
+        'state_invited' => __('events::events.club_state_invited'),
+        'state_accepted' => __('events::events.club_state_accepted'),
+        'state_declined' => __('events::events.club_state_declined'),
+        'remove_confirm' => __('events::events.club_remove_confirm'),
+        'remove_body' => __('events::events.club_remove_body'),
+        'remove_body_n' => __('events::events.club_remove_body_n'),
+        'shape_square' => __('events::events.shape_square'),
+        'shape_circle' => __('events::events.shape_circle'),
+        'edit' => __('events::events.club_edit'),
+        'save' => __('events::events.club_save'),
+        'add' => __('events::events.clubs_add'),
         'remove' => __('shared.delete'),
-        'athletes' => __('events.club_athletes'),
-        'athletes_none' => __('events.club_athletes_none'),
-        'athletes_taken' => __('events.club_athletes_taken'),
-        'temporary' => __('events.club_temporary'),
-        'promoted' => __('events.club_promoted'),
-        'promote' => __('events.clubs_promote'),
-        'promote_confirm' => __('events.clubs_promote'),
+        'athletes' => __('events::events.club_athletes'),
+        'athletes_none' => __('events::events.club_athletes_none'),
+        'athletes_taken' => __('events::events.club_athletes_taken'),
+        'temporary' => __('events::events.club_temporary'),
+        'promoted' => __('events::events.club_promoted'),
+        'promote' => __('events::events.clubs_promote'),
+        'promote_confirm' => __('events::events.clubs_promote'),
     ];
 @endphp
 
@@ -119,8 +119,8 @@
                 <i class="bi bi-plus-lg text-lg"></i>
             </span>
             <span class="min-w-0 flex-1">
-                <span class="block text-[15px] font-black text-foreground leading-tight">{{ __('events.clubs_add') }}</span>
-                <span class="block text-xs text-muted-foreground mt-0.5">{{ __('events.clubs_tile_sub') }}</span>
+                <span class="block text-[15px] font-black text-foreground leading-tight">{{ __('events::events.clubs_add') }}</span>
+                <span class="block text-xs text-muted-foreground mt-0.5">{{ __('events::events.clubs_tile_sub') }}</span>
             </span>
             <i class="bi bi-chevron-right text-xs flex-shrink-0" style="color: {{ \App\Support\Palette::alpha($ev, .55) }};"></i>
         </button>
@@ -188,8 +188,8 @@
                               :style="club.athletes ? 'color: {{ $ev }}' : ''">
                             <i class="bi bi-person-arms-up"></i>
                             <span x-text="club.athletes
-                                ? @js(__('events.club_athletes')).replace(':n', club.athletes)
-                                : @js(__('events.club_athletes_none'))"></span>
+                                ? @js(__('events::events.club_athletes')).replace(':n', club.athletes)
+                                : @js(__('events::events.club_athletes_none'))"></span>
                         </span>
                     </p>
 
@@ -197,13 +197,13 @@
                         <span x-show="club.temporary" x-cloak
                               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-[10px] font-bold uppercase text-muted-foreground"
                               style="letter-spacing:.06em;">
-                            <i class="bi bi-clock-history"></i>{{ __('events.club_temporary') }}
+                            <i class="bi bi-clock-history"></i>{{ __('events::events.club_temporary') }}
                         </span>
 
                         <span x-show="club.promoted" x-cloak
                               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase text-green-700"
                               style="letter-spacing:.06em; background: rgba(5,150,105,.12);">
-                            <i class="bi bi-patch-check-fill"></i>{{ __('events.club_promoted') }}
+                            <i class="bi bi-patch-check-fill"></i>{{ __('events::events.club_promoted') }}
                         </span>
 
                         {{-- Checked a third time, in the browser. The value is
@@ -240,15 +240,15 @@
 
         {{-- Nothing on the list at all. --}}
         <div x-show="!clubs.length" x-cloak class="bg-white rounded-2xl shadow-sm border border-gray-100">
-            @include('entry.public.partials.empty', [
+            @include('events::entry.public.partials.empty', [
                 'ev' => $ev, 'icon' => 'bi-buildings',
-                'title' => __('events.clubs_empty'),
+                'title' => __('events::events.clubs_empty'),
             ])
         </div>
 
         {{-- Typing found nothing — a different answer from an empty list. --}}
         <div x-show="clubs.length && !visible.length" x-cloak class="bg-white rounded-2xl shadow-sm border border-gray-100">
-            @include('entry.public.partials.empty', [
+            @include('events::entry.public.partials.empty', [
                 'ev' => $ev, 'icon' => 'bi-search',
                 'title' => __('personal.event_people_no_matches'),
             ])
@@ -264,7 +264,7 @@
         <div x-show="clubs.some(c => c.temporary)" x-cloak class="mt-2 px-1">
             <p class="text-[11.5px] text-muted-foreground flex items-start gap-1.5">
                 <i class="bi bi-info-circle-fill mt-0.5 flex-shrink-0"></i>
-                <span>{{ __('events.club_temporary_hint') }}</span>
+                <span>{{ __('events::events.club_temporary_hint') }}</span>
             </p>
         </div>
 
@@ -297,7 +297,7 @@
                             <h3 class="text-lg font-black leading-tight"
                                 x-text="editing ? labels.edit : labels.add"></h3>
                             <p class="text-[12px] text-white/85 mt-0.5"
-                               x-text="editing ? editing.name : @js(__('events.clubs_sheet_hint'))"></p>
+                               x-text="editing ? editing.name : @js(__('events::events.clubs_sheet_hint'))"></p>
                         </div>
                         <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
                                 class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -329,11 +329,11 @@
 
                     {{-- ---------- Already here ---------- --}}
                     <div x-show="mode === 'invite' && !editing" class="mt-4">
-                        <label class="block text-[12px] font-bold text-foreground mb-1.5">{{ __('events.clubs_search_label') }}</label>
+                        <label class="block text-[12px] font-bold text-foreground mb-1.5">{{ __('events::events.clubs_search_label') }}</label>
                         <div class="relative">
                             <i class="bi bi-search absolute start-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm"></i>
                             <input type="search" x-model="query" @input.debounce.300ms="find()"
-                                   placeholder="{{ __('events.clubs_search_placeholder') }}"
+                                   placeholder="{{ __('events::events.clubs_search_placeholder') }}"
                                    class="w-full h-12 ps-10 pe-4 rounded-2xl border border-gray-200 text-[15px] bg-white
                                           focus:ring-2 focus:border-transparent" style="--tw-ring-color: {{ $ev }};">
                         </div>
@@ -364,27 +364,27 @@
                             </template>
 
                             <p x-show="query.length >= 2 && !results.length && !searching" x-cloak
-                               class="text-[12px] text-muted-foreground text-center py-4">{{ __('events.clubs_search_none') }}</p>
+                               class="text-[12px] text-muted-foreground text-center py-4">{{ __('events::events.clubs_search_none') }}</p>
                         </div>
 
                         <p class="text-[11.5px] text-muted-foreground mt-3 flex items-start gap-1.5">
                             <i class="bi bi-info-circle-fill mt-0.5 flex-shrink-0"></i>
-                            <span>{{ __('events.clubs_search_hint') }}</span>
+                            <span>{{ __('events::events.clubs_search_hint') }}</span>
                         </p>
                     </div>
 
                     {{-- ---------- Not on TAKEONE ---------- --}}
                     <div x-show="mode === 'new'" class="mt-4 space-y-4">
                         <div>
-                            <label class="block text-[12px] font-bold text-foreground mb-1.5">{{ __('events.club_name_label') }}</label>
+                            <label class="block text-[12px] font-bold text-foreground mb-1.5">{{ __('events::events.club_name_label') }}</label>
                             <input type="text" x-model="form.name" maxlength="120"
-                                   placeholder="{{ __('events.club_name_placeholder') }}"
+                                   placeholder="{{ __('events::events.club_name_placeholder') }}"
                                    class="w-full h-12 px-4 rounded-2xl border border-gray-200 text-[15px] bg-white
                                           focus:ring-2 focus:border-transparent" style="--tw-ring-color: {{ $ev }};">
                         </div>
 
                         <div>
-                            <label class="block text-[12px] font-bold text-foreground mb-1.5">{{ __('events.club_logo_label') }}</label>
+                            <label class="block text-[12px] font-bold text-foreground mb-1.5">{{ __('events::events.club_logo_label') }}</label>
 
                             {{-- Square or circle. A crest is one or the other —
                                  a shield fills a square, a roundel needs the
@@ -424,31 +424,31 @@
                                             style="background: {{ $ev }};">
                                         <i class="bi bi-crop"></i>
                                         <span x-text="form.logo
-                                            ? @js(__('events.club_logo_change'))
-                                            : @js(__('events.club_logo_pick'))"></span>
+                                            ? @js(__('events::events.club_logo_change'))
+                                            : @js(__('events::events.club_logo_pick'))"></span>
                                     </button>
-                                    <p class="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{{ __('events.club_logo_hint') }}</p>
+                                    <p class="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{{ __('events::events.club_logo_hint') }}</p>
                                 </div>
                             </div>
                         </div>
 
                         <div>
                             <label class="flex items-center gap-2 text-[12px] font-bold text-foreground mb-1.5">
-                                {{ __('events.club_instagram_label') }}
+                                {{ __('events::events.club_instagram_label') }}
                                 <span class="px-2 py-0.5 rounded-full bg-muted text-[10px] font-bold text-muted-foreground uppercase" style="letter-spacing:.08em;">
-                                    {{ __('events.club_instagram_optional') }}
+                                    {{ __('events::events.club_instagram_optional') }}
                                 </span>
                             </label>
                             <div class="relative">
                                 <i class="bi bi-instagram absolute start-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm"></i>
                                 <input type="text" x-model="form.instagram" maxlength="200" dir="ltr"
-                                       placeholder="{{ __('events.club_instagram_placeholder') }}"
+                                       placeholder="{{ __('events::events.club_instagram_placeholder') }}"
                                        class="w-full h-12 ps-10 pe-4 rounded-2xl border border-gray-200 text-[15px] bg-white
                                               focus:ring-2 focus:border-transparent" style="--tw-ring-color: {{ $ev }};">
                             </div>
                             <p class="text-[11.5px] text-muted-foreground mt-2 flex items-start gap-1.5">
                                 <i class="bi bi-info-circle-fill mt-0.5 flex-shrink-0"></i>
-                                <span>{{ __('events.club_instagram_hint') }}</span>
+                                <span>{{ __('events::events.club_instagram_hint') }}</span>
                             </p>
                         </div>
                     </div>
@@ -468,8 +468,8 @@
                         <span x-text="editing
                             ? labels.save
                             : (mode === 'invite'
-                                ? @js(__('events.club_add'))
-                                : @js(__('events.club_add_cta')))"></span>
+                                ? @js(__('events::events.club_add'))
+                                : @js(__('events::events.club_add_cta')))"></span>
                     </button>
                 </div>
             </div>
@@ -501,7 +501,7 @@
                             <i class="bi bi-people-fill text-xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black leading-tight">{{ __('events.club_athletes_title') }}</h3>
+                            <h3 class="text-lg font-black leading-tight">{{ __('events::events.club_athletes_title') }}</h3>
                             <p class="text-[12px] text-white/85 mt-0.5" x-text="athletesFor ? athletesFor.name : ''"></p>
                         </div>
                         <button type="button" @click="athletesFor = null" aria-label="{{ __('shared.close') }}"
@@ -518,12 +518,12 @@
                 </div>
 
                 <div class="flex-1 overflow-y-auto px-5 py-4">
-                    <p class="text-[11.5px] text-muted-foreground mb-3">{{ __('events.club_athletes_hint') }}</p>
+                    <p class="text-[11.5px] text-muted-foreground mb-3">{{ __('events::events.club_athletes_hint') }}</p>
 
                     <div class="relative mb-3">
                         <i class="bi bi-search absolute start-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm"></i>
                         <input type="search" x-model="athleteQuery"
-                               placeholder="{{ __('events.club_athletes_search') }}"
+                               placeholder="{{ __('events::events.club_athletes_search') }}"
                                class="w-full h-11 ps-10 pe-4 rounded-2xl border border-gray-200 text-[14px] bg-white
                                       focus:ring-2 focus:border-transparent" style="--tw-ring-color: {{ $ev }};">
                     </div>
@@ -562,7 +562,7 @@
                     <button type="button" @click="saveAthletes()" :disabled="busy"
                             class="m-press w-full h-12 rounded-2xl font-black text-[14px] text-white inline-flex items-center justify-center gap-2"
                             :class="busy && 'opacity-50'" style="background: {{ $ev }};">
-                        <i class="bi bi-check-lg"></i>{{ __('events.club_athletes_save') }}
+                        <i class="bi bi-check-lg"></i>{{ __('events::events.club_athletes_save') }}
                     </button>
                 </div>
             </div>
@@ -607,8 +607,8 @@
                            sheetMaxWidth="100%" sheetClass="rounded-t-3xl overflow-hidden shadow-2xl bg-background"
                            :showControls="false" :showCancel="false" editorAlign="items-end"
                            :uploadAsIs="true"
-                           saveText="{{ __('events.club_logo_crop') }}"
-                           uploadAsIsText="{{ __('events.club_logo_as_is') }}" />
+                           saveText="{{ __('events::events.club_logo_crop') }}"
+                           uploadAsIsText="{{ __('events::events.club_logo_as_is') }}" />
 
         <x-takeone-cropper id="clubLogoCircle" mode="form" :inline="true"
                            :width="512" :height="512" shape="circle" :canvasHeight="300"
@@ -616,8 +616,8 @@
                            sheetMaxWidth="100%" sheetClass="rounded-t-3xl overflow-hidden shadow-2xl bg-background"
                            :showControls="false" :showCancel="false" editorAlign="items-end"
                            :uploadAsIs="true"
-                           saveText="{{ __('events.club_logo_crop') }}"
-                           uploadAsIsText="{{ __('events.club_logo_as_is') }}" />
+                           saveText="{{ __('events::events.club_logo_crop') }}"
+                           uploadAsIsText="{{ __('events::events.club_logo_as_is') }}" />
     </div>
     @endif
 </div>

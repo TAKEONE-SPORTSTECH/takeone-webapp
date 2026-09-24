@@ -3,14 +3,14 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\EventRequest;
+use App\Clubs\Requests\EventRequest;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventFeeOption;
 use App\Clubs\Models\ClubFacility;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\UserNotification;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -98,7 +98,7 @@ class ClubEventController extends Controller
         $events = ClubEvent::where('tenant_id', $club->id)->orderBy('date')->orderBy('start_time')->get();
         $facilities = ClubFacility::where('tenant_id', $club->id)->orderBy('name')->get();
 
-        return view(\App\Support\ClubView::pick('events', 'clubs'), compact('club', 'events', 'facilities'));
+        return view(\App\Clubs\Support\ClubView::pick('events', 'clubs'), compact('club', 'events', 'facilities'));
     }
 
     public function storeEvent(EventRequest $request, Tenant $club)

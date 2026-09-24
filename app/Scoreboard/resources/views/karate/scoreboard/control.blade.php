@@ -414,7 +414,7 @@
         {{-- The camera tab only exists when this door was given the camera
              addresses — a console with no camera surface shows no camera tab,
              the same way a type with no wall boards shows no screen panel. --}}
-        @foreach (array_merge([['rules', __('scoreboard::karate_messages.ctl_tab_rules')], ['timer', __('scoreboard::karate_messages.ctl_tab_timer')], ['sounds', __('scoreboard::karate_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
+        @foreach (array_merge([['rules', __('scoreboard::karate_messages.ctl_tab_rules')], ['timer', __('scoreboard::karate_messages.ctl_tab_timer')], ['sounds', __('scoreboard::karate_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
           <button class="stab" data-tab="{{ $tab }}" style="flex:1;font-size:20px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-radius:10px;padding:12px 0;cursor:pointer;">{{ $tabLabel }}</button>
         @endforeach
       </div>
@@ -481,24 +481,24 @@
            `.audioName` actually do its job. --}}
       <div class="spanel" data-panel="sounds" hidden style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 28px;min-width:0;">
         @foreach ([
-            'vs_music' => __('events.screen_audio_vs_music'),
-            'match_start' => __('events.screen_audio_match_start'),
-            'match_end' => __('events.screen_audio_match_end'),
-            'winner_music' => __('events.screen_audio_winner_music'),
-            'point_1' => __('events.screen_audio_point_1'),
-            'point_2' => __('events.screen_audio_point_2'),
-            'point_3' => __('events.screen_audio_point_3'),
-            'foul' => __('events.screen_audio_foul'),
-            'time_up' => __('events.screen_audio_time_up'),
-            'atoshi' => __('events.screen_audio_atoshi'),
+            'vs_music' => __('events::events.screen_audio_vs_music'),
+            'match_start' => __('events::events.screen_audio_match_start'),
+            'match_end' => __('events::events.screen_audio_match_end'),
+            'winner_music' => __('events::events.screen_audio_winner_music'),
+            'point_1' => __('events::events.screen_audio_point_1'),
+            'point_2' => __('events::events.screen_audio_point_2'),
+            'point_3' => __('events::events.screen_audio_point_3'),
+            'foul' => __('events::events.screen_audio_foul'),
+            'time_up' => __('events::events.screen_audio_time_up'),
+            'atoshi' => __('events::events.screen_audio_atoshi'),
         ] as $slot => $slotLabel)
           <div style="display:flex;align-items:center;gap:14px;padding:10px 0;min-width:0;">
             <div style="flex:1;min-width:0;">
               <div style="font-size:23px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $slotLabel }}</div>
-              <div class="audioName" data-slot="{{ $slot }}" style="font-size:17px;margin-top:2px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ __('events.screen_audio_none') }}</div>
+              <div class="audioName" data-slot="{{ $slot }}" style="font-size:17px;margin-top:2px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ __('events::events.screen_audio_none') }}</div>
             </div>
             <label style="font-size:17px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--green);color:#000;border-radius:10px;padding:11px 16px;cursor:pointer;white-space:nowrap;">
-              {{ __('events.screen_audio_choose') }}
+              {{ __('events::events.screen_audio_choose') }}
               <input type="file" accept="audio/*" class="audioPick" data-slot="{{ $slot }}" style="display:none;">
             </label>
             <button class="audioDrop" data-slot="{{ $slot }}" hidden style="font-size:18px;font-weight:700;background:var(--fill);color:var(--aka-ink);border:1px solid rgba(255,107,120,.45);border-radius:10px;padding:12px 16px;cursor:pointer;">✕</button>
@@ -1757,7 +1757,7 @@
     if (name) {
       name.textContent = have
         ? (have.name || '') + (have.bytes ? ' · ' + kb(have.bytes) : '')
-        : @json(__('events.screen_audio_none'));
+        : @json(__('events::events.screen_audio_none'));
       name.style.color = have ? '#7ae582' : '#5c6175';
     }
     if (drop) drop.hidden = !have;

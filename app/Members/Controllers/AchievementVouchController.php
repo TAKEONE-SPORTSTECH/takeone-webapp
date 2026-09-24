@@ -3,13 +3,13 @@
 namespace App\Members\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\VouchRequest;
+use App\Members\Requests\VouchRequest;
 use App\Members\Models\AchievementVouch;
 use App\Clubs\Models\ClubAffiliation;
 use App\Members\Models\MemberWorkHistory;
 use App\Members\Models\SkillAcquisition;
 use App\Members\Models\TournamentEvent;
-use App\Services\AchievementVerificationService;
+use App\Members\Support\AchievementVerificationService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 

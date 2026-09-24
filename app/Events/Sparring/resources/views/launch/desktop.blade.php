@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 @section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('event-sparring::messages.label'))
 

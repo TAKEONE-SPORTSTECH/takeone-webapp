@@ -2,7 +2,7 @@
 
 namespace App\Members\Models;
 
-use App\Traits\HasVerificationState;
+use App\Members\Concerns\HasVerificationState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Clubs\Models\Tenant;

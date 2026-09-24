@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * they have an app account. Accounts (User) attach optionally via user_id.
  *
  * Relationships are intentionally thin here (just the raw edges); all kinship
- * reasoning lives in App\Services\KinshipService so the graph logic stays in
+ * reasoning lives in App\Members\Support\KinshipService so the graph logic stays in
  * one place.
  */
 class Person extends Model

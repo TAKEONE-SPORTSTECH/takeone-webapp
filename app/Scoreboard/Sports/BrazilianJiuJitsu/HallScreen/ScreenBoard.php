@@ -207,14 +207,14 @@ class ScreenBoard
             // Two parts, however many the competitor wrote down. A hall row
             // carries a photo, a flag, a country, a crest, a club and a centre
             // plate beside this, and "Mohammed Abdulla Mansoor Almaqabi" is
-            // four of them and 33 characters. App\Support\PersonName::short
+            // four of them and 33 characters. App\Members\Support\PersonName::short
             // drops the middle and keeps both names WHOLE — the way a
             // competitor is announced and called to the mat — rather than
             // cutting one off with an ellipsis.
             //
             // Display only: the full name stays on the record, and the
             // member's own profile, the bracket and the medal list print it.
-            $corner.'Name' => \App\Support\PersonName::short($bout->{$side.'_name'}) ?: __('scoreboard::bjj_messages.court_tbd'),
+            $corner.'Name' => \App\Members\Support\PersonName::short($bout->{$side.'_name'}) ?: __('scoreboard::bjj_messages.court_tbd'),
             $corner.'Club' => $named['name'] ?? '',
             // Derived, not lower-cased: the same country arrives as 'BH',
             // 'BHR' and 'Bahrain' depending on which of the three sources
@@ -246,7 +246,7 @@ class ScreenBoard
             // It is drawn back (see the board's own opacity rule): this panel
             // is two metres of wall, and a drawing at full strength would read
             // as a photograph of the athlete standing on the mat.
-            $corner.'Fallback' => \App\Support\Avatar::placeholder($user?->gender),
+            $corner.'Fallback' => \App\Members\Support\Avatar::placeholder($user?->gender),
             $corner.'Logo' => $this->photos->crestUrl($entry, $club, $event->id) ?: ($named['logo'] ?? null),
         ];
     }

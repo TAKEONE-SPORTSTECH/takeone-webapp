@@ -4,7 +4,7 @@ namespace Tests\Feature\Events;
 
 use App\Events\Support\AudienceResolver;
 use App\Events\Support\EventNotifier;
-use App\Jobs\DeliverEventNotification;
+use App\Events\Jobs\DeliverEventNotification;
 use App\Clubs\Models\ClubActivity;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;

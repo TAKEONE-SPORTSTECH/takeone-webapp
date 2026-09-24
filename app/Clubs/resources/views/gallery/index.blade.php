@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 @section('club-admin-content')
 <div class="bg-white rounded-lg shadow" x-data="{ showUploadModal: false }">

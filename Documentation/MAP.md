@@ -31,11 +31,11 @@ A form a club built for itself   → app/Forms/         views: forms::
 The super-admin's own room, and ops → app/Platform/
 ```
 
-⚠️ **Two classes are called PlatformController and they mean opposite things.**
-`App\Platform\Controllers\PlatformController` is the super-admin's screens.
-`App\Http\Controllers\PlatformController` is the PUBLIC club browser —
-`/explore`, `/{country}/clubs/{slug}`, joining, perks, timeline. The second is
-misnamed and is on the house-cleaning register to move into Clubs.
+There used to be **two classes called PlatformController meaning opposite
+things**. There is now one: `App\Platform\Controllers\PlatformController`, the
+super-admin's screens. The PUBLIC club browser — `/explore`,
+`/{country}/clubs/{slug}`, joining, perks, timeline — is
+`App\Clubs\Controllers\PublicClubController`, in the module that owns the club.
 
 **The rule of thumb:** a vertical owns a top-level folder under `app/`, and
 everything it needs lives inside it. If you are opening files from three
@@ -58,11 +58,11 @@ folders to change one thing, you are probably in the wrong one.
 | **Translation** | `app/Translation/` | `translation::` (empty) | `routes.php`, `routes-member.php` | — |
 | **AI** | `app/Ai/` — `AiManager` at the ROOT, plus `Contracts/`, `Drivers/` | `ai::` (2) | `routes.php` | — |
 | **Forms** | `app/Forms/` — `FormEngine` at the root | `forms::` (1) | `routes.php` (`/f/{uuid}`) | — |
-| **Platform** | `app/Platform/` — super-admin, activity catalogue, ops commands | ⚠️ still `resources/views/admin/platform/` | `routes.php` | — |
+| **Platform** | `app/Platform/` — super-admin, activity catalogue, ops commands | `platform::` (28) | `routes.php` | — |
 
 **Module wiring is automatic.** Modules are listed in `config/modules.php` and
 bound by `App\Support\Modules\ModuleServiceProvider`. Event packages are
-discovered from `config/event_types.php` by
+discovered from `app/Events/config/event_types.php` by
 `App\Events\EventPackageServiceProvider`. **Never wire a module path by hand.**
 
 ---
@@ -81,20 +81,19 @@ is by history rather than by logic:
 |---|---|
 | Club admin section (members, packages, financials, roles…) | `app/Clubs/resources/views/<section>/{index,mobile}.blade.php` |
 | A member's own screens (home, schedule, settings, videos) | `app/Members/resources/views/personal/` |
-| **Event screens (show, bracket, manage, people, divisions)** | **`resources/views/personal/{mobile,desktop}/event-*.blade.php`** ← not in `app/Events/` |
+| Event screens (show, bracket, manage, people, divisions) | `app/Events/resources/views/personal/{mobile,desktop}/event-*.blade.php` → `events::personal.*` |
 | The marketplace | `resources/views/personal/*market*` |
-| Public event page / entry | `resources/views/entry/` (own layout + shell) |
-| Platform super-admin | `resources/views/admin/platform/` |
-| Public explore / club pages | `resources/views/platform/` |
+| Public event page / entry | `app/Events/resources/views/entry/` → `events::entry.*` (own layout + shell) |
+| Platform super-admin | `app/Platform/resources/views/` → `platform::` |
+| The global activity directory `/activity/{uuid}` | `app/Platform/resources/views/activity/{mobile,desktop}/` |
+| Public explore / club pages | `app/Clubs/resources/views/public/` → `clubs::public.*` |
 | Mat panels, boards, screens | `app/Scoreboard/resources/views/{bjj,karate,taekwondo}/` |
 | Shared components | `resources/views/components/` (126, mostly flat) |
 | Layouts (8) | `resources/views/layouts/` |
 
-> **The single most confusing thing in this tree**, and worth knowing before
-> you search: `resources/views/events/` holds only the camera and screen
-> surfaces (5 files). The real event screens live under
-> `resources/views/personal/`. And `resources/views/platform/` (public) is a
-> different thing from `resources/views/admin/platform/` (super-admin).
+> Every event file lives in `app/Events/` since 2026-09-23 — controllers, routes, views
+> (`events::`), lang (`events::events.…`), config (`app/Events/config/`), migrations.
+> Camera and screen pages are `events::camera.*` / `events::screen.*`.
 
 ### Naming conventions that are load-bearing
 
@@ -102,7 +101,7 @@ Two filename conventions are read by CODE, not just by people. Break them and
 a screen changes without an error:
 
 1. **`<section>/index.blade.php` + `<section>/mobile.blade.php`** — the shape
-   `App\Support\ClubView::pick()` builds. 20 call sites.
+   `App\Clubs\Support\ClubView::pick()` builds. 20 call sites.
 2. **`<feature>/{mobile,desktop}/<view>.blade.php`** — the shape the
    `$isMobile` ternaries build, in ~25 controllers.
 
@@ -155,16 +154,31 @@ These cost real time. Each one is a bug that does **not** throw.
 
 ## 6. Still in the legacy flat folders
 
-Audited 2026-09-22, after the reorganisation pass. **`app/Models` is empty** —
-all 49 models are in the module that owns them. What is left:
+Audited 2026-09-23, after Clubs, Members and Events were gathered into their own
+folders (classes, routes, views, lang files and migrations). **Nothing that
+belongs only to Clubs, Members or Events is left outside `app/Clubs/`,
+`app/Members/` or `app/Events/`.** What is left in the flat folders belongs to other modules or
+to nobody:
 
 | Folder | Files | What they are |
 |---|---|---|
-| `app/Models/` | 1 | only `Scopes/TenantScope.php` — multi-tenancy itself, belongs to nobody |
-| `app/Http/Controllers/` | 27 | `Auth/` (6), the event surfaces around `PersonalEventController` (7), business/chain (3), and the shared `Controller` + `FileController` |
-| `app/Services/` | 15 | Members (5), Clubs (6), Copilot (3), and the two documented shared-kernel ones |
-| `app/Console/Commands/` | 16 | Members (5), Clubs (3), Media (3), Events (3) |
-| `app/Traits/` | 10 | Translation (3), Clubs (2), shared (4), Members (1) |
+| `app/Models/` | 0 | `TenantScope` moved to `app/Clubs/Models/Scopes/` |
+| `app/Http/Controllers/` | 7 | Copilot/Languages/MediaVault admin, Impersonation, QR, and the shared `Controller` + `FileController` — the event controllers moved to `app/Events/Controllers/` |
+| `app/Services/` | 5 | Copilot (3) + the two documented shared-kernel ones |
+| `app/Console/Commands/` | 4 | Media (3), MCP token |
+| `app/Traits/` | 5 | Translation (3) + shared upload/file traits |
+
+Clubs/Members things that stay shared ON PURPOSE: the `<x-…>` component
+library (`resources/views/components/`), the base layouts and shell partials,
+`lang/*/personal.php` (read by the event and scoreboard screens too), the MCP
+tools, the tests, and the few migrations that change a clubs table AND a
+members table together.
+
+**Where things live inside a module:** `Controllers/` `Commands/` `Services/`
+are private (ModuleBoundaryTest); anything another module or a test calls
+lives in `Support/`, `Concerns/` (traits), `Requests/`, `Middleware/`,
+`Mail/`, `Jobs/`, `Models/`. Sign-in lives in `app/Members/Auth/` — public,
+because the public event page signs people in through it.
 
 **Why the controllers are still here, and it is not neglect:** moving a
 controller drags its ROUTES with it (ModuleBoundaryTest treats `Controllers/`

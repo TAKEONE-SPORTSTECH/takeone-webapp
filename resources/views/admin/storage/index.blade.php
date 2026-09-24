@@ -245,7 +245,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">How we reach it</label>
-                    <x-select-menu model="form.driver" :options="$driverOptions" />
+                    <x-fields.select model="form.driver" :options="$driverOptions" />
                     <p class="text-xs mt-1.5" :class="form.driver === 'mount' ? 'text-green-600' : 'text-amber-600'"
                        x-text="form.driver === 'mount'
                             ? 'Best: the share is mounted on this server, so video streams straight off it and never lands on our disk.'

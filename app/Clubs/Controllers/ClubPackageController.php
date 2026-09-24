@@ -3,13 +3,13 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\PackageRequest;
+use App\Clubs\Requests\PackageRequest;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubFacility;
 use App\Clubs\Models\ClubInstructor;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\Tenant;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
@@ -39,7 +39,7 @@ class ClubPackageController extends Controller
             ]];
         });
 
-        return view(\App\Support\ClubView::pick('packages', 'clubs'), compact('club', 'packages', 'facilities', 'activities', 'instructors', 'instructorsMap'));
+        return view(\App\Clubs\Support\ClubView::pick('packages', 'clubs'), compact('club', 'packages', 'facilities', 'activities', 'instructors', 'instructorsMap'));
     }
 
     public function storePackage(PackageRequest $request, Tenant $club)

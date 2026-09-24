@@ -946,7 +946,7 @@
     <div style="display:flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:14px;">
       {{-- The camera tab only exists when this door was given the camera
            addresses, so a console with no camera surface shows no camera tab. --}}
-      @foreach (array_merge([['rules', __('scoreboard::bjj_messages.ctl_tab_rules')], ['timer', __('scoreboard::bjj_messages.ctl_tab_timer')], ['sounds', __('scoreboard::bjj_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
+      @foreach (array_merge([['rules', __('scoreboard::bjj_messages.ctl_tab_rules')], ['timer', __('scoreboard::bjj_messages.ctl_tab_timer')], ['sounds', __('scoreboard::bjj_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
         <button class="stab" data-tab="{{ $tab }}">{{ $tabLabel }}</button>
       @endforeach
     </div>
@@ -1030,24 +1030,24 @@
          the ellipsis on `.audioName` actually do its job. --}}
     <div class="spanel" data-panel="sounds" hidden style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 28px;min-width:0;">
       @foreach ([
-          'vs_music' => __('events.screen_audio_vs_music'),
-          'match_start' => __('events.screen_audio_match_start'),
-          'match_end' => __('events.screen_audio_match_end'),
-          'winner_music' => __('events.screen_audio_winner_music'),
+          'vs_music' => __('events::events.screen_audio_vs_music'),
+          'match_start' => __('events::events.screen_audio_match_start'),
+          'match_end' => __('events::events.screen_audio_match_end'),
+          'winner_music' => __('events::events.screen_audio_winner_music'),
           'point_1' => __('scoreboard::bjj_messages.ctl_sound_point_1'),
           'point_2' => __('scoreboard::bjj_messages.ctl_sound_point_2'),
           'point_3' => __('scoreboard::bjj_messages.ctl_sound_point_3'),
-          'foul' => __('events.screen_audio_foul'),
-          'time_up' => __('events.screen_audio_time_up'),
-          'atoshi' => __('events.screen_audio_atoshi'),
+          'foul' => __('events::events.screen_audio_foul'),
+          'time_up' => __('events::events.screen_audio_time_up'),
+          'atoshi' => __('events::events.screen_audio_atoshi'),
       ] as $slot => $slotLabel)
         <div style="display:flex;align-items:center;gap:14px;padding:10px 0;min-width:0;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:23px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $slotLabel }}</div>
-            <div class="audioName" data-slot="{{ $slot }}" style="font-size:17px;margin-top:2px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ __('events.screen_audio_none') }}</div>
+            <div class="audioName" data-slot="{{ $slot }}" style="font-size:17px;margin-top:2px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ __('events::events.screen_audio_none') }}</div>
           </div>
           <label style="font-size:17px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#7ae582;color:#000;border-radius:10px;padding:11px 16px;cursor:pointer;white-space:nowrap;">
-            {{ __('events.screen_audio_choose') }}
+            {{ __('events::events.screen_audio_choose') }}
             <input type="file" accept="audio/*" class="audioPick" data-slot="{{ $slot }}" style="display:none;">
           </label>
           <button class="audioDrop" data-slot="{{ $slot }}" hidden style="font-size:18px;font-weight:700;background:var(--fill);color:#ff6b78;border:1px solid rgba(255,107,120,.45);border-radius:10px;padding:12px 16px;cursor:pointer;">✕</button>

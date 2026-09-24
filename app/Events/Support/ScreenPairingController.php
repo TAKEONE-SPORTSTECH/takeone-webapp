@@ -118,7 +118,7 @@ class ScreenPairingController extends Controller
             return redirect()->away($screen->destination);
         }
 
-        return view('events.screen.waiting', [
+        return view('events::screen.waiting', [
             'code' => $screen->pairing_code,
             'claimUrl' => route('screen.claim', $screen->pairing_code),
             'statusUrl' => route('screen.status', $token),
@@ -282,7 +282,7 @@ class ScreenPairingController extends Controller
 
         abort_unless($screen || $camera, 404);
 
-        return view('events.screen.claim', [
+        return view('events::screen.claim', [
             'code' => $code,
             'isCamera' => (bool) $camera,
             'events' => $this->manageableEvents($request->user(), forCamera: (bool) $camera),
@@ -379,7 +379,7 @@ class ScreenPairingController extends Controller
 
         if ($angle === null) {
             return back()->withErrors([
-                'surface' => __('events.camera_claim_full', ['court' => $court]),
+                'surface' => __('events::events.camera_claim_full', ['court' => $court]),
             ])->withInput();
         }
 
@@ -389,7 +389,7 @@ class ScreenPairingController extends Controller
         // reload — the panel re-fetches on this nudge.
         \App\Events\Support\Cameras\CameraFleet::consolesChanged($event);
 
-        return redirect()->route('screen.claimed')->with('status', __('events.camera_claim_done', [
+        return redirect()->route('screen.claimed')->with('status', __('events::events.camera_claim_done', [
             'angle' => $angle,
             'court' => $court,
             'event' => $event->title,
@@ -399,7 +399,7 @@ class ScreenPairingController extends Controller
     /** A plain "done" page for the organiser's phone. */
     public function claimed()
     {
-        return view('events.screen.claimed');
+        return view('events::screen.claimed');
     }
 
     /**

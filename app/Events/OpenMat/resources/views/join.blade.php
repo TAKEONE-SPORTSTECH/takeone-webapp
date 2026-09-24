@@ -1,4 +1,4 @@
-@extends($isMobile ? 'layouts.personal-mobile' : 'layouts.app')
+@extends($isMobile ? 'members::layouts.personal-mobile' : 'layouts.app')
 
 @section('title', __('event-open_mat::messages.join_title'))
 

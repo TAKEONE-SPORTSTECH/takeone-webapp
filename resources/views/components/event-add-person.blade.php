@@ -417,8 +417,8 @@
             <i class="bi bi-person-plus-fill text-lg"></i>
         </span>
         <span class="min-w-0 flex-1">
-            <span class="block text-sm font-bold text-foreground">{{ __('events.add_person') }}</span>
-            <span class="block text-[11px] text-muted-foreground mt-0.5 truncate">{{ __('events.add_person_sub') }}</span>
+            <span class="block text-sm font-bold text-foreground">{{ __('events::events.add_person') }}</span>
+            <span class="block text-[11px] text-muted-foreground mt-0.5 truncate">{{ __('events::events.add_person_sub') }}</span>
         </span>
         <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
     </button>
@@ -435,8 +435,8 @@
          never nested inside another. --}}
     <x-photo-capture :id="$photoId"
                      :color="$c"
-                     :title="__('events.add_person_photo')"
-                     :hint="__('events.add_person_photo_sheet_hint')"
+                     :title="__('events::events.add_person_photo')"
+                     :hint="__('events::events.add_person_photo_sheet_hint')"
                      {{-- Above THIS sheet (z-[70]) and below the cropper's own
                           editor (z-[80]): opened from inside a sheet, the photo
                           sheet's own default of 60 puts it underneath. --}}
@@ -482,7 +482,7 @@
                             <i class="bi bi-person-plus-fill text-xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black leading-tight">{{ __('events.add_person') }}</h3>
+                            <h3 class="text-lg font-black leading-tight">{{ __('events::events.add_person') }}</h3>
                             <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $title }}</p>
                         </div>
                         <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
@@ -496,12 +496,12 @@
                         <button type="button" @click="tab = 'new'"
                                 class="flex-1 h-8 rounded-full text-[12px] font-bold transition-colors"
                                 :class="tab === 'new' ? 'bg-white/90 text-gray-900' : 'text-white/85'">
-                            <i class="bi bi-pencil-fill me-1"></i>{{ __('events.add_person_tab_new') }}
+                            <i class="bi bi-pencil-fill me-1"></i>{{ __('events::events.add_person_tab_new') }}
                         </button>
                         <button type="button" @click="tab = 'member'"
                                 class="flex-1 h-8 rounded-full text-[12px] font-bold transition-colors"
                                 :class="tab === 'member' ? 'bg-white/90 text-gray-900' : 'text-white/85'">
-                            <i class="bi bi-person-check-fill me-1"></i>{{ __('events.add_person_tab_member') }}
+                            <i class="bi bi-person-check-fill me-1"></i>{{ __('events::events.add_person_tab_member') }}
                         </button>
                     </div>
                 </div>
@@ -521,15 +521,15 @@
                         <div class="relative">
                             <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm"></i>
                             <input type="search" x-model="q" @input="onQuery()" @keydown.enter.prevent="search()"
-                                   placeholder="{{ __('events.add_person_search') }}"
+                                   placeholder="{{ __('events::events.add_person_search') }}"
                                    class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                         </div>
                         <p class="text-[11px] text-muted-foreground mt-1.5 px-1"
-                           x-show="q.trim().length < 2" x-cloak>{{ __('events.add_person_search_hint') }}</p>
+                           x-show="q.trim().length < 2" x-cloak>{{ __('events::events.add_person_search_hint') }}</p>
 
                         <div class="mt-3 space-y-2">
                             <p class="text-[12px] text-muted-foreground py-6 text-center" x-show="searching" x-cloak>
-                                <i class="bi bi-arrow-repeat"></i> {{ __('events.add_person_searching') }}
+                                <i class="bi bi-arrow-repeat"></i> {{ __('events::events.add_person_searching') }}
                             </p>
 
                             <template x-for="row in results" :key="row.id">
@@ -543,7 +543,7 @@
                                         <span class="block text-[11px] text-muted-foreground truncate mt-0.5"
                                               x-show="row.entered" x-cloak>
                                             <i class="bi bi-check-circle-fill text-green-600"></i>
-                                            {{ __('events.add_person_already_in') }}<span x-show="row.divisions && row.divisions.length" x-text="' · ' + (row.divisions || []).join(', ')"></span>
+                                            {{ __('events::events.add_person_already_in') }}<span x-show="row.divisions && row.divisions.length" x-text="' · ' + (row.divisions || []).join(', ')"></span>
                                         </span>
                                         <span class="block text-[11px] text-muted-foreground truncate mt-0.5"
                                               x-show="! row.entered && ! row.can_enter && row.reason" x-cloak x-text="row.reason"></span>
@@ -558,10 +558,10 @@
                             </template>
 
                             <p class="text-[12px] text-muted-foreground py-6 text-center"
-                               x-show="searched && ! searching && ! results.length" x-cloak>{{ __('events.add_person_no_results') }}</p>
+                               x-show="searched && ! searching && ! results.length" x-cloak>{{ __('events::events.add_person_no_results') }}</p>
                             <p class="text-[11px] text-muted-foreground text-center pt-1"
                                x-show="total > results.length" x-cloak
-                               x-text="@js(__('events.add_person_more')).replace(':count', total - results.length)"></p>
+                               x-text="@js(__('events::events.add_person_more')).replace(':count', total - results.length)"></p>
                         </div>
                     </div>
 
@@ -576,7 +576,7 @@
                                 <i class="bi bi-check-circle-fill text-green-600"></i>
                                 <span x-text="claim ? claim.name : ''"></span>
                             </p>
-                            <p class="text-[11.5px] text-muted-foreground leading-snug mt-1">{{ __('events.add_person_link_sub') }}</p>
+                            <p class="text-[11.5px] text-muted-foreground leading-snug mt-1">{{ __('events::events.add_person_link_sub') }}</p>
 
                             {{-- The photograph, if one went with them. A crop
                                  still sitting here means the upload failed —
@@ -589,22 +589,22 @@
                                 <button type="button" x-show="photo" x-cloak :disabled="photoSaving"
                                         @click="savePhoto(claim && claim.competitor_id)"
                                         class="m-press h-9 px-3 rounded-lg bg-white border border-gray-200 text-[12px] font-semibold text-foreground disabled:opacity-50">
-                                    <i class="bi bi-arrow-clockwise me-1"></i>{{ __('events.add_person_photo_retry') }}
+                                    <i class="bi bi-arrow-clockwise me-1"></i>{{ __('events::events.add_person_photo_retry') }}
                                 </button>
                             </div>
                             <div class="flex items-center gap-2 mt-3">
                                 <button type="button" @click="copyClaim()"
                                         class="flex-1 h-10 rounded-lg bg-white border border-gray-200 text-sm font-semibold text-foreground m-press">
-                                    <i class="bi bi-clipboard me-1"></i>{{ __('events.add_person_copy') }}
+                                    <i class="bi bi-clipboard me-1"></i>{{ __('events::events.add_person_copy') }}
                                 </button>
                                 <button type="button" @click="shareClaim()"
                                         class="flex-1 h-10 rounded-lg text-white text-sm font-semibold m-press"
                                         style="background: {{ $c }};">
-                                    <i class="bi bi-share-fill me-1"></i>{{ __('events.add_person_share') }}
+                                    <i class="bi bi-share-fill me-1"></i>{{ __('events::events.add_person_share') }}
                                 </button>
                             </div>
                             <button type="button" @click="claim = null"
-                                    class="w-full text-center text-[11px] text-muted-foreground mt-3">{{ __('events.add_person_done') }}</button>
+                                    class="w-full text-center text-[11px] text-muted-foreground mt-3">{{ __('events::events.add_person_done') }}</button>
                         </div>
 
                         {{-- Their face. Portrait 3:4 like every profile picture on
@@ -619,7 +619,7 @@
                                          overriding it. --}}
                                     class="m-press w-24 h-32 rounded-2xl overflow-hidden border-2 border-gray-200 bg-muted grid place-items-center flex-shrink-0 relative"
                                     :class="photo ? '' : 'border-dashed'"
-                                    aria-label="{{ __('events.add_person_photo_add') }}">
+                                    aria-label="{{ __('events::events.add_person_photo_add') }}">
                                 <template x-if="photo">
                                     <img :src="photo" alt="" class="absolute inset-0 w-full h-full object-cover">
                                 </template>
@@ -630,12 +630,12 @@
                                 </template>
                             </button>
                             <div class="min-w-0 flex-1">
-                                <p class="text-sm font-bold text-foreground">{{ __('events.add_person_photo') }}</p>
-                                <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events.add_person_photo_hint') }}</p>
+                                <p class="text-sm font-bold text-foreground">{{ __('events::events.add_person_photo') }}</p>
+                                <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events::events.add_person_photo_hint') }}</p>
                                 <div class="flex items-center gap-2 mt-2">
                                     <button type="button" @click="pickPhoto()"
                                             class="m-press h-9 px-3 rounded-lg bg-white border border-gray-200 text-[12px] font-semibold text-foreground">
-                                        <i class="bi bi-camera-fill me-1"></i><span x-text="photo ? @js(__('events.add_person_photo_change')) : @js(__('events.add_person_photo_add'))"></span>
+                                        <i class="bi bi-camera-fill me-1"></i><span x-text="photo ? @js(__('events::events.add_person_photo_change')) : @js(__('events::events.add_person_photo_add'))"></span>
                                     </button>
                                     <button type="button" @click="dropPhoto()" x-show="photo" x-cloak
                                             class="m-press h-9 px-3 rounded-lg border border-red-200 text-red-600 text-[12px] font-semibold">
@@ -648,9 +648,9 @@
                         {{-- The only field that is required, and the only one
                              standing on its own. --}}
                         <section>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events.add_person_name') }}</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events::events.add_person_name') }}</label>
                             <input type="text" x-model="person.full_name" maxlength="120"
-                                   placeholder="{{ __('events.add_person_name_ph') }}"
+                                   placeholder="{{ __('events::events.add_person_name_ph') }}"
                                    class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                         </section>
 
@@ -659,18 +659,18 @@
                                  air before the first control: the heading and
                                  its explanation read as ONE object, set apart
                                  from the fields they introduce. --}}
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('events.add_person_details') }}</p>
-                            <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events.add_person_details_sub') }}</p>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('events::events.add_person_details') }}</p>
+                            <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events::events.add_person_details_sub') }}</p>
 
                             <div class="space-y-3 mt-3">
                                 {{-- The shared two-button selector, not a native select
                                      (Design Rule #4) and not a second copy of it. --}}
-                                <x-gender-toggle model="person.gender"
-                                                 :male-label="(string) Illuminate\Support\Js::from(__('events.add_person_male'))"
-                                                 :female-label="(string) Illuminate\Support\Js::from(__('events.add_person_female'))" />
+                                <x-fields.gender-toggle model="person.gender"
+                                                 :male-label="(string) Illuminate\Support\Js::from(__('events::events.add_person_male'))"
+                                                 :female-label="(string) Illuminate\Support\Js::from(__('events::events.add_person_female'))" />
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events.add_person_birthdate') }}</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events::events.add_person_birthdate') }}</label>
                                     {{-- The DROPDOWN variant — Day / Month / Year, with a
                                          typeable year — because a birthdate is decades
                                          back and paging a month grid there is absurd.
@@ -678,12 +678,12 @@
                                          self-serve entrant is asked with
                                          (entry/public/my-entry). Never a native date
                                          input (Design Rule #4). --}}
-                                    <x-date-picker variant="dropdown" model="person.birthdate"
+                                    <x-fields.date variant="dropdown" model="person.birthdate"
                                                    max="{{ now()->subDay()->toDateString() }}" />
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events.add_person_weight') }}</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events::events.add_person_weight') }}</label>
                                     <input type="number" inputmode="decimal" step="0.1" min="10" max="300" x-model="person.weight"
                                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                 </div>
@@ -705,7 +705,7 @@
                                      The ladder is App\Sports\Combat\BeltRank's
                                      — the one every other surface reads. --}}
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events.entry_field_belt') }}</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events::events.entry_field_belt') }}</label>
                                     <div class="grid grid-cols-3 gap-2">
                                         @foreach(\App\Sports\Combat\BeltRank::ladder() as $belt)
                                             <button type="button"
@@ -724,7 +724,7 @@
                                          belt is not a rank anybody announces. --}}
                                     <input type="text" x-show="person.belt_colour" x-cloak
                                            x-model="person.belt_grade" maxlength="40"
-                                           placeholder="{{ __('events.entry_field_grade') }}"
+                                           placeholder="{{ __('events::events.entry_field_grade') }}"
                                            class="mt-2 w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                 </div>
                             </div>
@@ -743,7 +743,7 @@
                              a question not worth asking. --}}
                         @if(! empty($clubs))
                             <section>
-                                <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('events.entry_field_club') }}</p>
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('events::events.entry_field_club') }}</p>
 
                                 {{-- A DROPDOWN, not a stack of selection cards.
 
@@ -758,8 +758,8 @@
                                      `overflow-y-auto`, and an absolute panel is
                                      clipped by its own scrolling container
                                      (Mobile Pattern Language; the same reason
-                                     <x-date-picker> opens in flow). That also
-                                     rules out <x-select-menu> here, whose panel
+                                     <x-fields.date> opens in flow). That also
+                                     rules out <x-fields.select> here, whose panel
                                      is absolute — and it could not carry the
                                      crests anyway. --}}
                                 <div class="mt-3" @click.outside="clubOpen = false" @keydown.escape.stop="clubOpen = false">
@@ -781,7 +781,7 @@
 
                                         <span class="text-[13px] font-bold flex-1 truncate"
                                               :class="clubChosen() ? 'text-foreground' : 'text-muted-foreground'"
-                                              x-text="clubChosen() ? clubChosen().name : @js(__('events.entry_no_club'))"></span>
+                                              x-text="clubChosen() ? clubChosen().name : @js(__('events::events.entry_no_club'))"></span>
 
                                         <i class="bi bi-chevron-down text-xs text-gray-400 transition-transform flex-shrink-0"
                                            :class="clubOpen && 'rotate-180'"></i>
@@ -796,7 +796,7 @@
                                                 :class="! person.club ? 'bg-primary/5 text-primary' : 'text-foreground hover:bg-muted/60'"
                                                 class="w-full flex items-center gap-2.5 px-3 py-2.5 text-start transition-colors">
                                             <i class="bi bi-person-x flex-shrink-0 text-muted-foreground"></i>
-                                            <span class="text-[13px] font-bold flex-1">{{ __('events.entry_no_club') }}</span>
+                                            <span class="text-[13px] font-bold flex-1">{{ __('events::events.entry_no_club') }}</span>
                                             <i class="bi bi-check-lg flex-shrink-0" x-show="! person.club"></i>
                                         </button>
 
@@ -821,10 +821,10 @@
                         @endif
 
                         <section>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('events.add_person_contact') }}</p>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('events::events.add_person_contact') }}</p>
                             <div class="space-y-2 mt-3">
                                 <input type="email" x-model="person.contact_email" maxlength="190"
-                                       placeholder="{{ __('events.add_person_email') }}"
+                                       placeholder="{{ __('events::events.add_person_email') }}"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                 {{-- The platform's phone control, not a bare text
                                      box: a dial code picked from a list beats one
@@ -840,16 +840,16 @@
                                      hand-rolled group would need are NOT in the
                                      prebuilt Tailwind bundle and would silently do
                                      nothing. --}}
-                                <x-country-code-dropdown
+                                <x-fields.phone-code
                                     name="contact_code"
                                     :id="$photoId.'Dial'"
                                     model="person.contact_code"
                                     value="+973">
                                     <input type="tel" x-model="person.contact_phone" maxlength="32"
                                            autocomplete="tel"
-                                           placeholder="{{ __('events.add_person_phone') }}"
+                                           placeholder="{{ __('events::events.add_person_phone') }}"
                                            class="w-full px-3 py-2.5 bg-transparent text-sm border-0 outline-none focus:ring-0">
-                                </x-country-code-dropdown>
+                                </x-fields.phone-code>
                             </div>
                         </section>
                     </div>
@@ -874,7 +874,7 @@
                          to the person at the desk, never an authority. --}}
                     @if (count($feeOptions))
                     <section>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-3">{{ __('events.fee_select_options') }}</p>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-3">{{ __('events::events.fee_select_options') }}</p>
                         <div class="space-y-2">
                             @foreach ($feeOptions as $opt)
                                 <button type="button" @click="toggleFee(@js($opt['key']))"
@@ -898,20 +898,20 @@
                             <div class="rounded-2xl bg-amber-50 border border-amber-200 px-3 py-2.5 flex items-start gap-2 mt-3">
                                 <i class="bi bi-clock-history text-amber-600 mt-0.5"></i>
                                 <p class="text-[11.5px] text-muted-foreground leading-snug">
-                                    {{ __('events.fee_late_applies', ['amount' => trim(($feeCurrency ? $feeCurrency.' ' : '').number_format($feeLateAmount, 3))]) }}
+                                    {{ __('events::events.fee_late_applies', ['amount' => trim(($feeCurrency ? $feeCurrency.' ' : '').number_format($feeLateAmount, 3))]) }}
                                 </p>
                             </div>
                         @endif
 
                         <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                            <span class="text-[12px] font-bold text-muted-foreground">{{ __('events.fee_total') }}</span>
+                            <span class="text-[12px] font-bold text-muted-foreground">{{ __('events::events.fee_total') }}</span>
                             <span class="text-[15px] font-black text-foreground" x-text="feeTotalText"></span>
                         </div>
                     </section>
                     @endif
 
                     <p class="text-[11px] text-muted-foreground leading-snug flex items-start gap-1.5">
-                        <i class="bi bi-shield-lock mt-0.5 flex-shrink-0"></i>{{ __('events.add_person_hint') }}
+                        <i class="bi bi-shield-lock mt-0.5 flex-shrink-0"></i>{{ __('events::events.add_person_hint') }}
                     </p>
                 </div>
 
@@ -924,7 +924,7 @@
                             style="background: {{ $c }};">
                         <template x-if="! entering">
                             <span>
-                                <i class="bi bi-person-plus-fill me-1"></i>{{ __('events.add_person_submit') }}<span x-show="picked.length" x-text="' (' + picked.length + ')'"></span>
+                                <i class="bi bi-person-plus-fill me-1"></i>{{ __('events::events.add_person_submit') }}<span x-show="picked.length" x-text="' (' + picked.length + ')'"></span>
                             </span>
                         </template>
                         <template x-if="entering"><span><i class="bi bi-arrow-repeat"></i></span></template>
@@ -934,7 +934,7 @@
                             :disabled="person.full_name.trim().length < 2 || creating"
                             class="m-press w-full h-12 rounded-xl text-white text-sm font-bold disabled:opacity-50 transition-opacity"
                             style="background: {{ $c }};">
-                        <template x-if="! creating"><span><i class="bi bi-person-plus-fill me-1"></i>{{ __('events.add_person_create') }}</span></template>
+                        <template x-if="! creating"><span><i class="bi bi-person-plus-fill me-1"></i>{{ __('events::events.add_person_create') }}</span></template>
                         <template x-if="creating"><span><i class="bi bi-arrow-repeat"></i></span></template>
                     </button>
                 </div>

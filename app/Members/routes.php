@@ -215,7 +215,7 @@ Route::get('/people/{uuid}', [App\Members\Controllers\PeopleController::class, '
  * The same profile, INSIDE a sealed public event page.
  *
  * The event surface at /e/{uuid} may never hand a reader to the platform (see
- * App\Http\Middleware\SealEventPage), so tapping a name on an entry list or an
+ * App\Events\Middleware\SealEventPage), so tapping a name on an entry list or an
  * officiating sheet has to open that person here rather than at /people/{uuid}.
  * Same controller, same authorization, same answer for everything else.
  *
@@ -230,7 +230,7 @@ Route::get('/people/{uuid}', [App\Members\Controllers\PeopleController::class, '
  */
 Route::get('/e/{event:uuid}/admin/person/{uuid}', [App\Members\Controllers\PeopleController::class, 'showInEvent'])
     ->name('sealed.people.show')
-    ->middleware(['web', App\Http\Middleware\SealEventPage::class, 'throttle:60,1'])
+    ->middleware(['web', App\Events\Middleware\SealEventPage::class, 'throttle:60,1'])
     ->whereUuid('event');
 
 // Public version manifest polled by the installed Android app to detect updates.
@@ -262,3 +262,133 @@ Route::get('/app/manifest.json', [MobileAppController::class, 'manifest'])->name
 */
 Route::put('/locale', [App\Members\Controllers\LocaleController::class, 'update'])
     ->name('locale.set')->middleware('throttle:120,1');
+
+
+/*
+|--------------------------------------------------------------------------
+| Sign-in, two-factor, registration, password reset, e-mail verification
+|--------------------------------------------------------------------------
+| Moved verbatim from routes/web.php — every URI, name and middleware is the
+| one it had there.
+*/
+
+// Two-Factor Authentication challenge (no auth required — user is between login and session)
+Route::get('/two-factor-challenge', [\App\Members\Controllers\TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
+Route::post('/two-factor-challenge', [\App\Members\Controllers\TwoFactorController::class, 'verifyChallenge'])->name('two-factor.verify')->middleware('throttle:6,1');
+
+// Security Settings (requires full auth + 2FA if enabled)
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
+    Route::get('/security', [\App\Members\Controllers\TwoFactorController::class, 'show'])->name('security.show');
+    Route::post('/security/two-factor/setup', [\App\Members\Controllers\TwoFactorController::class, 'setup'])->name('security.2fa.setup');
+    Route::get('/security/two-factor/setup', [\App\Members\Controllers\TwoFactorController::class, 'setup'])->name('security.2fa.setup.get');
+    Route::post('/security/two-factor/confirm', [\App\Members\Controllers\TwoFactorController::class, 'confirm'])->name('security.2fa.confirm');
+    Route::post('/security/two-factor/disable', [\App\Members\Controllers\TwoFactorController::class, 'disable'])->name('security.2fa.disable');
+    Route::post('/security/two-factor/recovery-codes', [\App\Members\Controllers\TwoFactorController::class, 'regenerateRecoveryCodes'])->name('security.2fa.recovery-codes');
+    Route::post('/security/password', [\App\Members\Controllers\TwoFactorController::class, 'changePassword'])->name('security.password.change')->middleware('throttle:6,1');
+});
+
+Route::get('/login', [\App\Members\Auth\AuthenticatedSessionController::class, 'create'])->name('login')->middleware('no-store');
+Route::post('/login', [\App\Members\Auth\AuthenticatedSessionController::class, 'store'])->middleware('throttle:login');
+/*
+| "Who is signing in?" — the second half of a telephone sign-in.
+|
+| A telephone belongs to a household. When one number and one password answer
+| for more than one person (a parent and a child, the ordinary case at a
+| junior competition), the password is already proven and only the identity is
+| open. Guarded by a SERVER-held shortlist in the session, not by anything the
+| caller sends, and throttled like the sign-in it continues.
+*/
+Route::get('/login/choose', [\App\Members\Auth\AuthenticatedSessionController::class, 'choose'])
+    ->name('login.choose')->middleware(['no-store', 'throttle:login']);
+Route::post('/login/choose', [\App\Members\Auth\AuthenticatedSessionController::class, 'chose'])
+    ->name('login.chose')->middleware('throttle:login');
+
+Route::post('/logout', [\App\Members\Auth\AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
+// Passwordless "magic link" login — request a one-time signed link by email,
+// then click it to sign in. The verify route is signature-protected.
+Route::post('/login/link', [\App\Members\Auth\MagicLinkController::class, 'send'])
+    ->name('login.magic')->middleware('throttle:login');
+Route::get('/login/link/{user}', [\App\Members\Auth\MagicLinkController::class, 'login'])
+    ->name('login.magic.verify')->middleware('signed', 'throttle:6,1');
+// The public form renderer moved to app/Forms/routes.php with its module.
+
+Route::get('/register', [\App\Members\Auth\RegisteredUserController::class, 'create'])->name('register')->middleware('no-store');
+Route::post('/register', [\App\Members\Auth\RegisteredUserController::class, 'store'])->middleware('throttle:register');
+Route::get('/register/wizard/packages', [\App\Members\Auth\WizardRegistrationController::class, 'packages'])->name('register.wizard.packages')->middleware('throttle:60,1');
+Route::post('/register/wizard/upload-temp', [\App\Members\Auth\WizardRegistrationController::class, 'uploadTemp'])->name('register.wizard.upload')->middleware('throttle:uploads');
+Route::post('/register/wizard/lookup', [\App\Members\Auth\WizardRegistrationController::class, 'lookup'])->name('register.wizard.lookup')->middleware('throttle:10,1');
+Route::post('/register/wizard/verify-otp', [\App\Members\Auth\WizardRegistrationController::class, 'verifyOtp'])->name('register.wizard.verify')->middleware('throttle:15,1');
+Route::post('/register/wizard/submit', [\App\Members\Auth\WizardRegistrationController::class, 'submit'])->name('register.wizard.submit')->middleware('throttle:register');
+// Dedicated club-registration URL (distinct from platform /register). The 2-3
+// letter country constraint keeps it from clashing with /register/wizard/*.
+Route::get('/register/{country}/{slug}', [\App\Members\Auth\RegisteredUserController::class, 'createForClub'])
+    ->name('register.club')->where('country', '[a-z]{2,3}')->middleware('no-store');
+
+// Password reset routes
+Route::get('/forgot-password', [\App\Members\Auth\PasswordResetLinkController::class, 'create'])->name('password.request')->middleware('no-store');
+Route::post('/forgot-password', [\App\Members\Auth\PasswordResetLinkController::class, 'store'])->name('password.email')->middleware('throttle:password-reset');
+Route::get('/reset-password/{token}', [\App\Members\Auth\NewPasswordController::class, 'create'])->name('password.reset')->middleware('no-store');
+Route::post('/reset-password', [\App\Members\Auth\NewPasswordController::class, 'store'])->name('password.update')->middleware('throttle:password-reset');
+
+// Email verification routes
+Route::get('/email/verify', function (\Illuminate\Http\Request $request) {
+    if ($request->user()->hasVerifiedEmail()) {
+        $intended = session()->pull('url.intended', \App\Support\Landing::url($request));
+        session()->forget('club.context');
+
+        return redirect($intended);
+    }
+
+    return view('members::auth.verify-email');
+})->middleware('auth')->name('verification.notice');
+
+Route::get('/email/verify/{id}/{hash}', function (\Illuminate\Http\Request $request, $id, $hash) {
+    $user = \App\Members\Models\User::findOrFail($id);
+
+    if (! hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+        abort(403, 'Invalid verification link.');
+    }
+
+    $intended = $request->query('intended') ?: session()->pull('url.intended', \App\Support\Landing::url($request));
+    session()->forget('club.context');
+
+    // Log the user in and set the 2FA session flag so all middleware passes.
+    if (! auth()->check()) {
+        \Illuminate\Support\Facades\Auth::login($user);
+        $request->session()->regenerate();
+        $request->session()->put('two_factor.verified', true);
+    }
+
+    if ($user->hasVerifiedEmail()) {
+        return redirect($intended)->with('success', 'Your email is already verified.');
+    }
+
+    $user->markEmailAsVerified();
+
+    // Redirect to the verify-email page with verified=true so the success
+    // message shows in the same auth card the user is familiar with.
+    // The page will auto-redirect them to the app after 3 seconds.
+    return redirect()->route('verification.notice')
+        ->with('verified', true)
+        ->with('verified_intended', $intended);
+})->middleware(['signed'])->name('verification.verify');
+
+Route::post('/email/verification-notification', function (\Illuminate\Http\Request $request) {
+    $request->user()->sendEmailVerificationNotification();
+
+    return back()->with('resent', true);
+})->middleware(['auth', 'throttle:verification'])->name('verification.send');
+
+// Public resend — for users who are not yet logged in (e.g. walk-in registrations).
+Route::post('/email/resend-verification', function (\Illuminate\Http\Request $request) {
+    $request->validate(['email' => 'required|email']);
+    $user = \App\Members\Models\User::where('email', $request->email)->first();
+    if ($user && ! $user->hasVerifiedEmail()) {
+        $user->sendEmailVerificationNotification();
+    }
+
+    // Always return the same message to avoid email enumeration.
+    return redirect()->route('login')
+        ->with('info', 'If that email exists and is unverified, a new verification link has been sent.');
+})->middleware('throttle:verification')->name('verification.resend.public');

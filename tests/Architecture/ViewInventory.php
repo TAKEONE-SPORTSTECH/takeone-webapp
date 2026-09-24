@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\View;
  * Enumerates what the application's view layer actually answers to.
  *
  * This exists because a moved Blade file does not fail loudly. Both
- * App\Support\ClubView::pick() and PersonalEventController::packageView()
+ * App\Clubs\Support\ClubView::pick() and PersonalEventController::packageView()
  * choose a view with View::exists() and fall back to a desktop/index file
  * when the preferred one is missing — so a bad move renders the WRONG
  * SCREEN rather than throwing. Nothing in a normal smoke test catches that.
  *
- * @see \App\Support\ClubView
+ * @see \App\Clubs\Support\ClubView
  */
 class ViewInventory
 {
@@ -51,7 +51,7 @@ class ViewInventory
     {
         request()->attributes->set('is_mobile', $isMobile);
 
-        return \App\Support\ClubView::pick($section, $module);
+        return \App\Clubs\Support\ClubView::pick($section, $module);
     }
 
     /** Every view name reachable from a blade file on disk. */

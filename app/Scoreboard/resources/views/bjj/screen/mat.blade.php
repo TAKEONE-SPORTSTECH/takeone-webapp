@@ -97,7 +97,7 @@
               background:repeating-linear-gradient(135deg,#b45309,#b45309 28px,#92400e 28px,#92400e 56px);
               color:#fff; font-weight:800; font-size:26px; letter-spacing:.34em;
               display:flex; align-items:center; justify-content:center; text-transform:uppercase;">
-    {{ __('events.rehearsal_running') }}
+    {{ __('events::events.rehearsal_running') }}
   </div>
 
   {{-- ── Waiting ────────────────────────────────────────────────────────────

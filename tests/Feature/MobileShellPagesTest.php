@@ -124,7 +124,7 @@ class MobileShellPagesTest extends TestCase
 
         $this->actingAs($user)->mobileGet('/me/affiliations')->assertSee(__('nav.affiliations'), false);
         $this->actingAs($user)->mobileGet('/me/people')->assertSee(__('personal.find_people'), false);
-        $this->actingAs($user)->mobileGet('/family/members')->assertSee(__('family.title'), false);
+        $this->actingAs($user)->mobileGet('/family/members')->assertSee(__('members::family.title'), false);
     }
 
     /** Grab the markup of the header's page-action slot. */
@@ -199,7 +199,7 @@ class MobileShellPagesTest extends TestCase
 
         $this->actingAs($user)->mobileGet('/explore')
             ->assertOk()
-            ->assertSee(__('explore.explore'), false);
+            ->assertSee(__('clubs::explore.explore'), false);
     }
 
     public function test_mobile_explore_no_longer_has_the_dead_end_back_button(): void

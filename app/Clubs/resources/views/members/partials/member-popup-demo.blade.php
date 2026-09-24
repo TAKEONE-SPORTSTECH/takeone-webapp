@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 @section('club-admin-content')
 
@@ -25,6 +25,6 @@
     <p class="text-gray-500 text-sm p-6">No members found in this club.</p>
 @endif
 
-@include('admin.club.members.partials.member-popup')
+@include('clubs::admin.club.members.partials.member-popup')
 
 @endsection

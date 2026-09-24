@@ -8,7 +8,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <label class="form-label">{{ __('admin.partials_form_fields_category') }} <span class="text-red-500">*</span></label>
-            <x-select-menu model="formData.category" name="category"
+            <x-fields.select model="formData.category" name="category"
                 :options="[
                     ['value' => 'Announcement', 'label' => __('admin.partials_form_fields_category_announcement')],
                     ['value' => 'Highlight', 'label' => __('admin.partials_form_fields_category_highlight')],
@@ -23,7 +23,7 @@
         </div>
         <div>
             <label class="form-label">{{ __('admin.partials_form_fields_status') }}</label>
-            <x-select-menu model="formData.status" name="status"
+            <x-fields.select model="formData.status" name="status"
                 :options="[
                     ['value' => 'published', 'label' => __('admin.partials_form_fields_status_published')],
                     ['value' => 'draft', 'label' => __('admin.partials_form_fields_status_draft')],

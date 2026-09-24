@@ -32,6 +32,14 @@ class ModuleServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(ModuleRegistry::class);
+
+        // Config is merged at REGISTER time, not boot: other providers' boot()
+        // (the event-type registry, for one) read these values, and with no
+        // config cache in play — the test suite — a boot-time merge would land
+        // after they had already asked.
+        foreach ($this->app->make(ModuleRegistry::class)->all() as $module) {
+            $this->bindConfig($module->key(), dirname((new ReflectionClass($module))->getFileName()));
+        }
     }
 
     public function boot(): void
@@ -40,6 +48,7 @@ class ModuleServiceProvider extends ServiceProvider
             $path = dirname((new ReflectionClass($module))->getFileName());
 
             $this->bindResources($module->key(), $path);
+            $this->bindMigrations($path);
             $this->registerRoutes($path);
             $this->registerCommands($path);
         }
@@ -137,6 +146,33 @@ class ModuleServiceProvider extends ServiceProvider
         $class = 'App\\'.str_replace(DIRECTORY_SEPARATOR, '\\', $relative);
 
         return class_exists($class) ? $class : null;
+    }
+
+    /**
+     * A module's own config, so a module that wants every file inside its
+     * folder can have that. Both optional:
+     *
+     *   <module>/config.php         → config('<key>.…')
+     *   <module>/config/<name>.php  → config('<name>.…'), one key per file,
+     *                                 exactly as if it sat in config/
+     */
+    private function bindConfig(string $key, string $path): void
+    {
+        if (is_file($config = $path.'/config.php')) {
+            $this->mergeConfigFrom($config, $key);
+        }
+
+        foreach (glob($path.'/config/*.php') ?: [] as $file) {
+            $this->mergeConfigFrom($file, basename($file, '.php'));
+        }
+    }
+
+    /** A module's own migrations: `<module>/database/migrations/`. */
+    private function bindMigrations(string $path): void
+    {
+        if (is_dir($migrations = $path.'/database/migrations')) {
+            $this->loadMigrationsFrom($migrations);
+        }
     }
 
     /** Bind a folder's views and translations under the given namespace. */

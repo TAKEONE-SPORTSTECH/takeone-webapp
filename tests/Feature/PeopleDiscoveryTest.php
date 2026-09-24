@@ -200,7 +200,7 @@ class PeopleDiscoveryTest extends TestCase
         $this->joinClub($me, $club);
         $this->joinClub($mate, $club);
 
-        $suggestions = app(\App\Services\PeopleRecommendationService::class)->suggest($me);
+        $suggestions = app(\App\Members\Support\PeopleRecommendationService::class)->suggest($me);
         $found = collect($suggestions)->firstWhere('uuid', $mate->uuid);
 
         $this->assertNotNull($found, 'club-mate should be suggested');
@@ -222,7 +222,7 @@ class PeopleDiscoveryTest extends TestCase
         $me->following()->attach($followed->id);
         UserBlock::create(['blocker_id' => $me->id, 'blocked_id' => $blocked->id]);
 
-        $ids = collect(app(\App\Services\PeopleRecommendationService::class)->suggest($me))->pluck('uuid');
+        $ids = collect(app(\App\Members\Support\PeopleRecommendationService::class)->suggest($me))->pluck('uuid');
 
         $this->assertFalse($ids->contains($me->uuid));
         $this->assertFalse($ids->contains($followed->uuid));
@@ -237,7 +237,7 @@ class PeopleDiscoveryTest extends TestCase
         $me = $this->createUser(); // no clubs, no follows
         $other = $this->createUser(['full_name' => 'Somebody Else']);
 
-        $suggestions = app(\App\Services\PeopleRecommendationService::class)->suggest($me);
+        $suggestions = app(\App\Members\Support\PeopleRecommendationService::class)->suggest($me);
 
         $this->assertFalse(collect($suggestions)->pluck('uuid')->contains($other->uuid));
     }

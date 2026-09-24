@@ -2,6 +2,8 @@
 
 namespace App\Members\Models;
 
+use App\Support\Modules\ModuleRegistry;
+use App\Support\Modules\Surfaces\ContributesMessengerThreads;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,6 +30,20 @@ class Conversation extends Model
     public function latestMessage(): HasOne
     {
         return $this->hasOne(Message::class)->latestOfMany();
+    }
+
+    /**
+     * The module that owns this thread, when it is not a 1:1 chat — see
+     * ContributesMessengerThreads. Null for every direct conversation.
+     */
+    public function threadModule(): ?ContributesMessengerThreads
+    {
+        if ($this->type === 'direct' || $this->type === null) {
+            return null;
+        }
+
+        return app(ModuleRegistry::class)->contributingTo(ContributesMessengerThreads::class)
+            ->first(fn (ContributesMessengerThreads $m) => in_array($this->type, $m->messengerThreadTypes(), true));
     }
 
     /** Find (or create) the single 1:1 conversation between two users. */

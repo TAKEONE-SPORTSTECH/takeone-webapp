@@ -39,8 +39,8 @@ A comprehensive, multi-stage tabbed modal for creating and editing clubs in the 
 #### Tab 3: Location
 **File:** `resources/views/components/club-modal/tabs/location.blade.php`
 - Country (using existing `x-nationality-dropdown`)
-- Timezone (using existing `x-timezone-dropdown`, filtered by country)
-- Currency (using existing `x-currency-dropdown`, default from country)
+- Timezone (using existing `x-fields.timezone`, filtered by country)
+- Currency (using existing `x-fields.currency`, default from country)
 - Interactive Map with draggable marker (Leaflet.js)
 - Latitude/Longitude inputs (two-way binding with map)
 - Google Maps Link parser (extracts coordinates)
@@ -50,7 +50,7 @@ A comprehensive, multi-stage tabbed modal for creating and editing clubs in the 
 #### Tab 4: Contact Information
 **File:** `resources/views/components/club-modal/tabs/contact.blade.php`
 - Email toggle (use owner's or custom)
-- Phone toggle (use owner's or custom, with existing `x-country-code-dropdown`)
+- Phone toggle (use owner's or custom, with existing `x-fields.phone-code`)
 - Owner contact info display (read-only when using owner's)
 
 #### Tab 5: Finance & Settings
@@ -132,9 +132,9 @@ A comprehensive, multi-stage tabbed modal for creating and editing clubs in the 
 ### Component Reuse
 - ✅ `x-takeone-cropper` - Image cropping
 - ✅ `x-nationality-dropdown` - Country selection
-- ✅ `x-currency-dropdown` - Currency selection
-- ✅ `x-timezone-dropdown` - Timezone selection
-- ✅ `x-country-code-dropdown` - Phone country code
+- ✅ `x-fields.currency` - Currency selection
+- ✅ `x-fields.timezone` - Timezone selection
+- ✅ `x-fields.phone-code` - Phone country code
 
 ### External Libraries
 - ✅ **Leaflet.js** (v1.9.4) - Interactive maps

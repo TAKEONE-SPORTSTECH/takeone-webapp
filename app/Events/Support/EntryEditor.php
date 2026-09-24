@@ -128,8 +128,8 @@ class EntryEditor
             return [
                 'may_edit' => false,
                 'role' => 'none',
-                'window' => ['open' => false, 'reason' => __('events.entry_edit_not_yours')],
-                'fields' => $this->allLocked(__('events.entry_edit_not_yours')),
+                'window' => ['open' => false, 'reason' => __('events::events.entry_edit_not_yours')],
+                'fields' => $this->allLocked(__('events::events.entry_edit_not_yours')),
             ];
         }
 
@@ -182,7 +182,7 @@ class EntryEditor
             foreach (self::CONTACT_FIELDS as $field) {
                 $fields[$field] = [
                     'editable' => false,
-                    'reason' => __('events.entry_edit_identity_theirs', [
+                    'reason' => __('events::events.entry_edit_identity_theirs', [
                         'name' => $registration->user?->full_name ?: $registration->user?->name ?: '',
                     ]),
                 ];
@@ -200,7 +200,7 @@ class EntryEditor
             foreach (['birthdate', 'gender', 'nationality'] as $field) {
                 $fields[$field] = [
                     'editable' => false,
-                    'reason' => __('events.entry_edit_identity_theirs', [
+                    'reason' => __('events::events.entry_edit_identity_theirs', [
                         'name' => $registration->user?->full_name ?: $registration->user?->name ?: '',
                     ]),
                 ];
@@ -259,15 +259,15 @@ class EntryEditor
         }
 
         if ($event->status === 'cancelled') {
-            return ['open' => false, 'reason' => __('events.entry_edit_event_cancelled')];
+            return ['open' => false, 'reason' => __('events::events.entry_edit_event_cancelled')];
         }
 
         if ($event->hasEnded()) {
-            return ['open' => false, 'reason' => __('events.entry_edit_event_over')];
+            return ['open' => false, 'reason' => __('events::events.entry_edit_event_over')];
         }
 
         if ($event->hasStarted() || $event->isOverdueToStart()) {
-            return ['open' => false, 'reason' => __('events.entry_edit_event_started')];
+            return ['open' => false, 'reason' => __('events::events.entry_edit_event_started')];
         }
 
         return ['open' => true, 'reason' => null];
@@ -299,13 +299,13 @@ class EntryEditor
         // Scoped, always: an entry id from another competition must not be
         // writable through this competition's URL.
         if ((int) $registration->event_id !== (int) $event->id) {
-            return ['ok' => false, 'message' => __('events.entry_edit_not_found')];
+            return ['ok' => false, 'message' => __('events::events.entry_edit_not_found')];
         }
 
         $permissions = $this->permissions($event, $registration, $actor);
 
         if (! $permissions['may_edit']) {
-            return ['ok' => false, 'message' => $permissions['window']['reason'] ?? __('events.entry_edit_not_yours')];
+            return ['ok' => false, 'message' => $permissions['window']['reason'] ?? __('events::events.entry_edit_not_yours')];
         }
 
         // Refuse a field this actor may not touch, rather than dropping it
@@ -320,7 +320,7 @@ class EntryEditor
                 return [
                     'ok' => false,
                     'field' => $field,
-                    'message' => $permissions['fields'][$field]['reason'] ?? __('events.entry_edit_not_yours'),
+                    'message' => $permissions['fields'][$field]['reason'] ?? __('events::events.entry_edit_not_yours'),
                 ];
             }
         }
@@ -329,7 +329,7 @@ class EntryEditor
         $athlete = $registration->user;
 
         if (! $athlete) {
-            return ['ok' => false, 'message' => __('events.entry_edit_not_found')];
+            return ['ok' => false, 'message' => __('events::events.entry_edit_not_found')];
         }
 
         $changed = [];
@@ -535,18 +535,18 @@ class EntryEditor
             // door's own sentence so the two doors say the same thing, and so
             // that neither confirms an account exists.
             if ($e->getMessage() === 'email_taken') {
-                return ['ok' => false, 'field' => 'email', 'message' => __('events.public_enrol_sign_in')];
+                return ['ok' => false, 'field' => 'email', 'message' => __('events::events.public_enrol_sign_in')];
             }
 
             if ($e->getMessage() === 'contact') {
-                return ['ok' => false, 'field' => 'email', 'message' => __('events.entry_edit_contact_needed')];
+                return ['ok' => false, 'field' => 'email', 'message' => __('events::events.entry_edit_contact_needed')];
             }
 
             if ($e->getMessage() !== 'photo') {
                 throw $e;
             }
 
-            return ['ok' => false, 'field' => 'photo', 'message' => __('events.entry_edit_photo_rejected')];
+            return ['ok' => false, 'field' => 'photo', 'message' => __('events::events.entry_edit_photo_rejected')];
         }
 
         // Only once the new one is safely stored, and only if it moved
@@ -561,7 +561,7 @@ class EntryEditor
         }
 
         if (! $changed) {
-            return ['ok' => true, 'message' => __('events.entry_edit_nothing'), 'changed' => [],
+            return ['ok' => true, 'message' => __('events::events.entry_edit_nothing'), 'changed' => [],
                     'entry' => $this->present($event, $registration->fresh(), $actor)];
         }
 
@@ -574,8 +574,8 @@ class EntryEditor
         return [
             'ok' => true,
             'message' => $reweigh
-                ? __('events.entry_edit_saved_reweigh')
-                : __('events.entry_edit_saved'),
+                ? __('events::events.entry_edit_saved_reweigh')
+                : __('events::events.entry_edit_saved'),
             'changed' => array_values(array_unique($changed)),
             'division_changed' => $divisionChanged,
             'reweigh' => $reweigh,

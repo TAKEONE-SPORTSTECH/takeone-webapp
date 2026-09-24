@@ -84,7 +84,7 @@
         'show_board' => __('scoreboard::bjj_messages.ctl_show_board'),
         'show_intro' => __('scoreboard::bjj_messages.ctl_show_intro'),
         'resynced' => __('scoreboard::bjj_messages.ctl_resynced'),
-        'sound_none' => __('events.screen_audio_none'),
+        'sound_none' => __('events::events.screen_audio_none'),
         'sound_unavailable' => __('scoreboard::bjj_messages.ctl_sound_unavailable'),
         'failed' => __('scoreboard::bjj_messages.ctl_failed'),
         'no_queue' => __('scoreboard::bjj_messages.ctl_no_queue'),
@@ -1947,7 +1947,7 @@
     if (! band) {
       band = document.createElement('div');
       band.id = 'rehearsalBand';
-      band.textContent = @json(__('events.rehearsal_running'));
+      band.textContent = @json(__('events::events.rehearsal_running'));
       band.style.cssText = 'background:repeating-linear-gradient(135deg,#b45309,#b45309 16px,#92400e 16px,#92400e 32px);'
         + 'color:#fff; font-weight:800; font-size:12px; letter-spacing:.28em; text-transform:uppercase;'
         + 'text-align:center; padding:7px 10px;';

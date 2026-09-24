@@ -88,7 +88,7 @@
 
                     <!-- Tab 1: Basic Info -->
                     <div x-show="currentTab === 'basic'" x-cloak>
-                        <x-lang-toggle class="mb-4" />
+                        <x-fields.language-toggle class="mb-4" />
                         <!-- Package Image -->
                         <div class="card border-0 shadow-sm mb-4 overflow-hidden">
                             <div class="card-body p-4 bg-gradient-to-br from-primary/5 to-transparent">
@@ -176,7 +176,7 @@
                                     </div>
                                     <div>
                                         <label for="packageScheduleType" class="form-label font-medium">{{ __('admin.packages_partials_modal_schedule_type') }}</label>
-                                        <x-select-menu name="schedule_type" :value="old('schedule_type', 'fixed')"
+                                        <x-fields.select name="schedule_type" :value="old('schedule_type', 'fixed')"
                                             :options="[
                                                 ['value' => 'fixed', 'label' => __('admin.packages_partials_modal_schedule_type_fixed')],
                                                 ['value' => 'flexible', 'label' => __('admin.packages_partials_modal_schedule_type_flexible')],
@@ -259,7 +259,7 @@
                                 </div>
                                 <div class="rounded-lg border border-border p-4 mb-4 mt-4 bg-muted/10">
                                     <div class="mb-4">
-                                        <x-schedule-time-picker id="packageSchedule" :required="false" />
+                                        <x-fields.weekly-schedule id="packageSchedule" :required="false" />
                                     </div>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                                         <div>

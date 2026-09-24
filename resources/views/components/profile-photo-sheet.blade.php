@@ -93,7 +93,7 @@
             if (! photo || this.busy) return;
             if (window.confirmAction && ! await window.confirmAction({
                 title: @js(__('shared.profile_modal_fields_remove')),
-                message: @js(__('member.remove_photo_confirm')),
+                message: @js(__('members::member.remove_photo_confirm')),
                 type: 'danger',
                 confirmText: @js(__('shared.profile_modal_fields_remove')),
             })) return;
@@ -136,7 +136,7 @@
             {{-- Header --}}
             <div class="relative flex items-center justify-between px-4 pt-4 pb-2 text-white" @click.stop>
                 <h2 class="text-base font-bold">
-                    {{ __('member.your_pictures') }}
+                    {{ __('members::member.your_pictures') }}
                     <span class="text-white/50 font-medium text-sm" x-show="photos.length">
                         <span x-text="i + 1"></span>/<span x-text="photos.length"></span>
                     </span>
@@ -173,7 +173,7 @@
             <div class="relative flex-shrink-0 px-6 flex items-center justify-center gap-5 text-sm font-semibold" @click.stop>
                 <button type="button" x-show="current && ! current.is_avatar" @click="makeAvatar()" :disabled="busy"
                         class="text-white/85 hover:text-white disabled:opacity-50 transition-colors">
-                    <i class="bi bi-person-badge me-1"></i>{{ __('member.set_as_avatar') }}
+                    <i class="bi bi-person-badge me-1"></i>{{ __('members::member.set_as_avatar') }}
                 </button>
                 <button type="button" x-show="current" @click="remove()" :disabled="busy"
                         class="text-white/70 hover:text-red-300 disabled:opacity-50 transition-colors">
@@ -198,7 +198,7 @@
 
                     <button type="button" @click="uploadOpen = true"
                             class="m-press w-14 aspect-[3/4] rounded-xl border-2 border-dashed border-white/40 text-white grid place-items-center flex-shrink-0 active:scale-95 transition-transform"
-                            aria-label="{{ __('member.add_new_picture') }}">
+                            aria-label="{{ __('members::member.add_new_picture') }}">
                         <i class="bi bi-plus-lg text-xl"></i>
                     </button>
                 </div>
@@ -226,8 +226,8 @@
                             <i class="bi bi-camera-fill text-xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black leading-tight">{{ __('member.add_new_picture') }}</h3>
-                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.your_pictures') }}</p>
+                            <h3 class="text-lg font-black leading-tight">{{ __('members::member.add_new_picture') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.your_pictures') }}</p>
                         </div>
                         <button type="button" @click="uploadOpen = false" aria-label="{{ __('shared.close') }}"
                                 class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"><i class="bi bi-x-lg"></i></button>
@@ -254,7 +254,7 @@
                             sheetClass="rounded-t-3xl shadow-2xl bg-background"
                             :showControls="false"
                             :showCancel="false"
-                            saveText="{{ __('member.save') }}"
+                            saveText="{{ __('members::member.save') }}"
                             :uploadAsIs="true"
                             uploadAsIsText="{{ __('shared.profile_modal_fields_change_photo') }}" />
                     @endif

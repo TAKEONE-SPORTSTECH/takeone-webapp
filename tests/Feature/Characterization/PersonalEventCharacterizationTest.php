@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Event as EventFacade;
 use Tests\Feature\Contracts\ContractTestCase;
 
 /**
- * CHARACTERIZATION tests for App\Http\Controllers\PersonalEventController.
+ * CHARACTERIZATION tests for PersonalEventController (app/Events/Controllers).
  *
  * 3,535 lines, 53 methods, effectively no direct coverage. These tests pin
  * CURRENT behaviour so the logic can be moved into the event packages
@@ -41,7 +41,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         /* These scenarios are all TAEKWONDO CHAMPIONSHIPS, and that package
            opted into the branded event surface on 2026-09-08 — which serves the
            MOBILE blade at every width and drops the platform's chrome
-           (App\Http\Middleware\BrandEventPage). This file pins what the
+           (App\Events\Middleware\BrandEventPage). This file pins what the
            CONTROLLER does, so the dressing is switched off here and asserted
            where it belongs, in tests/Feature/Events/BrandedEventSurfaceTest.php.
            Without this the device-split assertions below would be measuring the
@@ -88,10 +88,10 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser] = $this->scenario();
 
         $this->asDesktop($organiser)->get(route('me.events'))
-            ->assertOk()->assertViewIs('personal.desktop.events');
+            ->assertOk()->assertViewIs('events::personal.desktop.events');
 
         $this->asMobile($organiser)->get(route('me.events'))
-            ->assertOk()->assertViewIs('personal.mobile.events');
+            ->assertOk()->assertViewIs('events::personal.mobile.events');
     }
 
     public function test_show_renders_device_split_views_for_the_organiser(): void
@@ -99,12 +99,12 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, , $event] = $this->scenario();
 
         $desktop = $this->asDesktop($organiser)->get(route('me.events.show', $event->uuid));
-        $desktop->assertOk()->assertViewIs('personal.desktop.event-show');
+        $desktop->assertOk()->assertViewIs('events::personal.desktop.event-show');
         $desktop->assertViewHas('canManage', true);
         $desktop->assertViewHas('canOfficiate', true);
 
         $this->asMobile($organiser)->get(route('me.events.show', $event->uuid))
-            ->assertOk()->assertViewIs('personal.mobile.event-show');
+            ->assertOk()->assertViewIs('events::personal.mobile.event-show');
     }
 
     public function test_show_view_data_shape_for_the_organiser(): void
@@ -139,7 +139,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
 
         $response = $this->asDesktop($member)->get(route('me.events.show', $event->uuid));
 
-        $response->assertOk()->assertViewIs('personal.desktop.event-show');
+        $response->assertOk()->assertViewIs('events::personal.desktop.event-show');
         $response->assertViewHas('canManage', false);
         $response->assertViewHas('canOfficiate', false);
         // Actions and finance are the organiser's alone.
@@ -182,7 +182,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, , $event] = $this->scenario();
 
         $desktop = $this->asDesktop($organiser)->get(route('me.events.manage', $event->uuid));
-        $desktop->assertOk()->assertViewIs('personal.desktop.event-manage');
+        $desktop->assertOk()->assertViewIs('events::personal.desktop.event-manage');
         $desktop->assertViewHas('canManage', true);
         $desktop->assertViewHas('canWeigh', true);
         $desktop->assertViewHas('canPay', true);
@@ -193,7 +193,7 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         $this->assertSame(0, $counts['officials']);
 
         $this->asMobile($organiser)->get(route('me.events.manage', $event->uuid))
-            ->assertOk()->assertViewIs('personal.mobile.event-manage');
+            ->assertOk()->assertViewIs('events::personal.mobile.event-manage');
     }
 
     public function test_manage_is_403_for_a_member_who_can_see_the_event_but_not_run_it(): void
@@ -278,11 +278,11 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         $this->filmFirstBout($event);
 
         $desktop = $this->asDesktop($organiser)->get(route('me.events.gallery', $event->uuid));
-        $desktop->assertOk()->assertViewIs('personal.desktop.event-gallery');
+        $desktop->assertOk()->assertViewIs('events::personal.desktop.event-gallery');
         $this->assertSame(1, $desktop->viewData('clipCount'));
 
         $this->asMobile($organiser)->get(route('me.events.gallery', $event->uuid))
-            ->assertOk()->assertViewIs('personal.mobile.event-gallery');
+            ->assertOk()->assertViewIs('events::personal.mobile.event-gallery');
     }
 
     public function test_bout_renders_device_split_views(): void
@@ -293,13 +293,13 @@ class PersonalEventCharacterizationTest extends ContractTestCase
 
         $desktop = $this->asDesktop($organiser)
             ->get(route('me.events.bout', ['event' => $event->uuid, 'matchNo' => $match->match_no]));
-        $desktop->assertOk()->assertViewIs('personal.desktop.event-bout');
+        $desktop->assertOk()->assertViewIs('events::personal.desktop.event-bout');
         $desktop->assertViewHas('canManage', true);
         $desktop->assertViewHas('officials', []);
 
         $this->asMobile($organiser)
             ->get(route('me.events.bout', ['event' => $event->uuid, 'matchNo' => $match->match_no]))
-            ->assertOk()->assertViewIs('personal.mobile.event-bout');
+            ->assertOk()->assertViewIs('events::personal.mobile.event-bout');
     }
 
     public function test_bout_number_that_does_not_exist_is_a_404_for_json_and_a_reroute_for_the_browser(): void
@@ -1072,9 +1072,9 @@ class PersonalEventCharacterizationTest extends ContractTestCase
         [$organiser, , $event] = $this->scenario();
 
         foreach ([
-            'me.events.show' => 'personal.mobile.event-show',
-            'me.events.manage' => 'personal.mobile.event-manage',
-            'me.events.gallery' => 'personal.mobile.event-gallery',
+            'me.events.show' => 'events::personal.mobile.event-show',
+            'me.events.manage' => 'events::personal.mobile.event-manage',
+            'me.events.gallery' => 'events::personal.mobile.event-gallery',
         ] as $name => $view) {
             $this->asDesktop($organiser)->get(route($name, $event->uuid))
                 ->assertOk()

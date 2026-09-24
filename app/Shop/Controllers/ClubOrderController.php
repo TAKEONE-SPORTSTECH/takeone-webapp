@@ -5,9 +5,9 @@ namespace App\Shop\Controllers;
 use App\Http\Controllers\Controller;
 use App\Shop\Models\Order;
 use App\Clubs\Models\Tenant;
-use App\Services\FinancialService;
-use App\Support\ClubView;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Support\FinancialService;
+use App\Clubs\Support\ClubView;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -116,7 +116,7 @@ class ClubOrderController extends Controller
         } elseif (! $isPaid && $order->income_transaction_id) {
             \App\Clubs\Models\ClubTransaction::where('id', $order->income_transaction_id)->delete();
             $order->update(['income_transaction_id' => null]);
-            \App\Support\ClubCache::flushFinancials($club->id);
+            \App\Clubs\Support\ClubCache::flushFinancials($club->id);
         }
     }
 }

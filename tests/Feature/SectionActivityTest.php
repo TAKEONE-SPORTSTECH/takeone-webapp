@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Challenges\Models\Duel;
-use App\Support\SectionActivity;
+use App\Members\Support\SectionActivity;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 

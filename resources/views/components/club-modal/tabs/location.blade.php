@@ -11,7 +11,7 @@
     <!-- Country, Timezone, Currency Row -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
-            <x-country-dropdown
+            <x-fields.country
                 name="country"
                 id="country"
                 label="Country"
@@ -20,7 +20,7 @@
                 :error="null" />
         </div>
         <div>
-            <x-timezone-dropdown
+            <x-fields.timezone
                 name="timezone"
                 id="timezone"
                 :value="$club->timezone ?? old('timezone', 'Asia/Bahrain')"
@@ -28,7 +28,7 @@
                 :error="null" />
         </div>
         <div>
-            <x-currency-dropdown
+            <x-fields.currency
                 name="currency"
                 id="currency"
                 :value="$club->currency ?? old('currency', 'BHD')"
@@ -39,7 +39,7 @@
 
     <!-- Location Map -->
     <div class="mb-4">
-        <x-location-map
+        <x-fields.location-map
             id="clubLoc"
             :lat="$club->gps_lat ?? null"
             :lng="$club->gps_long ?? null"

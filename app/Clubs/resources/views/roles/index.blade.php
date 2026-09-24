@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 @php
     // Token map: role colour name → [accent hex, soft pill classes].

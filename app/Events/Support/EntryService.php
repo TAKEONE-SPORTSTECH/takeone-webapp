@@ -183,23 +183,23 @@ class EntryService
 
         // 1. May the actor act for this athlete at all?
         if (! $runsThisEvent && ! $this->mayEnter($actor, $athlete)) {
-            return $reject('not_yours', __('events.entry_not_your_athlete', ['name' => $name]));
+            return $reject('not_yours', __('events::events.entry_not_your_athlete', ['name' => $name]));
         }
 
         // 2. Does the event's scope reach them? (An athlete from another club
         //    can only be entered into an event open to them.)
         if (! $runsThisEvent && ! $this->isEligible($event, $athlete)) {
-            return $reject('out_of_scope', __('events.entry_out_of_scope', ['name' => $name]));
+            return $reject('out_of_scope', __('events::events.entry_out_of_scope', ['name' => $name]));
         }
 
         // 3. Moderation.
         if ($this->isBanned($event, $athlete->id)) {
-            return $reject('banned', __('events.entry_banned', ['name' => $name]));
+            return $reject('banned', __('events::events.entry_banned', ['name' => $name]));
         }
 
         // 4. Timing.
         if ($event->hasEnded()) {
-            return $reject('ended', __('events.entry_event_ended'));
+            return $reject('ended', __('events::events.entry_event_ended'));
         }
 
         // The division being entered, if the caller named one — and only if it
@@ -210,13 +210,13 @@ class EntryService
             : null;
 
         if ($categoryId && ! $target) {
-            return $reject('no_division', __('events.division_not_found'));
+            return $reject('no_division', __('events::events.division_not_found'));
         }
 
         // A heading is a title in the list, not a division. Refused by name
         // rather than left to fail oddly further down.
         if ($target?->isHeading()) {
-            return $reject('is_heading', __('events.division_is_heading'));
+            return $reject('is_heading', __('events::events.division_is_heading'));
         }
 
         // THEIR entry in the division being entered — or, when no division was
@@ -252,7 +252,7 @@ class EntryService
          * multi-activity entry, and "the entry" is unambiguous.
          */
         if (! $target && $held->count() > 1) {
-            return $reject('choose_division', __('events.entry_choose_division', ['name' => $name]));
+            return $reject('choose_division', __('events::events.entry_choose_division', ['name' => $name]));
         }
 
         // Once the competition is UNDERWAY the entry list is the thing being
@@ -285,17 +285,17 @@ class EntryService
         if (! $runsThisEvent
             && ($event->hasStarted() || $event->isOverdueToStart())
             && ! ($existing && $existing->role === 'participant')) {
-            return $reject('started', __('events.entry_event_started'));
+            return $reject('started', __('events::events.entry_event_started'));
         }
 
         // The window, resolved where the COMPETITION is — see EntryWindow. The
         // day an organiser names runs to its own local midnight, not to UTC's.
         // It is not asked of the organiser themselves: see entriesState().
         if (! $runsThisEvent && EntryWindow::hasNotOpened($event)) {
-            return $reject('not_open', __('events.entry_not_open', ['date' => Cldr::shortDate($event->enrollment_starts_at)]));
+            return $reject('not_open', __('events::events.entry_not_open', ['date' => Cldr::shortDate($event->enrollment_starts_at)]));
         }
         if (! $runsThisEvent && EntryWindow::hasClosed($event)) {
-            return $reject('closed', __('events.entry_closed', ['date' => Cldr::shortDate($event->enrollment_ends_at)]));
+            return $reject('closed', __('events::events.entry_closed', ['date' => Cldr::shortDate($event->enrollment_ends_at)]));
         }
 
         // 5. Capacity — checked per athlete, so a squad fills the last places in
@@ -303,7 +303,7 @@ class EntryService
         if ($event->max_capacity
             && ! ($existing && $existing->role === 'participant')
             && $event->participantRegistrations()->count() >= $event->max_capacity) {
-            return $reject('full', __('events.entry_full'));
+            return $reject('full', __('events::events.entry_full'));
         }
 
         // 6. The owning package's own gate — for a championship this classifies
@@ -327,7 +327,7 @@ class EntryService
         }
 
         if (! $decision->allowed && ! $decision->deferrable) {
-            return $reject($decision->code ?? 'not_eligible', $decision->message ?? __('events.entry_not_eligible', ['name' => $name]));
+            return $reject($decision->code ?? 'not_eligible', $decision->message ?? __('events::events.entry_not_eligible', ['name' => $name]));
         }
 
         $pendingWeighIn = ! $decision->allowed;
@@ -637,9 +637,9 @@ class EntryService
             'can_enter' => ! $banned && $entries['open'] && ($gate->allowed || $gate->deferrable),
             'pending_weigh_in' => ! $banned && $entries['open'] && ! $gate->allowed && $gate->deferrable,
             'reason' => match (true) {
-                $banned => __('events.entry_banned', ['name' => $m->full_name ?? $m->name]),
+                $banned => __('events::events.entry_banned', ['name' => $m->full_name ?? $m->name]),
                 ! $entries['open'] => $entries['note'],
-                $gate->deferrable => __('events.entry_pending_weigh_in'),
+                $gate->deferrable => __('events::events.entry_pending_weigh_in'),
                 default => $gate->message,
             },
         ];
@@ -809,7 +809,7 @@ class EntryService
         $runsThisEvent = $actor && app(EventAccess::class)->canManage($event, $actor);
 
         if ($event->hasEnded()) {
-            return ['open' => false, 'note' => __('events.entry_event_ended')];
+            return ['open' => false, 'note' => __('events::events.entry_event_ended')];
         }
         // Started — or DUE to have started. A competition whose start time is
         // behind it is not taking entries whether or not an organiser has
@@ -822,13 +822,13 @@ class EntryService
          * this stays exactly as it was.
          */
         if (! $runsThisEvent && ($event->hasStarted() || $event->isOverdueToStart())) {
-            return ['open' => false, 'note' => __('events.entry_event_started')];
+            return ['open' => false, 'note' => __('events::events.entry_event_started')];
         }
         if (! $runsThisEvent && EntryWindow::hasNotOpened($event)) {
-            return ['open' => false, 'note' => __('events.entry_not_open', ['date' => Cldr::shortDate($event->enrollment_starts_at)])];
+            return ['open' => false, 'note' => __('events::events.entry_not_open', ['date' => Cldr::shortDate($event->enrollment_starts_at)])];
         }
         if (! $runsThisEvent && EntryWindow::hasClosed($event)) {
-            return ['open' => false, 'note' => __('events.entry_closed', ['date' => Cldr::shortDate($event->enrollment_ends_at)])];
+            return ['open' => false, 'note' => __('events::events.entry_closed', ['date' => Cldr::shortDate($event->enrollment_ends_at)])];
         }
 
         return ['open' => true, 'note' => null];
@@ -941,7 +941,7 @@ class EntryService
             ->get()
             ->map(fn (ClubEventRegistration $r) => [
                 'user_id' => (int) $r->user_id,
-                'name' => $r->user?->full_name ?? $r->user?->name ?? __('events.claim_unknown_athlete'),
+                'name' => $r->user?->full_name ?? $r->user?->name ?? __('events::events.claim_unknown_athlete'),
                 'club' => $r->representingTenant?->club_name,
                 'division' => $r->category?->name,
                 'disowned' => $r->isDisowned(),
@@ -972,10 +972,10 @@ class EntryService
 
         $registration->update(['club_disowned_at' => now()]);
 
-        rescue(fn () => UserNotification::notifyUser($athlete->id, 'event', __('events.claim_disowned_title', [
+        rescue(fn () => UserNotification::notifyUser($athlete->id, 'event', __('events::events.claim_disowned_title', [
             'club' => $registration->representingTenant?->club_name ?? '',
         ]), [
-            'body' => __('events.claim_disowned_body', ['title' => $event->title]),
+            'body' => __('events::events.claim_disowned_body', ['title' => $event->title]),
             'icon' => 'bi-flag',
             'action_url' => route('me.events.show', $event->uuid),
             'actor_id' => $actor->id,
@@ -1000,10 +1000,10 @@ class EntryService
         $name = $athlete->full_name ?? $athlete->name ?? 'A member';
 
         foreach (array_diff($recipients, [$athlete->id]) as $userId) {
-            rescue(fn () => UserNotification::notifyUser($userId, 'event', __('events.claim_notify_title', [
+            rescue(fn () => UserNotification::notifyUser($userId, 'event', __('events::events.claim_notify_title', [
                 'name' => $name,
             ]), [
-                'body' => __('events.claim_notify_body', ['title' => $event->title]),
+                'body' => __('events::events.claim_notify_body', ['title' => $event->title]),
                 'icon' => 'bi-flag',
                 'action_url' => route('me.events.show', $event->uuid),
                 'actor_id' => $athlete->id,
@@ -1153,11 +1153,11 @@ class EntryService
         ];
 
         if ($event->hasStarted() || $event->isOverdueToStart()) {
-            return $reject('started', __('events.entry_remove_started', ['name' => $name]));
+            return $reject('started', __('events::events.entry_remove_started', ['name' => $name]));
         }
 
         if ($this->hasFought($event, $registration)) {
-            return $reject('has_result', __('events.entry_remove_has_result', ['name' => $name]));
+            return $reject('has_result', __('events::events.entry_remove_has_result', ['name' => $name]));
         }
 
         // Held for after the delete: the division decides which draw has to be
@@ -1239,10 +1239,10 @@ class EntryService
     /** Tell somebody their entry was withdrawn, and by whose club. */
     private function notifyRemoved(ClubEvent $event, int $athleteId, User $actor): void
     {
-        rescue(fn () => UserNotification::notifyUser($athleteId, 'event', __('events.entry_removed_notify_title', [
+        rescue(fn () => UserNotification::notifyUser($athleteId, 'event', __('events::events.entry_removed_notify_title', [
             'title' => $event->title,
         ]), [
-            'body' => __('events.entry_removed_notify_body', ['club' => $event->tenant?->club_name ?? '']),
+            'body' => __('events::events.entry_removed_notify_body', ['club' => $event->tenant?->club_name ?? '']),
             'icon' => 'bi-person-dash',
             'action_url' => route('me.events.show', $event->uuid),
             'actor_id' => $actor->id,
@@ -1264,18 +1264,18 @@ class EntryService
         app(EntryMail::class)->send(
             $event,
             $athlete,
-            \App\Mail\EventEntryEmail::ENTERED,
+            \App\Events\Mail\EventEntryEmail::ENTERED,
             $division,
             \App\Events\Models\ClubEventRegistration::where('event_id', $event->id)
                 ->where('user_id', $athlete->id)->first(),
         );
 
-        rescue(fn () => UserNotification::notifyUser($athlete->id, 'event', __('events.entry_notify_title', [
+        rescue(fn () => UserNotification::notifyUser($athlete->id, 'event', __('events::events.entry_notify_title', [
             'title' => $event->title,
         ]), [
             'body' => $division
-                ? __('events.entry_notify_body_division', ['club' => $event->tenant?->club_name ?? '', 'division' => $division])
-                : __('events.entry_notify_body', ['club' => $event->tenant?->club_name ?? '']),
+                ? __('events::events.entry_notify_body_division', ['club' => $event->tenant?->club_name ?? '', 'division' => $division])
+                : __('events::events.entry_notify_body', ['club' => $event->tenant?->club_name ?? '']),
             'icon' => 'bi-person-check',
             'action_url' => route('me.events.show', $event->uuid),
             'actor_id' => $actor->id,

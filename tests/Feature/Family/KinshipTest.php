@@ -6,7 +6,7 @@ use App\Members\Models\Person;
 use App\Members\Models\PersonParentLink;
 use App\Members\Models\PersonUnion;
 use App\Members\Models\User;
-use App\Services\KinshipService;
+use App\Members\Support\KinshipService;
 use Tests\TestCase;
 
 class KinshipTest extends TestCase

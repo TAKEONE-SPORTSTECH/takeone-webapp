@@ -14,7 +14,7 @@
         if ($diff->m > 0) $parts[] = $diff->m . ' month' . ($diff->m > 1 ? 's' : '');
         if ($diff->d > 0) $parts[] = $diff->d . ' day' . ($diff->d > 1 ? 's' : '');
 
-        return implode(' ', $parts) ?: __('member.partials_affiliations_enhanced_same_day');
+        return implode(' ', $parts) ?: __('members::member.partials_affiliations_enhanced_same_day');
     }
     }
 @endphp
@@ -24,21 +24,21 @@
         <!-- Header with Filter -->
         <div class="flex justify-between items-center mb-4">
             <div>
-                <h5 class="font-bold mb-1"><i class="bi bi-diagram-3 me-2"></i>{{ __('member.partials_affiliations_enhanced_header_title') }}</h5>
-                <p class="text-muted-foreground text-sm mb-0">{{ __('member.partials_affiliations_enhanced_header_subtitle') }}</p>
+                <h5 class="font-bold mb-1"><i class="bi bi-diagram-3 me-2"></i>{{ __('members::member.partials_affiliations_enhanced_header_title') }}</h5>
+                <p class="text-muted-foreground text-sm mb-0">{{ __('members::member.partials_affiliations_enhanced_header_subtitle') }}</p>
             </div>
             <div class="flex gap-2">
                 <select class="form-select form-select-sm" id="skillFilter" style="width: 200px;">
-                    <option value="all">{{ __('member.partials_affiliations_enhanced_filter_all_skills') }}</option>
+                    <option value="all">{{ __('members::member.partials_affiliations_enhanced_filter_all_skills') }}</option>
                     @foreach($allSkills ?? [] as $skill)
                         <option value="{{ $skill }}">{{ $skill }}</option>
                     @endforeach
                 </select>
                 <button class="btn btn-sm btn-outline-secondary" id="resetFilters">
-                    <i class="bi bi-arrow-clockwise"></i> {{ __('member.partials_affiliations_enhanced_reset') }}
+                    <i class="bi bi-arrow-clockwise"></i> {{ __('members::member.partials_affiliations_enhanced_reset') }}
                 </button>
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addAffiliationModal">
-                    <i class="bi bi-plus-circle me-1"></i> {{ __('member.partials_affiliations_enhanced_add_affiliation') }}
+                    <i class="bi bi-plus-circle me-1"></i> {{ __('members::member.partials_affiliations_enhanced_add_affiliation') }}
                 </button>
             </div>
         </div>
@@ -51,7 +51,7 @@
                         <div class="card-body text-center text-white p-3">
                             <i class="bi bi-building text-5xl mb-2"></i>
                             <h3 class="font-bold mb-1">{{ $totalAffiliations }}</h3>
-                            <small class="opacity-75">{{ __('member.partials_affiliations_enhanced_total_clubs') }}</small>
+                            <small class="opacity-75">{{ __('members::member.partials_affiliations_enhanced_total_clubs') }}</small>
                         </div>
                     </div>
                 </div>
@@ -60,7 +60,7 @@
                         <div class="card-body text-center text-white p-3">
                             <i class="bi bi-star-fill text-5xl mb-2"></i>
                             <h3 class="font-bold mb-1">{{ $distinctSkills }}</h3>
-                            <small class="opacity-75">{{ __('member.partials_affiliations_enhanced_unique_skills') }}</small>
+                            <small class="opacity-75">{{ __('members::member.partials_affiliations_enhanced_unique_skills') }}</small>
                         </div>
                     </div>
                 </div>
@@ -69,7 +69,7 @@
                         <div class="card-body text-center text-white p-3">
                             <i class="bi bi-calendar-check text-5xl mb-2"></i>
                             <h3 class="font-bold mb-1">{{ floor($totalMembershipDuration / 12) }}y {{ $totalMembershipDuration % 12 }}m</h3>
-                            <small class="opacity-75">{{ __('member.partials_affiliations_enhanced_total_training') }}</small>
+                            <small class="opacity-75">{{ __('members::member.partials_affiliations_enhanced_total_training') }}</small>
                         </div>
                     </div>
                 </div>
@@ -78,7 +78,7 @@
                         <div class="card-body text-center text-white p-3">
                             <i class="bi bi-people-fill text-5xl mb-2"></i>
                             <h3 class="font-bold mb-1">{{ $totalInstructors ?? 0 }}</h3>
-                            <small class="opacity-75">{{ __('member.partials_affiliations_enhanced_instructors') }}</small>
+                            <small class="opacity-75">{{ __('members::member.partials_affiliations_enhanced_instructors') }}</small>
                         </div>
                     </div>
                 </div>
@@ -134,7 +134,7 @@
                                                         <div class="flex gap-3 flex-wrap">
                                                             @if($affiliation->start_date)
                                                                 <small class="opacity-90" id="affiliation-dates-{{ $affiliation->id }}">
-                                                                    <i class="bi bi-calendar-event me-1"></i>{{ $affiliation->start_date->format('M Y') }} - {{ $isOngoing ? __('member.partials_affiliations_enhanced_present') : ($affiliation->end_date ? $affiliation->end_date->format('M Y') : __('member.partials_affiliations_enhanced_na')) }}
+                                                                    <i class="bi bi-calendar-event me-1"></i>{{ $affiliation->start_date->format('M Y') }} - {{ $isOngoing ? __('members::member.partials_affiliations_enhanced_present') : ($affiliation->end_date ? $affiliation->end_date->format('M Y') : __('members::member.partials_affiliations_enhanced_na')) }}
                                                                 </small>
                                                             @endif
                                                             @if($affiliation->formatted_duration)
@@ -144,14 +144,14 @@
                                                             @endif
                                                             @if($ageAtStart)
                                                                 <small class="opacity-90">
-                                                                    <i class="bi bi-person me-1"></i>{{ __('member.partials_affiliations_enhanced_age') }} {{ $ageAtStart }}{{ $ageAtEnd && $ageAtEnd != $ageAtStart ? ' ' . __('member.partials_affiliations_enhanced_age_to') . " $ageAtEnd" : '' }}
+                                                                    <i class="bi bi-person me-1"></i>{{ __('members::member.partials_affiliations_enhanced_age') }} {{ $ageAtStart }}{{ $ageAtEnd && $ageAtEnd != $ageAtStart ? ' ' . __('members::member.partials_affiliations_enhanced_age_to') . " $ageAtEnd" : '' }}
                                                                 </small>
                                                             @endif
                                                         </div>
                                                     </div>
                                                     @if($isOngoing)
                                                         <span class="badge bg-success">
-                                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ __('member.partials_affiliations_enhanced_active') }}
+                                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ __('members::member.partials_affiliations_enhanced_active') }}
                                                         </span>
                                                     @endif
                                                     <div class="flex gap-1 ms-2">
@@ -196,7 +196,7 @@
                                                 <div class="mb-3">
                                                     <div class="flex justify-between items-center mb-2">
                                                         <h6 class="font-bold mb-0">
-                                                            <i class="bi bi-star-fill me-2 text-warning"></i>{{ __('member.partials_affiliations_enhanced_skills_acquired') }} (<span id="skills-count-{{ $affiliation->id }}">{{ $affiliationSkills->count() }}</span>)
+                                                            <i class="bi bi-star-fill me-2 text-warning"></i>{{ __('members::member.partials_affiliations_enhanced_skills_acquired') }} (<span id="skills-count-{{ $affiliation->id }}">{{ $affiliationSkills->count() }}</span>)
                                                         </h6>
                                                         <button type="button"
                                                                 class="btn btn-sm btn-outline-warning btn-add-skill"
@@ -204,7 +204,7 @@
                                                                 data-member-id="{{ $user->id }}"
                                                                 data-bs-toggle="modal"
                                                                 data-bs-target="#addSkillModal">
-                                                            <i class="bi bi-plus-circle me-1"></i> {{ __('member.partials_affiliations_enhanced_add_skill') }}
+                                                            <i class="bi bi-plus-circle me-1"></i> {{ __('members::member.partials_affiliations_enhanced_add_skill') }}
                                                         </button>
                                                     </div>
                                                     <div class="flex gap-2 flex-wrap" id="skills-list-{{ $affiliation->id }}" style="{{ $affiliationSkills->count() > 0 ? '' : 'display:none;' }}">
@@ -213,10 +213,10 @@
                                                                     $skillBadgeColor = $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary'));
                                                                     $encyclopediaUuid = $skillEncyclopedia[$skill->id] ?? null;
                                                                     $skillBadgeTitle = '<strong>'.e($skill->skill_name).'</strong><br>'
-                                                                        .__('member.partials_affiliations_enhanced_tooltip_proficiency').' '.ucfirst($skill->proficiency_level).'<br>'
-                                                                        .__('member.partials_affiliations_enhanced_tooltip_duration').' '.$skill->formatted_duration.'<br>'
-                                                                        .($skill->instructor ? __('member.partials_affiliations_enhanced_tooltip_instructor').' '.e($skill->instructor->user->full_name ?? __('member.partials_affiliations_enhanced_unknown')).'<br>' : '')
-                                                                        .($skill->start_date ? __('member.partials_affiliations_enhanced_tooltip_started').' '.$skill->start_date->format('M Y') : '')
+                                                                        .__('members::member.partials_affiliations_enhanced_tooltip_proficiency').' '.ucfirst($skill->proficiency_level).'<br>'
+                                                                        .__('members::member.partials_affiliations_enhanced_tooltip_duration').' '.$skill->formatted_duration.'<br>'
+                                                                        .($skill->instructor ? __('members::member.partials_affiliations_enhanced_tooltip_instructor').' '.e($skill->instructor->user->full_name ?? __('members::member.partials_affiliations_enhanced_unknown')).'<br>' : '')
+                                                                        .($skill->start_date ? __('members::member.partials_affiliations_enhanced_tooltip_started').' '.$skill->start_date->format('M Y') : '')
                                                                         .($encyclopediaUuid ? '<br>'.__('Open in encyclopedia') : '');
                                                                 @endphp
                                                                 <div class="d-inline-flex align-items-center gap-1" id="skill-{{ $skill->id }}">
@@ -234,7 +234,7 @@
                                                                             data-skill-id="{{ $skill->id }}"
                                                                             data-member-id="{{ $user->id }}"
                                                                             data-affiliation-id="{{ $affiliation->id }}"
-                                                                            title="{{ __('member.partials_affiliations_enhanced_remove_skill') }}">
+                                                                            title="{{ __('members::member.partials_affiliations_enhanced_remove_skill') }}">
                                                                         <i class="bi bi-x-circle"></i>
                                                                     </button>
                                                                 </div>
@@ -246,7 +246,7 @@
                                                 @if($affiliation->subscriptions && $affiliation->subscriptions->count() > 0)
                                                     <div class="mb-3">
                                                         <h6 class="font-bold mb-2">
-                                                            <i class="bi bi-box-seam me-2 text-primary"></i>{{ __('member.partials_affiliations_enhanced_training_packages') }} ({{ $affiliation->subscriptions->count() }})
+                                                            <i class="bi bi-box-seam me-2 text-primary"></i>{{ __('members::member.partials_affiliations_enhanced_training_packages') }} ({{ $affiliation->subscriptions->count() }})
                                                         </h6>
                                                         <div class="flex gap-2 flex-wrap">
                                                             @foreach($affiliation->subscriptions as $subIndex => $subscription)
@@ -267,7 +267,7 @@
                                                 <div class="mb-3">
                                                     <div class="flex justify-between items-center mb-2">
                                                         <h6 class="font-bold mb-0">
-                                                            <i class="bi bi-people-fill me-2 text-success"></i>{{ __('member.partials_affiliations_enhanced_instructors') }} (<span id="instructors-count-{{ $affiliation->id }}">{{ count($affInstructors) }}</span>)
+                                                            <i class="bi bi-people-fill me-2 text-success"></i>{{ __('members::member.partials_affiliations_enhanced_instructors') }} (<span id="instructors-count-{{ $affiliation->id }}">{{ count($affInstructors) }}</span>)
                                                         </h6>
                                                         <button type="button"
                                                                 class="btn btn-sm btn-outline-success btn-add-instructor"
@@ -296,12 +296,12 @@
                                                                 @if($linkedUser)
                                                                     <a href="{{ route('people.show', $linkedUser->uuid) }}"
                                                                        class="badge skill-badge bg-success text-decoration-none inst-badge"
-                                                                       data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('member.partials_affiliations_enhanced_member') }}">
+                                                                       data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('members::member.partials_affiliations_enhanced_member') }}">
                                                                         {!! $insAvatarHtml !!}{{ $insName }}
                                                                     </a>
                                                                 @else
                                                                     <span class="badge skill-badge bg-success inst-badge"
-                                                                          data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('member.partials_affiliations_enhanced_instructor') }}">
+                                                                          data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('members::member.partials_affiliations_enhanced_instructor') }}">
                                                                         {!! $insAvatarHtml !!}{{ $insName }}
                                                                     </span>
                                                                 @endif
@@ -318,7 +318,7 @@
                                                 <div class="pt-2 border-top">
                                                     <div class="flex justify-between items-center mb-2">
                                                         <h6 class="font-bold mb-0">
-                                                            <i class="bi bi-paperclip me-2 text-info"></i>{{ __('member.partials_affiliations_enhanced_media_certificates') }}
+                                                            <i class="bi bi-paperclip me-2 text-info"></i>{{ __('members::member.partials_affiliations_enhanced_media_certificates') }}
                                                             <span id="media-count-wrap-{{ $affiliation->id }}" style="{{ $affiliation->affiliationMedia->count() > 0 ? '' : 'display:none;' }}">(<span id="media-count-{{ $affiliation->id }}">{{ $affiliation->affiliationMedia->count() }}</span>)</span>
                                                         </h6>
                                                         <button type="button"
@@ -327,7 +327,7 @@
                                                                 data-member-id="{{ $user->id }}"
                                                                 data-bs-toggle="modal"
                                                                 data-bs-target="#addMediaModal">
-                                                            <i class="bi bi-plus-circle me-1"></i> {{ __('member.partials_affiliations_enhanced_add_media') }}
+                                                            <i class="bi bi-plus-circle me-1"></i> {{ __('members::member.partials_affiliations_enhanced_add_media') }}
                                                         </button>
                                                     </div>
                                                     <div class="flex gap-2 flex-wrap mt-2" id="media-list-{{ $affiliation->id }}" style="{{ $affiliation->affiliationMedia->count() > 0 ? '' : 'display:none;' }}">
@@ -341,7 +341,7 @@
                                                                             data-media-id="{{ $media->id }}"
                                                                             data-member-id="{{ $user->id }}"
                                                                             data-affiliation-id="{{ $affiliation->id }}"
-                                                                            title="{{ __('member.partials_affiliations_enhanced_remove') }}">
+                                                                            title="{{ __('members::member.partials_affiliations_enhanced_remove') }}">
                                                                         <i class="bi bi-x-circle"></i>
                                                                     </button>
                                                                 </div>
@@ -370,9 +370,9 @@
                                         <div class="modal-content">
                                             <div class="modal-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
                                                 <h5 class="modal-title text-white">
-                                                    <i class="bi bi-person-badge me-2"></i>{{ __('member.partials_affiliations_enhanced_instructor_profile') }}
+                                                    <i class="bi bi-person-badge me-2"></i>{{ __('members::member.partials_affiliations_enhanced_instructor_profile') }}
                                                 </h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('member.partials_affiliations_enhanced_close') }}"></button>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('members::member.partials_affiliations_enhanced_close') }}"></button>
                                             </div>
                                             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                                                 <div class="text-center mb-4">
@@ -392,8 +392,8 @@
                                                     </div>
 
                                                     <!-- Name & Role -->
-                                                    <h5 class="font-bold mb-1">{{ $instructor->user->full_name ?? __('member.partials_affiliations_enhanced_unknown_instructor') }}</h5>
-                                                    <p class="text-muted-foreground mb-2">{{ $instructor->role ?? __('member.partials_affiliations_enhanced_instructor') }}</p>
+                                                    <h5 class="font-bold mb-1">{{ $instructor->user->full_name ?? __('members::member.partials_affiliations_enhanced_unknown_instructor') }}</h5>
+                                                    <p class="text-muted-foreground mb-2">{{ $instructor->role ?? __('members::member.partials_affiliations_enhanced_instructor') }}</p>
 
                                                     <!-- Average Rating -->
                                                     @php
@@ -407,7 +407,7 @@
                                                                     <i class="bi bi-star{{ $i <= round($avgRating) ? '-fill' : '' }} text-warning"></i>
                                                                 @endfor
                                                             </div>
-                                                            <span class="text-muted-foreground text-sm" id="avgMeta_{{ $instructor->id }}">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? __('member.partials_affiliations_enhanced_review_singular') : __('member.partials_affiliations_enhanced_review_plural') }})</span>
+                                                            <span class="text-muted-foreground text-sm" id="avgMeta_{{ $instructor->id }}">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? __('members::member.partials_affiliations_enhanced_review_singular') : __('members::member.partials_affiliations_enhanced_review_plural') }})</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -423,7 +423,7 @@
                                                         <div class="card bg-muted border-0">
                                                             <div class="card-body p-2">
                                                                 <div class="text-2xl mb-0 text-primary">{{ $studentsCount }}</div>
-                                                                <small class="text-muted-foreground">{{ __('member.partials_affiliations_enhanced_students') }}</small>
+                                                                <small class="text-muted-foreground">{{ __('members::member.partials_affiliations_enhanced_students') }}</small>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -431,7 +431,7 @@
                                                         <div class="card bg-muted border-0">
                                                             <div class="card-body p-2">
                                                                 <div class="text-2xl mb-0 text-success">{{ $skillsTaught->count() }}</div>
-                                                                <small class="text-muted-foreground">{{ __('member.partials_affiliations_enhanced_skills') }}</small>
+                                                                <small class="text-muted-foreground">{{ __('members::member.partials_affiliations_enhanced_skills') }}</small>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -440,7 +440,7 @@
                                                 <!-- Skills Taught -->
                                                 @if($skillsTaught->count() > 0)
                                                     <div class="mb-3 text-start">
-                                                        <label class="text-muted-foreground text-sm font-semibold mb-2">{{ __('member.partials_affiliations_enhanced_specializes_in') }}</label>
+                                                        <label class="text-muted-foreground text-sm font-semibold mb-2">{{ __('members::member.partials_affiliations_enhanced_specializes_in') }}</label>
                                                         <div class="flex gap-1 flex-wrap">
                                                             @foreach($skillsTaught as $skill)
                                                                 <span class="badge bg-success">{{ $skill }}</span>
@@ -469,7 +469,7 @@
                                                 <!-- Reviews Section -->
                                                 <div class="mt-4">
                                                     <h6 class="font-bold mb-3">
-                                                        <i class="bi bi-chat-left-text me-2"></i>{{ __('member.partials_affiliations_enhanced_reviews') }}
+                                                        <i class="bi bi-chat-left-text me-2"></i>{{ __('members::member.partials_affiliations_enhanced_reviews') }}
                                                     </h6>
 
                                                     <!-- Add/Edit Review Form -->
@@ -482,7 +482,7 @@
                                                             <form class="instructor-review-form" data-instructor-id="{{ $instructor->id }}" data-review-id="{{ $userReview->id ?? '' }}">
                                                                 @csrf
                                                                 <div class="mb-3">
-                                                                    <label class="form-label text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_your_rating') }}</label>
+                                                                    <label class="form-label text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_your_rating') }}</label>
                                                                     <div class="star-rating" data-rating="{{ $userReview->rating ?? 0 }}">
                                                                         @for($i = 1; $i <= 5; $i++)
                                                                             <i class="bi bi-star{{ $userReview && $i <= $userReview->rating ? '-fill' : '' }} star-input" data-value="{{ $i }}"></i>
@@ -491,12 +491,12 @@
                                                                     <input type="hidden" name="rating" value="{{ $userReview->rating ?? 0 }}" required>
                                                                 </div>
                                                                 <div class="mb-3">
-                                                                    <label class="form-label text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_your_review') }}</label>
-                                                                    <textarea name="comment" class="form-control form-control-sm" rows="3" placeholder="{{ __('member.partials_affiliations_enhanced_share_experience') }}">{{ $userReview->comment ?? '' }}</textarea>
+                                                                    <label class="form-label text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_your_review') }}</label>
+                                                                    <textarea name="comment" class="form-control form-control-sm" rows="3" placeholder="{{ __('members::member.partials_affiliations_enhanced_share_experience') }}">{{ $userReview->comment ?? '' }}</textarea>
                                                                 </div>
                                                                 <button type="submit" class="btn btn-success btn-sm w-full">
                                                                     <i class="bi bi-{{ $userReview ? 'pencil' : 'plus-circle' }} me-1"></i>
-                                                                    {{ $userReview ? __('member.partials_affiliations_enhanced_update_review') : __('member.partials_affiliations_enhanced_submit_review') }}
+                                                                    {{ $userReview ? __('members::member.partials_affiliations_enhanced_update_review') : __('members::member.partials_affiliations_enhanced_submit_review') }}
                                                                 </button>
                                                             </form>
                                                         </div>
@@ -517,7 +517,7 @@
                                                                             </div>
                                                                         </div>
                                                                         <small class="text-muted-foreground">
-                                                                            {{ $review->wasUpdated() ? __('member.partials_affiliations_enhanced_updated') . ' ' : '' }}{{ $review->wasUpdated() ? $review->updated_at->diffForHumans() : $review->reviewed_at->diffForHumans() }}
+                                                                            {{ $review->wasUpdated() ? __('members::member.partials_affiliations_enhanced_updated') . ' ' : '' }}{{ $review->wasUpdated() ? $review->updated_at->diffForHumans() : $review->reviewed_at->diffForHumans() }}
                                                                         </small>
                                                                     </div>
                                                                     @if($review->comment)
@@ -531,9 +531,9 @@
                                             </div>
                                             <div class="modal-footer">
                                                 <a href="{{ route('family.show', $instructor->user_id) }}" class="btn btn-primary btn-sm">
-                                                    <i class="bi bi-person-lines-fill me-1"></i>{{ __('member.partials_affiliations_enhanced_view_full_profile') }}
+                                                    <i class="bi bi-person-lines-fill me-1"></i>{{ __('members::member.partials_affiliations_enhanced_view_full_profile') }}
                                                 </a>
-                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('member.partials_affiliations_enhanced_close') }}</button>
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('members::member.partials_affiliations_enhanced_close') }}</button>
                                             </div>
                                         </div>
                                     </div>
@@ -551,41 +551,41 @@
                                                         <h5 class="modal-title text-white">
                                                             <i class="bi bi-box-seam me-2"></i>{{ $subscription->package->name }}
                                                         </h5>
-                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('member.partials_affiliations_enhanced_close') }}"></button>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('members::member.partials_affiliations_enhanced_close') }}"></button>
                                                     </div>
                                                     <div class="modal-body">
                                                         <div class="mb-3">
-                                                            <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_subscription_period') }}</label>
+                                                            <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_subscription_period') }}</label>
                                                             <div>
                                                                 <i class="bi bi-calendar-range me-2 text-primary"></i>
-                                                                {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }}
+                                                                {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }}
                                                             </div>
                                                             @php
-                                                                $durationText = __('member.partials_affiliations_enhanced_na');
+                                                                $durationText = __('members::member.partials_affiliations_enhanced_na');
                                                                 if ($subscription->start_date && $subscription->end_date) {
                                                                     $duration = $subscription->start_date->diff($subscription->end_date);
                                                                     $durationParts = [];
                                                                     if ($duration->y > 0) $durationParts[] = $duration->y . ' year' . ($duration->y > 1 ? 's' : '');
                                                                     if ($duration->m > 0) $durationParts[] = $duration->m . ' month' . ($duration->m > 1 ? 's' : '');
                                                                     if ($duration->d > 0) $durationParts[] = $duration->d . ' day' . ($duration->d > 1 ? 's' : '');
-                                                                    $durationText = implode(' ', $durationParts) ?: __('member.partials_affiliations_enhanced_same_day');
+                                                                    $durationText = implode(' ', $durationParts) ?: __('members::member.partials_affiliations_enhanced_same_day');
                                                                 }
                                                             @endphp
                                                             <small class="text-muted-foreground">
-                                                                <i class="bi bi-hourglass-split me-1"></i>{{ __('member.partials_affiliations_enhanced_tooltip_duration') }} {{ $durationText }}
+                                                                <i class="bi bi-hourglass-split me-1"></i>{{ __('members::member.partials_affiliations_enhanced_tooltip_duration') }} {{ $durationText }}
                                                             </small>
                                                         </div>
 
                                                         @if($subscription->package->description)
                                                             <div class="mb-3">
-                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_description') }}</label>
+                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_description') }}</label>
                                                                 <p class="mb-0">{{ $subscription->package->description }}</p>
                                                             </div>
                                                         @endif
 
                                                         @if($subscription->package->price)
                                                             <div class="mb-3">
-                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_price') }}</label>
+                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_price') }}</label>
                                                                 <div class="text-xl mb-0 text-success">
                                                                     <i class="bi bi-currency-dollar"></i>{{ number_format($subscription->package->price, 2) }}
                                                                 </div>
@@ -594,7 +594,7 @@
 
                                                         @if($subscription->package->packageActivities && $subscription->package->packageActivities->count() > 0)
                                                             <div class="mb-3">
-                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_activities_skills_included') }}</label>
+                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_activities_skills_included') }}</label>
                                                                 <div class="list-group">
                                                                     @foreach($subscription->package->packageActivities as $pkgActivity)
                                                                         @if($pkgActivity->activity)
@@ -616,7 +616,7 @@
 
                                                                                         @if($activitySkills->count() > 0)
                                                                                             <div class="mb-2">
-                                                                                                <small class="text-muted-foreground block mb-1">{{ __('member.partials_affiliations_enhanced_skills_practiced') }}</small>
+                                                                                                <small class="text-muted-foreground block mb-1">{{ __('members::member.partials_affiliations_enhanced_skills_practiced') }}</small>
                                                                                                 <div class="flex gap-1 flex-wrap">
                                                                                                     @foreach($activitySkills as $actSkill)
                                                                                                         <span class="badge bg-{{ $actSkill->proficiency_level == 'expert' ? 'danger' : ($actSkill->proficiency_level == 'advanced' ? 'warning' : ($actSkill->proficiency_level == 'intermediate' ? 'info' : 'secondary')) }}" style="font-size: 0.7rem;">
@@ -653,17 +653,17 @@
                                                         @if($samePackageSubscriptions->count() > 0)
                                                             <div class="mb-3">
                                                                 <label class="text-muted-foreground text-sm font-semibold">
-                                                                    <i class="bi bi-arrow-repeat me-1"></i>{{ __('member.partials_affiliations_enhanced_other_subscriptions') }}
+                                                                    <i class="bi bi-arrow-repeat me-1"></i>{{ __('members::member.partials_affiliations_enhanced_other_subscriptions') }}
                                                                 </label>
                                                                 <div class="alert alert-info mb-0" style="font-size: 0.85rem;">
-                                                                    <div class="font-semibold mb-1">{{ __('member.partials_affiliations_enhanced_subscribed_times', ['count' => $samePackageSubscriptions->count() + 1]) }}</div>
+                                                                    <div class="font-semibold mb-1">{{ __('members::member.partials_affiliations_enhanced_subscribed_times', ['count' => $samePackageSubscriptions->count() + 1]) }}</div>
                                                                     <ul class="mb-0 ps-3">
                                                                         <li class="text-primary font-semibold">
-                                                                            {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }} {{ __('member.partials_affiliations_enhanced_current_paren') }}
+                                                                            {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} {{ __('members::member.partials_affiliations_enhanced_current_paren') }}
                                                                         </li>
                                                                         @foreach($samePackageSubscriptions as $otherSub)
                                                                             <li>
-                                                                                {{ $otherSub->start_date ? $otherSub->start_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }} - {{ $otherSub->end_date ? $otherSub->end_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }}
+                                                                                {{ $otherSub->start_date ? $otherSub->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $otherSub->end_date ? $otherSub->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }}
                                                                                 @php
                                                                                     $gap = 0;
                                                                                     if ($subscription->start_date && $otherSub->start_date) {
@@ -671,7 +671,7 @@
                                                                                     }
                                                                                 @endphp
                                                                                 @if($gap > 0)
-                                                                                    <small class="text-muted-foreground">({{ abs($gap) }} {{ __('member.partials_affiliations_enhanced_months') }} {{ $subscription->start_date->gt($otherSub->start_date) ? __('member.partials_affiliations_enhanced_before') : __('member.partials_affiliations_enhanced_after') }} {{ __('member.partials_affiliations_enhanced_current_word') }})</small>
+                                                                                    <small class="text-muted-foreground">({{ abs($gap) }} {{ __('members::member.partials_affiliations_enhanced_months') }} {{ $subscription->start_date->gt($otherSub->start_date) ? __('members::member.partials_affiliations_enhanced_before') : __('members::member.partials_affiliations_enhanced_after') }} {{ __('members::member.partials_affiliations_enhanced_current_word') }})</small>
                                                                                 @endif
                                                                             </li>
                                                                         @endforeach
@@ -681,19 +681,19 @@
                                                         @endif
 
                                                         <div class="mb-0">
-                                                            <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_status') }}</label>
+                                                            <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_status') }}</label>
                                                             <div>
                                                                 <span class="badge bg-{{ $subscription->status == 'active' ? 'success' : 'secondary' }}">
                                                                     {{ ucfirst($subscription->status) }}
                                                                 </span>
                                                                 <span class="badge bg-{{ $subscription->payment_status == 'paid' ? 'success' : 'warning' }} ms-2">
-                                                                    {{ __('member.partials_affiliations_enhanced_payment') }} {{ ucfirst($subscription->payment_status) }}
+                                                                    {{ __('members::member.partials_affiliations_enhanced_payment') }} {{ ucfirst($subscription->payment_status) }}
                                                                 </span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('member.partials_affiliations_enhanced_close') }}</button>
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('members::member.partials_affiliations_enhanced_close') }}</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -708,10 +708,10 @@
         @else
             <div class="text-center py-5">
                 <i class="bi bi-diagram-3 text-muted-foreground" style="font-size: 3rem;"></i>
-                <h5 class="text-muted-foreground mt-3 mb-2">{{ __('member.partials_affiliations_enhanced_no_affiliations') }}</h5>
-                <p class="text-muted-foreground mb-3">{{ __('member.partials_affiliations_enhanced_empty_hint') }}</p>
+                <h5 class="text-muted-foreground mt-3 mb-2">{{ __('members::member.partials_affiliations_enhanced_no_affiliations') }}</h5>
+                <p class="text-muted-foreground mb-3">{{ __('members::member.partials_affiliations_enhanced_empty_hint') }}</p>
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAffiliationModal">
-                    <i class="bi bi-plus-circle me-2"></i>{{ __('member.partials_affiliations_enhanced_add_first') }}
+                    <i class="bi bi-plus-circle me-2"></i>{{ __('members::member.partials_affiliations_enhanced_add_first') }}
                 </button>
             </div>
         @endif
@@ -723,7 +723,7 @@
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 600px;">
         <div class="modal-content">
             <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <h5 class="modal-title text-white"><i class="bi bi-plus-circle me-2"></i>{{ __('member.partials_affiliations_enhanced_add_club_affiliation') }}</h5>
+                <h5 class="modal-title text-white"><i class="bi bi-plus-circle me-2"></i>{{ __('members::member.partials_affiliations_enhanced_add_club_affiliation') }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             {{-- Dates live in Alpine so the date-picker component can bind them (Design Rule #4:
@@ -735,19 +735,19 @@
                 <div class="modal-body">
                     <!-- Club source toggle -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_club') }}</label>
+                        <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_club') }}</label>
                         <div class="d-flex gap-2 mb-2">
                             <button type="button" class="btn btn-sm btn-primary" id="togglePlatformClub">
-                                <i class="bi bi-building me-1"></i> {{ __('member.partials_affiliations_enhanced_select_from_platform') }}
+                                <i class="bi bi-building me-1"></i> {{ __('members::member.partials_affiliations_enhanced_select_from_platform') }}
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleExternalClub">
-                                <i class="bi bi-pencil me-1"></i> {{ __('member.partials_affiliations_enhanced_enter_manually') }}
+                                <i class="bi bi-pencil me-1"></i> {{ __('members::member.partials_affiliations_enhanced_enter_manually') }}
                             </button>
                         </div>
                         <!-- Platform club selector -->
                         <div id="platformClubSection">
                             <select name="tenant_id" id="addTenantSelect" class="form-select">
-                                <option value="">{{ __('member.partials_affiliations_enhanced_select_club_placeholder') }}</option>
+                                <option value="">{{ __('members::member.partials_affiliations_enhanced_select_club_placeholder') }}</option>
                                 @foreach($allClubs ?? [] as $club)
                                     <option value="{{ $club->id }}" data-location="{{ $club->address }}">{{ $club->club_name }}</option>
                                 @endforeach
@@ -755,31 +755,31 @@
                         </div>
                         <!-- External / free-text club -->
                         <div id="externalClubSection" style="display:none;">
-                            <input type="text" name="club_name" id="addClubNameInput" class="form-control" placeholder="{{ __('member.partials_affiliations_enhanced_external_club_placeholder') }}">
+                            <input type="text" name="club_name" id="addClubNameInput" class="form-control" placeholder="{{ __('members::member.partials_affiliations_enhanced_external_club_placeholder') }}">
                         </div>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-6">
-                            <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_start_date') }} <span class="text-danger">*</span></label>
-                            <x-date-picker variant="dropdown" model="startDate" name="start_date" :max="now()->toDateString()" />
+                            <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_start_date') }} <span class="text-danger">*</span></label>
+                            <x-fields.date variant="dropdown" model="startDate" name="start_date" :max="now()->toDateString()" />
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_end_date') }} <small class="text-muted">{{ __('member.partials_affiliations_enhanced_leave_blank_ongoing') }}</small></label>
-                            <x-date-picker variant="dropdown" model="endDate" name="end_date" min-expr="startDate" />
+                            <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_end_date') }} <small class="text-muted">{{ __('members::member.partials_affiliations_enhanced_leave_blank_ongoing') }}</small></label>
+                            <x-fields.date variant="dropdown" model="endDate" name="end_date" min-expr="startDate" />
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_location') }}</label>
-                        <input type="text" name="location" id="addLocationInput" class="form-control" placeholder="{{ __('member.partials_affiliations_enhanced_location_placeholder') }}">
+                        <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_location') }}</label>
+                        <input type="text" name="location" id="addLocationInput" class="form-control" placeholder="{{ __('members::member.partials_affiliations_enhanced_location_placeholder') }}">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_description') }}</label>
-                        <textarea name="description" class="form-control" rows="2" placeholder="{{ __('member.partials_affiliations_enhanced_description_placeholder') }}"></textarea>
+                        <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_description') }}</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="{{ __('members::member.partials_affiliations_enhanced_description_placeholder') }}"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('shared.cancel') }}</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>{{ __('member.partials_affiliations_enhanced_save_affiliation') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>{{ __('members::member.partials_affiliations_enhanced_save_affiliation') }}</button>
                 </div>
             </form>
         </div>
@@ -791,7 +791,7 @@
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 600px;">
         <div class="modal-content">
             <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <h5 class="modal-title text-white"><i class="bi bi-pencil me-2"></i>{{ __('member.partials_affiliations_enhanced_edit_club_affiliation') }}</h5>
+                <h5 class="modal-title text-white"><i class="bi bi-pencil me-2"></i>{{ __('members::member.partials_affiliations_enhanced_edit_club_affiliation') }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             {{-- Same as the add form: dates are Alpine state so the date-picker can bind
@@ -802,31 +802,31 @@
                 <input type="hidden" id="editAffiliationMemberId">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_club_name') }} <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_club_name') }} <span class="text-danger">*</span></label>
                         <input type="text" id="editClubName" name="club_name" class="form-control" required>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-6">
-                            <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_start_date') }} <span class="text-danger">*</span></label>
-                            <x-date-picker variant="dropdown" model="startDate" name="start_date" :max="now()->toDateString()" />
+                            <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_start_date') }} <span class="text-danger">*</span></label>
+                            <x-fields.date variant="dropdown" model="startDate" name="start_date" :max="now()->toDateString()" />
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_end_date') }} <small class="text-muted">{{ __('member.partials_affiliations_enhanced_leave_blank_ongoing') }}</small></label>
-                            <x-date-picker variant="dropdown" model="endDate" name="end_date" min-expr="startDate" />
+                            <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_end_date') }} <small class="text-muted">{{ __('members::member.partials_affiliations_enhanced_leave_blank_ongoing') }}</small></label>
+                            <x-fields.date variant="dropdown" model="endDate" name="end_date" min-expr="startDate" />
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_location') }}</label>
+                        <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_location') }}</label>
                         <input type="text" id="editLocation" name="location" class="form-control">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_description') }}</label>
+                        <label class="form-label fw-semibold">{{ __('members::member.partials_affiliations_enhanced_description') }}</label>
                         <textarea id="editDescription" name="description" class="form-control" rows="3"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('shared.cancel') }}</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>{{ __('member.partials_affiliations_enhanced_update_affiliation') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>{{ __('members::member.partials_affiliations_enhanced_update_affiliation') }}</button>
                 </div>
             </form>
         </div>
@@ -968,7 +968,7 @@ function addInstructorModal() {
                 } else {
                     window.showToast?.('error', res.message || @js(__('Could not add instructor.')));
                 }
-            } catch (_) { window.showToast?.('error', @js(__('member.partials_affiliations_enhanced_js_error_generic'))); }
+            } catch (_) { window.showToast?.('error', @js(__('members::member.partials_affiliations_enhanced_js_error_generic'))); }
             this.busy = false;
         },
     };
@@ -1008,7 +1008,7 @@ function addInstructorModal() {
                         <i class="bi bi-stars text-xl"></i>
                     </span>
                     <div class="min-w-0 flex-1">
-                        <h5 class="text-lg font-bold text-gray-900 mb-0.5">{{ __('member.partials_affiliations_enhanced_add_skill') }}</h5>
+                        <h5 class="text-lg font-bold text-gray-900 mb-0.5">{{ __('members::member.partials_affiliations_enhanced_add_skill') }}</h5>
                         <p class="text-xs text-muted-foreground" x-text="clubLabel"></p>
                     </div>
                     <button type="button" @click="close()"
@@ -1031,7 +1031,7 @@ function addInstructorModal() {
                          have no activity rows), so this is a combobox, not a select. --}}
                     <div x-data="{ get panelId() { return 'addSkillActivityPanel' } }">
                         <label for="addSkillActivity" class="block text-sm font-medium text-gray-700 mb-1.5">
-                            {{ __('member.partials_affiliations_enhanced_skill_name') }} <span class="text-red-500">*</span>
+                            {{ __('members::member.partials_affiliations_enhanced_skill_name') }} <span class="text-red-500">*</span>
                         </label>
                         <p class="text-xs text-muted-foreground -mt-1 mb-1.5">{{ __('Pick one of the club\'s activities, or type your own.') }}</p>
                         <div class="relative" @click.outside="acOpen = false" @keydown.escape.stop="acOpen = false">
@@ -1121,7 +1121,7 @@ function addInstructorModal() {
                     {{-- Proficiency — four options, so a segmented picker beats a dropdown --}}
                     <div>
                         <span class="block text-sm font-medium text-gray-700 mb-1.5">
-                            {{ __('member.partials_affiliations_enhanced_proficiency_level') }} <span class="text-red-500">*</span>
+                            {{ __('members::member.partials_affiliations_enhanced_proficiency_level') }} <span class="text-red-500">*</span>
                         </span>
                         <div class="grid grid-cols-4 gap-2" role="radiogroup">
                             <template x-for="lvl in levels" :key="lvl.value">
@@ -1193,10 +1193,10 @@ function addInstructorModal() {
                          not asked for; the server derives it from the dates. --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                            {{ __('member.partials_affiliations_enhanced_start_date') }}
+                            {{ __('members::member.partials_affiliations_enhanced_start_date') }}
                             <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span>
                         </label>
-                        <x-date-picker variant="dropdown" model="startDate" name="start_date" min-expr="bounds.start_date" max-expr="bounds.max_start" />
+                        <x-fields.date variant="dropdown" model="startDate" name="start_date" min-expr="bounds.start_date" max-expr="bounds.max_start" />
                         <p x-show="bounds.start_date" x-cloak class="mt-1.5 text-[11px] text-muted-foreground flex items-center gap-1">
                             <i class="bi bi-info-circle"></i>
                             {{ __('Cannot start before you joined') }} <span class="font-medium text-foreground" x-text="fmtDate(bounds.start_date)"></span>
@@ -1221,10 +1221,10 @@ function addInstructorModal() {
                     {{-- End date — only when NOT ongoing, and always optional. --}}
                     <div x-show="!present" x-cloak>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                            {{ __('member.partials_affiliations_enhanced_end_date') }}
+                            {{ __('members::member.partials_affiliations_enhanced_end_date') }}
                             <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span>
                         </label>
-                        <x-date-picker variant="dropdown" model="endDate" name-expr="present ? '' : 'end_date'"
+                        <x-fields.date variant="dropdown" model="endDate" name-expr="present ? '' : 'end_date'"
                                        min-expr="startDate || bounds.start_date" max-expr="bounds.end_date" />
                         {{-- Duration is auto-calculated from the two dates — shown, never asked for. --}}
                         <p x-show="startDate && endDate" x-cloak class="mt-1.5 text-[11px] text-primary flex items-center gap-1">
@@ -1235,9 +1235,9 @@ function addInstructorModal() {
 
                     {{-- Notes --}}
                     <div>
-                        <label for="addSkillNotes" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_notes') }}</label>
+                        <label for="addSkillNotes" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.partials_affiliations_enhanced_notes') }}</label>
                         <textarea id="addSkillNotes" name="notes" x-model="notes" rows="2" maxlength="500"
-                                  placeholder="{{ __('member.partials_affiliations_enhanced_notes_placeholder') }}"
+                                  placeholder="{{ __('members::member.partials_affiliations_enhanced_notes_placeholder') }}"
                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow resize-none"></textarea>
                     </div>
                 </div>
@@ -1256,7 +1256,7 @@ function addInstructorModal() {
                         </button>
                         <button type="submit" :disabled="!canSubmit"
                                 class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                            <i class="bi bi-plus-circle"></i>{{ __('member.partials_affiliations_enhanced_add_skill') }}
+                            <i class="bi bi-plus-circle"></i>{{ __('members::member.partials_affiliations_enhanced_add_skill') }}
                         </button>
                     </div>
                 </div>
@@ -1278,10 +1278,10 @@ function addSkillModal() {
         acOpen: false, acLoading: false, acIndex: 0,
 
         levels: [
-            { value: 'beginner',     label: @js(__('member.partials_affiliations_enhanced_beginner')),     pips: 1 },
-            { value: 'intermediate', label: @js(__('member.partials_affiliations_enhanced_intermediate')), pips: 2 },
-            { value: 'advanced',     label: @js(__('member.partials_affiliations_enhanced_advanced')),     pips: 3 },
-            { value: 'expert',       label: @js(__('member.partials_affiliations_enhanced_expert')),       pips: 4 },
+            { value: 'beginner',     label: @js(__('members::member.partials_affiliations_enhanced_beginner')),     pips: 1 },
+            { value: 'intermediate', label: @js(__('members::member.partials_affiliations_enhanced_intermediate')), pips: 2 },
+            { value: 'advanced',     label: @js(__('members::member.partials_affiliations_enhanced_advanced')),     pips: 3 },
+            { value: 'expert',       label: @js(__('members::member.partials_affiliations_enhanced_expert')),       pips: 4 },
         ],
 
         // Club activities first (they carry the id that links provenance), then the
@@ -1425,7 +1425,7 @@ function addSkillModal() {
                         <i class="bi bi-paperclip text-xl"></i>
                     </span>
                     <div class="min-w-0 flex-1">
-                        <h5 class="text-lg font-bold text-gray-900 mb-0.5">{{ __('member.partials_affiliations_enhanced_add_media_certificate') }}</h5>
+                        <h5 class="text-lg font-bold text-gray-900 mb-0.5">{{ __('members::member.partials_affiliations_enhanced_add_media_certificate') }}</h5>
                         <p class="text-xs text-muted-foreground" x-text="clubLabel"></p>
                     </div>
                     <button type="button" @click="close()" class="w-9 h-9 -mt-1 -me-1 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-white/70 hover:text-foreground transition-colors flex-shrink-0" aria-label="{{ __('shared.cancel') }}">
@@ -1437,7 +1437,7 @@ function addSkillModal() {
             <div class="px-6 py-5 space-y-5 max-h-[74vh] overflow-y-auto">
                 {{-- Type — selection cards (Design Rule #4, no native select) --}}
                 <div>
-                    <span class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_type') }} <span class="text-red-500">*</span></span>
+                    <span class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.partials_affiliations_enhanced_type') }} <span class="text-red-500">*</span></span>
                     <div class="grid grid-cols-4 gap-2" role="radiogroup">
                         <template x-for="t in types" :key="t.value">
                             <button type="button" role="radio" :aria-checked="type === t.value" @click="setType(t.value)"
@@ -1452,9 +1452,9 @@ function addSkillModal() {
 
                 {{-- Title --}}
                 <div>
-                    <label for="mediaTitle" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_title') }} <span class="text-red-500">*</span></label>
+                    <label for="mediaTitle" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.partials_affiliations_enhanced_title') }} <span class="text-red-500">*</span></label>
                     <input type="text" id="mediaTitle" x-model="title" maxlength="255"
-                           placeholder="{{ __('member.partials_affiliations_enhanced_title_placeholder') }}"
+                           placeholder="{{ __('members::member.partials_affiliations_enhanced_title_placeholder') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
                 </div>
 
@@ -1526,9 +1526,9 @@ function addSkillModal() {
 
                 {{-- Description --}}
                 <div>
-                    <label for="mediaDesc" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_description') }}</label>
+                    <label for="mediaDesc" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.partials_affiliations_enhanced_description') }}</label>
                     <textarea id="mediaDesc" x-model="description" rows="2" maxlength="500"
-                              placeholder="{{ __('member.partials_affiliations_enhanced_description_placeholder2') }}"
+                              placeholder="{{ __('members::member.partials_affiliations_enhanced_description_placeholder2') }}"
                               class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow resize-none"></textarea>
                 </div>
             </div>
@@ -1537,7 +1537,7 @@ function addSkillModal() {
                 <button type="button" @click="close()" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-white hover:text-foreground transition-colors">{{ __('shared.cancel') }}</button>
                 <button type="button" @click="submit()" :disabled="!title.trim() || busy"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                    <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-plus-circle'"></i>{{ __('member.partials_affiliations_enhanced_add_media') }}
+                    <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-plus-circle'"></i>{{ __('members::member.partials_affiliations_enhanced_add_media') }}
                 </button>
             </div>
         </div>
@@ -1551,10 +1551,10 @@ function addMediaModal() {
         type: 'certificate', title: '', url: '', description: '', busy: false,
         hasImage: false, imgSrc: '', _observer: null,
         types: [
-            { value: 'certificate', label: @js(__('member.partials_affiliations_enhanced_certificate')), icon: 'bi-patch-check' },
-            { value: 'photo',       label: @js(__('member.partials_affiliations_enhanced_photo')),       icon: 'bi-image' },
-            { value: 'video',       label: @js(__('member.partials_affiliations_enhanced_video')),       icon: 'bi-play-circle' },
-            { value: 'document',    label: @js(__('member.partials_affiliations_enhanced_document')),    icon: 'bi-file-text' },
+            { value: 'certificate', label: @js(__('members::member.partials_affiliations_enhanced_certificate')), icon: 'bi-patch-check' },
+            { value: 'photo',       label: @js(__('members::member.partials_affiliations_enhanced_photo')),       icon: 'bi-image' },
+            { value: 'video',       label: @js(__('members::member.partials_affiliations_enhanced_video')),       icon: 'bi-play-circle' },
+            { value: 'document',    label: @js(__('members::member.partials_affiliations_enhanced_document')),    icon: 'bi-file-text' },
         ],
 
         get isImage() { return this.type === 'certificate' || this.type === 'photo'; },
@@ -1635,7 +1635,7 @@ function addMediaModal() {
                 window.showToast?.('success', res.message);
                 this.close();
             } else {
-                window.showToast?.('error', res?.message || @js(__('member.partials_affiliations_enhanced_js_error_adding_media')));
+                window.showToast?.('error', res?.message || @js(__('members::member.partials_affiliations_enhanced_js_error_adding_media')));
             }
         },
     };
@@ -1896,7 +1896,7 @@ document.addEventListener('DOMContentLoaded', function() {
         wrap.style.display = list.length ? '' : 'none';
         const memberId = document.querySelector(`.btn-add-instructor[data-affiliation-id="${affId}"]`)?.dataset.memberId || '';
         wrap.innerHTML = list.map(ins => {
-            const role = ins.linked ? '{{ __('member.partials_affiliations_enhanced_member') }}' : '{{ __('member.partials_affiliations_enhanced_instructor') }}';
+            const role = ins.linked ? '{{ __('members::member.partials_affiliations_enhanced_member') }}' : '{{ __('members::member.partials_affiliations_enhanced_instructor') }}';
             const avatar = `<span class="inst-badge-avatar">${ins.avatar
                 ? `<img src="${escapeHtml(ins.avatar)}" alt="">`
                 : '<i class="bi bi-person-fill"></i>'}</span>`;
@@ -1923,7 +1923,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ? `<small class="opacity-90" id="affiliation-duration-${aff.id}"><i class="bi bi-hourglass-split me-1"></i>${escapeHtml(aff.formatted_duration)}</small>`
             : '';
         const activeBadge = aff.is_ongoing
-            ? `<span class="badge bg-success"><i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ __('member.partials_affiliations_enhanced_active') }}</span>`
+            ? `<span class="badge bg-success"><i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ __('members::member.partials_affiliations_enhanced_active') }}</span>`
             : '';
         const locationHtml = aff.location
             ? `<div class="mb-3"><i class="bi bi-geo-alt text-primary me-2"></i><span class="text-muted-foreground">${escapeHtml(aff.location)}</span></div>`
@@ -1952,22 +1952,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${locationHtml}
                         <div class="mb-3">
                             <div class="flex justify-between items-center mb-2">
-                                <h6 class="font-bold mb-0"><i class="bi bi-star-fill me-2 text-warning"></i>{{ __('member.partials_affiliations_enhanced_skills_acquired') }} (<span id="skills-count-${aff.id}">0</span>)</h6>
-                                <button type="button" class="btn btn-sm btn-outline-warning btn-add-skill" data-affiliation-id="${aff.id}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#addSkillModal"><i class="bi bi-plus-circle me-1"></i> {{ __('member.partials_affiliations_enhanced_add_skill') }}</button>
+                                <h6 class="font-bold mb-0"><i class="bi bi-star-fill me-2 text-warning"></i>{{ __('members::member.partials_affiliations_enhanced_skills_acquired') }} (<span id="skills-count-${aff.id}">0</span>)</h6>
+                                <button type="button" class="btn btn-sm btn-outline-warning btn-add-skill" data-affiliation-id="${aff.id}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#addSkillModal"><i class="bi bi-plus-circle me-1"></i> {{ __('members::member.partials_affiliations_enhanced_add_skill') }}</button>
                             </div>
                             <div class="flex gap-2 flex-wrap" id="skills-list-${aff.id}" style="display:none;"></div>
                         </div>
                         <div class="mb-3">
                             <div class="flex justify-between items-center mb-2">
-                                <h6 class="font-bold mb-0"><i class="bi bi-people-fill me-2 text-success"></i>{{ __('member.partials_affiliations_enhanced_instructors') }} (<span id="instructors-count-${aff.id}">0</span>)</h6>
+                                <h6 class="font-bold mb-0"><i class="bi bi-people-fill me-2 text-success"></i>{{ __('members::member.partials_affiliations_enhanced_instructors') }} (<span id="instructors-count-${aff.id}">0</span>)</h6>
                                 <button type="button" class="btn btn-sm btn-outline-success btn-add-instructor" data-affiliation-id="${aff.id}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#addInstructorModal"><i class="bi bi-plus-circle me-1"></i> {{ __('Add Instructor') }}</button>
                             </div>
                             <div class="flex gap-2 flex-wrap" id="instructors-list-${aff.id}" style="display:none;"></div>
                         </div>
                         <div class="pt-2 border-top">
                             <div class="flex justify-between items-center mb-2">
-                                <h6 class="font-bold mb-0"><i class="bi bi-paperclip me-2 text-info"></i>{{ __('member.partials_affiliations_enhanced_media_certificates') }} <span id="media-count-wrap-${aff.id}" style="display:none;">(<span id="media-count-${aff.id}">0</span>)</span></h6>
-                                <button type="button" class="btn btn-sm btn-outline-info btn-add-media" data-affiliation-id="${aff.id}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#addMediaModal"><i class="bi bi-plus-circle me-1"></i> {{ __('member.partials_affiliations_enhanced_add_media') }}</button>
+                                <h6 class="font-bold mb-0"><i class="bi bi-paperclip me-2 text-info"></i>{{ __('members::member.partials_affiliations_enhanced_media_certificates') }} <span id="media-count-wrap-${aff.id}" style="display:none;">(<span id="media-count-${aff.id}">0</span>)</span></h6>
+                                <button type="button" class="btn btn-sm btn-outline-info btn-add-media" data-affiliation-id="${aff.id}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#addMediaModal"><i class="bi bi-plus-circle me-1"></i> {{ __('members::member.partials_affiliations_enhanced_add_media') }}</button>
                             </div>
                             <div class="flex gap-2 flex-wrap mt-2" id="media-list-${aff.id}" style="display:none;"></div>
                         </div>
@@ -2006,8 +2006,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     btn.disabled = false;
                 } else if (res.success) {
                     showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800);
-                } else { showAlert(res.message || '{{ __("member.partials_affiliations_enhanced_js_error_saving_affiliation") }}', 'danger'); btn.disabled = false; }
-            }).catch(() => { showAlert('{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'); btn.disabled = false; });
+                } else { showAlert(res.message || '{{ __("members::member.partials_affiliations_enhanced_js_error_saving_affiliation") }}', 'danger'); btn.disabled = false; }
+            }).catch(() => { showAlert('{{ __("members::member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'); btn.disabled = false; });
     });
 
     // ── Helpers for in-place patching ─────────────────────────────────────────
@@ -2031,7 +2031,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const wrapper = document.createElement('div');
         const prof = escapeHtml(skill.proficiency_level.charAt(0).toUpperCase() + skill.proficiency_level.slice(1));
         const enc = skill.encyclopedia_url;
-        const title = `<strong>${escapeHtml(skill.skill_name)}</strong><br>${skill.activity ? '{{ __('Activity') }}: ' + escapeHtml(skill.activity) + '<br>' : ''}{{ __('member.partials_affiliations_enhanced_tooltip_proficiency') }} ${prof}<br>{{ __('member.partials_affiliations_enhanced_tooltip_duration') }} ${escapeHtml(skill.formatted_duration)}<br>${skill.start_label ? '{{ __("member.partials_affiliations_enhanced_tooltip_started") }} ' + escapeHtml(skill.start_label) : ''}${skill.verification && skill.verification.status ? '<br>{{ __('Status') }}: ' + escapeHtml(skill.verification.status.replace('_',' ')) : ''}${enc ? '<br>{{ __('Open in encyclopedia') }}' : ''}`;
+        const title = `<strong>${escapeHtml(skill.skill_name)}</strong><br>${skill.activity ? '{{ __('Activity') }}: ' + escapeHtml(skill.activity) + '<br>' : ''}{{ __('members::member.partials_affiliations_enhanced_tooltip_proficiency') }} ${prof}<br>{{ __('members::member.partials_affiliations_enhanced_tooltip_duration') }} ${escapeHtml(skill.formatted_duration)}<br>${skill.start_label ? '{{ __("members::member.partials_affiliations_enhanced_tooltip_started") }} ' + escapeHtml(skill.start_label) : ''}${skill.verification && skill.verification.status ? '<br>{{ __('Status') }}: ' + escapeHtml(skill.verification.status.replace('_',' ')) : ''}${enc ? '<br>{{ __('Open in encyclopedia') }}' : ''}`;
         const inner = `<i class="bi ${enc ? 'bi-book-half' : 'bi-star-fill'} me-1"></i>${escapeHtml(skill.skill_name)}<span class="badge bg-white text-dark ms-1" style="font-size: 0.65rem;">${prof}</span>`;
         const badge = enc
             ? `<a href="${escapeHtml(enc)}" class="badge skill-badge bg-${skill.badge_color} text-decoration-none" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="${title}">${inner}</a>`
@@ -2039,7 +2039,7 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.innerHTML = `
             <div class="d-inline-flex align-items-center gap-1" id="skill-${skill.id}">
                 ${badge}
-                <button type="button" class="btn-delete-skill" style="background: none; border: none; color: #dc3545; padding: 0 2px; font-size: 0.8rem; line-height: 1;" data-skill-id="${skill.id}" data-member-id="${memberId}" data-affiliation-id="${affiliationId}" title="{{ __('member.partials_affiliations_enhanced_remove_skill') }}"><i class="bi bi-x-circle"></i></button>
+                <button type="button" class="btn-delete-skill" style="background: none; border: none; color: #dc3545; padding: 0 2px; font-size: 0.8rem; line-height: 1;" data-skill-id="${skill.id}" data-member-id="${memberId}" data-affiliation-id="${affiliationId}" title="{{ __('members::member.partials_affiliations_enhanced_remove_skill') }}"><i class="bi bi-x-circle"></i></button>
             </div>`;
         return wrapper.firstElementChild;
     }
@@ -2050,7 +2050,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="d-inline-flex align-items-center gap-1 border rounded px-2 py-1 bg-muted" id="media-${media.id}" style="font-size: 0.85rem;">
                 <i class="bi ${escapeHtml(media.icon_class)} text-info"></i>
                 <a href="${escapeHtml(media.full_url)}" target="_blank" class="text-decoration-none text-dark">${escapeHtml(media.title)}</a>
-                <button type="button" class="btn-delete-media" style="background: none; border: none; color: #dc3545; padding: 0 2px; font-size: 0.8rem; line-height: 1;" data-media-id="${media.id}" data-member-id="${memberId}" data-affiliation-id="${affiliationId}" title="{{ __('member.partials_affiliations_enhanced_remove') }}"><i class="bi bi-x-circle"></i></button>
+                <button type="button" class="btn-delete-media" style="background: none; border: none; color: #dc3545; padding: 0 2px; font-size: 0.8rem; line-height: 1;" data-media-id="${media.id}" data-member-id="${memberId}" data-affiliation-id="${affiliationId}" title="{{ __('members::member.partials_affiliations_enhanced_remove') }}"><i class="bi bi-x-circle"></i></button>
             </div>`;
         return wrapper.firstElementChild;
     }
@@ -2108,8 +2108,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     btn.disabled = false;
                 } else if (res.success) {
                     showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800);
-                } else { showAlert(res.message || '{{ __("member.partials_affiliations_enhanced_js_error_updating_affiliation") }}', 'danger'); btn.disabled = false; }
-            }).catch(() => { showAlert('{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'); btn.disabled = false; });
+                } else { showAlert(res.message || '{{ __("members::member.partials_affiliations_enhanced_js_error_updating_affiliation") }}', 'danger'); btn.disabled = false; }
+            }).catch(() => { showAlert('{{ __("members::member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'); btn.disabled = false; });
     });
 
     // ── Add Skill — submit ────────────────────────────────────────────────────
@@ -2145,8 +2145,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
                 } else if (res.success) {
                     showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800);
-                } else { showAlert(res.message || '{{ __("member.partials_affiliations_enhanced_js_error_adding_skill") }}', 'danger'); btn.disabled = false; }
-            }).catch(() => { showAlert('{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'); btn.disabled = false; });
+                } else { showAlert(res.message || '{{ __("members::member.partials_affiliations_enhanced_js_error_adding_skill") }}', 'danger'); btn.disabled = false; }
+            }).catch(() => { showAlert('{{ __("members::member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'); btn.disabled = false; });
     });
 
     // ── Add Media — submit ────────────────────────────────────────────────────
@@ -2198,8 +2198,8 @@ document.addEventListener('DOMContentLoaded', function() {
             affFetch(`/member/${mid}/affiliations/${affId}/instructors`, 'DELETE', { index })
                 .then(res => {
                     if (res.success) { renderInstructors(affId, res.instructors); showAlert(res.message, 'success'); }
-                    else showAlert(res.message || '{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger');
-                }).catch(() => showAlert('{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'));
+                    else showAlert(res.message || '{{ __("members::member.partials_affiliations_enhanced_js_error_generic") }}', 'danger');
+                }).catch(() => showAlert('{{ __("members::member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'));
             return;
         }
 
@@ -2218,7 +2218,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const name = delAffBtn.dataset.clubName;
             const affiliationId = delAffBtn.dataset.affiliationId;
             const mid = delAffBtn.dataset.memberId;
-            const ok = await window.confirmAction({ title: '{{ __("member.partials_affiliations_enhanced_js_delete_affiliation_title") }}', message: '{{ __("member.partials_affiliations_enhanced_js_delete_affiliation_confirm") }}'.replace(':name', name), type: 'danger', confirmText: '{{ __("shared.delete") }}' });
+            const ok = await window.confirmAction({ title: '{{ __("members::member.partials_affiliations_enhanced_js_delete_affiliation_title") }}', message: '{{ __("members::member.partials_affiliations_enhanced_js_delete_affiliation_confirm") }}'.replace(':name', name), type: 'danger', confirmText: '{{ __("shared.delete") }}' });
             if (!ok) return;
             affFetch(`/member/${mid}/affiliations/${affiliationId}`, 'DELETE')
                 .then(res => {
@@ -2229,15 +2229,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             setTimeout(() => location.reload(), 800);
                         }
                         showAlert(res.message, 'success');
-                    } else { showAlert(res.message || '{{ __("member.partials_affiliations_enhanced_js_error_deleting_affiliation") }}', 'danger'); }
-                }).catch(() => showAlert('{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'));
+                    } else { showAlert(res.message || '{{ __("members::member.partials_affiliations_enhanced_js_error_deleting_affiliation") }}', 'danger'); }
+                }).catch(() => showAlert('{{ __("members::member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'));
             return;
         }
 
         const delSkillBtn = e.target.closest('.btn-delete-skill');
         if (delSkillBtn) {
             e.stopPropagation();
-            const ok = await window.confirmAction({ title: '{{ __("member.partials_affiliations_enhanced_js_remove_skill_title") }}', message: '{{ __("member.partials_affiliations_enhanced_js_remove_skill_confirm") }}', type: 'danger', confirmText: '{{ __("member.partials_affiliations_enhanced_remove") }}' });
+            const ok = await window.confirmAction({ title: '{{ __("members::member.partials_affiliations_enhanced_js_remove_skill_title") }}', message: '{{ __("members::member.partials_affiliations_enhanced_js_remove_skill_confirm") }}', type: 'danger', confirmText: '{{ __("members::member.partials_affiliations_enhanced_remove") }}' });
             if (!ok) return;
             const skillId = delSkillBtn.dataset.skillId;
             const mid = delSkillBtn.dataset.memberId;
@@ -2252,15 +2252,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (countEl) countEl.textContent = remaining;
                         if (list && remaining === 0) list.style.display = 'none';
                         showAlert(res.message, 'success');
-                    } else { showAlert(res.message || '{{ __("member.partials_affiliations_enhanced_js_error_removing_skill") }}', 'danger'); }
-                }).catch(() => showAlert('{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'));
+                    } else { showAlert(res.message || '{{ __("members::member.partials_affiliations_enhanced_js_error_removing_skill") }}', 'danger'); }
+                }).catch(() => showAlert('{{ __("members::member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'));
             return;
         }
 
         const delMediaBtn = e.target.closest('.btn-delete-media');
         if (delMediaBtn) {
             e.stopPropagation();
-            const ok = await window.confirmAction({ title: '{{ __("member.partials_affiliations_enhanced_js_remove_media_title") }}', message: '{{ __("member.partials_affiliations_enhanced_js_remove_media_confirm") }}', type: 'danger', confirmText: '{{ __("member.partials_affiliations_enhanced_remove") }}' });
+            const ok = await window.confirmAction({ title: '{{ __("members::member.partials_affiliations_enhanced_js_remove_media_title") }}', message: '{{ __("members::member.partials_affiliations_enhanced_js_remove_media_confirm") }}', type: 'danger', confirmText: '{{ __("members::member.partials_affiliations_enhanced_remove") }}' });
             if (!ok) return;
             const mediaId = delMediaBtn.dataset.mediaId;
             const mid = delMediaBtn.dataset.memberId;
@@ -2276,8 +2276,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (countEl) countEl.textContent = remaining;
                         if (remaining === 0) { if (list) list.style.display = 'none'; if (countWrap) countWrap.style.display = 'none'; }
                         showAlert(res.message, 'success');
-                    } else { showAlert(res.message || '{{ __("member.partials_affiliations_enhanced_js_error_removing_media") }}', 'danger'); }
-                }).catch(() => showAlert('{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'));
+                    } else { showAlert(res.message || '{{ __("members::member.partials_affiliations_enhanced_js_error_removing_media") }}', 'danger'); }
+                }).catch(() => showAlert('{{ __("members::member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'));
             return;
         }
     });
@@ -2342,7 +2342,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Validate rating
             if (!data.rating || data.rating == 0) {
-                window.showToast('error', '{{ __("member.partials_affiliations_enhanced_js_select_rating") }}');
+                window.showToast('error', '{{ __("members::member.partials_affiliations_enhanced_js_select_rating") }}');
                 return;
             }
 
@@ -2369,12 +2369,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     showAlert(result.message, 'success');
                     setTimeout(() => { window.location.reload(); }, 1000);
                 } else {
-                    showAlert(result.message || '{{ __("member.partials_affiliations_enhanced_js_error_submitting_review") }}', 'danger');
+                    showAlert(result.message || '{{ __("members::member.partials_affiliations_enhanced_js_error_submitting_review") }}', 'danger');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showAlert('{{ __("member.partials_affiliations_enhanced_js_error_submitting_review_retry") }}', 'danger');
+                showAlert('{{ __("members::member.partials_affiliations_enhanced_js_error_submitting_review_retry") }}', 'danger');
             });
         });
     });
@@ -2391,7 +2391,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Mark form as editing the now-existing review (subsequent submits become PUT)
         form.setAttribute('data-review-id', review.id);
         const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) submitBtn.innerHTML = `<i class="bi bi-pencil me-1"></i>{{ __('member.partials_affiliations_enhanced_update_review') }}`;
+        if (submitBtn) submitBtn.innerHTML = `<i class="bi bi-pencil me-1"></i>{{ __('members::member.partials_affiliations_enhanced_update_review') }}`;
 
         const list = document.getElementById(`reviewsList_${instructorId}`);
         if (list) {
@@ -2405,7 +2405,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="font-semibold text-sm">${escapeHtml(reviewerName)}</div>
                             <div class="stars-display text-sm">${starsHtml(review.rating)}</div>
                         </div>
-                        <small class="text-muted-foreground">{{ __('member.partials_affiliations_enhanced_js_updated_just_now') }}</small>
+                        <small class="text-muted-foreground">{{ __('members::member.partials_affiliations_enhanced_js_updated_just_now') }}</small>
                     </div>
                     ${commentHtml}
                 </div>`;
@@ -2426,7 +2426,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const headerStars = document.getElementById(`avgStars_${instructorId}`);
         if (headerStars) headerStars.innerHTML = starsHtml(Math.round(avg));
         const headerMeta = document.getElementById(`avgMeta_${instructorId}`);
-        if (headerMeta) headerMeta.textContent = `(${avg.toFixed(1)} / ${count} ${count === 1 ? '{{ __("member.partials_affiliations_enhanced_review_singular") }}' : '{{ __("member.partials_affiliations_enhanced_review_plural") }}'})`;
+        if (headerMeta) headerMeta.textContent = `(${avg.toFixed(1)} / ${count} ${count === 1 ? '{{ __("members::member.partials_affiliations_enhanced_review_singular") }}' : '{{ __("members::member.partials_affiliations_enhanced_review_plural") }}'})`;
     }
 
     function showAlert(message, type) {

@@ -2,7 +2,7 @@
 
 namespace App\Clubs\Models;
 
-use App\Traits\BelongsToTenant;
+use App\Clubs\Concerns\BelongsToTenant;
 use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

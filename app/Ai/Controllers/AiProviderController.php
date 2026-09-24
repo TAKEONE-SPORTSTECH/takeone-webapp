@@ -74,6 +74,14 @@ class AiProviderController extends Controller
             unset($fill['api_key']);
         }
 
+        // Keep options the form does not edit (e.g. `workspace_id`, which an
+        // organisation-level Anthropic key needs on every request). Rebuilding
+        // `options` from the form alone silently dropped it on every save.
+        $fill['options'] = array_merge(
+            array_diff_key($provider->options ?? [], array_flip(['temperature', 'max_tokens', 'timeout'])),
+            $fill['options'],
+        );
+
         $provider->fill($fill)->save();
         $this->syncDefault($provider);
 

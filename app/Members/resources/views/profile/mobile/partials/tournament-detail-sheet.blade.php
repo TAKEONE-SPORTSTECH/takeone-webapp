@@ -29,7 +29,7 @@
                                      -45 kg is not the same medal as one won today. --}}
                                 <p class="text-[12px] text-white/85 mt-0.5"
                                    x-text="[detail.type, detail.sport,
-                                            detail.age ? detail.age + ' ' + @js(__('member.unit_yrs')) : null,
+                                            detail.age ? detail.age + ' ' + @js(__('members::member.unit_yrs')) : null,
                                             detail.weight].filter(Boolean).join(' · ')"></p>
                             </div>
                             <button type="button" @click="showDetail = false" aria-label="{{ __('shared.close') }}"
@@ -43,7 +43,7 @@
                             <template x-for="(r, n) in detail.results" :key="n">
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold">
                                     <i class="bi bi-award-fill"></i><span x-text="r.label"></span>
-                                    <span x-show="r.points" class="opacity-80">· <span x-text="r.points"></span> {{ __('member.templates_member_show_pts') }}</span>
+                                    <span x-show="r.points" class="opacity-80">· <span x-text="r.points"></span> {{ __('members::member.templates_member_show_pts') }}</span>
                                 </span>
                             </template>
                         </div>
@@ -62,7 +62,7 @@
                                 <i class="bi bi-calendar2-event"></i>
                             </span>
                             <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('member.tab_tournaments') }}</p>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('members::member.tab_tournaments') }}</p>
                                 <p class="text-sm font-bold text-foreground truncate" x-text="detail.platform?.event?.title"></p>
                             </div>
                             <i class="bi bi-chevron-right text-muted-foreground/50 flex-shrink-0"></i>
@@ -101,7 +101,7 @@
                                             <div class="flex items-start gap-2.5">
                                                 <div class="min-w-0 flex-1">
                                                     <p class="text-sm font-bold text-foreground truncate">
-                                                        {{ __('events.bout_vs') }} <span x-text="b.opponent"></span>
+                                                        {{ __('events::events.bout_vs') }} <span x-text="b.opponent"></span>
                                                     </p>
                                                     <p class="text-[11px] text-muted-foreground leading-snug line-clamp-2"
                                                        x-text="[detail.platform?.event?.title, b.division, b.round].filter(Boolean).join(' · ')"></p>
@@ -139,17 +139,17 @@
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                             <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('member.templates_member_show_label_date') }}</p>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('members::member.templates_member_show_label_date') }}</p>
                                 <p class="text-sm font-semibold text-foreground mt-0.5">
                                     <span x-text="detail.date"></span><span x-show="detail.time" class="text-muted-foreground font-medium"> · <span x-text="detail.time"></span></span>
                                 </p>
                             </div>
                             <div x-show="detail.location">
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('member.templates_member_show_label_location') }}</p>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('members::member.templates_member_show_label_location') }}</p>
                                 <p class="text-sm font-semibold text-foreground mt-0.5 truncate" x-text="detail.location"></p>
                             </div>
                             <div x-show="detail.participants">
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('member.templates_member_show_participants') }}</p>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('members::member.templates_member_show_participants') }}</p>
                                 <p class="text-sm font-semibold text-foreground mt-0.5 tabular-nums" x-text="detail.participants"></p>
                             </div>
                             {{-- Who they competed for, with the club's own mark. The logo is
@@ -160,9 +160,9 @@
                                     <img :src="safeLink(detail.club_logo)" :alt="detail.club" class="w-full h-full object-contain">
                                 </span>
                                 <div class="min-w-0 flex-1">
-                                    <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('member.representing') }}</p>
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('members::member.representing') }}</p>
                                     <p class="text-sm font-semibold text-foreground mt-0.5 truncate"
-                                       x-text="detail.club || @js(__('member.templates_member_show_individual'))"></p>
+                                       x-text="detail.club || @js(__('members::member.templates_member_show_individual'))"></p>
                                     <p x-show="detail.club_location" class="text-[11px] text-muted-foreground truncate" x-text="detail.club_location"></p>
                                 </div>
                             </div>
@@ -193,7 +193,7 @@
                         {{-- Results, with whatever was written about each --}}
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4"
                              x-show="detail.results && detail.results.length">
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('member.templates_member_show_th_performance_result') }}</p>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('members::member.templates_member_show_th_performance_result') }}</p>
                             <div class="space-y-2">
                                 <template x-for="(r, n) in detail.results" :key="n">
                                     <div class="flex items-start gap-2.5">
@@ -202,7 +202,7 @@
                                         </span>
                                         <div class="min-w-0 flex-1">
                                             <p x-show="r.description" class="text-[13px] text-foreground/90 leading-snug" x-text="r.description"></p>
-                                            <p x-show="r.points" class="text-[11px] text-muted-foreground tabular-nums"><span x-text="r.points"></span> {{ __('member.templates_member_show_pts') }}</p>
+                                            <p x-show="r.points" class="text-[11px] text-muted-foreground tabular-nums"><span x-text="r.points"></span> {{ __('members::member.templates_member_show_pts') }}</p>
                                         </div>
                                     </div>
                                 </template>
@@ -212,14 +212,14 @@
                         {{-- Notes & media the member attached --}}
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4"
                              x-show="detail.notes && detail.notes.length">
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('member.templates_member_show_th_notes_media') }}</p>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('members::member.templates_member_show_th_notes_media') }}</p>
                             <div class="space-y-2">
                                 <template x-for="(nt, n) in detail.notes" :key="n">
                                     <div>
                                         <p x-show="nt.text" class="text-[13px] text-foreground/90 leading-snug whitespace-pre-line" x-text="nt.text"></p>
                                         <a x-show="safeLink(nt.link)" :href="safeLink(nt.link)" target="_blank" rel="noopener noreferrer"
                                            class="inline-flex items-center gap-1 text-[11px] font-semibold text-primary mt-0.5">
-                                            <i class="bi bi-image"></i>{{ __('member.templates_member_show_view_media') }}
+                                            <i class="bi bi-image"></i>{{ __('members::member.templates_member_show_view_media') }}
                                         </a>
                                     </div>
                                 </template>

@@ -1,5 +1,5 @@
 @php $inShell = $inShell ?? false; @endphp
-@extends($inShell ? 'layouts.personal-mobile' : 'layouts.app')
+@extends($inShell ? 'members::layouts.personal-mobile' : 'layouts.app')
 
 @section('hide-navbar', true)
 @section('title', $user->full_name)
@@ -129,12 +129,12 @@
         </button>
         <div class="flex items-center gap-2">
             @if(Auth::user()->isSuperAdmin())
-                <a href="{{ route('admin.platform.index') }}" title="{{ __('member.admin_panel') }}"
+                <a href="{{ route('admin.platform.index') }}" title="{{ __('members::member.admin_panel') }}"
                    class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30">
                     <i class="bi bi-shield-check text-base"></i>
                 </a>
             @endif
-            <button type="button" onclick="navigator.share ? navigator.share({title:'{{ addslashes($user->full_name) }}', url:location.href}) : (window.showToast && window.showToast('info',@js(__('member.share_link'))+location.href))"
+            <button type="button" onclick="navigator.share ? navigator.share({title:'{{ addslashes($user->full_name) }}', url:location.href}) : (window.showToast && window.showToast('info',@js(__('members::member.share_link'))+location.href))"
                     class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30">
                 <i class="bi bi-share text-base"></i>
             </button>
@@ -197,8 +197,8 @@
                 $galleryPush($gc->image_path, $gc->title);
             }
             foreach (($goals ?? collect()) as $gg) {
-                $galleryPush($gg->before_proof, $gg->title ? $gg->title.' · '.__('member.before') : null);
-                $galleryPush($gg->after_proof, $gg->title ? $gg->title.' · '.__('member.after') : null);
+                $galleryPush($gg->before_proof, $gg->title ? $gg->title.' · '.__('members::member.before') : null);
+                $galleryPush($gg->after_proof, $gg->title ? $gg->title.' · '.__('members::member.after') : null);
             }
             foreach (($clubAffiliations ?? collect()) as $gaf) {
                 foreach ($gaf->affiliationMedia->where('media_type', 'photo') as $gm) {
@@ -216,7 +216,7 @@
                     <button type="button" @click="toggleFollow()" :disabled="busy"
                             class="m-press w-12 h-12 rounded-full backdrop-blur flex items-center justify-center text-white border border-white/30 transition-colors disabled:opacity-60"
                             :class="following ? 'bg-white/35' : 'bg-white/20'"
-                            :aria-label="following ? @js(__('member.unfollow')) : @js(__('member.follow'))">
+                            :aria-label="following ? @js(__('members::member.unfollow')) : @js(__('members::member.follow'))">
                         <i class="bi text-xl" :class="busy ? 'bi-arrow-repeat animate-spin' : (following ? 'bi-person-check-fill' : 'bi-person-plus')"></i>
                     </button>
 
@@ -229,7 +229,7 @@
                     @if($user->canViewPublicProfile($viewer))
                         <a href="{{ route('people.show', $user->uuid) }}"
                            class="m-press w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30 transition-colors"
-                           aria-label="{{ __('member.public_profile') }}" title="{{ __('member.public_profile') }}">
+                           aria-label="{{ __('members::member.public_profile') }}" title="{{ __('members::member.public_profile') }}">
                             <i class="bi bi-person-vcard text-xl"></i>
                         </a>
                     @endif
@@ -298,7 +298,7 @@
                     @if($canEditBasic ?? false)
                         {{-- Bare pencil inside the picture, top-right — opens the photo sheet
                              (the picture large, plus a tile to add a new one) --}}
-                        <button type="button" @click.stop="$dispatch('open-profile-photo-sheet')" aria-label="{{ __('member.edit') }}"
+                        <button type="button" @click.stop="$dispatch('open-profile-photo-sheet')" aria-label="{{ __('members::member.edit') }}"
                                 class="m-press absolute top-2 right-2 rtl:right-auto rtl:left-2 p-1 text-white active:scale-90 transition-transform">
                             <i class="bi bi-pencil-fill text-sm drop-shadow-[0_1px_3px_rgba(0,0,0,.7)]"></i>
                         </button>
@@ -354,7 +354,7 @@
             <div class="flex flex-col items-center gap-2">
                 <button type="button" @click="shareProfile()"
                         class="m-press w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30"
-                        aria-label="{{ __('member.share_profile') }}">
+                        aria-label="{{ __('members::member.share_profile') }}">
                     <i class="bi bi-share text-xl"></i>
                 </button>
 
@@ -362,7 +362,7 @@
                 @if($canChat)
                     <button type="button" @click="openChat()" :disabled="chatBusy"
                             class="m-press w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30 disabled:opacity-60"
-                            aria-label="{{ __('member.message') }}">
+                            aria-label="{{ __('members::member.message') }}">
                         <i class="bi text-xl" :class="chatBusy ? 'bi-arrow-repeat animate-spin' : 'bi-chat-dots-fill'"></i>
                     </button>
                 @endif
@@ -377,7 +377,7 @@
         @php
             $meta = [];
             if ($age) {
-                $meta[] = ['icon' => 'bi-calendar3', 'text' => $age . ' ' . __('member.years')];
+                $meta[] = ['icon' => 'bi-calendar3', 'text' => $age . ' ' . __('members::member.years')];
             }
             if ($user->gender) {
                 $g = strtolower($user->gender);
@@ -415,19 +415,19 @@
             <div role="button" tabindex="0" @click="openMetric('attendance')" @keydown.enter.space.prevent="openMetric('attendance')"
                  class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.24s">
                 <div class="mp-ring" style="--p:{{ (int) $attendanceRate }}"><b>{{ (int) $attendanceRate }}%</b></div>
-                <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.attendance') }}</p>
+                <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('members::member.attendance') }}</p>
             </div>
             {{-- goals ring --}}
             <div role="button" tabindex="0" @click="openMetric('goals')" @keydown.enter.space.prevent="openMetric('goals')"
                  class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.28s">
                 <div class="mp-ring" style="--p:{{ (int) $successRate }}"><b>{{ (int) $successRate }}%</b></div>
-                <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.goal_success') }}</p>
+                <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('members::member.goal_success') }}</p>
             </div>
             {{-- challenge win rate --}}
             <div role="button" tabindex="0" @click="openMetric('challenges')" @keydown.enter.space.prevent="openMetric('challenges')"
                  class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.3s">
                 <div class="mp-ring" style="--p:{{ (int) $challengeWinRate }}"><b>{{ (int) $challengeWinRate }}%</b></div>
-                <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.challenge') }}</p>
+                <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('members::member.challenge') }}</p>
             </div>
         </div>
     </div>
@@ -457,16 +457,16 @@
         $metricSheets = [
             'attendance' => [
                 'icon' => 'bi-calendar2-check',
-                'title' => __('member.attendance'),
+                'title' => __('members::member.attendance'),
                 'percent' => (int) $attendanceRate,
-                'caption' => __('member.attendance_sheet_caption'),
+                'caption' => __('members::member.attendance_sheet_caption'),
                 'figures' => [
-                    [__('member.attended'), (int) $sessionsCompleted, 'text-green-600'],
-                    [__('member.no_shows'), (int) $noShows, 'text-red-500'],
-                    [__('member.total_sessions'), (int) $totalSessions, 'text-foreground'],
+                    [__('members::member.attended'), (int) $sessionsCompleted, 'text-green-600'],
+                    [__('members::member.no_shows'), (int) $noShows, 'text-red-500'],
+                    [__('members::member.total_sessions'), (int) $totalSessions, 'text-foreground'],
                 ],
                 'rows' => $mAttendanceRows,
-                'empty' => __('member.no_schedule_sessions'),
+                'empty' => __('members::member.no_schedule_sessions'),
                 'emptyIcon' => 'bi-calendar-x',
                 // Attendance is derived from the club's class schedule and the trainer's
                 // marks — there is nothing here for the member to add by hand.
@@ -474,36 +474,36 @@
             ],
             'goals' => [
                 'icon' => 'bi-flag',
-                'title' => __('member.goal_success'),
+                'title' => __('members::member.goal_success'),
                 'percent' => (int) $successRate,
-                'caption' => __('member.goals_sheet_caption'),
+                'caption' => __('members::member.goals_sheet_caption'),
                 'figures' => [
-                    [__('member.completed'), (int) $completedGoalsCount, 'text-green-600'],
-                    [__('member.active'), (int) $activeGoalsCount, 'text-primary'],
-                    [__('member.total'), (int) ($goals?->count() ?? 0), 'text-foreground'],
+                    [__('members::member.completed'), (int) $completedGoalsCount, 'text-green-600'],
+                    [__('members::member.active'), (int) $activeGoalsCount, 'text-primary'],
+                    [__('members::member.total'), (int) ($goals?->count() ?? 0), 'text-foreground'],
                 ],
                 'rows' => $mGoalRows,
-                'empty' => __('member.no_goals'),
+                'empty' => __('members::member.no_goals'),
                 'emptyIcon' => 'bi-flag',
                 'add' => ($canEditBasic ?? false)
-                    ? ['label' => __('member.add_goal'), 'event' => 'open-goal-sheet']
+                    ? ['label' => __('members::member.add_goal'), 'event' => 'open-goal-sheet']
                     : null,
             ],
             'challenges' => [
                 'icon' => 'bi-lightning-charge',
-                'title' => __('member.challenge'),
+                'title' => __('members::member.challenge'),
                 'percent' => (int) $challengeWinRate,
-                'caption' => __('member.challenges_sheet_caption'),
+                'caption' => __('members::member.challenges_sheet_caption'),
                 'figures' => [
-                    [__('member.won'), (int) $challengeWins, 'text-green-600'],
-                    [__('member.lost'), max(0, (int) $challengesTotal - (int) $challengeWins), 'text-red-500'],
-                    [__('member.total'), (int) $challengesTotal, 'text-foreground'],
+                    [__('members::member.won'), (int) $challengeWins, 'text-green-600'],
+                    [__('members::member.lost'), max(0, (int) $challengesTotal - (int) $challengeWins), 'text-red-500'],
+                    [__('members::member.total'), (int) $challengesTotal, 'text-foreground'],
                 ],
                 'rows' => $mChallengeRows,
-                'empty' => __('member.ch_empty'),
+                'empty' => __('members::member.ch_empty'),
                 'emptyIcon' => 'bi-lightning-charge',
                 'add' => $isSelf
-                    ? ['label' => __('member.new_challenge'), 'url' => route('me.challenge.create')]
+                    ? ['label' => __('members::member.new_challenge'), 'url' => route('me.challenge.create')]
                     : null,
             ],
         ];
@@ -564,9 +564,9 @@
                                 {{-- Tiny search — only once the list is long enough to sift --}}
                                 <div class="relative sticky top-0 z-10 -mx-1 px-1 py-1 bg-background">
                                     <i class="bi bi-search absolute left-4 rtl:left-auto rtl:right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-xs"></i>
-                                    <input type="search" x-model="metricQuery" placeholder="{{ __('member.search_in_list') }}"
+                                    <input type="search" x-model="metricQuery" placeholder="{{ __('members::member.search_in_list') }}"
                                            class="w-full ps-9 pe-9 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent">
-                                    <button type="button" x-show="metricQuery" @click="metricQuery = ''" aria-label="{{ __('member.clear') }}"
+                                    <button type="button" x-show="metricQuery" @click="metricQuery = ''" aria-label="{{ __('members::member.clear') }}"
                                             class="absolute right-4 rtl:right-auto rtl:left-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                                         <i class="bi bi-x-circle-fill text-xs"></i>
                                     </button>
@@ -583,9 +583,9 @@
                                     @if($key === 'attendance')
                                         @php
                                             $mStatusStyles = [
-                                                'attended' => ['bg-green-50 text-green-600', 'bi-check-lg', __('member.attended')],
-                                                'missed' => ['bg-red-50 text-red-500', 'bi-x-lg', __('member.missed')],
-                                                'upcoming' => ['bg-gray-100 text-gray-500', 'bi-clock', __('member.upcoming')],
+                                                'attended' => ['bg-green-50 text-green-600', 'bi-check-lg', __('members::member.attended')],
+                                                'missed' => ['bg-red-50 text-red-500', 'bi-x-lg', __('members::member.missed')],
+                                                'upcoming' => ['bg-gray-100 text-gray-500', 'bi-clock', __('members::member.upcoming')],
                                             ];
                                         @endphp
                                         @foreach($m['rows'] as $row)
@@ -634,12 +634,12 @@
                                         @foreach($m['rows'] as $row)
                                             @php
                                                 $ch = $row['challenge'];
-                                                if ($ch->result === 'won')          [$bTone, $bText] = ['bg-green-100 text-green-700', __('member.ch_won')];
-                                                elseif ($ch->result === 'lost')     [$bTone, $bText] = ['bg-red-100 text-red-600', __('member.ch_lost')];
-                                                elseif ($ch->result === 'draw')     [$bTone, $bText] = ['bg-gray-100 text-gray-600', __('member.ch_draw')];
-                                                elseif ($ch->status === 'active')   [$bTone, $bText] = ['bg-blue-100 text-blue-700', __('member.ch_active')];
-                                                elseif ($ch->status === 'pending')  [$bTone, $bText] = ['bg-amber-100 text-amber-700', __('member.ch_pending')];
-                                                elseif ($ch->status === 'reported') [$bTone, $bText] = ['bg-purple-100 text-purple-700', __('member.ch_reported')];
+                                                if ($ch->result === 'won')          [$bTone, $bText] = ['bg-green-100 text-green-700', __('members::member.ch_won')];
+                                                elseif ($ch->result === 'lost')     [$bTone, $bText] = ['bg-red-100 text-red-600', __('members::member.ch_lost')];
+                                                elseif ($ch->result === 'draw')     [$bTone, $bText] = ['bg-gray-100 text-gray-600', __('members::member.ch_draw')];
+                                                elseif ($ch->status === 'active')   [$bTone, $bText] = ['bg-blue-100 text-blue-700', __('members::member.ch_active')];
+                                                elseif ($ch->status === 'pending')  [$bTone, $bText] = ['bg-amber-100 text-amber-700', __('members::member.ch_pending')];
+                                                elseif ($ch->status === 'reported') [$bTone, $bText] = ['bg-purple-100 text-purple-700', __('members::member.ch_reported')];
                                                 else [$bTone, $bText] = ['bg-gray-100 text-gray-500', ucfirst($ch->status)];
                                             @endphp
                                             <div x-show="metricMatches(@js($row['hay']))" class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center gap-3">
@@ -652,7 +652,7 @@
                                                     <p class="text-sm font-semibold text-foreground truncate">
                                                         <i class="bi {{ $ch->type === 'fight' ? 'bi-shield-shaded' : 'bi-lightning-charge-fill' }} text-primary mr-0.5"></i>{{ $ch->discipline }}
                                                     </p>
-                                                    <p class="text-[11px] text-muted-foreground truncate">{{ __('member.ch_vs') }} {{ $ch->rival_name }} · {{ optional($ch->date)->format('d M Y') }}</p>
+                                                    <p class="text-[11px] text-muted-foreground truncate">{{ __('members::member.ch_vs') }} {{ $ch->rival_name }} · {{ optional($ch->date)->format('d M Y') }}</p>
                                                 </div>
                                                 <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $bTone }}">{{ $bText }}</span>
                                             </div>
@@ -662,7 +662,7 @@
                                     {{-- Nothing left after filtering --}}
                                     @if($rowCount >= $metricSearchFrom)
                                         <p x-show="metricQuery && ! @js(collect($m['rows'])->pluck('hay')->all()).some(h => h.includes(metricQuery.trim().toLowerCase()))"
-                                           class="text-sm text-muted-foreground text-center py-6">{{ __('member.no_matches') }}</p>
+                                           class="text-sm text-muted-foreground text-center py-6">{{ __('members::member.no_matches') }}</p>
                                     @endif
                                 </div>
                             @endif
@@ -719,7 +719,7 @@
                 'metaLine' => implode(' · ', array_filter([$achLocation, $dateLabel])),
                 'buckets'  => $medalBuckets($a->member_award),
                 'data'     => [
-                    'member_award' => $a->member_award ?: __('member.award_default'),
+                    'member_award' => $a->member_award ?: __('members::member.award_default'),
                     'emoji'        => $emoji,
                     'title'        => $a->tr('title'),
                     'short_title'  => $a->tr('short_title') ?: $a->tr('title'),
@@ -759,10 +759,10 @@
         <div class="grid grid-cols-4 gap-2">
             @php
                 $medals = [
-                    [__('member.medal_special'), $awardCounts['special'] ?? 0, 'bi-trophy-fill', 'hsl(250 70% 70%)', 'hsl(280 70% 60%)', 'special', '🏅'],
-                    [__('member.medal_gold'), $awardCounts['1st'] ?? 0, 'bi-award-fill', '#fbbf24', '#f59e0b', 'gold', '🥇'],
-                    [__('member.medal_silver'), $awardCounts['2nd'] ?? 0, 'bi-award-fill', '#cbd5e1', '#94a3b8', 'silver', '🥈'],
-                    [__('member.medal_bronze'), $awardCounts['3rd'] ?? 0, 'bi-award-fill', '#d6a06a', '#b45309', 'bronze', '🥉'],
+                    [__('members::member.medal_special'), $awardCounts['special'] ?? 0, 'bi-trophy-fill', 'hsl(250 70% 70%)', 'hsl(280 70% 60%)', 'special', '🏅'],
+                    [__('members::member.medal_gold'), $awardCounts['1st'] ?? 0, 'bi-award-fill', '#fbbf24', '#f59e0b', 'gold', '🥇'],
+                    [__('members::member.medal_silver'), $awardCounts['2nd'] ?? 0, 'bi-award-fill', '#cbd5e1', '#94a3b8', 'silver', '🥈'],
+                    [__('members::member.medal_bronze'), $awardCounts['3rd'] ?? 0, 'bi-award-fill', '#d6a06a', '#b45309', 'bronze', '🥉'],
                 ];
             @endphp
             @foreach($medals as [$label,$cnt,$icon,$c1,$c2,$bucket,$bemoji])
@@ -770,7 +770,7 @@
                         @click="openMedal('{{ $bucket }}', @js($label), '{{ $bemoji }}')"
                         class="mp-medal m-press rounded-2xl p-3 text-center text-white shadow-sm w-full"
                         style="--c1:{{ $c1 }};--c2:{{ $c2 }}"
-                        aria-label="{{ $label }} — {{ __('member.medals_awards') }}">
+                        aria-label="{{ $label }} — {{ __('members::member.medals_awards') }}">
                     <i class="bi {{ $icon }} text-lg"></i>
                     <p class="text-lg font-black leading-none mt-1">{{ $cnt }}</p>
                     <p class="text-[10px] opacity-90">{{ $label }}</p>
@@ -798,7 +798,7 @@
                                 </span>
                                 <div class="min-w-0 flex-1">
                                     <h3 class="text-lg font-black leading-tight truncate" x-text="filterLabel"></h3>
-                                    <p class="text-[12px] text-white/85 mt-0.5"><span x-text="filtered.length"></span> · {{ __('member.medals') }}</p>
+                                    <p class="text-[12px] text-white/85 mt-0.5"><span x-text="filtered.length"></span> · {{ __('members::member.medals') }}</p>
                                 </div>
                                 <button type="button" @click="sheetOpen=false" aria-label="{{ __('shared.close') }}"
                                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -826,7 +826,7 @@
                             </template>
                             <div x-show="!filtered.length" class="p-10 text-center">
                                 <i class="bi bi-award text-3xl text-gray-300"></i>
-                                <p class="text-sm text-muted-foreground mt-2">{{ __('member.medal_none') }}</p>
+                                <p class="text-sm text-muted-foreground mt-2">{{ __('members::member.medal_none') }}</p>
                             </div>
                         </div>
                     </div>
@@ -852,9 +852,9 @@
                 // 'goals' is intentionally omitted from the tab bar — the overview
                 // "Goal success" stat card opens it via goTab('goals').
                 $mpTabs = [
-                    'overview'=>__('member.tab_overview'),'health'=>__('member.tab_health'),
-                    'tournaments'=>__('member.tab_tournaments'),'clubs'=>__('member.tab_clubs'),
-                    'certifications'=>__('member.tab_certifications'),'worked'=>__('member.tab_worked'),
+                    'overview'=>__('members::member.tab_overview'),'health'=>__('members::member.tab_health'),
+                    'tournaments'=>__('members::member.tab_tournaments'),'clubs'=>__('members::member.tab_clubs'),
+                    'certifications'=>__('members::member.tab_certifications'),'worked'=>__('members::member.tab_worked'),
                 ];
             @endphp
             @foreach($mpTabs as $key=>$label)
@@ -877,13 +877,13 @@
             <div>
                 {{-- Header always outside the card (matches Work history / Active clubs) --}}
                 <div class="flex items-center justify-between gap-2 mb-2">
-                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-person-vcard text-primary"></i>{{ __('member.personal') }}</h3>
+                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-person-vcard text-primary"></i>{{ __('members::member.personal') }}</h3>
                     @if($canEditBasic ?? false)
                         {{-- Same pill as "Add weight" and the other section actions:
                              a filled primary chip, not a bare text link. --}}
                         <button type="button" @click="$dispatch('open-profile-modal')"
                                 class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                            <i class="bi bi-pencil-square"></i>{{ __('member.edit') }}
+                            <i class="bi bi-pencil-square"></i>{{ __('members::member.edit') }}
                         </button>
                     @endif
                 </div>
@@ -900,15 +900,15 @@
                     $mi = $maritalIcons[strtolower($user->marital_status ?? '')] ?? null;
                 @endphp
                 <div class="grid grid-cols-2 gap-3 text-sm">
-                    <div><p class="text-[11px] text-muted-foreground">{{ __('member.blood_type') }}</p><p class="font-semibold flex items-center gap-1.5">@if($user->blood_type)<i class="bi bi-droplet-fill text-red-500 text-xs"></i>@endif{{ $user->blood_type ?: '—' }}</p></div>
-                    <div><p class="text-[11px] text-muted-foreground">{{ __('member.marital_status') }}</p><p class="font-semibold capitalize flex items-center gap-1.5">@if($mi)<i class="bi {{ $mi[0] }} {{ $mi[1] }} text-xs"></i>@endif{{ $user->marital_status ?: '—' }}</p></div>
+                    <div><p class="text-[11px] text-muted-foreground">{{ __('members::member.blood_type') }}</p><p class="font-semibold flex items-center gap-1.5">@if($user->blood_type)<i class="bi bi-droplet-fill text-red-500 text-xs"></i>@endif{{ $user->blood_type ?: '—' }}</p></div>
+                    <div><p class="text-[11px] text-muted-foreground">{{ __('members::member.marital_status') }}</p><p class="font-semibold capitalize flex items-center gap-1.5">@if($mi)<i class="bi {{ $mi[0] }} {{ $mi[1] }} text-xs"></i>@endif{{ $user->marital_status ?: '—' }}</p></div>
                     @if($user->horoscope)
                         @php $zodiac = ['Aries'=>'♈','Taurus'=>'♉','Gemini'=>'♊','Cancer'=>'♋','Leo'=>'♌','Virgo'=>'♍','Libra'=>'♎','Scorpio'=>'♏','Sagittarius'=>'♐','Capricorn'=>'♑','Aquarius'=>'♒','Pisces'=>'♓']; @endphp
-                        <div><p class="text-[11px] text-muted-foreground">{{ __('member.horoscope') }}</p><p class="font-semibold">{{ $zodiac[$user->horoscope] ?? '' }} {{ $user->horoscope }}</p></div>
+                        <div><p class="text-[11px] text-muted-foreground">{{ __('members::member.horoscope') }}</p><p class="font-semibold">{{ $zodiac[$user->horoscope] ?? '' }} {{ $user->horoscope }}</p></div>
                     @endif
-                    @if($memberSince)<div><p class="text-[11px] text-muted-foreground">{{ __('member.member_since') }}</p><p class="font-semibold flex items-center gap-1.5"><i class="bi bi-calendar3 text-primary text-xs"></i>{{ Carbon::parse($memberSince)->format('M Y') }}</p></div>@endif
+                    @if($memberSince)<div><p class="text-[11px] text-muted-foreground">{{ __('members::member.member_since') }}</p><p class="font-semibold flex items-center gap-1.5"><i class="bi bi-calendar3 text-primary text-xs"></i>{{ Carbon::parse($memberSince)->format('M Y') }}</p></div>@endif
                     <div class="col-span-2">
-                        <p class="text-[11px] text-muted-foreground">{{ __('member.skills_learned') }}</p>
+                        <p class="text-[11px] text-muted-foreground">{{ __('members::member.skills_learned') }}</p>
                         @if(($skillSummary ?? collect())->count())
                             <div class="flex flex-wrap gap-1.5 mt-1">
                                 @foreach($skillSummary as $sk)
@@ -939,7 +939,7 @@
             <div>
                 {{-- Header always outside the card --}}
                 <div class="flex items-center justify-between gap-2 mb-2">
-                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-telephone text-primary"></i>{{ __('member.contact') }}</h3>
+                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-telephone text-primary"></i>{{ __('members::member.contact') }}</h3>
                 </div>
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2.5">
                 @if($user->email)<a href="mailto:{{ $user->email }}" class="flex items-center gap-3 text-sm"><span class="w-8 h-8 rounded-lg bg-accent grid place-items-center text-primary"><i class="bi bi-envelope"></i></span><span class="truncate">{{ $user->email }}</span></a>@endif
@@ -961,7 +961,7 @@
             @endphp
             @if($socials->count())
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                <h3 class="font-bold text-foreground mb-3 flex items-center gap-2"><i class="bi bi-share text-primary"></i> {{ __('member.social') }}</h3>
+                <h3 class="font-bold text-foreground mb-3 flex items-center gap-2"><i class="bi bi-share text-primary"></i> {{ __('members::member.social') }}</h3>
                 <div class="flex flex-wrap gap-2">
                     @foreach($socials as $platform => $url)
                         <a href="{{ $safeUrl($url) }}" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-xl bg-accent grid place-items-center text-primary text-lg"><i class="bi {{ $socialIcons[strtolower($platform)] ?? 'bi-link-45deg' }}"></i></a>
@@ -973,7 +973,7 @@
             {{-- Emergency contacts — private; hidden from viewers without an active tie --}}
             @if(($canViewSensitive ?? false) && !empty($user->emergency_contacts))
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
-                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-telephone-plus text-primary"></i> {{ __('member.emergency_contacts') }}</h3>
+                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-telephone-plus text-primary"></i> {{ __('members::member.emergency_contacts') }}</h3>
                 @foreach($user->emergency_contacts as $contact)
                     <div class="flex items-center gap-3">
                         <span class="w-9 h-9 rounded-lg bg-accent grid place-items-center text-primary flex-shrink-0"><i class="bi bi-person"></i></span>
@@ -991,11 +991,11 @@
             {{-- Identity documents --}}
             @if(!empty($user->documents))
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2">
-                <h3 class="font-bold text-foreground mb-1 flex items-center gap-2"><i class="bi bi-file-earmark-text text-primary"></i> {{ __('member.documents') }}</h3>
+                <h3 class="font-bold text-foreground mb-1 flex items-center gap-2"><i class="bi bi-file-earmark-text text-primary"></i> {{ __('members::member.documents') }}</h3>
                 @foreach($user->documents as $doc)
                     @php
                         $docUrl = !empty($doc['file_path']) ? file_url($doc['file_path']) : '';
-                        $docLabel = $doc['type'] ?? __('member.document');
+                        $docLabel = $doc['type'] ?? __('members::member.document');
                     @endphp
                     {{-- Tapping a document opens it in the shared viewer — the same black
                          tint as the profile picture, with zoom and pan so a photographed
@@ -1016,10 +1016,10 @@
 
         {{-- ===== Health ===== --}}
         <div x-show="tab==='health'" x-transition.opacity x-cloak class="space-y-3"
-             x-data="weightLogger({ url: '{{ route('member.store-health', $user->id) }}', csrf: '{{ csrf_token() }}', today: '{{ now()->format('Y-m-d') }}', rows: @js($weightRows), latest: @js($latestMetrics), prev: @js($prevMetrics), gender: @js(strtolower($user->gender ?? '')), age: {{ (int) ($age ?? 0) }}, divisions: @js(config('taekwondo_divisions', [])), i18n: { upTo: @js(__('member.wc_up_to')), over: @js(__('member.wc_over')), range: @js(__('member.wc_range')), headroom: @js(__('member.wc_headroom')) }, timeAgo: { tpl: @js(__('member.time_ago_tpl')), today: @js(__('member.time_ago_today')), yr: @js(__('member.unit_yr')), yrs: @js(__('member.unit_yrs')), mo: @js(__('member.unit_mo')), mos: @js(__('member.unit_mos')), day: @js(__('member.unit_day')), days: @js(__('member.unit_days')) } })">
+             x-data="weightLogger({ url: '{{ route('member.store-health', $user->id) }}', csrf: '{{ csrf_token() }}', today: '{{ now()->format('Y-m-d') }}', rows: @js($weightRows), latest: @js($latestMetrics), prev: @js($prevMetrics), gender: @js(strtolower($user->gender ?? '')), age: {{ (int) ($age ?? 0) }}, divisions: @js(config('taekwondo_divisions', [])), i18n: { upTo: @js(__('members::member.wc_up_to')), over: @js(__('members::member.wc_over')), range: @js(__('members::member.wc_range')), headroom: @js(__('members::member.wc_headroom')) }, timeAgo: { tpl: @js(__('members::member.time_ago_tpl')), today: @js(__('members::member.time_ago_today')), yr: @js(__('members::member.unit_yr')), yrs: @js(__('members::member.unit_yrs')), mo: @js(__('members::member.unit_mo')), mos: @js(__('members::member.unit_mos')), day: @js(__('members::member.unit_day')), days: @js(__('members::member.unit_days')) } })">
             @if(!empty($user->health_conditions))
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2.5">
-                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-clipboard2-pulse text-primary"></i> {{ __('member.chronic_conditions') }}</h3>
+                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-clipboard2-pulse text-primary"></i> {{ __('members::member.chronic_conditions') }}</h3>
                 @foreach($user->health_conditions as $cond)
                     <div class="flex items-start gap-3">
                         <span class="w-2 h-2 rounded-full bg-red-400 mt-1.5 flex-shrink-0"></span>
@@ -1037,10 +1037,10 @@
                  hidden until the first reading existed, with a second copy of the
                  header nested inside the empty card, styled differently. --}}
             <div class="flex items-center justify-between gap-2">
-                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-graph-up-arrow text-primary"></i>{{ __('member.weight_history') }}</h3>
+                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-graph-up-arrow text-primary"></i>{{ __('members::member.weight_history') }}</h3>
                 @if($canEditBasic)
                     <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>{{ __('member.add_weight') }}
+                        <i class="bi bi-plus-lg"></i>{{ __('members::member.add_weight') }}
                     </button>
                 @endif
             </div>
@@ -1051,14 +1051,14 @@
                     $primary = [
                         // All three are "live": they re-read from the reactive `latest` snapshot
                         // so a freshly logged reading updates them in place without a reload.
-                        [__('member.metric_weight'), $latest->weight, 'kg', 'bi-speedometer', $prev->weight ?? null, 'weight'],
-                        [__('member.metric_height'), $latest->height, 'cm', 'bi-rulers', $prev->height ?? null, 'height'],
-                        [__('member.metric_bmi'), $latest->bmi, '', 'bi-heart-pulse', $prev->bmi ?? null, 'bmi'],
+                        [__('members::member.metric_weight'), $latest->weight, 'kg', 'bi-speedometer', $prev->weight ?? null, 'weight'],
+                        [__('members::member.metric_height'), $latest->height, 'cm', 'bi-rulers', $prev->height ?? null, 'height'],
+                        [__('members::member.metric_bmi'), $latest->bmi, '', 'bi-heart-pulse', $prev->bmi ?? null, 'bmi'],
                     ];
                     $secondary = [
-                        [__('member.metric_body_fat'), $latest->body_fat_percentage, '%', 'bi-droplet-half', $prev->body_fat_percentage ?? null],
-                        [__('member.metric_muscle'), $latest->muscle_mass, 'kg', 'bi-activity', $prev->muscle_mass ?? null],
-                        [__('member.metric_body_age'), $latest->body_age, 'yrs', 'bi-hourglass', $prev->body_age ?? null],
+                        [__('members::member.metric_body_fat'), $latest->body_fat_percentage, '%', 'bi-droplet-half', $prev->body_fat_percentage ?? null],
+                        [__('members::member.metric_muscle'), $latest->muscle_mass, 'kg', 'bi-activity', $prev->muscle_mass ?? null],
+                        [__('members::member.metric_body_age'), $latest->body_age, 'yrs', 'bi-hourglass', $prev->body_age ?? null],
                     ];
                 @endphp
 
@@ -1099,7 +1099,7 @@
                         @endforeach
                     </div>
                 @endif
-                <p class="text-[11px] text-muted-foreground text-center">{{ __('member.last_recorded') }} <span x-text="latest.label || @js(optional($latest->recorded_at)->format('d M Y'))">{{ optional($latest->recorded_at)->format('d M Y') }}</span><span x-show="ago()" class="text-muted-foreground/70"> · <span x-text="ago()"></span></span></p>
+                <p class="text-[11px] text-muted-foreground text-center">{{ __('members::member.last_recorded') }} <span x-text="latest.label || @js(optional($latest->recorded_at)->format('d M Y'))">{{ optional($latest->recorded_at)->format('d M Y') }}</span><span x-show="ago()" class="text-muted-foreground/70"> · <span x-text="ago()"></span></span></p>
             @endif
 
             {{-- ===== Weight tracking (Work-History-style layout: bare header + standalone cards) ===== --}}
@@ -1111,7 +1111,7 @@
                     <div class="relative flex items-center gap-3">
                         <span class="w-11 h-11 rounded-xl bg-primary/15 text-primary grid place-items-center flex-shrink-0"><i class="bi bi-trophy-fill text-lg"></i></span>
                         <div class="min-w-0 flex-1">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-primary/70">{{ __('member.weight_class_title') }}</p>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-primary/70">{{ __('members::member.weight_class_title') }}</p>
                             <p class="font-black text-foreground text-lg leading-tight flex items-center gap-1.5">
                                 <span x-text="classify(latest.weight).name || (classify(latest.weight).label + ' kg')"></span>
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary" x-text="classify(latest.weight).age_group"></span>
@@ -1156,7 +1156,7 @@
                             </span>
                         </template>
                         <template x-if="delta(i) === null">
-                            <span class="text-[9px] font-semibold text-muted-foreground/70 px-2 flex-shrink-0">{{ __('member.first_reading') }}</span>
+                            <span class="text-[9px] font-semibold text-muted-foreground/70 px-2 flex-shrink-0">{{ __('members::member.first_reading') }}</span>
                         </template>
                     </div>
                 </div>
@@ -1165,7 +1165,7 @@
             {{-- Empty state --}}
             <template x-if="!rows.length">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_weight_records') }}</p>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('members::member.no_weight_records') }}</p>
                 </div>
             </template>
 
@@ -1185,8 +1185,8 @@
                                     <i class="bi bi-speedometer text-xl"></i>
                                 </span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="text-lg font-black leading-tight">{{ __('member.log_weight') }}</h3>
-                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.metric_weight') }} · {{ __('member.metric_height') }} · {{ __('member.metric_bmi') }}</p>
+                                    <h3 class="text-lg font-black leading-tight">{{ __('members::member.log_weight') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.metric_weight') }} · {{ __('members::member.metric_height') }} · {{ __('members::member.metric_bmi') }}</p>
                                 </div>
                                 <button type="button" @click="addOpen=false" aria-label="{{ __('shared.close') }}"
                                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -1197,7 +1197,7 @@
                         <div class="space-y-3 mt-4">
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.metric_weight') }}</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.metric_weight') }}</label>
                                     <div class="relative">
                                         <input type="number" x-model="weight" step="0.1" min="0" max="999.9" inputmode="decimal" dir="ltr"
                                                class="w-full px-3 py-2.5 pr-10 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="70.5">
@@ -1205,7 +1205,7 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.metric_height') }}</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.metric_height') }}</label>
                                     <div class="relative">
                                         <input type="number" x-model="height" step="0.1" min="50" max="250" inputmode="decimal" dir="ltr"
                                                class="w-full px-3 py-2.5 pr-10 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="175">
@@ -1213,9 +1213,9 @@
                                     </div>
                                 </div>
                             </div>
-                            <p class="text-[11px] text-muted-foreground flex items-center gap-1"><i class="bi bi-info-circle"></i> {{ __('member.bmi_auto_note') }}</p>
+                            <p class="text-[11px] text-muted-foreground flex items-center gap-1"><i class="bi bi-info-circle"></i> {{ __('members::member.bmi_auto_note') }}</p>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.reading_date') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.reading_date') }}</label>
                                 <input type="date" x-model="date" :max="today" dir="ltr"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
                             </div>
@@ -1223,7 +1223,7 @@
                         <div class="flex gap-2 mt-5">
                             <button type="button" @click="addOpen=false" class="m-press flex-1 py-3 rounded-xl bg-muted text-foreground text-sm font-semibold">{{ __('shared.cancel') }}</button>
                             <button type="button" @click="save()" :disabled="busy || !weight" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60">
-                                <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('member.save') }}
+                                <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('members::member.save') }}
                             </button>
                         </div>
                     </div>
@@ -1257,14 +1257,14 @@
                 goals: @js($goalsJs),
                 canEdit: @js((bool) ($canEditBasic ?? false)),
                 i18n: {
-                    pickDate: @js(__('member.pick_a_date')), clear: @js(__('member.clear')), today: @js(__('member.today')),
+                    pickDate: @js(__('members::member.pick_a_date')), clear: @js(__('members::member.clear')), today: @js(__('members::member.today')),
                     months: @js([__('challenge.personal_challenge_create_month_january'),__('challenge.personal_challenge_create_month_february'),__('challenge.personal_challenge_create_month_march'),__('challenge.personal_challenge_create_month_april'),__('challenge.personal_challenge_create_month_may'),__('challenge.personal_challenge_create_month_june'),__('challenge.personal_challenge_create_month_july'),__('challenge.personal_challenge_create_month_august'),__('challenge.personal_challenge_create_month_september'),__('challenge.personal_challenge_create_month_october'),__('challenge.personal_challenge_create_month_november'),__('challenge.personal_challenge_create_month_december')]),
                     dows: @js([__('challenge.personal_challenge_create_dow_su'),__('challenge.personal_challenge_create_dow_mo'),__('challenge.personal_challenge_create_dow_tu'),__('challenge.personal_challenge_create_dow_we'),__('challenge.personal_challenge_create_dow_th'),__('challenge.personal_challenge_create_dow_fr'),__('challenge.personal_challenge_create_dow_sa')]),
                     pleaseChooseImage: @js(__('Please fill in all required fields and add a photo.')),
                     invalidImage: @js(__('Please choose an image file.')),
                     networkError: @js(__('Something went wrong. Please try again.')),
-                    goalCreated: @js(__('member.goal_created')),
-                    goalUpdated: @js(__('member.goal_updated')),
+                    goalCreated: @js(__('members::member.goal_created')),
+                    goalUpdated: @js(__('members::member.goal_updated')),
                 }
              })"
              {{-- The Goal-success metric sheet opens the add form from outside this tab.
@@ -1274,16 +1274,16 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-5" x-show="goals.length">
                 <div class="mp-ring" :style="'--p:'+successRate+'; width:84px; height:84px;'"><b style="font-size:18px" x-text="successRate+'%'"></b></div>
                 <div class="flex-1 space-y-2">
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.goals_done') }}</span><span class="font-bold text-green-600" x-text="doneCount"></span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.goals_active') }}</span><span class="font-bold text-amber-500" x-text="activeCount"></span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.goals_total') }}</span><span class="font-bold" x-text="activeCount + doneCount"></span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('members::member.goals_done') }}</span><span class="font-bold text-green-600" x-text="doneCount"></span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('members::member.goals_active') }}</span><span class="font-bold text-amber-500" x-text="activeCount"></span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('members::member.goals_total') }}</span><span class="font-bold" x-text="activeCount + doneCount"></span></div>
                 </div>
             </div>
 
             @if($canEditBasic ?? false)
                 {{-- Goals exist → a small circular "add more" tucked in the top corner. --}}
                 <div class="flex justify-end -mb-1" x-show="goals.length">
-                    <button type="button" @click="openAdd()" aria-label="{{ __('member.add_goal') }}"
+                    <button type="button" @click="openAdd()" aria-label="{{ __('members::member.add_goal') }}"
                             class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
                         <i class="bi bi-plus-lg"></i>
                     </button>
@@ -1293,14 +1293,14 @@
             <template x-if="!goals.length">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-bullseye text-primary"></i> {{ __('member.tab_goals') }}</h3>
+                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-bullseye text-primary"></i> {{ __('members::member.tab_goals') }}</h3>
                         @if($canEditBasic ?? false)
                             <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
-                                <i class="bi bi-plus-lg"></i>{{ __('member.add_goal') }}
+                                <i class="bi bi-plus-lg"></i>{{ __('members::member.add_goal') }}
                             </button>
                         @endif
                     </div>
-                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_goals') }}</p>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('members::member.no_goals') }}</p>
                 </div>
             </template>
 
@@ -1311,7 +1311,7 @@
                             <p class="font-semibold text-foreground truncate" x-text="g.title"></p>
                             <p class="text-[11px] text-muted-foreground truncate mt-0.5" x-show="g.description" x-text="g.description"></p>
                         </div>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0" :class="g.status==='completed' ? 'bg-green-100 text-green-700' : 'bg-accent text-primary'" x-text="g.status==='completed' ? @js(__('member.goal_achieved')) : @js(__('member.goals_active'))"></span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0" :class="g.status==='completed' ? 'bg-green-100 text-green-700' : 'bg-accent text-primary'" x-text="g.status==='completed' ? @js(__('members::member.goal_achieved')) : @js(__('members::member.goals_active'))"></span>
                     </div>
                     <div class="mt-2 h-2 rounded-full bg-muted overflow-hidden"><div class="h-full rounded-full bg-primary transition-all" :style="'width:' + pct(g) + '%'"></div></div>
                     <p class="text-[11px] text-muted-foreground mt-1"><span x-text="g.current_progress_value"></span> / <span x-text="g.target_value || '—'"></span> <span x-text="g.unit"></span> · <span x-text="pct(g)"></span>% · <span x-text="g.target_date"></span></p>
@@ -1321,19 +1321,19 @@
                             <template x-if="g.before_proof">
                                 <div class="flex-1 min-w-0">
                                     <img :src="g.before_proof" class="w-full h-20 object-cover rounded-xl" alt="">
-                                    <p class="text-[10px] text-muted-foreground text-center mt-1">{{ __('member.before') }}</p>
+                                    <p class="text-[10px] text-muted-foreground text-center mt-1">{{ __('members::member.before') }}</p>
                                 </div>
                             </template>
                             <template x-if="g.after_proof">
                                 <div class="flex-1 min-w-0">
                                     <img :src="g.after_proof" class="w-full h-20 object-cover rounded-xl" alt="">
-                                    <p class="text-[10px] text-muted-foreground text-center mt-1">{{ __('member.after') }}</p>
+                                    <p class="text-[10px] text-muted-foreground text-center mt-1">{{ __('members::member.after') }}</p>
                                 </div>
                             </template>
                         </div>
                     </template>
                     <template x-if="g.status==='completed' && g.days_taken !== null">
-                        <p class="text-[11px] font-semibold text-green-600 mt-2 flex items-center gap-1"><i class="bi bi-trophy-fill"></i><span x-text="g.days_taken"></span> {{ __('member.days_to_achieve') }}</p>
+                        <p class="text-[11px] font-semibold text-green-600 mt-2 flex items-center gap-1"><i class="bi bi-trophy-fill"></i><span x-text="g.days_taken"></span> {{ __('members::member.days_to_achieve') }}</p>
                     </template>
                 </div>
             </template>
@@ -1355,8 +1355,8 @@
                                     <i class="bi bi-flag-fill text-xl"></i>
                                 </span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="text-lg font-black leading-tight">{{ __('member.add_goal') }}</h3>
-                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.goal_target_value') }} · {{ __('member.goal_target_date') }}</p>
+                                    <h3 class="text-lg font-black leading-tight">{{ __('members::member.add_goal') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.goal_target_value') }} · {{ __('members::member.goal_target_date') }}</p>
                                 </div>
                                 <button type="button" @click="addOpen=false" aria-label="{{ __('shared.close') }}"
                                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -1366,27 +1366,27 @@
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_title') }}</label>
-                                <input type="text" x-model="addForm.title" maxlength="150" placeholder="{{ __('member.goal_title_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.goal_title') }}</label>
+                                <input type="text" x-model="addForm.title" maxlength="150" placeholder="{{ __('members::member.goal_title_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_description') }} <span class="text-muted-foreground font-normal">({{ __('challenge.personal_challenge_create_optional') }})</span></label>
-                                <textarea x-model="addForm.description" rows="2" maxlength="1000" placeholder="{{ __('member.goal_description_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"></textarea>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.goal_description') }} <span class="text-muted-foreground font-normal">({{ __('challenge.personal_challenge_create_optional') }})</span></label>
+                                <textarea x-model="addForm.description" rows="2" maxlength="1000" placeholder="{{ __('members::member.goal_description_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"></textarea>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_target_value') }}</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.goal_target_value') }}</label>
                                     <input type="number" step="0.1" min="0" x-model="addForm.target_value" inputmode="decimal" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_unit') }}</label>
-                                    <input type="text" x-model="addForm.unit" maxlength="30" placeholder="{{ __('member.goal_unit_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.goal_unit') }}</label>
+                                    <input type="text" x-model="addForm.unit" maxlength="30" placeholder="{{ __('members::member.goal_unit_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
                                 </div>
                             </div>
 
                             {{-- Custom target-date calendar popover (Design Rule #4 — no native <input type=date>) --}}
                             <div class="relative" :style="dateOpen ? 'z-index:1100' : ''" x-data="{ view: goalDateView(addForm.target_date) }" x-init="$watch('addOpen', v => { if (v) view = goalDateView(addForm.target_date) })" @click.outside="dateOpen=false" @keydown.escape="dateOpen=false">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_target_date') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.goal_target_date') }}</label>
                                 <button type="button" @click="dateOpen=!dateOpen" class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-start flex items-center gap-2 outline-none transition-colors" :class="dateOpen ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
                                     <i class="bi bi-calendar-event text-gray-400 flex-shrink-0"></i>
                                     <span class="flex-1 truncate" :class="addForm.target_date ? 'text-foreground' : 'text-gray-400'" x-text="addForm.target_date ? fmtDate(addForm.target_date) : i18n.pickDate"></span>
@@ -1410,19 +1410,19 @@
                                         </template>
                                     </div>
                                     <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                                        <button type="button" @click="addForm.target_date=''; dateOpen=false" class="text-[11px] font-semibold text-muted-foreground hover:text-foreground">{{ __('member.clear') }}</button>
-                                        <button type="button" @click="addForm.target_date = today; dateOpen=false" class="text-[11px] font-semibold text-primary">{{ __('member.today') }}</button>
+                                        <button type="button" @click="addForm.target_date=''; dateOpen=false" class="text-[11px] font-semibold text-muted-foreground hover:text-foreground">{{ __('members::member.clear') }}</button>
+                                        <button type="button" @click="addForm.target_date = today; dateOpen=false" class="text-[11px] font-semibold text-primary">{{ __('members::member.today') }}</button>
                                     </div>
                                 </div>
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('member.goal_before_photo') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('members::member.goal_before_photo') }}</label>
                                 <label class="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
                                     <template x-if="!addForm.beforePreview">
                                         <div class="text-center">
                                             <i class="bi bi-camera text-3xl text-gray-300"></i>
-                                            <p class="text-sm text-muted-foreground mt-2">{{ __('member.goal_before_photo_hint') }}</p>
+                                            <p class="text-sm text-muted-foreground mt-2">{{ __('members::member.goal_before_photo_hint') }}</p>
                                         </div>
                                     </template>
                                     <template x-if="addForm.beforePreview">
@@ -1435,7 +1435,7 @@
                         <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100 flex gap-3" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
                             <button type="button" @click="addOpen=false" class="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium active:scale-[.98] transition">{{ __('shared.cancel') }}</button>
                             <button type="button" @click="submitAdd()" :disabled="addSubmitting" class="flex-1 py-3 rounded-xl bg-primary text-white font-semibold active:scale-[.98] transition disabled:opacity-60 flex items-center justify-center gap-2">
-                                <span x-show="!addSubmitting"><i class="bi bi-check-lg mr-1"></i>{{ __('member.create_goal') }}</span>
+                                <span x-show="!addSubmitting"><i class="bi bi-check-lg mr-1"></i>{{ __('members::member.create_goal') }}</span>
                                 <span x-show="addSubmitting" class="flex items-center gap-2"><i class="bi bi-arrow-repeat animate-spin"></i>…</span>
                             </button>
                         </div>
@@ -1461,7 +1461,7 @@
                                 </span>
                                 <div class="min-w-0 flex-1">
                                     <h3 class="text-lg font-black leading-tight truncate" x-text="activeGoal && activeGoal.title"></h3>
-                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.goal_target_date') }} · <span x-text="activeGoal && activeGoal.target_date"></span></p>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.goal_target_date') }} · <span x-text="activeGoal && activeGoal.target_date"></span></p>
                                 </div>
                                 <button type="button" @click="detailOpen=false" aria-label="{{ __('shared.close') }}"
                                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -1469,7 +1469,7 @@
                                 </button>
                             </div>
                             <div class="relative mt-3 flex flex-wrap gap-1.5">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold" x-text="activeGoal && (activeGoal.status==='completed' ? @js(__('member.goal_achieved')) : @js(__('member.goals_active')))"></span>
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold" x-text="activeGoal && (activeGoal.status==='completed' ? @js(__('members::member.goal_achieved')) : @js(__('members::member.goals_active')))"></span>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -1481,9 +1481,9 @@
                                     <span class="text-sm font-bold text-primary" x-text="activeGoal && pct(activeGoal) + '%'"></span>
                                 </div>
                                 <div class="h-2 rounded-full bg-white overflow-hidden"><div class="h-full rounded-full bg-primary transition-all" :style="'width:' + (activeGoal ? pct(activeGoal) : 0) + '%'"></div></div>
-                                <p class="text-[11px] text-muted-foreground mt-2 flex items-center gap-1"><i class="bi bi-calendar-event"></i>{{ __('member.goal_target_date') }}: <span x-text="activeGoal && activeGoal.target_date"></span></p>
+                                <p class="text-[11px] text-muted-foreground mt-2 flex items-center gap-1"><i class="bi bi-calendar-event"></i>{{ __('members::member.goal_target_date') }}: <span x-text="activeGoal && activeGoal.target_date"></span></p>
                                 <template x-if="activeGoal && activeGoal.status==='completed' && activeGoal.days_taken !== null">
-                                    <p class="text-[11px] font-semibold text-green-600 mt-1 flex items-center gap-1"><i class="bi bi-trophy-fill"></i><span x-text="activeGoal.days_taken"></span> {{ __('member.days_to_achieve') }}</p>
+                                    <p class="text-[11px] font-semibold text-green-600 mt-1 flex items-center gap-1"><i class="bi bi-trophy-fill"></i><span x-text="activeGoal.days_taken"></span> {{ __('members::member.days_to_achieve') }}</p>
                                 </template>
                             </div>
 
@@ -1493,13 +1493,13 @@
                                     <template x-if="activeGoal.before_proof">
                                         <button type="button" class="m-press block" @click="lightboxImage = activeGoal.before_proof">
                                             <img :src="activeGoal.before_proof" class="w-full max-h-72 object-contain rounded-xl bg-muted border border-gray-100" alt="">
-                                            <p class="text-[11px] text-muted-foreground text-center mt-1">{{ __('member.before') }}</p>
+                                            <p class="text-[11px] text-muted-foreground text-center mt-1">{{ __('members::member.before') }}</p>
                                         </button>
                                     </template>
                                     <template x-if="activeGoal.after_proof">
                                         <button type="button" class="m-press block" @click="lightboxImage = activeGoal.after_proof">
                                             <img :src="activeGoal.after_proof" class="w-full max-h-72 object-contain rounded-xl bg-muted border border-gray-100" alt="">
-                                            <p class="text-[11px] text-muted-foreground text-center mt-1">{{ __('member.after') }}</p>
+                                            <p class="text-[11px] text-muted-foreground text-center mt-1">{{ __('members::member.after') }}</p>
                                         </button>
                                     </template>
                                 </div>
@@ -1508,23 +1508,23 @@
                             <template x-if="editable">
                                 <div class="space-y-4 pt-1 border-t border-gray-100">
                                     <div class="pt-3">
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.update_progress') }} (<span x-text="activeGoal && activeGoal.unit"></span>)</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.update_progress') }} (<span x-text="activeGoal && activeGoal.unit"></span>)</label>
                                         <input type="number" step="0.1" min="0" x-model="progressValue" inputmode="decimal" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
                                     </div>
 
                                     <label class="flex items-center gap-2.5 bg-muted/40 rounded-xl p-3 cursor-pointer">
                                         <input type="checkbox" x-model="achieving" class="w-4 h-4 rounded accent-primary flex-shrink-0">
-                                        <span class="text-sm font-semibold text-foreground">{{ __('member.mark_as_achieved') }}</span>
+                                        <span class="text-sm font-semibold text-foreground">{{ __('members::member.mark_as_achieved') }}</span>
                                     </label>
 
                                     <template x-if="achieving">
                                         <div>
-                                            <p class="text-[11px] text-muted-foreground mb-2">{{ __('member.mark_as_achieved_hint') }}</p>
+                                            <p class="text-[11px] text-muted-foreground mb-2">{{ __('members::member.mark_as_achieved_hint') }}</p>
                                             <label class="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
                                                 <template x-if="!afterPreview">
                                                     <div class="text-center">
                                                         <i class="bi bi-camera text-3xl text-gray-300"></i>
-                                                        <p class="text-sm text-muted-foreground mt-2">{{ __('member.goal_after_photo_hint') }}</p>
+                                                        <p class="text-sm text-muted-foreground mt-2">{{ __('members::member.goal_after_photo_hint') }}</p>
                                                     </div>
                                                 </template>
                                                 <template x-if="afterPreview">
@@ -1544,7 +1544,7 @@
                             <button type="button" x-show="!editable" @click="detailOpen=false" class="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium active:scale-[.98] transition">{{ __('shared.close') }}</button>
                             <template x-if="editable">
                                 <button type="button" @click="submitUpdate()" :disabled="updateSubmitting || (achieving && !afterProof)" class="flex-1 py-3 rounded-xl bg-primary text-white font-semibold active:scale-[.98] transition disabled:opacity-60 flex items-center justify-center gap-2">
-                                    <span x-show="!updateSubmitting"><i class="bi bi-check-lg mr-1"></i>{{ __('member.save') }}</span>
+                                    <span x-show="!updateSubmitting"><i class="bi bi-check-lg mr-1"></i>{{ __('members::member.save') }}</span>
                                     <span x-show="updateSubmitting" class="flex items-center gap-2"><i class="bi bi-arrow-repeat animate-spin"></i>…</span>
                                 </button>
                             </template>
@@ -1589,7 +1589,7 @@
                 {{-- Bare section header + labeled add button (matches Work History / Active clubs).
                      Always outside the card, so the empty state keeps the same header as the filled one. --}}
                 <div class="flex items-center justify-between gap-2">
-                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-trophy text-primary"></i>{{ __('member.tab_tournaments') }}</h3>
+                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-trophy text-primary"></i>{{ __('members::member.tab_tournaments') }}</h3>
                     @if($tvCanAdd)
                         <button type="button" @click="openAdd()" aria-label="{{ __('Add achievement') }}"
                                 class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
@@ -1604,7 +1604,7 @@
                                medalEmoji(r){ r=(r||'').toLowerCase(); var m='';
                                    if(r.includes('gold'))m+='🥇'; if(r.includes('silver'))m+='🥈'; if(r.includes('bronze'))m+='🥉';
                                    return m||'🏅'; } }">
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2 flex items-center gap-1"><i class="bi bi-award-fill text-amber-400"></i>{{ __('member.medals_awards') }}</p>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2 flex items-center gap-1"><i class="bi bi-award-fill text-amber-400"></i>{{ __('members::member.medals_awards') }}</p>
                     <div class="space-y-2.5">
                         @foreach($achList as $item)
                             @php $a = $item['a']; $emoji = $item['emoji']; $achLocation = $item['location']; $metaLine = $item['metaLine']; @endphp
@@ -1612,12 +1612,12 @@
                                 <span class="w-12 h-12 rounded-full bg-amber-50 grid place-items-center text-2xl flex-shrink-0">{{ $emoji }}</span>
                                 <div class="min-w-0 flex-1">
                                     {{-- Member-first: the medal they won is the headline --}}
-                                    <p class="font-bold text-foreground text-sm leading-tight">{{ $a->member_award ?: __('member.award_default') }}</p>
+                                    <p class="font-bold text-foreground text-sm leading-tight">{{ $a->member_award ?: __('members::member.award_default') }}</p>
                                     <p class="text-[11px] text-muted-foreground truncate mt-0.5"><i class="bi bi-trophy text-amber-400 mr-0.5"></i>{{ $a->tr('short_title') ?: $a->tr('title') }}</p>
                                     @if($metaLine)
                                         <p class="text-[10px] text-muted-foreground/80 truncate mt-0.5">@if($achLocation)<i class="bi bi-geo-alt mr-0.5"></i>@endif{{ $metaLine }}</p>
                                     @endif
-                                    <p class="text-[10px] text-muted-foreground/80 truncate">{{ __('member.award_via', ['club' => $a->tenant?->tr('club_name') ?? '']) }}</p>
+                                    <p class="text-[10px] text-muted-foreground/80 truncate">{{ __('members::member.award_via', ['club' => $a->tenant?->tr('club_name') ?? '']) }}</p>
                                 </div>
                                 <i class="bi bi-chevron-right text-muted-foreground/40 text-sm flex-shrink-0 self-center"></i>
                             </button>
@@ -1628,7 +1628,7 @@
                     @include('members::profile.mobile.partials.achievement-detail-sheet')
                 </div>
                 @if($tournamentEvents->isNotEmpty())
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1 mt-2">{{ __('member.tab_tournaments') }}</p>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1 mt-2">{{ __('members::member.tab_tournaments') }}</p>
                 @endif
             @endif
 
@@ -1655,7 +1655,7 @@
 
                     // What the card cannot fit — results, who they competed for, notes,
                     // provenance — travels with the card and opens in the detail sheet.
-                    $medalLabels = ['1st' => __('member.templates_member_show_first_place'), '2nd' => __('member.templates_member_show_second_place'), '3rd' => __('member.templates_member_show_third_place'), 'special' => __('member.templates_member_show_special_award')];
+                    $medalLabels = ['1st' => __('members::member.templates_member_show_first_place'), '2nd' => __('members::member.templates_member_show_second_place'), '3rd' => __('members::member.templates_member_show_third_place'), 'special' => __('members::member.templates_member_show_special_award')];
                     $detailPayload = [
                         'title' => $t->title,
                         'type' => ucfirst($t->type),
@@ -1702,7 +1702,7 @@
                         'weight' => (function () use ($t, $tournamentBouts) {
                             $entry = ($tournamentBouts ?? [])[$t->id]['entry'] ?? null;
                             if ($entry && $entry['weight']) {
-                                return rtrim(rtrim(number_format((float) $entry['weight'], 1), '0'), '.').' '.__('member.unit_kg');
+                                return rtrim(rtrim(number_format((float) $entry['weight'], 1), '0'), '.').' '.__('members::member.unit_kg');
                             }
 
                             return $entry['division'] ?? null;
@@ -1748,10 +1748,10 @@
                                     @endif
                                     @if($isSelf && $canRequestVerify)
                                         {{-- While pending this is a rate-limited nudge, not a new request. --}}
-                                        <button type="button" data-verify-btn @click.stop="requestVerify($el, '{{ route('member.tournament.request-verification', [$t->user_id, $t->uuid]) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>{{ $t->verification_status === 'pending' ? __('member.tournament_verify_resend') : __('Request verification') }}</button>
+                                        <button type="button" data-verify-btn @click.stop="requestVerify($el, '{{ route('member.tournament.request-verification', [$t->user_id, $t->uuid]) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>{{ $t->verification_status === 'pending' ? __('members::member.tournament_verify_resend') : __('Request verification') }}</button>
                                     @elseif($isSelf && ! $t->clubAffiliation?->tenant_id && $t->verification_status !== 'verified')
                                         {{-- No platform club to confirm → peers/coaches vouch on the public profile. --}}
-                                        <button type="button" @click.stop="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary" title="{{ __('member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
+                                        <button type="button" @click.stop="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary" title="{{ __('members::member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('members::member.get_vouched') }}</button>
                                     @endif
                                 </span>
                             </div>
@@ -1761,7 +1761,7 @@
             @empty
                 @if(($awardedAchievements ?? collect())->isEmpty())
                 <div id="mobileTournamentsEmpty" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_tournaments') }}</p>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('members::member.no_tournaments') }}</p>
                 </div>
                 @endif
             @endforelse
@@ -1788,8 +1788,8 @@
                                     <i class="bi bi-trophy-fill text-xl"></i>
                                 </span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="text-lg font-black leading-tight" x-text="editing ? '{{ __('member.tournament_edit_title') }}' : '{{ __('Add achievement') }}'"></h3>
-                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.medals_awards') }}</p>
+                                    <h3 class="text-lg font-black leading-tight" x-text="editing ? '{{ __('members::member.tournament_edit_title') }}' : '{{ __('Add achievement') }}'"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.medals_awards') }}</p>
                                 </div>
                                 <button type="button" @click="addOpen=false" aria-label="{{ __('shared.close') }}"
                                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -1801,7 +1801,7 @@
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                             <div x-show="editing && wasVerified" x-cloak class="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                                 <i class="bi bi-exclamation-triangle-fill mt-0.5"></i>
-                                <span>{{ __('member.tournament_edit_resets_badge') }}</span>
+                                <span>{{ __('members::member.tournament_edit_resets_badge') }}</span>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Title') }}</label>
@@ -1814,7 +1814,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Date') }}</label>
-                                    <x-date-picker model="form.date" placeholder="{{ __('Pick a date') }}" />
+                                    <x-fields.date model="form.date" placeholder="{{ __('Pick a date') }}" />
                                 </div>
                             </div>
                             {{-- Type — selection cards --}}
@@ -1836,7 +1836,7 @@
                                      __('Club') resolves to the club.php translation
                                      GROUP on a case-insensitive filesystem, handing
                                      an array to htmlspecialchars(). --}}
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.club_singular') }} <span class="text-xs font-normal text-gray-400">({{ __('for verification') }})</span></label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.club_singular') }} <span class="text-xs font-normal text-gray-400">({{ __('for verification') }})</span></label>
                                 <div class="space-y-2">
                                     <button type="button" @click="form.club_affiliation_id=null"
                                             class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-start transition-colors"
@@ -1988,8 +1988,8 @@
                 $ageLabel = null;
                 if ($ageStart !== null && $ageEnd !== null) {
                     $ageLabel = ($ageStart === $ageEnd)
-                        ? $ageStart.' '.__('member.years_old')
-                        : $ageStart.' - '.$ageEnd.' '.__('member.years_old');
+                        ? $ageStart.' '.__('members::member.years_old')
+                        : $ageStart.' - '.$ageEnd.' '.__('members::member.years_old');
                 }
 
                 return [$a->id => [
@@ -2001,7 +2001,7 @@
                     'verification' => $a->verification_status,
                     'can_request' => (bool) $a->tenant_id,
                     'request_url' => route('member.affiliation.request-verification', [$a->member_id, $a->uuid]),
-                    'dates' => (optional($a->start_date)->format('M Y') ?: '—').($a->end_date ? ' — '.$a->end_date->format('M Y') : ' — '.__('member.present')),
+                    'dates' => (optional($a->start_date)->format('M Y') ?: '—').($a->end_date ? ' — '.$a->end_date->format('M Y') : ' — '.__('members::member.present')),
                     'duration' => $a->formatted_duration ?? null,
                     // Time actually SPENT: accumulated enrolled time for a system club
                     // (gaps excluded); the full recorded span for a manual/pre-system record.
@@ -2046,15 +2046,15 @@
                 @if($activeAffil->isNotEmpty() || $leftAffil->isEmpty())
                     {{-- Header always outside the card (matches Work history) --}}
                     <div class="flex items-center justify-between gap-2 mb-2">
-                        <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-diagram-3 text-primary"></i>{{ __('member.active_clubs') }}</h3>
+                        <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-diagram-3 text-primary"></i>{{ __('members::member.active_clubs') }}</h3>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             @if($activeAffil->isNotEmpty())
                                 <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{{ $activeAffil->count() }}</span>
                             @endif
                             @if($canEditBasic ?? false)
-                                <button type="button" @click="openAdd()" aria-label="{{ __('member.add_club') }}"
+                                <button type="button" @click="openAdd()" aria-label="{{ __('members::member.add_club') }}"
                                         class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors">
-                                    <i class="bi bi-plus-lg"></i>{{ __('member.add_club') }}
+                                    <i class="bi bi-plus-lg"></i>{{ __('members::member.add_club') }}
                                 </button>
                             @endif
                         </div>
@@ -2072,11 +2072,11 @@
                                 <div class="flex items-start justify-between gap-2">
                                     <p class="font-bold text-foreground text-[15px] leading-snug truncate">{{ $a->club_name }}</p>
                                     <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>{{ __('member.active') }}
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>{{ __('members::member.active') }}
                                     </span>
                                 </div>
                                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
-                                    <span class="inline-flex items-center gap-1"><i class="bi bi-calendar3 text-primary/50"></i>{{ __('member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}</span>
+                                    <span class="inline-flex items-center gap-1"><i class="bi bi-calendar3 text-primary/50"></i>{{ __('members::member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}</span>
                                     @if($a->location)
                                         <span class="inline-flex items-center gap-1 min-w-0"><i class="bi bi-geo-alt text-primary/50 flex-shrink-0"></i><span class="truncate">{{ $a->location }}</span></span>
                                     @endif
@@ -2090,7 +2090,7 @@
                 @empty
                     @if($leftAffil->isEmpty())
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                            <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.not_active_in_club') }}</p>
+                            <p class="text-sm text-muted-foreground text-center py-4">{{ __('members::member.not_active_in_club') }}</p>
                         </div>
                     @endif
                 @endforelse
@@ -2100,7 +2100,7 @@
             @if($leftAffil->isNotEmpty())
             <div>
                 <div class="flex items-center justify-between gap-2 mb-2">
-                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-clock-history text-primary"></i>{{ __('member.previous_clubs') }}</h3>
+                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-clock-history text-primary"></i>{{ __('members::member.previous_clubs') }}</h3>
                     <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">{{ $leftAffil->count() }}</span>
                 </div>
 
@@ -2117,7 +2117,7 @@
                                 <div class="min-w-0 flex-1">
                                     <div class="flex items-start justify-between gap-2">
                                         <p class="font-bold text-foreground/80 text-[15px] leading-snug truncate">{{ $a->club_name }}</p>
-                                        <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">{{ __('member.left') }}</span>
+                                        <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">{{ __('members::member.left') }}</span>
                                     </div>
                                     <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
                                         <span class="inline-flex items-center gap-1"><i class="bi bi-calendar-range text-primary/50"></i>{{ optional($a->start_date)->format('M Y') ?: '—' }} – {{ optional($a->end_date)->format('M Y') }}</span>
@@ -2154,8 +2154,8 @@
                                     <i class="bi bi-building text-xl"></i>
                                 </span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="text-lg font-black leading-tight">{{ __('member.add_club') }}</h3>
-                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.club_source') }}</p>
+                                    <h3 class="text-lg font-black leading-tight">{{ __('members::member.add_club') }}</h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.club_source') }}</p>
                                 </div>
                                 <button type="button" @click="addOpen=false" aria-label="{{ __('shared.close') }}"
                                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -2166,57 +2166,57 @@
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                             {{-- Source toggle: platform club vs manual entry --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.club_source') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.club_source') }}</label>
                                 <div class="grid grid-cols-2 gap-1 p-1 bg-muted rounded-2xl text-sm font-semibold">
                                     <button type="button" @click="form.source='platform'" :class="form.source==='platform' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'" class="m-press rounded-xl py-2 transition-colors">
-                                        <i class="bi bi-building mr-1"></i>{{ __('member.from_platform') }}
+                                        <i class="bi bi-building mr-1"></i>{{ __('members::member.from_platform') }}
                                     </button>
                                     <button type="button" @click="form.source='manual'" :class="form.source==='manual' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'" class="m-press rounded-xl py-2 transition-colors">
-                                        <i class="bi bi-pencil mr-1"></i>{{ __('member.enter_manually') }}
+                                        <i class="bi bi-pencil mr-1"></i>{{ __('members::member.enter_manually') }}
                                     </button>
                                 </div>
                             </div>
 
                             {{-- Platform club picker --}}
                             <div x-show="form.source==='platform'" x-cloak>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.club_name') }} <span class="text-red-500">*</span></label>
-                                <x-select-menu model="form.tenant_id"
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.club_name') }} <span class="text-red-500">*</span></label>
+                                <x-fields.select model="form.tenant_id"
                                     :options="($allClubs ?? collect())->map(fn ($c) => ['value' => (string) $c->id, 'label' => $c->club_name])->values()->all()"
-                                    placeholder="{{ __('member.select_platform_club') }}" />
+                                    placeholder="{{ __('members::member.select_platform_club') }}" />
                             </div>
 
                             {{-- Manual club name --}}
                             <div x-show="form.source==='manual'" x-cloak>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.club_name') }} <span class="text-red-500">*</span></label>
-                                <input type="text" x-model="form.club_name" maxlength="255" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.club_name_manual_ph') }}">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.club_name') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="form.club_name" maxlength="255" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('members::member.club_name_manual_ph') }}">
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.start_date') }} <span class="text-red-500">*</span></label>
-                                    <x-date-picker model="form.start_date" maxExpr="form.end_date || null" placeholder="{{ __('member.start_date') }}" />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.start_date') }} <span class="text-red-500">*</span></label>
+                                    <x-fields.date model="form.start_date" maxExpr="form.end_date || null" placeholder="{{ __('members::member.start_date') }}" />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.end_date') }}</label>
-                                    <x-date-picker model="form.end_date" minExpr="form.start_date || null" placeholder="{{ __('member.present') }}" />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.end_date') }}</label>
+                                    <x-fields.date model="form.end_date" minExpr="form.start_date || null" placeholder="{{ __('members::member.present') }}" />
                                 </div>
                             </div>
                             <label class="flex items-center gap-2.5 cursor-pointer select-none">
                                 <input type="checkbox" x-model="form.current" @change="if(form.current) form.end_date=''" class="w-[18px] h-[18px] rounded text-primary border-gray-300 focus:ring-primary">
-                                <span class="text-sm text-gray-700">{{ __('member.work_current') }}</span>
+                                <span class="text-sm text-gray-700">{{ __('members::member.work_current') }}</span>
                             </label>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.location') }}</label>
-                                <input type="text" x-model="form.location" maxlength="255" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.location') }}">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.location') }}</label>
+                                <input type="text" x-model="form.location" maxlength="255" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('members::member.location') }}">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.note') ?? 'Note' }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.note') ?? 'Note' }}</label>
                                 <textarea x-model="form.description" rows="3" maxlength="1000" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
                         </div>
                         <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
                             <button type="button" @click="submitAdd()" :disabled="saving || !form.club_name.trim() || !form.start_date" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
                                 <i class="bi bi-arrow-repeat animate-spin" x-show="saving"></i>
-                                <span>{{ __('member.add_club') }}</span>
+                                <span>{{ __('members::member.add_club') }}</span>
                             </button>
                         </div>
                     </div>
@@ -2267,21 +2267,21 @@
                                               :class="cur?.ongoing ? 'bg-green-100/90 text-green-700 ring-green-200' : 'bg-white/90 text-gray-500 ring-gray-200'">
                                             <span x-show="cur?.ongoing" class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                                             <span x-show="!cur?.ongoing" class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                                            <span x-text="cur?.ongoing ? '{{ __('member.active') }}' : '{{ __('member.left') }}'"></span>
+                                            <span x-text="cur?.ongoing ? '{{ __('members::member.active') }}' : '{{ __('members::member.left') }}'"></span>
                                             <span x-show="!cur?.ongoing && cur?.left_ago" x-cloak class="font-medium text-gray-400 border-s border-gray-200 ps-1.5" x-text="cur?.left_ago"></span>
                                         </span>
                                         {{-- Time actually spent training at this club --}}
                                         <span x-show="cur?.spent" x-cloak class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset backdrop-blur bg-white/90 text-gray-500 ring-gray-200">
                                             <i class="bi bi-hourglass-split text-primary/60"></i>
                                             <span x-text="cur?.spent"></span>
-                                            <span class="font-medium text-gray-400">{{ __('member.time_spent') }}</span>
+                                            <span class="font-medium text-gray-400">{{ __('members::member.time_spent') }}</span>
                                         </span>
                                         {{-- Verification badge / action --}}
-                                        <span x-show="cur?.verification === 'verified'" x-cloak class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-green-100/90 text-green-700 ring-green-200"><i class="bi bi-patch-check-fill"></i>{{ __('member.verified') }}</span>
-                                        <span x-show="cur?.verification === 'pending'" x-cloak class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-white/90 text-gray-500 ring-gray-200"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('member.pending') }}</span>
+                                        <span x-show="cur?.verification === 'verified'" x-cloak class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-green-100/90 text-green-700 ring-green-200"><i class="bi bi-patch-check-fill"></i>{{ __('members::member.verified') }}</span>
+                                        <span x-show="cur?.verification === 'pending'" x-cloak class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-white/90 text-gray-500 ring-gray-200"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('members::member.pending') }}</span>
                                         @if($isSelf ?? false)
                                             <button type="button" x-show="(cur?.verification === 'self_reported' || cur?.verification === 'rejected') && cur?.can_request" x-cloak @click="requestVerify()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-primary/10 text-primary ring-primary/15"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
-                                            <button type="button" x-show="(cur?.verification === 'self_reported' || cur?.verification === 'rejected') && !cur?.can_request" x-cloak @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-primary/10 text-primary ring-primary/15"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
+                                            <button type="button" x-show="(cur?.verification === 'self_reported' || cur?.verification === 'rejected') && !cur?.can_request" x-cloak @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-primary/10 text-primary ring-primary/15"><i class="bi bi-people"></i>{{ __('members::member.get_vouched') }}</button>
                                         @endif
                             </div>
                         </div>
@@ -2293,7 +2293,7 @@
                                 <div class="px-4 pt-3.5 pb-3 flex items-center gap-3">
                                     <span class="w-9 h-9 rounded-xl bg-primary/10 text-primary grid place-items-center flex-shrink-0"><i class="bi bi-calendar3 text-[15px]"></i></span>
                                     <div class="min-w-0">
-                                        <div class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('member.period') }}</div>
+                                        <div class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('members::member.period') }}</div>
                                         <div class="text-[14px] font-bold text-foreground leading-snug" x-text="cur?.dates"></div>
                                     </div>
                                 </div>
@@ -2302,19 +2302,19 @@
                                      :class="{'grid-cols-3': [cur?.duration, cur?.age, cur?.location].filter(Boolean).length===3, 'grid-cols-2': [cur?.duration, cur?.age, cur?.location].filter(Boolean).length===2, 'grid-cols-1': [cur?.duration, cur?.age, cur?.location].filter(Boolean).length===1}">
                                     <template x-if="cur?.duration">
                                         <div class="px-3 py-2.5 min-w-0">
-                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('member.duration') }}</div>
+                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('members::member.duration') }}</div>
                                             <div class="text-[12.5px] font-bold text-foreground truncate" x-text="cur.duration"></div>
                                         </div>
                                     </template>
                                     <template x-if="cur?.age">
                                         <div class="px-3 py-2.5 min-w-0">
-                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-person text-primary/60"></i>{{ __('member.age') }}</div>
+                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-person text-primary/60"></i>{{ __('members::member.age') }}</div>
                                             <div class="text-[12.5px] font-bold text-foreground truncate" x-text="cur.age"></div>
                                         </div>
                                     </template>
                                     <template x-if="cur?.location">
                                         <div class="px-3 py-2.5 min-w-0">
-                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-geo-alt text-primary/60"></i>{{ __('member.location') }}</div>
+                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-geo-alt text-primary/60"></i>{{ __('members::member.location') }}</div>
                                             <div class="text-[12.5px] font-bold text-foreground truncate" x-text="cur.location"></div>
                                         </div>
                                     </template>
@@ -2334,7 +2334,7 @@
                             <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3.5">
                                 <div class="flex items-center gap-2 mb-2.5">
                                     <span class="w-7 h-7 rounded-xl bg-amber-100 text-amber-600 grid place-items-center shadow-sm"><i class="bi bi-star-fill text-[12px]"></i></span>
-                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('member.partials_affiliations_enhanced_skills_acquired') }}</span>
+                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('members::member.partials_affiliations_enhanced_skills_acquired') }}</span>
                                     <span class="ms-auto text-[11px] font-bold text-amber-600 bg-amber-100 min-w-[20px] text-center px-1.5 rounded-full" x-text="cur?.skills?.length || 0"></span>
                                     @if($isSelf ?? false)
                                         <button type="button" @click="openAddSkill()" class="m-press inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-full ps-1.5 pe-2 py-1 transition-colors"><i class="bi bi-plus-lg"></i>{{ __('Add') }}</button>
@@ -2352,14 +2352,14 @@
                                         </a>
                                     </template>
                                 </div>
-                                <p x-show="!cur?.skills?.length" class="text-[12px] text-muted-foreground">{{ __('member.no_data') }}</p>
+                                <p x-show="!cur?.skills?.length" class="text-[12px] text-muted-foreground">{{ __('members::member.no_data') }}</p>
                             </div>
 
                             {{-- Instructors --}}
                             <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3.5">
                                 <div class="flex items-center gap-2 mb-2.5">
                                     <span class="w-7 h-7 rounded-xl bg-green-100 text-green-600 grid place-items-center shadow-sm"><i class="bi bi-people-fill text-[12px]"></i></span>
-                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('member.partials_affiliations_enhanced_instructors') }}</span>
+                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('members::member.partials_affiliations_enhanced_instructors') }}</span>
                                     <span class="ms-auto text-[11px] font-bold text-green-600 bg-green-100 min-w-[20px] text-center px-1.5 rounded-full" x-text="cur?.instructors?.length || 0"></span>
                                     @if($isSelf ?? false)
                                         <button type="button" @click="openAddInstructor()" class="m-press inline-flex items-center gap-1 text-[11px] font-bold text-green-700 bg-green-100 hover:bg-green-200 rounded-full ps-1.5 pe-2 py-1 transition-colors"><i class="bi bi-plus-lg"></i>{{ __('Add') }}</button>
@@ -2379,14 +2379,14 @@
                                         </a>
                                     </template>
                                 </div>
-                                <p x-show="!cur?.instructors?.length" class="text-[12px] text-muted-foreground">{{ __('member.no_data') }}</p>
+                                <p x-show="!cur?.instructors?.length" class="text-[12px] text-muted-foreground">{{ __('members::member.no_data') }}</p>
                             </div>
 
                             {{-- Media --}}
                             <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3.5">
                                 <div class="flex items-center gap-2 mb-2.5">
                                     <span class="w-7 h-7 rounded-xl bg-sky-100 text-sky-600 grid place-items-center shadow-sm"><i class="bi bi-paperclip text-[12px]"></i></span>
-                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('member.partials_affiliations_enhanced_media_certificates') }}</span>
+                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('members::member.partials_affiliations_enhanced_media_certificates') }}</span>
                                     <span class="ms-auto text-[11px] font-bold text-sky-600 bg-sky-100 min-w-[20px] text-center px-1.5 rounded-full" x-text="cur?.media?.length || 0"></span>
                                     @if($isSelf ?? false)
                                         <button type="button" @click="openAddMedia()" class="m-press inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-100 hover:bg-sky-200 rounded-full ps-1.5 pe-2 py-1 transition-colors"><i class="bi bi-plus-lg"></i>{{ __('Add') }}</button>
@@ -2402,7 +2402,7 @@
                                         </a>
                                     </template>
                                 </div>
-                                <p x-show="!cur?.media?.length" class="text-[12px] text-muted-foreground">{{ __('member.no_data') }}</p>
+                                <p x-show="!cur?.media?.length" class="text-[12px] text-muted-foreground">{{ __('members::member.no_data') }}</p>
                             </div>
                         </div>
                     </div>
@@ -2425,7 +2425,7 @@
                             <div class="relative flex items-start gap-3">
                                 <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-star-fill text-xl"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="text-lg font-black leading-tight">{{ __('member.partials_affiliations_enhanced_add_skill') }}</h3>
+                                    <h3 class="text-lg font-black leading-tight">{{ __('members::member.partials_affiliations_enhanced_add_skill') }}</h3>
                                     <p class="text-[12px] text-white/85 mt-0.5 truncate" x-text="cur?.club_name"></p>
                                 </div>
                                 <button type="button" @click="skillOpen=false" aria-label="{{ __('shared.close') }}"
@@ -2437,7 +2437,7 @@
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                             {{-- Activity combobox: club activities + directory + free text --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_skill_name') }} <span class="text-red-500">*</span></label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.partials_affiliations_enhanced_skill_name') }} <span class="text-red-500">*</span></label>
                                 <div class="relative" @click.outside="acOpen=false" @keydown.escape.stop="acOpen=false">
                                     <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
                                     <input type="text" x-model="skillForm.activityQuery" @focus="acOpen=true" @input="acOpen=true; skillForm.activityId=''"
@@ -2467,7 +2467,7 @@
                             </div>
                             {{-- Proficiency --}}
                             <div>
-                                <span class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_proficiency_level') }} <span class="text-red-500">*</span></span>
+                                <span class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.partials_affiliations_enhanced_proficiency_level') }} <span class="text-red-500">*</span></span>
                                 <div class="grid grid-cols-4 gap-2">
                                     <template x-for="lvl in skillLevels" :key="lvl.value">
                                         <button type="button" @click="skillForm.level=lvl.value" class="px-1 py-2.5 rounded-xl border text-center transition-all" :class="skillForm.level===lvl.value ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-200 hover:bg-muted/40'">
@@ -2497,26 +2497,26 @@
                             </div>
                             {{-- When --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_start_date') }} <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span></label>
-                                <x-date-picker model="skillForm.startDate" min-expr="skillBounds.start_date || null" max-expr="skillBounds.max_start || null" placeholder="{{ __('member.partials_affiliations_enhanced_start_date') }}" />
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.partials_affiliations_enhanced_start_date') }} <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span></label>
+                                <x-fields.date model="skillForm.startDate" min-expr="skillBounds.start_date || null" max-expr="skillBounds.max_start || null" placeholder="{{ __('members::member.partials_affiliations_enhanced_start_date') }}" />
                             </div>
                             <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer select-none transition-colors" :class="skillForm.present ? 'border-primary bg-primary/5' : 'border-gray-200'">
                                 <input type="checkbox" x-model="skillForm.present" @change="if(skillForm.present) skillForm.endDate=''" class="w-[18px] h-[18px] rounded text-primary border-gray-300 focus:ring-primary">
                                 <span class="min-w-0"><span class="block text-sm font-medium text-foreground">{{ __('I still practice this skill') }}</span><span class="block text-[11px] text-muted-foreground">{{ __('Ongoing — no end date') }}</span></span>
                             </label>
                             <div x-show="!skillForm.present" x-cloak>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_end_date') }} <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span></label>
-                                <x-date-picker model="skillForm.endDate" name-expr="skillForm.present ? '' : 'end_date'" min-expr="skillForm.startDate || skillBounds.start_date || null" max-expr="skillBounds.end_date || null" placeholder="{{ __('member.partials_affiliations_enhanced_end_date') }}" />
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.partials_affiliations_enhanced_end_date') }} <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span></label>
+                                <x-fields.date model="skillForm.endDate" name-expr="skillForm.present ? '' : 'end_date'" min-expr="skillForm.startDate || skillBounds.start_date || null" max-expr="skillBounds.end_date || null" placeholder="{{ __('members::member.partials_affiliations_enhanced_end_date') }}" />
                             </div>
                             {{-- Notes --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_notes') }}</label>
-                                <textarea x-model="skillForm.notes" rows="2" maxlength="500" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none" placeholder="{{ __('member.partials_affiliations_enhanced_notes_placeholder') }}"></textarea>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.partials_affiliations_enhanced_notes') }}</label>
+                                <textarea x-model="skillForm.notes" rows="2" maxlength="500" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none" placeholder="{{ __('members::member.partials_affiliations_enhanced_notes_placeholder') }}"></textarea>
                             </div>
                         </div>
                         <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
                             <button type="button" @click="submitSkill()" :disabled="skillSaving || !skillForm.activityQuery.trim() || !skillForm.level" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
-                                <i class="bi bi-arrow-repeat animate-spin" x-show="skillSaving"></i><span>{{ __('member.partials_affiliations_enhanced_add_skill') }}</span>
+                                <i class="bi bi-arrow-repeat animate-spin" x-show="skillSaving"></i><span>{{ __('members::member.partials_affiliations_enhanced_add_skill') }}</span>
                             </button>
                         </div>
                     </div>
@@ -2603,7 +2603,7 @@
                             <div class="relative flex items-start gap-3">
                                 <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-paperclip text-xl"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="text-lg font-black leading-tight">{{ __('member.partials_affiliations_enhanced_add_media_certificate') }}</h3>
+                                    <h3 class="text-lg font-black leading-tight">{{ __('members::member.partials_affiliations_enhanced_add_media_certificate') }}</h3>
                                     <p class="text-[12px] text-white/85 mt-0.5 truncate" x-text="cur?.club_name"></p>
                                 </div>
                                 <button type="button" @click="mediaOpen=false" aria-label="{{ __('shared.close') }}"
@@ -2615,7 +2615,7 @@
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                             {{-- Type --}}
                             <div>
-                                <span class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_type') }} <span class="text-red-500">*</span></span>
+                                <span class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.partials_affiliations_enhanced_type') }} <span class="text-red-500">*</span></span>
                                 <div class="grid grid-cols-4 gap-2">
                                     <template x-for="t in mediaTypes" :key="t.value">
                                         <button type="button" @click="mediaType=t.value" class="px-1 py-2.5 rounded-xl border text-center transition-all" :class="mediaType===t.value ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-200 hover:bg-muted/40'">
@@ -2627,8 +2627,8 @@
                             </div>
                             {{-- Title --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_title') }} <span class="text-red-500">*</span></label>
-                                <input type="text" x-model="mediaTitle" maxlength="255" placeholder="{{ __('member.partials_affiliations_enhanced_title_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.partials_affiliations_enhanced_title') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="mediaTitle" maxlength="255" placeholder="{{ __('members::member.partials_affiliations_enhanced_title_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
                             </div>
                             {{-- Image types → upload + crop --}}
                             <div x-show="mediaIsImage" x-cloak>
@@ -2668,13 +2668,13 @@
                             </div>
                             {{-- Description --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_description') }}</label>
-                                <textarea x-model="mediaDesc" rows="2" maxlength="500" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none" placeholder="{{ __('member.partials_affiliations_enhanced_description_placeholder2') }}"></textarea>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.partials_affiliations_enhanced_description') }}</label>
+                                <textarea x-model="mediaDesc" rows="2" maxlength="500" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none" placeholder="{{ __('members::member.partials_affiliations_enhanced_description_placeholder2') }}"></textarea>
                             </div>
                         </div>
                         <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
                             <button type="button" @click="submitMedia()" :disabled="mediaSaving || !mediaTitle.trim()" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
-                                <i class="bi bi-arrow-repeat animate-spin" x-show="mediaSaving"></i><span>{{ __('member.partials_affiliations_enhanced_add_media') }}</span>
+                                <i class="bi bi-arrow-repeat animate-spin" x-show="mediaSaving"></i><span>{{ __('members::member.partials_affiliations_enhanced_add_media') }}</span>
                             </button>
                         </div>
                     </div>
@@ -2708,8 +2708,8 @@
                 canEdit: @js((bool) ($canEditBasic ?? false)),
                 items: @js($certsJs),
                 i18n: {
-                    saved: @js(__('member.cert_name')),
-                    deleteConfirm: @js(__('member.cert_delete_confirm')),
+                    saved: @js(__('members::member.cert_name')),
+                    deleteConfirm: @js(__('members::member.cert_delete_confirm')),
                     networkError: @js(__('Something went wrong. Please try again.')),
                     invalidImage: @js(__('Please choose an image file.')),
                 }
@@ -2717,11 +2717,11 @@
 
             {{-- Section header — always outside the card (matches Work history) --}}
             <div class="flex items-center justify-between gap-2">
-                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-patch-check text-primary"></i>{{ __('member.certifications') }}</h3>
+                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-patch-check text-primary"></i>{{ __('members::member.certifications') }}</h3>
                 @if($canEditBasic ?? false)
-                    <button type="button" @click="openAdd()" aria-label="{{ __('member.add_certification') }}"
+                    <button type="button" @click="openAdd()" aria-label="{{ __('members::member.add_certification') }}"
                             class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>{{ __('member.add_certification') }}
+                        <i class="bi bi-plus-lg"></i>{{ __('members::member.add_certification') }}
                     </button>
                 @endif
             </div>
@@ -2729,7 +2729,7 @@
             {{-- Empty state --}}
             <template x-if="!items.length">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_certifications') }}</p>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('members::member.no_certifications') }}</p>
                 </div>
             </template>
 
@@ -2746,19 +2746,19 @@
                             <div class="flex items-start justify-between gap-2">
                                 <p class="font-bold text-foreground text-[15px] leading-snug" x-text="c.title"></p>
                                 <template x-if="c.expired">
-                                    <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">{{ __('member.cert_expired') }}</span>
+                                    <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">{{ __('members::member.cert_expired') }}</span>
                                 </template>
                             </div>
                             <p class="text-[12px] text-muted-foreground mt-0.5" x-show="c.issuer" x-text="c.issuer"></p>
                             <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                                 <span class="inline-flex items-center gap-1.5" x-show="c.issue_label"><i class="bi bi-calendar3 text-muted-foreground/70"></i><span x-text="c.issue_label"></span></span>
-                                <span class="inline-flex items-center gap-1.5" x-show="c.expiry_label"><i class="bi bi-hourglass-split text-muted-foreground/70"></i><span x-text="'{{ __('member.cert_expiry_date') }}: ' + c.expiry_label"></span></span>
+                                <span class="inline-flex items-center gap-1.5" x-show="c.expiry_label"><i class="bi bi-hourglass-split text-muted-foreground/70"></i><span x-text="'{{ __('members::member.cert_expiry_date') }}: ' + c.expiry_label"></span></span>
                                 <span class="inline-flex items-center gap-1.5" x-show="c.credential_id"><i class="bi bi-hash text-muted-foreground/70"></i><span x-text="c.credential_id"></span></span>
                             </div>
                             <p class="text-[11px] text-foreground/70 mt-2" x-show="c.notes" x-text="c.notes"></p>
                             <div class="mt-2 flex items-center gap-3">
                                 <template x-if="c.credential_url">
-                                    <a :href="c.credential_url" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-box-arrow-up-right"></i>{{ __('member.verify_credential') }}</a>
+                                    <a :href="c.credential_url" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-box-arrow-up-right"></i>{{ __('members::member.verify_credential') }}</a>
                                 </template>
                                 <template x-if="canEdit">
                                     <div class="flex items-center gap-3 ms-auto">
@@ -2787,8 +2787,8 @@
                             <div class="relative flex items-start gap-3">
                                 <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-patch-check-fill text-xl"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="text-lg font-black leading-tight" x-text="editing ? '{{ __('member.edit_certification') }}' : '{{ __('member.add_certification') }}'"></h3>
-                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.cert_issuer') }} · {{ __('member.cert_issue_date') }}</p>
+                                    <h3 class="text-lg font-black leading-tight" x-text="editing ? '{{ __('members::member.edit_certification') }}' : '{{ __('members::member.add_certification') }}'"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.cert_issuer') }} · {{ __('members::member.cert_issue_date') }}</p>
                                 </div>
                                 <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
                                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -2798,36 +2798,36 @@
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_name') }} <span class="text-red-500">*</span></label>
-                                <input type="text" x-model="form.title" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.cert_name') }}">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_name') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="form.title" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('members::member.cert_name') }}">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_issuer') }}</label>
-                                <input type="text" x-model="form.issuer" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.cert_issuer') }}">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_issuer') }}</label>
+                                <input type="text" x-model="form.issuer" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('members::member.cert_issuer') }}">
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_issue_date') }}</label>
-                                    <x-date-picker model="form.issue_date" placeholder="{{ __('member.cert_issue_date') }}" />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_issue_date') }}</label>
+                                    <x-fields.date model="form.issue_date" placeholder="{{ __('members::member.cert_issue_date') }}" />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_expiry_date') }}</label>
-                                    <x-date-picker model="form.expiry_date" min-expr="form.issue_date || null" placeholder="{{ __('member.cert_no_expiry') }}" />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_expiry_date') }}</label>
+                                    <x-fields.date model="form.expiry_date" min-expr="form.issue_date || null" placeholder="{{ __('members::member.cert_no_expiry') }}" />
                                 </div>
                             </div>
                             <div class="grid grid-cols-1 gap-3">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_credential_id') }}</label>
-                                    <input type="text" x-model="form.credential_id" maxlength="120" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.cert_credential_id') }}">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_credential_id') }}</label>
+                                    <input type="text" x-model="form.credential_id" maxlength="120" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('members::member.cert_credential_id') }}">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_credential_url') }}</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_credential_url') }}</label>
                                     <input type="url" inputmode="url" x-model="form.credential_url" maxlength="300" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="https://">
                                 </div>
                             </div>
                             {{-- Certificate photo (optional) --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_photo') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_photo') }}</label>
                                 <div class="flex items-center gap-3">
                                     <span class="w-16 h-16 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-gray-100">
                                         <template x-if="form.imagePreview"><img :src="form.imagePreview" alt="" class="w-16 h-16 object-cover"></template>
@@ -2841,14 +2841,14 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_description') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_description') }}</label>
                                 <textarea x-model="form.notes" rows="3" maxlength="1000" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
                         </div>
                         <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
                             <button type="button" @click="submit()" :disabled="submitting || !form.title.trim()" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
                                 <i class="bi bi-arrow-repeat animate-spin" x-show="submitting"></i>
-                                <span x-text="editing ? '{{ __('Save') }}' : '{{ __('member.add_certification') }}'"></span>
+                                <span x-text="editing ? '{{ __('Save') }}' : '{{ __('members::member.add_certification') }}'"></span>
                             </button>
                         </div>
                     </div>
@@ -2941,19 +2941,19 @@
                 canEdit: @js((bool) ($canEditBasic ?? false)),
                 items: @js($workJs),
                 i18n: {
-                    deleteConfirm: @js(__('member.work_delete_confirm')),
+                    deleteConfirm: @js(__('members::member.work_delete_confirm')),
                     networkError: @js(__('Something went wrong. Please try again.')),
-                    present: @js(__('member.work_present')),
+                    present: @js(__('members::member.work_present')),
                 }
              })">
 
             {{-- Section header — always outside the card, so the empty state keeps the same header as the filled one --}}
             <div class="flex items-center justify-between gap-2">
-                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-briefcase text-primary"></i>{{ __('member.work_history') }}</h3>
+                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-briefcase text-primary"></i>{{ __('members::member.work_history') }}</h3>
                 @if($canEditBasic ?? false)
-                    <button type="button" @click="openAdd()" aria-label="{{ __('member.add_work') }}"
+                    <button type="button" @click="openAdd()" aria-label="{{ __('members::member.add_work') }}"
                             class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>{{ __('member.add_work') }}
+                        <i class="bi bi-plus-lg"></i>{{ __('members::member.add_work') }}
                     </button>
                 @endif
             </div>
@@ -2961,7 +2961,7 @@
             {{-- Empty state --}}
             <template x-if="!items.length">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_work') }}</p>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('members::member.no_work') }}</p>
                 </div>
             </template>
 
@@ -2984,7 +2984,7 @@
                                     <p class="text-[12px] font-medium text-foreground/60 truncate mt-0.5" x-text="w.organization"></p>
                                 </div>
                                 <template x-if="w.current">
-                                    <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>{{ __('member.work_current') }}</span>
+                                    <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>{{ __('members::member.work_current') }}</span>
                                 </template>
                             </div>
                             {{-- Compact inline facts — one line, icon + text (no pills, so the card stays short) --}}
@@ -2997,20 +2997,20 @@
                                           @click.stop="sk.url && (window.location.href = sk.url)"><i class="bi bi-mortarboard-fill text-primary/60"></i><span x-text="sk.name"></span></span>
                                 </template>
                                 <template x-if="w.derived">
-                                    <i class="bi bi-shield-fill-check text-primary/70" title="{{ __('member.work_platform_role_note') }}"></i>
+                                    <i class="bi bi-shield-fill-check text-primary/70" title="{{ __('members::member.work_platform_role_note') }}"></i>
                                 </template>
                                 {{-- Verification state / action for self-entered rows --}}
                                 <template x-if="!w.derived && w.verification === 'verified'">
-                                    <span class="inline-flex items-center gap-1 font-semibold text-green-600"><i class="bi bi-patch-check-fill"></i>{{ __('member.verified') }}</span>
+                                    <span class="inline-flex items-center gap-1 font-semibold text-green-600"><i class="bi bi-patch-check-fill"></i>{{ __('members::member.verified') }}</span>
                                 </template>
                                 <template x-if="!w.derived && w.verification === 'pending'">
-                                    <span class="inline-flex items-center gap-1 font-medium"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('member.pending') }}</span>
+                                    <span class="inline-flex items-center gap-1 font-medium"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('members::member.pending') }}</span>
                                 </template>
                                 <template x-if="!w.derived && (w.verification === 'self_reported' || w.verification === 'rejected') && w.can_request">
                                     <button type="button" @click="requestVerify(w)" class="inline-flex items-center gap-1 font-bold text-primary"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
                                 </template>
                                 <template x-if="!w.derived && (w.verification === 'self_reported' || w.verification === 'rejected') && !w.can_request">
-                                    <button type="button" @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 font-bold text-primary" title="{{ __('member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
+                                    <button type="button" @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 font-bold text-primary" title="{{ __('members::member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('members::member.get_vouched') }}</button>
                                 </template>
                             </div>
                             <p class="text-[11px] text-foreground/70 mt-2 whitespace-pre-line" x-show="w.description" x-text="w.description"></p>
@@ -3040,8 +3040,8 @@
                             <div class="relative flex items-start gap-3">
                                 <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-briefcase-fill text-xl"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="text-lg font-black leading-tight" x-text="editing ? '{{ __('member.edit_work') }}' : '{{ __('member.add_work') }}'"></h3>
-                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.work_role') }} · {{ __('member.work_organization') }}</p>
+                                    <h3 class="text-lg font-black leading-tight" x-text="editing ? '{{ __('members::member.edit_work') }}' : '{{ __('members::member.add_work') }}'"></h3>
+                                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.work_role') }} · {{ __('members::member.work_organization') }}</p>
                                 </div>
                                 <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
                                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -3051,15 +3051,15 @@
                         </div>
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_role') }} <span class="text-red-500">*</span></label>
-                                <input type="text" x-model="form.title" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.work_role') }}">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_role') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="form.title" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('members::member.work_role') }}">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_organization') }} <span class="text-red-500">*</span></label>
-                                <input type="text" x-model="form.organization" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.work_organization') }}">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_organization') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="form.organization" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('members::member.work_organization') }}">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.work_employment_type') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.work_employment_type') }}</label>
                                 <div class="flex flex-wrap gap-1.5">
                                     @foreach($employmentTypes as $et)
                                         <button type="button" @click="form.employment_type = (form.employment_type === '{{ $et }}' ? '' : '{{ $et }}')"
@@ -3070,31 +3070,31 @@
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_start_date') }} <span class="text-red-500">*</span></label>
-                                    <x-date-picker model="form.start_date" max-expr="form.end_date || null" placeholder="{{ __('member.work_start_date') }}" />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_start_date') }} <span class="text-red-500">*</span></label>
+                                    <x-fields.date model="form.start_date" max-expr="form.end_date || null" placeholder="{{ __('members::member.work_start_date') }}" />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_end_date') }}</label>
-                                    <x-date-picker model="form.end_date" min-expr="form.start_date || null" placeholder="{{ __('member.work_present') }}" />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_end_date') }}</label>
+                                    <x-fields.date model="form.end_date" min-expr="form.start_date || null" placeholder="{{ __('members::member.work_present') }}" />
                                 </div>
                             </div>
                             <label class="flex items-center gap-2.5 cursor-pointer select-none">
                                 <input type="checkbox" x-model="form.current" @change="if(form.current) form.end_date=''" class="w-[18px] h-[18px] rounded text-primary border-gray-300 focus:ring-primary">
-                                <span class="text-sm text-gray-700">{{ __('member.work_current') }}</span>
+                                <span class="text-sm text-gray-700">{{ __('members::member.work_current') }}</span>
                             </label>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_location') }}</label>
-                                <input type="text" x-model="form.location" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.work_location') }}">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_location') }}</label>
+                                <input type="text" x-model="form.location" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('members::member.work_location') }}">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_description') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_description') }}</label>
                                 <textarea x-model="form.description" rows="3" maxlength="2000" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
                         </div>
                         <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
                             <button type="button" @click="submit()" :disabled="submitting || !form.title.trim() || !form.organization.trim() || !form.start_date" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
                                 <i class="bi bi-arrow-repeat animate-spin" x-show="submitting"></i>
-                                <span x-text="editing ? '{{ __('Save') }}' : '{{ __('member.add_work') }}'"></span>
+                                <span x-text="editing ? '{{ __('Save') }}' : '{{ __('members::member.add_work') }}'"></span>
                             </button>
                         </div>
                     </div>
@@ -3107,9 +3107,9 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-5">
                 <div class="mp-ring" style="--p:{{ (int) $attendanceRate }}; width:84px; height:84px;"><b style="font-size:18px">{{ (int) $attendanceRate }}%</b></div>
                 <div class="flex-1 space-y-2">
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.completed') }}</span><span class="font-bold text-green-600">{{ $sessionsCompleted }}</span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.no_shows') }}</span><span class="font-bold text-red-500">{{ $noShows }}</span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.total_sessions') }}</span><span class="font-bold">{{ $totalSessions }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('members::member.completed') }}</span><span class="font-bold text-green-600">{{ $sessionsCompleted }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('members::member.no_shows') }}</span><span class="font-bold text-red-500">{{ $noShows }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('members::member.total_sessions') }}</span><span class="font-bold">{{ $totalSessions }}</span></div>
                 </div>
             </div>
 
@@ -3118,12 +3118,12 @@
             @if($scheduleSessions->isNotEmpty())
                 @php
                     $statusStyles = [
-                        'attended' => ['bg-green-50 text-green-600', 'bi-check-lg', __('member.attended')],
-                        'missed' => ['bg-red-50 text-red-500', 'bi-x-lg', __('member.missed')],
-                        'upcoming' => ['bg-gray-100 text-gray-500', 'bi-clock', __('member.upcoming')],
+                        'attended' => ['bg-green-50 text-green-600', 'bi-check-lg', __('members::member.attended')],
+                        'missed' => ['bg-red-50 text-red-500', 'bi-x-lg', __('members::member.missed')],
+                        'upcoming' => ['bg-gray-100 text-gray-500', 'bi-clock', __('members::member.upcoming')],
                     ];
                 @endphp
-                <p class="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">{{ __('member.class_schedule') }}</p>
+                <p class="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">{{ __('members::member.class_schedule') }}</p>
                 @foreach($scheduleSessions as $session)
                     @php [$badgeClass, $icon, $label] = $statusStyles[$session->status]; @endphp
                     <a href="{{ $session->url }}" class="m-press block bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center gap-3">
@@ -3141,7 +3141,7 @@
             @else
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
                     <i class="bi bi-calendar-x text-2xl text-gray-300"></i>
-                    <p class="text-sm text-muted-foreground mt-2">{{ __('member.no_schedule_sessions') }}</p>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('members::member.no_schedule_sessions') }}</p>
                 </div>
             @endif
         </div>
@@ -3152,21 +3152,21 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-5">
                 <div class="mp-ring" style="--p:{{ (int) $challengeWinRate }}; width:84px; height:84px;"><b style="font-size:18px">{{ (int) $challengeWinRate }}%</b></div>
                 <div class="flex-1 space-y-2">
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.ch_won') }}</span><span class="font-bold text-green-600">{{ $challengeWins }}</span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.ch_completed') }}</span><span class="font-bold">{{ $challengesTotal }}</span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.ch_total') }}</span><span class="font-bold">{{ $memberChallenges->count() }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('members::member.ch_won') }}</span><span class="font-bold text-green-600">{{ $challengeWins }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('members::member.ch_completed') }}</span><span class="font-bold">{{ $challengesTotal }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('members::member.ch_total') }}</span><span class="font-bold">{{ $memberChallenges->count() }}</span></div>
                 </div>
             </div>
 
             @forelse($memberChallenges as $ch)
                 @php
                     // Status / result badge tokens.
-                    if ($ch->result === 'won')       [$bTone,$bText] = ['bg-green-100 text-green-700', __('member.ch_won')];
-                    elseif ($ch->result === 'lost')  [$bTone,$bText] = ['bg-red-100 text-red-600',      __('member.ch_lost')];
-                    elseif ($ch->result === 'draw')  [$bTone,$bText] = ['bg-gray-100 text-gray-600',     __('member.ch_draw')];
-                    elseif ($ch->status === 'active')   [$bTone,$bText] = ['bg-blue-100 text-blue-700',  __('member.ch_active')];
-                    elseif ($ch->status === 'pending')  [$bTone,$bText] = ['bg-amber-100 text-amber-700',__('member.ch_pending')];
-                    elseif ($ch->status === 'reported') [$bTone,$bText] = ['bg-purple-100 text-purple-700', __('member.ch_reported')];
+                    if ($ch->result === 'won')       [$bTone,$bText] = ['bg-green-100 text-green-700', __('members::member.ch_won')];
+                    elseif ($ch->result === 'lost')  [$bTone,$bText] = ['bg-red-100 text-red-600',      __('members::member.ch_lost')];
+                    elseif ($ch->result === 'draw')  [$bTone,$bText] = ['bg-gray-100 text-gray-600',     __('members::member.ch_draw')];
+                    elseif ($ch->status === 'active')   [$bTone,$bText] = ['bg-blue-100 text-blue-700',  __('members::member.ch_active')];
+                    elseif ($ch->status === 'pending')  [$bTone,$bText] = ['bg-amber-100 text-amber-700',__('members::member.ch_pending')];
+                    elseif ($ch->status === 'reported') [$bTone,$bText] = ['bg-purple-100 text-purple-700', __('members::member.ch_reported')];
                     else [$bTone,$bText] = ['bg-gray-100 text-gray-500', ucfirst($ch->status)];
                     $hasScore = filled($ch->my_score) || filled($ch->rival_score);
                 @endphp
@@ -3189,9 +3189,9 @@
                             <i class="bi {{ $ch->type === 'fight' ? 'bi-shield-shaded' : 'bi-lightning-charge-fill' }} text-primary mr-0.5"></i>
                             {{ $ch->discipline }}
                         </p>
-                        <p class="text-[11px] text-muted-foreground truncate">{{ __('member.ch_vs') }} {{ $ch->rival_name }} · {{ optional($ch->date)->format('d M Y') }}</p>
+                        <p class="text-[11px] text-muted-foreground truncate">{{ __('members::member.ch_vs') }} {{ $ch->rival_name }} · {{ optional($ch->date)->format('d M Y') }}</p>
                         @if($hasScore)
-                            <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('member.ch_score') }}: <span class="font-semibold text-foreground">{{ $ch->my_score ?? '—' }}</span> – <span class="font-semibold text-foreground">{{ $ch->rival_score ?? '—' }}</span></p>
+                            <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('members::member.ch_score') }}: <span class="font-semibold text-foreground">{{ $ch->my_score ?? '—' }}</span> – <span class="font-semibold text-foreground">{{ $ch->rival_score ?? '—' }}</span></p>
                         @endif
                     </div>
 
@@ -3203,7 +3203,7 @@
             @empty
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
                     <i class="bi bi-lightning-charge text-3xl text-gray-300"></i>
-                    <p class="text-sm text-muted-foreground mt-2">{{ __('member.ch_empty') }}</p>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('members::member.ch_empty') }}</p>
                 </div>
             @endforelse
         </div>
@@ -3265,11 +3265,11 @@ function affiliationSheet(items, cfg) {
             if (this.saving) return;
             const usePlatform = this.form.source === 'platform';
             if (usePlatform ? ! this.form.tenant_id : ! this.form.club_name.trim()) {
-                window.showToast('warning', @js(__('member.club_name_start_required')));
+                window.showToast('warning', @js(__('members::member.club_name_start_required')));
                 return;
             }
             if (! this.form.start_date) {
-                window.showToast('warning', @js(__('member.club_name_start_required')));
+                window.showToast('warning', @js(__('members::member.club_name_start_required')));
                 return;
             }
             this.saving = true;
@@ -3309,9 +3309,9 @@ function affiliationSheet(items, cfg) {
         },
         async shareForVouch(url) {
             const abs = new URL(url, window.location.origin).href;
-            const text = @js(__('member.vouch_share_text'));
+            const text = @js(__('members::member.vouch_share_text'));
             if (navigator.share) { try { await navigator.share({ url: abs, text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-            try { await navigator.clipboard.writeText(abs); window.showToast && window.showToast('success', @js(__('member.link_copied'))); }
+            try { await navigator.clipboard.writeText(abs); window.showToast && window.showToast('success', @js(__('members::member.link_copied'))); }
             catch (e) { window.showToast && window.showToast('info', abs); }
         },
 
@@ -3329,10 +3329,10 @@ function affiliationSheet(items, cfg) {
         skillActivities: [], skillCatalog: [], skillInstructors: [],
         skillBounds: { start_date: null, end_date: null, max_start: null },
         skillLevels: [
-            { value: 'beginner',     label: @js(__('member.partials_affiliations_enhanced_beginner')),     pips: 1 },
-            { value: 'intermediate', label: @js(__('member.partials_affiliations_enhanced_intermediate')), pips: 2 },
-            { value: 'advanced',     label: @js(__('member.partials_affiliations_enhanced_advanced')),     pips: 3 },
-            { value: 'expert',       label: @js(__('member.partials_affiliations_enhanced_expert')),       pips: 4 },
+            { value: 'beginner',     label: @js(__('members::member.partials_affiliations_enhanced_beginner')),     pips: 1 },
+            { value: 'intermediate', label: @js(__('members::member.partials_affiliations_enhanced_intermediate')), pips: 2 },
+            { value: 'advanced',     label: @js(__('members::member.partials_affiliations_enhanced_advanced')),     pips: 3 },
+            { value: 'expert',       label: @js(__('members::member.partials_affiliations_enhanced_expert')),       pips: 4 },
         ],
         get skillGroupedOptions() {
             const q = this.skillForm.activityQuery.trim().toLowerCase();
@@ -3366,7 +3366,7 @@ function affiliationSheet(items, cfg) {
         async submitSkill() {
             if (this.skillSaving) return;
             const f = this.skillForm;
-            if (!f.activityQuery.trim() || !f.level) { window.showToast('warning', @js(__('member.partials_affiliations_enhanced_add_skill'))); return; }
+            if (!f.activityQuery.trim() || !f.level) { window.showToast('warning', @js(__('members::member.partials_affiliations_enhanced_add_skill'))); return; }
             this.skillSaving = true;
             try {
                 const res = await fetch(`${this.affBase}/skills`, {
@@ -3393,7 +3393,7 @@ function affiliationSheet(items, cfg) {
                     duration: s.formatted_duration || null,
                     url: s.encyclopedia_url || null,
                 });
-                window.showToast('success', data.message || @js(__('member.partials_affiliations_enhanced_add_skill')));
+                window.showToast('success', data.message || @js(__('members::member.partials_affiliations_enhanced_add_skill')));
                 this.skillOpen = false;
             } catch (e) {
                 window.showToast('error', @js(__('Something went wrong. Please try again.')));
@@ -3443,10 +3443,10 @@ function affiliationSheet(items, cfg) {
         mediaOpen: false, mediaSaving: false, mediaType: 'certificate',
         mediaTitle: '', mediaUrl: '', mediaDesc: '', mediaHasImage: false, mediaImgSrc: '', _mediaObserver: null,
         mediaTypes: [
-            { value: 'certificate', label: @js(__('member.partials_affiliations_enhanced_certificate')), icon: 'bi-patch-check' },
-            { value: 'photo',       label: @js(__('member.partials_affiliations_enhanced_photo')),       icon: 'bi-image' },
-            { value: 'video',       label: @js(__('member.partials_affiliations_enhanced_video')),       icon: 'bi-play-circle' },
-            { value: 'document',    label: @js(__('member.partials_affiliations_enhanced_document')),    icon: 'bi-file-text' },
+            { value: 'certificate', label: @js(__('members::member.partials_affiliations_enhanced_certificate')), icon: 'bi-patch-check' },
+            { value: 'photo',       label: @js(__('members::member.partials_affiliations_enhanced_photo')),       icon: 'bi-image' },
+            { value: 'video',       label: @js(__('members::member.partials_affiliations_enhanced_video')),       icon: 'bi-play-circle' },
+            { value: 'document',    label: @js(__('members::member.partials_affiliations_enhanced_document')),    icon: 'bi-file-text' },
         ],
         get mediaIsImage() { return this.mediaType === 'certificate' || this.mediaType === 'photo'; },
         openAddMedia() {
@@ -3499,10 +3499,10 @@ function affiliationSheet(items, cfg) {
                 if (!res.ok || !data.success || !data.media) throw new Error(data.message || 'error');
                 const m = data.media;
                 this.cur.media.push({ title: m.title, url: m.full_url, icon: m.icon_class });
-                window.showToast('success', data.message || @js(__('member.partials_affiliations_enhanced_add_media')));
+                window.showToast('success', data.message || @js(__('members::member.partials_affiliations_enhanced_add_media')));
                 this.mediaOpen = false;
             } catch (e) {
-                window.showToast('error', @js(__('member.partials_affiliations_enhanced_js_error_adding_media')));
+                window.showToast('error', @js(__('members::member.partials_affiliations_enhanced_js_error_adding_media')));
             }
             this.mediaSaving = false;
         },
@@ -3549,10 +3549,10 @@ function affiliationSheet(items, cfg) {
 // Used by the weight history and the medal sheet (which passes the EVENT date).
 window.memberTimeAgo = (function () {
     var t = {
-        tpl: @js(__('member.time_ago_tpl')), today: @js(__('member.time_ago_today')),
-        yr: @js(__('member.unit_yr')), yrs: @js(__('member.unit_yrs')),
-        mo: @js(__('member.unit_mo')), mos: @js(__('member.unit_mos')),
-        day: @js(__('member.unit_day')), days: @js(__('member.unit_days')),
+        tpl: @js(__('members::member.time_ago_tpl')), today: @js(__('members::member.time_ago_today')),
+        yr: @js(__('members::member.unit_yr')), yrs: @js(__('members::member.unit_yrs')),
+        mo: @js(__('members::member.unit_mo')), mos: @js(__('members::member.unit_mos')),
+        day: @js(__('members::member.unit_day')), days: @js(__('members::member.unit_days')),
     };
     return function (ds) {
         if (!ds) return '';
@@ -3733,7 +3733,7 @@ window.memberFollow = function (initial, followUrl, name, chatUrl) {
                 window.location.href = '/messages/' + data.conversation_id;
             } catch (e) {
                 this.chatBusy = false;
-                window.showToast && window.showToast('error', e.message || @js(__('member.chat_error')));
+                window.showToast && window.showToast('error', e.message || @js(__('members::member.chat_error')));
             }
         },
 
@@ -3758,7 +3758,7 @@ window.memberFollow = function (initial, followUrl, name, chatUrl) {
                 }
             } catch (e) {
                 this.following = !turningOn; // revert
-                window.showToast && window.showToast('error', @js(__('member.follow_error')));
+                window.showToast && window.showToast('error', @js(__('members::member.follow_error')));
             } finally {
                 this.busy = false;
             }
@@ -3770,10 +3770,10 @@ window.memberFollow = function (initial, followUrl, name, chatUrl) {
                 navigator.share({ title: name, url }).catch(() => {});
             } else if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url)
-                    .then(() => window.showToast && window.showToast('success', @js(__('member.profile_link_copied'))))
+                    .then(() => window.showToast && window.showToast('success', @js(__('members::member.profile_link_copied'))))
                     .catch(() => {});
             } else {
-                window.showToast && window.showToast('info', @js(__('member.share_unsupported')));
+                window.showToast && window.showToast('info', @js(__('members::member.share_unsupported')));
             }
         },
     };
@@ -3993,8 +3993,8 @@ window.tournamentSheet = function (cfg) {
             const t = this.cardPayload(el);
             if (!t) return;
             const ok = await window.confirmAction({
-                title: @js(__('member.tournament_delete_confirm_title')),
-                message: @js(__('member.tournament_delete_confirm_body')),
+                title: @js(__('members::member.tournament_delete_confirm_title')),
+                message: @js(__('members::member.tournament_delete_confirm_body')),
                 type: 'danger',
                 confirmText: @js(__('shared.delete')),
             });
@@ -4029,12 +4029,12 @@ window.tournamentSheet = function (cfg) {
         // Unlisted club → share the public profile so teammates/coaches can vouch.
         async shareForVouch(url) {
             var abs = new URL(url, window.location.origin).href;
-            var text = @js(__('member.vouch_share_text'));
+            var text = @js(__('members::member.vouch_share_text'));
             if (navigator.share) {
                 try { await navigator.share({ url: abs, text: text }); return; }
                 catch (e) { if (e && e.name === 'AbortError') return; }
             }
-            try { await navigator.clipboard.writeText(abs); window.showToast && window.showToast('success', @js(__('member.link_copied'))); }
+            try { await navigator.clipboard.writeText(abs); window.showToast && window.showToast('success', @js(__('members::member.link_copied'))); }
             catch (e) { window.showToast && window.showToast('info', abs); }
         },
         async submit() {
@@ -4058,7 +4058,7 @@ window.tournamentSheet = function (cfg) {
                 var data = await res.json();
                 if (data.success) {
                     this.addOpen = false;
-                    window.showToast && window.showToast('success', this.editing ? @js(__('member.tournament_updated')) : @js(__('Achievement added.')));
+                    window.showToast && window.showToast('success', this.editing ? @js(__('members::member.tournament_updated')) : @js(__('Achievement added.')));
                     // Reload so the server-computed medal tiles + "awaiting verification"
                     // note reflect the new record (self-reported medals stay uncounted in
                     // the verified tiles by design). The #tournaments hash returns here.
@@ -4388,9 +4388,9 @@ window.workManager = function (cfg) {
         // No platform club → share the public profile so colleagues can vouch.
         async shareForVouch(url) {
             const abs = new URL(url, window.location.origin).href;
-            const text = @js(__('member.vouch_share_text'));
+            const text = @js(__('members::member.vouch_share_text'));
             if (navigator.share) { try { await navigator.share({ url: abs, text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-            try { await navigator.clipboard.writeText(abs); window.showToast && window.showToast('success', @js(__('member.link_copied'))); }
+            try { await navigator.clipboard.writeText(abs); window.showToast && window.showToast('success', @js(__('members::member.link_copied'))); }
             catch (e) { window.showToast && window.showToast('info', abs); }
         },
         openEdit(w) {

@@ -1,6 +1,6 @@
 {{-- `$shell` is shared ONLY on the sealed event routes (/e/{uuid}/admin/…), so with
      nothing shared this is the member shell exactly as before. See entry/shell. --}}
-@extends($shell ?? 'layouts.personal-mobile')
+@extends($shell ?? 'members::layouts.personal-mobile')
 
 @section('title', __('event-sparring::messages.label').' · '.$e['title'])
 

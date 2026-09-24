@@ -112,7 +112,7 @@
   }, { passive: false });
 })();
 </script>
-<title>{{ __('events.screen_title') }}</title>
+<title>{{ __('events::events.screen_title') }}</title>
 {{-- Hands off, extensions. `color-scheme: dark` below tells a BROWSER not to
      auto-darken this page; it says nothing to Dark Reader and friends, which
      analyse the document a moment after first paint and lay their own filter
@@ -389,17 +389,17 @@
       <img src="{{ asset('images/logo.png') }}" alt="">
       <div class="brand-name">TAKEONE</div>
     </div>
-    <div class="status"><span class="dot"></span>{{ __('events.screen_waiting') }}</div>
+    <div class="status"><span class="dot"></span>{{ __('events::events.screen_waiting') }}</div>
   </header>
 
   <main>
     <div class="cols">
       <div class="left">
-        <div class="kicker">{{ __('events.screen_eyebrow') }}</div>
-        <h1>{{ __('events.screen_headline') }}</h1>
+        <div class="kicker">{{ __('events::events.screen_eyebrow') }}</div>
+        <h1>{{ __('events::events.screen_headline') }}</h1>
 
         <div>
-          <div class="code-label">{{ __('events.screen_code_label') }}</div>
+          <div class="code-label">{{ __('events::events.screen_code_label') }}</div>
           {{-- One tile per character. Split rather than printed as one word: at
                this size a six-character block reads as a single unbroken shape
                from across a hall, and the tiles are what make somebody read it
@@ -412,9 +412,9 @@
         </div>
 
         <ol>
-          <li>{{ __('events.screen_step_open') }}</li>
-          <li>{{ __('events.screen_step_scan') }}</li>
-          <li>{{ __('events.screen_step_choose') }}</li>
+          <li>{{ __('events::events.screen_step_open') }}</li>
+          <li>{{ __('events::events.screen_step_scan') }}</li>
+          <li>{{ __('events::events.screen_step_choose') }}</li>
         </ol>
       </div>
 
@@ -451,7 +451,7 @@
             <line x1="14" y1="14" x2="21" y2="21"></line>
             <line x1="21" y1="14" x2="14" y2="21"></line>
           </svg>
-          {{ __('events.screen_scan_pill') }}
+          {{ __('events::events.screen_scan_pill') }}
         </div>
       </div>
     </div>
@@ -469,7 +469,7 @@
          phone, right now, with nothing to download and no way to end up on the
          wrong server. Hidden on a television, which has no use for either. --}}
     <div class="cam-cta">
-      <p class="cam-cta-head">{{ __('events.screen_film_title') }}</p>
+      <p class="cam-cta-head">{{ __('events::events.screen_film_title') }}</p>
 
       <a class="cam-btn cam-btn-primary" href="{{ route('camera.web') }}">
         <span class="cam-ico">
@@ -480,8 +480,8 @@
           </svg>
         </span>
         <span class="cam-txt">
-          <span class="cam-title">{{ __('events.screen_film_now') }}</span>
-          <span class="cam-sub">{{ __('events.screen_film_now_sub') }}</span>
+          <span class="cam-title">{{ __('events::events.screen_film_now') }}</span>
+          <span class="cam-sub">{{ __('events::events.screen_film_now_sub') }}</span>
         </span>
       </a>
 
@@ -495,8 +495,8 @@
             </svg>
           </span>
           <span class="cam-txt">
-            <span class="cam-title">{{ __('events.screen_film_app') }}</span>
-            <span class="cam-sub">{{ __('events.screen_film_app_sub') }}</span>
+            <span class="cam-title">{{ __('events::events.screen_film_app') }}</span>
+            <span class="cam-sub">{{ __('events::events.screen_film_app_sub') }}</span>
             {{-- The build id, printed. A phone that installs the wrong APK from
                  its own Downloads folder shows no error at all, so the only way
                  to tell is to compare what was offered with what is running. --}}
@@ -526,7 +526,7 @@
             </svg>
           </span>
           <span class="txt">
-            <span class="title">{{ __('events.screen_app_tv') }}</span>
+            <span class="title">{{ __('events::events.screen_app_tv') }}</span>
             <span class="sub">{{ $appUrl }}</span>
           </span>
         </a>
@@ -544,7 +544,7 @@
             </svg>
           </span>
           <span class="txt">
-            <span class="title">{{ __('events.screen_app_tab') }}</span>
+            <span class="title">{{ __('events::events.screen_app_tab') }}</span>
             <span class="sub">{{ $tabUrl }}</span>
           </span>
         </a>
@@ -562,7 +562,7 @@
             </svg>
           </span>
           <span class="txt">
-            <span class="title">{{ __('events.screen_app_cam') }}</span>
+            <span class="title">{{ __('events::events.screen_app_cam') }}</span>
             <span class="sub">{{ $camUrl }}</span>
           </span>
         </a>
@@ -581,7 +581,7 @@
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
       </span>
-      <span class="title">{{ __('events.screen_another') }}</span>
+      <span class="title">{{ __('events::events.screen_another') }}</span>
     </a>
   </footer>
 </div>

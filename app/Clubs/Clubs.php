@@ -3,7 +3,9 @@
 namespace App\Clubs;
 
 use App\Clubs\Models\Tenant;
+use App\Clubs\Copilot\CreateClubSkill;
 use App\Support\Modules\AbstractModule;
+use App\Support\Modules\Surfaces\ContributesCopilotSkills;
 use App\Support\Modules\Surfaces\ContributesClubAdminNav;
 
 /**
@@ -20,7 +22,7 @@ use App\Support\Modules\Surfaces\ContributesClubAdminNav;
  * happen to have something to show in the club's workspace — which is exactly
  * why nav contribution is an interface rather than a property of this module.
  */
-class Clubs extends AbstractModule implements ContributesClubAdminNav
+class Clubs extends AbstractModule implements ContributesClubAdminNav, ContributesCopilotSkills
 {
     public function key(): string
     {
@@ -89,5 +91,11 @@ class Clubs extends AbstractModule implements ContributesClubAdminNav
             ->count();
 
         return $pending(\App\Members\Models\TournamentEvent::class) + $pending(\App\Members\Models\SkillAcquisition::class);
+    }
+
+    /** Coach can create one of these — see App\Support\Copilot\CopilotSkill. */
+    public function copilotSkills(): array
+    {
+        return [app(CreateClubSkill::class)];
     }
 }

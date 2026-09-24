@@ -42,7 +42,7 @@
                         {{-- Standard role assignment --}}
                         <div x-show="mode === 'role'">
                             <label class="form-label">{{ __('admin.ins_access_role') }}</label>
-                            <x-select-menu model="role" :placeholder="__('admin.ins_access_select_role')" :options="$availableRoles->map(fn ($r) => ['value' => $r->slug, 'label' => $r->name])->all()" />
+                            <x-fields.select model="role" :placeholder="__('admin.ins_access_select_role')" :options="$availableRoles->map(fn ($r) => ['value' => $r->slug, 'label' => $r->name])->all()" />
                         </div>
 
                         {{-- Custom permission checklist (super-admin only) --}}

@@ -176,7 +176,7 @@
         @endif
         <div @if(!$showEmailField) class="md:col-span-2" @endif>
             <label for="{{ $formId }}_mobile" class="form-label">{{ __('shared.profile_modal_fields_mobile_number') }}</label>
-            <x-country-code-dropdown
+            <x-fields.phone-code
                 name="mobile_code"
                 :id="$formId . '_country_code'"
                 :value="$userMobileCode"
@@ -188,7 +188,7 @@
                        value="{{ $userMobileNumber }}"
                        autocomplete="tel"
                        placeholder="{{ __('shared.profile_modal_fields_phone_number_placeholder') }}">
-            </x-country-code-dropdown>
+            </x-fields.phone-code>
             @error('mobile')<div class="invalid-feedback block">{{ $message }}</div>@enderror
         </div>
     </div>
@@ -226,7 +226,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
         <div>
-            <x-gender-dropdown
+            <x-fields.gender
                 name="gender"
                 :id="$formId . '_gender'"
                 label="{{ __('shared.profile_modal_fields_gender') }}"
@@ -237,7 +237,7 @@
                 :error="$errors->first('gender')" />
         </div>
         <div>
-            <x-marital-status-dropdown
+            <x-fields.marital-status
                 name="marital_status"
                 :id="$formId . '_marital_status'"
                 label="{{ __('shared.profile_modal_fields_marital_status') }}"
@@ -247,7 +247,7 @@
     </div>
 
     <div class="mb-3">
-        <x-birthdate-dropdown
+        <x-fields.date-of-birth
             name="birthdate"
             :id="$formId . '_birthdate'"
             label="{{ __('shared.profile_modal_fields_date_of_birth') }}"
@@ -261,7 +261,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
         <div>
-            <x-blood-type-dropdown
+            <x-fields.blood-type
                 name="blood_type"
                 :id="$formId . '_blood_type'"
                 label="{{ __('shared.profile_modal_fields_blood_type') }}"
@@ -269,7 +269,7 @@
                 :error="$errors->first('blood_type')" />
         </div>
         <div>
-            <x-country-dropdown
+            <x-fields.country
                 name="nationality"
                 :id="$formId . '_nationality'"
                 label="{{ __('shared.profile_modal_fields_nationality') }}"
@@ -323,7 +323,7 @@
         <div class="flex-1 h-px bg-gray-100"></div>
     </div>
     <div class="mb-3">
-        <x-relationship-dropdown
+        <x-fields.relationship
             name="relationship_type"
             :id="$formId . '_relationship_type'"
             label="{{ __('shared.profile_modal_fields_relationship') }}"
@@ -341,7 +341,7 @@
 
 {{-- ===== Social Media Tab ===== --}}
 <div x-show="activeTab === 'social'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-    <x-social-links-editor :links="$formLinks" :containerId="$formId . '_socialLinksContainer'" />
+    <x-fields.social-links :links="$formLinks" :containerId="$formId . '_socialLinksContainer'" />
 </div>
 
 {{-- ===== Additional Info Tab ===== --}}
@@ -364,7 +364,7 @@
                         <input type="text" x-model="contact.name" placeholder="{{ __('shared.profile_modal_fields_contact_name_placeholder') }}" class="form-control form-control-sm">
                     </div>
                     <div class="col-span-6 md:col-span-3">
-                        <x-select-menu model="contact.relationship"
+                        <x-fields.select model="contact.relationship"
                             placeholder="{{ __('shared.profile_modal_fields_relationship') }}"
                             :options="[
                                 ['value' => 'parent', 'label' => __('shared.profile_modal_fields_parent')],
@@ -493,7 +493,7 @@
                 <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <div class="grid grid-cols-12 gap-2 items-center mb-2">
                         <div class="col-span-6 md:col-span-5">
-                            <x-select-menu model="doc.type"
+                            <x-fields.select model="doc.type"
                                 placeholder="{{ __('shared.profile_modal_fields_document_type') }}"
                                 :options="[
                                     ['value' => 'National ID', 'label' => __('shared.profile_modal_fields_national_id')],
@@ -633,16 +633,16 @@
                     <i class="bi bi-shield-lock-fill text-lg"></i>
                 </span>
                 <div class="min-w-0">
-                    <h3 class="font-bold text-foreground leading-tight">{{ __('member.account_security') }}</h3>
-                    <p class="text-[11px] text-muted-foreground">{{ __('member.super_admin_only') }}</p>
+                    <h3 class="font-bold text-foreground leading-tight">{{ __('members::member.account_security') }}</h3>
+                    <p class="text-[11px] text-muted-foreground">{{ __('members::member.super_admin_only') }}</p>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-3">
                 <button type="button" @click="openSet()" class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-foreground text-sm font-semibold active:bg-muted/70 transition-colors">
-                    <i class="bi bi-key"></i> {{ __('member.set') }}
+                    <i class="bi bi-key"></i> {{ __('members::member.set') }}
                 </button>
                 <button type="button" @click="generate()" :disabled="busy" class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 transition-colors disabled:opacity-60">
-                    <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-magic'"></i> {{ __('member.generate') }}
+                    <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-magic'"></i> {{ __('members::member.generate') }}
                 </button>
             </div>
 
@@ -665,8 +665,8 @@
                                 <i class="bi bi-key-fill text-xl"></i>
                             </span>
                             <div class="min-w-0 flex-1">
-                                <h3 class="text-lg font-black leading-tight">{{ __('member.set_password') }}</h3>
-                                <p class="text-[12px] text-white/85 mt-0.5" x-text="@js(__('member.set_password_for')).replace(':name', name)"></p>
+                                <h3 class="text-lg font-black leading-tight">{{ __('members::member.set_password') }}</h3>
+                                <p class="text-[12px] text-white/85 mt-0.5" x-text="@js(__('members::member.set_password_for')).replace(':name', name)"></p>
                             </div>
                             <button type="button" @click="setOpen=false" aria-label="{{ __('shared.close') }}"
                                     class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -677,15 +677,15 @@
 
                     <div class="p-5 pb-8">
                     <div class="space-y-3">
-                        <input type="password" x-model="pw1" placeholder="{{ __('member.new_password') }}" minlength="8" autocomplete="new-password"
+                        <input type="password" x-model="pw1" placeholder="{{ __('members::member.new_password') }}" minlength="8" autocomplete="new-password"
                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                        <input type="password" x-model="pw2" placeholder="{{ __('member.confirm_password') }}" minlength="8" autocomplete="new-password"
+                        <input type="password" x-model="pw2" placeholder="{{ __('members::member.confirm_password') }}" minlength="8" autocomplete="new-password"
                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
                     </div>
                     <div class="flex gap-2 mt-5">
                         <button type="button" @click="setOpen=false" class="m-press flex-1 py-3 rounded-xl bg-muted text-foreground text-sm font-semibold">{{ __('shared.cancel') }}</button>
                         <button type="button" @click="submitSet()" :disabled="busy" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60">
-                            <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('member.set_password') }}
+                            <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('members::member.set_password') }}
                         </button>
                     </div>
                     </div>
@@ -710,10 +710,10 @@
                                 <i class="bi bi-check-circle-fill text-xl"></i>
                             </span>
                             <div class="min-w-0 flex-1">
-                                <h3 class="text-lg font-black leading-tight">{{ __('member.new_password_generated') }}</h3>
-                                <p class="text-[12px] text-white/85 mt-0.5" x-show="emailed">{{ __('member.password_emailed') }}</p>
+                                <h3 class="text-lg font-black leading-tight">{{ __('members::member.new_password_generated') }}</h3>
+                                <p class="text-[12px] text-white/85 mt-0.5" x-show="emailed">{{ __('members::member.password_emailed') }}</p>
                                 <p class="text-[12px] text-white mt-0.5" x-show="!emailed">
-                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ __('member.password_not_emailed') }}
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ __('members::member.password_not_emailed') }}
                                 </p>
                             </div>
                             <button type="button" @click="resultOpen=false" aria-label="{{ __('shared.close') }}"
@@ -743,12 +743,12 @@
                 <i class="bi {{ ($securityTwoFa['enabled'] ?? false) ? 'bi-patch-check-fill' : 'bi-shield-slash' }} text-lg"></i>
             </span>
             <div class="min-w-0 flex-1">
-                <h3 class="font-bold text-foreground leading-tight">{{ __('member.two_factor') }}</h3>
+                <h3 class="font-bold text-foreground leading-tight">{{ __('members::member.two_factor') }}</h3>
                 <p class="text-[11px] text-muted-foreground">
                     @if($securityTwoFa['enabled'] ?? false)
-                        {{ $securityTwoFa['since'] ? __('member.two_factor_on_since', ['date' => $securityTwoFa['since']]) : __('member.two_factor_on') }}
+                        {{ $securityTwoFa['since'] ? __('members::member.two_factor_on_since', ['date' => $securityTwoFa['since']]) : __('members::member.two_factor_on') }}
                     @else
-                        {{ __('member.two_factor_off') }}
+                        {{ __('members::member.two_factor_off') }}
                     @endif
                 </p>
             </div>
@@ -759,11 +759,11 @@
                  code and a confirmation code), so this points there rather than
                  reimplementing it in a tab. --}}
             <a href="{{ route('security.show') }}" class="m-press mt-3 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 transition-colors">
-                <i class="bi bi-shield-lock"></i>{{ ($securityTwoFa['enabled'] ?? false) ? __('member.two_factor_manage') : __('member.two_factor_enable') }}
+                <i class="bi bi-shield-lock"></i>{{ ($securityTwoFa['enabled'] ?? false) ? __('members::member.two_factor_manage') : __('members::member.two_factor_enable') }}
             </a>
         @else
             <p class="mt-3 text-xs text-muted-foreground bg-muted/60 rounded-xl px-3 py-2.5">
-                <i class="bi bi-info-circle me-1"></i>{{ __('member.two_factor_member_only') }}
+                <i class="bi bi-info-circle me-1"></i>{{ __('members::member.two_factor_member_only') }}
             </p>
         @endif
     </div>

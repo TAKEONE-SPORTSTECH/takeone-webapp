@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 
 {{-- Styles moved to app.css (Phase 6) --}}
@@ -775,7 +775,7 @@
     </div>
 </div>
 
-@include('admin.club.members.partials.member-popup')
+@include('clubs::admin.club.members.partials.member-popup')
 
 {{-- Import Members Modal --}}
 <div id="importMembersModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">

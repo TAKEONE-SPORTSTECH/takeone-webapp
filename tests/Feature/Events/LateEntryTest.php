@@ -232,7 +232,7 @@ class LateEntryTest extends TestCase
 
         $this->admit($event, $category, $late)
             ->assertStatus(422)
-            ->assertJson(['success' => false, 'message' => __('events.late_entry_division_over')]);
+            ->assertJson(['success' => false, 'message' => __('events::events.late_entry_division_over')]);
     }
 
     public function test_a_stranger_cannot_admit_anybody(): void

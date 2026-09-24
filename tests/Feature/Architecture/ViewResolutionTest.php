@@ -35,6 +35,69 @@ class ViewResolutionTest extends TestCase
     /** Sections that legitimately serve desktop on a phone (no mobile file). */
     private const DESKTOP_ONLY = ['clubs::achievements.verifications'];
 
+    /**
+     * The super-admin's screens, as DEVICE PAIRS: [mobile, desktop].
+     *
+     * The Platform module's controllers choose between these with
+     * `view()->exists($mobile) ? $mobile : $desktop` and a `$resultsView`
+     * ternary — names built at runtime, which
+     * test_every_static_view_reference_in_php_resolves cannot see, because its
+     * regex only matches a literal that is the whole argument to view().
+     *
+     * That blind spot is precisely why the platform views could not move into
+     * the module before: losing the mobile half does not throw, it silently
+     * serves the desktop screen to a phone. Enumerating both halves here is
+     * what made the move safe, so this list is the gate — extend it when the
+     * module gains a screen, never shorten it to make a failure go away.
+     */
+    private const PLATFORM_SCREENS = [
+        ['platform::mobile.index', 'platform::index'],
+        ['platform::mobile.clubs', 'platform::clubs.index'],
+        ['platform::mobile.members', 'platform::members.index'],
+        ['clubs::business.approvals.mobile', 'clubs::business.approvals.index'],
+        ['platform::mobile.activities', 'platform::activities'],
+        ['platform::mobile.audit-log', 'platform::audit-log.index'],
+        ['platform::mobile.backup', 'platform::backup.index'],
+        // The AJAX results region of the members list, swapped in place.
+        ['platform::members._results-mobile', 'platform::members._results'],
+        // The public global activity directory, /activity/{uuid}.
+        ['platform::activity.mobile.show', 'platform::activity.desktop.show'],
+        // The public club browser — same view()->exists() pattern, same risk.
+        ['clubs::public.mobile.explore', 'clubs::public.explore'],
+        ['clubs::public.mobile.show', 'clubs::public.show'],
+    ];
+
+    /** Platform screens with one view for both devices, and their partials. */
+    private const PLATFORM_SINGLE = [
+        'platform::dashboard', 'platform::settings', 'platform::logs',
+        'platform::clubs.add', 'platform::clubs.edit',
+        'platform::clubs._results', 'platform::clubs._scripts',
+        'platform::members._scripts',
+        'clubs::business.approvals._card', 'clubs::business.approvals._scripts',
+    ];
+
+    public function test_every_platform_screen_resolves_on_both_devices(): void
+    {
+        foreach (self::PLATFORM_SCREENS as [$mobile, $desktop]) {
+            $this->assertTrue(View::exists($desktop), sprintf(
+                'The platform screen "%s" does not exist.', $desktop
+            ));
+
+            $this->assertTrue(View::exists($mobile), sprintf(
+                'SILENT REGRESSION: the mobile view "%s" has gone, so the controller\'s '
+                .'view()->exists() check will quietly serve "%s" — the DESKTOP screen — '
+                .'to a phone, and nothing else will report it.',
+                $mobile, $desktop
+            ));
+        }
+
+        foreach (self::PLATFORM_SINGLE as $name) {
+            $this->assertTrue(View::exists($name), sprintf(
+                'The platform view "%s" does not exist.', $name
+            ));
+        }
+    }
+
     public function test_every_club_admin_section_resolves_on_both_devices(): void
     {
         foreach (ViewInventory::CLUB_SECTIONS as [$section, $module]) {

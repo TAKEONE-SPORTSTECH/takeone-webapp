@@ -55,7 +55,7 @@ if (input && input.type !== 'file' && !input.value) {  // Never set file input v
 
 #### For Timezone Dropdown:
 ```blade
-<x-timezone-dropdown 
+<x-fields.timezone 
     name="timezone" 
     id="timezone" 
     :value="$club->timezone ?? old('timezone')" 

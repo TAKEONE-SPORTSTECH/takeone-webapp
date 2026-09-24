@@ -3,8 +3,8 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreMembersRequest;
-use App\Http\Requests\Admin\WalkInRegistrationRequest;
+use App\Clubs\Requests\StoreMembersRequest;
+use App\Clubs\Requests\WalkInRegistrationRequest;
 use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\ClubTransaction;
@@ -12,10 +12,10 @@ use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Members\Models\UserRelationship;
-use App\Services\FinancialService;
-use App\Services\SubscriptionService;
+use App\Clubs\Support\FinancialService;
+use App\Clubs\Support\SubscriptionService;
 use Illuminate\Support\Facades\Auth;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -93,7 +93,7 @@ class ClubMemberAdminController extends Controller
         }
 
         $packages = ClubPackage::where('tenant_id', $clubId)->with('activities.equipment')->get();
-        app(\App\Services\RegistrationCostService::class)->attachEquipmentToPackages($packages, $clubId);
+        app(\App\Clubs\Support\RegistrationCostService::class)->attachEquipmentToPackages($packages, $clubId);
 
         // Monthly new-member registrations + demographic breakdown — last 12 months (sparkline data)
         $recentMembers = DB::table('memberships as m')
@@ -174,7 +174,7 @@ class ClubMemberAdminController extends Controller
                 ->groupBy('user_id');
         }
 
-        return view(\App\Support\ClubView::pick('members', 'clubs'), compact(
+        return view(\App\Clubs\Support\ClubView::pick('members', 'clubs'), compact(
             'club', 'packages', 'statusCounts', 'filter',
             'mobileMembers', 'mobileSubscriptions',
             'allCount', 'activeCount', 'notActiveCount', 'formerCount',
@@ -665,7 +665,7 @@ class ClubMemberAdminController extends Controller
             $validPkgIds = ClubPackage::where('tenant_id', $club->id)->pluck('id')->flip();
             $childIdx = 0;
             $groupId = (string) Str::uuid();
-            $costSvc = app(\App\Services\RegistrationCostService::class);
+            $costSvc = app(\App\Clubs\Support\RegistrationCostService::class);
             $subSvc = app(SubscriptionService::class);
 
             foreach ($request->people as $person) {
@@ -789,7 +789,7 @@ class ClubMemberAdminController extends Controller
                 ['status' => 'active']
             );
 
-            $costSvc = app(\App\Services\RegistrationCostService::class);
+            $costSvc = app(\App\Clubs\Support\RegistrationCostService::class);
             $subSvc = app(SubscriptionService::class);
             $groupId = (string) Str::uuid();
             $validPkgIds = ClubPackage::where('tenant_id', $club->id)->pluck('id')->flip();
@@ -1146,7 +1146,7 @@ class ClubMemberAdminController extends Controller
         // End the club affiliation — profile and all history remain intact.
         $membership->update(['status' => 'former']);
 
-        \App\Support\ClubCache::flushStats($club->id);
+        \App\Clubs\Support\ClubCache::flushStats($club->id);
 
         return response()->json([
             'success' => true,

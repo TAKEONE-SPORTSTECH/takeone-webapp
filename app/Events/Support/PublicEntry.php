@@ -5,7 +5,7 @@ namespace App\Events\Support;
 use App\Events\EventTypeRegistry;
 use App\Members\Models\User;
 use App\Members\Models\UserNotification;
-use App\Mail\EventEntryEmail;
+use App\Events\Mail\EventEntryEmail;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventPublicEntry;
@@ -76,7 +76,7 @@ class PublicEntry
         }
 
         if ($this->isFull($event)) {
-            return ['open' => false, 'note' => __('events.entry_full')];
+            return ['open' => false, 'note' => __('events::events.entry_full')];
         }
 
         return ['open' => true, 'note' => null];
@@ -157,7 +157,7 @@ class PublicEntry
     {
         $state = $this->state($event);
         if (! $state['open']) {
-            return ['ok' => false, 'message' => $state['note'] ?? __('events.public_enrol_closed')];
+            return ['ok' => false, 'message' => $state['note'] ?? __('events::events.public_enrol_closed')];
         }
 
         // The priced extras they ticked. Read here, once, so both branches of
@@ -179,7 +179,7 @@ class PublicEntry
         // and for somebody who mistyped: sign in. No account is touched, and
         // nothing here confirms or denies that one exists.
         if ($email !== null && User::where('email', $email)->exists()) {
-            return ['ok' => false, 'message' => __('events.public_enrol_sign_in'), 'field' => 'email'];
+            return ['ok' => false, 'message' => __('events::events.public_enrol_sign_in'), 'field' => 'email'];
         }
 
         // Deliberately NO duplicate-name check, unlike the coach's door. There
@@ -273,7 +273,7 @@ class PublicEntry
 
             // Nothing was kept: the account and the entry went back with the
             // transaction. The one sentence that is true and useful.
-            return ['ok' => false, 'message' => __('events.public_enrol_photo_invalid'), 'field' => 'photo'];
+            return ['ok' => false, 'message' => __('events::events.public_enrol_photo_invalid'), 'field' => 'photo'];
         }
 
         // Best-effort, and outside the transaction: a mail queue that is down
@@ -295,7 +295,7 @@ class PublicEntry
                 'ok' => true,
                 'state' => 'accepted',
                 'division' => $accepted['division'],
-                'message' => __('events.public_enrol_accepted'),
+                'message' => __('events::events.public_enrol_accepted'),
                 // Who was just created. The caller signs them in — see
                 // PublicEntryController::store(). Never echoed to the client.
                 'athlete_id' => (int) $entry->user_id,
@@ -309,7 +309,7 @@ class PublicEntry
             'ok' => true,
             'state' => 'pending',
             'division' => null,
-            'message' => __('events.public_enrol_received'),
+            'message' => __('events::events.public_enrol_received'),
             'athlete_id' => (int) $entry->user_id,
         ];
     }
@@ -342,7 +342,7 @@ class PublicEntry
     {
         $state = $this->state($event);
         if (! $state['open']) {
-            return ['ok' => false, 'message' => $state['note'] ?? __('events.public_enrol_closed')];
+            return ['ok' => false, 'message' => $state['note'] ?? __('events::events.public_enrol_closed')];
         }
 
         // The priced extras they ticked. Read here, once, so both branches of
@@ -357,13 +357,13 @@ class PublicEntry
         // EntryService rather than copied.
         if (app(EntryService::class)->isBanned($event, (int) $athlete->id)) {
             return ['ok' => false, 'state' => 'banned',
-                    'message' => __('events.entry_banned', ['name' => $athlete->full_name ?: $athlete->name])];
+                    'message' => __('events::events.entry_banned', ['name' => $athlete->full_name ?: $athlete->name])];
         }
 
         // Already competing. Not an error to apologise for — say so and stop,
         // rather than adding a second request behind the place they hold.
         if ($this->isEntered($event, $athlete)) {
-            return ['ok' => false, 'state' => 'already', 'message' => __('events.public_enrol_already_in')];
+            return ['ok' => false, 'state' => 'already', 'message' => __('events::events.public_enrol_already_in')];
         }
 
         // Already asked. Idempotent on purpose: a double tap, a back button or
@@ -371,7 +371,7 @@ class PublicEntry
         // queue, and the honest answer is the one they already got.
         if ($existing = $this->pendingFor($event, $athlete)) {
             return ['ok' => true, 'state' => 'pending', 'division' => null,
-                    'message' => __('events.public_enrol_already_pending')];
+                    'message' => __('events::events.public_enrol_already_pending')];
         }
 
         $club = $this->resolveClub($data, $event);
@@ -423,7 +423,7 @@ class PublicEntry
                     'ok' => true,
                     'state' => 'accepted',
                     'division' => $accepted['division'],
-                    'message' => __('events.public_enrol_accepted'),
+                    'message' => __('events::events.public_enrol_accepted'),
                 ];
             }
 
@@ -434,7 +434,7 @@ class PublicEntry
                 'ok' => true,
                 'state' => 'pending',
                 'division' => null,
-                'message' => __('events.public_enrol_received'),
+                'message' => __('events::events.public_enrol_received'),
             ];
         }
 
@@ -467,7 +467,7 @@ class PublicEntry
                 'ok' => true,
                 'state' => 'accepted',
                 'division' => $accepted['division'],
-                'message' => __('events.public_enrol_accepted'),
+                'message' => __('events::events.public_enrol_accepted'),
             ];
         }
 
@@ -478,7 +478,7 @@ class PublicEntry
             'ok' => true,
             'state' => 'pending',
             'division' => null,
-            'message' => __('events.public_enrol_received'),
+            'message' => __('events::events.public_enrol_received'),
         ];
     }
 
@@ -625,11 +625,11 @@ class PublicEntry
     public function accept(EventPublicEntry $entry, User $actor): array
     {
         if (! $entry->event || ! app(EventAccess::class)->canManage($entry->event, $actor)) {
-            return ['ok' => false, 'message' => __('events.public_review_not_yours')];
+            return ['ok' => false, 'message' => __('events::events.public_review_not_yours')];
         }
 
         if (! $entry->isPending()) {
-            return ['ok' => false, 'message' => __('events.public_review_already_decided')];
+            return ['ok' => false, 'message' => __('events::events.public_review_already_decided')];
         }
 
         $event = $entry->event;
@@ -638,11 +638,11 @@ class PublicEntry
         // the draw is cut from it and the mats are assigned off it — so a name
         // cannot join it now, however long the request has been waiting.
         if ($event->hasStarted() || $event->isOverdueToStart() || $event->hasEnded()) {
-            return ['ok' => false, 'message' => __('events.entry_event_started')];
+            return ['ok' => false, 'message' => __('events::events.entry_event_started')];
         }
 
         if ($this->isFull($event)) {
-            return ['ok' => false, 'message' => __('events.entry_full')];
+            return ['ok' => false, 'message' => __('events::events.entry_full')];
         }
 
         /*
@@ -664,7 +664,7 @@ class PublicEntry
 
         return [
             'ok' => true,
-            'message' => __('events.public_review_accepted', ['name' => $entry->athlete?->full_name ?? '']),
+            'message' => __('events::events.public_review_accepted', ['name' => $entry->athlete?->full_name ?? '']),
             'division' => $result['division'],
             'going' => $event->participantRegistrations()->count(),
             'going_people' => $event->participantRegistrations()->distinct()->count('user_id'),
@@ -681,11 +681,11 @@ class PublicEntry
     public function decline(EventPublicEntry $entry, User $actor): array
     {
         if (! $entry->event || ! app(EventAccess::class)->canManage($entry->event, $actor)) {
-            return ['ok' => false, 'message' => __('events.public_review_not_yours')];
+            return ['ok' => false, 'message' => __('events::events.public_review_not_yours')];
         }
 
         if (! $entry->isPending()) {
-            return ['ok' => false, 'message' => __('events.public_review_already_decided')];
+            return ['ok' => false, 'message' => __('events::events.public_review_already_decided')];
         }
 
         $entry->update([
@@ -698,7 +698,7 @@ class PublicEntry
 
         return [
             'ok' => true,
-            'message' => __('events.public_review_declined', ['name' => $entry->athlete?->full_name ?? '']),
+            'message' => __('events::events.public_review_declined', ['name' => $entry->athlete?->full_name ?? '']),
         ];
     }
 
@@ -859,8 +859,8 @@ class PublicEntry
         }
 
         rescue(fn () => UserNotification::notifyUser($organiserId, 'event',
-            __('events.public_review_notify_title', ['title' => $event->title]), [
-                'body' => __('events.public_review_notify_body', [
+            __('events::events.public_review_notify_title', ['title' => $event->title]), [
+                'body' => __('events::events.public_review_notify_body', [
                     'name' => $entry->athlete?->full_name ?? '',
                 ]),
                 'icon' => 'bi-person-plus-fill',
@@ -878,12 +878,12 @@ class PublicEntry
         $athleteId = (int) $entry->user_id;
 
         $title = $accepted
-            ? __('events.public_entry_accepted_title', ['title' => $event->title])
-            : __('events.public_entry_declined_title', ['title' => $event->title]);
+            ? __('events::events.public_entry_accepted_title', ['title' => $event->title])
+            : __('events::events.public_entry_declined_title', ['title' => $event->title]);
 
         $body = $accepted
-            ? __('events.public_entry_accepted_body', ['division' => $division ?: __('events.claim_at_weigh_in')])
-            : __('events.public_entry_declined_body', ['club' => $event->tenant?->club_name ?? '']);
+            ? __('events::events.public_entry_accepted_body', ['division' => $division ?: __('events::events.claim_at_weigh_in')])
+            : __('events::events.public_entry_declined_body', ['club' => $event->tenant?->club_name ?? '']);
 
         rescue(fn () => UserNotification::notifyUser($athleteId, 'event', $title, [
             'body' => $body,

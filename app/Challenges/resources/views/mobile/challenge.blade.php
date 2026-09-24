@@ -1,4 +1,4 @@
-@extends('layouts.personal-mobile')
+@extends('members::layouts.personal-mobile')
 
 @section('title', __('nav.tab_challenge'))
 

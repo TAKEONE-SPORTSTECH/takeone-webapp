@@ -1,9 +1,9 @@
 {{-- Lives inside the personal mobile shell, so the header (avatar → drawer),
      notifications, chat and bottom tab bar match the rest of /me. The shell
      resolves the header title from the `me.settings` route itself. --}}
-@extends('layouts.personal-mobile')
+@extends('members::layouts.personal-mobile')
 
-@section('title', __('settings.title'))
+@section('title', __('members::settings.title'))
 
 @section('personal-content')
 {{-- -mx-4 cancels the shell <main>'s px-4 so the white blocks stay edge-to-edge. --}}
@@ -12,7 +12,7 @@
     {{-- Full-bleed (Facebook-style): edge-to-edge white blocks separated by gray gutters. --}}
     <div class="mt-2">
     <div class="bg-white px-4 py-4 mb-2">
-        <h3 class="font-semibold text-foreground mb-3">{{ __('settings.account') }}</h3>
+        <h3 class="font-semibold text-foreground mb-3">{{ __('members::settings.account') }}</h3>
         <div class="space-y-3 text-sm">
             <div class="flex items-center gap-3"><i class="bi bi-person text-muted-foreground w-5"></i><span class="text-foreground">{{ $user->full_name }}</span></div>
             <div class="flex items-center gap-3"><i class="bi bi-envelope text-muted-foreground w-5"></i><span class="text-foreground truncate">{{ $user->email }}</span></div>
@@ -21,8 +21,8 @@
 
     {{-- Language --}}
     <div class="bg-white px-4 py-4 mb-2">
-        <h3 class="font-semibold text-foreground mb-0.5">{{ __('settings.language') }}</h3>
-        <p class="text-xs text-muted-foreground mb-3">{{ __('settings.language_hint') }}</p>
+        <h3 class="font-semibold text-foreground mb-0.5">{{ __('members::settings.language') }}</h3>
+        <p class="text-xs text-muted-foreground mb-3">{{ __('members::settings.language_hint') }}</p>
         <div class="space-y-2">
             @foreach(config('locales') as $code => $meta)
                 @php $isCurrent = app()->getLocale() === $code; @endphp
@@ -64,9 +64,9 @@
     </div>
 
     <div class="bg-white divide-y divide-gray-50">
-        <a href="{{ route('member.show', $user->uuid) }}" class="flex items-center justify-between p-4"><span class="text-sm text-foreground"><i class="bi bi-person-gear me-2 text-muted-foreground"></i>{{ __('settings.edit_profile') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
-        <a href="{{ route('security.show') }}" class="flex items-center justify-between p-4"><span class="text-sm text-foreground"><i class="bi bi-shield-lock me-2 text-muted-foreground"></i>{{ __('settings.security_password') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
-        <a href="{{ route('me.payments') }}" data-shell-link data-route="me.payments" class="flex items-center justify-between p-4"><span class="text-sm text-foreground"><i class="bi bi-receipt me-2 text-muted-foreground"></i>{{ __('settings.invoices') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
+        <a href="{{ route('member.show', $user->uuid) }}" class="flex items-center justify-between p-4"><span class="text-sm text-foreground"><i class="bi bi-person-gear me-2 text-muted-foreground"></i>{{ __('members::settings.edit_profile') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
+        <a href="{{ route('security.show') }}" class="flex items-center justify-between p-4"><span class="text-sm text-foreground"><i class="bi bi-shield-lock me-2 text-muted-foreground"></i>{{ __('members::settings.security_password') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
+        <a href="{{ route('me.payments') }}" data-shell-link data-route="me.payments" class="flex items-center justify-between p-4"><span class="text-sm text-foreground"><i class="bi bi-receipt me-2 text-muted-foreground"></i>{{ __('members::settings.invoices') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
     </div>
     </div>
 </div>

@@ -127,7 +127,7 @@
 
                             <div class="mb-4">
                                 <label class="tf-label">{{ __('admin.club_instructors_add_phone_number') }} <span class="text-red-500">*</span></label>
-                                <x-country-code-dropdown
+                                <x-fields.phone-code
                                     name="country_code"
                                     id="instructor_country_code"
                                     value="+973"
@@ -135,17 +135,17 @@
                                 >
                                     <input type="tel" name="phone" placeholder="{{ __('admin.club_instructors_add_phone_placeholder') }}" required
                                            class="w-full px-4 py-3 text-base bg-transparent focus:outline-none">
-                                </x-country-code-dropdown>
+                                </x-fields.phone-code>
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <x-gender-dropdown
+                                <x-fields.gender
                                     name="gender"
                                     id="instructor_gender"
                                     label="{{ __('admin.club_instructors_add_gender') }}"
                                     :required="true"
                                 />
-                                <x-birthdate-dropdown
+                                <x-fields.date-of-birth
                                     name="birthdate"
                                     id="instructor_birthdate"
                                     label="{{ __('admin.club_instructors_add_date_of_birth') }}"
@@ -155,7 +155,7 @@
                                 />
                             </div>
 
-                            <x-country-dropdown
+                            <x-fields.country
                                 name="nationality"
                                 id="instructor_nationality"
                                 label="{{ __('admin.club_instructors_add_nationality') }}"
@@ -256,7 +256,7 @@
                             {{-- Role --}}
                             <div class="space-y-2">
                                 <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_role_q') }} <span class="text-red-500">*</span></label>
-                                <x-lang-toggle class="mb-4" />
+                                <x-fields.language-toggle class="mb-4" />
                                 <input type="text" name="specialty_existing" placeholder="{{ __('admin.club_instructors_add_role_placeholder') }}" x-show="lang==='en'" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                 <input type="text" name="translations[role][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="المسمى بالعربية" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="{{ old('translations.role.ar') }}">
                             </div>
@@ -314,7 +314,7 @@
                         <div class="space-y-4" x-data="{ lang: 'en' }">
                             <div class="space-y-2">
                                 <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_role_q') }} <span class="text-red-500">*</span></label>
-                                <x-lang-toggle class="mb-4" />
+                                <x-fields.language-toggle class="mb-4" />
                                 <input type="text" name="specialty" placeholder="{{ __('admin.club_instructors_add_role_placeholder') }}" x-show="lang==='en'" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                 <input type="text" name="translations[role][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="المسمى بالعربية" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="{{ old('translations.role.ar') }}">
                             </div>
@@ -460,7 +460,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">{{ __('admin.club_instructors_add_period') }}</label>
-                                    <x-select-menu name="wage_period" :value="'monthly'" :options="[
+                                    <x-fields.select name="wage_period" :value="'monthly'" :options="[
                                         ['value' => 'monthly', 'label' => __('admin.club_instructors_add_per_month')],
                                         ['value' => 'session', 'label' => __('admin.club_instructors_add_per_session')],
                                         ['value' => 'hourly',  'label' => __('admin.club_instructors_add_per_hour')],

@@ -1366,7 +1366,7 @@
             pill.id = 'sound-unlock-pill';
             pill.type = 'button';
             pill.className = 'fixed left-1/2 -translate-x-1/2 bottom-24 z-[2000] inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-white text-sm font-semibold shadow-lg animate-bounce';
-            pill.innerHTML = '<i class="bi bi-bell-fill"></i> ' + @js(__('messenger.enable_sounds'));
+            pill.innerHTML = '<i class="bi bi-bell-fill"></i> ' + @js(__('members::messenger.enable_sounds'));
             pill.addEventListener('click', () => {
                 unlockAudio();
                 try { window.playMessageSound && window.playMessageSound(); } catch (e) {}

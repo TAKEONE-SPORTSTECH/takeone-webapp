@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 {{-- Styles moved to app.css (Phase 6) --}}
 

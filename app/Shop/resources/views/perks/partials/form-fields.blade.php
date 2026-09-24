@@ -1,5 +1,5 @@
 <div class="space-y-4">
-    <x-lang-toggle class="mb-4" />
+    <x-fields.language-toggle class="mb-4" />
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
             <label class="form-label">{{ __('admin.partials_perk_form_fields_title') }} <span class="text-red-500">*</span></label>
@@ -24,7 +24,7 @@
         </div>
         <div>
             <label class="form-label">{{ __('admin.partials_perk_form_fields_status') }}</label>
-            <x-select-menu model="formData.status" name="status"
+            <x-fields.select model="formData.status" name="status"
                 :options="[
                     ['value' => 'active', 'label' => __('admin.partials_perk_form_fields_active')],
                     ['value' => 'inactive', 'label' => __('admin.partials_perk_form_fields_inactive')],
@@ -123,7 +123,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
             <div>
                 <label class="form-label text-xs">{{ __('admin.partials_perk_form_fields_perk_type') }} <span class="text-red-500">*</span></label>
-                <x-select-menu model="formData.perk_type" name="perk_type"
+                <x-fields.select model="formData.perk_type" name="perk_type"
                     :options="[
                         ['value' => 'code', 'label' => __('admin.partials_perk_form_fields_promo_code')],
                         ['value' => 'qr', 'label' => __('admin.partials_perk_form_fields_qr_code')],

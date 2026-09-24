@@ -115,7 +115,7 @@ class EventFee
     public static function display(?float $amount, string $currency): string
     {
         if ($amount === null || $amount <= 0) {
-            return __('events.fee_free');
+            return __('events::events.fee_free');
         }
 
         $formatted = rtrim(rtrim(number_format($amount, 3, '.', ''), '0'), '.');
@@ -267,7 +267,7 @@ class EventFee
         if ($base !== null && $base > 0) {
             $lines[] = [
                 'kind' => EventRegistrationFeeLine::KIND_BASE,
-                'label' => $role === 'spectator' ? __('events.fee_line_ticket') : __('events.fee_line_entry'),
+                'label' => $role === 'spectator' ? __('events::events.fee_line_ticket') : __('events::events.fee_line_entry'),
                 'amount' => (float) $base,
                 'fee_option_id' => null,
             ];
@@ -317,7 +317,7 @@ class EventFee
         if (self::lateFeeApplies($event, $role, $at)) {
             $lines[] = [
                 'kind' => EventRegistrationFeeLine::KIND_LATE,
-                'label' => __('events.fee_line_late'),
+                'label' => __('events::events.fee_line_late'),
                 'amount' => (float) $event->late_fee_amount,
                 'fee_option_id' => null,
             ];
@@ -360,7 +360,7 @@ class EventFee
              */
             $lines = $quote['lines'] ?: [[
                 'kind' => EventRegistrationFeeLine::KIND_BASE,
-                'label' => __('events.fee_free'),
+                'label' => __('events::events.fee_free'),
                 'amount' => 0.0,
                 'fee_option_id' => null,
             ]];
@@ -662,10 +662,10 @@ class EventFee
         $floor = $base > 0 ? $base : (float) $options->min('amount');
 
         if ($floor <= 0) {
-            return __('events.fee_free');
+            return __('events::events.fee_free');
         }
 
-        return __('events.fee_from', ['amount' => self::display($floor, $currency)]);
+        return __('events::events.fee_from', ['amount' => self::display($floor, $currency)]);
     }
 
     /**

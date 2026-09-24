@@ -177,7 +177,7 @@
                             <div class="flex items-center gap-3 border border-gray-100 rounded-xl p-3">
                                 <span class="w-11 h-11 rounded-full bg-amber-50 grid place-items-center text-xl flex-shrink-0">{{ $emoji }}</span>
                                 <div class="min-w-0">
-                                    <p class="font-semibold text-sm text-gray-900 truncate">{{ $a->member_award ?: __('member.award_default') }}</p>
+                                    <p class="font-semibold text-sm text-gray-900 truncate">{{ $a->member_award ?: __('members::member.award_default') }}</p>
                                     <p class="text-[11px] text-muted-foreground truncate">{{ $a->tenant?->club_name }}</p>
                                 </div>
                             </div>

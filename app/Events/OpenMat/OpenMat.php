@@ -197,7 +197,7 @@ class OpenMat extends AbstractEventType
         $actor = \Illuminate\Support\Facades\Auth::user();
 
         if (! $actor) {
-            return ['success' => false, 'message' => __('events.action_unsupported')];
+            return ['success' => false, 'message' => __('events::events.action_unsupported')];
         }
 
         $court = (string) ($payload['mat'] ?? '');
@@ -235,7 +235,7 @@ class OpenMat extends AbstractEventType
                 'new_code' => $this->newCode($event, $court),
                 'close_mat' => $this->closeMat($event),
 
-                default => ['success' => false, 'message' => __('events.action_unsupported')],
+                default => ['success' => false, 'message' => __('events::events.action_unsupported')],
             };
         } catch (\RuntimeException $e) {
             return ['success' => false, 'message' => $e->getMessage()];

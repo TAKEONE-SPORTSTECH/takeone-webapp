@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Mail\WelcomeEmail;
+use App\Members\Mail\WelcomeEmail;
 use App\Members\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;

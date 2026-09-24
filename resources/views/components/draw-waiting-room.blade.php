@@ -147,26 +147,26 @@
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-white/90 animate-pulse"></span>
                         <p class="text-[11px] font-bold uppercase" style="letter-spacing: .1em;">
-                            {{ ($d['target'] ?? null) === 'weigh_in' ? __('events.waiting_until_weigh_in') : __('events.waiting_until_start') }}
+                            {{ ($d['target'] ?? null) === 'weigh_in' ? __('events::events.waiting_until_weigh_in') : __('events::events.waiting_until_start') }}
                         </p>
                     </div>
 
                     <div class="grid grid-cols-4 gap-2 mt-3" x-show="!done">
                         <div class="tk-wr-tile">
                             <span class="tk-wr-num" x-text="d">00</span>
-                            <span class="tk-wr-unit">{{ __('events.waiting_days') }}</span>
+                            <span class="tk-wr-unit">{{ __('events::events.waiting_days') }}</span>
                         </div>
                         <div class="tk-wr-tile">
                             <span class="tk-wr-num" x-text="h">00</span>
-                            <span class="tk-wr-unit">{{ __('events.waiting_hours') }}</span>
+                            <span class="tk-wr-unit">{{ __('events::events.waiting_hours') }}</span>
                         </div>
                         <div class="tk-wr-tile">
                             <span class="tk-wr-num" x-text="m">00</span>
-                            <span class="tk-wr-unit">{{ __('events.waiting_minutes') }}</span>
+                            <span class="tk-wr-unit">{{ __('events::events.waiting_minutes') }}</span>
                         </div>
                         <div class="tk-wr-tile tk-wr-beat">
                             <span class="tk-wr-num" x-text="s">00</span>
-                            <span class="tk-wr-unit">{{ __('events.waiting_seconds') }}</span>
+                            <span class="tk-wr-unit">{{ __('events::events.waiting_seconds') }}</span>
                         </div>
                     </div>
 
@@ -174,7 +174,7 @@
                          sit at 00:00:00 pretending — that reads as broken. --}}
                     <div x-show="done" x-cloak class="mt-3 rounded-2xl bg-white/15 border border-white/25 px-4 py-3 text-sm font-bold flex items-center gap-2">
                         <i class="bi bi-hourglass-bottom"></i>
-                        {{ ($d['target'] ?? null) === 'weigh_in' ? __('events.waiting_weigh_in_now') : __('events.waiting_start_now') }}
+                        {{ ($d['target'] ?? null) === 'weigh_in' ? __('events::events.waiting_weigh_in_now') : __('events::events.waiting_start_now') }}
                     </div>
 
                     @if($whenText)
@@ -191,9 +191,9 @@
     <div class="m-card rounded-3xl p-4">
         <h3 class="text-sm font-bold text-foreground flex items-center gap-2">
             <i class="bi bi-bar-chart-line-fill" style="color: {{ $c }};"></i>
-            {{ __('events.waiting_field_title') }}
+            {{ __('events::events.waiting_field_title') }}
         </h3>
-        <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('events.waiting_field_sub') }}</p>
+        <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('events::events.waiting_field_sub') }}</p>
 
         {{-- Four numbers, one glance. `athletes` is PEOPLE and `entries` is
              places in the draw: an athlete in three divisions is one person and
@@ -202,10 +202,10 @@
         <div class="grid grid-cols-2 gap-2 mt-3">
             @php
                 $tiles = [
-                    ['i' => 'bi-people-fill', 'v' => $athletes, 'l' => __('events.waiting_athletes')],
-                    ['i' => 'bi-grid-1x2-fill', 'v' => (int) ($d['divisions_total'] ?? 0), 'l' => __('events.waiting_divisions')],
-                    ['i' => 'bi-globe2', 'v' => (int) ($d['countries_total'] ?? 0), 'l' => __('events.waiting_countries')],
-                    ['i' => 'bi-buildings-fill', 'v' => (int) ($d['clubs_total'] ?? 0), 'l' => __('events.waiting_clubs')],
+                    ['i' => 'bi-people-fill', 'v' => $athletes, 'l' => __('events::events.waiting_athletes')],
+                    ['i' => 'bi-grid-1x2-fill', 'v' => (int) ($d['divisions_total'] ?? 0), 'l' => __('events::events.waiting_divisions')],
+                    ['i' => 'bi-globe2', 'v' => (int) ($d['countries_total'] ?? 0), 'l' => __('events::events.waiting_countries')],
+                    ['i' => 'bi-buildings-fill', 'v' => (int) ($d['clubs_total'] ?? 0), 'l' => __('events::events.waiting_clubs')],
                 ];
             @endphp
             @foreach($tiles as $t)
@@ -224,7 +224,7 @@
 
         <p class="text-[11px] text-muted-foreground mt-3 flex items-center gap-1.5">
             <i class="bi bi-info-circle"></i>
-            {{ __('events.waiting_entries_note', ['entries' => \App\Support\Cldr::number($entries), 'people' => \App\Support\Cldr::number($athletes)]) }}
+            {{ __('events::events.waiting_entries_note', ['entries' => \App\Support\Cldr::number($entries), 'people' => \App\Support\Cldr::number($athletes)]) }}
         </p>
     </div>
 
@@ -233,7 +233,7 @@
         <div class="m-card rounded-3xl p-4">
             <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
                 <i class="bi bi-list-ol" style="color: {{ $c }};"></i>
-                {{ __('events.waiting_by_division') }}
+                {{ __('events::events.waiting_by_division') }}
             </h3>
 
             <div class="space-y-2.5">
@@ -263,7 +263,7 @@
         <div class="m-card rounded-3xl p-4">
             <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
                 <i class="bi bi-flag-fill" style="color: {{ $c }};"></i>
-                {{ __('events.waiting_countries_title') }}
+                {{ __('events::events.waiting_countries_title') }}
             </h3>
             <div class="flex flex-wrap gap-2">
                 @foreach($countries as $country)
@@ -283,7 +283,7 @@
                 @if($d['countries_unknown'] ?? 0)
                     <span class="inline-flex items-center gap-2 ps-2.5 pe-2.5 py-1.5 rounded-full border border-dashed border-border">
                         <i class="bi bi-dash-circle text-muted-foreground text-[11px]"></i>
-                        <span class="text-[11px] font-bold text-muted-foreground">{{ __('events.waiting_no_country') }}</span>
+                        <span class="text-[11px] font-bold text-muted-foreground">{{ __('events::events.waiting_no_country') }}</span>
                         <span class="text-[11px] font-semibold text-muted-foreground">{{ \App\Support\Cldr::number($d['countries_unknown']) }}</span>
                     </span>
                 @endif
@@ -297,7 +297,7 @@
              x-data="{ all: false }">
             <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
                 <i class="bi bi-buildings-fill" style="color: {{ $c }};"></i>
-                {{ __('events.waiting_clubs_title') }}
+                {{ __('events::events.waiting_clubs_title') }}
             </h3>
 
             <div class="space-y-2">
@@ -328,7 +328,7 @@
                         <span class="w-9 h-9 flex-shrink-0 grid place-items-center rounded-xl border border-dashed border-border">
                             <i class="bi bi-person text-muted-foreground"></i>
                         </span>
-                        <p class="text-[13px] font-semibold text-muted-foreground truncate flex-1 min-w-0">{{ __('events.waiting_unattached') }}</p>
+                        <p class="text-[13px] font-semibold text-muted-foreground truncate flex-1 min-w-0">{{ __('events::events.waiting_unattached') }}</p>
                         <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground flex-shrink-0">
                             {{ \App\Support\Cldr::number($d['clubs_unattached']) }}
                         </span>
@@ -339,8 +339,8 @@
             @if(count($clubs) > 8)
                 <button type="button" @click="all = !all"
                         class="m-press mt-3 w-full py-2 rounded-xl bg-muted text-[12px] font-bold text-foreground">
-                    <span x-show="!all">{{ __('events.waiting_clubs_more', ['n' => count($clubs) - 8]) }}</span>
-                    <span x-show="all" x-cloak>{{ __('events.waiting_clubs_less') }}</span>
+                    <span x-show="!all">{{ __('events::events.waiting_clubs_more', ['n' => count($clubs) - 8]) }}</span>
+                    <span x-show="all" x-cloak>{{ __('events::events.waiting_clubs_less') }}</span>
                 </button>
             @endif
         </div>

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Ai\AiManager;
-use App\Services\ClubCreationService;
+use App\Clubs\Support\ClubCreationService;
 use App\Services\Copilot\CopilotService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;

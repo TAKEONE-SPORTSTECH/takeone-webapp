@@ -4,7 +4,7 @@ This directory contains reusable Blade components for forms across the applicati
 
 ## Available Components
 
-### 1. Country Dropdown (`<x-country-dropdown />`)
+### 1. Country Dropdown (`<x-fields.country />`)
 
 A dropdown with country flags that stores the ISO3 country code.
 
@@ -18,7 +18,7 @@ A dropdown with country flags that stores the ISO3 country code.
 **Usage:**
 
 ```blade
-<x-country-dropdown 
+<x-fields.country 
     name="country" 
     id="country" 
     :value="old('country')" 
@@ -38,7 +38,7 @@ A dropdown with country flags that stores the ISO3 country code.
 ```blade
 <div class="mb-3">
     <label for="country" class="form-label">Country</label>
-    <x-country-dropdown 
+    <x-fields.country 
         name="country" 
         id="country" 
         :value="old('country', 'USA')" 
@@ -94,7 +94,7 @@ A dropdown with country flags and call codes that stores the call code.
 
 ---
 
-### 3. Currency Dropdown (`<x-currency-dropdown />`)
+### 3. Currency Dropdown (`<x-fields.currency />`)
 
 A dropdown with country flags and currency symbols that stores the currency code.
 
@@ -108,7 +108,7 @@ A dropdown with country flags and currency symbols that stores the currency code
 **Usage:**
 
 ```blade
-<x-currency-dropdown 
+<x-fields.currency 
     name="currency" 
     id="currency" 
     :value="old('currency', 'USD')" 
@@ -128,7 +128,7 @@ A dropdown with country flags and currency symbols that stores the currency code
 ```blade
 <div class="mb-3">
     <label for="currency" class="form-label">Currency</label>
-    <x-currency-dropdown 
+    <x-fields.currency 
         name="currency" 
         id="currency" 
         :value="old('currency', 'USD')" 
@@ -139,7 +139,7 @@ A dropdown with country flags and currency symbols that stores the currency code
 
 ---
 
-### 4. Timezone Dropdown (`<x-timezone-dropdown />`)
+### 4. Timezone Dropdown (`<x-fields.timezone />`)
 
 A dropdown with country flags and timezones that stores the timezone.
 
@@ -153,7 +153,7 @@ A dropdown with country flags and timezones that stores the timezone.
 **Usage:**
 
 ```blade
-<x-timezone-dropdown 
+<x-fields.timezone 
     name="timezone" 
     id="timezone" 
     :value="old('timezone', 'Asia/Dubai')" 
@@ -173,7 +173,7 @@ A dropdown with country flags and timezones that stores the timezone.
 ```blade
 <div class="mb-3">
     <label for="timezone" class="form-label">Timezone</label>
-    <x-timezone-dropdown 
+    <x-fields.timezone 
         name="timezone" 
         id="timezone" 
         :value="old('timezone', 'Asia/Dubai')" 
@@ -231,7 +231,7 @@ Here's a complete example of a form using all components:
                         @csrf
 
                         <!-- Country Dropdown -->
-                        <x-country-dropdown 
+                        <x-fields.country 
                             name="country" 
                             id="country" 
                             :value="old('country', 'USA')" 
@@ -247,7 +247,7 @@ Here's a complete example of a form using all components:
                             :error="$errors->first('country_code')" />
 
                         <!-- Currency Dropdown -->
-                        <x-currency-dropdown 
+                        <x-fields.currency 
                             name="currency" 
                             id="currency" 
                             :value="old('currency', 'USD')" 
@@ -255,7 +255,7 @@ Here's a complete example of a form using all components:
                             :error="$errors->first('currency')" />
 
                         <!-- Timezone Dropdown -->
-                        <x-timezone-dropdown 
+                        <x-fields.timezone 
                             name="timezone" 
                             id="timezone" 
                             :value="old('timezone', 'Asia/Dubai')" 

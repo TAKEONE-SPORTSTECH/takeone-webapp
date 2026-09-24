@@ -178,7 +178,7 @@
            Asked for on 2026-09-06: down a list of thirty the rail is read as
            "who is this", so it carries the one fact that splits a draw in two —
            blue for the men's side, pink for the women's. It is the same pairing
-           <x-gender-toggle> already uses, so the colours mean the same thing
+           <x-fields.gender-toggle> already uses, so the colours mean the same thing
            here as they do on the form that set them.
 
            The rail was the BELT until now, and the rank is not being dropped to
@@ -194,7 +194,7 @@
            side of the draw the organiser has them on, and an unpainted rail on
            two thirds of a list would say nothing at all. */
         $railColour = $isMale ? '#3b82f6' : '#ec4899';
-        $railTitle = $isMale ? __('club.gender_male') : __('club.gender_female');
+        $railTitle = $isMale ? __('clubs::club.gender_male') : __('clubs::club.gender_female');
 
     @endphp
 
@@ -331,7 +331,7 @@
             @else
                 <i class="bi bi-buildings {{ $isMale ? 'text-primary/70' : 'text-pink-500/70' }}"></i>
             @endif
-            <span data-ec="club" class="truncate">{{ $clubName ?: ($unattached ?? __('events.public_unattached')) }}</span>
+            <span data-ec="club" class="truncate">{{ $clubName ?: ($unattached ?? __('events::events.public_unattached')) }}</span>
 
             @php
                 $acts = array_values(array_filter((array) $activities, fn ($a) => ! empty($a['label'])));
@@ -392,7 +392,7 @@
                         @endphp
                         <span style="{{ $aBox }}"
                               class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap {{ $aTone }}"
-                              title="{{ $act['label'] }}{{ $aOk ? ' · '.__('events.people_paid_verified') : ($aPaid ? ' · '.__('events.people_paid_claimed') : ' · '.__('events.people_unpaid')) }}">
+                              title="{{ $act['label'] }}{{ $aOk ? ' · '.__('events::events.people_paid_verified') : ($aPaid ? ' · '.__('events::events.people_paid_claimed') : ' · '.__('events::events.people_unpaid')) }}">
                             <i class="bi {{ $aOk ? 'bi-check-circle-fill' : ($aPaid ? 'bi-clock-fill' : 'bi-tag-fill') }} text-[9px] {{ $aOk ? '' : 'opacity-70' }}"></i>{{ $act['label'] }}
                         </span>
                     @endforeach

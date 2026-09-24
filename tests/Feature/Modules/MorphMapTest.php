@@ -113,6 +113,12 @@ class MorphMapTest extends TestCase
         $offenders = [];
 
         foreach ($this->phpFilesUnder(app_path()) as $file) {
+            // A module's migrations are history, not live code — the same
+            // files were never scanned while they sat in database/migrations.
+            if (str_contains($file, '/database/migrations/')) {
+                continue;
+            }
+
             $source = file_get_contents($file);
 
             foreach ($morphColumns as $column) {

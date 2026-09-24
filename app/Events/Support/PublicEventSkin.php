@@ -26,7 +26,7 @@ use App\Events\Models\ClubEvent;
  *      actions under `/e/{uuid}/admin/…`, and `rewrite()` moves any address
  *      that page produced into the sealed space.
  *
- * @see \App\Http\Middleware\SealEventPage  the middleware that applies all this
+ * @see \App\Events\Middleware\SealEventPage  the middleware that applies all this
  */
 class PublicEventSkin
 {

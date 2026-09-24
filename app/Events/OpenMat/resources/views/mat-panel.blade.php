@@ -149,7 +149,7 @@
     remove:  @json(__('event-open_mat::messages.panel_remove')),
     bouts:   @json(__('event-open_mat::messages.panel_bouts_n', ['n' => ':n'])),
     busy:    @json(__('event-open_mat::messages.panel_busy')),
-    failed:  @json(__('events.action_unsupported')),
+    failed:  @json(__('events::events.action_unsupported')),
   };
 
   function el(id) { return document.getElementById(id); }

@@ -148,7 +148,7 @@ class UserPostController extends Controller
     {
         // Fan-out (MQTT feed push + "shared a new post" notifications) is shared with
         // system announcements via FeedPublisher.
-        app(\App\Services\FeedPublisher::class)->fanOut(
+        app(\App\Members\Services\FeedPublisher::class)->fanOut(
             $user, $post, $card, $snippet,
             'post', $user->full_name.' shared a new post', 'bi-postcard-heart'
         );

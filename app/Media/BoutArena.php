@@ -7,7 +7,7 @@ use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventOfficial;
 use App\Sports\Combat\SportRegistry;
-use App\Support\BoutStage;
+use App\Events\Support\BoutStage;
 
 /**
  * A bout, dressed as a broadcast card.
@@ -43,8 +43,8 @@ class BoutArena
     {
         $sport = $this->sports->get($event->sport);
         $labels = $sport?->cornerLabels() ?? [
-            'red' => __('events.corner_red'),
-            'blue' => __('events.corner_blue'),
+            'red' => __('events::events.corner_red'),
+            'blue' => __('events::events.corner_blue'),
         ];
 
         // Which side fought in which corner. The mat decides this, not the draw.

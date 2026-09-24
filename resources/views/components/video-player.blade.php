@@ -21,7 +21,7 @@
     // One shape inside, whichever way the caller supplied it.
     $sources = $angles ?: array_filter([[
         'angle' => 'main',
-        'label' => __('events.bout_video_angle_main'),
+        'label' => __('events::events.bout_video_angle_main'),
         'hls' => $hls,
         'mp4' => $mp4,
         'poster' => $poster,
@@ -96,7 +96,7 @@
              class="absolute top-3 start-3 z-30 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide text-white shadow-lg"
              :class="badge === 'slow' ? 'bg-blue-600' : 'bg-red-600'">
             <i class="bi bi-arrow-counterclockwise"></i>
-            <span x-text="badge === 'slow' ? '{{ __('events.bout_video_slowmo') }}' : '{{ __('events.bout_video_replay') }}'"></span>
+            <span x-text="badge === 'slow' ? '{{ __('events::events.bout_video_slowmo') }}' : '{{ __('events::events.bout_video_replay') }}'"></span>
         </div>
 
         {{-- Buffering. Only after a beat, so a fast seek never flashes it. --}}
@@ -108,7 +108,7 @@
         {{-- Big centre play, for a paused player. --}}
         <button type="button" x-show="!playing && ready" x-cloak @click.stop="toggle()"
                 class="absolute inset-0 z-20 grid place-items-center"
-                aria-label="{{ __('events.bout_video_play') }}">
+                aria-label="{{ __('events::events.bout_video_play') }}">
             <span class="w-[68px] h-[68px] rounded-full bg-black/55 backdrop-blur border border-white/25 grid place-items-center text-white transition-transform active:scale-90 hover:scale-105">
                 <i class="bi bi-play-fill text-4xl ms-1"></i>
             </span>
@@ -164,19 +164,19 @@
 
             {{-- Buttons --}}
             <div class="flex items-center gap-1 mt-1 text-white">
-                <button type="button" @click="toggle()" class="tk-pb" :aria-label="playing ? '{{ __('events.bout_video_pause') }}' : '{{ __('events.bout_video_play') }}'">
+                <button type="button" @click="toggle()" class="tk-pb" :aria-label="playing ? '{{ __('events::events.bout_video_pause') }}' : '{{ __('events::events.bout_video_play') }}'">
                     <i class="bi text-xl" :class="playing ? 'bi-pause-fill' : 'bi-play-fill'"></i>
                 </button>
                 <button type="button" @click="nudge(-10)" class="tk-pb hidden sm:grid" aria-label="-10s"><i class="bi bi-rewind-fill"></i></button>
                 <button type="button" @click="nudge(10)" class="tk-pb hidden sm:grid" aria-label="+10s"><i class="bi bi-fast-forward-fill"></i></button>
 
                 <div class="flex items-center gap-1 group/vol">
-                    <button type="button" @click="toggleMute()" class="tk-pb" aria-label="{{ __('events.bout_video_mute') }}">
+                    <button type="button" @click="toggleMute()" class="tk-pb" aria-label="{{ __('events::events.bout_video_mute') }}">
                         <i class="bi" :class="muted || volume === 0 ? 'bi-volume-mute-fill' : (volume < 0.5 ? 'bi-volume-down-fill' : 'bi-volume-up-fill')"></i>
                     </button>
                     <input type="range" min="0" max="1" step="0.05" x-model.number="volume" @input="applyVolume()"
                            class="tk-vol w-0 group-hover/vol:w-20 focus:w-20 transition-all duration-200"
-                           aria-label="{{ __('events.bout_video_volume') }}">
+                           aria-label="{{ __('events::events.bout_video_volume') }}">
                 </div>
 
                 <span class="text-[11px] font-bold tabular-nums ms-1 text-white/90">
@@ -206,7 +206,7 @@
 
                 {{-- Speed --}}
                 <div class="relative" x-data="{ open: false }" @click.outside="open = false">
-                    <button type="button" @click="open = !open" class="tk-pb tk-pb-wide" aria-label="{{ __('events.bout_video_speed') }}">
+                    <button type="button" @click="open = !open" class="tk-pb tk-pb-wide" aria-label="{{ __('events::events.bout_video_speed') }}">
                         <span class="text-[11px] font-black" x-text="rate === 1 ? '1×' : rate + '×'"></span>
                     </button>
                     <div x-show="open" x-cloak x-transition.opacity.duration.120ms
@@ -215,21 +215,21 @@
                             <button type="button" @click="setRate(r); open = false"
                                     class="w-full px-3 py-2 text-start text-[13px] font-semibold hover:bg-white/10 transition-colors"
                                     :class="r === rate ? 'text-primary' : 'text-white/90'"
-                                    x-text="r === 1 ? '{{ __('events.bout_video_normal') }}' : r + '×'"></button>
+                                    x-text="r === 1 ? '{{ __('events::events.bout_video_normal') }}' : r + '×'"></button>
                         </template>
                     </div>
                 </div>
 
                 @if ($downloadUrl)
-                    <a :href="downloadUrl" class="tk-pb no-underline text-white" aria-label="{{ __('events.bout_video_download') }}" download>
+                    <a :href="downloadUrl" class="tk-pb no-underline text-white" aria-label="{{ __('events::events.bout_video_download') }}" download>
                         <i class="bi bi-download"></i>
                     </a>
                 @endif
 
-                <button type="button" @click="pip()" x-show="canPip" x-cloak class="tk-pb hidden sm:grid" aria-label="{{ __('events.bout_video_pip') }}">
+                <button type="button" @click="pip()" x-show="canPip" x-cloak class="tk-pb hidden sm:grid" aria-label="{{ __('events::events.bout_video_pip') }}">
                     <i class="bi bi-pip"></i>
                 </button>
-                <button type="button" @click="fullscreen()" class="tk-pb" aria-label="{{ __('events.bout_video_fullscreen') }}">
+                <button type="button" @click="fullscreen()" class="tk-pb" aria-label="{{ __('events::events.bout_video_fullscreen') }}">
                     <i class="bi" :class="isFull ? 'bi-fullscreen-exit' : 'bi-arrows-fullscreen'"></i>
                 </button>
             </div>
@@ -239,7 +239,7 @@
         <div x-show="current.transcoding" x-cloak
              class="absolute top-3 end-3 z-30 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/65 backdrop-blur text-white/90 text-[10px] font-bold uppercase tracking-wide">
             <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-            {{ __('events.bout_video_transcoding') }}
+            {{ __('events::events.bout_video_transcoding') }}
         </div>
     </div>
 </div>

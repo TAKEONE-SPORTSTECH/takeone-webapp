@@ -64,8 +64,8 @@
     use App\Support\Palette;
 
     $c = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $color) ? $color : '#7c3aed';
-    $title = $title ?: __('events.entry_field_photo');
-    $hint = $hint ?: __('events.public_enrol_photo_sheet_hint');
+    $title = $title ?: __('events::events.entry_field_photo');
+    $hint = $hint ?: __('events::events.public_enrol_photo_sheet_hint');
 
     $z = max(1, min(79, (int) $z));
     $cameraZ = max(1, min(79, (int) ($cameraZ ?? $z + 10)));
@@ -93,7 +93,7 @@
                 this.toCropper(new File([blob], 'photo', { type: blob.type }));
             } catch (e) {
                 window.dispatchEvent(new CustomEvent('photo-capture:broken', { detail: { id: @js($id), src } }));
-                window.showToast('error', @js(__('events.entry_photo_recrop_failed')));
+                window.showToast('error', @js(__('events::events.entry_photo_recrop_failed')));
             }
         },
 
@@ -123,11 +123,11 @@
         /* Detect first, request properly, fall back honestly (CLAUDE.md ->
            Mobile Device Capabilities). */
         async openCamera() {
-            this.cameraHint = @js(__('events.public_enrol_photo_guide'));
+            this.cameraHint = @js(__('events::events.public_enrol_photo_guide'));
 
             if (! navigator.mediaDevices?.getUserMedia) {
                 this.cameraFallback = true;
-                window.showToast('error', @js(__('events.public_enrol_photo_no_camera')));
+                window.showToast('error', @js(__('events::events.public_enrol_photo_no_camera')));
                 return;
             }
 
@@ -138,7 +138,7 @@
                 });
             } catch (e) {
                 this.cameraFallback = true;
-                window.showToast('error', @js(__('events.public_enrol_photo_denied')));
+                window.showToast('error', @js(__('events::events.public_enrol_photo_denied')));
                 return;
             }
 
@@ -168,7 +168,7 @@
            preview was. */
         shoot() {
             const v = this.$refs.video;
-            if (! v || ! v.videoWidth) { window.showToast('error', @js(__('events.public_enrol_photo_wait'))); return; }
+            if (! v || ! v.videoWidth) { window.showToast('error', @js(__('events::events.public_enrol_photo_wait'))); return; }
 
             const srcW = v.videoWidth, srcH = v.videoHeight;
             const want = 3 / 4;
@@ -190,7 +190,7 @@
             ctx.drawImage(v, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 
             canvas.toBlob((blob) => {
-                if (! blob) { window.showToast('error', @js(__('events.public_enrol_photo_failed'))); return; }
+                if (! blob) { window.showToast('error', @js(__('events::events.public_enrol_photo_failed'))); return; }
                 const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
                 this.closeCamera();
                 this.toCropper(file);
@@ -281,8 +281,8 @@
                                 <i class="bi bi-camera" style="font-size: 26px;"></i>
                             </span>
                             <span class="relative">
-                                <span class="ph-title block">{{ __('events.public_enrol_photo_take') }}</span>
-                                <span class="ph-hint block" style="color: rgba(255,255,255,.8);">{{ __('events.public_enrol_photo_take_hint') }}</span>
+                                <span class="ph-title block">{{ __('events::events.public_enrol_photo_take') }}</span>
+                                <span class="ph-hint block" style="color: rgba(255,255,255,.8);">{{ __('events::events.public_enrol_photo_take_hint') }}</span>
                             </span>
                         </button>
 
@@ -298,8 +298,8 @@
                                 <i class="bi bi-camera-fill" style="font-size: 26px;"></i>
                             </span>
                             <span class="relative">
-                                <span class="ph-title block">{{ __('events.public_enrol_photo_take') }}</span>
-                                <span class="ph-hint block" style="color: rgba(255,255,255,.8);">{{ __('events.public_enrol_photo_take_native_hint') }}</span>
+                                <span class="ph-title block">{{ __('events::events.public_enrol_photo_take') }}</span>
+                                <span class="ph-hint block" style="color: rgba(255,255,255,.8);">{{ __('events::events.public_enrol_photo_take_native_hint') }}</span>
                             </span>
                             <input type="file" accept="image/*" capture="user" class="hidden" @change="handOff($event)">
                         </label>
@@ -312,14 +312,14 @@
                                 <i class="bi bi-images" style="font-size: 22px;"></i>
                             </span>
                             <span class="relative">
-                                <span class="ph-title block text-foreground">{{ __('events.public_enrol_photo_gallery') }}</span>
-                                <span class="ph-hint block text-muted-foreground">{{ __('events.public_enrol_photo_gallery_hint') }}</span>
+                                <span class="ph-title block text-foreground">{{ __('events::events.public_enrol_photo_gallery') }}</span>
+                                <span class="ph-hint block text-muted-foreground">{{ __('events::events.public_enrol_photo_gallery_hint') }}</span>
                             </span>
                             <input type="file" accept="image/*" class="hidden" @change="handOff($event)">
                         </label>
                     </div>
 
-                    <p class="text-[11px] text-muted-foreground leading-snug pt-4">{{ __('events.public_enrol_photo_ratio') }}</p>
+                    <p class="text-[11px] text-muted-foreground leading-snug pt-4">{{ __('events::events.public_enrol_photo_ratio') }}</p>
                 </div>
             </div>
         </div>
@@ -347,7 +347,7 @@
                     <button type="button" @click="closeCamera()" aria-label="{{ __('shared.close') }}" class="cam-round m-press">
                         <i class="bi bi-x-lg"></i>
                     </button>
-                    <span class="cam-label">{{ __('events.entry_field_photo') }}</span>
+                    <span class="cam-label">{{ __('events::events.entry_field_photo') }}</span>
                     <span class="cam-chip"><i class="bi bi-person-bounding-box"></i>3:4</span>
                 </div>
 
@@ -356,12 +356,12 @@
 
             <div class="cam-bar" style="--cam: {{ $c }};">
                 <span></span>
-                <button type="button" @click="shoot()" aria-label="{{ __('events.public_enrol_photo_take') }}" class="cam-shutter">
+                <button type="button" @click="shoot()" aria-label="{{ __('events::events.public_enrol_photo_take') }}" class="cam-shutter">
                     <span></span>
                 </button>
                 <span class="cam-side">
                     <button type="button" @click="flipCamera()" x-show="cameraCanFlip" x-cloak
-                            aria-label="{{ __('events.public_enrol_photo_flip') }}" class="cam-round m-press">
+                            aria-label="{{ __('events::events.public_enrol_photo_flip') }}" class="cam-round m-press">
                         <i class="bi bi-arrow-repeat"></i>
                     </button>
                 </span>

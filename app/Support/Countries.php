@@ -46,7 +46,7 @@ final class Countries
      * them: `[['code' => '+973', 'name' => 'Bahrain', 'flag' => 'bh'], …]`,
      * sorted by name.
      *
-     * ⚠️ Read from the SAME list as everything else. `<x-country-code-dropdown>`
+     * ⚠️ Read from the SAME list as everything else. `<x-fields.phone-code>`
      * used to carry a hand-written array of sixty countries inside its x-data,
      * which is how the platform came to have no Syria (+963), no Yemen, no
      * Sudan, no Afghanistan and no Libya — a member from any of them could not

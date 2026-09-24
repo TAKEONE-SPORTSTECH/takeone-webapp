@@ -1,6 +1,6 @@
 {{-- Inside the personal mobile shell: header (avatar → drawer), notifications,
      chat and bottom tabs come from the shell. -mx-4 -mt-4 cancels <main>'s padding. --}}
-@extends('layouts.personal-mobile')
+@extends('members::layouts.personal-mobile')
 
 @section('title', __('personal.find_people'))
 

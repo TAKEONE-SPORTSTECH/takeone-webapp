@@ -24,7 +24,7 @@
                         <!-- Transaction Type -->
                         <div>
                             <label class="form-label">{{ __('admin.partials_edit_modal_transaction_type') }}</label>
-                            <x-select-menu model="(editTransaction||{}).type" name="type" :options="[
+                            <x-fields.select model="(editTransaction||{}).type" name="type" :options="[
                                 ['value' => 'expense', 'label' => __('admin.partials_edit_modal_type_expense')],
                                 ['value' => 'refund',  'label' => __('admin.partials_edit_modal_type_refund')],
                                 ['value' => 'income',  'label' => __('admin.partials_edit_modal_type_income')],
@@ -34,7 +34,7 @@
                         <!-- Category -->
                         <div x-show="editTransaction && editTransaction.type === 'expense'" x-transition>
                             <label class="form-label">{{ __('admin.partials_edit_modal_expense_category') }}</label>
-                            <x-select-menu model="(editTransaction||{}).category" name="category"
+                            <x-fields.select model="(editTransaction||{}).category" name="category"
                                 placeholder="{{ __('admin.partials_edit_modal_select_category') }}" :options="[
                                 ['value' => 'rent',        'label' => __('admin.partials_edit_modal_category_rent')],
                                 ['value' => 'utilities',   'label' => __('admin.partials_edit_modal_category_utilities')],

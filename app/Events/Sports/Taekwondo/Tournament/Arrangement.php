@@ -49,24 +49,24 @@ class Arrangement
 
         $category = $event->categories()->find($payload['category_id'] ?? null);
         if (! $category) {
-            return ['ok' => false, 'message' => __('events.division_not_found')];
+            return ['ok' => false, 'message' => __('events::events.division_not_found')];
         }
 
         $first = $this->firstRound($category);
         if ($first->isEmpty()) {
-            return ['ok' => false, 'message' => __('events.bracket_not_drawn')];
+            return ['ok' => false, 'message' => __('events::events.bracket_not_drawn')];
         }
 
         $from = $this->endpoint($payload['from'] ?? [], $first);
         $to = $this->endpoint($payload['to'] ?? [], $first);
 
         if ($from === null || $to === null) {
-            return ['ok' => false, 'message' => __('events.bracket_slot_invalid')];
+            return ['ok' => false, 'message' => __('events::events.bracket_slot_invalid')];
         }
 
         // Nothing can be dragged from the bench to the bench.
         if ($from['type'] === 'bench' && $to['type'] === 'bench') {
-            return ['ok' => false, 'message' => __('events.bracket_slot_invalid')];
+            return ['ok' => false, 'message' => __('events::events.bracket_slot_invalid')];
         }
 
         $moving = $from['type'] === 'bench'
@@ -74,7 +74,7 @@ class Arrangement
             : $this->occupant($from['match'], $from['side']);
 
         if (! $moving) {
-            return ['ok' => false, 'message' => __('events.bracket_competitor_invalid')];
+            return ['ok' => false, 'message' => __('events::events.bracket_competitor_invalid')];
         }
 
         DB::transaction(function () use ($from, $to, $moving, $category) {
@@ -232,7 +232,7 @@ class Arrangement
         $values = $who instanceof ClubEventRegistration
             ? [
                 'competitor_id' => $who->id,
-                'name' => $who->user?->full_name ?: $who->user?->name ?: __('events.athlete'),
+                'name' => $who->user?->full_name ?: $who->user?->name ?: __('events::events.athlete'),
                 'country' => $who->countryCode(),
                 'seed' => null,
                 'provisional' => ! $who->paid || $who->weight === null,

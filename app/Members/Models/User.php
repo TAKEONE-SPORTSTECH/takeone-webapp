@@ -1042,12 +1042,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      */
     public function sendEmailVerificationNotification()
     {
-        Mail::to($this)->queue(new \App\Mail\WelcomeEmail($this));
+        Mail::to($this)->queue(new \App\Members\Mail\WelcomeEmail($this));
     }
 
     public function sendPasswordResetNotification($token): void
     {
-        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
+        $this->notify(new \App\Members\Notifications\ResetPasswordNotification($token));
     }
 
     public function eventRegistrations(): HasMany

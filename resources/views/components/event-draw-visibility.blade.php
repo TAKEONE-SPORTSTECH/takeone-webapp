@@ -32,27 +32,27 @@
     $modes = [
         'always' => [
             'icon' => 'bi-eye-fill',
-            'label' => __('events.draw_reveal_always'),
-            'sub' => __('events.draw_reveal_always_sub'),
-            'hint' => __('events.draw_reveal_always_hint'),
+            'label' => __('events::events.draw_reveal_always'),
+            'sub' => __('events::events.draw_reveal_always_sub'),
+            'hint' => __('events::events.draw_reveal_always_hint'),
             'tone' => 'green',
         ],
         'start_day' => [
             'icon' => 'bi-calendar-event-fill',
-            'label' => __('events.draw_reveal_start_day'),
+            'label' => __('events::events.draw_reveal_start_day'),
             // The day itself when the event has one — "Opens Sat 12 Sep" is the
             // answer an organiser is actually checking for.
             'sub' => $date
-                ? __('events.draw_reveal_start_day_with_date', ['date' => $date])
-                : __('events.draw_reveal_start_day_sub'),
-            'hint' => __('events.draw_reveal_start_day_hint'),
+                ? __('events::events.draw_reveal_start_day_with_date', ['date' => $date])
+                : __('events::events.draw_reveal_start_day_sub'),
+            'hint' => __('events::events.draw_reveal_start_day_hint'),
             'tone' => 'amber',
         ],
         'hidden' => [
             'icon' => 'bi-lock-fill',
-            'label' => __('events.draw_reveal_hidden'),
-            'sub' => __('events.draw_reveal_hidden_sub'),
-            'hint' => __('events.draw_reveal_hidden_hint'),
+            'label' => __('events::events.draw_reveal_hidden'),
+            'sub' => __('events::events.draw_reveal_hidden_sub'),
+            'hint' => __('events::events.draw_reveal_hidden_hint'),
             'tone' => 'rose',
         ],
     ];
@@ -113,7 +113,7 @@
             <i class="bi text-lg" :class="'bi ' + modes[mode].icon"></i>
         </span>
         <span class="min-w-0 flex-1">
-            <span class="block text-sm font-bold text-foreground">{{ __('events.draw_reveal') }}</span>
+            <span class="block text-sm font-bold text-foreground">{{ __('events::events.draw_reveal') }}</span>
             <span class="block text-[11px] mt-0.5 truncate"
                   :class="mode === 'always' ? 'text-green-600 font-semibold' : 'text-muted-foreground'"
                   x-text="modes[mode].sub"></span>
@@ -146,7 +146,7 @@
                             <i class="bi bi-diagram-3-fill bracket-icon text-xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black leading-tight">{{ __('events.draw_reveal') }}</h3>
+                            <h3 class="text-lg font-black leading-tight">{{ __('events::events.draw_reveal') }}</h3>
                             <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $title }}</p>
                         </div>
                         <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
@@ -156,7 +156,7 @@
                     </div>
 
                     <p class="relative mt-3 text-[11.5px] text-white/85 leading-snug flex items-start gap-1.5">
-                        <i class="bi bi-info-circle mt-0.5 flex-shrink-0"></i>{{ __('events.draw_reveal_hint') }}
+                        <i class="bi bi-info-circle mt-0.5 flex-shrink-0"></i>{{ __('events::events.draw_reveal_hint') }}
                     </p>
                 </div>
 

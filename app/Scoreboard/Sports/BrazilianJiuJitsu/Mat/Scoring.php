@@ -622,7 +622,7 @@ class Scoring
                 : (($user?->profile_picture && $user->profile_picture_is_public)
                     ? file_url($user->profile_picture)
                     : null),
-            'fallback' => \App\Support\Avatar::placeholder($user?->gender),
+            'fallback' => \App\Members\Support\Avatar::placeholder($user?->gender),
             'belt' => $belt['label'] ?? null,
             'age' => $user?->birthdate ? $user->birthdate->age : null,
             'height' => $user?->height_cm ?: null,

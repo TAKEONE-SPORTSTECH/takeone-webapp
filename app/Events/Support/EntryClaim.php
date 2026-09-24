@@ -95,7 +95,7 @@ class EntryClaim
         if ($clubIds === []
             && ! $actor->isSuperAdmin()
             && ! app(EventAccess::class)->canEnterAthletes($event, $actor)) {
-            return ['ok' => false, 'message' => __('events.claim_no_authority')];
+            return ['ok' => false, 'message' => __('events::events.claim_no_authority')];
         }
 
         // The same gate that closes the join button and the coach's roster —
@@ -106,11 +106,11 @@ class EntryClaim
         // entriesState). Started, ended and full still refuse them.
         $state = $this->entries->entriesState($event, $actor);
         if (! $state['open']) {
-            return ['ok' => false, 'message' => $state['note'] ?? __('events.entry_closed_generic')];
+            return ['ok' => false, 'message' => $state['note'] ?? __('events::events.entry_closed_generic')];
         }
 
         if ($event->max_capacity && $event->participantRegistrations()->count() >= $event->max_capacity) {
-            return ['ok' => false, 'message' => __('events.entry_full')];
+            return ['ok' => false, 'message' => __('events::events.entry_full')];
         }
 
         // The activity being entered, and only if it belongs to THIS event. A
@@ -120,7 +120,7 @@ class EntryClaim
             : null;
 
         if ($categoryId && ! $target) {
-            return ['ok' => false, 'message' => __('events.division_not_found')];
+            return ['ok' => false, 'message' => __('events::events.division_not_found')];
         }
 
         // Two people of the same name in one competition is nearly always the
@@ -134,7 +134,7 @@ class EntryClaim
 
         if ($entered->isNotEmpty()) {
             if (! $target) {
-                return ['ok' => false, 'message' => __('events.claim_duplicate_name', ['name' => $fullName])];
+                return ['ok' => false, 'message' => __('events::events.claim_duplicate_name', ['name' => $fullName])];
             }
 
             return $this->alsoEnter($event, $actor, $fullName, $entered, $target, $optionKeys);
@@ -203,7 +203,7 @@ class EntryClaim
 
         return [
             'ok' => true,
-            'message' => __('events.claim_issued', ['name' => $fullName]),
+            'message' => __('events::events.claim_issued', ['name' => $fullName]),
             'claim' => $this->present($minted['claim'], $athlete, $registration, $minted['url']),
         ];
     }
@@ -235,11 +235,11 @@ class EntryClaim
     public function revoke(EventEntryClaim $claim, User $actor): array
     {
         if (! $this->mayManage($claim, $actor)) {
-            return ['ok' => false, 'message' => __('events.claim_not_yours')];
+            return ['ok' => false, 'message' => __('events::events.claim_not_yours')];
         }
 
         if ($claim->claimed_at) {
-            return ['ok' => false, 'message' => __('events.claim_already_claimed')];
+            return ['ok' => false, 'message' => __('events::events.claim_already_claimed')];
         }
 
         $event = $claim->event;
@@ -270,7 +270,7 @@ class EntryClaim
 
         $this->registry->for($event)->onEntrantsChanged($event);
 
-        return ['ok' => true, 'message' => __('events.claim_revoked')];
+        return ['ok' => true, 'message' => __('events::events.claim_revoked')];
     }
 
     /**
@@ -282,11 +282,11 @@ class EntryClaim
     public function regenerate(EventEntryClaim $claim, User $actor): array
     {
         if (! $this->mayManage($claim, $actor)) {
-            return ['ok' => false, 'message' => __('events.claim_not_yours')];
+            return ['ok' => false, 'message' => __('events::events.claim_not_yours')];
         }
 
         if ($claim->claimed_at) {
-            return ['ok' => false, 'message' => __('events.claim_already_claimed')];
+            return ['ok' => false, 'message' => __('events::events.claim_already_claimed')];
         }
 
         $secret = Str::random(48);
@@ -298,7 +298,7 @@ class EntryClaim
 
         return [
             'ok' => true,
-            'message' => __('events.claim_relinked'),
+            'message' => __('events::events.claim_relinked'),
             'claim' => $this->present($claim->fresh(), $claim->athlete, $claim->registration, $this->url($claim, $secret)),
         ];
     }
@@ -352,7 +352,7 @@ class EntryClaim
         $registration = $claim->registration;
 
         if (! $athlete || ! $registration) {
-            return ['ok' => false, 'message' => __('events.claim_dead')];
+            return ['ok' => false, 'message' => __('events::events.claim_dead')];
         }
 
         $birthdate = $data['birthdate'] ?: null;
@@ -363,7 +363,7 @@ class EntryClaim
         // An address already in use is not evidence of anything we may say out
         // loud — the same sentence either way, and no account is touched.
         if (User::where('email', $data['email'])->exists()) {
-            return ['ok' => false, 'message' => __('events.claim_email_taken'), 'field' => 'email'];
+            return ['ok' => false, 'message' => __('events::events.claim_email_taken'), 'field' => 'email'];
         }
 
         DB::transaction(function () use ($claim, $athlete, $registration, $data, $birthdate, $isMinor, $ip) {
@@ -378,8 +378,8 @@ class EntryClaim
                 // The account belongs to the guardian; the athlete stays a
                 // person record with no credentials of their own.
                 $guardian = User::create([
-                    'full_name' => $data['guardian_name'] ?: __('events.claim_guardian_default'),
-                    'name' => $data['guardian_name'] ?: __('events.claim_guardian_default'),
+                    'full_name' => $data['guardian_name'] ?: __('events::events.claim_guardian_default'),
+                    'name' => $data['guardian_name'] ?: __('events::events.claim_guardian_default'),
                     'email' => $data['email'],
                     'password' => Hash::make($data['password']),
                     'is_discoverable' => false,
@@ -457,7 +457,7 @@ class EntryClaim
 
         return [
             'ok' => true,
-            'message' => __('events.claim_completed'),
+            'message' => __('events::events.claim_completed'),
             'division' => $division?->name,
             'is_minor' => $isMinor,
         ];
@@ -603,11 +603,11 @@ class EntryClaim
         $userIds = $entered->pluck('user_id')->unique();
 
         if ($userIds->count() > 1) {
-            return ['ok' => false, 'message' => __('events.claim_duplicate_name', ['name' => $fullName])];
+            return ['ok' => false, 'message' => __('events::events.claim_duplicate_name', ['name' => $fullName])];
         }
 
         if ($entered->contains(fn (ClubEventRegistration $r) => (int) $r->category_id === (int) $target->id)) {
-            return ['ok' => false, 'message' => __('events.claim_already_in_activity', [
+            return ['ok' => false, 'message' => __('events::events.claim_already_in_activity', [
                 'name' => $fullName,
                 'activity' => $target->name,
             ])];
@@ -622,7 +622,7 @@ class EntryClaim
         $first = ClubEventRegistration::find($entered->first()->id);
 
         if (! $first) {
-            return ['ok' => false, 'message' => __('events.claim_dead')];
+            return ['ok' => false, 'message' => __('events::events.claim_dead')];
         }
 
         $registration = DB::transaction(function () use ($event, $actor, $first, $target, $optionKeys) {
@@ -670,7 +670,7 @@ class EntryClaim
          */
         return [
             'ok' => true,
-            'message' => __('events.claim_also_entered', [
+            'message' => __('events::events.claim_also_entered', [
                 'name' => $fullName,
                 'activity' => $target->name,
             ]),
@@ -767,10 +767,10 @@ class EntryClaim
         }
 
         rescue(fn () => UserNotification::notifyUser($issuer->id, 'event',
-            __('events.claim_completed_title', ['name' => $athlete->full_name]), [
-                'body' => __('events.claim_completed_body', [
+            __('events::events.claim_completed_title', ['name' => $athlete->full_name]), [
+                'body' => __('events::events.claim_completed_body', [
                     'name' => $athlete->full_name,
-                    'division' => $division ?: __('events.claim_at_weigh_in'),
+                    'division' => $division ?: __('events::events.claim_at_weigh_in'),
                 ]),
                 'icon' => 'bi-person-check-fill',
                 'action_url' => route('me.events.show', $claim->event->uuid),

@@ -9,8 +9,8 @@ use App\Members\Models\PersonUnion;
 use App\Members\Models\User;
 use App\Members\Models\UserNotification;
 use App\Members\Models\UserRelationship;
-use App\Services\FamilyService;
-use App\Services\KinshipService;
+use App\Members\Support\FamilyService;
+use App\Members\Support\KinshipService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +19,7 @@ use Illuminate\View\View;
 
 /**
  * The Family Tree page — a graphical, unlimited-depth kinship tree built on the
- * `persons` graph (see App\Services\KinshipService). Renders an ego-centric
+ * `persons` graph (see App\Members\Support\KinshipService). Renders an ego-centric
  * window that re-centres as you tap through relatives, so an infinite tree
  * stays cheap to draw.
  *

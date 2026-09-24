@@ -24,7 +24,7 @@
     $spAddLabel   = __('event-sparring::messages.console_add_selected', ['n' => ':n']);
     $spEndTitle   = __('event-sparring::messages.console_end_session');
     $spEndConfirm = __('event-sparring::messages.console_end_confirm');
-    $spFailed     = __('events.action_unsupported');
+    $spFailed     = __('events::events.action_unsupported');
 @endphp
 
 <script>

@@ -12,7 +12,7 @@ use App\Clubs\Models\Tenant;
 use App\Members\Models\TournamentEvent;
 use App\Members\Models\User;
 use App\Members\Models\UserRelationship;
-use App\Services\AchievementVerificationService;
+use App\Members\Support\AchievementVerificationService;
 use Laravel\Mcp\Request as McpRequest;
 use Tests\TestCase;
 
@@ -300,7 +300,7 @@ class AchievementVerificationTest extends TestCase
 
         // The 4-box medal showcase must be present (not hidden behind a >0 gate).
         $this->assertStringContainsString('mp-medal', $html);
-        $this->assertStringContainsString(__('member.medal_gold'), $html);
+        $this->assertStringContainsString(__('members::member.medal_gold'), $html);
     }
 
     // ---- vouching -----------------------------------------------------------

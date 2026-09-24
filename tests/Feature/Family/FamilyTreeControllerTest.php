@@ -5,8 +5,8 @@ namespace Tests\Feature\Family;
 use App\Members\Models\Person;
 use App\Members\Models\PersonParentLink;
 use App\Members\Models\UserRelationship;
-use App\Services\FamilyService;
-use App\Services\KinshipService;
+use App\Members\Support\FamilyService;
+use App\Members\Support\KinshipService;
 use Tests\TestCase;
 
 class FamilyTreeControllerTest extends TestCase

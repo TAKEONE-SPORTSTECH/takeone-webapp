@@ -2,7 +2,7 @@
 
 namespace App\Shop\Models;
 
-use App\Traits\BelongsToTenant;
+use App\Clubs\Concerns\BelongsToTenant;
 use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

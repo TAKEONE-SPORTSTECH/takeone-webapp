@@ -126,7 +126,7 @@ class TrainerController extends Controller
 
         // Rich skill cards: accumulated years practising each skill + a deep-link to the
         // activity encyclopedia when the discipline is in the directory.
-        $skillMonths = \App\Support\SkillExperience::monthsPerSkill($user);
+        $skillMonths = \App\Members\Support\SkillExperience::monthsPerSkill($user);
         $catalogByName = \App\Platform\Models\ActivityCatalog::where('is_active', true)
             ->get(['uuid', 'name', 'picture_url'])
             ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
@@ -136,7 +136,7 @@ class TrainerController extends Controller
 
             return [
                 'name' => $name,
-                'years' => \App\Support\SkillExperience::format($skillMonths[$key] ?? 0),
+                'years' => \App\Members\Support\SkillExperience::format($skillMonths[$key] ?? 0),
                 'uuid' => optional($cat)->uuid,
                 'image' => optional($cat)->picture_url ? file_url($cat->picture_url) : null,
             ];

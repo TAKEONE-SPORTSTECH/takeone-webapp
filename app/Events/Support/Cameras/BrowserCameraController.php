@@ -39,7 +39,7 @@ class BrowserCameraController extends Controller
      */
     public function show(Request $request)
     {
-        return view('events.camera.web', [
+        return view('events::camera.web', [
             // Read off the glass and typed into a sideloader when somebody
             // decides they want the real app after all. Null when no build is
             // published, so the page never offers a download that 404s.

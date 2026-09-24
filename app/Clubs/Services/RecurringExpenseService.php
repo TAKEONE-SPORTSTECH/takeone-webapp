@@ -4,7 +4,7 @@ namespace App\Clubs\Services;
 
 use App\Clubs\Models\ClubRecurringExpense;
 use App\Clubs\Models\ClubTransaction;
-use App\Support\ClubCache;
+use App\Clubs\Support\ClubCache;
 use Carbon\Carbon;
 
 /**

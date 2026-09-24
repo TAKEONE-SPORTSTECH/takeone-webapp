@@ -272,9 +272,9 @@ class RunOrder
     private function defaultLabel(string $kind): string
     {
         return match ($kind) {
-            EventRunSlot::KIND_CEREMONY => __('events.run_order_add_ceremony'),
-            EventRunSlot::KIND_BREAK => __('events.run_order_add_break'),
-            default => __('events.run_order_add_custom'),
+            EventRunSlot::KIND_CEREMONY => __('events::events.run_order_add_ceremony'),
+            EventRunSlot::KIND_BREAK => __('events::events.run_order_add_break'),
+            default => __('events::events.run_order_add_custom'),
         };
     }
 }

@@ -122,7 +122,7 @@ class BoutTimeline
             // gets three markers rather than one.
             $rounds[$round] ??= [
                 'number' => $round,
-                'name' => __('events.bout_video_round', ['n' => $round]),
+                'name' => __('events::events.bout_video_round', ['n' => $round]),
                 'start' => $seconds,
                 'moments' => 0,
             ];
@@ -155,7 +155,7 @@ class BoutTimeline
         if ($rounds === [] && $points !== []) {
             $rounds[1] = [
                 'number' => 1,
-                'name' => __('events.bout_video_round', ['n' => 1]),
+                'name' => __('events::events.bout_video_round', ['n' => 1]),
                 'start' => 0.0,
                 'moments' => 0,
             ];
@@ -214,8 +214,8 @@ class BoutTimeline
         }
 
         $labels = $sport?->cornerLabels() ?? [
-            'red' => __('events.corner_red'),
-            'blue' => __('events.corner_blue'),
+            'red' => __('events::events.corner_red'),
+            'blue' => __('events::events.corner_blue'),
         ];
 
         $moments = [];
@@ -257,7 +257,7 @@ class BoutTimeline
                 // display string load-bearing.
                 'points' => array_sum(array_map(fn (array $p) => (int) ($p['points'] ?? 0), $bucket)),
                 'who' => $both
-                    ? __('events.bout_video_both_scored')
+                    ? __('events::events.bout_video_both_scored')
                     : ($labels[$colours[0]] ?? $colours[0]),
                 'score_red' => $anchor['score_red'],
                 'score_blue' => $anchor['score_blue'],
@@ -302,27 +302,27 @@ class BoutTimeline
             $one = $bucket[0];
 
             if ($one['kind'] === 'penalty') {
-                return __('events.bout_video_penalty');
+                return __('events::events.bout_video_penalty');
             }
 
             if ($one['kind'] === 'senshu') {
-                return __('events.bout_video_senshu');
+                return __('events::events.bout_video_senshu');
             }
 
             if ($one['kind'] === 'round') {
-                return __('events.bout_video_round_awarded');
+                return __('events::events.bout_video_round_awarded');
             }
 
             $named = $sport?->scoreLabel($one['points']);
 
             return $named
                 ? $named.' +'.$one['points']
-                : __('events.bout_video_point').' +'.$one['points'];
+                : __('events::events.bout_video_point').' +'.$one['points'];
         }
 
         $deltas = implode(' / ', array_map(fn ($p) => '+'.$p['points'], $bucket));
 
-        return __('events.bout_video_point').' '.$deltas;
+        return __('events::events.bout_video_point').' '.$deltas;
     }
 
     /** MM:SS, floored — the reader wants the second, not the frame. */

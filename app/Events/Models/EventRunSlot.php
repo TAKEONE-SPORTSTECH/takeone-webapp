@@ -123,9 +123,9 @@ class EventRunSlot extends Model
     public function displayName(): string
     {
         if ($this->isDivision()) {
-            return (string) ($this->category?->name ?? __('events.run_slot_missing_division'));
+            return (string) ($this->category?->name ?? __('events::events.run_slot_missing_division'));
         }
 
-        return (string) ($this->label ?: __('events.run_slot_untitled'));
+        return (string) ($this->label ?: __('events::events.run_slot_untitled'));
     }
 }

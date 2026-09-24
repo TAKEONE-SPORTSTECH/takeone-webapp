@@ -48,7 +48,7 @@
 --}}
 
 <x-action-sheet id="boutOutcome" :color="$color" icon="bi-trophy-fill" :layer="$layer"
-                :title="__('events.outcome_who_won')" subtitle="">
+                :title="__('events::events.outcome_who_won')" subtitle="">
     <div id="bo-rows" class="space-y-2.5"></div>
 </x-action-sheet>
 
@@ -70,15 +70,15 @@
        URL can never drift from the route table (Navigation Integrity). */
     var OUTCOME_URL = @js(route('me.events.outcome', ['event' => $event, 'unit' => 0]));
     var TEXT = {
-        wins: @js(__('events.outcome_wins')),
-        winsHint: @js(__('events.outcome_wins_hint')),
-        walkover: @js(__('events.outcome_walkover_hint')),
-        clear: @js(__('events.outcome_clear')),
-        clearHint: @js(__('events.outcome_clear_hint')),
-        nobody: @js(__('events.outcome_nobody')),
-        bout: @js(__('events.outcome_bout_no')),
-        decided: @js(__('events.outcome_decided_by_you')),
-        failed: @js(__('events.outcome_saved')),
+        wins: @js(__('events::events.outcome_wins')),
+        winsHint: @js(__('events::events.outcome_wins_hint')),
+        walkover: @js(__('events::events.outcome_walkover_hint')),
+        clear: @js(__('events::events.outcome_clear')),
+        clearHint: @js(__('events::events.outcome_clear_hint')),
+        nobody: @js(__('events::events.outcome_nobody')),
+        bout: @js(__('events::events.outcome_bout_no')),
+        decided: @js(__('events::events.outcome_decided_by_you')),
+        failed: @js(__('events::events.outcome_saved')),
     };
 
     var current = null;      // the bout the sheet is open over
@@ -237,7 +237,7 @@
         if (m.court) { bits.push(m.court); }
 
         window.ActionSheet.open('boutOutcome', {
-            title: @js(__('events.outcome_who_won')),
+            title: @js(__('events::events.outcome_who_won')),
             subtitle: bits.join(' · '),
             photo: null,
         });

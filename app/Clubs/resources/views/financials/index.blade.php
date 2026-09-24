@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 @section('club-admin-content')
 @php
@@ -14,7 +14,7 @@
     $refundCount   = $transactions->where('type','refund')->count();
 
     // "Pending" = cash still to collect from members who enrolled/renewed but haven't paid yet
-    // (App\Services\FinancialService::getCashToCollect() — same source as the "Cash to Collect"
+    // (App\Clubs\Support\FinancialService::getCashToCollect() — same source as the "Cash to Collect"
     // stat card and the mobile ledger's Pending filter). Every enrollment flow — walk-in, admin
     // enroll, explore self-registration, AND the QR self-registration wizard
     // (WizardRegistrationController) — now creates a matching income ClubTransaction alongside the

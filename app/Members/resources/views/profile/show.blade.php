@@ -23,8 +23,8 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
         <div>
-            <h2 class="font-bold mb-1 text-xl">{{ __('member.templates_member_show_member_profile') }}</h2>
-            <p class="text-gray-500-foreground mb-0">{{ __('member.templates_member_show_member_profile_subtitle') }}</p>
+            <h2 class="font-bold mb-1 text-xl">{{ __('members::member.templates_member_show_member_profile') }}</h2>
+            <p class="text-gray-500-foreground mb-0">{{ __('members::member.templates_member_show_member_profile_subtitle') }}</p>
         </div>
         <div>
             <button onclick="window.history.back()" class="border border-primary text-primary bg-transparent w-10 h-10 justify-center rounded-md inline-flex items-center text-sm font-medium hover:bg-primary hover:text-white transition-colors"
@@ -51,7 +51,7 @@
                     <button type="button"
                             onclick="window.dispatchEvent(new CustomEvent('open-photo-edit-modal'))"
                             class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-primary hover:bg-accent transition-colors"
-                            aria-label="{{ __('member.templates_member_show_edit_photo') }}">
+                            aria-label="{{ __('members::member.templates_member_show_edit_photo') }}">
                         <i class="bi bi-pencil-fill text-sm"></i>
                     </button>
                 @endif
@@ -64,30 +64,30 @@
                     @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id)
                         <div x-data="{ open: false }" class="relative">
                             <button @click="open = !open" class="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors" type="button">
-                                <i class="bi bi-lightning me-1"></i>{{ __('member.templates_member_show_action') }}
+                                <i class="bi bi-lightning me-1"></i>{{ __('members::member.templates_member_show_action') }}
                             </button>
                             <ul x-show="open" x-cloak @click.outside="open = false"
                                 class="absolute end-0 mt-1 bg-white py-1 z-50 list-none w-64 max-w-[calc(100vw-2rem)]"
                                 style="border: 1px solid rgba(0,0,0,.1); border-radius: 0.625rem; box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,.12);">
-                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-attendance-add-modal'); open = false"><i class="bi bi-calendar-check text-green-600" style="width:16px;text-align:center"></i>{{ __('member.templates_member_show_add_attendance_record') }}</a></li>
-                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-event-add-modal'); open = false"><i class="bi bi-calendar-event text-blue-500" style="width:16px;text-align:center"></i>{{ __('member.templates_member_show_add_event_participation') }}</a></li>
-                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-health-update-modal'); open = false"><i class="bi bi-heart-pulse text-red-500" style="width:16px;text-align:center"></i>{{ __('member.templates_member_show_add_health_update') }}</a></li>
-                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-tournament-modal'); open = false"><i class="bi bi-award text-amber-500" style="width:16px;text-align:center"></i>{{ __('member.templates_member_show_add_tournament_participation') }}</a></li>
-                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-profile-modal'); open = false"><i class="bi bi-pencil text-gray-500" style="width:16px;text-align:center"></i>{{ __('member.templates_member_show_edit_info') }}</a></li>
-                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-goal-add-modal'); open = false"><i class="bi bi-bullseye text-blue-600" style="width:16px;text-align:center"></i>{{ __('member.templates_member_show_set_a_goal') }}</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-attendance-add-modal'); open = false"><i class="bi bi-calendar-check text-green-600" style="width:16px;text-align:center"></i>{{ __('members::member.templates_member_show_add_attendance_record') }}</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-event-add-modal'); open = false"><i class="bi bi-calendar-event text-blue-500" style="width:16px;text-align:center"></i>{{ __('members::member.templates_member_show_add_event_participation') }}</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-health-update-modal'); open = false"><i class="bi bi-heart-pulse text-red-500" style="width:16px;text-align:center"></i>{{ __('members::member.templates_member_show_add_health_update') }}</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-tournament-modal'); open = false"><i class="bi bi-award text-amber-500" style="width:16px;text-align:center"></i>{{ __('members::member.templates_member_show_add_tournament_participation') }}</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-profile-modal'); open = false"><i class="bi bi-pencil text-gray-500" style="width:16px;text-align:center"></i>{{ __('members::member.templates_member_show_edit_info') }}</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-goal-add-modal'); open = false"><i class="bi bi-bullseye text-blue-600" style="width:16px;text-align:center"></i>{{ __('members::member.templates_member_show_set_a_goal') }}</a></li>
                                 @if($canResetPassword)
-                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-reset-password-modal'); open = false"><i class="bi bi-key text-amber-600" style="width:16px;text-align:center"></i>{{ __('member.templates_member_show_reset_password') }}</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-reset-password-modal'); open = false"><i class="bi bi-key text-amber-600" style="width:16px;text-align:center"></i>{{ __('members::member.templates_member_show_reset_password') }}</a></li>
                                 @endif
                                 @if($canRegeneratePassword ?? false)
-                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="regenerateMemberPassword(); open = false"><i class="bi bi-magic text-primary" style="width:16px;text-align:center"></i>{{ __('member.templates_member_show_generate_password') }}</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="regenerateMemberPassword(); open = false"><i class="bi bi-magic text-primary" style="width:16px;text-align:center"></i>{{ __('members::member.templates_member_show_generate_password') }}</a></li>
                                 @endif
                                 <li><hr class="my-1 border-0 border-t border-gray-100"></li>
-                                <li><a class="flex items-center gap-2 py-2 px-4 text-red-600 no-underline whitespace-nowrap hover:bg-red-50 text-sm" href="#" @click="$dispatch('open-delete-account-modal'); open = false"><i class="bi bi-trash" style="width:16px;text-align:center"></i>{{ __('member.templates_member_show_delete_account') }}</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-red-600 no-underline whitespace-nowrap hover:bg-red-50 text-sm" href="#" @click="$dispatch('open-delete-account-modal'); open = false"><i class="bi bi-trash" style="width:16px;text-align:center"></i>{{ __('members::member.templates_member_show_delete_account') }}</a></li>
                             </ul>
                         </div>
                     @else
                         <button class="bg-primary text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-primary/90 transition-colors">
-                            <i class="bi bi-person-plus me-1"></i>{{ __('member.templates_member_show_follow') }}
+                            <i class="bi bi-person-plus me-1"></i>{{ __('members::member.templates_member_show_follow') }}
                         </button>
                     @endif
                 </div>
@@ -119,7 +119,7 @@
                                 </span>
                                 <span class="text-gray-500 text-sm">
                                     <i class="bi bi-{{ $relationship->dependent->gender === 'Male' ? 'gender-male' : 'gender-female' }} me-1" style="font-size: 1.1rem; color: {{ $relationship->dependent->gender === 'Male' ? '#17a2b8' : '#6f42c1' }};"></i>
-                                    <span class="font-semibold text-gray-900">{{ $relationship->dependent->gender === 'Male' ? __('member.templates_member_show_gender_male') : __('member.templates_member_show_gender_female') }}</span>
+                                    <span class="font-semibold text-gray-900">{{ $relationship->dependent->gender === 'Male' ? __('members::member.templates_member_show_gender_male') : __('members::member.templates_member_show_gender_female') }}</span>
                                 </span>
                                 <span id="profile-marital-wrap" class="text-gray-500 text-sm"@if(!$relationship->dependent->marital_status) style="display:none"@endif>
                                     <i class="bi bi-heart me-1" style="color: #e91e63;"></i>
@@ -127,7 +127,7 @@
                                 </span>
                                 <span class="text-gray-500 text-sm">
                                     <i class="bi bi-calendar-event me-1"></i>
-                                    {{ __('member.templates_member_show_status_age') }} <span class="font-semibold text-gray-900" data-profile-age>{{ $relationship->dependent->age }}</span>
+                                    {{ __('members::member.templates_member_show_status_age') }} <span class="font-semibold text-gray-900" data-profile-age>{{ $relationship->dependent->age }}</span>
                                 </span>
                                 <span id="profile-blood-type-wrap" class="text-gray-500 text-sm"@if(!$relationship->dependent->blood_type) style="display:none"@endif>
                                     <i class="bi bi-droplet-fill text-red-600 me-1"></i>
@@ -174,11 +174,11 @@
                                 @endif
                                 <span class="text-gray-500 text-sm">
                                     <i class="bi bi-check-circle-fill text-green-600 me-1"></i>
-                                    <span class="font-semibold text-green-600">{{ __('member.templates_member_show_status_active') }}</span>
+                                    <span class="font-semibold text-green-600">{{ __('members::member.templates_member_show_status_active') }}</span>
                                 </span>
                                 <span class="text-gray-500 text-sm">
                                     <i class="bi bi-calendar-check me-1"></i>
-                                    {{ __('member.templates_member_show_status_joined') }} <span class="font-semibold text-gray-900">{{ $relationship->dependent->created_at->format('F Y') }}</span>
+                                    {{ __('members::member.templates_member_show_status_joined') }} <span class="font-semibold text-gray-900">{{ $relationship->dependent->created_at->format('F Y') }}</span>
                                 </span>
                             </div>
 
@@ -260,47 +260,47 @@
         <ul class="nav nav-tabs nav-fill mb-4 flex-nowrap min-w-max md:min-w-0 md:flex-wrap" id="profileTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'overview'" :class="{ 'active': activeTab === 'overview' }" class="nav-link text-dark" id="overview-tab" type="button" role="tab">
-                    <i class="bi bi-eye me-2"></i>{{ __('member.templates_member_show_tab_overview') }}
+                    <i class="bi bi-eye me-2"></i>{{ __('members::member.templates_member_show_tab_overview') }}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'attendance'" :class="{ 'active': activeTab === 'attendance' }" class="nav-link text-dark" id="attendance-tab" type="button" role="tab">
-                    <i class="bi bi-calendar-check me-2"></i>{{ __('member.templates_member_show_tab_attendance') }}
+                    <i class="bi bi-calendar-check me-2"></i>{{ __('members::member.templates_member_show_tab_attendance') }}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'health'" :class="{ 'active': activeTab === 'health' }" class="nav-link text-dark" id="health-tab" type="button" role="tab">
-                    <i class="bi bi-heart-pulse me-2"></i>{{ __('member.templates_member_show_tab_health') }}
+                    <i class="bi bi-heart-pulse me-2"></i>{{ __('members::member.templates_member_show_tab_health') }}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'goals'" :class="{ 'active': activeTab === 'goals' }" class="nav-link text-dark" id="goals-tab" type="button" role="tab">
-                    <i class="bi bi-bullseye me-2"></i>{{ __('member.templates_member_show_tab_goals') }}
+                    <i class="bi bi-bullseye me-2"></i>{{ __('members::member.templates_member_show_tab_goals') }}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'affiliations'" :class="{ 'active': activeTab === 'affiliations' }" class="nav-link text-dark" id="affiliations-tab" type="button" role="tab">
-                    <i class="bi bi-diagram-3 me-2"></i>{{ __('member.templates_member_show_tab_affiliations') }}
+                    <i class="bi bi-diagram-3 me-2"></i>{{ __('members::member.templates_member_show_tab_affiliations') }}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'tournaments'" :class="{ 'active': activeTab === 'tournaments' }" class="nav-link text-dark" id="tournaments-tab" type="button" role="tab">
-                    <i class="bi bi-award me-2"></i>{{ __('member.templates_member_show_tab_tournaments') }}
+                    <i class="bi bi-award me-2"></i>{{ __('members::member.templates_member_show_tab_tournaments') }}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'events'" :class="{ 'active': activeTab === 'events' }" class="nav-link text-dark" id="events-tab" type="button" role="tab">
-                    <i class="bi bi-calendar-event me-2"></i>{{ __('member.templates_member_show_tab_events') }}
+                    <i class="bi bi-calendar-event me-2"></i>{{ __('members::member.templates_member_show_tab_events') }}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'certifications'" :class="{ 'active': activeTab === 'certifications' }" class="nav-link text-dark" id="certifications-tab" type="button" role="tab">
-                    <i class="bi bi-patch-check me-2"></i>{{ __('member.tab_certifications') }}
+                    <i class="bi bi-patch-check me-2"></i>{{ __('members::member.tab_certifications') }}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'worked'" :class="{ 'active': activeTab === 'worked' }" class="nav-link text-dark" id="worked-tab" type="button" role="tab">
-                    <i class="bi bi-briefcase me-2"></i>{{ __('member.tab_worked') }}
+                    <i class="bi bi-briefcase me-2"></i>{{ __('members::member.tab_worked') }}
                 </button>
             </li>
         </ul>
@@ -318,9 +318,9 @@
                         <div class="p-4">
                             <div class="flex items-center mb-2">
                                 <i class="bi bi-bar-chart-line text-primary me-2"></i>
-                                <h5 class="mb-0 font-bold">{{ __('member.templates_member_show_profile_statistics') }}</h5>
+                                <h5 class="mb-0 font-bold">{{ __('members::member.templates_member_show_profile_statistics') }}</h5>
                             </div>
-                            <p class="text-gray-500 text-sm mb-4">{{ __('member.templates_member_show_profile_statistics_sub') }}</p>
+                            <p class="text-gray-500 text-sm mb-4">{{ __('members::member.templates_member_show_profile_statistics_sub') }}</p>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <!-- Total Sessions -->
@@ -330,12 +330,12 @@
                                     <i class="bi bi-people-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-gray-500 mb-1">{{ __('member.templates_member_show_total_sessions') }}</div>
+                                    <div class="small text-gray-500 mb-1">{{ __('members::member.templates_member_show_total_sessions') }}</div>
                                     <div class="text-xl font-bold mb-2">127</div>
                                     <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 4px; background-color: #e9ecef;">
                                         <div class="h-full bg-primary transition-all" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #8b5cf6 100%);"></div>
                                     </div>
-                                    <small class="text-gray-500" style="font-size: 0.75rem;">{{ __('member.templates_member_show_total_sessions_sub') }}</small>
+                                    <small class="text-gray-500" style="font-size: 0.75rem;">{{ __('members::member.templates_member_show_total_sessions_sub') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -349,12 +349,12 @@
                                     <i class="bi bi-graph-up-arrow text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-gray-500 mb-1">{{ __('member.templates_member_show_attendance_rate') }}</div>
+                                    <div class="small text-gray-500 mb-1">{{ __('members::member.templates_member_show_attendance_rate') }}</div>
                                     <div class="text-xl font-bold mb-2">85%</div>
                                     <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 4px; background-color: #e9ecef;">
                                         <div class="h-full bg-primary transition-all" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-gray-500" style="font-size: 0.75rem;">{{ __('member.templates_member_show_attendance_rate_sub') }}</small>
+                                    <small class="text-gray-500" style="font-size: 0.75rem;">{{ __('members::member.templates_member_show_attendance_rate_sub') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -368,12 +368,12 @@
                                     <i class="bi bi-trophy-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-gray-500 mb-1">{{ __('member.templates_member_show_achievements') }}</div>
+                                    <div class="small text-gray-500 mb-1">{{ __('members::member.templates_member_show_achievements') }}</div>
                                     <div class="text-xl font-bold mb-2">8</div>
                                     <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 4px; background-color: #e9ecef;">
                                         <div class="h-full bg-primary transition-all" role="progressbar" style="width: 40%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-gray-500" style="font-size: 0.75rem;">{{ __('member.templates_member_show_achievements_sub') }}</small>
+                                    <small class="text-gray-500" style="font-size: 0.75rem;">{{ __('members::member.templates_member_show_achievements_sub') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -385,12 +385,12 @@
                                     <i class="bi bi-check-circle-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-gray-500 mb-1">{{ __('member.templates_member_show_goal_completion') }}</div>
+                                    <div class="small text-gray-500 mb-1">{{ __('members::member.templates_member_show_goal_completion') }}</div>
                                     <div class="text-xl font-bold mb-2">75%</div>
                                     <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 4px; background-color: #e9ecef;">
                                         <div class="h-full bg-primary transition-all" role="progressbar" style="width: 75%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-gray-500" style="font-size: 0.75rem;">{{ __('member.templates_member_show_goal_completion_sub') }}</small>
+                                    <small class="text-gray-500" style="font-size: 0.75rem;">{{ __('members::member.templates_member_show_goal_completion_sub') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -405,15 +405,15 @@
                         <div class="p-4">
                             <div class="flex items-center mb-2">
                                 <i class="bi bi-bar-chart-line text-primary me-2"></i>
-                                <h5 class="mb-0 font-bold">{{ __('member.templates_member_show_self_investment_chart') }}</h5>
+                                <h5 class="mb-0 font-bold">{{ __('members::member.templates_member_show_self_investment_chart') }}</h5>
                             </div>
-                            <p class="text-gray-500 text-sm mb-4">{{ __('member.templates_member_show_self_investment_sub') }}</p>
+                            <p class="text-gray-500 text-sm mb-4">{{ __('members::member.templates_member_show_self_investment_sub') }}</p>
 
                             <div class="flex items-center justify-center" style="min-height: 300px;">
                                 <div class="text-center">
                                     <i class="bi bi-graph-up text-gray-500" style="font-size: 3rem;"></i>
-                                    <p class="text-gray-500 mt-3 mb-1">{{ __('member.templates_member_show_revenue_chart_coming') }}</p>
-                                    <small class="text-gray-500">{{ __('member.templates_member_show_revenue_chart_hint') }}</small>
+                                    <p class="text-gray-500 mt-3 mb-1">{{ __('members::member.templates_member_show_revenue_chart_coming') }}</p>
+                                    <small class="text-gray-500">{{ __('members::member.templates_member_show_revenue_chart_hint') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -431,9 +431,9 @@
                     <div class="p-4">
                         <div class="flex items-center mb-2">
                             <i class="bi bi-telephone-fill text-red-500 me-2"></i>
-                            <h5 class="mb-0 font-bold">{{ __('member.templates_member_show_emergency_contacts') }}</h5>
+                            <h5 class="mb-0 font-bold">{{ __('members::member.templates_member_show_emergency_contacts') }}</h5>
                         </div>
-                        <p class="text-gray-500 text-sm mb-4">{{ __('member.templates_member_show_emergency_contacts_sub') }}</p>
+                        <p class="text-gray-500 text-sm mb-4">{{ __('members::member.templates_member_show_emergency_contacts_sub') }}</p>
 
                         <div id="emergency-contacts-list">
                         @if($relationship->dependent->emergency_contacts && count($relationship->dependent->emergency_contacts) > 0)
@@ -460,7 +460,7 @@
                         @else
                             <div class="text-center py-6">
                                 <i class="bi bi-telephone text-gray-300" style="font-size:2rem;"></i>
-                                <p class="text-gray-400 text-sm mt-2 mb-0">{{ __('member.templates_member_show_no_emergency_contacts') }}</p>
+                                <p class="text-gray-400 text-sm mt-2 mb-0">{{ __('members::member.templates_member_show_no_emergency_contacts') }}</p>
                             </div>
                         @endif
                         </div>{{-- #emergency-contacts-list --}}
@@ -472,9 +472,9 @@
                     <div class="p-4">
                         <div class="flex items-center mb-2">
                             <i class="bi bi-file-earmark-person-fill text-primary me-2"></i>
-                            <h5 class="mb-0 font-bold">{{ __('member.templates_member_show_identity_documents') }}</h5>
+                            <h5 class="mb-0 font-bold">{{ __('members::member.templates_member_show_identity_documents') }}</h5>
                         </div>
-                        <p class="text-gray-500 text-sm mb-4">{{ __('member.templates_member_show_identity_documents_sub') }}</p>
+                        <p class="text-gray-500 text-sm mb-4">{{ __('members::member.templates_member_show_identity_documents_sub') }}</p>
 
                         <div id="documents-list">
                         @if($relationship->dependent->documents && count($relationship->dependent->documents) > 0)
@@ -488,15 +488,15 @@
                                         <div class="font-semibold text-sm text-gray-800">{{ $doc['type'] ?? '—' }}</div>
                                         <div class="text-xs text-gray-500 font-mono">{{ $doc['number'] ?? '' }}</div>
                                         @if(!empty($doc['uploaded_at']))
-                                        <div class="text-xs text-gray-400">{{ __('member.templates_member_show_uploaded') }} {{ \Carbon\Carbon::parse($doc['uploaded_at'])->format('M j, Y') }}</div>
+                                        <div class="text-xs text-gray-400">{{ __('members::member.templates_member_show_uploaded') }} {{ \Carbon\Carbon::parse($doc['uploaded_at'])->format('M j, Y') }}</div>
                                         @endif
                                     </div>
                                     @if(!empty($doc['file_path']))
                                     {{-- Opens in the shared viewer (black tint, zoom + pan), not a bare tab. --}}
                                     <button type="button" data-media-lightbox
                                             data-src="{{ file_url($doc['file_path']) }}"
-                                            data-label="{{ $doc['type'] ?? __('member.document') }}"
-                                            class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors" title="{{ __('member.templates_member_show_view_document') }}">
+                                            data-label="{{ $doc['type'] ?? __('members::member.document') }}"
+                                            class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors" title="{{ __('members::member.templates_member_show_view_document') }}">
                                         <i class="bi bi-eye" style="font-size:0.85rem;"></i>
                                     </button>
                                     @endif
@@ -506,7 +506,7 @@
                         @else
                             <div class="text-center py-6">
                                 <i class="bi bi-file-earmark text-gray-300" style="font-size:2rem;"></i>
-                                <p class="text-gray-400 text-sm mt-2 mb-0">{{ __('member.templates_member_show_no_documents') }}</p>
+                                <p class="text-gray-400 text-sm mt-2 mb-0">{{ __('members::member.templates_member_show_no_documents') }}</p>
                             </div>
                         @endif
                         </div>{{-- #documents-list --}}
@@ -524,12 +524,12 @@
                 <div class="p-4">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <h1 class="h3 font-bold">{{ __('member.templates_member_show_member_attendance') }}</h1>
-                            <p class="text-gray-500">{{ __('member.templates_member_show_member_attendance_sub') }}</p>
+                            <h1 class="h3 font-bold">{{ __('members::member.templates_member_show_member_attendance') }}</h1>
+                            <p class="text-gray-500">{{ __('members::member.templates_member_show_member_attendance_sub') }}</p>
                         </div>
                         @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id || $relationship->relationship_type == 'admin_view')
                             <button type="button" @click="$dispatch('open-attendance-add-modal')" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm whitespace-nowrap">
-                                <i class="bi bi-plus-lg me-1"></i>{{ __('member.templates_member_show_add_record') }}
+                                <i class="bi bi-plus-lg me-1"></i>{{ __('members::member.templates_member_show_add_record') }}
                             </button>
                         @endif
                     </div>
@@ -540,7 +540,7 @@
                             <div class="bg-white rounded-xl shadow-sm">
                                 <div class="p-6 text-center">
                                     <div class="text-4xl font-bold text-green-600 mb-2" id="attendanceCompletedCount">{{ $sessionsCompleted }}</div>
-                                    <h6 class="text-lg font-semibold text-gray-500">{{ __('member.templates_member_show_sessions_completed') }}</h6>
+                                    <h6 class="text-lg font-semibold text-gray-500">{{ __('members::member.templates_member_show_sessions_completed') }}</h6>
                                 </div>
                             </div>
                         </div>
@@ -548,7 +548,7 @@
                             <div class="bg-white rounded-xl shadow-sm">
                                 <div class="p-6 text-center">
                                     <div class="text-4xl font-bold text-red-600 mb-2" id="attendanceNoShowCount">{{ $noShows }}</div>
-                                    <h6 class="text-lg font-semibold text-gray-500">{{ __('member.templates_member_show_no_shows') }}</h6>
+                                    <h6 class="text-lg font-semibold text-gray-500">{{ __('members::member.templates_member_show_no_shows') }}</h6>
                                 </div>
                             </div>
                         </div>
@@ -556,7 +556,7 @@
                             <div class="bg-white rounded-xl shadow-sm">
                                 <div class="p-6 text-center">
                                     <div class="text-4xl font-bold text-primary mb-2">{{ $attendanceRate }}%</div>
-                                    <h6 class="text-lg font-semibold text-gray-500">{{ __('member.templates_member_show_attendance_rate') }}</h6>
+                                    <h6 class="text-lg font-semibold text-gray-500">{{ __('members::member.templates_member_show_attendance_rate') }}</h6>
                                 </div>
                             </div>
                         </div>
@@ -565,18 +565,18 @@
                     <!-- Attendance Table -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200 bg-gray-100">
-                            <h6 class="text-lg font-semibold mb-0">{{ __('member.templates_member_show_session_history') }}</h6>
+                            <h6 class="text-lg font-semibold mb-0">{{ __('members::member.templates_member_show_session_history') }}</h6>
                         </div>
                         <div class="p-6 p-0">
                             <div class="overflow-x-auto">
                                 <table class="w-full text-sm">
                                     <thead class="bg-gray-50 border-b border-gray-200">
                                         <tr>
-                                            <th class="border-0 font-semibold">{{ __('member.templates_member_show_th_date_time') }}</th>
-                                            <th class="border-0 font-semibold">{{ __('member.templates_member_show_th_session_type') }}</th>
-                                            <th class="border-0 font-semibold">{{ __('member.templates_member_show_th_trainer_name') }}</th>
-                                            <th class="border-0 font-semibold">{{ __('member.templates_member_show_th_status') }}</th>
-                                            <th class="border-0 font-semibold">{{ __('member.templates_member_show_th_notes') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.templates_member_show_th_date_time') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.templates_member_show_th_session_type') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.templates_member_show_th_trainer_name') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.templates_member_show_th_status') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.templates_member_show_th_notes') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody id="attendanceTbody">
@@ -590,9 +590,9 @@
                                             <td class="align-middle">{{ $record->trainer_name }}</td>
                                             <td class="align-middle">
                                                 @if($record->status === 'completed')
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{{ __('member.templates_member_show_status_completed') }}</span>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{{ __('members::member.templates_member_show_status_completed') }}</span>
                                                 @else
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{{ __('member.templates_member_show_status_no_show') }}</span>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{{ __('members::member.templates_member_show_status_no_show') }}</span>
                                                 @endif
                                             </td>
                                             <td class="align-middle">
@@ -603,7 +603,7 @@
                                         <tr id="attendanceEmptyRow">
                                             <td colspan="5" class="text-center py-4">
                                                 <i class="bi bi-calendar-check text-gray-500" style="font-size: 2rem;"></i>
-                                                <p class="text-gray-500 mt-2 mb-0">{{ __('member.templates_member_show_no_attendance_records') }}</p>
+                                                <p class="text-gray-500 mt-2 mb-0">{{ __('members::member.templates_member_show_no_attendance_records') }}</p>
                                             </td>
                                         </tr>
                                         @endforelse
@@ -624,9 +624,9 @@
                 <div class="p-4">
                     <div class="flex items-center mb-2">
                         <i class="bi bi-clipboard2-pulse-fill text-amber-500 me-2"></i>
-                        <h5 class="mb-0 font-bold">{{ __('member.templates_member_show_chronic_conditions') }}</h5>
+                        <h5 class="mb-0 font-bold">{{ __('members::member.templates_member_show_chronic_conditions') }}</h5>
                     </div>
-                    <p class="text-gray-500 text-sm mb-4">{{ __('member.templates_member_show_chronic_conditions_sub') }}</p>
+                    <p class="text-gray-500 text-sm mb-4">{{ __('members::member.templates_member_show_chronic_conditions_sub') }}</p>
                     <div id="health-conditions-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         @foreach($relationship->dependent->health_conditions ?? [] as $condition)
                         <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
@@ -636,7 +636,7 @@
                             <div class="flex-1 min-w-0">
                                 <div class="font-semibold text-sm text-gray-800">{{ $condition['condition'] ?? '—' }}</div>
                                 @if(!empty($condition['noted_at']))
-                                <div class="text-xs text-gray-400 mt-0.5">{{ __('member.templates_member_show_noted') }} {{ \Carbon\Carbon::parse($condition['noted_at'])->format('M j, Y') }}</div>
+                                <div class="text-xs text-gray-400 mt-0.5">{{ __('members::member.templates_member_show_noted') }} {{ \Carbon\Carbon::parse($condition['noted_at'])->format('M j, Y') }}</div>
                                 @endif
                                 @if(!empty($condition['notes']))
                                 <div class="text-xs text-gray-500 mt-1">{{ $condition['notes'] }}</div>
@@ -653,11 +653,11 @@
                 <div class="p-4">
                     <div class="flex items-center mb-2">
                         <i class="bi bi-heart-pulse text-red-600 me-2"></i>
-                        <h5 class="mb-0 font-bold">{{ __('member.templates_member_show_health_metrics_overview') }}</h5>
+                        <h5 class="mb-0 font-bold">{{ __('members::member.templates_member_show_health_metrics_overview') }}</h5>
                     </div>
 
                     <div class="flex justify-between items-center mb-4">
-                        <p class="text-gray-500 text-sm mb-0">{{ __('member.templates_member_show_health_metrics_sub') }}</p>
+                        <p class="text-gray-500 text-sm mb-0">{{ __('members::member.templates_member_show_health_metrics_sub') }}</p>
 
                         @if($latestHealthRecord)
                             @php
@@ -669,29 +669,29 @@
                             <div class="flex items-center gap-3">
                                 <div class="flex items-center gap-2">
                                     <i class="bi bi-calendar-event text-primary"></i>
-                                    <span class="font-semibold">{{ __('member.templates_member_show_snapshot_date') }}</span>
+                                    <span class="font-semibold">{{ __('members::member.templates_member_show_snapshot_date') }}</span>
                                     <span class="text-gray-500">{{ $latestDate->format('F j, Y') }}</span>
                                 </div>
                                 <div class="w-px h-6 bg-gray-300"></div>
                                 <div class="flex items-center gap-2">
                                     <i class="bi bi-clock-history text-primary"></i>
-                                    <span class="font-semibold">{{ __('member.templates_member_show_time_since') }}</span>
+                                    <span class="font-semibold">{{ __('members::member.templates_member_show_time_since') }}</span>
                                     <span class="text-gray-500">
                                         @if($diff->y > 0)
-                                            {{ $diff->y }} {{ $diff->y == 1 ? __('member.templates_member_show_t_year') : __('member.templates_member_show_t_years') }}
+                                            {{ $diff->y }} {{ $diff->y == 1 ? __('members::member.templates_member_show_t_year') : __('members::member.templates_member_show_t_years') }}
                                         @endif
                                         @if($diff->m > 0)
-                                            {{ $diff->m }} {{ $diff->m == 1 ? __('member.templates_member_show_t_month') : __('member.templates_member_show_t_months') }}
+                                            {{ $diff->m }} {{ $diff->m == 1 ? __('members::member.templates_member_show_t_month') : __('members::member.templates_member_show_t_months') }}
                                         @endif
                                         @if($diff->d > 0)
-                                            {{ $diff->d }} {{ $diff->d == 1 ? __('member.templates_member_show_t_day') : __('member.templates_member_show_t_days') }}
+                                            {{ $diff->d }} {{ $diff->d == 1 ? __('members::member.templates_member_show_t_day') : __('members::member.templates_member_show_t_days') }}
                                         @endif
-                                        {{ __('member.templates_member_show_t_ago') }}
+                                        {{ __('members::member.templates_member_show_t_ago') }}
                                     </span>
                                 </div>
                             </div>
                         @else
-                            <div class="text-gray-500 text-sm">{{ __('member.templates_member_show_no_health_records_available') }}</div>
+                            <div class="text-gray-500 text-sm">{{ __('members::member.templates_member_show_no_health_records_available') }}</div>
                         @endif
                     </div>
 
@@ -703,7 +703,7 @@
                                 <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-speedometer2 text-purple mb-2" style="font-size: 1.5rem; color: #8b5cf6;"></i>
                                     <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->weight ?? 'N/A' }}</div>
-                                    <small class="text-gray-500">{{ __('member.templates_member_show_metric_weight_kg') }}</small>
+                                    <small class="text-gray-500">{{ __('members::member.templates_member_show_metric_weight_kg') }}</small>
                                 </div>
                             </div>
 
@@ -712,7 +712,7 @@
                                 <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-activity text-warning mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->body_fat_percentage ?? 'N/A' }}%</div>
-                                    <small class="text-gray-500">{{ __('member.templates_member_show_metric_body_fat') }}</small>
+                                    <small class="text-gray-500">{{ __('members::member.templates_member_show_metric_body_fat') }}</small>
                                 </div>
                             </div>
 
@@ -721,7 +721,7 @@
                                 <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-droplet text-info mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->body_water_percentage ?? 'N/A' }}%</div>
-                                    <small class="text-gray-500">{{ __('member.templates_member_show_metric_body_water') }}</small>
+                                    <small class="text-gray-500">{{ __('members::member.templates_member_show_metric_body_water') }}</small>
                                 </div>
                             </div>
 
@@ -730,7 +730,7 @@
                                 <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-heart text-green-600 mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->muscle_mass ?? 'N/A' }}</div>
-                                    <small class="text-gray-500">{{ __('member.templates_member_show_metric_muscle_mass') }}</small>
+                                    <small class="text-gray-500">{{ __('members::member.templates_member_show_metric_muscle_mass') }}</small>
                                 </div>
                             </div>
 
@@ -739,7 +739,7 @@
                                 <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-capsule text-secondary mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->bone_mass ?? 'N/A' }}</div>
-                                    <small class="text-gray-500">{{ __('member.templates_member_show_metric_bone_mass') }}</small>
+                                    <small class="text-gray-500">{{ __('members::member.templates_member_show_metric_bone_mass') }}</small>
                                 </div>
                             </div>
 
@@ -748,14 +748,14 @@
                                 <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-lightning text-red-600 mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->bmr ?? 'N/A' }}</div>
-                                    <small class="text-gray-500">{{ __('member.templates_member_show_metric_bmr_cal') }}</small>
+                                    <small class="text-gray-500">{{ __('members::member.templates_member_show_metric_bmr_cal') }}</small>
                                 </div>
                             </div>
                         @else
                             <div class="col-span-full">
                                 <div class="text-center py-4">
                                     <i class="bi bi-heart-pulse text-gray-500" style="font-size: 3rem;"></i>
-                                    <p class="text-gray-500 mt-3">{{ __('member.templates_member_show_no_health_metrics') }}</p>
+                                    <p class="text-gray-500 mt-3">{{ __('members::member.templates_member_show_no_health_metrics') }}</p>
                                 </div>
                             </div>
                         @endif
@@ -769,7 +769,7 @@
                 <div class="lg:col-span-7">
                     <div class="bg-white rounded-xl shadow-sm h-full">
                         <div class="p-4">
-                            <h5 class="font-bold mb-4"><i class="bi bi-activity me-2"></i>{{ __('member.templates_member_show_body_composition') }}</h5>
+                            <h5 class="font-bold mb-4"><i class="bi bi-activity me-2"></i>{{ __('members::member.templates_member_show_body_composition') }}</h5>
 
                             <div class="chart-container" style="position: relative; height: min(500px, 60vh); width: 100%;">
                                 <canvas id="radarChart" data-current='@json($comparisonRecords->first())' data-previous='@json($comparisonRecords->skip(1)->first())'></canvas>
@@ -782,7 +782,7 @@
                 <div class="lg:col-span-5">
                     <div class="bg-white rounded-xl shadow-sm h-full">
                         <div class="p-4">
-                            <h5 class="font-bold mb-4"><i class="bi bi-bar-chart-line me-2"></i>{{ __('member.templates_member_show_compare') }}</h5>
+                            <h5 class="font-bold mb-4"><i class="bi bi-bar-chart-line me-2"></i>{{ __('members::member.templates_member_show_compare') }}</h5>
 
                             @if($comparisonRecords->count() >= 2)
                                 @php
@@ -793,7 +793,7 @@
                                 <div class="mb-3">
                                     <div class="grid grid-cols-2 gap-2">
                                         <div class="text-center">
-                                            <label class="block text-sm font-medium text-gray-700 mb-1 font-bold">{{ __('member.templates_member_show_from') }}</label>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1 font-bold">{{ __('members::member.templates_member_show_from') }}</label>
                                             <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="currentDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $current->id ? 'selected' : '' }}>
@@ -803,7 +803,7 @@
                                             </select>
                                         </div>
                                         <div class="text-center">
-                                            <label class="block text-sm font-medium text-gray-700 mb-1 font-bold">{{ __('member.templates_member_show_to') }}</label>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1 font-bold">{{ __('members::member.templates_member_show_to') }}</label>
                                             <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="previousDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $previous->id ? 'selected' : '' }}>
@@ -816,9 +816,9 @@
                                     <div class="mt-3">
                                         <div class="p-3 rounded-lg bg-gray-100 text-gray-700 text-center py-2" id="timeDifference">
                                             @if($current && $previous)
-                                                <strong>{{ __('member.templates_member_show_time_between_records') }}</strong> {{ calculateTimeDifference($current->recorded_at, $previous->recorded_at) }}
+                                                <strong>{{ __('members::member.templates_member_show_time_between_records') }}</strong> {{ calculateTimeDifference($current->recorded_at, $previous->recorded_at) }}
                                             @else
-                                                {{ __('member.templates_member_show_select_dates_time_diff') }}
+                                                {{ __('members::member.templates_member_show_select_dates_time_diff') }}
                                             @endif
                                         </div>
                                     </div>
@@ -828,10 +828,10 @@
                                     <table class="w-full text-sm">
                                         <thead>
                                             <tr class="border-bottom">
-                                                <th class="text-gray-500 text-sm font-semibold">{{ __('member.templates_member_show_th_metric') }}</th>
-                                                <th class="text-gray-500 text-sm font-semibold text-end">{{ __('member.templates_member_show_th_current') }}</th>
-                                                <th class="text-gray-500 text-sm font-semibold text-end">{{ __('member.templates_member_show_th_previous') }}</th>
-                                                <th class="text-gray-500 text-sm font-semibold text-center">{{ __('member.templates_member_show_th_change') }}</th>
+                                                <th class="text-gray-500 text-sm font-semibold">{{ __('members::member.templates_member_show_th_metric') }}</th>
+                                                <th class="text-gray-500 text-sm font-semibold text-end">{{ __('members::member.templates_member_show_th_current') }}</th>
+                                                <th class="text-gray-500 text-sm font-semibold text-end">{{ __('members::member.templates_member_show_th_previous') }}</th>
+                                                <th class="text-gray-500 text-sm font-semibold text-center">{{ __('members::member.templates_member_show_th_change') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -845,67 +845,67 @@
                                                 }
                                             @endphp
                                             <tr data-metric="height">
-                                                <td class="small"><i class="bi bi-rulers me-2"></i>{{ __('member.templates_member_show_metric_height') }}</td>
+                                                <td class="small"><i class="bi bi-rulers me-2"></i>{{ __('members::member.templates_member_show_metric_height') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->height ?? 'N/A' }}cm</td>
                                                 <td class="small text-end text-red-600">{{ $previous->height ?? 'N/A' }}cm</td>
                                                 <td class="text-center">{!! $current->height && $previous->height ? getChangeIcon($current->height, $previous->height) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="weight">
-                                                <td class="small"><i class="bi bi-speedometer2 me-2"></i>{{ __('member.templates_member_show_metric_weight') }}</td>
+                                                <td class="small"><i class="bi bi-speedometer2 me-2"></i>{{ __('members::member.templates_member_show_metric_weight') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->weight ?? 'N/A' }}kg</td>
                                                 <td class="small text-end text-red-600">{{ $previous->weight ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->weight && $previous->weight ? getChangeIcon($current->weight, $previous->weight) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_fat">
-                                                <td class="small"><i class="bi bi-activity me-2"></i>{{ __('member.templates_member_show_metric_body_fat') }}</td>
+                                                <td class="small"><i class="bi bi-activity me-2"></i>{{ __('members::member.templates_member_show_metric_body_fat') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
                                                 <td class="small text-end text-red-600">{{ $previous->body_fat_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_fat_percentage && $previous->body_fat_percentage ? getChangeIcon($current->body_fat_percentage, $previous->body_fat_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmi">
-                                                <td class="small"><i class="bi bi-calculator me-2"></i>{{ __('member.templates_member_show_metric_bmi') }}</td>
+                                                <td class="small"><i class="bi bi-calculator me-2"></i>{{ __('members::member.templates_member_show_metric_bmi') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->bmi ?? 'N/A' }}</td>
                                                 <td class="small text-end text-red-600">{{ $previous->bmi ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->bmi && $previous->bmi ? getChangeIcon($current->bmi, $previous->bmi) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_water">
-                                                <td class="small"><i class="bi bi-droplet me-2"></i>{{ __('member.templates_member_show_metric_body_water') }}</td>
+                                                <td class="small"><i class="bi bi-droplet me-2"></i>{{ __('members::member.templates_member_show_metric_body_water') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
                                                 <td class="small text-end text-red-600">{{ $previous->body_water_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_water_percentage && $previous->body_water_percentage ? getChangeIcon($current->body_water_percentage, $previous->body_water_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="muscle_mass">
-                                                <td class="small"><i class="bi bi-heart me-2"></i>{{ __('member.templates_member_show_metric_muscle_mass') }}</td>
+                                                <td class="small"><i class="bi bi-heart me-2"></i>{{ __('members::member.templates_member_show_metric_muscle_mass') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
                                                 <td class="small text-end text-red-600">{{ $previous->muscle_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->muscle_mass && $previous->muscle_mass ? getChangeIcon($current->muscle_mass, $previous->muscle_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bone_mass">
-                                                <td class="small"><i class="bi bi-capsule me-2"></i>{{ __('member.templates_member_show_metric_bone_mass') }}</td>
+                                                <td class="small"><i class="bi bi-capsule me-2"></i>{{ __('members::member.templates_member_show_metric_bone_mass') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->bone_mass ?? 'N/A' }}kg</td>
                                                 <td class="small text-end text-red-600">{{ $previous->bone_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->bone_mass && $previous->bone_mass ? getChangeIcon($current->bone_mass, $previous->bone_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="visceral_fat">
-                                                <td class="small"><i class="bi bi-activity me-2"></i>{{ __('member.templates_member_show_metric_visceral_fat') }}</td>
+                                                <td class="small"><i class="bi bi-activity me-2"></i>{{ __('members::member.templates_member_show_metric_visceral_fat') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->visceral_fat ?? 'N/A' }}</td>
                                                 <td class="small text-end text-red-600">{{ $previous->visceral_fat ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->visceral_fat && $previous->visceral_fat ? getChangeIcon($current->visceral_fat, $previous->visceral_fat) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmr">
-                                                <td class="small"><i class="bi bi-lightning me-2"></i>{{ __('member.templates_member_show_metric_bmr') }}</td>
+                                                <td class="small"><i class="bi bi-lightning me-2"></i>{{ __('members::member.templates_member_show_metric_bmr') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->bmr ?? 'N/A' }}cal</td>
                                                 <td class="small text-end text-red-600">{{ $previous->bmr ?? 'N/A' }}cal</td>
                                                 <td class="text-center">{!! $current->bmr && $previous->bmr ? getChangeIcon($current->bmr, $previous->bmr) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="protein">
-                                                <td class="small"><i class="bi bi-heart-pulse me-2"></i>{{ __('member.templates_member_show_metric_protein') }}</td>
+                                                <td class="small"><i class="bi bi-heart-pulse me-2"></i>{{ __('members::member.templates_member_show_metric_protein') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->protein_percentage ?? 'N/A' }}%</td>
                                                 <td class="small text-end text-red-600">{{ $previous->protein_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->protein_percentage && $previous->protein_percentage ? getChangeIcon($current->protein_percentage, $previous->protein_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_age">
-                                                <td class="small"><i class="bi bi-calendar-heart me-2"></i>{{ __('member.templates_member_show_metric_body_age') }}</td>
+                                                <td class="small"><i class="bi bi-calendar-heart me-2"></i>{{ __('members::member.templates_member_show_metric_body_age') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->body_age ?? 'N/A' }}yrs</td>
                                                 <td class="small text-end text-red-600">{{ $previous->body_age ?? 'N/A' }}yrs</td>
                                                 <td class="text-center">{!! $current->body_age && $previous->body_age ? getChangeIcon($current->body_age, $previous->body_age) : '-' !!}</td>
@@ -916,7 +916,7 @@
                             @else
                                 <div class="text-center py-4">
                                     <i class="bi bi-bar-chart-line text-gray-500" style="font-size: 3rem;"></i>
-                                    <p class="text-gray-500 mt-3">{{ __('member.templates_member_show_need_two_records') }}</p>
+                                    <p class="text-gray-500 mt-3">{{ __('members::member.templates_member_show_need_two_records') }}</p>
                                 </div>
                             @endif
                         </div>
@@ -927,25 +927,25 @@
             <!-- Health Tracking History -->
             <div class="bg-white rounded-xl shadow-sm">
                 <div class="p-4">
-                    <h5 class="font-bold mb-4"><i class="bi bi-heart-pulse me-2"></i>{{ __('member.templates_member_show_health_tracking') }}</h5>
+                    <h5 class="font-bold mb-4"><i class="bi bi-heart-pulse me-2"></i>{{ __('members::member.templates_member_show_health_tracking') }}</h5>
 
                     @if($healthRecords->count() > 0)
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead class="bg-gray-50 border-b border-gray-200">
                                 <tr>
-                                    <th class="text-gray-500 text-sm font-semibold">{{ __('member.templates_member_show_th_date') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-rulers me-1"></i>{{ __('member.templates_member_show_metric_height_cm') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-speedometer2 me-1"></i>{{ __('member.templates_member_show_metric_weight_kg') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-activity me-1"></i>{{ __('member.templates_member_show_metric_body_fat_pct') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-calculator me-1"></i>{{ __('member.templates_member_show_metric_bmi') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-droplet me-1"></i>{{ __('member.templates_member_show_metric_body_water_pct') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-heart me-1"></i>{{ __('member.templates_member_show_metric_muscle_mass_kg') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-capsule me-1"></i>{{ __('member.templates_member_show_metric_bone_mass_kg') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-activity me-1"></i>{{ __('member.templates_member_show_metric_visceral_fat') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-lightning me-1"></i>{{ __('member.templates_member_show_metric_bmr') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-heart-pulse me-1"></i>{{ __('member.templates_member_show_metric_protein_pct') }}</th>
-                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-calendar-heart me-1"></i>{{ __('member.templates_member_show_metric_body_age') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold">{{ __('members::member.templates_member_show_th_date') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-rulers me-1"></i>{{ __('members::member.templates_member_show_metric_height_cm') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-speedometer2 me-1"></i>{{ __('members::member.templates_member_show_metric_weight_kg') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-activity me-1"></i>{{ __('members::member.templates_member_show_metric_body_fat_pct') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-calculator me-1"></i>{{ __('members::member.templates_member_show_metric_bmi') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-droplet me-1"></i>{{ __('members::member.templates_member_show_metric_body_water_pct') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-heart me-1"></i>{{ __('members::member.templates_member_show_metric_muscle_mass_kg') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-capsule me-1"></i>{{ __('members::member.templates_member_show_metric_bone_mass_kg') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-activity me-1"></i>{{ __('members::member.templates_member_show_metric_visceral_fat') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-lightning me-1"></i>{{ __('members::member.templates_member_show_metric_bmr') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-heart-pulse me-1"></i>{{ __('members::member.templates_member_show_metric_protein_pct') }}</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-calendar-heart me-1"></i>{{ __('members::member.templates_member_show_metric_body_age') }}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -979,8 +979,8 @@
                     @else
                         <div class="text-center py-5">
                             <i class="bi bi-clipboard-data text-gray-500" style="font-size: 3rem;"></i>
-                            <p class="text-gray-500 mt-3">{{ __('member.templates_member_show_no_health_records') }}</p>
-                            <small class="text-gray-500">{{ __('member.templates_member_show_health_tracking_hint') }}</small>
+                            <p class="text-gray-500 mt-3">{{ __('members::member.templates_member_show_no_health_records') }}</p>
+                            <small class="text-gray-500">{{ __('members::member.templates_member_show_health_tracking_hint') }}</small>
                         </div>
                     @endif
                 </div>
@@ -994,12 +994,12 @@
                     <!-- Section Title & Subtitle -->
                     <div class="flex justify-between items-center mb-4">
                         <div>
-                            <h5 class="font-bold mb-1"><i class="bi bi-bullseye me-2"></i>{{ __('member.templates_member_show_goal_tracking') }}</h5>
-                            <p class="text-gray-500 text-sm mb-0">{{ __('member.templates_member_show_goal_tracking_sub') }}</p>
+                            <h5 class="font-bold mb-1"><i class="bi bi-bullseye me-2"></i>{{ __('members::member.templates_member_show_goal_tracking') }}</h5>
+                            <p class="text-gray-500 text-sm mb-0">{{ __('members::member.templates_member_show_goal_tracking_sub') }}</p>
                         </div>
                         @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id || $relationship->relationship_type == 'admin_view')
                             <button type="button" @click="$dispatch('open-goal-add-modal')" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm whitespace-nowrap">
-                                <i class="bi bi-plus-lg me-1"></i>{{ __('member.templates_member_show_set_a_goal') }}
+                                <i class="bi bi-plus-lg me-1"></i>{{ __('members::member.templates_member_show_set_a_goal') }}
                             </button>
                         @endif
                     </div>
@@ -1012,7 +1012,7 @@
                                 <div class="p-6 p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-bullseye text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="activeGoalsCount">{{ $activeGoalsCount }}</h4>
-                                    <small class="text-white/50">{{ __('member.templates_member_show_active_goals') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.templates_member_show_active_goals') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1022,7 +1022,7 @@
                                 <div class="p-6 p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-check-circle-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1">{{ $completedGoalsCount }}</h4>
-                                    <small class="text-white/50">{{ __('member.templates_member_show_completed_goals') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.templates_member_show_completed_goals') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1032,7 +1032,7 @@
                                 <div class="p-6 p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-graph-up-arrow text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1">{{ $successRate }}%</h4>
-                                    <small class="text-white/50">{{ __('member.templates_member_show_success_rate') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.templates_member_show_success_rate') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1045,7 +1045,7 @@
                             <div class="bg-white rounded-xl shadow-sm h-full relative" id="goal-{{ $goal->id }}">
                                 <!-- Edit Button (only for active goals and authorized users) -->
                                 @if($goal->status == 'active' && ($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id))
-                                    <button class="w-8 h-8 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors absolute top-0 end-0 mt-2 me-2 edit-goal-btn" data-goal-id="{{ $goal->id }}" title="{{ __('member.templates_member_show_edit_goal') }}">
+                                    <button class="w-8 h-8 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors absolute top-0 end-0 mt-2 me-2 edit-goal-btn" data-goal-id="{{ $goal->id }}" title="{{ __('members::member.templates_member_show_edit_goal') }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 @endif
@@ -1073,7 +1073,7 @@
                                             <!-- Progress Indicator -->
                                             <div class="mb-3">
                                                 <div class="flex justify-between items-center mb-2">
-                                                    <small class="text-gray-500" data-goal-progress-text>{{ __('member.templates_member_show_progress') }} {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
+                                                    <small class="text-gray-500" data-goal-progress-text>{{ __('members::member.templates_member_show_progress') }} {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
                                                     <small class="font-semibold" data-goal-progress-pct>{{ number_format($goal->progress_percentage, 1) }}%</small>
                                                 </div>
                                                 <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 8px;">
@@ -1084,11 +1084,11 @@
                                             <!-- Dates & Status -->
                                             <div class="grid grid-cols-2 gap-2 mb-3">
                                                 <div>
-                                                    <small class="text-gray-500 block">{{ __('member.templates_member_show_started') }}</small>
+                                                    <small class="text-gray-500 block">{{ __('members::member.templates_member_show_started') }}</small>
                                                     <small class="font-semibold">{{ $goal->start_date->format('M d, Y') }}</small>
                                                 </div>
                                                 <div class="text-end">
-                                                    <small class="text-gray-500 block">{{ __('member.templates_member_show_target') }}</small>
+                                                    <small class="text-gray-500 block">{{ __('members::member.templates_member_show_target') }}</small>
                                                     <small class="font-semibold">{{ $goal->target_date->format('M d, Y') }}</small>
                                                 </div>
                                             </div>
@@ -1108,19 +1108,19 @@
                                                     @if($goal->before_proof)
                                                         <div class="flex-1 min-w-0">
                                                             <img src="{{ file_url($goal->before_proof) }}" class="w-full h-20 rounded-md object-cover border border-gray-200" alt="">
-                                                            <small class="text-gray-500 block text-center mt-1">{{ __('member.before') }}</small>
+                                                            <small class="text-gray-500 block text-center mt-1">{{ __('members::member.before') }}</small>
                                                         </div>
                                                     @endif
                                                     @if($goal->after_proof)
                                                         <div class="flex-1 min-w-0">
                                                             <img src="{{ file_url($goal->after_proof) }}" class="w-full h-20 rounded-md object-cover border border-gray-200" alt="">
-                                                            <small class="text-gray-500 block text-center mt-1">{{ __('member.after') }}</small>
+                                                            <small class="text-gray-500 block text-center mt-1">{{ __('members::member.after') }}</small>
                                                         </div>
                                                     @endif
                                                 </div>
                                             @endif
                                             @if($goal->status === 'completed' && $goal->days_taken !== null)
-                                                <div class="mt-2 text-green-700 text-sm font-semibold flex items-center gap-1"><i class="bi bi-trophy-fill"></i>{{ $goal->days_taken }} {{ __('member.days_to_achieve') }}</div>
+                                                <div class="mt-2 text-green-700 text-sm font-semibold flex items-center gap-1"><i class="bi bi-trophy-fill"></i>{{ $goal->days_taken }} {{ __('members::member.days_to_achieve') }}</div>
                                             @endif
                                         </div>
                                     </div>
@@ -1129,8 +1129,8 @@
                         </div>
                         <div class="text-center py-4 {{ $goals->count() ? 'hidden' : '' }}" id="goalsEmpty">
                             <i class="bi bi-bullseye text-gray-500" style="font-size: 3rem;"></i>
-                            <h5 class="text-gray-500 mt-3 mb-2">{{ __('member.templates_member_show_no_goals_yet') }}</h5>
-                            <p class="text-gray-500 mb-0">{{ __('member.templates_member_show_no_goals_hint') }}</p>
+                            <h5 class="text-gray-500 mt-3 mb-2">{{ __('members::member.templates_member_show_no_goals_yet') }}</h5>
+                            <p class="text-gray-500 mb-0">{{ __('members::member.templates_member_show_no_goals_hint') }}</p>
                         </div>
                 </div>
             </div>
@@ -1155,7 +1155,7 @@
             @if(($awardedAchievements ?? collect())->isNotEmpty())
             <!-- Medals & Awards (earned by this member, recorded via their club's achievements) -->
             <div class="bg-white rounded-xl shadow-sm mb-4 p-4">
-                <h5 class="font-bold mb-3"><i class="bi bi-award-fill text-amber-400 me-2"></i>{{ __('member.templates_member_show_medals_awards') }}</h5>
+                <h5 class="font-bold mb-3"><i class="bi bi-award-fill text-amber-400 me-2"></i>{{ __('members::member.templates_member_show_medals_awards') }}</h5>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     @foreach($awardedAchievements as $a)
                         @php
@@ -1170,12 +1170,12 @@
                             <span class="w-12 h-12 rounded-full bg-amber-50 grid place-items-center text-2xl flex-shrink-0">{{ $emoji }}</span>
                             <div class="min-w-0 flex-1">
                                 {{-- Member-first: the medal they won is the headline --}}
-                                <p class="font-bold text-sm text-gray-900 leading-tight">{{ $a->member_award ?: __('member.award_default') }}</p>
+                                <p class="font-bold text-sm text-gray-900 leading-tight">{{ $a->member_award ?: __('members::member.award_default') }}</p>
                                 <p class="text-xs text-gray-600 truncate mt-0.5"><i class="bi bi-trophy text-amber-400 me-1"></i>{{ $a->tr('short_title') ?: $a->tr('title') }}</p>
                                 @if($metaLine)
                                     <p class="text-[11px] text-gray-400 truncate mt-0.5">@if($achLocation)<i class="bi bi-geo-alt me-0.5"></i>@endif{{ $metaLine }}</p>
                                 @endif
-                                <p class="text-[11px] text-gray-400 truncate">{{ __('member.award_via', ['club' => $a->tenant?->tr('club_name') ?? '']) }}</p>
+                                <p class="text-[11px] text-gray-400 truncate">{{ __('members::member.award_via', ['club' => $a->tenant?->tr('club_name') ?? '']) }}</p>
                             </div>
                         </div>
                     @endforeach
@@ -1188,8 +1188,8 @@
                     <!-- Section Title & Subtitle -->
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                         <div>
-                            <h5 class="font-bold mb-1"><i class="bi bi-trophy-fill text-warning me-2"></i>{{ __('member.templates_member_show_tournament_event_participation') }}</h5>
-                            <p class="text-gray-500 text-sm mb-0">{{ __('member.templates_member_show_tournament_participation_sub') }}</p>
+                            <h5 class="font-bold mb-1"><i class="bi bi-trophy-fill text-warning me-2"></i>{{ __('members::member.templates_member_show_tournament_event_participation') }}</h5>
+                            <p class="text-gray-500 text-sm mb-0">{{ __('members::member.templates_member_show_tournament_participation_sub') }}</p>
                         </div>
                         <!-- Add + Filter. The add button matches Attendance, Goals and
                              the Event Log: this was the one tab where the only way in
@@ -1201,12 +1201,12 @@
                                  would get a button that 403s. --}}
                             @if($relationship->relationship_type !== 'admin_view' || Auth::user()?->isSuperAdmin())
                                 <button type="button" @click="$dispatch('open-tournament-modal')" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm whitespace-nowrap">
-                                    <i class="bi bi-plus-lg me-1"></i>{{ __('member.templates_member_show_add_tournament_participation') }}
+                                    <i class="bi bi-plus-lg me-1"></i>{{ __('members::member.templates_member_show_add_tournament_participation') }}
                                 </button>
                             @endif
-                            <label for="sportFilter" class="text-sm font-semibold text-gray-700 whitespace-nowrap">{{ __('member.templates_member_show_filter_by_sport') }}</label>
+                            <label for="sportFilter" class="text-sm font-semibold text-gray-700 whitespace-nowrap">{{ __('members::member.templates_member_show_filter_by_sport') }}</label>
                             <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary w-full sm:w-36" id="sportFilter">
-                                <option value="all">{{ __('member.templates_member_show_all_sports') }}</option>
+                                <option value="all">{{ __('members::member.templates_member_show_all_sports') }}</option>
                                 @foreach($sports as $sport)
                                     <option value="{{ $sport }}">{{ $sport }}</option>
                                 @endforeach
@@ -1221,7 +1221,7 @@
                                 <div class="p-6 p-3">
                                     <i class="bi bi-trophy-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="specialCount">{{ $awardCounts['special'] }}</h4>
-                                    <small class="text-white/50">{{ __('member.templates_member_show_special_award') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.templates_member_show_special_award') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1230,7 +1230,7 @@
                                 <div class="p-6 p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="firstCount">{{ $awardCounts['1st'] }}</h4>
-                                    <small class="text-white/50">{{ __('member.templates_member_show_first_place') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.templates_member_show_first_place') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1239,7 +1239,7 @@
                                 <div class="p-6 p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="secondCount">{{ $awardCounts['2nd'] }}</h4>
-                                    <small class="text-white/50">{{ __('member.templates_member_show_second_place') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.templates_member_show_second_place') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1248,7 +1248,7 @@
                                 <div class="p-6 p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="thirdCount">{{ $awardCounts['3rd'] }}</h4>
-                                    <small class="text-white/50">{{ __('member.templates_member_show_third_place') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.templates_member_show_third_place') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1259,7 +1259,7 @@
             <!-- Tournament & Championships History Card -->
             <div class="bg-white rounded-xl shadow-sm">
                 <div class="p-4">
-                    <h6 class="font-bold mb-3"><i class="bi bi-list-ul me-2"></i>{{ __('member.templates_member_show_tournament_history') }}</h6>
+                    <h6 class="font-bold mb-3"><i class="bi bi-list-ul me-2"></i>{{ __('members::member.templates_member_show_tournament_history') }}</h6>
 
                     {{-- Medal theme drives each card's rail + medallion. Ranked so the best result on an
                          event sets the accent (gold › special › silver › bronze › none). --}}
@@ -1270,10 +1270,10 @@
                             || $relationship->relationship_type == 'admin_view';
                         $medalRank = ['1st' => 4, 'special' => 3, '2nd' => 2, '3rd' => 1];
                         $medalTheme = [
-                            '1st'     => ['rail' => 'bg-amber-400',  'tile' => 'bg-amber-50 text-amber-600 ring-amber-100',    'chip' => 'bg-amber-100 text-amber-800',   'icon' => 'bi-award-fill', 'label' => __('member.templates_member_show_first_place')],
-                            '2nd'     => ['rail' => 'bg-slate-300',  'tile' => 'bg-slate-50 text-slate-500 ring-slate-200',    'chip' => 'bg-slate-100 text-slate-700',   'icon' => 'bi-award-fill', 'label' => __('member.templates_member_show_second_place')],
-                            '3rd'     => ['rail' => 'bg-orange-400', 'tile' => 'bg-orange-50 text-orange-600 ring-orange-100', 'chip' => 'bg-orange-100 text-orange-800', 'icon' => 'bi-award-fill', 'label' => __('member.templates_member_show_third_place')],
-                            'special' => ['rail' => 'bg-primary',    'tile' => 'bg-accent text-primary ring-primary/15',       'chip' => 'bg-accent text-primary',        'icon' => 'bi-trophy-fill','label' => __('member.templates_member_show_special_award')],
+                            '1st'     => ['rail' => 'bg-amber-400',  'tile' => 'bg-amber-50 text-amber-600 ring-amber-100',    'chip' => 'bg-amber-100 text-amber-800',   'icon' => 'bi-award-fill', 'label' => __('members::member.templates_member_show_first_place')],
+                            '2nd'     => ['rail' => 'bg-slate-300',  'tile' => 'bg-slate-50 text-slate-500 ring-slate-200',    'chip' => 'bg-slate-100 text-slate-700',   'icon' => 'bi-award-fill', 'label' => __('members::member.templates_member_show_second_place')],
+                            '3rd'     => ['rail' => 'bg-orange-400', 'tile' => 'bg-orange-50 text-orange-600 ring-orange-100', 'chip' => 'bg-orange-100 text-orange-800', 'icon' => 'bi-award-fill', 'label' => __('members::member.templates_member_show_third_place')],
+                            'special' => ['rail' => 'bg-primary',    'tile' => 'bg-accent text-primary ring-primary/15',       'chip' => 'bg-accent text-primary',        'icon' => 'bi-trophy-fill','label' => __('members::member.templates_member_show_special_award')],
                         ];
                         $medalNone = ['rail' => 'bg-gray-200', 'tile' => 'bg-gray-50 text-gray-400 ring-gray-100', 'icon' => 'bi-flag'];
                     @endphp
@@ -1301,7 +1301,7 @@
                                         && $event->verification_status !== 'verified';
 
                                     // The platform's own record of this competition: the event to open
-                                    // and the bouts actually fought (App\Support\BoutHistory).
+                                    // and the bouts actually fought (App\Members\Support\BoutHistory).
                                     $platform = ($tournamentBouts ?? [])[$event->id] ?? null;
 
                                     // Raw values for the edit form — display copies above are formatted.
@@ -1391,7 +1391,7 @@
                                                         <span class="inline-flex items-center gap-1 min-w-0"><i class="bi bi-geo-alt text-primary/50"></i><span class="truncate">{{ $event->location }}</span></span>
                                                     @endif
                                                     @if($event->participants_count)
-                                                        <span class="inline-flex items-center gap-1"><i class="bi bi-people text-primary/50"></i>{{ $event->participants_count }} {{ __('member.templates_member_show_participants') }}</span>
+                                                        <span class="inline-flex items-center gap-1"><i class="bi bi-people text-primary/50"></i>{{ $event->participants_count }} {{ __('members::member.templates_member_show_participants') }}</span>
                                                     @endif
                                                 </div>
 
@@ -1403,10 +1403,10 @@
                                                     @endif
                                                     @if($canManageRecords && $canRequestVerify)
                                                         {{-- While pending this is a rate-limited nudge, not a new request. --}}
-                                                        <button type="button" data-verify-btn onclick="requestAchievementVerification(this)" data-verify-url="{{ route('member.tournament.request-verification', [$event->user_id, $event->uuid]) }}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-patch-check"></i>{{ $event->verification_status === 'pending' ? __('member.tournament_verify_resend') : __('Request verification') }}</button>
+                                                        <button type="button" data-verify-btn onclick="requestAchievementVerification(this)" data-verify-url="{{ route('member.tournament.request-verification', [$event->user_id, $event->uuid]) }}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-patch-check"></i>{{ $event->verification_status === 'pending' ? __('members::member.tournament_verify_resend') : __('Request verification') }}</button>
                                                     @elseif($canManageRecords && ! $event->clubAffiliation?->tenant_id && $event->verification_status !== 'verified')
                                                         {{-- No platform club to confirm → peers/coaches vouch on the public profile. --}}
-                                                        <button type="button" onclick="shareTournamentForVouch('{{ route('people.show', $relationship->dependent->uuid) }}')" title="{{ __('member.get_vouched_hint') }}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
+                                                        <button type="button" onclick="shareTournamentForVouch('{{ route('people.show', $relationship->dependent->uuid) }}')" title="{{ __('members::member.get_vouched_hint') }}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-people"></i>{{ __('members::member.get_vouched') }}</button>
                                                     @endif
                                                     @if($event->verification_status === 'rejected' && $event->verification_note)
                                                         <span class="text-[11px] text-red-500 italic">{{ $event->verification_note }}</span>
@@ -1418,7 +1418,7 @@
                                         {{-- Outcome column: result, who they competed for, notes --}}
                                         <div class="flex flex-col gap-3 lg:border-s lg:border-gray-100 lg:ps-4">
                                             <div>
-                                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{{ __('member.templates_member_show_th_performance_result') }}</p>
+                                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{{ __('members::member.templates_member_show_th_performance_result') }}</p>
                                                 @if($event->performanceResults->count() > 0)
                                                     <div class="flex flex-col gap-1.5">
                                                         @foreach($event->performanceResults as $result)
@@ -1428,7 +1428,7 @@
                                                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $rt['chip'] }}"><i class="bi {{ $rt['icon'] }}"></i>{{ $rt['label'] }}</span>
                                                                 @endif
                                                                 @if($result->points)
-                                                                    <span class="text-[11px] font-medium text-gray-500 tabular-nums">{{ $result->points }} {{ __('member.templates_member_show_pts') }}</span>
+                                                                    <span class="text-[11px] font-medium text-gray-500 tabular-nums">{{ $result->points }} {{ __('members::member.templates_member_show_pts') }}</span>
                                                                 @endif
                                                             </div>
                                                             @if($result->description)
@@ -1437,12 +1437,12 @@
                                                         @endforeach
                                                     </div>
                                                 @else
-                                                    <p class="text-xs text-gray-400 italic">{{ __('member.templates_member_show_no_results_recorded') }}</p>
+                                                    <p class="text-xs text-gray-400 italic">{{ __('members::member.templates_member_show_no_results_recorded') }}</p>
                                                 @endif
                                             </div>
 
                                             <div class="border-t border-gray-50 pt-2.5">
-                                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.representing') }}</p>
+                                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('members::member.representing') }}</p>
                                                 @if($event->clubAffiliation)
                                                     @php $repLogo = $event->clubAffiliation->logo ?: $event->clubAffiliation->tenant?->logo; @endphp
                                                     <div class="flex items-center gap-2">
@@ -1460,7 +1460,7 @@
                                                         </div>
                                                     </div>
                                                 @else
-                                                    <p class="inline-flex items-center gap-1 text-xs text-gray-500"><i class="bi bi-person"></i>{{ __('member.templates_member_show_individual') }}</p>
+                                                    <p class="inline-flex items-center gap-1 text-xs text-gray-500"><i class="bi bi-person"></i>{{ __('members::member.templates_member_show_individual') }}</p>
                                                 @endif
                                             </div>
 
@@ -1472,7 +1472,7 @@
                                                     <div class="flex flex-col gap-1.5">
                                                         @foreach($platform['bouts'] as $bout)
                                                             <div class="flex items-center gap-2 flex-wrap text-xs">
-                                                                <span class="font-semibold text-gray-700 truncate">{{ __('events.bout_vs') }} {{ $bout['opponent'] }}</span>
+                                                                <span class="font-semibold text-gray-700 truncate">{{ __('events::events.bout_vs') }} {{ $bout['opponent'] }}</span>
                                                                 @if($bout['my_score'] !== null || $bout['their_score'] !== null)
                                                                     <span class="font-bold tabular-nums text-gray-900">{{ $bout['my_score'] ?? '—' }}–{{ $bout['their_score'] ?? '—' }}</span>
                                                                 @endif
@@ -1493,7 +1493,7 @@
 
                                             @if($event->notesMedia->count() > 0)
                                                 <div class="border-t border-gray-50 pt-2.5">
-                                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.templates_member_show_th_notes_media') }}</p>
+                                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('members::member.templates_member_show_th_notes_media') }}</p>
                                                     @foreach($event->notesMedia as $note)
                                                         @if($note->note_text)
                                                             <p class="text-xs text-gray-600 leading-snug mb-1">{{ $note->note_text }}</p>
@@ -1502,7 +1502,7 @@
                                                              javascript: / data: URL (Security Coverage §3). --}}
                                                         @if($note->media_link && preg_match('#^https?://#i', $note->media_link))
                                                             <a href="{{ $note->media_link }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
-                                                                <i class="bi bi-image"></i>{{ __('member.templates_member_show_view_media') }}
+                                                                <i class="bi bi-image"></i>{{ __('members::member.templates_member_show_view_media') }}
                                                             </a>
                                                         @endif
                                                     @endforeach
@@ -1516,8 +1516,8 @@
                     </div>
                         <div class="text-center py-5" id="tournamentsEmptyState" style="{{ $tournamentEvents->count() > 0 ? 'display:none;' : '' }}">
                             <i class="bi bi-trophy text-gray-500" style="font-size: 3rem;"></i>
-                            <p class="text-gray-500 mt-3">{{ __('member.templates_member_show_no_tournament_records') }}</p>
-                            <small class="text-gray-500">{{ __('member.templates_member_show_tournament_hint') }}</small>
+                            <p class="text-gray-500 mt-3">{{ __('members::member.templates_member_show_no_tournament_records') }}</p>
+                            <small class="text-gray-500">{{ __('members::member.templates_member_show_tournament_hint') }}</small>
                         </div>
                 </div>
             </div>
@@ -1529,10 +1529,10 @@
             <div class="bg-white rounded-xl shadow-sm mb-4">
                 <div class="p-4">
                     <div class="flex justify-between items-center mb-3">
-                        <h5 class="font-bold mb-0"><i class="bi bi-journal-text me-2"></i>{{ __('member.templates_member_show_personal_event_log') }}</h5>
+                        <h5 class="font-bold mb-0"><i class="bi bi-journal-text me-2"></i>{{ __('members::member.templates_member_show_personal_event_log') }}</h5>
                         @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id || $relationship->relationship_type == 'admin_view')
                             <button type="button" @click="$dispatch('open-event-add-modal')" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm whitespace-nowrap">
-                                <i class="bi bi-plus-lg me-1"></i>{{ __('member.templates_member_show_add_event') }}
+                                <i class="bi bi-plus-lg me-1"></i>{{ __('members::member.templates_member_show_add_event') }}
                             </button>
                         @endif
                     </div>
@@ -1563,19 +1563,19 @@
                     </div>
                     <div class="text-center py-10 {{ $memberEventLog->isEmpty() ? '' : 'hidden' }}" id="eventLogEmpty">
                         <i class="bi bi-journal-x text-gray-300" style="font-size:2.5rem;"></i>
-                        <p class="text-gray-400 mt-3">{{ __('member.templates_member_show_no_personal_events') }}</p>
+                        <p class="text-gray-400 mt-3">{{ __('members::member.templates_member_show_no_personal_events') }}</p>
                     </div>
                 </div>
             </div>
 
             <div class="bg-white rounded-xl shadow-sm">
                 <div class="p-4">
-                    <h5 class="font-bold mb-3"><i class="bi bi-calendar-event me-2"></i>{{ __('member.templates_member_show_club_events_joined') }}</h5>
+                    <h5 class="font-bold mb-3"><i class="bi bi-calendar-event me-2"></i>{{ __('members::member.templates_member_show_club_events_joined') }}</h5>
 
                     @if($joinedEventRegistrations->isEmpty())
                         <div class="text-center py-10">
                             <i class="bi bi-calendar-x text-gray-300" style="font-size:2.5rem;"></i>
-                            <p class="text-gray-400 mt-3">{{ __('member.templates_member_show_no_events_joined') }}</p>
+                            <p class="text-gray-400 mt-3">{{ __('members::member.templates_member_show_no_events_joined') }}</p>
                         </div>
                     @else
                         <div class="flex flex-col gap-3">
@@ -1608,15 +1608,15 @@
                                 <div class="flex-shrink-0">
                                     @if($reg->status === 'waitlisted')
                                         <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
-                                            <i class="bi bi-clock-history"></i> {{ __('member.templates_member_show_status_waitlisted') }}
+                                            <i class="bi bi-clock-history"></i> {{ __('members::member.templates_member_show_status_waitlisted') }}
                                         </span>
                                     @elseif($isPast)
                                         <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-500">
-                                            <i class="bi bi-check-circle"></i> {{ __('member.templates_member_show_status_attended') }}
+                                            <i class="bi bi-check-circle"></i> {{ __('members::member.templates_member_show_status_attended') }}
                                         </span>
                                     @else
                                         <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700">
-                                            <i class="bi bi-check-circle-fill"></i> {{ __('member.templates_member_show_status_joined_event') }}
+                                            <i class="bi bi-check-circle-fill"></i> {{ __('members::member.templates_member_show_status_joined_event') }}
                                         </span>
                                     @endif
                                 </div>
@@ -1648,19 +1648,19 @@
                 csrf: '{{ csrf_token() }}',
                 canEdit: @js((bool) ($canEditBasic ?? false)),
                 items: @js($certsJsD),
-                i18n: { deleteConfirm: @js(__('member.cert_delete_confirm')), networkError: @js(__('Something went wrong. Please try again.')), invalidImage: @js(__('Please choose an image file.')) }
+                i18n: { deleteConfirm: @js(__('members::member.cert_delete_confirm')), networkError: @js(__('Something went wrong. Please try again.')), invalidImage: @js(__('Please choose an image file.')) }
              })">
             <div class="flex items-center justify-between mb-4">
-                <h5 class="font-bold text-gray-900 flex items-center gap-2"><i class="bi bi-patch-check text-primary"></i> {{ __('member.certifications') }}</h5>
+                <h5 class="font-bold text-gray-900 flex items-center gap-2"><i class="bi bi-patch-check text-primary"></i> {{ __('members::member.certifications') }}</h5>
                 @if($canEditBasic ?? false)
-                    <button type="button" @click="openAdd()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm inline-flex items-center gap-1.5"><i class="bi bi-plus-lg"></i>{{ __('member.add_certification') }}</button>
+                    <button type="button" @click="openAdd()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm inline-flex items-center gap-1.5"><i class="bi bi-plus-lg"></i>{{ __('members::member.add_certification') }}</button>
                 @endif
             </div>
 
             <template x-if="!items.length">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
                     <i class="bi bi-patch-check text-3xl text-gray-300"></i>
-                    <p class="text-sm text-muted-foreground mt-2">{{ __('member.no_certifications') }}</p>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('members::member.no_certifications') }}</p>
                 </div>
             </template>
 
@@ -1676,7 +1676,7 @@
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-start justify-between gap-2">
                                     <p class="font-bold text-gray-900 text-sm leading-snug" x-text="c.title"></p>
-                                    <template x-if="c.expired"><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">{{ __('member.cert_expired') }}</span></template>
+                                    <template x-if="c.expired"><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">{{ __('members::member.cert_expired') }}</span></template>
                                 </div>
                                 <p class="text-xs text-muted-foreground mt-0.5" x-show="c.issuer" x-text="c.issuer"></p>
                                 <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
@@ -1686,7 +1686,7 @@
                                 </div>
                                 <p class="text-[11px] text-gray-600 mt-2" x-show="c.notes" x-text="c.notes"></p>
                                 <div class="mt-2 flex items-center gap-3">
-                                    <template x-if="c.credential_url"><a :href="c.credential_url" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-box-arrow-up-right"></i>{{ __('member.verify_credential') }}</a></template>
+                                    <template x-if="c.credential_url"><a :href="c.credential_url" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-box-arrow-up-right"></i>{{ __('members::member.verify_credential') }}</a></template>
                                     <template x-if="canEdit">
                                         <div class="flex items-center gap-3 ms-auto">
                                             <button type="button" @click="openEdit(c)" class="text-[11px] font-medium text-gray-500 hover:text-primary inline-flex items-center gap-1"><i class="bi bi-pencil"></i>{{ __('Edit') }}</button>
@@ -1706,36 +1706,36 @@
                 <div class="flex min-h-full items-center justify-center p-4">
                     <div x-show="open" x-transition class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl" @click.stop>
                         <div class="flex items-center justify-between p-4 border-b border-gray-200">
-                            <h5 class="text-lg font-medium" x-text="editing ? '{{ __('member.edit_certification') }}' : '{{ __('member.add_certification') }}'"></h5>
+                            <h5 class="text-lg font-medium" x-text="editing ? '{{ __('members::member.edit_certification') }}' : '{{ __('members::member.add_certification') }}'"></h5>
                             <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                         </div>
                         <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="col-span-full">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_name') }} <span class="text-red-600">*</span></label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_name') }} <span class="text-red-600">*</span></label>
                                 <input type="text" x-model="form.title" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_issuer') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_issuer') }}</label>
                                 <input type="text" x-model="form.issuer" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_credential_id') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_credential_id') }}</label>
                                 <input type="text" x-model="form.credential_id" maxlength="120" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_issue_date') }}</label>
-                                <x-date-picker model="form.issue_date" placeholder="{{ __('member.cert_issue_date') }}" />
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_issue_date') }}</label>
+                                <x-fields.date model="form.issue_date" placeholder="{{ __('members::member.cert_issue_date') }}" />
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_expiry_date') }}</label>
-                                <x-date-picker model="form.expiry_date" min-expr="form.issue_date || null" placeholder="{{ __('member.cert_no_expiry') }}" />
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_expiry_date') }}</label>
+                                <x-fields.date model="form.expiry_date" min-expr="form.issue_date || null" placeholder="{{ __('members::member.cert_no_expiry') }}" />
                             </div>
                             <div class="col-span-full">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_credential_url') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_credential_url') }}</label>
                                 <input type="url" x-model="form.credential_url" maxlength="300" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary" placeholder="https://">
                             </div>
                             <div class="col-span-full">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_photo') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.cert_photo') }}</label>
                                 <div class="flex items-center gap-3">
                                     <span class="w-16 h-16 rounded-lg bg-gray-100 grid place-items-center overflow-hidden ring-1 ring-gray-200">
                                         <template x-if="form.imagePreview"><img :src="form.imagePreview" alt="" class="w-16 h-16 object-cover"></template>
@@ -1749,13 +1749,13 @@
                                 </div>
                             </div>
                             <div class="col-span-full">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_description') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_description') }}</label>
                                 <textarea x-model="form.notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary"></textarea>
                             </div>
                         </div>
                         <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
                             <button type="button" @click="close()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300">{{ __('shared.cancel') }}</button>
-                            <button type="button" @click="submit()" :disabled="submitting || !form.title.trim()" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-60"><span x-text="editing ? '{{ __('Save') }}' : '{{ __('member.add_certification') }}'"></span></button>
+                            <button type="button" @click="submit()" :disabled="submitting || !form.title.trim()" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-60"><span x-text="editing ? '{{ __('Save') }}' : '{{ __('members::member.add_certification') }}'"></span></button>
                         </div>
                     </div>
                 </div>
@@ -1828,19 +1828,19 @@
                 csrf: '{{ csrf_token() }}',
                 canEdit: @js((bool) ($canEditBasic ?? false)),
                 items: @js($workJsD),
-                i18n: { deleteConfirm: @js(__('member.work_delete_confirm')), networkError: @js(__('Something went wrong. Please try again.')), present: @js(__('member.work_present')) }
+                i18n: { deleteConfirm: @js(__('members::member.work_delete_confirm')), networkError: @js(__('Something went wrong. Please try again.')), present: @js(__('members::member.work_present')) }
              })">
             <div class="flex items-center justify-between mb-4">
-                <h5 class="font-bold text-gray-900 flex items-center gap-2"><i class="bi bi-briefcase text-primary"></i> {{ __('member.work_history') }}</h5>
+                <h5 class="font-bold text-gray-900 flex items-center gap-2"><i class="bi bi-briefcase text-primary"></i> {{ __('members::member.work_history') }}</h5>
                 @if($canEditBasic ?? false)
-                    <button type="button" @click="openAdd()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm inline-flex items-center gap-1.5"><i class="bi bi-plus-lg"></i>{{ __('member.add_work') }}</button>
+                    <button type="button" @click="openAdd()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm inline-flex items-center gap-1.5"><i class="bi bi-plus-lg"></i>{{ __('members::member.add_work') }}</button>
                 @endif
             </div>
 
             <template x-if="!items.length">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
                     <i class="bi bi-briefcase text-3xl text-gray-300"></i>
-                    <p class="text-sm text-muted-foreground mt-2">{{ __('member.no_work') }}</p>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('members::member.no_work') }}</p>
                 </div>
             </template>
 
@@ -1862,7 +1862,7 @@
                                         <p class="font-bold text-gray-900 text-sm leading-snug truncate" x-text="w.title"></p>
                                         <p class="text-xs font-medium text-gray-500 truncate mt-0.5" x-text="w.organization"></p>
                                     </div>
-                                    <template x-if="w.current"><span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ __('member.work_current') }}</span></template>
+                                    <template x-if="w.current"><span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ __('members::member.work_current') }}</span></template>
                                 </div>
                                 {{-- Compact inline facts — one line, icon + text (no pills, so the card stays short) --}}
                                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
@@ -1874,7 +1874,7 @@
                                               @click.stop="sk.url && (window.location.href = sk.url)"><i class="bi bi-mortarboard-fill text-primary/60"></i><span x-text="sk.name"></span></span>
                                     </template>
                                     <template x-if="w.derived">
-                                        <i class="bi bi-shield-fill-check text-primary/70" title="{{ __('member.work_platform_role_note') }}"></i>
+                                        <i class="bi bi-shield-fill-check text-primary/70" title="{{ __('members::member.work_platform_role_note') }}"></i>
                                     </template>
                                 </div>
                                 <p class="text-[11px] text-gray-600 mt-2 whitespace-pre-line" x-show="w.description" x-text="w.description"></p>
@@ -1896,20 +1896,20 @@
                 <div class="flex min-h-full items-center justify-center p-4">
                     <div x-show="open" x-transition class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl" @click.stop>
                         <div class="flex items-center justify-between p-4 border-b border-gray-200">
-                            <h5 class="text-lg font-medium" x-text="editing ? '{{ __('member.edit_work') }}' : '{{ __('member.add_work') }}'"></h5>
+                            <h5 class="text-lg font-medium" x-text="editing ? '{{ __('members::member.edit_work') }}' : '{{ __('members::member.add_work') }}'"></h5>
                             <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                         </div>
                         <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_role') }} <span class="text-red-600">*</span></label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_role') }} <span class="text-red-600">*</span></label>
                                 <input type="text" x-model="form.title" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_organization') }} <span class="text-red-600">*</span></label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_organization') }} <span class="text-red-600">*</span></label>
                                 <input type="text" x-model="form.organization" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div class="col-span-full">
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.work_employment_type') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('members::member.work_employment_type') }}</label>
                                 <div class="flex flex-wrap gap-1.5">
                                     @foreach($employmentTypesD as $et)
                                         <button type="button" @click="form.employment_type = (form.employment_type === '{{ $et }}' ? '' : '{{ $et }}')"
@@ -1919,31 +1919,31 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_start_date') }} <span class="text-red-600">*</span></label>
-                                <x-date-picker model="form.start_date" max-expr="form.end_date || null" placeholder="{{ __('member.work_start_date') }}" />
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_start_date') }} <span class="text-red-600">*</span></label>
+                                <x-fields.date model="form.start_date" max-expr="form.end_date || null" placeholder="{{ __('members::member.work_start_date') }}" />
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_end_date') }}</label>
-                                <x-date-picker model="form.end_date" min-expr="form.start_date || null" placeholder="{{ __('member.work_present') }}" />
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_end_date') }}</label>
+                                <x-fields.date model="form.end_date" min-expr="form.start_date || null" placeholder="{{ __('members::member.work_present') }}" />
                             </div>
                             <div class="col-span-full">
                                 <label class="flex items-center gap-2.5 cursor-pointer select-none">
                                     <input type="checkbox" x-model="form.current" @change="if(form.current) form.end_date=''" class="w-[18px] h-[18px] rounded text-primary border-gray-300 focus:ring-primary">
-                                    <span class="text-sm text-gray-700">{{ __('member.work_current') }}</span>
+                                    <span class="text-sm text-gray-700">{{ __('members::member.work_current') }}</span>
                                 </label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_location') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_location') }}</label>
                                 <input type="text" x-model="form.location" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div class="col-span-full">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_description') }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.work_description') }}</label>
                                 <textarea x-model="form.description" rows="3" maxlength="2000" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary"></textarea>
                             </div>
                         </div>
                         <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
                             <button type="button" @click="close()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300">{{ __('shared.cancel') }}</button>
-                            <button type="button" @click="submit()" :disabled="submitting || !form.title.trim() || !form.organization.trim() || !form.start_date" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-60"><span x-text="editing ? '{{ __('Save') }}' : '{{ __('member.add_work') }}'"></span></button>
+                            <button type="button" @click="submit()" :disabled="submitting || !form.title.trim() || !form.organization.trim() || !form.start_date" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-60"><span x-text="editing ? '{{ __('Save') }}' : '{{ __('members::member.add_work') }}'"></span></button>
                         </div>
                     </div>
                 </div>
@@ -1965,7 +1965,7 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
-                    <h5 class="text-lg font-medium">{{ __('member.templates_member_show_add_event_participation') }}</h5>
+                    <h5 class="text-lg font-medium">{{ __('members::member.templates_member_show_add_event_participation') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="eventAddForm" method="POST" action="{{ route('member.store-event', $relationship->dependent->id) }}">
@@ -1973,34 +1973,34 @@
                     <div class="p-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="col-span-full">
-                                <label for="ev_add_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_event_title') }} <span class="text-red-600">*</span></label>
-                                <input type="text" id="ev_add_title" name="title" maxlength="150" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_event_title') }}">
+                                <label for="ev_add_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_event_title') }} <span class="text-red-600">*</span></label>
+                                <input type="text" id="ev_add_title" name="title" maxlength="150" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_event_title') }}">
                             </div>
                             <div>
-                                <label for="ev_add_date" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_date') }} <span class="text-red-600">*</span></label>
+                                <label for="ev_add_date" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_date') }} <span class="text-red-600">*</span></label>
                                 <input type="date" id="ev_add_date" name="event_date" required value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label for="ev_add_location" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_location') }}</label>
-                                <input type="text" id="ev_add_location" name="location" maxlength="150" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_optional') }}">
+                                <label for="ev_add_location" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_location') }}</label>
+                                <input type="text" id="ev_add_location" name="location" maxlength="150" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_optional') }}">
                             </div>
                             <div>
-                                <label for="ev_add_role" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_role') }}</label>
-                                <input type="text" id="ev_add_role" name="role" maxlength="80" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_role') }}">
+                                <label for="ev_add_role" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_role') }}</label>
+                                <input type="text" id="ev_add_role" name="role" maxlength="80" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_role') }}">
                             </div>
                             <div>
-                                <label for="ev_add_result" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_result') }}</label>
-                                <input type="text" id="ev_add_result" name="result" maxlength="150" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_result') }}">
+                                <label for="ev_add_result" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_result') }}</label>
+                                <input type="text" id="ev_add_result" name="result" maxlength="150" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_result') }}">
                             </div>
                             <div class="col-span-full">
-                                <label for="ev_add_notes" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_notes') }}</label>
-                                <textarea id="ev_add_notes" name="notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_optional') }}"></textarea>
+                                <label for="ev_add_notes" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_notes') }}</label>
+                                <textarea id="ev_add_notes" name="notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_optional') }}"></textarea>
                             </div>
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
-                        <button type="submit" id="eventAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('member.templates_member_show_add_event') }}</button>
+                        <button type="submit" id="eventAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('members::member.templates_member_show_add_event') }}</button>
                     </div>
                 </form>
             </div>
@@ -2019,7 +2019,7 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
-                    <h5 class="text-lg font-medium">{{ __('member.templates_member_show_add_attendance_record') }}</h5>
+                    <h5 class="text-lg font-medium">{{ __('members::member.templates_member_show_add_attendance_record') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="attendanceAddForm" method="POST" action="{{ route('member.store-attendance', $relationship->dependent->id) }}">
@@ -2027,33 +2027,33 @@
                     <div class="p-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label for="att_add_datetime" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_th_date_time') }} <span class="text-red-600">*</span></label>
+                                <label for="att_add_datetime" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_th_date_time') }} <span class="text-red-600">*</span></label>
                                 <input type="datetime-local" id="att_add_datetime" name="session_datetime" required value="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label for="att_add_status" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_status') }} <span class="text-red-600">*</span></label>
+                                <label for="att_add_status" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_status') }} <span class="text-red-600">*</span></label>
                                 <select id="att_add_status" name="status" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
-                                    <option value="completed" selected>{{ __('member.templates_member_show_status_completed') }}</option>
-                                    <option value="no_show">{{ __('member.templates_member_show_status_no_show') }}</option>
+                                    <option value="completed" selected>{{ __('members::member.templates_member_show_status_completed') }}</option>
+                                    <option value="no_show">{{ __('members::member.templates_member_show_status_no_show') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="att_add_type" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_session_type') }} <span class="text-red-600">*</span></label>
-                                <input type="text" id="att_add_type" name="session_type" maxlength="100" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_session_type') }}">
+                                <label for="att_add_type" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_session_type') }} <span class="text-red-600">*</span></label>
+                                <input type="text" id="att_add_type" name="session_type" maxlength="100" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_session_type') }}">
                             </div>
                             <div>
-                                <label for="att_add_trainer" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_trainer_name') }}</label>
-                                <input type="text" id="att_add_trainer" name="trainer_name" maxlength="100" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_optional') }}">
+                                <label for="att_add_trainer" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_trainer_name') }}</label>
+                                <input type="text" id="att_add_trainer" name="trainer_name" maxlength="100" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_optional') }}">
                             </div>
                             <div class="col-span-full">
-                                <label for="att_add_notes" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_notes') }}</label>
-                                <textarea id="att_add_notes" name="notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_optional') }}"></textarea>
+                                <label for="att_add_notes" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_notes') }}</label>
+                                <textarea id="att_add_notes" name="notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_optional') }}"></textarea>
                             </div>
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
-                        <button type="submit" id="attendanceAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('member.templates_member_show_add_record') }}</button>
+                        <button type="submit" id="attendanceAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('members::member.templates_member_show_add_record') }}</button>
                     </div>
                 </form>
             </div>
@@ -2072,7 +2072,7 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
-                    <h5 class="text-lg font-medium">{{ __('member.templates_member_show_set_a_goal') }}</h5>
+                    <h5 class="text-lg font-medium">{{ __('members::member.templates_member_show_set_a_goal') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="goalAddForm" method="POST" action="{{ route('member.store-goal', $relationship->dependent->id) }}">
@@ -2080,47 +2080,47 @@
                     <div class="p-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="col-span-full">
-                                <label for="goal_add_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_goal_title') }} <span class="text-red-600">*</span></label>
-                                <input type="text" id="goal_add_title" name="title" maxlength="150" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_goal_title') }}">
+                                <label for="goal_add_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_goal_title') }} <span class="text-red-600">*</span></label>
+                                <input type="text" id="goal_add_title" name="title" maxlength="150" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_goal_title') }}">
                             </div>
                             <div class="col-span-full">
-                                <label for="goal_add_description" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_description') }}</label>
-                                <textarea id="goal_add_description" name="description" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_goal_description') }}"></textarea>
+                                <label for="goal_add_description" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_description') }}</label>
+                                <textarea id="goal_add_description" name="description" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_goal_description') }}"></textarea>
                             </div>
                             <div>
-                                <label for="goal_add_target" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_target_value') }} <span class="text-red-600">*</span></label>
+                                <label for="goal_add_target" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_target_value') }} <span class="text-red-600">*</span></label>
                                 <input type="number" step="0.1" min="0" id="goal_add_target" name="target_value" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="80">
                             </div>
                             <div>
-                                <label for="goal_add_unit" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_unit') }} <span class="text-red-600">*</span></label>
-                                <input type="text" id="goal_add_unit" name="unit" maxlength="30" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_unit') }}">
+                                <label for="goal_add_unit" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_unit') }} <span class="text-red-600">*</span></label>
+                                <input type="text" id="goal_add_unit" name="unit" maxlength="30" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_unit') }}">
                             </div>
                             <div>
-                                <label for="goal_add_current" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_current_progress') }}</label>
+                                <label for="goal_add_current" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_current_progress') }}</label>
                                 <input type="number" step="0.1" min="0" id="goal_add_current" name="current_progress_value" value="0" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label for="goal_add_target_date" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_target_date') }} <span class="text-red-600">*</span></label>
+                                <label for="goal_add_target_date" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_target_date') }} <span class="text-red-600">*</span></label>
                                 <input type="date" id="goal_add_target_date" name="target_date" required min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" value="{{ \Carbon\Carbon::now()->addMonth()->format('Y-m-d') }}" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label for="goal_add_priority" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_priority') }}</label>
+                                <label for="goal_add_priority" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_priority') }}</label>
                                 <select id="goal_add_priority" name="priority_level" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
-                                    <option value="low">{{ __('member.templates_member_show_priority_low') }}</option>
-                                    <option value="medium" selected>{{ __('member.templates_member_show_priority_medium') }}</option>
-                                    <option value="high">{{ __('member.templates_member_show_priority_high') }}</option>
+                                    <option value="low">{{ __('members::member.templates_member_show_priority_low') }}</option>
+                                    <option value="medium" selected>{{ __('members::member.templates_member_show_priority_medium') }}</option>
+                                    <option value="high">{{ __('members::member.templates_member_show_priority_high') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="goal_add_icon" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_icon') }}</label>
+                                <label for="goal_add_icon" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_icon') }}</label>
                                 <select id="goal_add_icon" name="icon_type" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
-                                    <option value="bi-bullseye">{{ __('member.templates_member_show_icon_target') }}</option>
-                                    <option value="dumbbell">{{ __('member.templates_member_show_icon_strength') }}</option>
-                                    <option value="clock">{{ __('member.templates_member_show_icon_endurance') }}</option>
+                                    <option value="bi-bullseye">{{ __('members::member.templates_member_show_icon_target') }}</option>
+                                    <option value="dumbbell">{{ __('members::member.templates_member_show_icon_strength') }}</option>
+                                    <option value="clock">{{ __('members::member.templates_member_show_icon_endurance') }}</option>
                                 </select>
                             </div>
                             <div class="col-span-full">
-                                <label for="goal_add_before_photo" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_before_photo') }} <span class="text-red-600">*</span></label>
+                                <label for="goal_add_before_photo" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.goal_before_photo') }} <span class="text-red-600">*</span></label>
                                 <input type="file" accept="image/*" id="goal_add_before_photo" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                                 <input type="hidden" name="before_proof" id="goal_add_before_photo_b64">
                                 <img id="goal_add_before_photo_preview" class="hidden mt-2 h-24 rounded-md object-cover border border-gray-200" alt="">
@@ -2129,7 +2129,7 @@
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
-                        <button type="submit" id="goalAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('member.templates_member_show_create_goal') }}</button>
+                        <button type="submit" id="goalAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('members::member.templates_member_show_create_goal') }}</button>
                     </div>
                 </form>
             </div>
@@ -2148,7 +2148,7 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200 flex items-center justify-between p-4 border-b">
-                    <h5 class="text-lg font-medium font-medium text-lg">{{ __('member.templates_member_show_edit_goal_progress') }}</h5>
+                    <h5 class="text-lg font-medium font-medium text-lg">{{ __('members::member.templates_member_show_edit_goal_progress') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="goalEditForm" method="POST">
@@ -2162,24 +2162,24 @@
                                         <i class="bi bi-bullseye text-white"></i>
                                     </div>
                                     <div>
-                                        <h6 class="font-bold mb-1" id="goalTitleDisplay">{{ __('member.templates_member_show_goal_title') }}</h6>
-                                        <p class="text-gray-500 text-sm mb-0" id="goalDescriptionDisplay">{{ __('member.templates_member_show_goal_description_display') }}</p>
+                                        <h6 class="font-bold mb-1" id="goalTitleDisplay">{{ __('members::member.templates_member_show_goal_title') }}</h6>
+                                        <p class="text-gray-500 text-sm mb-0" id="goalDescriptionDisplay">{{ __('members::member.templates_member_show_goal_description_display') }}</p>
                                     </div>
                                 </div>
                             </div>
                             <div>
-                                <label for="current_progress_value" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_current_progress') }} <span class="text-red-600">*</span></label>
+                                <label for="current_progress_value" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_current_progress') }} <span class="text-red-600">*</span></label>
                                 <div class="flex">
                                     <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="current_progress_value" name="current_progress_value" required>
                                     <span class="px-3 py-2 bg-gray-100 border border-gray-300 border-s-0 rounded-e-md text-sm flex items-center" id="goalUnitDisplay">lbs</span>
                                 </div>
-                                <div class="text-xs text-gray-500 mt-1">{{ __('member.templates_member_show_target') }} <span id="goalTargetDisplay">170.0 lbs</span></div>
+                                <div class="text-xs text-gray-500 mt-1">{{ __('members::member.templates_member_show_target') }} <span id="goalTargetDisplay">170.0 lbs</span></div>
                             </div>
                             <div>
-                                <label for="goal_status" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_status') }}</label>
+                                <label for="goal_status" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_status') }}</label>
                                 <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="goal_status" name="status">
-                                    <option value="active">{{ __('member.templates_member_show_status_active') }}</option>
-                                    <option value="completed">{{ __('member.templates_member_show_status_completed') }}</option>
+                                    <option value="active">{{ __('members::member.templates_member_show_status_active') }}</option>
+                                    <option value="completed">{{ __('members::member.templates_member_show_status_completed') }}</option>
                                 </select>
                             </div>
                             <div class="col-span-full">
@@ -2189,8 +2189,8 @@
                                 <small class="text-gray-500 mt-1 block" id="progressTextPreview">Progress: 0.0 / 170.0 lbs (0.0%)</small>
                             </div>
                             <div class="col-span-full hidden" id="goalEditAfterPhotoWrap">
-                                <label for="goal_edit_after_photo" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_after_photo') }} <span class="text-red-600">*</span></label>
-                                <p class="text-xs text-gray-500 mb-1">{{ __('member.mark_as_achieved_hint') }}</p>
+                                <label for="goal_edit_after_photo" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.goal_after_photo') }} <span class="text-red-600">*</span></label>
+                                <p class="text-xs text-gray-500 mb-1">{{ __('members::member.mark_as_achieved_hint') }}</p>
                                 <input type="file" accept="image/*" id="goal_edit_after_photo" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                                 <input type="hidden" name="after_proof" id="goal_edit_after_photo_b64">
                                 <img id="goal_edit_after_photo_preview" class="hidden mt-2 h-24 rounded-md object-cover border border-gray-200" alt="">
@@ -2199,7 +2199,7 @@
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 p-4 border-t bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
-                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('member.templates_member_show_update_goal') }}</button>
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('members::member.templates_member_show_update_goal') }}</button>
                     </div>
                 </form>
             </div>
@@ -2218,7 +2218,7 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200 flex items-center justify-between p-4 border-b">
-                    <h5 class="text-lg font-medium font-medium text-lg">{{ __('member.templates_member_show_add_health_update') }}</h5>
+                    <h5 class="text-lg font-medium font-medium text-lg">{{ __('members::member.templates_member_show_add_health_update') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="healthUpdateForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-health', $relationship->dependent->id) : route('member.store-health', $relationship->dependent->id) }}">
@@ -2226,58 +2226,58 @@
                     <div class="p-4 p-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label for="recorded_at" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_date') }} <span class="text-red-600">*</span></label>
+                                <label for="recorded_at" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_date') }} <span class="text-red-600">*</span></label>
                                 <input type="date" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="recorded_at" name="recorded_at" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" required>
                             </div>
                             <div>
-                                <label for="height" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_metric_height_cm') }}</label>
+                                <label for="height" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_metric_height_cm') }}</label>
                                 <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="height" name="height">
                             </div>
                             <div>
-                                <label for="weight" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_metric_weight_kg') }}</label>
+                                <label for="weight" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_metric_weight_kg') }}</label>
                                 <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="weight" name="weight">
                             </div>
                             <div>
-                                <label for="body_fat_percentage" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_body_fat_pct') }}</label>
+                                <label for="body_fat_percentage" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_body_fat_pct') }}</label>
                                 <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="body_fat_percentage" name="body_fat_percentage">
                             </div>
                             <div>
-                                <label for="bmi" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_metric_bmi') }}</label>
+                                <label for="bmi" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_metric_bmi') }}</label>
                                 <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="bmi" name="bmi">
                             </div>
                             <div>
-                                <label for="body_water_percentage" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_body_water_pct') }}</label>
+                                <label for="body_water_percentage" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_body_water_pct') }}</label>
                                 <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="body_water_percentage" name="body_water_percentage">
                             </div>
                             <div>
-                                <label for="muscle_mass" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_metric_muscle_mass_kg') }}</label>
+                                <label for="muscle_mass" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_metric_muscle_mass_kg') }}</label>
                                 <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="muscle_mass" name="muscle_mass">
                             </div>
                             <div>
-                                <label for="bone_mass" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_metric_bone_mass_kg') }}</label>
+                                <label for="bone_mass" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_metric_bone_mass_kg') }}</label>
                                 <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="bone_mass" name="bone_mass">
                             </div>
                             <div>
-                                <label for="visceral_fat" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_metric_visceral_fat') }}</label>
+                                <label for="visceral_fat" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_metric_visceral_fat') }}</label>
                                 <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="visceral_fat" name="visceral_fat">
                             </div>
                             <div>
-                                <label for="bmr" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_metric_bmr_cal') }}</label>
+                                <label for="bmr" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_metric_bmr_cal') }}</label>
                                 <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="bmr" name="bmr">
                             </div>
                             <div>
-                                <label for="protein_percentage" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_protein_pct') }}</label>
+                                <label for="protein_percentage" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_protein_pct') }}</label>
                                 <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="protein_percentage" name="protein_percentage">
                             </div>
                             <div>
-                                <label for="body_age" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_body_age_years') }}</label>
+                                <label for="body_age" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_body_age_years') }}</label>
                                 <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="body_age" name="body_age">
                             </div>
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 p-4 border-t bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
-                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('member.templates_member_show_save_health_update') }}</button>
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('members::member.templates_member_show_save_health_update') }}</button>
                     </div>
                 </form>
             </div>
@@ -2296,7 +2296,7 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200 flex items-center justify-between p-4 border-b">
-                    <h5 id="tournamentModalTitle" class="text-lg font-medium font-medium text-lg">{{ __('member.templates_member_show_add_tournament_participation') }}</h5>
+                    <h5 id="tournamentModalTitle" class="text-lg font-medium font-medium text-lg">{{ __('members::member.templates_member_show_add_tournament_participation') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="tournamentParticipationForm" method="POST"
@@ -2308,63 +2308,63 @@
                     <div class="p-4 p-4 overflow-y-auto" style="max-height: calc(90vh - 140px);">
                         <div id="tournamentEditWarning" class="hidden mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                             <i class="bi bi-exclamation-triangle-fill mt-0.5"></i>
-                            <span>{{ __('member.tournament_edit_resets_badge') }}</span>
+                            <span>{{ __('members::member.tournament_edit_resets_badge') }}</span>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <!-- Tournament Details -->
                             <div>
-                                <label for="tournament_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_tournament_title') }} <span class="text-red-600">*</span></label>
+                                <label for="tournament_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_tournament_title') }} <span class="text-red-600">*</span></label>
                                 <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_title" name="title" required>
                             </div>
                             <div>
-                                <label for="tournament_type" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_type') }} <span class="text-red-600">*</span></label>
+                                <label for="tournament_type" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_type') }} <span class="text-red-600">*</span></label>
                                 <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_type" name="type" required>
-                                    <option value="">{{ __('member.templates_member_show_select_type') }}</option>
-                                    <option value="championship">{{ __('member.templates_member_show_type_championship') }}</option>
-                                    <option value="tournament">{{ __('member.templates_member_show_type_tournament') }}</option>
-                                    <option value="competition">{{ __('member.templates_member_show_type_competition') }}</option>
-                                    <option value="exhibition">{{ __('member.templates_member_show_type_exhibition') }}</option>
+                                    <option value="">{{ __('members::member.templates_member_show_select_type') }}</option>
+                                    <option value="championship">{{ __('members::member.templates_member_show_type_championship') }}</option>
+                                    <option value="tournament">{{ __('members::member.templates_member_show_type_tournament') }}</option>
+                                    <option value="competition">{{ __('members::member.templates_member_show_type_competition') }}</option>
+                                    <option value="exhibition">{{ __('members::member.templates_member_show_type_exhibition') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="tournament_sport" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_sport') }} <span class="text-red-600">*</span></label>
+                                <label for="tournament_sport" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_sport') }} <span class="text-red-600">*</span></label>
                                 <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_sport" name="sport" required>
-                                    <option value="">{{ __('member.templates_member_show_select_sport') }}</option>
-                                    <option value="Boxing">{{ __('member.templates_member_show_sport_boxing') }}</option>
-                                    <option value="Taekwondo">{{ __('member.templates_member_show_sport_taekwondo') }}</option>
-                                    <option value="Karate">{{ __('member.templates_member_show_sport_karate') }}</option>
-                                    <option value="Martial Arts">{{ __('member.templates_member_show_sport_martial_arts') }}</option>
-                                    <option value="Fitness">{{ __('member.templates_member_show_sport_fitness') }}</option>
-                                    <option value="Weightlifting">{{ __('member.templates_member_show_sport_weightlifting') }}</option>
-                                    <option value="Other">{{ __('member.templates_member_show_sport_other') }}</option>
+                                    <option value="">{{ __('members::member.templates_member_show_select_sport') }}</option>
+                                    <option value="Boxing">{{ __('members::member.templates_member_show_sport_boxing') }}</option>
+                                    <option value="Taekwondo">{{ __('members::member.templates_member_show_sport_taekwondo') }}</option>
+                                    <option value="Karate">{{ __('members::member.templates_member_show_sport_karate') }}</option>
+                                    <option value="Martial Arts">{{ __('members::member.templates_member_show_sport_martial_arts') }}</option>
+                                    <option value="Fitness">{{ __('members::member.templates_member_show_sport_fitness') }}</option>
+                                    <option value="Weightlifting">{{ __('members::member.templates_member_show_sport_weightlifting') }}</option>
+                                    <option value="Other">{{ __('members::member.templates_member_show_sport_other') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <x-birthdate-dropdown
+                                <x-fields.date-of-birth
                                     name="date"
                                     id="tournament_date"
-                                    :label="__('member.templates_member_show_label_date')"
+                                    :label="__('members::member.templates_member_show_label_date')"
                                     :required="true"
                                     :min-year="2000"
                                     :max-year="date('Y')"
                                     :error="$errors->first('date')" />
                             </div>
                             <div>
-                                <label for="tournament_time" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_time') }}</label>
+                                <label for="tournament_time" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_time') }}</label>
                                 <input type="time" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_time" name="time">
                             </div>
                             <div>
-                                <label for="tournament_location" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_location') }}</label>
-                                <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_location" name="location" placeholder="{{ __('member.templates_member_show_ph_venue') }}">
+                                <label for="tournament_location" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_location') }}</label>
+                                <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_location" name="location" placeholder="{{ __('members::member.templates_member_show_ph_venue') }}">
                             </div>
                             <div>
-                                <label for="participants_count" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_number_of_participants') }}</label>
+                                <label for="participants_count" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_number_of_participants') }}</label>
                                 <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="participants_count" name="participants_count" min="1">
                             </div>
                             <div>
-                                <label for="club_affiliation_id" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.representing') }}</label>
+                                <label for="club_affiliation_id" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.representing') }}</label>
                                 <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="club_affiliation_id" name="club_affiliation_id">
-                                    <option value="">{{ __('member.templates_member_show_select_club_optional') }}</option>
+                                    <option value="">{{ __('members::member.templates_member_show_select_club_optional') }}</option>
                                     @foreach($clubAffiliations ?? [] as $affiliation)
                                         <option value="{{ $affiliation->id }}">{{ $affiliation->club_name }}</option>
                                     @endforeach
@@ -2374,27 +2374,27 @@
                             <!-- Performance Results Section -->
                             <div class="col-span-full">
                                 <hr class="my-3">
-                                <h6 class="mb-3 font-medium">{{ __('member.templates_member_show_performance_results') }}</h6>
+                                <h6 class="mb-3 font-medium">{{ __('members::member.templates_member_show_performance_results') }}</h6>
                                 <div id="performanceResultsContainer">
                                     <div class="performance-result-item mb-3 p-3 border rounded">
                                         <div class="grid grid-cols-12 gap-2">
                                             <div class="col-span-4">
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_medal_type') }}</label>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_medal_type') }}</label>
                                                 <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary medal-type" name="performance_results[0][medal_type]">
-                                                    <option value="">{{ __('member.templates_member_show_select_medal') }}</option>
-                                                    <option value="special">{{ __('member.templates_member_show_special_award') }}</option>
-                                                    <option value="1st">{{ __('member.templates_member_show_first_place') }}</option>
-                                                    <option value="2nd">{{ __('member.templates_member_show_second_place') }}</option>
-                                                    <option value="3rd">{{ __('member.templates_member_show_third_place') }}</option>
+                                                    <option value="">{{ __('members::member.templates_member_show_select_medal') }}</option>
+                                                    <option value="special">{{ __('members::member.templates_member_show_special_award') }}</option>
+                                                    <option value="1st">{{ __('members::member.templates_member_show_first_place') }}</option>
+                                                    <option value="2nd">{{ __('members::member.templates_member_show_second_place') }}</option>
+                                                    <option value="3rd">{{ __('members::member.templates_member_show_third_place') }}</option>
                                                 </select>
                                             </div>
                                             <div class="col-span-3">
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_points') }}</label>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_points') }}</label>
                                                 <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[0][points]" min="0" step="0.1">
                                             </div>
                                             <div class="col-span-4">
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_description') }}</label>
-                                                <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[0][description]" placeholder="{{ __('member.templates_member_show_ph_optional_description') }}">
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_description') }}</label>
+                                                <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[0][description]" placeholder="{{ __('members::member.templates_member_show_ph_optional_description') }}">
                                             </div>
                                             <div class="col-span-1 flex items-end">
                                                 <button type="button" class="border border-red-500 text-red-500 px-2 py-1 rounded text-xs hover:bg-red-500 hover:text-white transition-colors remove-result" style="display: none;">
@@ -2405,23 +2405,23 @@
                                     </div>
                                 </div>
                                 <button type="button" class="border border-primary text-primary px-3 py-1.5 rounded text-sm hover:bg-primary hover:text-white transition-colors" id="addPerformanceResult">
-                                    <i class="bi bi-plus me-1"></i>{{ __('member.templates_member_show_add_another_result') }}
+                                    <i class="bi bi-plus me-1"></i>{{ __('members::member.templates_member_show_add_another_result') }}
                                 </button>
                             </div>
 
                             <!-- Notes & Media Section -->
                             <div class="col-span-full">
                                 <hr class="my-3">
-                                <h6 class="mb-3 font-medium">{{ __('member.templates_member_show_th_notes_media') }}</h6>
+                                <h6 class="mb-3 font-medium">{{ __('members::member.templates_member_show_th_notes_media') }}</h6>
                                 <div id="notesMediaContainer">
                                     <div class="notes-media-item mb-3 p-3 border rounded">
                                         <div class="grid grid-cols-12 gap-2">
                                             <div class="col-span-6">
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_note_text') }}</label>
-                                                <textarea class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[0][note_text]" rows="2" placeholder="{{ __('member.templates_member_show_ph_tournament_notes') }}"></textarea>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_note_text') }}</label>
+                                                <textarea class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[0][note_text]" rows="2" placeholder="{{ __('members::member.templates_member_show_ph_tournament_notes') }}"></textarea>
                                             </div>
                                             <div class="col-span-5">
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_media_link') }}</label>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_media_link') }}</label>
                                                 <input type="url" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[0][media_link]" placeholder="https://example.com/photo.jpg">
                                             </div>
                                             <div class="col-span-1 flex items-end">
@@ -2433,7 +2433,7 @@
                                     </div>
                                 </div>
                                 <button type="button" class="border border-primary text-primary px-3 py-1.5 rounded text-sm hover:bg-primary hover:text-white transition-colors" id="addNotesMedia">
-                                    <i class="bi bi-plus me-1"></i>{{ __('member.templates_member_show_add_another_note') }}
+                                    <i class="bi bi-plus me-1"></i>{{ __('members::member.templates_member_show_add_another_note') }}
                                 </button>
                             </div>
                             {{-- Supporting evidence — helps a club verify the claim; never verifies it on its own --}}
@@ -2454,7 +2454,7 @@
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 p-4 border-t bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
-                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('member.templates_member_show_save_tournament_record') }}</button>
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('members::member.templates_member_show_save_tournament_record') }}</button>
                     </div>
                 </form>
             </div>
@@ -2567,7 +2567,7 @@
 
         // Radar chart variables
         let radarChart = null;
-        const metricLabels = ['{{ __("member.templates_member_show_metric_height") }}', '{{ __("member.templates_member_show_metric_weight") }}', '{{ __("member.templates_member_show_metric_body_fat") }}', '{{ __("member.templates_member_show_metric_bmi") }}', '{{ __("member.templates_member_show_metric_body_water") }}', '{{ __("member.templates_member_show_metric_muscle_mass") }}', '{{ __("member.templates_member_show_metric_bone_mass") }}', '{{ __("member.templates_member_show_metric_visceral_fat") }}', '{{ __("member.templates_member_show_metric_bmr") }}', '{{ __("member.templates_member_show_metric_protein") }}', '{{ __("member.templates_member_show_metric_body_age") }}'];
+        const metricLabels = ['{{ __("members::member.templates_member_show_metric_height") }}', '{{ __("members::member.templates_member_show_metric_weight") }}', '{{ __("members::member.templates_member_show_metric_body_fat") }}', '{{ __("members::member.templates_member_show_metric_bmi") }}', '{{ __("members::member.templates_member_show_metric_body_water") }}', '{{ __("members::member.templates_member_show_metric_muscle_mass") }}', '{{ __("members::member.templates_member_show_metric_bone_mass") }}', '{{ __("members::member.templates_member_show_metric_visceral_fat") }}', '{{ __("members::member.templates_member_show_metric_bmr") }}', '{{ __("members::member.templates_member_show_metric_protein") }}', '{{ __("members::member.templates_member_show_metric_body_age") }}'];
         const metricKeys = ['height', 'weight', 'body_fat_percentage', 'bmi', 'body_water_percentage', 'muscle_mass', 'bone_mass', 'visceral_fat', 'bmr', 'protein_percentage', 'body_age'];
 
         // Function to create/update radar chart
@@ -2589,7 +2589,7 @@
                     labels: metricLabels,
                     datasets: [
                         {
-                            label: '{{ __("member.templates_member_show_current_reading") }}',
+                            label: '{{ __("members::member.templates_member_show_current_reading") }}',
                             data: currentData,
                             fill: true,
                             backgroundColor: 'rgba(54, 162, 235, 0.2)',
@@ -2600,7 +2600,7 @@
                             pointHoverBorderColor: 'rgb(54, 162, 235)'
                         },
                         {
-                            label: '{{ __("member.templates_member_show_previous_reading") }}',
+                            label: '{{ __("members::member.templates_member_show_previous_reading") }}',
                             data: previousData,
                             fill: false,
                             borderColor: 'rgb(255, 99, 132)',
@@ -2669,7 +2669,7 @@
 
         // Function to reset modal for adding new record
         function resetHealthModal() {
-            document.getElementById('healthUpdateModalLabel').textContent = '{{ __("member.templates_member_show_add_health_update") }}';
+            document.getElementById('healthUpdateModalLabel').textContent = '{{ __("members::member.templates_member_show_add_health_update") }}';
             document.getElementById('healthUpdateForm').action = '{{ route("member.store-health", $relationship->dependent->id) }}';
             document.getElementById('healthUpdateForm').method = 'POST';
             document.getElementById('recorded_at').value = '{{ \Carbon\Carbon::now()->format("Y-m-d") }}';
@@ -2684,7 +2684,7 @@
             document.getElementById('bmr').value = '';
             document.getElementById('protein_percentage').value = '';
             document.getElementById('body_age').value = '';
-            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = '{{ __("member.templates_member_show_save_health_update") }}';
+            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = '{{ __("members::member.templates_member_show_save_health_update") }}';
         }
 
         // Function to populate modal for editing
@@ -2692,7 +2692,7 @@
             const record = healthRecordsData.find(r => r.id == recordId);
             if (!record) return;
 
-            document.getElementById('healthUpdateModalLabel').textContent = '{{ __("member.templates_member_show_edit_health_update") }}';
+            document.getElementById('healthUpdateModalLabel').textContent = '{{ __("members::member.templates_member_show_edit_health_update") }}';
             document.getElementById('healthUpdateForm').action = '{{ route("member.update-health", ["id" => $relationship->dependent->id, "recordId" => "__RECORD_ID__"]) }}'.replace('__RECORD_ID__', recordId);
             document.getElementById('healthUpdateForm').method = 'POST';
 
@@ -2718,7 +2718,7 @@
             document.getElementById('bmr').value = record.bmr || '';
             document.getElementById('protein_percentage').value = record.protein_percentage || '';
             document.getElementById('body_age').value = record.body_age || '';
-            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = '{{ __("member.templates_member_show_update_health_update") }}';
+            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = '{{ __("members::member.templates_member_show_update_health_update") }}';
         }
 
         // Handle comparison dropdown changes
@@ -2731,7 +2731,7 @@
                 const previousId = previousDateSelect.value;
 
                 if (!currentId || !previousId) {
-                    document.getElementById('timeDifference').innerHTML = '{{ __("member.templates_member_show_select_dates_time_diff") }}';
+                    document.getElementById('timeDifference').innerHTML = '{{ __("members::member.templates_member_show_select_dates_time_diff") }}';
                     return;
                 }
 
@@ -2739,13 +2739,13 @@
                 const previousRecord = healthRecordsData.find(r => r.id == previousId);
 
                 if (!currentRecord || !previousRecord) {
-                    document.getElementById('timeDifference').innerHTML = '{{ __("member.templates_member_show_select_dates_time_diff") }}';
+                    document.getElementById('timeDifference').innerHTML = '{{ __("members::member.templates_member_show_select_dates_time_diff") }}';
                     return;
                 }
 
                 // Update time difference
                 const timeDiff = calculateTimeDifference(currentRecord.recorded_at, previousRecord.recorded_at);
-                document.getElementById('timeDifference').innerHTML = `<strong>{{ __('member.templates_member_show_time_between_records') }}</strong> ${timeDiff}`;
+                document.getElementById('timeDifference').innerHTML = `<strong>{{ __('members::member.templates_member_show_time_between_records') }}</strong> ${timeDiff}`;
 
                 // Update the table rows
                 updateTableRow('height', currentRecord.height, previousRecord.height);
@@ -3201,14 +3201,14 @@
                     photos.className = 'flex gap-2 mt-3';
                     photos.setAttribute('data-goal-photos', '');
                     photos.innerHTML =
-                        (goal.before_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border border-gray-200" alt=""><small class="text-gray-500 block text-center mt-1">{{ __("member.before") }}</small></div>' : '') +
-                        (goal.after_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.after_proof + '" class="w-full h-20 rounded-md object-cover border border-gray-200" alt=""><small class="text-gray-500 block text-center mt-1">{{ __("member.after") }}</small></div>' : '');
+                        (goal.before_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border border-gray-200" alt=""><small class="text-gray-500 block text-center mt-1">{{ __("members::member.before") }}</small></div>' : '') +
+                        (goal.after_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.after_proof + '" class="w-full h-20 rounded-md object-cover border border-gray-200" alt=""><small class="text-gray-500 block text-center mt-1">{{ __("members::member.after") }}</small></div>' : '');
                     badges.insertAdjacentElement('afterend', photos);
 
                     if (goal.days_taken !== null && goal.days_taken !== undefined) {
                         const daysEl = document.createElement('div');
                         daysEl.className = 'mt-2 text-green-700 text-sm font-semibold flex items-center gap-1';
-                        daysEl.innerHTML = '<i class="bi bi-trophy-fill"></i>' + goal.days_taken + ' {{ __("member.days_to_achieve") }}';
+                        daysEl.innerHTML = '<i class="bi bi-trophy-fill"></i>' + goal.days_taken + ' {{ __("members::member.days_to_achieve") }}';
                         photos.insertAdjacentElement('afterend', daysEl);
                     }
                 }
@@ -3237,14 +3237,14 @@
                         patchGoalCard(data.goal);
                         window.dispatchEvent(new CustomEvent('member-profile-updated', { detail: { goal: data.goal } }));
                     }
-                    window.showToast('success', data.message || '{{ __("member.templates_member_show_goal_updated_success") }}');
+                    window.showToast('success', data.message || '{{ __("members::member.templates_member_show_goal_updated_success") }}');
                 } else {
-                    window.showToast('error', '{{ __("member.templates_member_show_error_updating_goal") }}' + (data.message || '{{ __("member.templates_member_show_unknown_error") }}'));
+                    window.showToast('error', '{{ __("members::member.templates_member_show_error_updating_goal") }}' + (data.message || '{{ __("members::member.templates_member_show_unknown_error") }}'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                window.showToast('error', '{{ __("member.templates_member_show_error_updating_goal_retry") }}');
+                window.showToast('error', '{{ __("members::member.templates_member_show_error_updating_goal_retry") }}');
             });
         });
 
@@ -3281,7 +3281,7 @@
                 wrap.className = 'goal-card';
                 wrap.innerHTML =
                     '<div class="bg-white rounded-xl shadow-sm h-full relative" id="goal-' + goal.id + '">' +
-                        '<button class="w-8 h-8 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors absolute top-0 end-0 mt-2 me-2 edit-goal-btn" data-goal-id="' + goal.id + '" title="{{ __("member.templates_member_show_edit_goal") }}"><i class="bi bi-pencil"></i></button>' +
+                        '<button class="w-8 h-8 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors absolute top-0 end-0 mt-2 me-2 edit-goal-btn" data-goal-id="' + goal.id + '" title="{{ __("members::member.templates_member_show_edit_goal") }}"><i class="bi bi-pencil"></i></button>' +
                         '<div class="p-4">' +
                             '<div class="flex items-center mb-3">' +
                                 '<div class="rounded-full flex items-center justify-center me-3" style="width:48px;height:48px;background-color:#8b5cf6;"><i class="' + goalIconClass(goal.icon_type) + '"></i></div>' +
@@ -3291,7 +3291,7 @@
                             '</div>' +
                             '<div class="mb-3">' +
                                 '<div class="flex justify-between items-center mb-2">' +
-                                    '<small class="text-gray-500" data-goal-progress-text>{{ __("member.templates_member_show_progress") }} ' + Number(goal.current_progress_value).toFixed(1) + ' / ' + Number(goal.target_value).toFixed(1) + ' ' + escapeHtml(goal.unit) + '</small>' +
+                                    '<small class="text-gray-500" data-goal-progress-text>{{ __("members::member.templates_member_show_progress") }} ' + Number(goal.current_progress_value).toFixed(1) + ' / ' + Number(goal.target_value).toFixed(1) + ' ' + escapeHtml(goal.unit) + '</small>' +
                                     '<small class="font-semibold" data-goal-progress-pct>' + pct.toFixed(1) + '%</small>' +
                                 '</div>' +
                                 '<div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height:8px;">' +
@@ -3299,15 +3299,15 @@
                                 '</div>' +
                             '</div>' +
                             '<div class="grid grid-cols-2 gap-2 mb-3">' +
-                                '<div><small class="text-gray-500 block">{{ __('member.templates_member_show_started') }}</small><small class="font-semibold">' + today + '</small></div>' +
-                                '<div class="text-end"><small class="text-gray-500 block">{{ __('member.templates_member_show_target') }}</small><small class="font-semibold">' + escapeHtml(goal.target_date || '') + '</small></div>' +
+                                '<div><small class="text-gray-500 block">{{ __('members::member.templates_member_show_started') }}</small><small class="font-semibold">' + today + '</small></div>' +
+                                '<div class="text-end"><small class="text-gray-500 block">{{ __('members::member.templates_member_show_target') }}</small><small class="font-semibold">' + escapeHtml(goal.target_date || '') + '</small></div>' +
                             '</div>' +
                             '<div class="flex gap-2 flex-wrap">' +
-                                '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary" data-goal-status-badge>{{ __("member.templates_member_show_status_active") }}</span>' +
+                                '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary" data-goal-status-badge>{{ __("members::member.templates_member_show_status_active") }}</span>' +
                                 '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ' + priorityClass + '">' + escapeHtml((goal.priority_level || 'medium').charAt(0).toUpperCase() + (goal.priority_level || 'medium').slice(1)) + '</span>' +
                             '</div>' +
                             (goal.before_proof
-                                ? '<div class="flex gap-2 mt-3"><div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border border-gray-200" alt=""><small class="text-gray-500 block text-center mt-1">{{ __("member.before") }}</small></div></div>'
+                                ? '<div class="flex gap-2 mt-3"><div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border border-gray-200" alt=""><small class="text-gray-500 block text-center mt-1">{{ __("members::member.before") }}</small></div></div>'
                                 : '') +
                         '</div>' +
                     '</div>';
@@ -3346,15 +3346,15 @@
                         const beforePreview = document.getElementById('goal_add_before_photo_preview');
                         if (beforePreview) { beforePreview.src = ''; beforePreview.classList.add('hidden'); }
                         window.dispatchEvent(new CustomEvent('close-goal-add-modal'));
-                        if (window.showToast) window.showToast('success', data.message || '{{ __("member.templates_member_show_goal_created") }}');
+                        if (window.showToast) window.showToast('success', data.message || '{{ __("members::member.templates_member_show_goal_created") }}');
                     } else if (status === 422 && data.errors) {
                         const first = Object.values(data.errors)[0];
                         if (window.showToast) window.showToast('error', Array.isArray(first) ? first[0] : first);
                     } else {
-                        if (window.showToast) window.showToast('error', data.message || '{{ __("member.templates_member_show_could_not_create_goal") }}');
+                        if (window.showToast) window.showToast('error', data.message || '{{ __("members::member.templates_member_show_could_not_create_goal") }}');
                     }
                 })
-                .catch(() => { if (window.showToast) window.showToast('error', '{{ __("member.templates_member_show_network_error_retry") }}'); })
+                .catch(() => { if (window.showToast) window.showToast('error', '{{ __("members::member.templates_member_show_network_error_retry") }}'); })
                 .finally(() => { submitBtn.disabled = false; });
             });
         }
@@ -3370,8 +3370,8 @@
 
             function renderAttendanceRow(r) {
                 const badge = r.status === 'completed'
-                    ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{{ __('member.templates_member_show_status_completed') }}</span>'
-                    : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{{ __('member.templates_member_show_status_no_show') }}</span>';
+                    ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{{ __('members::member.templates_member_show_status_completed') }}</span>'
+                    : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{{ __('members::member.templates_member_show_status_no_show') }}</span>';
                 const tr = document.createElement('tr');
                 tr.innerHTML =
                     '<td class="align-middle"><div class="font-semibold">' + attEscape(r.date) + '</div><small class="text-gray-500">' + attEscape(r.time) + '</small></td>' +
@@ -3409,15 +3409,15 @@
                         if (countEl) countEl.textContent = (parseInt(countEl.textContent, 10) || 0) + 1;
                         attendanceAddForm.reset();
                         window.dispatchEvent(new CustomEvent('close-attendance-add-modal'));
-                        if (window.showToast) window.showToast('success', data.message || '{{ __("member.templates_member_show_attendance_added") }}');
+                        if (window.showToast) window.showToast('success', data.message || '{{ __("members::member.templates_member_show_attendance_added") }}');
                     } else if (status === 422 && data.errors) {
                         const first = Object.values(data.errors)[0];
                         if (window.showToast) window.showToast('error', Array.isArray(first) ? first[0] : first);
                     } else {
-                        if (window.showToast) window.showToast('error', data.message || '{{ __("member.templates_member_show_could_not_add_record") }}');
+                        if (window.showToast) window.showToast('error', data.message || '{{ __("members::member.templates_member_show_could_not_add_record") }}');
                     }
                 })
-                .catch(() => { if (window.showToast) window.showToast('error', '{{ __("member.templates_member_show_network_error_retry") }}'); })
+                .catch(() => { if (window.showToast) window.showToast('error', '{{ __("members::member.templates_member_show_network_error_retry") }}'); })
                 .finally(() => { btn.disabled = false; });
             });
         }
@@ -3477,15 +3477,15 @@
                         if (empty) empty.classList.add('hidden');
                         eventAddForm.reset();
                         window.dispatchEvent(new CustomEvent('close-event-add-modal'));
-                        if (window.showToast) window.showToast('success', data.message || '{{ __("member.templates_member_show_event_added") }}');
+                        if (window.showToast) window.showToast('success', data.message || '{{ __("members::member.templates_member_show_event_added") }}');
                     } else if (status === 422 && data.errors) {
                         const first = Object.values(data.errors)[0];
                         if (window.showToast) window.showToast('error', Array.isArray(first) ? first[0] : first);
                     } else {
-                        if (window.showToast) window.showToast('error', data.message || '{{ __("member.templates_member_show_could_not_add_event") }}');
+                        if (window.showToast) window.showToast('error', data.message || '{{ __("members::member.templates_member_show_could_not_add_event") }}');
                     }
                 })
-                .catch(() => { if (window.showToast) window.showToast('error', '{{ __("member.templates_member_show_network_error_retry") }}'); })
+                .catch(() => { if (window.showToast) window.showToast('error', '{{ __("members::member.templates_member_show_network_error_retry") }}'); })
                 .finally(() => { btn.disabled = false; });
             });
         }
@@ -3644,19 +3644,19 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         if (affiliation.location) {
-            html += `<p class="mb-2"><i class="bi bi-geo-alt me-2"></i><strong>{{ __("member.templates_member_show_location_label") }}</strong> ${affiliation.location}</p>`;
+            html += `<p class="mb-2"><i class="bi bi-geo-alt me-2"></i><strong>{{ __("members::member.templates_member_show_location_label") }}</strong> ${affiliation.location}</p>`;
         }
 
         if (affiliation.description) {
-            html += `<p class="mb-2"><strong>{{ __("member.templates_member_show_description_label") }}</strong> ${affiliation.description}</p>`;
+            html += `<p class="mb-2"><strong>{{ __("members::member.templates_member_show_description_label") }}</strong> ${affiliation.description}</p>`;
         }
 
         if (affiliation.coaches && affiliation.coaches.length > 0) {
-            html += `<p class="mb-2"><strong>{{ __("member.templates_member_show_coaches_label") }}</strong> ${affiliation.coaches.join(', ')}</p>`;
+            html += `<p class="mb-2"><strong>{{ __("members::member.templates_member_show_coaches_label") }}</strong> ${affiliation.coaches.join(', ')}</p>`;
         }
 
         if (affiliation.affiliation_media && affiliation.affiliation_media.length > 0) {
-            html += `<div class="mt-3"><strong>{{ __("member.templates_member_show_media_certificates") }}</strong></div>`;
+            html += `<div class="mt-3"><strong>{{ __("members::member.templates_member_show_media_certificates") }}</strong></div>`;
             html += `<div class="grid grid-cols-2 gap-2 mt-1">`;
 
             affiliation.affiliation_media.forEach(media => {
@@ -3702,22 +3702,22 @@ document.addEventListener('DOMContentLoaded', function() {
         newItem.innerHTML = `
             <div class="grid grid-cols-12 gap-2">
                 <div class="col-span-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_medal_type') }}</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_medal_type') }}</label>
                     <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary medal-type" name="performance_results[${performanceResultIndex}][medal_type]">
-                        <option value="">{{ __('member.templates_member_show_select_medal') }}</option>
-                        <option value="special">{{ __('member.templates_member_show_special_award') }}</option>
-                        <option value="1st">{{ __('member.templates_member_show_first_place') }}</option>
-                        <option value="2nd">{{ __('member.templates_member_show_second_place') }}</option>
-                        <option value="3rd">{{ __('member.templates_member_show_third_place') }}</option>
+                        <option value="">{{ __('members::member.templates_member_show_select_medal') }}</option>
+                        <option value="special">{{ __('members::member.templates_member_show_special_award') }}</option>
+                        <option value="1st">{{ __('members::member.templates_member_show_first_place') }}</option>
+                        <option value="2nd">{{ __('members::member.templates_member_show_second_place') }}</option>
+                        <option value="3rd">{{ __('members::member.templates_member_show_third_place') }}</option>
                     </select>
                 </div>
                 <div class="col-span-3">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_points') }}</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_points') }}</label>
                     <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[${performanceResultIndex}][points]" min="0" step="0.1">
                 </div>
                 <div class="col-span-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_label_description') }}</label>
-                    <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[${performanceResultIndex}][description]" placeholder="{{ __('member.templates_member_show_ph_optional_description') }}">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_label_description') }}</label>
+                    <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[${performanceResultIndex}][description]" placeholder="{{ __('members::member.templates_member_show_ph_optional_description') }}">
                 </div>
                 <div class="col-span-1 flex items-end">
                     <button type="button" class="border border-red-500 text-red-500 px-2 py-1 rounded text-xs hover:bg-red-500 hover:text-white transition-colors remove-result">
@@ -3741,11 +3741,11 @@ document.addEventListener('DOMContentLoaded', function() {
         newItem.innerHTML = `
             <div class="grid grid-cols-12 gap-2">
                 <div class="col-span-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_note_text') }}</label>
-                    <textarea class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[${notesMediaIndex}][note_text]" rows="2" placeholder="{{ __('member.templates_member_show_ph_tournament_notes') }}"></textarea>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_note_text') }}</label>
+                    <textarea class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[${notesMediaIndex}][note_text]" rows="2" placeholder="{{ __('members::member.templates_member_show_ph_tournament_notes') }}"></textarea>
                 </div>
                 <div class="col-span-5">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_media_link') }}</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_media_link') }}</label>
                     <input type="url" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[${notesMediaIndex}][media_link]" placeholder="https://example.com/photo.jpg">
                 </div>
                 <div class="col-span-1 flex items-end">
@@ -3832,7 +3832,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const tMethod = document.getElementById('tournamentFormMethod');
         if (tMethod) tMethod.value = 'POST';
         const tTitle = document.getElementById('tournamentModalTitle');
-        if (tTitle) tTitle.textContent = '{{ __('member.templates_member_show_add_tournament_participation') }}';
+        if (tTitle) tTitle.textContent = '{{ __('members::member.templates_member_show_add_tournament_participation') }}';
         const tWarn = document.getElementById('tournamentEditWarning');
         if (tWarn) tWarn.classList.add('hidden');
         // Alpine owns the date dropdown's state; clearing .value alone wouldn't stick.
@@ -3867,7 +3867,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('tournamentParticipationForm');
         form.action = card.dataset.updateUrl;
         document.getElementById('tournamentFormMethod').value = 'PUT';
-        document.getElementById('tournamentModalTitle').textContent = '{{ __('member.tournament_edit_title') }}';
+        document.getElementById('tournamentModalTitle').textContent = '{{ __('members::member.tournament_edit_title') }}';
         document.getElementById('tournamentEditWarning').classList.toggle('hidden', !t.verified);
 
         form.querySelector('#tournament_title').value = t.title || '';
@@ -3903,8 +3903,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!card || !card.dataset.deleteUrl) return;
 
         const ok = await window.confirmAction({
-            title: '{{ __('member.tournament_delete_confirm_title') }}',
-            message: '{{ __('member.tournament_delete_confirm_body') }}',
+            title: '{{ __('members::member.tournament_delete_confirm_title') }}',
+            message: '{{ __('members::member.tournament_delete_confirm_body') }}',
             type: 'danger',
             confirmText: '{{ __('shared.delete') }}',
         });
@@ -3942,14 +3942,14 @@ document.addEventListener('DOMContentLoaded', function() {
     /** No platform club can confirm this medal → share the profile so peers can vouch. */
     window.shareTournamentForVouch = async function (url) {
         const abs = new URL(url, window.location.origin).href;
-        const text = @js(__('member.vouch_share_text'));
+        const text = @js(__('members::member.vouch_share_text'));
         if (navigator.share) {
             try { await navigator.share({ url: abs, text }); return; }
             catch (e) { if (e && e.name === 'AbortError') return; }
         }
         try {
             await navigator.clipboard.writeText(abs);
-            window.showToast && window.showToast('success', @js(__('member.link_copied')));
+            window.showToast && window.showToast('success', @js(__('members::member.link_copied')));
         } catch (e) {
             window.showToast && window.showToast('info', abs);
         }
@@ -4018,14 +4018,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     window.dispatchEvent(new CustomEvent('member-profile-updated', { detail: { tournament: data.tournament } }));
                 }
-                showAlert(wasEdit ? '{{ __("member.tournament_updated") }}' : '{{ __("member.templates_member_show_tournament_added_success") }}', 'success');
+                showAlert(wasEdit ? '{{ __("members::member.tournament_updated") }}' : '{{ __("members::member.templates_member_show_tournament_added_success") }}', 'success');
             } else {
-                showAlert('{{ __("member.templates_member_show_error_adding_tournament") }}' + (data.message || '{{ __("member.templates_member_show_unknown_error") }}'), 'danger');
+                showAlert('{{ __("members::member.templates_member_show_error_adding_tournament") }}' + (data.message || '{{ __("members::member.templates_member_show_unknown_error") }}'), 'danger');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showAlert('{{ __("member.templates_member_show_error_adding_tournament_retry") }}', 'danger');
+            showAlert('{{ __("members::member.templates_member_show_error_adding_tournament_retry") }}', 'danger');
         });
     });
 
@@ -4045,10 +4045,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mirror of the Blade medal theme — keep the two in sync when either changes.
     const MEDAL_RANK  = { '1st': 4, special: 3, '2nd': 2, '3rd': 1 };
     const MEDAL_THEME = {
-        '1st':     { rail: 'bg-amber-400',  tile: 'bg-amber-50 text-amber-600 ring-amber-100',    chip: 'bg-amber-100 text-amber-800',   icon: 'bi-award-fill',  label: '{{ __('member.templates_member_show_first_place') }}' },
-        '2nd':     { rail: 'bg-slate-300',  tile: 'bg-slate-50 text-slate-500 ring-slate-200',    chip: 'bg-slate-100 text-slate-700',   icon: 'bi-award-fill',  label: '{{ __('member.templates_member_show_second_place') }}' },
-        '3rd':     { rail: 'bg-orange-400', tile: 'bg-orange-50 text-orange-600 ring-orange-100', chip: 'bg-orange-100 text-orange-800', icon: 'bi-award-fill',  label: '{{ __('member.templates_member_show_third_place') }}' },
-        'special': { rail: 'bg-primary',    tile: 'bg-accent text-primary ring-primary/15',       chip: 'bg-accent text-primary',        icon: 'bi-trophy-fill', label: '{{ __('member.templates_member_show_special_award') }}' },
+        '1st':     { rail: 'bg-amber-400',  tile: 'bg-amber-50 text-amber-600 ring-amber-100',    chip: 'bg-amber-100 text-amber-800',   icon: 'bi-award-fill',  label: '{{ __('members::member.templates_member_show_first_place') }}' },
+        '2nd':     { rail: 'bg-slate-300',  tile: 'bg-slate-50 text-slate-500 ring-slate-200',    chip: 'bg-slate-100 text-slate-700',   icon: 'bi-award-fill',  label: '{{ __('members::member.templates_member_show_second_place') }}' },
+        '3rd':     { rail: 'bg-orange-400', tile: 'bg-orange-50 text-orange-600 ring-orange-100', chip: 'bg-orange-100 text-orange-800', icon: 'bi-award-fill',  label: '{{ __('members::member.templates_member_show_third_place') }}' },
+        'special': { rail: 'bg-primary',    tile: 'bg-accent text-primary ring-primary/15',       chip: 'bg-accent text-primary',        icon: 'bi-trophy-fill', label: '{{ __('members::member.templates_member_show_special_award') }}' },
     };
     const MEDAL_NONE = { rail: 'bg-gray-200', tile: 'bg-gray-50 text-gray-400 ring-gray-100', icon: 'bi-flag' };
 
@@ -4082,22 +4082,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 const rt = MEDAL_THEME[r.medal_type];
                 perfHtml += '<div class="flex items-center gap-2 flex-wrap">';
                 if (rt) perfHtml += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${rt.chip}"><i class="bi ${rt.icon}"></i>${rt.label}</span>`;
-                if (r.points) perfHtml += `<span class="text-[11px] font-medium text-gray-500 tabular-nums">${escapeHtml(r.points)} {{ __("member.templates_member_show_pts") }}</span>`;
+                if (r.points) perfHtml += `<span class="text-[11px] font-medium text-gray-500 tabular-nums">${escapeHtml(r.points)} {{ __("members::member.templates_member_show_pts") }}</span>`;
                 perfHtml += '</div>';
                 if (r.description) perfHtml += `<p class="text-[11px] text-gray-400 leading-snug">${escapeHtml(r.description)}</p>`;
             });
             perfHtml += '</div>';
         } else {
-            perfHtml = '<p class="text-xs text-gray-400 italic">{{ __('member.templates_member_show_no_results_recorded') }}</p>';
+            perfHtml = '<p class="text-xs text-gray-400 italic">{{ __('members::member.templates_member_show_no_results_recorded') }}</p>';
         }
 
         let notesHtml = '';
         if (t.notes_media && t.notes_media.length > 0) {
             notesHtml = `<div class="border-t border-gray-50 pt-2.5">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.templates_member_show_th_notes_media') }}</p>`;
+                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('members::member.templates_member_show_th_notes_media') }}</p>`;
             t.notes_media.forEach(n => {
                 if (n.note_text) notesHtml += `<p class="text-xs text-gray-600 leading-snug mb-1">${escapeHtml(n.note_text)}</p>`;
-                if (n.media_link) notesHtml += `<a href="${escapeHtml(n.media_link)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-image"></i>{{ __('member.templates_member_show_view_media') }}</a>`;
+                if (n.media_link) notesHtml += `<a href="${escapeHtml(n.media_link)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-image"></i>{{ __('members::member.templates_member_show_view_media') }}</a>`;
             });
             notesHtml += '</div>';
         }
@@ -4107,13 +4107,13 @@ document.addEventListener('DOMContentLoaded', function() {
             affHtml = `<p class="text-xs font-semibold text-gray-700 truncate">${escapeHtml(t.club_affiliation.club_name)}</p>`;
             if (t.club_affiliation.location) affHtml += `<p class="text-[11px] text-gray-400 truncate">${escapeHtml(t.club_affiliation.location)}</p>`;
         } else {
-            affHtml = '<p class="inline-flex items-center gap-1 text-xs text-gray-500"><i class="bi bi-person"></i>{{ __('member.templates_member_show_individual') }}</p>';
+            affHtml = '<p class="inline-flex items-center gap-1 text-xs text-gray-500"><i class="bi bi-person"></i>{{ __('members::member.templates_member_show_individual') }}</p>';
         }
 
         let meta = `<span class="inline-flex items-center gap-1"><i class="bi bi-calendar-event text-primary/50"></i>${escapeHtml(t.date)}</span>`;
         if (t.time) meta += `<span class="inline-flex items-center gap-1"><i class="bi bi-clock text-primary/50"></i>${escapeHtml(t.time)}</span>`;
         if (t.location) meta += `<span class="inline-flex items-center gap-1 min-w-0"><i class="bi bi-geo-alt text-primary/50"></i><span class="truncate">${escapeHtml(t.location)}</span></span>`;
-        if (t.participants_count) meta += `<span class="inline-flex items-center gap-1"><i class="bi bi-people text-primary/50"></i>${escapeHtml(t.participants_count)} {{ __("member.templates_member_show_participants") }}</span>`;
+        if (t.participants_count) meta += `<span class="inline-flex items-center gap-1"><i class="bi bi-people text-primary/50"></i>${escapeHtml(t.participants_count)} {{ __("members::member.templates_member_show_participants") }}</span>`;
 
         const typeBadge = (t.type === 'championship') ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-700';
 
@@ -4155,11 +4155,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="flex flex-col gap-3 lg:border-s lg:border-gray-100 lg:ps-4">
                     <div>
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{{ __('member.templates_member_show_th_performance_result') }}</p>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{{ __('members::member.templates_member_show_th_performance_result') }}</p>
                         ${perfHtml}
                     </div>
                     <div class="border-t border-gray-50 pt-2.5">
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.representing') }}</p>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('members::member.representing') }}</p>
                         ${affHtml}
                     </div>
                     ${notesHtml}
@@ -4300,28 +4300,28 @@ document.addEventListener('DOMContentLoaded', function() {
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-md border border-gray-200" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b rounded-t-lg">
                     <h5 class="font-medium text-lg flex items-center">
-                        <i class="bi bi-key-fill text-amber-500 me-2"></i>{{ __('member.templates_member_show_reset_password') }}
+                        <i class="bi bi-key-fill text-amber-500 me-2"></i>{{ __('members::member.templates_member_show_reset_password') }}
                     </h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="resetPasswordForm" onsubmit="submitResetPassword(event)">
                     @csrf
                     <div class="p-4 space-y-4">
-                        <p class="text-sm text-gray-500">{{ __('member.templates_member_show_reset_password_for') }} <strong>{{ $relationship->dependent->full_name }}</strong>.</p>
+                        <p class="text-sm text-gray-500">{{ __('members::member.templates_member_show_reset_password_for') }} <strong>{{ $relationship->dependent->full_name }}</strong>.</p>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_new_password') }}</label>
-                            <input type="password" id="resetNewPassword" name="password" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_min_8') }}" required minlength="8">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_new_password') }}</label>
+                            <input type="password" id="resetNewPassword" name="password" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_min_8') }}" required minlength="8">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.templates_member_show_confirm_new_password') }}</label>
-                            <input type="password" id="resetPasswordConfirm" name="password_confirmation" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.templates_member_show_ph_repeat_password') }}" required minlength="8">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.templates_member_show_confirm_new_password') }}</label>
+                            <input type="password" id="resetPasswordConfirm" name="password_confirmation" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.templates_member_show_ph_repeat_password') }}" required minlength="8">
                         </div>
                         <div id="resetPasswordError" class="hidden p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm"></div>
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t bg-gray-50 rounded-b-lg">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
                         <button type="submit" id="resetPasswordSubmitBtn" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
-                            <i class="bi bi-key me-1"></i>{{ __('member.templates_member_show_reset_password') }}
+                            <i class="bi bi-key me-1"></i>{{ __('members::member.templates_member_show_reset_password') }}
                         </button>
                     </div>
                 </form>
@@ -4340,13 +4340,13 @@ function submitResetPassword(e) {
     errEl.classList.add('hidden');
 
     if (newPass !== confirm) {
-        errEl.textContent = '{{ __("member.templates_member_show_passwords_no_match") }}';
+        errEl.textContent = '{{ __("members::member.templates_member_show_passwords_no_match") }}';
         errEl.classList.remove('hidden');
         return;
     }
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>{{ __("member.templates_member_show_resetting") }}';
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>{{ __("members::member.templates_member_show_resetting") }}';
 
     fetch('{{ route('member.reset-password', $relationship->dependent->id) }}', {
         method: 'POST',
@@ -4360,19 +4360,19 @@ function submitResetPassword(e) {
     .then(({ ok, data }) => {
         if (ok) {
             window.dispatchEvent(new CustomEvent('close-reset-password-modal'));
-            showToast('success', '{{ __("member.templates_member_show_reset_success_title") }}', data.message || '{{ __("member.templates_member_show_password_reset_success") }}');
+            showToast('success', '{{ __("members::member.templates_member_show_reset_success_title") }}', data.message || '{{ __("members::member.templates_member_show_password_reset_success") }}');
         } else {
-            errEl.textContent = data.message || (data.errors?.password?.[0] ?? '{{ __("member.templates_member_show_something_wrong") }}');
+            errEl.textContent = data.message || (data.errors?.password?.[0] ?? '{{ __("members::member.templates_member_show_something_wrong") }}');
             errEl.classList.remove('hidden');
         }
     })
     .catch(() => {
-        errEl.textContent = '{{ __("member.templates_member_show_error_occurred_retry") }}';
+        errEl.textContent = '{{ __("members::member.templates_member_show_error_occurred_retry") }}';
         errEl.classList.remove('hidden');
     })
     .finally(() => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-key me-1"></i>{{ __("member.templates_member_show_reset_password") }}';
+        btn.innerHTML = '<i class="bi bi-key me-1"></i>{{ __("members::member.templates_member_show_reset_password") }}';
     });
 }
 </script>
@@ -4388,10 +4388,10 @@ function submitResetPassword(e) {
         <div class="flex min-h-full items-center justify-center p-4">
             <div x-show="open" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-md border border-gray-200 text-center p-6" @click.stop>
                 <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-600 grid place-items-center mx-auto"><i class="bi bi-check-circle-fill text-2xl"></i></div>
-                <h5 class="font-semibold text-lg mt-3">{{ __('member.templates_member_show_new_password_generated') }}</h5>
-                <p class="text-sm text-gray-500 mt-1" x-show="emailed">{{ __('member.templates_member_show_emailed_new_password') }} <strong>{{ $relationship->dependent->full_name }}</strong>.</p>
-                <p class="text-sm text-amber-600 mt-1" x-show="!emailed">{{ __('member.templates_member_show_email_not_sent') }}</p>
-                <button type="button" @click="navigator.clipboard && navigator.clipboard.writeText(password); copied = true; showToast('success', '{{ __("member.templates_member_show_copied_title") }}', '{{ __("member.templates_member_show_password_copied") }}')"
+                <h5 class="font-semibold text-lg mt-3">{{ __('members::member.templates_member_show_new_password_generated') }}</h5>
+                <p class="text-sm text-gray-500 mt-1" x-show="emailed">{{ __('members::member.templates_member_show_emailed_new_password') }} <strong>{{ $relationship->dependent->full_name }}</strong>.</p>
+                <p class="text-sm text-amber-600 mt-1" x-show="!emailed">{{ __('members::member.templates_member_show_email_not_sent') }}</p>
+                <button type="button" @click="navigator.clipboard && navigator.clipboard.writeText(password); copied = true; showToast('success', '{{ __("members::member.templates_member_show_copied_title") }}', '{{ __("members::member.templates_member_show_password_copied") }}')"
                         class="w-full mt-4 flex items-center justify-between gap-2 px-4 py-3 rounded-lg bg-gray-50 border border-dashed border-primary/40 hover:bg-gray-100 transition-colors">
                     <span class="font-mono font-bold text-base tracking-wider select-all" x-text="password"></span>
                     <i class="bi" :class="copied ? 'bi-clipboard-check text-green-600' : 'bi-clipboard text-primary'"></i>
@@ -4404,9 +4404,9 @@ function submitResetPassword(e) {
 <script>
 function regenerateMemberPassword() {
     window.confirmAction({
-        title: '{{ __("member.templates_member_show_generate_password") }}',
-        message: '{{ __("member.templates_member_show_gen_confirm_message", ["name" => addslashes($relationship->dependent->full_name)]) }}',
-        type: 'warning', confirmText: '{{ __("member.templates_member_show_generate") }}',
+        title: '{{ __("members::member.templates_member_show_generate_password") }}',
+        message: '{{ __("members::member.templates_member_show_gen_confirm_message", ["name" => addslashes($relationship->dependent->full_name)]) }}',
+        type: 'warning', confirmText: '{{ __("members::member.templates_member_show_generate") }}',
     }).then(ok => {
         if (!ok) return;
         fetch('{{ route('member.regenerate-password', $relationship->dependent->id) }}', {
@@ -4422,10 +4422,10 @@ function regenerateMemberPassword() {
             if (ok && data.password) {
                 window.dispatchEvent(new CustomEvent('show-generated-password', { detail: { password: data.password, emailed: !!data.emailed } }));
             } else {
-                showToast('error', '{{ __("member.templates_member_show_error_title") }}', data.message || '{{ __("member.templates_member_show_could_not_generate_password") }}');
+                showToast('error', '{{ __("members::member.templates_member_show_error_title") }}', data.message || '{{ __("members::member.templates_member_show_could_not_generate_password") }}');
             }
         })
-        .catch(() => showToast('error', '{{ __("member.templates_member_show_error_title") }}', '{{ __("member.templates_member_show_error_occurred_retry") }}'));
+        .catch(() => showToast('error', '{{ __("members::member.templates_member_show_error_title") }}', '{{ __("members::member.templates_member_show_error_occurred_retry") }}'));
     });
 }
 </script>
@@ -4443,7 +4443,7 @@ function regenerateMemberPassword() {
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-md border-2 border-danger" @click.stop>
                 <div class="flex items-center justify-between p-4 bg-danger text-white rounded-t-lg">
                     <h5 class="font-medium text-lg flex items-center">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ __('member.templates_member_show_delete_account') }}
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ __('members::member.templates_member_show_delete_account') }}
                     </h5>
                     <button type="button" @click="open = false" class="text-white hover:text-gray-200 text-2xl leading-none">&times;</button>
                 </div>
@@ -4456,25 +4456,25 @@ function regenerateMemberPassword() {
                         </div>
 
                         <div class="p-4 rounded-lg bg-red-50 text-red-700 border border-red-200">
-                            <strong>{{ __('member.templates_member_show_delete_warning') }}</strong> {{ __('member.templates_member_show_delete_cannot_undo') }} <strong>{{ $relationship->dependent->full_name }}</strong> {{ __('member.templates_member_show_delete_remove_data') }}
+                            <strong>{{ __('members::member.templates_member_show_delete_warning') }}</strong> {{ __('members::member.templates_member_show_delete_cannot_undo') }} <strong>{{ $relationship->dependent->full_name }}</strong> {{ __('members::member.templates_member_show_delete_remove_data') }}
                         </div>
 
                         <p class="text-gray-500 text-sm mb-3">
-                            {{ __('member.templates_member_show_delete_confirm_instr') }}
+                            {{ __('members::member.templates_member_show_delete_confirm_instr') }}
                         </p>
 
                         <div class="mb-3">
-                            <label for="confirmName" class="block text-sm font-medium text-gray-700 mb-1 font-semibold">{{ __('member.templates_member_show_delete_type_to_confirm', ['name' => $relationship->dependent->full_name]) }}</label>
+                            <label for="confirmName" class="block text-sm font-medium text-gray-700 mb-1 font-semibold">{{ __('members::member.templates_member_show_delete_type_to_confirm', ['name' => $relationship->dependent->full_name]) }}</label>
                             <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="confirmName" name="confirm_name" x-model="confirmName" required>
                             <div class="text-xs text-gray-500 mt-1 text-gray-500">
-                                {{ __('member.templates_member_show_delete_soft_note') }}
+                                {{ __('members::member.templates_member_show_delete_soft_note') }}
                             </div>
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
                         <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50" :disabled="confirmName !== expectedName">
-                            <i class="bi bi-trash me-2"></i>{{ __('member.templates_member_show_delete_account') }}
+                            <i class="bi bi-trash me-2"></i>{{ __('members::member.templates_member_show_delete_account') }}
                         </button>
                     </div>
                 </form>
@@ -4570,7 +4570,7 @@ window.addEventListener('member-profile-updated', function(e) {
                 </div>`
             ).join('') + '</div>';
         } else {
-            ecList.innerHTML = '<div class="text-center py-6"><i class="bi bi-telephone text-gray-300" style="font-size:2rem;"></i><p class="text-gray-400 text-sm mt-2 mb-0">{{ __('member.templates_member_show_no_emergency_contacts') }}</p></div>';
+            ecList.innerHTML = '<div class="text-center py-6"><i class="bi bi-telephone text-gray-300" style="font-size:2rem;"></i><p class="text-gray-400 text-sm mt-2 mb-0">{{ __('members::member.templates_member_show_no_emergency_contacts') }}</p></div>';
         }
     }
 
@@ -4585,13 +4585,13 @@ window.addEventListener('member-profile-updated', function(e) {
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-sm text-gray-800">${d.type || '—'}</div>
                         <div class="text-xs text-gray-500 font-mono">${d.number || ''}</div>
-                        ${d.uploaded_at ? `<div class="text-xs text-gray-400">{{ __("member.templates_member_show_uploaded") }} ${d.uploaded_at}</div>` : ''}
+                        ${d.uploaded_at ? `<div class="text-xs text-gray-400">{{ __("members::member.templates_member_show_uploaded") }} ${d.uploaded_at}</div>` : ''}
                     </div>
                     ${d.file_path ? `<button type="button" data-media-lightbox data-src="/file/${d.file_path}" data-label="${d.type || ''}" class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors"><i class="bi bi-eye" style="font-size:0.85rem;"></i></button>` : ''}
                 </div>`
             ).join('') + '</div>';
         } else {
-            docsList.innerHTML = '<div class="text-center py-6"><i class="bi bi-file-earmark text-gray-300" style="font-size:2rem;"></i><p class="text-gray-400 text-sm mt-2 mb-0">{{ __('member.templates_member_show_no_documents') }}</p></div>';
+            docsList.innerHTML = '<div class="text-center py-6"><i class="bi bi-file-earmark text-gray-300" style="font-size:2rem;"></i><p class="text-gray-400 text-sm mt-2 mb-0">{{ __('members::member.templates_member_show_no_documents') }}</p></div>';
         }
     }
 
@@ -4606,7 +4606,7 @@ window.addEventListener('member-profile-updated', function(e) {
                     <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5"><i class="bi bi-exclamation-circle-fill text-amber-500"></i></div>
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-sm text-gray-800">${c.condition || '—'}</div>
-                        ${c.noted_at ? `<div class="text-xs text-gray-400 mt-0.5">{{ __("member.templates_member_show_noted") }} ${c.noted_at}</div>` : ''}
+                        ${c.noted_at ? `<div class="text-xs text-gray-400 mt-0.5">{{ __("members::member.templates_member_show_noted") }} ${c.noted_at}</div>` : ''}
                         ${c.notes ? `<div class="text-xs text-gray-500 mt-1">${c.notes}</div>` : ''}
                     </div>
                 </div>`

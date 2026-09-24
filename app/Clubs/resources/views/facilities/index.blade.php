@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 @section('club-admin-content')
 <div class="space-y-8" id="facilitiesContainer" x-data="{ showAddFacilityModal: false, showEditFacilityModal: false, editingFacility: null, lang: 'en' }" @open-edit-facility.window="showEditFacilityModal = true" @close-edit-facility.window="showEditFacilityModal = false" @close-add-facility.window="showAddFacilityModal = false">

@@ -1,4 +1,4 @@
-@extends('layouts.personal-mobile')
+@extends('members::layouts.personal-mobile')
 
 @section('title', __('challenge.personal_challenge_create_page_title'))
 
@@ -433,7 +433,7 @@
                 <div x-show="locMode==='map'" x-cloak class="space-y-2" @location-changed="gps_lat = $event.detail.lat; gps_long = $event.detail.lng">
                     <input x-model="location" type="text" placeholder="{{ __('challenge.personal_challenge_create_map_place_placeholder') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                    <x-location-map id="duelLocMap" height="10rem" :zoom="13" :show-labels="false" />
+                    <x-fields.location-map id="duelLocMap" height="10rem" :zoom="13" :show-labels="false" />
                 </div>
 
                 {{-- Maps link --}}

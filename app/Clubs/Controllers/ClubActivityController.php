@@ -3,13 +3,13 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreActivityRequest;
-use App\Http\Requests\Admin\UpdateActivityRequest;
+use App\Clubs\Requests\StoreActivityRequest;
+use App\Clubs\Requests\UpdateActivityRequest;
 use App\Clubs\Models\ClubActivity;
 use App\Clubs\Models\ClubActivityEquipment;
 use App\Clubs\Models\ClubFacility;
 use App\Clubs\Models\Tenant;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
 use Illuminate\Support\Facades\Storage;
@@ -76,7 +76,7 @@ class ClubActivityController extends Controller
         $activities = ClubActivity::where('tenant_id', $clubId)->with('facility')->get();
         $facilities = ClubFacility::where('tenant_id', $clubId)->get();
 
-        return view(\App\Support\ClubView::pick('activities', 'clubs'), compact('club', 'activities', 'facilities'));
+        return view(\App\Clubs\Support\ClubView::pick('activities', 'clubs'), compact('club', 'activities', 'facilities'));
     }
 
     /**

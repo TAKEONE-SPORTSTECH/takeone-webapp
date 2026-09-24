@@ -100,14 +100,42 @@ class LangFileCatalog
      * nobody outside the club will ever open.
      */
     private const EVENT_SURFACE_DIRS = [
-        'resources/views/entry',
+        'app/Events/resources/views/entry',
         'resources/views/components/bracket',
         'app/Events',
         'app/Sports/Combat',
     ];
 
+    /*
+     * Parts of app/Events that are NOT the visitor's event surface — the
+     * organiser's consoles, controllers, commands, device pages and the
+     * module's own routes/migrations/config. They moved in from the flat
+     * folders on 2026-09-23 and were never part of this definition, so the
+     * walk over app/Events skips them. PublicEventController and BoutStage are
+     * still named explicitly below.
+     */
+    private const EVENT_SURFACE_EXCLUDE = [
+        'app/Events/resources/views/personal/',
+        'app/Events/resources/views/camera/',
+        'app/Events/resources/views/screen/',
+        'app/Events/resources/views/emails/',
+        'app/Events/Controllers/',
+        'app/Events/Commands/',
+        'app/Events/Jobs/',
+        'app/Events/Mail/',
+        'app/Events/Observers/',
+        'app/Events/Middleware/',
+        'app/Events/database/',
+        'app/Events/config/',
+        'app/Events/Helpers/',
+        'app/Events/routes.php',
+        'app/Events/Support/SealedRequest.php',
+        'app/Events/Support/SportLabel.php',
+        'app/Events/Support/DocumentUpload.php',
+    ];
+
     private const EVENT_SURFACE_FILES = [
-        'resources/views/partials/event-*.blade.php',
+        'app/Events/resources/views/partials/event-*.blade.php',
         'resources/views/partials/toast-host.blade.php',
         'resources/views/components/event-*.blade.php',
         'resources/views/components/entrant-card.blade.php',
@@ -122,9 +150,9 @@ class LangFileCatalog
         'resources/views/components/select-menu.blade.php',
         'resources/views/components/date-picker.blade.php',
         'app/Media/Bout*.php',
-        'app/Http/Controllers/PublicEventController.php',
+        'app/Events/Controllers/PublicEventController.php',
         'app/Translation/Controllers/*.php',
-        'app/Support/BoutStage.php',
+        'app/Events/Support/BoutStage.php',
     ];
 
     /**
@@ -211,8 +239,11 @@ class LangFileCatalog
                 // `resources/` inside a module holds views and lang files; the
                 // views are wanted, the lang files are the OUTPUT of this and
                 // scanning them would be circular.
+                $relative = str_replace(base_path().'/', '', $file->getPathname());
+
                 if ($file->isFile() && $file->getExtension() === 'php'
-                    && ! str_contains($file->getPathname(), '/resources/lang/')) {
+                    && ! str_contains($file->getPathname(), '/resources/lang/')
+                    && ! \Illuminate\Support\Str::startsWith($relative, self::EVENT_SURFACE_EXCLUDE)) {
                     $files[] = $file->getPathname();
                 }
             }
@@ -299,7 +330,10 @@ class LangFileCatalog
         return array_filter(
             $all,
             fn ($f, $id) => in_array($f['group'], $groups, true)
-                || (in_array($tier, ['event', 'visitor'], true) && $f['namespace'] !== null),
+                || (in_array($tier, ['event', 'visitor'], true) && $f['namespace'] !== null
+                    // The Clubs/Members modules' own files (member, family, …)
+                    // keep the tier their group had in lang/.
+                    && ! in_array($f['group'], [...self::MEMBER, ...self::STAFF], true)),
             ARRAY_FILTER_USE_BOTH,
         );
     }

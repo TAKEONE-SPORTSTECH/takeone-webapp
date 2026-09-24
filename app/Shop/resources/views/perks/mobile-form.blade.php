@@ -173,7 +173,7 @@ window.perkFormSheet = function () {
                 {{-- ===== Basic info ===== --}}
                 <div class="space-y-4">
                     <h6 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ __('admin.partials_perk_form_fields_title') }}</h6>
-                    <x-lang-toggle class="mb-1" />
+                    <x-fields.language-toggle class="mb-1" />
 
                     <div>
                         <label class="form-label">{{ __('admin.partials_perk_form_fields_title') }} <span class="text-red-500">*</span></label>
@@ -196,7 +196,7 @@ window.perkFormSheet = function () {
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">{{ __('admin.partials_perk_form_fields_status') }}</label>
-                            <x-select-menu model="status" name="status"
+                            <x-fields.select model="status" name="status"
                                 :options="[
                                     ['value' => 'active', 'label' => __('admin.partials_perk_form_fields_active')],
                                     ['value' => 'inactive', 'label' => __('admin.partials_perk_form_fields_inactive')],
@@ -275,7 +275,7 @@ window.perkFormSheet = function () {
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="form-label text-xs">{{ __('admin.partials_perk_form_fields_perk_type') }} <span class="text-red-500">*</span></label>
-                            <x-select-menu model="perk_type" name="perk_type"
+                            <x-fields.select model="perk_type" name="perk_type"
                                 :options="[
                                     ['value' => 'code', 'label' => __('admin.partials_perk_form_fields_promo_code')],
                                     ['value' => 'qr', 'label' => __('admin.partials_perk_form_fields_qr_code')],

@@ -150,10 +150,10 @@
              class="bk-banner absolute top-3 inset-x-3 z-30 flex items-center gap-2 px-3 py-2 rounded-xl
                     shadow-lg text-xs font-bold pointer-events-none">
             <i class="bi bi-arrows-move"></i>
-            <span x-show="!picked">{{ __('events.bracket_arrange_hint') }}</span>
+            <span x-show="!picked">{{ __('events::events.bracket_arrange_hint') }}</span>
             <span x-show="picked" x-cloak>
-                {{ __('events.bracket_holding') }} <span x-text="picked" class="underline"></span> —
-                {{ __('events.bracket_tap_to_place') }}
+                {{ __('events::events.bracket_holding') }} <span x-text="picked" class="underline"></span> —
+                {{ __('events::events.bracket_tap_to_place') }}
             </span>
         </div>
 
@@ -192,19 +192,19 @@
             <button type="button" @click="window.BracketBoard.zoomIn()"
                     class="bk-ctl w-10 h-10 rounded-xl border flex items-center justify-center
                            shadow-lg transition-all active:scale-95"
-                    title="{{ __('events.bracket_zoom_in') }}">
+                    title="{{ __('events::events.bracket_zoom_in') }}">
                 <i class="bi bi-plus-lg"></i>
             </button>
             <button type="button" @click="window.BracketBoard.zoomOut()"
                     class="bk-ctl w-10 h-10 rounded-xl border flex items-center justify-center
                            shadow-lg transition-all active:scale-95"
-                    title="{{ __('events.bracket_zoom_out') }}">
+                    title="{{ __('events::events.bracket_zoom_out') }}">
                 <i class="bi bi-dash-lg"></i>
             </button>
             <button type="button" @click="window.BracketBoard.fit()"
                     class="bk-ctl w-10 h-10 rounded-xl border flex items-center justify-center
                            shadow-lg transition-all active:scale-95"
-                    title="{{ __('events.bracket_fit') }}">
+                    title="{{ __('events::events.bracket_fit') }}">
                 <i class="bi bi-arrows-angle-contract"></i>
             </button>
         </div>
@@ -214,7 +214,7 @@
              class="bk-locked absolute top-3 z-20 px-2.5 py-1 rounded-full backdrop-blur border
                     text-[0.6rem] font-extrabold flex items-center gap-1.5
                     {{ $rtl ? 'right-3' : 'left-3' }}">
-            <i class="bi bi-lock-fill"></i> {{ __('events.bracket_locked') }}
+            <i class="bi bi-lock-fill"></i> {{ __('events::events.bracket_locked') }}
         </div>
 
         {{-- Legend — inside the board, floating on its bottom edge. It reads the
@@ -233,9 +233,9 @@
                     flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem]
                     {{-- clears the zoom/arrange control column, which shares this edge --}}
                     {{ $rtl ? 'right-3 left-16' : 'left-3 right-16' }}">
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#d8b25f"></span>{{ __('events.bracket_legend_provisional') }}</span>
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#2ecc71"></span>{{ __('events.bracket_legend_done') }}</span>
-            <span class="flex items-center gap-1.5"><i class="bi bi-hand-index-thumb"></i>{{ __('events.bracket_legend_gestures') }}</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#d8b25f"></span>{{ __('events::events.bracket_legend_provisional') }}</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#2ecc71"></span>{{ __('events::events.bracket_legend_done') }}</span>
+            <span class="flex items-center gap-1.5"><i class="bi bi-hand-index-thumb"></i>{{ __('events::events.bracket_legend_gestures') }}</span>
         </div>
     </div>
 </div>
@@ -275,17 +275,17 @@
             myCompetitorIds: @json(array_values((array) $myCompetitorIds)),
             rtl: {{ $rtl ? 'true' : 'false' }},
             text: {
-                tbd: @json(__('events.bracket_tbd')),
-                bye: @json(__('events.bracket_bye')),
-                bench: @json(__('events.bracket_bench')),
-                benchEmpty: @json(__('events.bracket_bench_empty')),
-                provisional: @json(__('events.bracket_legend_provisional')),
-                noDraw: @json(__('events.bracket_no_draw')),
-                loadFailed: @json(__('events.bracket_load_failed')),
-                moveFailed: @json(__('events.bracket_move_failed')),
-                clearTitle: @json(__('events.bracket_clear_title')),
-                clearMessage: @json(__('events.bracket_clear_message')),
-                clearConfirm: @json(__('events.bracket_clear_confirm')),
+                tbd: @json(__('events::events.bracket_tbd')),
+                bye: @json(__('events::events.bracket_bye')),
+                bench: @json(__('events::events.bracket_bench')),
+                benchEmpty: @json(__('events::events.bracket_bench_empty')),
+                provisional: @json(__('events::events.bracket_legend_provisional')),
+                noDraw: @json(__('events::events.bracket_no_draw')),
+                loadFailed: @json(__('events::events.bracket_load_failed')),
+                moveFailed: @json(__('events::events.bracket_move_failed')),
+                clearTitle: @json(__('events::events.bracket_clear_title')),
+                clearMessage: @json(__('events::events.bracket_clear_message')),
+                clearConfirm: @json(__('events::events.bracket_clear_confirm')),
                 /* The podium card the canvas draws. Its words come from here
                    rather than from the JS, so the board says "Champion" in the
                    reader's own language like everything else on it. */
@@ -295,23 +295,23 @@
                 place3: @json(__('personal.event_show_third_place')),
                 /* The draft's own vocabulary — the strip across a bout, the
                    two kinds of empty corner, and the holding basket. */
-                match: @json(__('events.bracket_match')),
-                mat: @json(__('events.bracket_mat')),
-                byeNoBout: @json(__('events.bracket_bye_no_bout')),
-                awaiting: @json(__('events.bracket_awaiting')),
-                champion: @json(__('events.bracket_champion')),
-                championPending: @json(__('events.bracket_champion_pending')),
-                toBeDecided: @json(__('events.bracket_to_be_decided')),
-                basket: @json(__('events.bracket_basket')),
-                basketHint: @json(__('events.bracket_basket_hint')),
-                semifinalLoser: @json(__('events.bracket_semifinal_loser')),
-                score: @json(__('events.bracket_score')),
-                removeToBye: @json(__('events.bracket_remove_to_bye')),
-                outcomeFailed: @json(__('events.bracket_outcome_failed')),
-                renameFailed: @json(__('events.bracket_rename_failed')),
+                match: @json(__('events::events.bracket_match')),
+                mat: @json(__('events::events.bracket_mat')),
+                byeNoBout: @json(__('events::events.bracket_bye_no_bout')),
+                awaiting: @json(__('events::events.bracket_awaiting')),
+                champion: @json(__('events::events.bracket_champion')),
+                championPending: @json(__('events::events.bracket_champion_pending')),
+                toBeDecided: @json(__('events::events.bracket_to_be_decided')),
+                basket: @json(__('events::events.bracket_basket')),
+                basketHint: @json(__('events::events.bracket_basket_hint')),
+                semifinalLoser: @json(__('events::events.bracket_semifinal_loser')),
+                score: @json(__('events::events.bracket_score')),
+                removeToBye: @json(__('events::events.bracket_remove_to_bye')),
+                outcomeFailed: @json(__('events::events.bracket_outcome_failed')),
+                renameFailed: @json(__('events::events.bracket_rename_failed')),
                 dismiss: @json(__('shared.close')),
-                bgBadType: @json(__('events.bracket_bg_bad_type')),
-                bgTooBig: @json(__('events.bracket_bg_too_big')),
+                bgBadType: @json(__('events::events.bracket_bg_bad_type')),
+                bgTooBig: @json(__('events::events.bracket_bg_too_big')),
             },
         });
     };

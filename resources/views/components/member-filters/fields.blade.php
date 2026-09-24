@@ -154,8 +154,8 @@
             {{ __('platform.filter_joined') }}
         </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <x-date-picker model="f.joined_from" :placeholder="__('platform.filter_from')" />
-            <x-date-picker model="f.joined_to" :placeholder="__('platform.filter_to_date')" />
+            <x-fields.date model="f.joined_from" :placeholder="__('platform.filter_from')" />
+            <x-fields.date model="f.joined_to" :placeholder="__('platform.filter_to_date')" />
         </div>
     </div>
 </div>

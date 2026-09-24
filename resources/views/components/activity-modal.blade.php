@@ -115,7 +115,7 @@
                             </div>
                         </div>
 
-                        <x-lang-toggle class="mb-4" />
+                        <x-fields.language-toggle class="mb-4" />
 
                         <!-- Activity Title -->
                         <div class="space-y-2">
@@ -176,7 +176,7 @@
                                 {{ __('shared.components_activity_modal_description') }}
                             </label>
                             <div x-show="lang==='en'">
-                                <x-rich-text-editor
+                                <x-fields.rich-text
                                     name="description"
                                     id="{{ $prefix }}ActivityDescRte"
                                     :value="old('description', data_get($activity ?? null, 'description'))"
@@ -185,7 +185,7 @@
                                     ai-group="activity_desc_{{ $prefix }}" />
                             </div>
                             <div x-show="lang==='ar'" x-cloak>
-                                <x-rich-text-editor
+                                <x-fields.rich-text
                                     name="translations[description][ar]"
                                     id="{{ $prefix }}ActivityDescRteAr"
                                     dir="rtl"

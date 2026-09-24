@@ -196,7 +196,7 @@ abstract class AbstractEventType implements EventType
 
     public function performAction(ClubEvent $event, string $action, array $payload = []): array
     {
-        return ['success' => false, 'message' => __('events.action_unsupported')];
+        return ['success' => false, 'message' => __('events::events.action_unsupported')];
     }
 
     public function availableActions(ClubEvent $event): array
@@ -289,8 +289,8 @@ abstract class AbstractEventType implements EventType
         $milestones = [
             new Milestone(
                 key: 'created',
-                title: __('events.notify_created_title', ['title' => $event->title]),
-                body: __('events.notify_created_body', [
+                title: __('events::events.notify_created_title', ['title' => $event->title]),
+                body: __('events::events.notify_created_body', [
                     'club' => $event->tenant?->club_name ?? '',
                     'date' => $event->date ? Cldr::shortDate($event->date) : '',
                 ]),
@@ -303,8 +303,8 @@ abstract class AbstractEventType implements EventType
         if ($event->enrollment_starts_at) {
             $milestones[] = new Milestone(
                 key: 'enrolment_opens',
-                title: __('events.notify_enrolment_open_title', ['title' => $event->title]),
-                body: __('events.notify_enrolment_open_body'),
+                title: __('events::events.notify_enrolment_open_title', ['title' => $event->title]),
+                body: __('events::events.notify_enrolment_open_body'),
                 at: $event->enrollment_starts_at->copy()->startOfDay(),
                 audience: Milestone::AUDIENCE_SCOPE,
                 icon: 'bi-door-open',
@@ -314,8 +314,8 @@ abstract class AbstractEventType implements EventType
         if ($event->enrollment_ends_at) {
             $milestones[] = new Milestone(
                 key: 'enrolment_closing',
-                title: __('events.notify_enrolment_closing_title', ['title' => $event->title]),
-                body: __('events.notify_enrolment_closing_body', [
+                title: __('events::events.notify_enrolment_closing_title', ['title' => $event->title]),
+                body: __('events::events.notify_enrolment_closing_body', [
                     'date' => Cldr::shortDate($event->enrollment_ends_at),
                 ]),
                 at: $event->enrollment_ends_at->copy()->subDays($leadDays)->startOfDay(),
@@ -325,8 +325,8 @@ abstract class AbstractEventType implements EventType
 
             $milestones[] = new Milestone(
                 key: 'enrolment_closed',
-                title: __('events.notify_enrolment_closed_title', ['title' => $event->title]),
-                body: __('events.notify_enrolment_closed_body'),
+                title: __('events::events.notify_enrolment_closed_title', ['title' => $event->title]),
+                body: __('events::events.notify_enrolment_closed_body'),
                 // The moment the door actually shuts, from EntryWindow — so the
                 // "entries have closed" notice never lands hours before or after
                 // the gate it is announcing.
@@ -338,8 +338,8 @@ abstract class AbstractEventType implements EventType
 
         $milestones[] = new Milestone(
             key: 'event_day',
-            title: __('events.notify_event_day_title', ['title' => $event->title]),
-            body: __('events.notify_event_day_body', ['time' => $when, 'place' => $where]),
+            title: __('events::events.notify_event_day_title', ['title' => $event->title]),
+            body: __('events::events.notify_event_day_body', ['time' => $when, 'place' => $where]),
             at: $this->localMorningOfEvent($event),
             audience: Milestone::AUDIENCE_REGISTRANTS,
             icon: 'bi-alarm',

@@ -20,10 +20,10 @@
         <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
-                    <i class="bi bi-box"></i> {{ $activeSubs }} {{ __('member.active') }}
+                    <i class="bi bi-box"></i> {{ $activeSubs }} {{ __('members::member.active') }}
                 </span>
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
-                    <i class="bi bi-building"></i> {{ $subClubs }} {{ __('member.clubs') }}
+                    <i class="bi bi-building"></i> {{ $subClubs }} {{ __('members::member.clubs') }}
                 </span>
             </div>
             <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('nav.my_packages') }}</h1>

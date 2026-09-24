@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', __('settings.title'))
+@section('title', __('members::settings.title'))
 
 @section('content')
 <div class="px-4 sm:px-6 lg:px-8 py-6">
@@ -13,10 +13,10 @@
         <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
-                    <i class="bi bi-gear"></i> {{ __('settings.title') }}
+                    <i class="bi bi-gear"></i> {{ __('members::settings.title') }}
                 </span>
             </div>
-            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('settings.title') }}</h1>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('members::settings.title') }}</h1>
             <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5">
                 <i class="bi bi-person"></i>{{ $user->full_name }}
             </p>
@@ -26,7 +26,7 @@
     <div class="space-y-6">
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="font-semibold text-foreground mb-3">{{ __('settings.account') }}</h3>
+        <h3 class="font-semibold text-foreground mb-3">{{ __('members::settings.account') }}</h3>
         <div class="space-y-3 text-sm">
             <div class="flex items-center gap-3"><i class="bi bi-person text-muted-foreground w-5"></i><span class="text-foreground">{{ $user->full_name }}</span></div>
             <div class="flex items-center gap-3"><i class="bi bi-envelope text-muted-foreground w-5"></i><span class="text-foreground truncate">{{ $user->email }}</span></div>
@@ -35,8 +35,8 @@
 
     {{-- Language --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="font-semibold text-foreground mb-0.5">{{ __('settings.language') }}</h3>
-        <p class="text-xs text-muted-foreground mb-3">{{ __('settings.language_hint') }}</p>
+        <h3 class="font-semibold text-foreground mb-0.5">{{ __('members::settings.language') }}</h3>
+        <p class="text-xs text-muted-foreground mb-3">{{ __('members::settings.language_hint') }}</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             @foreach(config('locales') as $code => $meta)
                 @php $isCurrent = app()->getLocale() === $code; @endphp
@@ -78,9 +78,9 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-        <a href="{{ route('member.show', $user->uuid) }}" class="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors"><span class="text-sm text-foreground"><i class="bi bi-person-gear me-2 text-muted-foreground"></i>{{ __('settings.edit_profile') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
-        <a href="{{ route('security.show') }}" class="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors"><span class="text-sm text-foreground"><i class="bi bi-shield-lock me-2 text-muted-foreground"></i>{{ __('settings.security_password') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
-        <a href="{{ route('bills.index') }}" class="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors"><span class="text-sm text-foreground"><i class="bi bi-receipt me-2 text-muted-foreground"></i>{{ __('settings.invoices') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
+        <a href="{{ route('member.show', $user->uuid) }}" class="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors"><span class="text-sm text-foreground"><i class="bi bi-person-gear me-2 text-muted-foreground"></i>{{ __('members::settings.edit_profile') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
+        <a href="{{ route('security.show') }}" class="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors"><span class="text-sm text-foreground"><i class="bi bi-shield-lock me-2 text-muted-foreground"></i>{{ __('members::settings.security_password') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
+        <a href="{{ route('bills.index') }}" class="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors"><span class="text-sm text-foreground"><i class="bi bi-receipt me-2 text-muted-foreground"></i>{{ __('members::settings.invoices') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
     </div>
 </div>
 </div>

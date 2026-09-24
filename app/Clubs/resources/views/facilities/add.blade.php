@@ -33,7 +33,7 @@
                         <div class="space-y-4">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">{{ __('admin.club_facilities_add_basic_information') }}</h6>
 
-                            <x-lang-toggle class="mb-4" />
+                            <x-fields.language-toggle class="mb-4" />
 
                             <!-- Facility Name -->
                             <div class="space-y-2">
@@ -74,7 +74,7 @@
                                 <i class="bi bi-geo-alt"></i>
                                 {{ __('admin.club_facilities_add_location') }}
                             </h6>
-                            <x-location-map
+                            <x-fields.location-map
                                 id="addFacility"
                                 latName="latitude"
                                 lngName="longitude"

@@ -144,11 +144,11 @@ class DrawWaitingRoom
         $starts = $this->startsAt($event);
 
         if ($weighIn && $weighIn->isFuture()) {
-            return ['target' => 'weigh_in', 'at' => $weighIn->toIso8601String(), 'label' => __('events.waiting_until_weigh_in')];
+            return ['target' => 'weigh_in', 'at' => $weighIn->toIso8601String(), 'label' => __('events::events.waiting_until_weigh_in')];
         }
 
         if ($starts && $starts->isFuture() && ! $event->hasStarted()) {
-            return ['target' => 'start', 'at' => $starts->toIso8601String(), 'label' => __('events.waiting_until_start')];
+            return ['target' => 'start', 'at' => $starts->toIso8601String(), 'label' => __('events::events.waiting_until_start')];
         }
 
         return ['target' => null, 'at' => null, 'label' => null];

@@ -40,8 +40,26 @@ class InterfaceTranslation extends Model
      */
     public static function splitFileId(string $id): array
     {
-        return str_contains($id, '::')
-            ? [strtok($id, ':'), substr($id, strpos($id, '::') + 2)]
-            : [null, $id];
+        if (str_contains($id, '::')) {
+            return [strtok($id, ':'), substr($id, strpos($id, '::') + 2)];
+        }
+
+        // A lang file that moved into its module (2026-09-23) is still
+        // reachable by its old bare id, so a caller that learned "club" or
+        // "events" before the move writes where the page reads, instead of
+        // into a row nothing renders.
+        if (isset(self::MOVED_GROUPS[$id]) && ! is_file(lang_path('en/'.$id.'.php'))) {
+            return [self::MOVED_GROUPS[$id], $id];
+        }
+
+        return [null, $id];
     }
+
+    /** Bare lang groups that now live in a module, → that module's namespace. */
+    private const MOVED_GROUPS = [
+        'club' => 'clubs', 'business' => 'clubs', 'explore' => 'clubs',
+        'member' => 'members', 'family' => 'members', 'messenger' => 'members',
+        'settings' => 'members', 'security' => 'members',
+        'events' => 'events',
+    ];
 }

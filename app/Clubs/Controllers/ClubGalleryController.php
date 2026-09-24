@@ -3,12 +3,12 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\GalleryUploadRequest;
-use App\Http\Requests\Admin\ReorderGalleryRequest;
-use App\Http\Requests\Admin\SaveYoutubeUrlRequest;
+use App\Clubs\Requests\GalleryUploadRequest;
+use App\Clubs\Requests\ReorderGalleryRequest;
+use App\Clubs\Requests\SaveYoutubeUrlRequest;
 use App\Clubs\Models\ClubGalleryImage;
 use App\Clubs\Models\Tenant;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Support\Facades\Storage;
 
 class ClubGalleryController extends Controller
@@ -22,7 +22,7 @@ class ClubGalleryController extends Controller
         $clubId = $club->id;
         $images = ClubGalleryImage::where('tenant_id', $clubId)->orderBy('display_order')->orderBy('id')->get();
 
-        return view(\App\Support\ClubView::pick('gallery', 'clubs'), compact('club', 'images'));
+        return view(\App\Clubs\Support\ClubView::pick('gallery', 'clubs'), compact('club', 'images'));
     }
 
     public function uploadGallery(GalleryUploadRequest $request, Tenant $club)

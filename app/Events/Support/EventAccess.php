@@ -161,10 +161,10 @@ class EventAccess
     public function drawHiddenMessage(ClubEvent $event): string
     {
         if (($event->draw_reveal ?? ClubEvent::DRAW_ALWAYS) === ClubEvent::DRAW_START_DAY && $event->date) {
-            return __('events.draw_hidden_until', ['date' => Cldr::skeleton($event->date, 'EEEdMMM', 'D j M')]);
+            return __('events::events.draw_hidden_until', ['date' => Cldr::skeleton($event->date, 'EEEdMMM', 'D j M')]);
         }
 
-        return __('events.draw_hidden_msg');
+        return __('events::events.draw_hidden_msg');
     }
 
     public function drawVisible(ClubEvent $event, ?User $user = null): bool

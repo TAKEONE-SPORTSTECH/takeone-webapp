@@ -3,13 +3,13 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\RoleRequest;
+use App\Clubs\Requests\RoleRequest;
 use App\Clubs\Models\ClubMemberSubscription;
 use App\Members\Models\Permission;
 use App\Members\Models\Role;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -52,7 +52,7 @@ class ClubRoleController extends Controller
 
         // Packages for the walk-in "Add Member" modal reused on this page.
         $packages = \App\Clubs\Models\ClubPackage::where('tenant_id', $clubId)->with('activities.equipment')->get();
-        app(\App\Services\RegistrationCostService::class)->attachEquipmentToPackages($packages, $clubId);
+        app(\App\Clubs\Support\RegistrationCostService::class)->attachEquipmentToPackages($packages, $clubId);
 
         // Roles shown in the assign dropdown / member badges — every assignable role
         // (excludes super-admin platform role and the implicit "member" default), so
@@ -103,7 +103,7 @@ class ClubRoleController extends Controller
                 ->pluck('name')->values()->all(),
         ])->values();
 
-        return view(\App\Support\ClubView::pick('roles', 'clubs'), compact(
+        return view(\App\Clubs\Support\ClubView::pick('roles', 'clubs'), compact(
             'club', 'members', 'availableRoles', 'rolesData', 'groupsData', 'canEdit', 'totalPerms', 'packages', 'roleHolders'
         ));
     }

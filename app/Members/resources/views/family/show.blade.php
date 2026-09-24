@@ -23,8 +23,8 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
         <div>
-            <h2 class="font-bold mb-1">{{ __('member.family_show_member_profile') }}</h2>
-            <p class="text-muted mb-0">{{ __('member.family_show_member_subtitle') }}</p>
+            <h2 class="font-bold mb-1">{{ __('members::member.family_show_member_profile') }}</h2>
+            <p class="text-muted mb-0">{{ __('members::member.family_show_member_subtitle') }}</p>
         </div>
     </div>
 
@@ -43,7 +43,7 @@
                     <button type="button"
                             onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('open-photo-edit-modal'));"
                             class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-primary hover:bg-accent transition-colors"
-                            aria-label="{{ __('member.templates_member_show_edit_photo') }}">
+                            aria-label="{{ __('members::member.templates_member_show_edit_photo') }}">
                         <i class="bi bi-pencil-fill text-sm"></i>
                     </button>
                 @endif
@@ -57,22 +57,22 @@
                         <div>
                             <div class="dropdown">
                                 <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-lightning"></i> {{ __('member.family_show_action') }}
+                                    <i class="bi bi-lightning"></i> {{ __('members::member.family_show_action') }}
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1" aria-labelledby="actionDropdown" style="min-width: 280px; border-radius: 0.75rem; overflow: hidden;">
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('open-attendance-add-modal'));"><i class="bi bi-calendar-check text-success flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('member.family_show_add_attendance_record') }}</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('open-event-add-modal'));"><i class="bi bi-calendar-event text-info flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('member.family_show_add_event_participation') }}</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse text-danger flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('member.family_show_add_health_update') }}</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award text-warning flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('member.family_show_add_tournament_participation') }}</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('open-attendance-add-modal'));"><i class="bi bi-calendar-check text-success flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('members::member.family_show_add_attendance_record') }}</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('open-event-add-modal'));"><i class="bi bi-calendar-event text-info flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('members::member.family_show_add_event_participation') }}</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse text-danger flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('members::member.family_show_add_health_update') }}</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award text-warning flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('members::member.family_show_add_tournament_participation') }}</a></li>
                                     <li><hr class="dropdown-divider my-1"></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('open-profile-modal'));"><i class="bi bi-pencil text-secondary flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('member.family_show_edit_info') }}</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('open-goal-add-modal'));"><i class="bi bi-bullseye text-primary flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('member.family_show_set_a_goal') }}</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('open-profile-modal'));"><i class="bi bi-pencil text-secondary flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('members::member.family_show_edit_info') }}</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('open-goal-add-modal'));"><i class="bi bi-bullseye text-primary flex-shrink-0" style="width: 18px; text-align: center;"></i>{{ __('members::member.family_show_set_a_goal') }}</a></li>
                                 </ul>
                             </div>
                         </div>
                     @else
                         <button class="btn btn-primary btn-sm rounded-pill">
-                            <i class="bi bi-person-plus me-1"></i>{{ __('member.family_show_follow') }}
+                            <i class="bi bi-person-plus me-1"></i>{{ __('members::member.family_show_follow') }}
                         </button>
                     @endif
                 </div>
@@ -106,11 +106,11 @@
                                 </span>
                                 <span class="text-muted small">
                                     <i class="bi bi-{{ $relationship->dependent->gender === 'Male' ? 'gender-male' : 'gender-female' }} me-1"></i>
-                                    <span class="font-semibold text-dark">{{ $relationship->dependent->gender === 'Male' ? __('member.family_show_male') : __('member.family_show_female') }}</span>
+                                    <span class="font-semibold text-dark">{{ $relationship->dependent->gender === 'Male' ? __('members::member.family_show_male') : __('members::member.family_show_female') }}</span>
                                 </span>
                                 <span class="text-muted small">
                                     <i class="bi bi-calendar-event me-1"></i>
-                                    {{ __('member.family_show_age') }} <span class="font-semibold text-dark">{{ $relationship->dependent->age }}</span>
+                                    {{ __('members::member.family_show_age') }} <span class="font-semibold text-dark">{{ $relationship->dependent->age }}</span>
                                 </span>
                                 <span class="text-muted small">
                                     @php
@@ -135,11 +135,11 @@
                                 </span>
                                 <span class="text-muted small">
                                     <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                    <span class="font-semibold text-success">{{ __('member.family_show_active') }}</span>
+                                    <span class="font-semibold text-success">{{ __('members::member.family_show_active') }}</span>
                                 </span>
                                 <span class="text-muted small">
                                     <i class="bi bi-calendar-check me-1"></i>
-                                    {{ __('member.family_show_joined') }} <span class="font-semibold text-dark">{{ $relationship->dependent->created_at->format('F Y') }}</span>
+                                    {{ __('members::member.family_show_joined') }} <span class="font-semibold text-dark">{{ $relationship->dependent->created_at->format('F Y') }}</span>
                                 </span>
                             </div>
 
@@ -220,37 +220,37 @@
     <ul class="nav nav-tabs nav-fill mb-4" id="profileTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active text-dark" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
-                <i class="bi bi-eye me-2"></i>{{ __('member.family_show_tab_overview') }}
+                <i class="bi bi-eye me-2"></i>{{ __('members::member.family_show_tab_overview') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
-                <i class="bi bi-calendar-check me-2"></i>{{ __('member.family_show_tab_attendance') }}
+                <i class="bi bi-calendar-check me-2"></i>{{ __('members::member.family_show_tab_attendance') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="health-tab" data-bs-toggle="tab" data-bs-target="#health" type="button" role="tab">
-                <i class="bi bi-heart-pulse me-2"></i>{{ __('member.family_show_tab_health') }}
+                <i class="bi bi-heart-pulse me-2"></i>{{ __('members::member.family_show_tab_health') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="goals-tab" data-bs-toggle="tab" data-bs-target="#goals" type="button" role="tab">
-                <i class="bi bi-bullseye me-2"></i>{{ __('member.family_show_tab_goals') }}
+                <i class="bi bi-bullseye me-2"></i>{{ __('members::member.family_show_tab_goals') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="affiliations-tab" data-bs-toggle="tab" data-bs-target="#affiliations" type="button" role="tab">
-                <i class="bi bi-diagram-3 me-2"></i>{{ __('member.family_show_tab_affiliations') }}
+                <i class="bi bi-diagram-3 me-2"></i>{{ __('members::member.family_show_tab_affiliations') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="tournaments-tab" data-bs-toggle="tab" data-bs-target="#tournaments" type="button" role="tab">
-                <i class="bi bi-award me-2"></i>{{ __('member.family_show_tab_tournaments') }}
+                <i class="bi bi-award me-2"></i>{{ __('members::member.family_show_tab_tournaments') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
-                <i class="bi bi-calendar-event me-2"></i>{{ __('member.family_show_tab_events') }}
+                <i class="bi bi-calendar-event me-2"></i>{{ __('members::member.family_show_tab_events') }}
             </button>
         </li>
     </ul>
@@ -267,9 +267,9 @@
                         <div class="card-body p-4">
                             <div class="flex items-center mb-2">
                                 <i class="bi bi-bar-chart-line text-primary me-2"></i>
-                                <h5 class="mb-0 font-bold">{{ __('member.family_show_profile_statistics') }}</h5>
+                                <h5 class="mb-0 font-bold">{{ __('members::member.family_show_profile_statistics') }}</h5>
                             </div>
-                            <p class="text-muted small mb-4">{{ __('member.family_show_profile_statistics_sub') }}</p>
+                            <p class="text-muted small mb-4">{{ __('members::member.family_show_profile_statistics_sub') }}</p>
 
                             <div class="row g-3">
                                 <!-- Total Sessions -->
@@ -279,12 +279,12 @@
                                     <i class="bi bi-people-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-muted mb-1">{{ __('member.family_show_total_sessions') }}</div>
+                                    <div class="small text-muted mb-1">{{ __('members::member.family_show_total_sessions') }}</div>
                                     <div class="h4 font-bold mb-2">127</div>
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #8b5cf6 100%);"></div>
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">{{ __('member.family_show_sessions_completed_year') }}</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">{{ __('members::member.family_show_sessions_completed_year') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -298,12 +298,12 @@
                                     <i class="bi bi-graph-up-arrow text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-muted mb-1">{{ __('member.family_show_attendance_rate') }}</div>
+                                    <div class="small text-muted mb-1">{{ __('members::member.family_show_attendance_rate') }}</div>
                                     <div class="h4 font-bold mb-2">85%</div>
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">{{ __('member.family_show_avg_session_attendance') }}</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">{{ __('members::member.family_show_avg_session_attendance') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -317,12 +317,12 @@
                                     <i class="bi bi-trophy-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-muted mb-1">{{ __('member.family_show_achievements') }}</div>
+                                    <div class="small text-muted mb-1">{{ __('members::member.family_show_achievements') }}</div>
                                     <div class="h4 font-bold mb-2">8</div>
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 40%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">{{ __('member.family_show_total_badges_earned') }}</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">{{ __('members::member.family_show_total_badges_earned') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -334,12 +334,12 @@
                                     <i class="bi bi-check-circle-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-muted mb-1">{{ __('member.family_show_goal_completion') }}</div>
+                                    <div class="small text-muted mb-1">{{ __('members::member.family_show_goal_completion') }}</div>
                                     <div class="h4 font-bold mb-2">75%</div>
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 75%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">{{ __('member.family_show_current_goals_achieved') }}</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">{{ __('members::member.family_show_current_goals_achieved') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -354,15 +354,15 @@
                         <div class="card-body p-4">
                             <div class="flex items-center mb-2">
                                 <i class="bi bi-bar-chart-line text-primary me-2"></i>
-                                <h5 class="mb-0 font-bold">{{ __('member.family_show_self_investment_chart') }}</h5>
+                                <h5 class="mb-0 font-bold">{{ __('members::member.family_show_self_investment_chart') }}</h5>
                             </div>
-                            <p class="text-muted small mb-4">{{ __('member.family_show_self_investment_sub') }}</p>
+                            <p class="text-muted small mb-4">{{ __('members::member.family_show_self_investment_sub') }}</p>
 
                             <div class="flex items-center justify-center" style="min-height: 300px;">
                                 <div class="text-center">
                                     <i class="bi bi-graph-up text-muted" style="font-size: 3rem;"></i>
-                                    <p class="text-muted mt-3 mb-1">{{ __('member.family_show_revenue_chart_coming_soon') }}</p>
-                                    <small class="text-muted">{{ __('member.family_show_revenue_chart_hint') }}</small>
+                                    <p class="text-muted mt-3 mb-1">{{ __('members::member.family_show_revenue_chart_coming_soon') }}</p>
+                                    <small class="text-muted">{{ __('members::member.family_show_revenue_chart_hint') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -379,8 +379,8 @@
                 <div class="card-body p-4">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <h1 class="h3 font-bold">{{ __('member.family_show_member_attendance') }}</h1>
-                            <p class="text-muted">{{ __('member.family_show_attendance_sub') }}</p>
+                            <h1 class="h3 font-bold">{{ __('members::member.family_show_member_attendance') }}</h1>
+                            <p class="text-muted">{{ __('members::member.family_show_attendance_sub') }}</p>
                         </div>
                     </div>
 
@@ -390,7 +390,7 @@
                             <div class="card shadow-sm bg-gray-50">
                                 <div class="card-body text-center">
                                     <div class="text-5xl font-bold text-success mb-2" id="attendanceCompletedCount">{{ $sessionsCompleted }}</div>
-                                    <h6 class="card-title text-muted">{{ __('member.family_show_sessions_completed') }}</h6>
+                                    <h6 class="card-title text-muted">{{ __('members::member.family_show_sessions_completed') }}</h6>
                                 </div>
                             </div>
                         </div>
@@ -398,7 +398,7 @@
                             <div class="card shadow-sm bg-gray-50">
                                 <div class="card-body text-center">
                                     <div class="text-5xl font-bold text-danger mb-2" id="attendanceNoShowCount">{{ $noShows }}</div>
-                                    <h6 class="card-title text-muted">{{ __('member.family_show_no_shows') }}</h6>
+                                    <h6 class="card-title text-muted">{{ __('members::member.family_show_no_shows') }}</h6>
                                 </div>
                             </div>
                         </div>
@@ -406,7 +406,7 @@
                             <div class="card shadow-sm bg-gray-50">
                                 <div class="card-body text-center">
                                     <div class="text-5xl font-bold text-primary mb-2">{{ $attendanceRate }}%</div>
-                                    <h6 class="card-title text-muted">{{ __('member.family_show_attendance_rate') }}</h6>
+                                    <h6 class="card-title text-muted">{{ __('members::member.family_show_attendance_rate') }}</h6>
                                 </div>
                             </div>
                         </div>
@@ -415,18 +415,18 @@
                     <!-- Attendance Table -->
                     <div class="card shadow-sm">
                         <div class="card-header bg-gray-50">
-                            <h6 class="card-title mb-0">{{ __('member.family_show_session_history') }}</h6>
+                            <h6 class="card-title mb-0">{{ __('members::member.family_show_session_history') }}</h6>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="border-0 font-semibold">{{ __('member.family_show_th_date_time') }}</th>
-                                            <th class="border-0 font-semibold">{{ __('member.family_show_th_session_type') }}</th>
-                                            <th class="border-0 font-semibold">{{ __('member.family_show_th_trainer_name') }}</th>
-                                            <th class="border-0 font-semibold">{{ __('member.family_show_th_status') }}</th>
-                                            <th class="border-0 font-semibold">{{ __('member.family_show_th_notes') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.family_show_th_date_time') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.family_show_th_session_type') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.family_show_th_trainer_name') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.family_show_th_status') }}</th>
+                                            <th class="border-0 font-semibold">{{ __('members::member.family_show_th_notes') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody id="attendanceTbody">
@@ -440,9 +440,9 @@
                                             <td class="align-middle">{{ $record->trainer_name }}</td>
                                             <td class="align-middle">
                                                 @if($record->status === 'completed')
-                                                    <span class="badge bg-success">{{ __('member.family_show_completed') }}</span>
+                                                    <span class="badge bg-success">{{ __('members::member.family_show_completed') }}</span>
                                                 @else
-                                                    <span class="badge bg-danger">{{ __('member.family_show_no_show') }}</span>
+                                                    <span class="badge bg-danger">{{ __('members::member.family_show_no_show') }}</span>
                                                 @endif
                                             </td>
                                             <td class="align-middle">
@@ -453,7 +453,7 @@
                                         <tr id="attendanceEmptyRow">
                                             <td colspan="5" class="text-center py-4">
                                                 <i class="bi bi-calendar-check text-muted" style="font-size: 2rem;"></i>
-                                                <p class="text-muted mt-2 mb-0">{{ __('member.family_show_no_attendance') }}</p>
+                                                <p class="text-muted mt-2 mb-0">{{ __('members::member.family_show_no_attendance') }}</p>
                                             </td>
                                         </tr>
                                         @endforelse
@@ -473,11 +473,11 @@
                 <div class="card-body p-4">
                     <div class="flex items-center mb-2">
                         <i class="bi bi-heart-pulse text-danger me-2"></i>
-                        <h5 class="mb-0 font-bold">{{ __('member.family_show_health_metrics_overview') }}</h5>
+                        <h5 class="mb-0 font-bold">{{ __('members::member.family_show_health_metrics_overview') }}</h5>
                     </div>
 
                     <div class="flex justify-between items-center mb-4">
-                        <p class="text-muted small mb-0">{{ __('member.family_show_health_metrics_sub') }}</p>
+                        <p class="text-muted small mb-0">{{ __('members::member.family_show_health_metrics_sub') }}</p>
 
                         @if($latestHealthRecord)
                             @php
@@ -489,29 +489,29 @@
                             <div class="flex items-center gap-3">
                                 <div class="flex items-center gap-2">
                                     <i class="bi bi-calendar-event text-primary"></i>
-                                    <span class="font-semibold">{{ __('member.family_show_snapshot_date') }}</span>
+                                    <span class="font-semibold">{{ __('members::member.family_show_snapshot_date') }}</span>
                                     <span class="text-muted">{{ $latestDate->format('F j, Y') }}</span>
                                 </div>
                                 <div class="w-px bg-gray-300 self-stretch"></div>
                                 <div class="flex items-center gap-2">
                                     <i class="bi bi-clock-history text-primary"></i>
-                                    <span class="font-semibold">{{ __('member.family_show_time_since') }}</span>
+                                    <span class="font-semibold">{{ __('members::member.family_show_time_since') }}</span>
                                     <span class="text-muted">
                                         @if($diff->y > 0)
-                                            {{ $diff->y }} {{ $diff->y == 1 ? __('member.family_show_year') : __('member.family_show_years') }}
+                                            {{ $diff->y }} {{ $diff->y == 1 ? __('members::member.family_show_year') : __('members::member.family_show_years') }}
                                         @endif
                                         @if($diff->m > 0)
-                                            {{ $diff->m }} {{ $diff->m == 1 ? __('member.family_show_month') : __('member.family_show_months') }}
+                                            {{ $diff->m }} {{ $diff->m == 1 ? __('members::member.family_show_month') : __('members::member.family_show_months') }}
                                         @endif
                                         @if($diff->d > 0)
-                                            {{ $diff->d }} {{ $diff->d == 1 ? __('member.family_show_day') : __('member.family_show_days') }}
+                                            {{ $diff->d }} {{ $diff->d == 1 ? __('members::member.family_show_day') : __('members::member.family_show_days') }}
                                         @endif
-                                        {{ __('member.family_show_ago') }}
+                                        {{ __('members::member.family_show_ago') }}
                                     </span>
                                 </div>
                             </div>
                         @else
-                            <div class="text-muted small">{{ __('member.family_show_no_health_records_available') }}</div>
+                            <div class="text-muted small">{{ __('members::member.family_show_no_health_records_available') }}</div>
                         @endif
                     </div>
 
@@ -523,7 +523,7 @@
                                 <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-speedometer2 text-purple mb-2" style="font-size: 1.5rem; color: #8b5cf6;"></i>
                                     <div class="h4 font-bold mb-0">{{ $latestHealthRecord->weight ?? 'N/A' }}</div>
-                                    <small class="text-muted">{{ __('member.family_show_weight_kg') }}</small>
+                                    <small class="text-muted">{{ __('members::member.family_show_weight_kg') }}</small>
                                 </div>
                             </div>
 
@@ -532,7 +532,7 @@
                                 <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-activity text-warning mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="h4 font-bold mb-0">{{ $latestHealthRecord->body_fat_percentage ?? 'N/A' }}%</div>
-                                    <small class="text-muted">{{ __('member.family_show_body_fat') }}</small>
+                                    <small class="text-muted">{{ __('members::member.family_show_body_fat') }}</small>
                                 </div>
                             </div>
 
@@ -541,7 +541,7 @@
                                 <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-droplet text-info mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="h4 font-bold mb-0">{{ $latestHealthRecord->body_water_percentage ?? 'N/A' }}%</div>
-                                    <small class="text-muted">{{ __('member.family_show_body_water') }}</small>
+                                    <small class="text-muted">{{ __('members::member.family_show_body_water') }}</small>
                                 </div>
                             </div>
 
@@ -550,7 +550,7 @@
                                 <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-heart text-success mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="h4 font-bold mb-0">{{ $latestHealthRecord->muscle_mass ?? 'N/A' }}</div>
-                                    <small class="text-muted">{{ __('member.family_show_muscle_mass') }}</small>
+                                    <small class="text-muted">{{ __('members::member.family_show_muscle_mass') }}</small>
                                 </div>
                             </div>
 
@@ -559,7 +559,7 @@
                                 <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-capsule text-secondary mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="h4 font-bold mb-0">{{ $latestHealthRecord->bone_mass ?? 'N/A' }}</div>
-                                    <small class="text-muted">{{ __('member.family_show_bone_mass') }}</small>
+                                    <small class="text-muted">{{ __('members::member.family_show_bone_mass') }}</small>
                                 </div>
                             </div>
 
@@ -568,14 +568,14 @@
                                 <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-lightning text-danger mb-2" style="font-size: 1.5rem;"></i>
                                     <div class="h4 font-bold mb-0">{{ $latestHealthRecord->bmr ?? 'N/A' }}</div>
-                                    <small class="text-muted">{{ __('member.family_show_bmr_cal') }}</small>
+                                    <small class="text-muted">{{ __('members::member.family_show_bmr_cal') }}</small>
                                 </div>
                             </div>
                         @else
                             <div class="col-12">
                                 <div class="text-center py-4">
                                     <i class="bi bi-heart-pulse text-muted" style="font-size: 3rem;"></i>
-                                    <p class="text-muted mt-3">{{ __('member.family_show_no_health_metrics') }}</p>
+                                    <p class="text-muted mt-3">{{ __('members::member.family_show_no_health_metrics') }}</p>
                                 </div>
                             </div>
                         @endif
@@ -589,7 +589,7 @@
                 <div class="col-lg-7">
                     <div class="card shadow-sm border-0 h-full">
                         <div class="card-body p-4">
-                            <h5 class="font-bold mb-4"><i class="bi bi-activity me-2"></i>{{ __('member.family_show_body_composition') }}</h5>
+                            <h5 class="font-bold mb-4"><i class="bi bi-activity me-2"></i>{{ __('members::member.family_show_body_composition') }}</h5>
 
                             <div class="chart-container" style="position: relative; height: 500px; width: 100%;">
                                 <canvas id="radarChart" data-current='@json($comparisonRecords->first())' data-previous='@json($comparisonRecords->skip(1)->first())'></canvas>
@@ -602,7 +602,7 @@
                 <div class="col-lg-5">
                     <div class="card shadow-sm border-0 h-full">
                         <div class="card-body p-4">
-                            <h5 class="font-bold mb-4"><i class="bi bi-bar-chart-line me-2"></i>{{ __('member.family_show_compare') }}</h5>
+                            <h5 class="font-bold mb-4"><i class="bi bi-bar-chart-line me-2"></i>{{ __('members::member.family_show_compare') }}</h5>
 
                             @if($comparisonRecords->count() >= 2)
                                 @php
@@ -613,7 +613,7 @@
                                 <div class="mb-3">
                                     <div class="row g-2">
                                         <div class="col-6 text-center">
-                                            <label class="form-label font-bold">{{ __('member.family_show_from') }}</label>
+                                            <label class="form-label font-bold">{{ __('members::member.family_show_from') }}</label>
                                             <select class="form-select form-select-sm" id="currentDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $current->id ? 'selected' : '' }}>
@@ -623,7 +623,7 @@
                                             </select>
                                         </div>
                                         <div class="col-6 text-center">
-                                            <label class="form-label font-bold">{{ __('member.family_show_to') }}</label>
+                                            <label class="form-label font-bold">{{ __('members::member.family_show_to') }}</label>
                                             <select class="form-select form-select-sm" id="previousDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $previous->id ? 'selected' : '' }}>
@@ -636,9 +636,9 @@
                                     <div class="mt-3">
                                         <div class="alert alert-secondary text-center py-2" id="timeDifference">
                                             @if($current && $previous)
-                                                <strong>{{ __('member.family_show_time_between_records') }}</strong> {{ calculateTimeDifference($current->recorded_at, $previous->recorded_at) }}
+                                                <strong>{{ __('members::member.family_show_time_between_records') }}</strong> {{ calculateTimeDifference($current->recorded_at, $previous->recorded_at) }}
                                             @else
-                                                {{ __('member.family_show_select_dates') }}
+                                                {{ __('members::member.family_show_select_dates') }}
                                             @endif
                                         </div>
                                     </div>
@@ -648,10 +648,10 @@
                                     <table class="table table-sm align-middle">
                                         <thead>
                                             <tr class="border-bottom">
-                                                <th class="text-muted small font-semibold">{{ __('member.family_show_th_metric') }}</th>
-                                                <th class="text-muted small font-semibold text-end">{{ __('member.family_show_th_current') }}</th>
-                                                <th class="text-muted small font-semibold text-end">{{ __('member.family_show_th_previous') }}</th>
-                                                <th class="text-muted small font-semibold text-center">{{ __('member.family_show_th_change') }}</th>
+                                                <th class="text-muted small font-semibold">{{ __('members::member.family_show_th_metric') }}</th>
+                                                <th class="text-muted small font-semibold text-end">{{ __('members::member.family_show_th_current') }}</th>
+                                                <th class="text-muted small font-semibold text-end">{{ __('members::member.family_show_th_previous') }}</th>
+                                                <th class="text-muted small font-semibold text-center">{{ __('members::member.family_show_th_change') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -665,67 +665,67 @@
                                                 }
                                             @endphp
                                             <tr data-metric="height">
-                                                <td class="small"><i class="bi bi-rulers me-2"></i>{{ __('member.family_show_height') }}</td>
+                                                <td class="small"><i class="bi bi-rulers me-2"></i>{{ __('members::member.family_show_height') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->height ?? 'N/A' }}cm</td>
                                                 <td class="small text-end text-danger">{{ $previous->height ?? 'N/A' }}cm</td>
                                                 <td class="text-center">{!! $current->height && $previous->height ? getChangeIcon($current->height, $previous->height) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="weight">
-                                                <td class="small"><i class="bi bi-speedometer2 me-2"></i>{{ __('member.family_show_weight') }}</td>
+                                                <td class="small"><i class="bi bi-speedometer2 me-2"></i>{{ __('members::member.family_show_weight') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->weight ?? 'N/A' }}kg</td>
                                                 <td class="small text-end text-danger">{{ $previous->weight ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->weight && $previous->weight ? getChangeIcon($current->weight, $previous->weight) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_fat">
-                                                <td class="small"><i class="bi bi-activity me-2"></i>{{ __('member.family_show_body_fat') }}</td>
+                                                <td class="small"><i class="bi bi-activity me-2"></i>{{ __('members::member.family_show_body_fat') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
                                                 <td class="small text-end text-danger">{{ $previous->body_fat_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_fat_percentage && $previous->body_fat_percentage ? getChangeIcon($current->body_fat_percentage, $previous->body_fat_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmi">
-                                                <td class="small"><i class="bi bi-calculator me-2"></i>{{ __('member.family_show_bmi') }}</td>
+                                                <td class="small"><i class="bi bi-calculator me-2"></i>{{ __('members::member.family_show_bmi') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->bmi ?? 'N/A' }}</td>
                                                 <td class="small text-end text-danger">{{ $previous->bmi ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->bmi && $previous->bmi ? getChangeIcon($current->bmi, $previous->bmi) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_water">
-                                                <td class="small"><i class="bi bi-droplet me-2"></i>{{ __('member.family_show_body_water') }}</td>
+                                                <td class="small"><i class="bi bi-droplet me-2"></i>{{ __('members::member.family_show_body_water') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
                                                 <td class="small text-end text-danger">{{ $previous->body_water_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_water_percentage && $previous->body_water_percentage ? getChangeIcon($current->body_water_percentage, $previous->body_water_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="muscle_mass">
-                                                <td class="small"><i class="bi bi-heart me-2"></i>{{ __('member.family_show_muscle_mass') }}</td>
+                                                <td class="small"><i class="bi bi-heart me-2"></i>{{ __('members::member.family_show_muscle_mass') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
                                                 <td class="small text-end text-danger">{{ $previous->muscle_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->muscle_mass && $previous->muscle_mass ? getChangeIcon($current->muscle_mass, $previous->muscle_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bone_mass">
-                                                <td class="small"><i class="bi bi-capsule me-2"></i>{{ __('member.family_show_bone_mass') }}</td>
+                                                <td class="small"><i class="bi bi-capsule me-2"></i>{{ __('members::member.family_show_bone_mass') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->bone_mass ?? 'N/A' }}kg</td>
                                                 <td class="small text-end text-danger">{{ $previous->bone_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->bone_mass && $previous->bone_mass ? getChangeIcon($current->bone_mass, $previous->bone_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="visceral_fat">
-                                                <td class="small"><i class="bi bi-activity me-2"></i>{{ __('member.family_show_visceral_fat') }}</td>
+                                                <td class="small"><i class="bi bi-activity me-2"></i>{{ __('members::member.family_show_visceral_fat') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->visceral_fat ?? 'N/A' }}</td>
                                                 <td class="small text-end text-danger">{{ $previous->visceral_fat ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->visceral_fat && $previous->visceral_fat ? getChangeIcon($current->visceral_fat, $previous->visceral_fat) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmr">
-                                                <td class="small"><i class="bi bi-lightning me-2"></i>{{ __('member.family_show_bmr') }}</td>
+                                                <td class="small"><i class="bi bi-lightning me-2"></i>{{ __('members::member.family_show_bmr') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->bmr ?? 'N/A' }}cal</td>
                                                 <td class="small text-end text-danger">{{ $previous->bmr ?? 'N/A' }}cal</td>
                                                 <td class="text-center">{!! $current->bmr && $previous->bmr ? getChangeIcon($current->bmr, $previous->bmr) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="protein">
-                                                <td class="small"><i class="bi bi-heart-pulse me-2"></i>{{ __('member.family_show_protein') }}</td>
+                                                <td class="small"><i class="bi bi-heart-pulse me-2"></i>{{ __('members::member.family_show_protein') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->protein_percentage ?? 'N/A' }}%</td>
                                                 <td class="small text-end text-danger">{{ $previous->protein_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->protein_percentage && $previous->protein_percentage ? getChangeIcon($current->protein_percentage, $previous->protein_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_age">
-                                                <td class="small"><i class="bi bi-calendar-heart me-2"></i>{{ __('member.family_show_body_age') }}</td>
+                                                <td class="small"><i class="bi bi-calendar-heart me-2"></i>{{ __('members::member.family_show_body_age') }}</td>
                                                 <td class="small text-end font-semibold text-primary">{{ $current->body_age ?? 'N/A' }}yrs</td>
                                                 <td class="small text-end text-danger">{{ $previous->body_age ?? 'N/A' }}yrs</td>
                                                 <td class="text-center">{!! $current->body_age && $previous->body_age ? getChangeIcon($current->body_age, $previous->body_age) : '-' !!}</td>
@@ -736,7 +736,7 @@
                             @else
                                 <div class="text-center py-4">
                                     <i class="bi bi-bar-chart-line text-muted" style="font-size: 3rem;"></i>
-                                    <p class="text-muted mt-3">{{ __('member.family_show_need_two_records') }}</p>
+                                    <p class="text-muted mt-3">{{ __('members::member.family_show_need_two_records') }}</p>
                                 </div>
                             @endif
                         </div>
@@ -747,25 +747,25 @@
             <!-- Health Tracking History -->
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="font-bold mb-4"><i class="bi bi-heart-pulse me-2"></i>{{ __('member.family_show_health_tracking') }}</h5>
+                    <h5 class="font-bold mb-4"><i class="bi bi-heart-pulse me-2"></i>{{ __('members::member.family_show_health_tracking') }}</h5>
 
                     @if($healthRecords->count() > 0)
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
                                 <tr>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_date') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-rulers me-1"></i>{{ __('member.family_show_height_cm') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-speedometer2 me-1"></i>{{ __('member.family_show_weight_kg') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-activity me-1"></i>{{ __('member.family_show_body_fat_pct') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-calculator me-1"></i>{{ __('member.family_show_bmi') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-droplet me-1"></i>{{ __('member.family_show_body_water_pct') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-heart me-1"></i>{{ __('member.family_show_muscle_mass_kg') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-capsule me-1"></i>{{ __('member.family_show_bone_mass_kg') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-activity me-1"></i>{{ __('member.family_show_visceral_fat') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-lightning me-1"></i>{{ __('member.family_show_bmr') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-heart-pulse me-1"></i>{{ __('member.family_show_protein_pct') }}</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-calendar-heart me-1"></i>{{ __('member.family_show_body_age') }}</th>
+                                    <th class="text-muted small font-semibold">{{ __('members::member.family_show_th_date') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-rulers me-1"></i>{{ __('members::member.family_show_height_cm') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-speedometer2 me-1"></i>{{ __('members::member.family_show_weight_kg') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-activity me-1"></i>{{ __('members::member.family_show_body_fat_pct') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-calculator me-1"></i>{{ __('members::member.family_show_bmi') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-droplet me-1"></i>{{ __('members::member.family_show_body_water_pct') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-heart me-1"></i>{{ __('members::member.family_show_muscle_mass_kg') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-capsule me-1"></i>{{ __('members::member.family_show_bone_mass_kg') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-activity me-1"></i>{{ __('members::member.family_show_visceral_fat') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-lightning me-1"></i>{{ __('members::member.family_show_bmr') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-heart-pulse me-1"></i>{{ __('members::member.family_show_protein_pct') }}</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-calendar-heart me-1"></i>{{ __('members::member.family_show_body_age') }}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -799,8 +799,8 @@
                     @else
                         <div class="text-center py-5">
                             <i class="bi bi-clipboard-data text-muted" style="font-size: 3rem;"></i>
-                            <p class="text-muted mt-3">{{ __('member.family_show_no_health_records') }}</p>
-                            <small class="text-muted">{{ __('member.family_show_health_tracking_hint') }}</small>
+                            <p class="text-muted mt-3">{{ __('members::member.family_show_no_health_records') }}</p>
+                            <small class="text-muted">{{ __('members::member.family_show_health_tracking_hint') }}</small>
                         </div>
                     @endif
                 </div>
@@ -814,8 +814,8 @@
                     <!-- Section Title & Subtitle -->
                     <div class="flex justify-between items-center mb-4">
                         <div>
-                            <h5 class="font-bold mb-1"><i class="bi bi-bullseye me-2"></i>{{ __('member.family_show_goal_tracking') }}</h5>
-                            <p class="text-muted small mb-0">{{ __('member.family_show_goals_sub') }}</p>
+                            <h5 class="font-bold mb-1"><i class="bi bi-bullseye me-2"></i>{{ __('members::member.family_show_goal_tracking') }}</h5>
+                            <p class="text-muted small mb-0">{{ __('members::member.family_show_goals_sub') }}</p>
                         </div>
                     </div>
 
@@ -827,7 +827,7 @@
                                 <div class="card-body p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-bullseye text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="activeGoalsCount">{{ $activeGoalsCount }}</h4>
-                                    <small class="text-white/50">{{ __('member.family_show_active_goals') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.family_show_active_goals') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -837,7 +837,7 @@
                                 <div class="card-body p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-check-circle-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1">{{ $completedGoalsCount }}</h4>
-                                    <small class="text-white/50">{{ __('member.family_show_completed_goals') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.family_show_completed_goals') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -847,7 +847,7 @@
                                 <div class="card-body p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-graph-up-arrow text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1">{{ $successRate }}%</h4>
-                                    <small class="text-white/50">{{ __('member.family_show_success_rate') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.family_show_success_rate') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -860,7 +860,7 @@
                             <div class="card shadow-sm border-0 h-full relative" id="goal-{{ $goal->id }}">
                                 <!-- Edit Button (only for active goals and authorized users) -->
                                 @if($goal->status == 'active' && ($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id))
-                                    <button class="btn btn-sm btn-outline-primary rounded-circle absolute top-0 end-0 mt-2 me-2 edit-goal-btn" style="width: 32px; height: 32px; padding: 0;" data-goal-id="{{ $goal->id }}" title="{{ __('member.family_show_edit_goal') }}">
+                                    <button class="btn btn-sm btn-outline-primary rounded-circle absolute top-0 end-0 mt-2 me-2 edit-goal-btn" style="width: 32px; height: 32px; padding: 0;" data-goal-id="{{ $goal->id }}" title="{{ __('members::member.family_show_edit_goal') }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 @endif
@@ -888,7 +888,7 @@
                                             <!-- Progress Indicator -->
                                             <div class="mb-3">
                                                 <div class="flex justify-between items-center mb-2">
-                                                    <small class="text-muted" data-goal-progress-text>{{ __('member.family_show_progress') }} {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
+                                                    <small class="text-muted" data-goal-progress-text>{{ __('members::member.family_show_progress') }} {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
                                                     <small class="font-semibold" data-goal-progress-pct>{{ number_format($goal->progress_percentage, 1) }}%</small>
                                                 </div>
                                                 <div class="progress" style="height: 8px;">
@@ -899,11 +899,11 @@
                                             <!-- Dates & Status -->
                                             <div class="row g-2 mb-3">
                                                 <div class="col-6">
-                                                    <small class="text-muted block">{{ __('member.family_show_started') }}</small>
+                                                    <small class="text-muted block">{{ __('members::member.family_show_started') }}</small>
                                                     <small class="font-semibold">{{ $goal->start_date->format('M d, Y') }}</small>
                                                 </div>
                                                 <div class="col-6 text-end">
-                                                    <small class="text-muted block">{{ __('member.family_show_target') }}</small>
+                                                    <small class="text-muted block">{{ __('members::member.family_show_target') }}</small>
                                                     <small class="font-semibold">{{ $goal->target_date->format('M d, Y') }}</small>
                                                 </div>
                                             </div>
@@ -923,19 +923,19 @@
                                                     @if($goal->before_proof)
                                                         <div class="flex-1 min-w-0">
                                                             <img src="{{ file_url($goal->before_proof) }}" class="w-full h-20 rounded-md object-cover border" alt="">
-                                                            <small class="text-muted block text-center mt-1">{{ __('member.before') }}</small>
+                                                            <small class="text-muted block text-center mt-1">{{ __('members::member.before') }}</small>
                                                         </div>
                                                     @endif
                                                     @if($goal->after_proof)
                                                         <div class="flex-1 min-w-0">
                                                             <img src="{{ file_url($goal->after_proof) }}" class="w-full h-20 rounded-md object-cover border" alt="">
-                                                            <small class="text-muted block text-center mt-1">{{ __('member.after') }}</small>
+                                                            <small class="text-muted block text-center mt-1">{{ __('members::member.after') }}</small>
                                                         </div>
                                                     @endif
                                                 </div>
                                             @endif
                                             @if($goal->status === 'completed' && $goal->days_taken !== null)
-                                                <div class="mt-2 text-success small fw-semibold"><i class="bi bi-trophy-fill me-1"></i>{{ $goal->days_taken }} {{ __('member.days_to_achieve') }}</div>
+                                                <div class="mt-2 text-success small fw-semibold"><i class="bi bi-trophy-fill me-1"></i>{{ $goal->days_taken }} {{ __('members::member.days_to_achieve') }}</div>
                                             @endif
                                         </div>
                                     </div>
@@ -944,8 +944,8 @@
                         </div>
                         <div class="text-center py-4 {{ $goals->count() ? 'hidden' : '' }}" id="goalsEmpty">
                             <i class="bi bi-bullseye text-muted" style="font-size: 3rem;"></i>
-                            <h5 class="text-muted mt-3 mb-2">{{ __('member.family_show_no_goals') }}</h5>
-                            <p class="text-muted mb-0">{{ __('member.family_show_no_goals_hint') }}</p>
+                            <h5 class="text-muted mt-3 mb-2">{{ __('members::member.family_show_no_goals') }}</h5>
+                            <p class="text-muted mb-0">{{ __('members::member.family_show_no_goals_hint') }}</p>
                         </div>
                 </div>
             </div>
@@ -969,18 +969,18 @@
                     <!-- Section Title & Subtitle -->
                     <div class="flex justify-between items-center mb-4">
                         <div>
-                            <h5 class="font-bold mb-1"><i class="bi bi-trophy-fill text-warning me-2"></i>{{ __('member.family_show_tournament_participation_title') }}</h5>
-                            <p class="text-muted small mb-0">{{ __('member.family_show_tournament_participation_sub') }}</p>
+                            <h5 class="font-bold mb-1"><i class="bi bi-trophy-fill text-warning me-2"></i>{{ __('members::member.family_show_tournament_participation_title') }}</h5>
+                            <p class="text-muted small mb-0">{{ __('members::member.family_show_tournament_participation_sub') }}</p>
                         </div>
                         <!-- Add + Filter. Same affordance the Event Log below has;
                              this tab used to be reachable only from the Action menu. -->
                         <div class="flex items-center gap-2">
                             <button type="button" class="btn btn-primary btn-sm rounded-pill whitespace-nowrap" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal">
-                                <i class="bi bi-plus-lg me-1"></i>{{ __('member.family_show_add_tournament_participation') }}
+                                <i class="bi bi-plus-lg me-1"></i>{{ __('members::member.family_show_add_tournament_participation') }}
                             </button>
-                            <label for="sportFilter" class="form-label me-2 mb-0 font-semibold">{{ __('member.family_show_filter_by_sport') }}</label>
+                            <label for="sportFilter" class="form-label me-2 mb-0 font-semibold">{{ __('members::member.family_show_filter_by_sport') }}</label>
                             <select class="form-select form-select-sm" id="sportFilter" style="width: 150px;">
-                                <option value="all">{{ __('member.family_show_all_sports') }}</option>
+                                <option value="all">{{ __('members::member.family_show_all_sports') }}</option>
                                 @foreach($sports as $sport)
                                     <option value="{{ $sport }}">{{ $sport }}</option>
                                 @endforeach
@@ -995,7 +995,7 @@
                                 <div class="card-body p-3">
                                     <i class="bi bi-trophy-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="specialCount">{{ $awardCounts['special'] }}</h4>
-                                    <small class="text-white/50">{{ __('member.family_show_special_award') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.family_show_special_award') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1004,7 +1004,7 @@
                                 <div class="card-body p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="firstCount">{{ $awardCounts['1st'] }}</h4>
-                                    <small class="text-white/50">{{ __('member.family_show_first_place') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.family_show_first_place') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1013,7 +1013,7 @@
                                 <div class="card-body p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="secondCount">{{ $awardCounts['2nd'] }}</h4>
-                                    <small class="text-white/50">{{ __('member.family_show_second_place') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.family_show_second_place') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1022,7 +1022,7 @@
                                 <div class="card-body p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="thirdCount">{{ $awardCounts['3rd'] }}</h4>
-                                    <small class="text-white/50">{{ __('member.family_show_third_place') }}</small>
+                                    <small class="text-white/50">{{ __('members::member.family_show_third_place') }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1033,7 +1033,7 @@
             <!-- Tournament & Championships History Card -->
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h6 class="font-bold mb-3"><i class="bi bi-list-ul me-2"></i>{{ __('member.family_show_tournament_history_title') }}</h6>
+                    <h6 class="font-bold mb-3"><i class="bi bi-list-ul me-2"></i>{{ __('members::member.family_show_tournament_history_title') }}</h6>
 
                     @include('members::family.partials.derived-history', [
                         'rows' => $derivedTournaments ?? collect(),
@@ -1044,10 +1044,10 @@
                             <table class="table table-hover align-middle" id="tournamentsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="text-muted small font-semibold">{{ __('member.family_show_th_tournament_details') }}</th>
-                                        <th class="text-muted small font-semibold">{{ __('member.representing') }}</th>
-                                        <th class="text-muted small font-semibold">{{ __('member.family_show_th_performance_result') }}</th>
-                                        <th class="text-muted small font-semibold">{{ __('member.family_show_th_notes_media') }}</th>
+                                        <th class="text-muted small font-semibold">{{ __('members::member.family_show_th_tournament_details') }}</th>
+                                        <th class="text-muted small font-semibold">{{ __('members::member.representing') }}</th>
+                                        <th class="text-muted small font-semibold">{{ __('members::member.family_show_th_performance_result') }}</th>
+                                        <th class="text-muted small font-semibold">{{ __('members::member.family_show_th_notes_media') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tournamentsTableBody">
@@ -1068,7 +1068,7 @@
                                                         <i class="bi bi-geo-alt me-1 ms-2"></i>{{ $event->location }}
                                                     @endif
                                                     @if($event->participants_count)
-                                                        <i class="bi bi-people me-1 ms-2"></i>{{ $event->participants_count }} {{ __('member.family_show_participants') }}
+                                                        <i class="bi bi-people me-1 ms-2"></i>{{ $event->participants_count }} {{ __('members::member.family_show_participants') }}
                                                     @endif
                                                 </div>
                                                 {{-- Provenance: honest verification state + evidence + request action --}}
@@ -1092,7 +1092,7 @@
                                                         <div class="text-muted small">{{ $event->clubAffiliation->location }}</div>
                                                     </div>
                                                 @else
-                                                    <span class="text-muted small">{{ __('member.family_show_individual') }}</span>
+                                                    <span class="text-muted small">{{ __('members::member.family_show_individual') }}</span>
                                                 @endif
                                             </td>
                                             <td>
@@ -1101,19 +1101,19 @@
                                                         <div class="flex items-center gap-2 mb-1">
                                                             @if($result->medal_type == '1st')
                                                                 <i class="bi bi-award-fill text-warning"></i>
-                                                                <span class="badge bg-warning text-dark small">{{ __('member.family_show_first_place') }}</span>
+                                                                <span class="badge bg-warning text-dark small">{{ __('members::member.family_show_first_place') }}</span>
                                                             @elseif($result->medal_type == '2nd')
                                                                 <i class="bi bi-award-fill text-secondary"></i>
-                                                                <span class="badge bg-secondary small">{{ __('member.family_show_second_place') }}</span>
+                                                                <span class="badge bg-secondary small">{{ __('members::member.family_show_second_place') }}</span>
                                                             @elseif($result->medal_type == '3rd')
                                                                 <i class="bi bi-award-fill" style="color: #CD7F32;"></i>
-                                                                <span class="badge" style="background-color: #CD7F32; color: white;" small>{{ __('member.family_show_third_place') }}</span>
+                                                                <span class="badge" style="background-color: #CD7F32; color: white;" small>{{ __('members::member.family_show_third_place') }}</span>
                                                             @elseif($result->medal_type == 'special')
                                                                 <i class="bi bi-trophy-fill text-warning"></i>
-                                                                <span class="badge bg-warning text-dark small">{{ __('member.family_show_special_award') }}</span>
+                                                                <span class="badge bg-warning text-dark small">{{ __('members::member.family_show_special_award') }}</span>
                                                             @endif
                                                             @if($result->points)
-                                                                <small class="text-muted">{{ $result->points }} {{ __('member.family_show_pts') }}</small>
+                                                                <small class="text-muted">{{ $result->points }} {{ __('members::member.family_show_pts') }}</small>
                                                             @endif
                                                         </div>
                                                         @if($result->description)
@@ -1121,7 +1121,7 @@
                                                         @endif
                                                     @endforeach
                                                 @else
-                                                    <span class="text-muted small">{{ __('member.family_show_no_results') }}</span>
+                                                    <span class="text-muted small">{{ __('members::member.family_show_no_results') }}</span>
                                                 @endif
                                             </td>
                                             <td>
@@ -1132,12 +1132,12 @@
                                                         @endif
                                                         @if($note->media_link)
                                                             <a href="{{ $note->media_link }}" target="_blank" class="btn btn-sm btn-outline-primary small">
-                                                                <i class="bi bi-image me-1"></i>{{ __('member.family_show_view_media') }}
+                                                                <i class="bi bi-image me-1"></i>{{ __('members::member.family_show_view_media') }}
                                                             </a>
                                                         @endif
                                                     @endforeach
                                                 @else
-                                                    <span class="text-muted small">{{ __('member.family_show_no_notes') }}</span>
+                                                    <span class="text-muted small">{{ __('members::member.family_show_no_notes') }}</span>
                                                 @endif
                                             </td>
                                         </tr>
@@ -1147,8 +1147,8 @@
                         </div>
                         <div class="text-center py-5" id="tournamentsEmptyState" style="{{ $tournamentEvents->count() > 0 ? 'display:none;' : '' }}">
                             <i class="bi bi-trophy text-muted" style="font-size: 3rem;"></i>
-                            <p class="text-muted mt-3">{{ __('member.family_show_no_tournaments') }}</p>
-                            <small class="text-muted">{{ __('member.family_show_tournaments_hint') }}</small>
+                            <p class="text-muted mt-3">{{ __('members::member.family_show_no_tournaments') }}</p>
+                            <small class="text-muted">{{ __('members::member.family_show_tournaments_hint') }}</small>
                         </div>
                 </div>
             </div>
@@ -1162,10 +1162,10 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
                     <div class="flex justify-between items-center mb-3">
-                        <h5 class="font-bold mb-0"><i class="bi bi-journal-text me-2"></i>{{ __('member.family_show_personal_event_log') }}</h5>
+                        <h5 class="font-bold mb-0"><i class="bi bi-journal-text me-2"></i>{{ __('members::member.family_show_personal_event_log') }}</h5>
                         @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id || $relationship->relationship_type == 'admin_view')
                             <button type="button" class="btn btn-primary btn-sm rounded-pill" onclick="window.dispatchEvent(new CustomEvent('open-event-add-modal'))">
-                                <i class="bi bi-plus-lg me-1"></i>{{ __('member.family_show_add_event') }}
+                                <i class="bi bi-plus-lg me-1"></i>{{ __('members::member.family_show_add_event') }}
                             </button>
                         @endif
                     </div>
@@ -1194,7 +1194,7 @@
                     </div>
                     <div class="text-center py-10 {{ $memberEventLog->isEmpty() ? '' : 'hidden' }}" id="eventLogEmpty">
                         <i class="bi bi-journal-x text-gray-300" style="font-size:2.5rem;"></i>
-                        <p class="text-gray-400 mt-3">{{ __('member.family_show_no_events') }}</p>
+                        <p class="text-gray-400 mt-3">{{ __('members::member.family_show_no_events') }}</p>
                     </div>
                 </div>
             </div>
@@ -1213,7 +1213,7 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
-                    <h5 class="text-lg font-medium">{{ __('member.family_show_set_a_goal') }}</h5>
+                    <h5 class="text-lg font-medium">{{ __('members::member.family_show_set_a_goal') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="goalAddForm" method="POST" action="{{ route('member.store-goal', $relationship->dependent->id) }}">
@@ -1221,47 +1221,47 @@
                     <div class="p-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="col-span-full">
-                                <label for="goal_add_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_goal_title') }} <span class="text-red-600">*</span></label>
-                                <input type="text" id="goal_add_title" name="title" maxlength="150" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_goal_title_ph') }}">
+                                <label for="goal_add_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_goal_title') }} <span class="text-red-600">*</span></label>
+                                <input type="text" id="goal_add_title" name="title" maxlength="150" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_goal_title_ph') }}">
                             </div>
                             <div class="col-span-full">
-                                <label for="goal_add_description" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_description') }}</label>
-                                <textarea id="goal_add_description" name="description" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_goal_desc_ph') }}"></textarea>
+                                <label for="goal_add_description" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_description') }}</label>
+                                <textarea id="goal_add_description" name="description" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_goal_desc_ph') }}"></textarea>
                             </div>
                             <div>
-                                <label for="goal_add_target" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_target_value') }} <span class="text-red-600">*</span></label>
+                                <label for="goal_add_target" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_target_value') }} <span class="text-red-600">*</span></label>
                                 <input type="number" step="0.1" min="0" id="goal_add_target" name="target_value" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="80">
                             </div>
                             <div>
-                                <label for="goal_add_unit" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_unit') }} <span class="text-red-600">*</span></label>
-                                <input type="text" id="goal_add_unit" name="unit" maxlength="30" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_unit_ph') }}">
+                                <label for="goal_add_unit" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_unit') }} <span class="text-red-600">*</span></label>
+                                <input type="text" id="goal_add_unit" name="unit" maxlength="30" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_unit_ph') }}">
                             </div>
                             <div>
-                                <label for="goal_add_current" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_current_progress') }}</label>
+                                <label for="goal_add_current" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_current_progress') }}</label>
                                 <input type="number" step="0.1" min="0" id="goal_add_current" name="current_progress_value" value="0" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label for="goal_add_target_date" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_target_date') }} <span class="text-red-600">*</span></label>
+                                <label for="goal_add_target_date" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_target_date') }} <span class="text-red-600">*</span></label>
                                 <input type="date" id="goal_add_target_date" name="target_date" required min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" value="{{ \Carbon\Carbon::now()->addMonth()->format('Y-m-d') }}" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label for="goal_add_priority" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_priority') }}</label>
+                                <label for="goal_add_priority" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_priority') }}</label>
                                 <select id="goal_add_priority" name="priority_level" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
-                                    <option value="low">{{ __('member.family_show_low') }}</option>
-                                    <option value="medium" selected>{{ __('member.family_show_medium') }}</option>
-                                    <option value="high">{{ __('member.family_show_high') }}</option>
+                                    <option value="low">{{ __('members::member.family_show_low') }}</option>
+                                    <option value="medium" selected>{{ __('members::member.family_show_medium') }}</option>
+                                    <option value="high">{{ __('members::member.family_show_high') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="goal_add_icon" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_icon') }}</label>
+                                <label for="goal_add_icon" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_icon') }}</label>
                                 <select id="goal_add_icon" name="icon_type" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
-                                    <option value="bi-bullseye">🎯 {{ __('member.family_show_icon_target') }}</option>
-                                    <option value="dumbbell">🏋️ {{ __('member.family_show_icon_strength') }}</option>
-                                    <option value="clock">⏱️ {{ __('member.family_show_icon_endurance') }}</option>
+                                    <option value="bi-bullseye">🎯 {{ __('members::member.family_show_icon_target') }}</option>
+                                    <option value="dumbbell">🏋️ {{ __('members::member.family_show_icon_strength') }}</option>
+                                    <option value="clock">⏱️ {{ __('members::member.family_show_icon_endurance') }}</option>
                                 </select>
                             </div>
                             <div class="col-span-full">
-                                <label for="goal_add_before_photo" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_before_photo') }} <span class="text-red-600">*</span></label>
+                                <label for="goal_add_before_photo" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.goal_before_photo') }} <span class="text-red-600">*</span></label>
                                 <input type="file" accept="image/*" id="goal_add_before_photo" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                                 <input type="hidden" name="before_proof" id="goal_add_before_photo_b64">
                                 <img id="goal_add_before_photo_preview" class="hidden mt-2 h-24 rounded-md object-cover border border-gray-200" alt="">
@@ -1270,7 +1270,7 @@
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
-                        <button type="submit" id="goalAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('member.family_show_create_goal') }}</button>
+                        <button type="submit" id="goalAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('members::member.family_show_create_goal') }}</button>
                     </div>
                 </form>
             </div>
@@ -1289,7 +1289,7 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
-                    <h5 class="text-lg font-medium">{{ __('member.family_show_add_attendance_record') }}</h5>
+                    <h5 class="text-lg font-medium">{{ __('members::member.family_show_add_attendance_record') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="attendanceAddForm" method="POST" action="{{ route('member.store-attendance', $relationship->dependent->id) }}">
@@ -1297,33 +1297,33 @@
                     <div class="p-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label for="att_add_datetime" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_date_time') }} <span class="text-red-600">*</span></label>
+                                <label for="att_add_datetime" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_date_time') }} <span class="text-red-600">*</span></label>
                                 <input type="datetime-local" id="att_add_datetime" name="session_datetime" required value="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label for="att_add_status" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_status') }} <span class="text-red-600">*</span></label>
+                                <label for="att_add_status" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_status') }} <span class="text-red-600">*</span></label>
                                 <select id="att_add_status" name="status" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
-                                    <option value="completed" selected>{{ __('member.family_show_completed') }}</option>
-                                    <option value="no_show">{{ __('member.family_show_no_show') }}</option>
+                                    <option value="completed" selected>{{ __('members::member.family_show_completed') }}</option>
+                                    <option value="no_show">{{ __('members::member.family_show_no_show') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="att_add_type" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_th_session_type') }} <span class="text-red-600">*</span></label>
-                                <input type="text" id="att_add_type" name="session_type" maxlength="100" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_session_type_ph') }}">
+                                <label for="att_add_type" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_th_session_type') }} <span class="text-red-600">*</span></label>
+                                <input type="text" id="att_add_type" name="session_type" maxlength="100" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_session_type_ph') }}">
                             </div>
                             <div>
-                                <label for="att_add_trainer" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_th_trainer_name') }}</label>
-                                <input type="text" id="att_add_trainer" name="trainer_name" maxlength="100" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_optional') }}">
+                                <label for="att_add_trainer" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_th_trainer_name') }}</label>
+                                <input type="text" id="att_add_trainer" name="trainer_name" maxlength="100" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_optional') }}">
                             </div>
                             <div class="col-span-full">
-                                <label for="att_add_notes" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_th_notes') }}</label>
-                                <textarea id="att_add_notes" name="notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_optional') }}"></textarea>
+                                <label for="att_add_notes" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_th_notes') }}</label>
+                                <textarea id="att_add_notes" name="notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_optional') }}"></textarea>
                             </div>
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
-                        <button type="submit" id="attendanceAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('member.family_show_add_record') }}</button>
+                        <button type="submit" id="attendanceAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('members::member.family_show_add_record') }}</button>
                     </div>
                 </form>
             </div>
@@ -1342,7 +1342,7 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
-                    <h5 class="text-lg font-medium">{{ __('member.family_show_add_event_participation') }}</h5>
+                    <h5 class="text-lg font-medium">{{ __('members::member.family_show_add_event_participation') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
                 <form id="eventAddForm" method="POST" action="{{ route('member.store-event', $relationship->dependent->id) }}">
@@ -1350,34 +1350,34 @@
                     <div class="p-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="col-span-full">
-                                <label for="ev_add_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_event_title') }} <span class="text-red-600">*</span></label>
-                                <input type="text" id="ev_add_title" name="title" maxlength="150" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_event_title_ph') }}">
+                                <label for="ev_add_title" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_event_title') }} <span class="text-red-600">*</span></label>
+                                <input type="text" id="ev_add_title" name="title" maxlength="150" required class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_event_title_ph') }}">
                             </div>
                             <div>
-                                <label for="ev_add_date" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_th_date') }} <span class="text-red-600">*</span></label>
+                                <label for="ev_add_date" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_th_date') }} <span class="text-red-600">*</span></label>
                                 <input type="date" id="ev_add_date" name="event_date" required value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label for="ev_add_location" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_location') }}</label>
-                                <input type="text" id="ev_add_location" name="location" maxlength="150" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_optional') }}">
+                                <label for="ev_add_location" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_location') }}</label>
+                                <input type="text" id="ev_add_location" name="location" maxlength="150" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_optional') }}">
                             </div>
                             <div>
-                                <label for="ev_add_role" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_role') }}</label>
-                                <input type="text" id="ev_add_role" name="role" maxlength="80" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_role_ph') }}">
+                                <label for="ev_add_role" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_role') }}</label>
+                                <input type="text" id="ev_add_role" name="role" maxlength="80" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_role_ph') }}">
                             </div>
                             <div>
-                                <label for="ev_add_result" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_result') }}</label>
-                                <input type="text" id="ev_add_result" name="result" maxlength="150" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_result_ph') }}">
+                                <label for="ev_add_result" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_result') }}</label>
+                                <input type="text" id="ev_add_result" name="result" maxlength="150" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_result_ph') }}">
                             </div>
                             <div class="col-span-full">
-                                <label for="ev_add_notes" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_show_th_notes') }}</label>
-                                <textarea id="ev_add_notes" name="notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('member.family_show_optional') }}"></textarea>
+                                <label for="ev_add_notes" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_show_th_notes') }}</label>
+                                <textarea id="ev_add_notes" name="notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="{{ __('members::member.family_show_optional') }}"></textarea>
                             </div>
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
                         <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">{{ __('shared.cancel') }}</button>
-                        <button type="submit" id="eventAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('member.family_show_add_event') }}</button>
+                        <button type="submit" id="eventAddSubmit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">{{ __('members::member.family_show_add_event') }}</button>
                     </div>
                 </form>
             </div>
@@ -1390,8 +1390,8 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="goalEditModalLabel">{{ __('member.family_show_edit_goal_progress') }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('member.family_show_close') }}"></button>
+                <h5 class="modal-title" id="goalEditModalLabel">{{ __('members::member.family_show_edit_goal_progress') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('members::member.family_show_close') }}"></button>
             </div>
             <form id="goalEditForm" method="POST">
                 @csrf
@@ -1404,35 +1404,35 @@
                                     <i class="bi bi-bullseye text-white"></i>
                                 </div>
                                 <div>
-                                    <h6 class="font-bold mb-1" id="goalTitleDisplay">{{ __('member.family_show_goal_title') }}</h6>
-                                    <p class="text-muted small mb-0" id="goalDescriptionDisplay">{{ __('member.family_show_goal_desc_default') }}</p>
+                                    <h6 class="font-bold mb-1" id="goalTitleDisplay">{{ __('members::member.family_show_goal_title') }}</h6>
+                                    <p class="text-muted small mb-0" id="goalDescriptionDisplay">{{ __('members::member.family_show_goal_desc_default') }}</p>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label for="current_progress_value" class="form-label">{{ __('member.family_show_current_progress') }} <span class="text-danger">*</span></label>
+                            <label for="current_progress_value" class="form-label">{{ __('members::member.family_show_current_progress') }} <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <input type="number" step="0.1" class="form-control" id="current_progress_value" name="current_progress_value" required>
-                                <span class="input-group-text" id="goalUnitDisplay">{{ __('member.family_show_lbs') }}</span>
+                                <span class="input-group-text" id="goalUnitDisplay">{{ __('members::member.family_show_lbs') }}</span>
                             </div>
-                            <div class="form-text">{{ __('member.family_show_target') }} <span id="goalTargetDisplay">170.0 {{ __('member.family_show_lbs') }}</span></div>
+                            <div class="form-text">{{ __('members::member.family_show_target') }} <span id="goalTargetDisplay">170.0 {{ __('members::member.family_show_lbs') }}</span></div>
                         </div>
                         <div class="col-md-6">
-                            <label for="goal_status" class="form-label">{{ __('member.family_show_status') }}</label>
+                            <label for="goal_status" class="form-label">{{ __('members::member.family_show_status') }}</label>
                             <select class="form-select" id="goal_status" name="status">
-                                <option value="active">{{ __('member.family_show_active') }}</option>
-                                <option value="completed">{{ __('member.family_show_completed') }}</option>
+                                <option value="active">{{ __('members::member.family_show_active') }}</option>
+                                <option value="completed">{{ __('members::member.family_show_completed') }}</option>
                             </select>
                         </div>
                         <div class="col-12">
                             <div class="progress" style="height: 8px;">
                                 <div class="progress-bar" role="progressbar" id="progressPreview" style="width: 0%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);"></div>
                             </div>
-                            <small class="text-muted mt-1 block" id="progressTextPreview">{{ __('member.family_show_progress') }} 0.0 / 170.0 {{ __('member.family_show_lbs') }} (0.0%)</small>
+                            <small class="text-muted mt-1 block" id="progressTextPreview">{{ __('members::member.family_show_progress') }} 0.0 / 170.0 {{ __('members::member.family_show_lbs') }} (0.0%)</small>
                         </div>
                         <div class="col-12 hidden" id="goalEditAfterPhotoWrap">
-                            <label for="goal_edit_after_photo" class="form-label">{{ __('member.goal_after_photo') }} <span class="text-danger">*</span></label>
-                            <p class="text-muted small mb-1">{{ __('member.mark_as_achieved_hint') }}</p>
+                            <label for="goal_edit_after_photo" class="form-label">{{ __('members::member.goal_after_photo') }} <span class="text-danger">*</span></label>
+                            <p class="text-muted small mb-1">{{ __('members::member.mark_as_achieved_hint') }}</p>
                             <input type="file" accept="image/*" id="goal_edit_after_photo" class="form-control">
                             <input type="hidden" name="after_proof" id="goal_edit_after_photo_b64">
                             <img id="goal_edit_after_photo_preview" class="hidden mt-2 h-24 rounded-md object-cover border" alt="">
@@ -1441,7 +1441,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('shared.cancel') }}</button>
-                    <button type="submit" class="btn btn-primary">{{ __('member.family_show_update_goal') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('members::member.family_show_update_goal') }}</button>
                 </div>
             </form>
         </div>
@@ -1453,66 +1453,66 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="healthUpdateModalLabel">{{ __('member.family_show_add_health_update') }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('member.family_show_close') }}"></button>
+                <h5 class="modal-title" id="healthUpdateModalLabel">{{ __('members::member.family_show_add_health_update') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('members::member.family_show_close') }}"></button>
             </div>
             <form id="healthUpdateForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-health', $relationship->dependent->id) : route('family.store-health', $relationship->dependent->id) }}">
                 @csrf
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="recorded_at" class="form-label">{{ __('member.family_show_th_date') }} <span class="text-danger">*</span></label>
+                            <label for="recorded_at" class="form-label">{{ __('members::member.family_show_th_date') }} <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="recorded_at" name="recorded_at" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="height" class="form-label">{{ __('member.family_show_height_cm') }}</label>
+                            <label for="height" class="form-label">{{ __('members::member.family_show_height_cm') }}</label>
                             <input type="number" step="0.1" class="form-control" id="height" name="height">
                         </div>
                         <div class="col-md-6">
-                            <label for="weight" class="form-label">{{ __('member.family_show_weight_kg') }}</label>
+                            <label for="weight" class="form-label">{{ __('members::member.family_show_weight_kg') }}</label>
                             <input type="number" step="0.1" class="form-control" id="weight" name="weight">
                         </div>
                         <div class="col-md-6">
-                            <label for="body_fat_percentage" class="form-label">{{ __('member.family_show_body_fat_paren') }}</label>
+                            <label for="body_fat_percentage" class="form-label">{{ __('members::member.family_show_body_fat_paren') }}</label>
                             <input type="number" step="0.1" class="form-control" id="body_fat_percentage" name="body_fat_percentage">
                         </div>
                         <div class="col-md-6">
-                            <label for="bmi" class="form-label">{{ __('member.family_show_bmi') }}</label>
+                            <label for="bmi" class="form-label">{{ __('members::member.family_show_bmi') }}</label>
                             <input type="number" step="0.1" class="form-control" id="bmi" name="bmi">
                         </div>
                         <div class="col-md-6">
-                            <label for="body_water_percentage" class="form-label">{{ __('member.family_show_body_water_paren') }}</label>
+                            <label for="body_water_percentage" class="form-label">{{ __('members::member.family_show_body_water_paren') }}</label>
                             <input type="number" step="0.1" class="form-control" id="body_water_percentage" name="body_water_percentage">
                         </div>
                         <div class="col-md-6">
-                            <label for="muscle_mass" class="form-label">{{ __('member.family_show_muscle_mass_kg') }}</label>
+                            <label for="muscle_mass" class="form-label">{{ __('members::member.family_show_muscle_mass_kg') }}</label>
                             <input type="number" step="0.1" class="form-control" id="muscle_mass" name="muscle_mass">
                         </div>
                         <div class="col-md-6">
-                            <label for="bone_mass" class="form-label">{{ __('member.family_show_bone_mass_kg') }}</label>
+                            <label for="bone_mass" class="form-label">{{ __('members::member.family_show_bone_mass_kg') }}</label>
                             <input type="number" step="0.1" class="form-control" id="bone_mass" name="bone_mass">
                         </div>
                         <div class="col-md-6">
-                            <label for="visceral_fat" class="form-label">{{ __('member.family_show_visceral_fat') }}</label>
+                            <label for="visceral_fat" class="form-label">{{ __('members::member.family_show_visceral_fat') }}</label>
                             <input type="number" class="form-control" id="visceral_fat" name="visceral_fat">
                         </div>
                         <div class="col-md-6">
-                            <label for="bmr" class="form-label">{{ __('member.family_show_bmr_cal') }}</label>
+                            <label for="bmr" class="form-label">{{ __('members::member.family_show_bmr_cal') }}</label>
                             <input type="number" class="form-control" id="bmr" name="bmr">
                         </div>
                         <div class="col-md-6">
-                            <label for="protein_percentage" class="form-label">{{ __('member.family_show_protein_paren') }}</label>
+                            <label for="protein_percentage" class="form-label">{{ __('members::member.family_show_protein_paren') }}</label>
                             <input type="number" step="0.1" class="form-control" id="protein_percentage" name="protein_percentage">
                         </div>
                         <div class="col-md-6">
-                            <label for="body_age" class="form-label">{{ __('member.family_show_body_age_years') }}</label>
+                            <label for="body_age" class="form-label">{{ __('members::member.family_show_body_age_years') }}</label>
                             <input type="number" class="form-control" id="body_age" name="body_age">
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('shared.cancel') }}</button>
-                    <button type="submit" class="btn btn-primary">{{ __('member.family_show_save_health_update') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('members::member.family_show_save_health_update') }}</button>
                 </div>
             </form>
         </div>
@@ -1524,8 +1524,8 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="tournamentParticipationModalLabel">{{ __('member.family_show_add_tournament_participation') }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('member.family_show_close') }}"></button>
+                <h5 class="modal-title" id="tournamentParticipationModalLabel">{{ __('members::member.family_show_add_tournament_participation') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('members::member.family_show_close') }}"></button>
             </div>
             <form id="tournamentParticipationForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-tournament', $relationship->dependent->id) : route('family.store-tournament', $relationship->dependent->id) }}">
                 @csrf
@@ -1533,58 +1533,58 @@
                     <div class="row g-3">
                         <!-- Tournament Details -->
                         <div class="col-md-6">
-                            <label for="tournament_title" class="form-label">{{ __('member.family_show_tournament_title') }} <span class="text-danger">*</span></label>
+                            <label for="tournament_title" class="form-label">{{ __('members::member.family_show_tournament_title') }} <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="tournament_title" name="title" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="tournament_type" class="form-label">{{ __('member.family_show_type') }} <span class="text-danger">*</span></label>
+                            <label for="tournament_type" class="form-label">{{ __('members::member.family_show_type') }} <span class="text-danger">*</span></label>
                             <select class="form-select" id="tournament_type" name="type" required>
-                                <option value="">{{ __('member.family_show_select_type') }}</option>
-                                <option value="championship">{{ __('member.family_show_type_championship') }}</option>
-                                <option value="tournament">{{ __('member.family_show_type_tournament') }}</option>
-                                <option value="competition">{{ __('member.family_show_type_competition') }}</option>
-                                <option value="exhibition">{{ __('member.family_show_type_exhibition') }}</option>
+                                <option value="">{{ __('members::member.family_show_select_type') }}</option>
+                                <option value="championship">{{ __('members::member.family_show_type_championship') }}</option>
+                                <option value="tournament">{{ __('members::member.family_show_type_tournament') }}</option>
+                                <option value="competition">{{ __('members::member.family_show_type_competition') }}</option>
+                                <option value="exhibition">{{ __('members::member.family_show_type_exhibition') }}</option>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label for="tournament_sport" class="form-label">{{ __('member.family_show_sport') }} <span class="text-danger">*</span></label>
+                            <label for="tournament_sport" class="form-label">{{ __('members::member.family_show_sport') }} <span class="text-danger">*</span></label>
                             <select class="form-select" id="tournament_sport" name="sport" required>
-                                <option value="">{{ __('member.family_show_select_sport') }}</option>
-                                <option value="Boxing">{{ __('member.family_show_sport_boxing') }}</option>
-                                <option value="Taekwondo">{{ __('member.family_show_sport_taekwondo') }}</option>
-                                <option value="Karate">{{ __('member.family_show_sport_karate') }}</option>
-                                <option value="Martial Arts">{{ __('member.family_show_sport_martial_arts') }}</option>
-                                <option value="Fitness">{{ __('member.family_show_sport_fitness') }}</option>
-                                <option value="Weightlifting">{{ __('member.family_show_sport_weightlifting') }}</option>
-                                <option value="Other">{{ __('member.family_show_sport_other') }}</option>
+                                <option value="">{{ __('members::member.family_show_select_sport') }}</option>
+                                <option value="Boxing">{{ __('members::member.family_show_sport_boxing') }}</option>
+                                <option value="Taekwondo">{{ __('members::member.family_show_sport_taekwondo') }}</option>
+                                <option value="Karate">{{ __('members::member.family_show_sport_karate') }}</option>
+                                <option value="Martial Arts">{{ __('members::member.family_show_sport_martial_arts') }}</option>
+                                <option value="Fitness">{{ __('members::member.family_show_sport_fitness') }}</option>
+                                <option value="Weightlifting">{{ __('members::member.family_show_sport_weightlifting') }}</option>
+                                <option value="Other">{{ __('members::member.family_show_sport_other') }}</option>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <x-birthdate-dropdown
+                            <x-fields.date-of-birth
                                 name="date"
                                 id="tournament_date"
-                                :label="__('member.family_show_th_date')"
+                                :label="__('members::member.family_show_th_date')"
                                 :required="true"
                                 :min-year="2000"
                                 :max-year="date('Y')"
                                 :error="$errors->first('date')" />
                         </div>
                         <div class="col-md-6">
-                            <label for="tournament_time" class="form-label">{{ __('member.family_show_time_label') }}</label>
+                            <label for="tournament_time" class="form-label">{{ __('members::member.family_show_time_label') }}</label>
                             <input type="time" class="form-control" id="tournament_time" name="time">
                         </div>
                         <div class="col-md-6">
-                            <label for="tournament_location" class="form-label">{{ __('member.family_show_location') }}</label>
-                            <input type="text" class="form-control" id="tournament_location" name="location" placeholder="{{ __('member.family_show_venue_ph') }}">
+                            <label for="tournament_location" class="form-label">{{ __('members::member.family_show_location') }}</label>
+                            <input type="text" class="form-control" id="tournament_location" name="location" placeholder="{{ __('members::member.family_show_venue_ph') }}">
                         </div>
                         <div class="col-md-6">
-                            <label for="participants_count" class="form-label">{{ __('member.family_show_num_participants') }}</label>
+                            <label for="participants_count" class="form-label">{{ __('members::member.family_show_num_participants') }}</label>
                             <input type="number" class="form-control" id="participants_count" name="participants_count" min="1">
                         </div>
                         <div class="col-md-6">
-                            <label for="club_affiliation_id" class="form-label">{{ __('member.representing') }}</label>
+                            <label for="club_affiliation_id" class="form-label">{{ __('members::member.representing') }}</label>
                             <select class="form-select" id="club_affiliation_id" name="club_affiliation_id">
-                                <option value="">{{ __('member.family_show_select_club') }}</option>
+                                <option value="">{{ __('members::member.family_show_select_club') }}</option>
                                 @foreach($clubAffiliations ?? [] as $affiliation)
                                     <option value="{{ $affiliation->id }}">{{ $affiliation->club_name }}</option>
                                 @endforeach
@@ -1594,27 +1594,27 @@
                         <!-- Performance Results Section -->
                         <div class="col-12">
                             <hr>
-                            <h6 class="mb-3">{{ __('member.family_show_performance_results') }}</h6>
+                            <h6 class="mb-3">{{ __('members::member.family_show_performance_results') }}</h6>
                             <div id="performanceResultsContainer">
                                 <div class="performance-result-item mb-3 p-3 border rounded">
                                     <div class="row g-2">
                                         <div class="col-md-4">
-                                            <label class="form-label">{{ __('member.family_show_medal_type') }}</label>
+                                            <label class="form-label">{{ __('members::member.family_show_medal_type') }}</label>
                                             <select class="form-select medal-type" name="performance_results[0][medal_type]">
-                                                <option value="">{{ __('member.family_show_select_medal') }}</option>
-                                                <option value="special">{{ __('member.family_show_special_award') }}</option>
-                                                <option value="1st">{{ __('member.family_show_first_place') }}</option>
-                                                <option value="2nd">{{ __('member.family_show_second_place') }}</option>
-                                                <option value="3rd">{{ __('member.family_show_third_place') }}</option>
+                                                <option value="">{{ __('members::member.family_show_select_medal') }}</option>
+                                                <option value="special">{{ __('members::member.family_show_special_award') }}</option>
+                                                <option value="1st">{{ __('members::member.family_show_first_place') }}</option>
+                                                <option value="2nd">{{ __('members::member.family_show_second_place') }}</option>
+                                                <option value="3rd">{{ __('members::member.family_show_third_place') }}</option>
                                             </select>
                                         </div>
                                         <div class="col-md-3">
-                                            <label class="form-label">{{ __('member.family_show_points') }}</label>
+                                            <label class="form-label">{{ __('members::member.family_show_points') }}</label>
                                             <input type="number" class="form-control" name="performance_results[0][points]" min="0" step="0.1">
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label">{{ __('member.family_show_description') }}</label>
-                                            <input type="text" class="form-control" name="performance_results[0][description]" placeholder="{{ __('member.family_show_optional_description') }}">
+                                            <label class="form-label">{{ __('members::member.family_show_description') }}</label>
+                                            <input type="text" class="form-control" name="performance_results[0][description]" placeholder="{{ __('members::member.family_show_optional_description') }}">
                                         </div>
                                         <div class="col-md-1 flex items-end">
                                             <button type="button" class="btn btn-outline-danger btn-sm remove-result" style="display: none;">
@@ -1625,23 +1625,23 @@
                                 </div>
                             </div>
                             <button type="button" class="btn btn-outline-primary btn-sm" id="addPerformanceResult">
-                                <i class="bi bi-plus me-1"></i>{{ __('member.family_show_add_another_result') }}
+                                <i class="bi bi-plus me-1"></i>{{ __('members::member.family_show_add_another_result') }}
                             </button>
                         </div>
 
                         <!-- Notes & Media Section -->
                         <div class="col-12">
                             <hr>
-                            <h6 class="mb-3">{{ __('member.family_show_th_notes_media') }}</h6>
+                            <h6 class="mb-3">{{ __('members::member.family_show_th_notes_media') }}</h6>
                             <div id="notesMediaContainer">
                                 <div class="notes-media-item mb-3 p-3 border rounded">
                                     <div class="row g-2">
                                         <div class="col-md-6">
-                                            <label class="form-label">{{ __('member.family_show_note_text') }}</label>
-                                            <textarea class="form-control" name="notes_media[0][note_text]" rows="2" placeholder="{{ __('member.family_show_note_text_ph') }}"></textarea>
+                                            <label class="form-label">{{ __('members::member.family_show_note_text') }}</label>
+                                            <textarea class="form-control" name="notes_media[0][note_text]" rows="2" placeholder="{{ __('members::member.family_show_note_text_ph') }}"></textarea>
                                         </div>
                                         <div class="col-md-5">
-                                            <label class="form-label">{{ __('member.family_show_media_link') }}</label>
+                                            <label class="form-label">{{ __('members::member.family_show_media_link') }}</label>
                                             <input type="url" class="form-control" name="notes_media[0][media_link]" placeholder="https://example.com/photo.jpg">
                                         </div>
                                         <div class="col-md-1 flex items-end">
@@ -1653,7 +1653,7 @@
                                 </div>
                             </div>
                             <button type="button" class="btn btn-outline-primary btn-sm" id="addNotesMedia">
-                                <i class="bi bi-plus me-1"></i>{{ __('member.family_show_add_another_note') }}
+                                <i class="bi bi-plus me-1"></i>{{ __('members::member.family_show_add_another_note') }}
                             </button>
                         </div>
                         {{-- Supporting evidence — helps a club verify the claim; never verifies it on its own --}}
@@ -1674,7 +1674,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('shared.cancel') }}</button>
-                    <button type="submit" class="btn btn-primary">{{ __('member.family_show_save_tournament') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('members::member.family_show_save_tournament') }}</button>
                 </div>
             </form>
         </div>
@@ -1840,7 +1840,7 @@
 
         // Function to reset modal for adding new record
         function resetHealthModal() {
-            document.getElementById('healthUpdateModalLabel').textContent = '{{ __("member.family_show_add_health_update") }}';
+            document.getElementById('healthUpdateModalLabel').textContent = '{{ __("members::member.family_show_add_health_update") }}';
             document.getElementById('healthUpdateForm').action = '{{ route("family.store-health", $relationship->dependent->id) }}';
             document.getElementById('healthUpdateForm').method = 'POST';
             document.getElementById('recorded_at').value = '{{ \Carbon\Carbon::now()->format("Y-m-d") }}';
@@ -1855,7 +1855,7 @@
             document.getElementById('bmr').value = '';
             document.getElementById('protein_percentage').value = '';
             document.getElementById('body_age').value = '';
-            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = '{{ __("member.family_show_save_health_update") }}';
+            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = '{{ __("members::member.family_show_save_health_update") }}';
         }
 
         // Function to populate modal for editing
@@ -1863,7 +1863,7 @@
             const record = healthRecordsData.find(r => r.id == recordId);
             if (!record) return;
 
-            document.getElementById('healthUpdateModalLabel').textContent = '{{ __("member.family_show_edit_health_update") }}';
+            document.getElementById('healthUpdateModalLabel').textContent = '{{ __("members::member.family_show_edit_health_update") }}';
             document.getElementById('healthUpdateForm').action = '{{ route("family.update-health", ["id" => $relationship->dependent->id, "recordId" => "__RECORD_ID__"]) }}'.replace('__RECORD_ID__', recordId);
             document.getElementById('healthUpdateForm').method = 'POST';
 
@@ -1889,7 +1889,7 @@
             document.getElementById('bmr').value = record.bmr || '';
             document.getElementById('protein_percentage').value = record.protein_percentage || '';
             document.getElementById('body_age').value = record.body_age || '';
-            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = '{{ __("member.family_show_update_health_update") }}';
+            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = '{{ __("members::member.family_show_update_health_update") }}';
         }
 
         // Handle comparison dropdown changes
@@ -1902,7 +1902,7 @@
                 const previousId = previousDateSelect.value;
 
                 if (!currentId || !previousId) {
-                    document.getElementById('timeDifference').innerHTML = '{{ __("member.family_show_select_dates") }}';
+                    document.getElementById('timeDifference').innerHTML = '{{ __("members::member.family_show_select_dates") }}';
                     return;
                 }
 
@@ -1910,13 +1910,13 @@
                 const previousRecord = healthRecordsData.find(r => r.id == previousId);
 
                 if (!currentRecord || !previousRecord) {
-                    document.getElementById('timeDifference').innerHTML = '{{ __("member.family_show_select_dates") }}';
+                    document.getElementById('timeDifference').innerHTML = '{{ __("members::member.family_show_select_dates") }}';
                     return;
                 }
 
                 // Update time difference
                 const timeDiff = calculateTimeDifference(currentRecord.recorded_at, previousRecord.recorded_at);
-                document.getElementById('timeDifference').innerHTML = `<strong>{{ __("member.family_show_time_between_records") }}</strong> ${timeDiff}`;
+                document.getElementById('timeDifference').innerHTML = `<strong>{{ __("members::member.family_show_time_between_records") }}</strong> ${timeDiff}`;
 
                 // Update the table rows
                 updateTableRow('height', currentRecord.height, previousRecord.height);
@@ -1949,7 +1949,7 @@
                 if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
                 if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
 
-                return parts.length > 0 ? parts.join(' ') : '{{ __("member.family_show_same_day") }}';
+                return parts.length > 0 ? parts.join(' ') : '{{ __("members::member.family_show_same_day") }}';
             }
 
             function updateTableRow(metric, currentValue, previousValue) {
@@ -2191,12 +2191,12 @@
             // Update title to show current filter
             const titleElement = document.querySelector('h5.font-bold');
             if (titleElement) {
-                const baseTitle = '{{ __("member.family_show_goal_tracking") }}';
+                const baseTitle = '{{ __("members::member.family_show_goal_tracking") }}';
                 if (filterType === 'all') {
                     titleElement.innerHTML = `<i class="bi bi-bullseye me-2"></i>${baseTitle}`;
                 } else {
-                    const filterLabel = filterType === 'active' ? '{{ __("member.family_show_active") }}' : '{{ __("member.family_show_completed") }}';
-                    titleElement.innerHTML = `<i class="bi bi-bullseye me-2"></i>${baseTitle} - ${filterLabel} {{ __("member.family_show_goals_word") }}`;
+                    const filterLabel = filterType === 'active' ? '{{ __("members::member.family_show_active") }}' : '{{ __("members::member.family_show_completed") }}';
+                    titleElement.innerHTML = `<i class="bi bi-bullseye me-2"></i>${baseTitle} - ${filterLabel} {{ __("members::member.family_show_goals_word") }}`;
                 }
             }
         }
@@ -2236,7 +2236,7 @@
 
             // Populate modal fields
             document.getElementById('goalTitleDisplay').textContent = goal.title;
-            document.getElementById('goalDescriptionDisplay').textContent = goal.description || '{{ __("member.family_show_no_description") }}';
+            document.getElementById('goalDescriptionDisplay').textContent = goal.description || '{{ __("members::member.family_show_no_description") }}';
             document.getElementById('current_progress_value').value = goal.current_progress_value;
             document.getElementById('goal_status').value = goal.status;
             document.getElementById('goalUnitDisplay').textContent = goal.unit;
@@ -2393,14 +2393,14 @@
                     photos.className = 'flex gap-2 mt-3';
                     photos.setAttribute('data-goal-photos', '');
                     photos.innerHTML =
-                        (goal.before_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border" alt=""><small class="text-muted block text-center mt-1">{{ __("member.before") }}</small></div>' : '') +
-                        (goal.after_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.after_proof + '" class="w-full h-20 rounded-md object-cover border" alt=""><small class="text-muted block text-center mt-1">{{ __("member.after") }}</small></div>' : '');
+                        (goal.before_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border" alt=""><small class="text-muted block text-center mt-1">{{ __("members::member.before") }}</small></div>' : '') +
+                        (goal.after_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.after_proof + '" class="w-full h-20 rounded-md object-cover border" alt=""><small class="text-muted block text-center mt-1">{{ __("members::member.after") }}</small></div>' : '');
                     badges.insertAdjacentElement('afterend', photos);
 
                     if (goal.days_taken !== null && goal.days_taken !== undefined) {
                         const daysEl = document.createElement('div');
                         daysEl.className = 'mt-2 text-success small fw-semibold';
-                        daysEl.innerHTML = '<i class="bi bi-trophy-fill me-1"></i>' + goal.days_taken + ' {{ __("member.days_to_achieve") }}';
+                        daysEl.innerHTML = '<i class="bi bi-trophy-fill me-1"></i>' + goal.days_taken + ' {{ __("members::member.days_to_achieve") }}';
                         photos.insertAdjacentElement('afterend', daysEl);
                     }
                 }
@@ -2429,14 +2429,14 @@
                         patchGoalCard(data.goal);
                         window.dispatchEvent(new CustomEvent('member-profile-updated', { detail: { goal: data.goal } }));
                     }
-                    window.showToast('success', data.message || '{{ __("member.family_show_goal_updated") }}');
+                    window.showToast('success', data.message || '{{ __("members::member.family_show_goal_updated") }}');
                 } else {
-                    window.showToast('error', '{{ __("member.family_show_error_updating_goal") }}' + (data.message || '{{ __("member.family_show_unknown_error") }}'));
+                    window.showToast('error', '{{ __("members::member.family_show_error_updating_goal") }}' + (data.message || '{{ __("members::member.family_show_unknown_error") }}'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                window.showToast('error', '{{ __("member.family_show_error_updating_goal_retry") }}');
+                window.showToast('error', '{{ __("members::member.family_show_error_updating_goal_retry") }}');
             });
         });
 
@@ -2465,9 +2465,9 @@
                 else if (status === 422 && data.errors) {
                     const first = Object.values(data.errors)[0];
                     if (window.showToast) window.showToast('error', Array.isArray(first) ? first[0] : first);
-                } else if (window.showToast) window.showToast('error', data.message || '{{ __("member.family_show_could_not_save") }}');
+                } else if (window.showToast) window.showToast('error', data.message || '{{ __("members::member.family_show_could_not_save") }}');
             })
-            .catch(() => { if (window.showToast) window.showToast('error', '{{ __("member.family_show_network_error") }}'); })
+            .catch(() => { if (window.showToast) window.showToast('error', '{{ __("members::member.family_show_network_error") }}'); })
             .finally(() => { if (btn) btn.disabled = false; });
         }
 
@@ -2490,23 +2490,23 @@
                 col.className = 'col-lg-6';
                 col.innerHTML =
                     '<div class="card shadow-sm border-0 h-full relative" id="goal-' + goal.id + '">' +
-                        '<button class="btn btn-sm btn-outline-primary rounded-circle absolute top-0 end-0 mt-2 me-2 edit-goal-btn" style="width:32px;height:32px;padding:0;" data-goal-id="' + goal.id + '" title="{{ __("member.family_show_edit_goal") }}"><i class="bi bi-pencil"></i></button>' +
+                        '<button class="btn btn-sm btn-outline-primary rounded-circle absolute top-0 end-0 mt-2 me-2 edit-goal-btn" style="width:32px;height:32px;padding:0;" data-goal-id="' + goal.id + '" title="{{ __("members::member.family_show_edit_goal") }}"><i class="bi bi-pencil"></i></button>' +
                         '<div class="card-body p-4">' +
                             '<div class="flex items-center mb-3">' +
                                 '<div class="rounded-circle flex items-center justify-center me-3" style="width:48px;height:48px;background-color:#8b5cf6;"><i class="' + famGoalIcon(goal.icon_type) + '"></i></div>' +
                                 '<div class="flex-1"><h6 class="font-bold mb-1">' + famEscape(goal.title) + '</h6>' + (goal.description ? '<p class="text-muted small mb-0">' + famEscape(goal.description) + '</p>' : '') + '</div>' +
                             '</div>' +
                             '<div class="mb-3"><div class="flex justify-between items-center mb-2">' +
-                                '<small class="text-muted">{{ __("member.family_show_progress") }} ' + Number(goal.current_progress_value).toFixed(1) + ' / ' + Number(goal.target_value).toFixed(1) + ' ' + famEscape(goal.unit) + '</small>' +
+                                '<small class="text-muted">{{ __("members::member.family_show_progress") }} ' + Number(goal.current_progress_value).toFixed(1) + ' / ' + Number(goal.target_value).toFixed(1) + ' ' + famEscape(goal.unit) + '</small>' +
                                 '<small class="font-semibold">' + pct.toFixed(1) + '%</small></div>' +
                                 '<div class="progress" style="height:8px;"><div class="progress-bar" role="progressbar" style="width:' + pct + '%;background:linear-gradient(90deg,#8b5cf6 0%,#10b981 100%);"></div></div>' +
                             '</div>' +
-                            '<div class="row g-2 mb-3"><div class="col-6"><small class="text-muted block">{{ __("member.family_show_started") }}</small><small class="font-semibold">' + today + '</small></div>' +
-                                '<div class="col-6 text-end"><small class="text-muted block">{{ __("member.family_show_target") }}</small><small class="font-semibold">' + famEscape(goal.target_date || '') + '</small></div></div>' +
-                            '<div class="flex gap-2 flex-wrap"><span class="badge bg-primary small">{{ __("member.family_show_active") }}</span>' +
+                            '<div class="row g-2 mb-3"><div class="col-6"><small class="text-muted block">{{ __("members::member.family_show_started") }}</small><small class="font-semibold">' + today + '</small></div>' +
+                                '<div class="col-6 text-end"><small class="text-muted block">{{ __("members::member.family_show_target") }}</small><small class="font-semibold">' + famEscape(goal.target_date || '') + '</small></div></div>' +
+                            '<div class="flex gap-2 flex-wrap"><span class="badge bg-primary small">{{ __("members::member.family_show_active") }}</span>' +
                                 '<span class="badge ' + prClass + ' small">' + famEscape((goal.priority_level || 'medium').charAt(0).toUpperCase() + (goal.priority_level || 'medium').slice(1)) + '</span></div>' +
                             (goal.before_proof
-                                ? '<div class="flex gap-2 mt-3"><div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border" alt=""><small class="text-muted block text-center mt-1">{{ __("member.before") }}</small></div></div>'
+                                ? '<div class="flex gap-2 mt-3"><div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border" alt=""><small class="text-muted block text-center mt-1">{{ __("members::member.before") }}</small></div></div>'
                                 : '') +
                         '</div>' +
                     '</div>';
@@ -2530,7 +2530,7 @@
                     const beforePreview = document.getElementById('goal_add_before_photo_preview');
                     if (beforePreview) { beforePreview.src = ''; beforePreview.classList.add('hidden'); }
                     window.dispatchEvent(new CustomEvent('close-goal-add-modal'));
-                    if (window.showToast) window.showToast('success', data.message || '{{ __("member.family_show_goal_created") }}');
+                    if (window.showToast) window.showToast('success', data.message || '{{ __("members::member.family_show_goal_created") }}');
                 });
             });
         }
@@ -2545,7 +2545,7 @@
                     const emptyRow = document.getElementById('attendanceEmptyRow');
                     if (emptyRow) emptyRow.remove();
                     const r = data.record;
-                    const badge = r.status === 'completed' ? '<span class="badge bg-success">{{ __("member.family_show_completed") }}</span>' : '<span class="badge bg-danger">{{ __("member.family_show_no_show") }}</span>';
+                    const badge = r.status === 'completed' ? '<span class="badge bg-success">{{ __("members::member.family_show_completed") }}</span>' : '<span class="badge bg-danger">{{ __("members::member.family_show_no_show") }}</span>';
                     const tr = document.createElement('tr');
                     tr.innerHTML =
                         '<td class="align-middle"><div class="font-semibold">' + famEscape(r.date) + '</div><small class="text-muted">' + famEscape(r.time) + '</small></td>' +
@@ -2558,7 +2558,7 @@
                     if (cntEl) cntEl.textContent = (parseInt(cntEl.textContent, 10) || 0) + 1;
                     attendanceAddForm.reset();
                     window.dispatchEvent(new CustomEvent('close-attendance-add-modal'));
-                    if (window.showToast) window.showToast('success', data.message || '{{ __("member.family_show_attendance_added") }}');
+                    if (window.showToast) window.showToast('success', data.message || '{{ __("members::member.family_show_attendance_added") }}');
                 });
             });
         }
@@ -2591,7 +2591,7 @@
                     if (empty) empty.classList.add('hidden');
                     eventAddForm.reset();
                     window.dispatchEvent(new CustomEvent('close-event-add-modal'));
-                    if (window.showToast) window.showToast('success', data.message || '{{ __("member.family_show_event_added") }}');
+                    if (window.showToast) window.showToast('success', data.message || '{{ __("members::member.family_show_event_added") }}');
                 });
             });
         }
@@ -2708,7 +2708,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         callbacks: {
                             label: function(context) {
                                 const skill = skills[context.dataIndex];
-                                const duration = skill.formatted_duration || `${skill.duration_months} {{ __("member.family_show_months") }}`;
+                                const duration = skill.formatted_duration || `${skill.duration_months} {{ __("members::member.family_show_months") }}`;
                                 return `${context.label}: ${duration}`;
                             }
                         }
@@ -2750,19 +2750,19 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         if (affiliation.location) {
-            html += `<p class="mb-2"><i class="bi bi-geo-alt me-2"></i><strong>{{ __("member.family_show_location_label") }}</strong> ${affiliation.location}</p>`;
+            html += `<p class="mb-2"><i class="bi bi-geo-alt me-2"></i><strong>{{ __("members::member.family_show_location_label") }}</strong> ${affiliation.location}</p>`;
         }
 
         if (affiliation.description) {
-            html += `<p class="mb-2"><strong>{{ __("member.family_show_description_label") }}</strong> ${affiliation.description}</p>`;
+            html += `<p class="mb-2"><strong>{{ __("members::member.family_show_description_label") }}</strong> ${affiliation.description}</p>`;
         }
 
         if (affiliation.coaches && affiliation.coaches.length > 0) {
-            html += `<p class="mb-2"><strong>{{ __("member.family_show_coaches_label") }}</strong> ${affiliation.coaches.join(', ')}</p>`;
+            html += `<p class="mb-2"><strong>{{ __("members::member.family_show_coaches_label") }}</strong> ${affiliation.coaches.join(', ')}</p>`;
         }
 
         if (affiliation.affiliation_media && affiliation.affiliation_media.length > 0) {
-            html += `<div class="mt-3"><strong>{{ __("member.family_show_media_certificates") }}</strong></div>`;
+            html += `<div class="mt-3"><strong>{{ __("members::member.family_show_media_certificates") }}</strong></div>`;
             html += `<div class="row g-2 mt-1">`;
 
             affiliation.affiliation_media.forEach(media => {
@@ -2809,22 +2809,22 @@ document.addEventListener('DOMContentLoaded', function() {
         newItem.innerHTML = `
             <div class="row g-2">
                 <div class="col-md-4">
-                    <label class="form-label">{{ __("member.family_show_medal_type") }}</label>
+                    <label class="form-label">{{ __("members::member.family_show_medal_type") }}</label>
                     <select class="form-select medal-type" name="performance_results[${performanceResultIndex}][medal_type]">
-                        <option value="">{{ __("member.family_show_select_medal") }}</option>
-                        <option value="special">{{ __("member.family_show_special_award") }}</option>
-                        <option value="1st">{{ __("member.family_show_first_place") }}</option>
-                        <option value="2nd">{{ __("member.family_show_second_place") }}</option>
-                        <option value="3rd">{{ __("member.family_show_third_place") }}</option>
+                        <option value="">{{ __("members::member.family_show_select_medal") }}</option>
+                        <option value="special">{{ __("members::member.family_show_special_award") }}</option>
+                        <option value="1st">{{ __("members::member.family_show_first_place") }}</option>
+                        <option value="2nd">{{ __("members::member.family_show_second_place") }}</option>
+                        <option value="3rd">{{ __("members::member.family_show_third_place") }}</option>
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">{{ __("member.family_show_points") }}</label>
+                    <label class="form-label">{{ __("members::member.family_show_points") }}</label>
                     <input type="number" class="form-control" name="performance_results[${performanceResultIndex}][points]" min="0" step="0.1">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">{{ __("member.family_show_description") }}</label>
-                    <input type="text" class="form-control" name="performance_results[${performanceResultIndex}][description]" placeholder="{{ __("member.family_show_optional_description") }}">
+                    <label class="form-label">{{ __("members::member.family_show_description") }}</label>
+                    <input type="text" class="form-control" name="performance_results[${performanceResultIndex}][description]" placeholder="{{ __("members::member.family_show_optional_description") }}">
                 </div>
                 <div class="col-md-1 flex items-end">
                     <button type="button" class="btn btn-outline-danger btn-sm remove-result">
@@ -2848,11 +2848,11 @@ document.addEventListener('DOMContentLoaded', function() {
         newItem.innerHTML = `
             <div class="row g-2">
                 <div class="col-md-6">
-                    <label class="form-label">{{ __("member.family_show_note_text") }}</label>
-                    <textarea class="form-control" name="notes_media[${notesMediaIndex}][note_text]" rows="2" placeholder="{{ __("member.family_show_note_text_ph") }}"></textarea>
+                    <label class="form-label">{{ __("members::member.family_show_note_text") }}</label>
+                    <textarea class="form-control" name="notes_media[${notesMediaIndex}][note_text]" rows="2" placeholder="{{ __("members::member.family_show_note_text_ph") }}"></textarea>
                 </div>
                 <div class="col-md-5">
-                    <label class="form-label">{{ __("member.family_show_media_link") }}</label>
+                    <label class="form-label">{{ __("members::member.family_show_media_link") }}</label>
                     <input type="url" class="form-control" name="notes_media[${notesMediaIndex}][media_link]" placeholder="https://example.com/photo.jpg">
                 </div>
                 <div class="col-md-1 flex items-end">
@@ -2979,14 +2979,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Show success message
-                showAlert('{{ __("member.family_show_tournament_added") }}', 'success');
+                showAlert('{{ __("members::member.family_show_tournament_added") }}', 'success');
             } else {
-                showAlert('{{ __("member.family_show_error_adding_tournament") }}' + (data.message || '{{ __("member.family_show_unknown_error") }}'), 'danger');
+                showAlert('{{ __("members::member.family_show_error_adding_tournament") }}' + (data.message || '{{ __("members::member.family_show_unknown_error") }}'), 'danger');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showAlert('{{ __("member.family_show_error_adding_tournament_retry") }}', 'danger');
+            showAlert('{{ __("members::member.family_show_error_adding_tournament_retry") }}', 'danger');
         });
     });
 
@@ -3007,21 +3007,21 @@ document.addEventListener('DOMContentLoaded', function() {
             t.performance_results.forEach(r => {
                 let medal = '';
                 if (r.medal_type === '1st') {
-                    medal = '<i class="bi bi-award-fill text-warning"></i><span class="badge bg-warning text-dark small">{{ __("member.family_show_first_place") }}</span>';
+                    medal = '<i class="bi bi-award-fill text-warning"></i><span class="badge bg-warning text-dark small">{{ __("members::member.family_show_first_place") }}</span>';
                 } else if (r.medal_type === '2nd') {
-                    medal = '<i class="bi bi-award-fill text-secondary"></i><span class="badge bg-secondary small">{{ __("member.family_show_second_place") }}</span>';
+                    medal = '<i class="bi bi-award-fill text-secondary"></i><span class="badge bg-secondary small">{{ __("members::member.family_show_second_place") }}</span>';
                 } else if (r.medal_type === '3rd') {
-                    medal = '<i class="bi bi-award-fill" style="color: #CD7F32;"></i><span class="badge" style="background-color: #CD7F32; color: white;" small>{{ __("member.family_show_third_place") }}</span>';
+                    medal = '<i class="bi bi-award-fill" style="color: #CD7F32;"></i><span class="badge" style="background-color: #CD7F32; color: white;" small>{{ __("members::member.family_show_third_place") }}</span>';
                 } else if (r.medal_type === 'special') {
-                    medal = '<i class="bi bi-trophy-fill text-warning"></i><span class="badge bg-warning text-dark small">{{ __("member.family_show_special_award") }}</span>';
+                    medal = '<i class="bi bi-trophy-fill text-warning"></i><span class="badge bg-warning text-dark small">{{ __("members::member.family_show_special_award") }}</span>';
                 }
-                perfHtml += `<div class="flex items-center gap-2 mb-1">${medal}${r.points ? `<small class="text-muted">${escapeHtml(r.points)} {{ __("member.family_show_pts") }}</small>` : ''}</div>`;
+                perfHtml += `<div class="flex items-center gap-2 mb-1">${medal}${r.points ? `<small class="text-muted">${escapeHtml(r.points)} {{ __("members::member.family_show_pts") }}</small>` : ''}</div>`;
                 if (r.description) {
                     perfHtml += `<small class="text-muted">${escapeHtml(r.description)}</small>`;
                 }
             });
         } else {
-            perfHtml = '<span class="text-muted small">{{ __("member.family_show_no_results") }}</span>';
+            perfHtml = '<span class="text-muted small">{{ __("members::member.family_show_no_results") }}</span>';
         }
 
         // Notes & Media cell
@@ -3029,10 +3029,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (t.notes_media && t.notes_media.length > 0) {
             t.notes_media.forEach(n => {
                 if (n.note_text) notesHtml += `<p class="mb-1 small">${escapeHtml(n.note_text)}</p>`;
-                if (n.media_link) notesHtml += `<a href="${escapeHtml(n.media_link)}" target="_blank" class="btn btn-sm btn-outline-primary small"><i class="bi bi-image me-1"></i>{{ __("member.family_show_view_media") }}</a>`;
+                if (n.media_link) notesHtml += `<a href="${escapeHtml(n.media_link)}" target="_blank" class="btn btn-sm btn-outline-primary small"><i class="bi bi-image me-1"></i>{{ __("members::member.family_show_view_media") }}</a>`;
             });
         } else {
-            notesHtml = '<span class="text-muted small">{{ __("member.family_show_no_notes") }}</span>';
+            notesHtml = '<span class="text-muted small">{{ __("members::member.family_show_no_notes") }}</span>';
         }
 
         // Affiliation cell
@@ -3040,14 +3040,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (t.club_affiliation) {
             affHtml = `<div><div class="small font-semibold">${escapeHtml(t.club_affiliation.club_name)}</div><div class="text-muted small">${escapeHtml(t.club_affiliation.location)}</div></div>`;
         } else {
-            affHtml = '<span class="text-muted small">{{ __("member.family_show_individual") }}</span>';
+            affHtml = '<span class="text-muted small">{{ __("members::member.family_show_individual") }}</span>';
         }
 
         // Details cell
         let meta = `<i class="bi bi-calendar-event me-1"></i>${escapeHtml(t.date)}`;
         if (t.time) meta += `<i class="bi bi-clock me-1 ms-2"></i>${escapeHtml(t.time)}`;
         if (t.location) meta += `<i class="bi bi-geo-alt me-1 ms-2"></i>${escapeHtml(t.location)}`;
-        if (t.participants_count) meta += `<i class="bi bi-people me-1 ms-2"></i>${escapeHtml(t.participants_count)} {{ __("member.family_show_participants") }}`;
+        if (t.participants_count) meta += `<i class="bi bi-people me-1 ms-2"></i>${escapeHtml(t.participants_count)} {{ __("members::member.family_show_participants") }}`;
 
         const typeBadge = (t.type === 'championship') ? 'bg-primary' : 'bg-secondary';
 

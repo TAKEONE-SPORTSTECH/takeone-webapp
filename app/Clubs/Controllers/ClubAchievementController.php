@@ -3,15 +3,15 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\AchievementRequest;
+use App\Clubs\Requests\AchievementRequest;
 use App\Clubs\Models\ClubAchievement;
 use App\Clubs\Models\ClubAffiliation;
 use App\Members\Models\MemberWorkHistory;
 use App\Members\Models\SkillAcquisition;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\TournamentEvent;
-use App\Services\AchievementVerificationService;
-use App\Traits\HandlesClubAuthorization;
+use App\Members\Support\AchievementVerificationService;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
@@ -28,7 +28,7 @@ class ClubAchievementController extends Controller
         $this->authorizeClub($club);
         $achievements = ClubAchievement::where('tenant_id', $club->id)->orderBy('sort_order')->orderBy('id')->get();
 
-        return view(\App\Support\ClubView::pick('achievements', 'clubs'), compact('club', 'achievements'));
+        return view(\App\Clubs\Support\ClubView::pick('achievements', 'clubs'), compact('club', 'achievements'));
     }
 
     /**
@@ -68,7 +68,7 @@ class ClubAchievementController extends Controller
 
         $claims = $medals->concat($skills)->concat($affiliations)->concat($work)->values();
 
-        return view(\App\Support\ClubView::pick('achievements.verifications', 'clubs'), compact('club', 'claims'));
+        return view(\App\Clubs\Support\ClubView::pick('achievements.verifications', 'clubs'), compact('club', 'claims'));
     }
 
     public function confirmVerification(Tenant $club, string $type, string $uuid, AchievementVerificationService $service)

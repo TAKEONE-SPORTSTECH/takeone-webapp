@@ -17,7 +17,7 @@
             @if(!empty($a->note))
                 {{ $a->note }}
             @elseif($active)
-                {{ __('member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}
+                {{ __('members::member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}
             @else
                 {{ optional($a->start_date)->format('M Y') ?: '—' }} – {{ optional($a->end_date)->format('M Y') }}
             @endif
@@ -26,8 +26,8 @@
     @if(!empty($a->badge))
         <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent text-primary">{{ $a->badge }}</span>
     @elseif($active)
-        <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ __('member.active') }}</span>
+        <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ __('members::member.active') }}</span>
     @else
-        <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">{{ __('member.left') }}</span>
+        <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">{{ __('members::member.left') }}</span>
     @endif
 </{{ $tag }}>

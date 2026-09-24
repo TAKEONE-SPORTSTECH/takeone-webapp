@@ -279,7 +279,7 @@ class StaffCompensationTest extends TestCase
             'amount' => 467.74, // 500 pro-rated over the 29 days of May it covers (3rd–31st)
         ]);
 
-        $summary = app(\App\Services\FinancialService::class)->getSummary(
+        $summary = app(\App\Clubs\Support\FinancialService::class)->getSummary(
             $club->id,
             ClubTransaction::where('tenant_id', $club->id)->get(),
             (bool) $club->is_test_mode

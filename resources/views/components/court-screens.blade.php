@@ -151,7 +151,7 @@
                      Opens <x-event-screen-audio>'s sheet, which listens on the window. --}}
                 <button type="button" @click="$dispatch('open-screen-audio')"
                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform"
-                        aria-label="{{ __('events.screen_audio_title') }}" title="{{ __('events.screen_audio_title') }}">
+                        aria-label="{{ __('events::events.screen_audio_title') }}" title="{{ __('events::events.screen_audio_title') }}">
                     <i class="bi bi-gear-fill"></i>
                 </button>
 
@@ -193,7 +193,7 @@
              Opens <x-event-screen-audio>'s sheet, which listens on the window. --}}
         <button type="button" @click="$dispatch('open-screen-audio')"
                 class="m-press flex-shrink-0 w-9 h-9 rounded-full bg-muted text-muted-foreground grid place-items-center hover:bg-accent hover:text-primary transition-colors"
-                aria-label="{{ __('events.screen_audio_title') }}" title="{{ __('events.screen_audio_title') }}">
+                aria-label="{{ __('events::events.screen_audio_title') }}" title="{{ __('events::events.screen_audio_title') }}">
             <i class="bi bi-gear-fill text-sm"></i>
         </button>
     </div>

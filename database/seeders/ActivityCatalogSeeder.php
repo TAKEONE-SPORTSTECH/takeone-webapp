@@ -6,7 +6,7 @@ use App\Platform\Models\ActivityCatalog;
 use App\Clubs\Models\ClubActivity;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\Scopes\TenantScope;
+use App\Clubs\Models\Scopes\TenantScope;
 
 /**
  * Seeds the global activity directory with a broad starter set of common

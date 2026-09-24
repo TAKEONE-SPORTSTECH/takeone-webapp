@@ -349,8 +349,8 @@ window.eventFormSheet = function () {
                          screen", and would wipe pricing set elsewhere. --}}
                     <input type="hidden" name="fee_pricing_present" value="1">
 
-                    <label class="form-label">{{ __('events.fee_options_title') }}</label>
-                    <p class="text-xs text-muted-foreground mb-2">{{ __('events.fee_options_hint') }}</p>
+                    <label class="form-label">{{ __('events::events.fee_options_title') }}</label>
+                    <p class="text-xs text-muted-foreground mb-2">{{ __('events::events.fee_options_hint') }}</p>
 
                     <div class="space-y-2">
                         <template x-for="(row, i) in feeRows" :key="i">
@@ -362,15 +362,15 @@ window.eventFormSheet = function () {
                                 <input type="hidden" :name="`fee_options[${i}][uuid]`" :value="row.uuid || ''">
                                 <input type="text" class="form-control flex-1" maxlength="80"
                                        :name="`fee_options[${i}][label]`" x-model="row.label"
-                                       placeholder="{{ __('events.fee_option_placeholder') }}"
-                                       aria-label="{{ __('events.fee_option_label') }}">
+                                       placeholder="{{ __('events::events.fee_option_placeholder') }}"
+                                       aria-label="{{ __('events::events.fee_option_label') }}">
                                 <input type="number" min="0" step="any" class="form-control w-24"
                                        :name="`fee_options[${i}][amount]`" x-model="row.amount"
                                        :placeholder="currency"
-                                       aria-label="{{ __('events.fee_option_amount') }}">
+                                       aria-label="{{ __('events::events.fee_option_amount') }}">
                                 <button type="button" @click="removeFeeRow(i)"
-                                        title="{{ __('events.fee_option_remove') }}"
-                                        aria-label="{{ __('events.fee_option_remove') }}"
+                                        title="{{ __('events::events.fee_option_remove') }}"
+                                        aria-label="{{ __('events::events.fee_option_remove') }}"
                                         class="m-press w-9 h-9 rounded-xl border border-gray-200 text-red-600 grid place-items-center flex-shrink-0">
                                     <i class="bi bi-trash"></i>
                                 </button>
@@ -380,24 +380,24 @@ window.eventFormSheet = function () {
 
                     <button type="button" @click="addFeeRow()"
                             class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 bg-muted/40 text-sm font-medium text-muted-foreground flex items-center justify-center gap-2">
-                        <i class="bi bi-plus-lg"></i> {{ __('events.fee_option_add') }}
+                        <i class="bi bi-plus-lg"></i> {{ __('events::events.fee_option_add') }}
                     </button>
 
                     {{-- The late penalty. Both halves or neither — an amount with
                          no moment to start from charges nobody, and a moment with
                          no amount charges nothing. --}}
                     <div class="mt-4">
-                        <label class="form-label">{{ __('events.fee_late_title') }}</label>
-                        <p class="text-xs text-muted-foreground mb-2">{{ __('events.fee_late_hint') }}</p>
+                        <label class="form-label">{{ __('events::events.fee_late_title') }}</label>
+                        <p class="text-xs text-muted-foreground mb-2">{{ __('events::events.fee_late_hint') }}</p>
                         <div class="relative mb-2">
                             <span class="absolute inset-y-0 start-0 flex items-center ps-3 text-sm text-muted-foreground pointer-events-none" x-text="currency"></span>
                             <input type="number" min="0" step="any" name="late_fee_amount" x-model="lateAmount"
-                                   class="form-control ps-14" aria-label="{{ __('events.fee_late_amount') }}">
+                                   class="form-control ps-14" aria-label="{{ __('events::events.fee_late_amount') }}">
                         </div>
-                        <label class="form-label text-xs">{{ __('events.fee_late_from') }}</label>
+                        <label class="form-label text-xs">{{ __('events::events.fee_late_from') }}</label>
                         <div class="flex items-center gap-2">
                             <div class="flex-1">
-                                <x-date-picker model="lateDate" />
+                                <x-fields.date model="lateDate" />
                             </div>
                             <input type="time" class="form-control w-32" x-model="lateTime">
                         </div>

@@ -71,7 +71,7 @@
                             class="m-press px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-colors"
                             :class="d === day ? 'text-white border-transparent' : 'bg-white text-foreground border-gray-200'"
                             :style="d === day ? `background:${color};` : ''"
-                            x-text="@js(__('events.order_day'))+' '+d"></button>
+                            x-text="@js(__('events::events.order_day'))+' '+d"></button>
                 </template>
             </div>
         </template>
@@ -92,7 +92,7 @@
         @if($canArrange)
             <button type="button" @click="auto()" :disabled="busy"
                     class="m-press inline-flex items-center gap-2 h-9 px-3 rounded-xl bg-white border border-gray-200 text-[12px] font-black text-foreground disabled:opacity-50">
-                <i class="bi" :class="busy ? 'bi-hourglass-split' : 'bi-magic'"></i>{{ __('events.order_auto') }}
+                <i class="bi" :class="busy ? 'bi-hourglass-split' : 'bi-magic'"></i>{{ __('events::events.order_auto') }}
             </button>
         @endif
     </div>
@@ -143,7 +143,7 @@
                                  @click="take(bout)">
                                 <span class="ro-no" x-text="bout.no ?? '—'"></span>
                                 <span class="ro-who">
-                                    <span class="ro-names" x-text="(bout.a || @js(__('events.order_tbd'))) + '  v  ' + (bout.b || @js(__('events.order_tbd')))"></span>
+                                    <span class="ro-names" x-text="(bout.a || @js(__('events::events.order_tbd'))) + '  v  ' + (bout.b || @js(__('events::events.order_tbd')))"></span>
                                     <span class="ro-meta" x-text="[bout.division, bout.round].filter(Boolean).join(' · ')"></span>
                                 </span>
                                 <i class="bi" :class="bout.decided ? 'bi-check-circle-fill' : (bout.runnable ? 'bi-grip-vertical' : 'bi-hourglass')"></i>
@@ -159,7 +159,7 @@
                          @drop.prevent.stop="drop(mat.court, mat.bouts.length)"
                          @click="picked && drop(mat.court, mat.bouts.length)"></div>
 
-                    <p x-show="! mat.bouts.length" class="ro-empty">{{ __('events.order_mat_empty') }}</p>
+                    <p x-show="! mat.bouts.length" class="ro-empty">{{ __('events::events.order_mat_empty') }}</p>
                 </div>
             </div>
         </template>
@@ -169,7 +169,7 @@
         <template x-if="unplaced.length">
             <div class="ro-mat is-unplaced">
                 <div class="ro-mat-head" style="background:#64748b;">
-                    <span>{{ __('events.order_unplaced') }}</span>
+                    <span>{{ __('events::events.order_unplaced') }}</span>
                     <span class="ro-count" x-text="unplaced.length"></span>
                 </div>
                 <div class="ro-list">
@@ -183,7 +183,7 @@
                                        'is-dragging': dragging && dragging.id === bout.id }">
                             <span class="ro-no">—</span>
                             <span class="ro-who">
-                                <span class="ro-names" x-text="(bout.a || @js(__('events.order_tbd'))) + '  v  ' + (bout.b || @js(__('events.order_tbd')))"></span>
+                                <span class="ro-names" x-text="(bout.a || @js(__('events::events.order_tbd'))) + '  v  ' + (bout.b || @js(__('events::events.order_tbd')))"></span>
                                 <span class="ro-meta" x-text="[bout.division, bout.round].filter(Boolean).join(' · ')"></span>
                             </span>
                         </div>
@@ -194,7 +194,7 @@
     </div>
 
     <p x-show="! mats.length && ! busy && ! error" class="text-[13px] text-muted-foreground text-center py-8">
-        {{ __('events.order_nothing') }}
+        {{ __('events::events.order_nothing') }}
     </p>
 
     {{-- Whatever went wrong, ON the page. Silence here is what made a broken
@@ -202,7 +202,7 @@
     <p x-show="error" x-cloak class="text-[13px] text-red-600 text-center py-6">
         <i class="bi bi-exclamation-triangle"></i>
         <span x-text="error"></span>
-        <button type="button" @click="load()" class="underline font-bold ms-2">{{ __('events.order_retry') }}</button>
+        <button type="button" @click="load()" class="underline font-bold ms-2">{{ __('events::events.order_retry') }}</button>
     </p>
 </div>
 
@@ -432,10 +432,10 @@
             async auto() {
                 if (! this.canArrange || this.busy) return;
                 const ok = await window.confirmAction({
-                    title: @js(__('events.order_auto')),
-                    message: @js(__('events.order_auto_confirm')),
+                    title: @js(__('events::events.order_auto')),
+                    message: @js(__('events::events.order_auto_confirm')),
                     type: 'danger',
-                    confirmText: @js(__('events.order_auto')),
+                    confirmText: @js(__('events::events.order_auto')),
                 });
                 if (! ok) return;
 

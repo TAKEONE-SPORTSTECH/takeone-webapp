@@ -7,7 +7,7 @@ use App\Clubs\Models\ClubPackage;
 use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use App\Services\SubscriptionService;
+use App\Clubs\Support\SubscriptionService;
 use Tests\TestCase;
 
 /**

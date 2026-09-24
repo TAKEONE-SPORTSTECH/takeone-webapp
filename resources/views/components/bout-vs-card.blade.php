@@ -727,15 +727,15 @@
                     <!-- BOTTOM chips -->
                     <div class="vs-mini-bottom">
                         <div class="vs-mini-chip vsm-nullable-chip" data-vsm-empty="{{ filled($arena['match_no'] ?? null) ? '0' : '1' }}">
-                            <span class="vs-mini-chip-lbl">{{ __('events.bout_card_match') }}</span><span class="vs-mini-chip-val vsm-nullable">{{ $arena['match_no'] ?? '' }}</span>
+                            <span class="vs-mini-chip-lbl">{{ __('events::events.bout_card_match') }}</span><span class="vs-mini-chip-val vsm-nullable">{{ $arena['match_no'] ?? '' }}</span>
                         </div>
                         <div class="vs-mini-diamond vs-mini-diamond-mc"></div>
                         <div class="vs-mini-chip vsm-nullable-chip" data-vsm-empty="{{ filled($arena['court'] ?? null) ? '0' : '1' }}">
-                            <span class="vs-mini-chip-lbl">{{ __('events.bout_card_court') }}</span><span class="vs-mini-chip-val vsm-nullable">{{ $arena['court'] ?? '' }}</span>
+                            <span class="vs-mini-chip-lbl">{{ __('events::events.bout_card_court') }}</span><span class="vs-mini-chip-val vsm-nullable">{{ $arena['court'] ?? '' }}</span>
                         </div>
                         <div class="vs-mini-diamond vs-mini-diamond-cr"></div>
                         <div class="vs-mini-chip vsm-nullable-chip" data-vsm-empty="{{ filled($arena['referee'] ?? null) ? '0' : '1' }}">
-                            <span class="vs-mini-chip-lbl">{{ __('events.bout_card_referee') }}</span><span class="vs-mini-chip-val vsm-nullable">{{ $arena['referee'] ?? '' }}</span>
+                            <span class="vs-mini-chip-lbl">{{ __('events::events.bout_card_referee') }}</span><span class="vs-mini-chip-val vsm-nullable">{{ $arena['referee'] ?? '' }}</span>
                         </div>
                     </div>
                 </div>
@@ -753,7 +753,7 @@
             <div class="sbm" data-sbm data-sbm-state='@json($sbm)'>
                 <div class="sbm-feed-scale">
                     <div class="sbm-feed" data-sbm-feed>
-                        <div class="sbm-feed-hdr"><span class="sbm-feed-dot"></span><span>{{ __('events.bout_card_live_scoring') }}</span></div>
+                        <div class="sbm-feed-hdr"><span class="sbm-feed-dot"></span><span>{{ __('events::events.bout_card_live_scoring') }}</span></div>
                         <div class="sbm-feed-list" data-sbm-feed-list></div>
                     </div>
                 </div>
@@ -837,10 +837,10 @@
                         $topStage,
                         $topWeight,
                         filled($arena['match_no'] ?? null)
-                            ? __('events.bout_card_match').' '.$arena['match_no']
+                            ? __('events::events.bout_card_match').' '.$arena['match_no']
                             : null,
                         (int) $angles > 1
-                            ? trans_choice('events.bout_card_angles', (int) $angles, ['count' => (int) $angles])
+                            ? trans_choice('events::events.bout_card_angles', (int) $angles, ['count' => (int) $angles])
                             : null,
                     ]));
                 @endphp
@@ -858,7 +858,7 @@
                         <button type="button" class="yt-card-menu-btn" :class="open && 'is-open'"
                                 @click="open = !open" @click.outside="open = false"
                                 :aria-expanded="open ? 'true' : 'false'"
-                                aria-label="{{ __('events.bout_card_menu') }}">
+                                aria-label="{{ __('events::events.bout_card_menu') }}">
                             <i class="bi bi-three-dots-vertical"></i>
                         </button>
 
@@ -871,7 +871,7 @@
                             <button type="button" class="yt-card-menu-item is-danger"
                                     :disabled="busy" @click="destroy()">
                                 <i class="bi" :class="busy ? 'bi-arrow-repeat yt-spin' : 'bi-trash3'"></i>
-                                <span>{{ __('events.bout_card_delete') }}</span>
+                                <span>{{ __('events::events.bout_card_delete') }}</span>
                             </button>
                         </div>
                     </div>
@@ -908,10 +908,10 @@ window.boutCardMenu = function (url) {
             this.open = false;
 
             const sure = await window.confirmAction({
-                title: @js(__('events.bout_card_delete_title')),
-                message: @js(__('events.bout_card_delete_body')),
+                title: @js(__('events::events.bout_card_delete_title')),
+                message: @js(__('events::events.bout_card_delete_body')),
                 type: 'danger',
-                confirmText: @js(__('events.bout_card_delete')),
+                confirmText: @js(__('events::events.bout_card_delete')),
             });
 
             if (!sure) return;
@@ -937,7 +937,7 @@ window.boutCardMenu = function (url) {
                     return;
                 }
 
-                window.showToast && window.showToast('success', data.message || @js(__('events.bout_card_deleted')));
+                window.showToast && window.showToast('success', data.message || @js(__('events::events.bout_card_deleted')));
 
                 // In place, no reload (No Page Reload rule). The card fades and
                 // the shelf closes over it; the wrapper goes too, or the grid is

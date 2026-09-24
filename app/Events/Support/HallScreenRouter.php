@@ -307,7 +307,7 @@ class HallScreenRouter
         if ($angle === null) {
             return response()->json([
                 'success' => false,
-                'message' => __('events.camera_claim_full', ['court' => $court]),
+                'message' => __('events::events.camera_claim_full', ['court' => $court]),
             ], 422);
         }
 
@@ -317,7 +317,7 @@ class HallScreenRouter
 
         return response()->json([
             'success' => true,
-            'message' => __('events.camera_claim_done', [
+            'message' => __('events::events.camera_claim_done', [
                 'angle' => $angle, 'court' => $court, 'event' => $event->title,
             ]),
             'cameras' => \App\Events\Support\Cameras\CameraFleet::console($event)['cameras'] ?? [],

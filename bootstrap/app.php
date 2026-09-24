@@ -80,18 +80,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'no-store'   => \App\Http\Middleware\NoStoreCache::class,
-            'role'       => \App\Http\Middleware\CheckRole::class,
-            'permission' => \App\Http\Middleware\CheckPermission::class,
-            'tenant'     => \App\Http\Middleware\SetCurrentTenant::class,
-            'two-factor' => \App\Http\Middleware\RequiresTwoFactor::class,
-            'business'   => \App\Http\Middleware\EnsureHasBusiness::class,
+            'role'       => \App\Members\Middleware\CheckRole::class,
+            'permission' => \App\Members\Middleware\CheckPermission::class,
+            'tenant'     => \App\Clubs\Middleware\SetCurrentTenant::class,
+            'two-factor' => \App\Members\Middleware\RequiresTwoFactor::class,
+            'business'   => \App\Clubs\Middleware\EnsureHasBusiness::class,
             // ⚠️ This request EDITS the organiser's own words, so it must read
             // them rather than the reader's translation of them. Without it an
             // edit form pre-filled from the model saves a machine translation
             // over the source. See App\Http\Middleware\ReadsSourceContent.
             'source-text' => \App\Http\Middleware\ReadsSourceContent::class,
             // Override the default `verified` gate so impersonation can bypass it.
-            'verified'   => \App\Http\Middleware\EnsureEmailIsVerifiedOrImpersonating::class,
+            'verified'   => \App\Members\Middleware\EnsureEmailIsVerifiedOrImpersonating::class,
             // Sanctum token-ability gates. Needed so a token minted for one
             // integration (e.g. TAKEONE Play lookups) cannot be replayed against
             // any other token-authenticated surface.
@@ -128,12 +128,46 @@ return Application::configure(basePath: dirname(__DIR__))
          * intended URL is still remembered, so signing in lands them back on
          * the screen they asked for.
          */
+        /*
+         * A module whose pages are a sealed product (App\Support\Modules\
+         * Surfaces\SealsItsSurface — the federation dashboard) answers every
+         * error inside it itself: its own sign-in for a guest, its own page for
+         * a 404 / 403 / expired form. Asked FIRST, so nothing below can send a
+         * sealed visitor to the platform. JSON callers are left to the rest.
+         */
+        $exceptions->render(function (Throwable $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return null;
+            }
+            $sealer = app(\App\Support\Modules\ModuleRegistry::class)
+                ->contributingTo(\App\Support\Modules\Surfaces\SealsItsSurface::class)
+                ->first(fn ($m) => $m->sealsRequest($request));
+            if (! $sealer) {
+                return null;
+            }
+            if ($e instanceof \Illuminate\Auth\AuthenticationException) {
+                $to = $sealer->sealedSignIn($request);
+
+                return $to ? redirect()->guest($to) : null;
+            }
+            $status = match (true) {
+                $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException => 404,
+                $e instanceof \Illuminate\Auth\Access\AuthorizationException => 403,
+                $e instanceof \Illuminate\Session\TokenMismatchException => 419,
+                $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface => $e->getStatusCode(),
+                $e instanceof \Illuminate\Validation\ValidationException => null,
+                default => config('app.debug') ? null : 500,
+            };
+
+            return $status ? $sealer->sealedErrorResponse($request, $status) : null;
+        });
+
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
                 return null;   // an API caller wants the 401, not a page
             }
 
-            $signIn = \App\Support\SealedRequest::signIn($request);
+            $signIn = \App\Events\Support\SealedRequest::signIn($request);
 
             return $signIn ? redirect()->guest($signIn) : null;
         });
@@ -164,8 +198,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // — often installed to a home screen, with no address bar and no
             // back button — so a bounce to `/` is not a redirect, it is the
             // reader losing the thing they opened. See
-            // App\Http\Middleware\SealEventPage.
-            if ($sealed = \App\Support\SealedRequest::home($request)) {
+            // App\Events\Middleware\SealEventPage.
+            if ($sealed = \App\Events\Support\SealedRequest::home($request)) {
                 return redirect()->to($sealed)->with('error', "You don't have access to that page.");
             }
 
@@ -203,7 +237,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // Same as the 403 above: a miss inside a public event page stays
             // inside it, for guests too — the whole point of that surface is
             // that it has no exit.
-            if ($sealed = \App\Support\SealedRequest::home($request)) {
+            if ($sealed = \App\Events\Support\SealedRequest::home($request)) {
                 return redirect()->to($sealed)
                     ->with('error', "That page doesn't exist or is no longer available.");
             }
@@ -234,7 +268,7 @@ return Application::configure(basePath: dirname(__DIR__))
              * (CLAUDE.md → *Unattended Devices Must Always Recover*: "every
              * redirect chain must terminate. Prove it.").
              *
-             * App\Support\SealedRequest::home() has always guarded its own
+             * App\Events\Support\SealedRequest::home() has always guarded its own
              * self-bounce for exactly this reason; this path simply never got
              * the same guard. Found by a navigation audit, 2026-09-08.
              */

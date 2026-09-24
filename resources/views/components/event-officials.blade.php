@@ -242,8 +242,8 @@
          the cropper's own editor, the same way the entry desk stacks it. --}}
     <x-photo-capture :id="$uid.'Photo'"
                      :color="$photoColor"
-                     :title="__('events.add_person_photo')"
-                     :hint="__('events.add_person_photo_sheet_hint')"
+                     :title="__('events::events.add_person_photo')"
+                     :hint="__('events::events.add_person_photo_sheet_hint')"
                      :z="74" :camera-z="76" />
 
     {{-- The control. Round 40px, matching the back button opposite it
@@ -417,7 +417,7 @@
                 <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-1.5">
                     {{ __('personal.personal_event_officials_role') }}
                 </p>
-                @include('partials.event-official-role', ['roleGroups' => ['mat', 'platform'], 'ref' => 'roleFind'])
+                @include('events::partials.event-official-role', ['roleGroups' => ['mat', 'platform'], 'ref' => 'roleFind'])
             </div>
 
             {{-- ───────── Door 1: find somebody ───────── --}}
@@ -486,7 +486,7 @@
                     <button type="button" @click="pickPhoto()"
                             class="m-press w-24 h-32 rounded-2xl overflow-hidden border-2 border-gray-200 bg-muted grid place-items-center flex-shrink-0 relative"
                             :class="photo ? '' : 'border-dashed'"
-                            aria-label="{{ __('events.add_person_photo_add') }}">
+                            aria-label="{{ __('events::events.add_person_photo_add') }}">
                         <template x-if="photo">
                             <img :src="photo" alt="" class="absolute inset-0 w-full h-full object-cover">
                         </template>
@@ -498,13 +498,13 @@
                     </button>
 
                     <div class="min-w-0 flex-1">
-                        <p class="text-sm font-bold text-foreground">{{ __('events.add_person_photo') }}</p>
+                        <p class="text-sm font-bold text-foreground">{{ __('events::events.add_person_photo') }}</p>
                         <p class="text-[11.5px] text-muted-foreground mt-0.5 truncate"
-                           title="{{ __('events.add_person_photo_hint') }}">{{ __('events.add_person_photo_hint') }}</p>
+                           title="{{ __('events::events.add_person_photo_hint') }}">{{ __('events::events.add_person_photo_hint') }}</p>
                         <div class="flex items-center gap-2 mt-2">
                             <button type="button" @click="pickPhoto()"
                                     class="m-press h-9 px-3 rounded-lg bg-white border border-gray-200 text-[12px] font-semibold text-foreground">
-                                <i class="bi bi-camera-fill me-1"></i><span x-text="photo ? @js(__('events.add_person_photo_change')) : @js(__('events.add_person_photo_add'))"></span>
+                                <i class="bi bi-camera-fill me-1"></i><span x-text="photo ? @js(__('events::events.add_person_photo_change')) : @js(__('events::events.add_person_photo_add'))"></span>
                             </button>
                             <button type="button" @click="dropPhoto()" x-show="photo" x-cloak
                                     class="m-press h-9 px-3 rounded-lg border border-red-200 text-red-600 text-[12px] font-semibold">
@@ -527,25 +527,25 @@
 
                 {{-- GENDER, on the platform's own two-button control. --}}
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('member.gender_label') }}</label>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('members::member.gender_label') }}</label>
                     {{-- The labels are Alpine EXPRESSIONS, not text — the
                          component evaluates them — so they are handed over as
-                         JS string literals. `<x-gender-toggle model="…" />` on
+                         JS string literals. `<x-fields.gender-toggle model="…" />` on
                          its own defaults to 'Male'/'Female', which is what the
                          claim form uses; these are the translated ones. --}}
-                    <x-gender-toggle model="fresh.gender"
-                                     :male-label="json_encode(__('member.templates_member_show_gender_male'))"
-                                     :female-label="json_encode(__('member.templates_member_show_gender_female'))" />
+                    <x-fields.gender-toggle model="fresh.gender"
+                                     :male-label="json_encode(__('members::member.templates_member_show_gender_male'))"
+                                     :female-label="json_encode(__('members::member.templates_member_show_gender_female'))" />
                 </div>
 
                 {{-- DATE OF BIRTH, on the day/month/year picker with its live age
                      badge. `model` + `:inline` for the same reason as the
                      pickers below: this panel is teleported, and a picker whose
                      state comes from a script tag would arrive dead. --}}
-                <x-birthdate-dropdown
+                <x-fields.date-of-birth
                     :name="$uid.'_dob'" :id="$uid.'Dob'"
                     model="fresh.birthdate" :inline="true" :float="true"
-                    :label="__('member.family_create_birthdate')"
+                    :label="__('members::member.family_create_birthdate')"
                     :min-age="12" :max-age="100" />
 
                 {{-- The PHONE, on the platform's own control: the searchable
@@ -558,12 +558,12 @@
                      do nothing. --}}
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('personal.personal_event_officials_new_phone') }}</label>
-                    <x-country-code-dropdown
+                    <x-fields.phone-code
                         :name="$uid.'_code'" :id="$uid.'Dial'"
                         model="fresh.phone_code" value="+973" :inline="true" :float="true">
                         <input type="tel" x-model="fresh.phone" maxlength="32" autocomplete="tel" inputmode="tel"
                                class="w-full px-3 py-2.5 bg-transparent text-sm border-0 outline-none focus:ring-0">
-                    </x-country-code-dropdown>
+                    </x-fields.phone-code>
                 </div>
 
                 {{-- The COUNTRY, on the searchable country picker every other
@@ -577,7 +577,7 @@
                      the whole state in the x-data attribute, which survives it
                      (CLAUDE.md → Alpine state must be registered, not inline in
                      a script). --}}
-                <x-country-dropdown
+                <x-fields.country
                     :name="$uid.'_nationality'" :id="$uid.'Nat'"
                     model="fresh.nationality" :inline="true"
                     :geo="true" :float="true"
@@ -587,7 +587,7 @@
                 {{-- WHOSE referee this is — the club they came with, or
                      nobody's. Part of "everything else about the person", so it
                      sits above the job and the money. --}}
-                @include('partials.event-official-club', ['ref' => 'clubNew'])
+                @include('events::partials.event-official-club', ['ref' => 'clubNew'])
 
                 {{-- ───────── THE JOB, and then the MONEY — last, in this order
                      (asked for 2026-09-14): the sheet asks WHO this person is
@@ -599,7 +599,7 @@
                     <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-1.5">
                         {{ __('personal.personal_event_officials_group_mat') }}
                     </p>
-                    @include('partials.event-official-role', ['ref' => 'roleNew'])
+                    @include('events::partials.event-official-role', ['ref' => 'roleNew'])
                     <p class="text-[10.5px] text-muted-foreground mt-1.5 truncate"
                        title="{{ __('personal.personal_event_officials_new_mat_only') }}">
                         {{ __('personal.personal_event_officials_new_mat_only') }}
@@ -688,7 +688,7 @@
                          and their profile cannot answer it — a member of one
                          club regularly officiates for the federation. --}}
                     <div class="mt-3">
-                        @include('partials.event-official-club', ['ref' => 'clubPick'])
+                        @include('events::partials.event-official-club', ['ref' => 'clubPick'])
                     </div>
 
                     {{-- Volunteer or paid. Required by the endpoint, and a paid

@@ -619,8 +619,8 @@
                  name is something done TO the person the band is naming. --}}
             <x-slot:controls>
                 <button type="button" onclick="onEditEntry()"
-                        aria-label="{{ __('events.entry_edit_title_theirs') }}"
-                        title="{{ __('events.entry_edit_title_theirs') }}"
+                        aria-label="{{ __('events::events.entry_edit_title_theirs') }}"
+                        title="{{ __('events::events.entry_edit_title_theirs') }}"
                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
                     <i class="bi bi-pencil"></i>
                 </button>
@@ -705,7 +705,7 @@
     };
 
     window.onDrawClosed = function () {
-        window.showToast('info', @js($drawNote ?: __('events.draw_hidden_msg')));
+        window.showToast('info', @js($drawNote ?: __('events::events.draw_hidden_msg')));
     };
 
     /* ---------------- The card itself ---------------- */

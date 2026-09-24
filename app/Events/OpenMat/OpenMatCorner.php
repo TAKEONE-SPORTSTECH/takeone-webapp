@@ -80,7 +80,7 @@ class OpenMatCorner extends Model
             'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
                 ? file_url($user->profile_picture)
                 : null,
-            'fallback' => \App\Support\Avatar::placeholder($user?->gender),
+            'fallback' => \App\Members\Support\Avatar::placeholder($user?->gender),
             // Their casual record — how they have done on open mats, and
             // NOTHING else. Never a competitive record: medals and placings
             // live on the profile and are a different kind of fact. A guest

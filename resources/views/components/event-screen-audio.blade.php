@@ -28,12 +28,12 @@
     $saColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $color) ? $color : '#7c5cff';
 
     $slots = [
-        'vs_music' => ['icon' => 'bi-music-note-beamed', 'label' => __('events.screen_audio_vs_music')],
-        'winner_music' => ['icon' => 'bi-trophy', 'label' => __('events.screen_audio_winner_music')],
-        'point_1' => ['icon' => 'bi-1-circle', 'label' => __('events.screen_audio_point_1')],
-        'point_2' => ['icon' => 'bi-2-circle', 'label' => __('events.screen_audio_point_2')],
-        'point_3' => ['icon' => 'bi-3-circle', 'label' => __('events.screen_audio_point_3')],
-        'foul' => ['icon' => 'bi-exclamation-triangle', 'label' => __('events.screen_audio_foul')],
+        'vs_music' => ['icon' => 'bi-music-note-beamed', 'label' => __('events::events.screen_audio_vs_music')],
+        'winner_music' => ['icon' => 'bi-trophy', 'label' => __('events::events.screen_audio_winner_music')],
+        'point_1' => ['icon' => 'bi-1-circle', 'label' => __('events::events.screen_audio_point_1')],
+        'point_2' => ['icon' => 'bi-2-circle', 'label' => __('events::events.screen_audio_point_2')],
+        'point_3' => ['icon' => 'bi-3-circle', 'label' => __('events::events.screen_audio_point_3')],
+        'foul' => ['icon' => 'bi-exclamation-triangle', 'label' => __('events::events.screen_audio_foul')],
     ];
 @endphp
 
@@ -73,8 +73,8 @@
                     <i class="bi bi-volume-up text-xl"></i>
                 </span>
                 <div class="min-w-0 flex-1">
-                    <h3 class="text-lg font-black leading-tight">{{ __('events.screen_audio_title') }}</h3>
-                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('events.screen_audio_intro') }}</p>
+                    <h3 class="text-lg font-black leading-tight">{{ __('events::events.screen_audio_title') }}</h3>
+                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('events::events.screen_audio_intro') }}</p>
                 </div>
                 <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -98,14 +98,14 @@
                          :class="media[@js($slot)] ? 'text-green-600' : 'text-muted-foreground'"
                          x-text="media[@js($slot)]
                             ? media[@js($slot)].name + ' · ' + size(media[@js($slot)].bytes)
-                            : @js(__('events.screen_audio_none'))"></div>
+                            : @js(__('events::events.screen_audio_none'))"></div>
                 </div>
 
                 <div class="flex items-center gap-1.5 flex-shrink-0">
                     <button type="button" x-show="audio[@js($slot)] && media[@js($slot)]"
                             @click="audition(@js($slot))"
                             class="w-9 h-9 rounded-lg grid place-items-center border border-border text-foreground hover:bg-accent transition-colors"
-                            :title="@js(__('events.screen_audio_play'))">
+                            :title="@js(__('events::events.screen_audio_play'))">
                         <i class="bi" :class="playing === @js($slot) ? 'bi-stop-fill' : 'bi-play-fill'"></i>
                     </button>
 
@@ -118,14 +118,14 @@
                         <i class="bi text-[13px]" :class="busy === @js($slot) ? 'bi-arrow-repeat animate-spin' : 'bi-upload'"></i>
                         <span x-text="busy === @js($slot)
                             ? '…'
-                            : (media[@js($slot)] ? @js(__('events.screen_audio_replace')) : @js(__('events.screen_audio_choose')))"></span>
+                            : (media[@js($slot)] ? @js(__('events::events.screen_audio_replace')) : @js(__('events::events.screen_audio_choose')))"></span>
                         <input type="file" class="hidden" accept="audio/*"
                                @change="upload(@js($slot), $event.target)">
                     </label>
 
                     <button type="button" x-show="media[@js($slot)]" @click="remove(@js($slot))"
                             class="w-9 h-9 rounded-lg grid place-items-center border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
-                            :title="@js(__('events.screen_audio_remove'))">
+                            :title="@js(__('events::events.screen_audio_remove'))">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
@@ -215,8 +215,8 @@ window.eventScreenAudio = window.eventScreenAudio || function (config) {
 
         async remove(slot) {
             if (window.confirmAction && !(await window.confirmAction({
-                title: @js(__('events.screen_audio_remove')),
-                message: @js(__('events.screen_audio_intro')),
+                title: @js(__('events::events.screen_audio_remove')),
+                message: @js(__('events::events.screen_audio_intro')),
                 type: 'danger',
             }))) return;
 

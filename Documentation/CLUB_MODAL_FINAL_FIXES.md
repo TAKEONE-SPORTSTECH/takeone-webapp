@@ -47,8 +47,8 @@ Replaced the Select2-based timezone and currency dropdowns with Bootstrap dropdo
 **File**: `resources/views/components/club-modal/tabs/location.blade.php`
 
 **Changes**:
-1. Replaced `<x-timezone-dropdown>` with `<x-timezone-dropdown-bootstrap>`
-2. Replaced `<x-currency-dropdown>` with `<x-currency-dropdown-bootstrap>`
+1. Replaced `<x-fields.timezone>` with `<x-timezone-dropdown-bootstrap>`
+2. Replaced `<x-fields.currency>` with `<x-currency-dropdown-bootstrap>`
 3. Updated JavaScript handlers:
    - `preselectCountryData()` now calls `setTimezoneValue()` and `setCurrencyValue()`
    - `handleCountryChange()` now calls `setTimezoneValue()` and `setCurrencyValue()`

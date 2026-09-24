@@ -56,7 +56,7 @@ class ActivityCatalogController extends Controller
 
         $default = $content[$defaultLang];
 
-        return view($isMobile ? 'activities.mobile.show' : 'activities.desktop.show', [
+        return view($isMobile ? 'platform::activity.mobile.show' : 'platform::activity.desktop.show', [
             'activity' => $activity,
             'name' => $default['name'],
             'description' => $default['description'],

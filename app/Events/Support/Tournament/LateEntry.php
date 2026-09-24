@@ -60,17 +60,17 @@ class LateEntry
          * pool through here would produce a ladder inside a round robin.
          */
         if (($category->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN) {
-            return ['ok' => false, 'message' => __('events.late_entry_pool')];
+            return ['ok' => false, 'message' => __('events::events.late_entry_pool')];
         }
 
         if ($entry->category_id !== $category->id || $entry->role !== 'participant') {
-            return ['ok' => false, 'message' => __('events.late_entry_not_an_entrant')];
+            return ['ok' => false, 'message' => __('events::events.late_entry_not_an_entrant')];
         }
 
         $rounds = $this->rounds($category);
 
         if ($rounds->isEmpty()) {
-            return ['ok' => false, 'message' => __('events.late_entry_no_draw')];
+            return ['ok' => false, 'message' => __('events::events.late_entry_no_draw')];
         }
 
         // Already standing somewhere: nobody fights themselves.
@@ -78,7 +78,7 @@ class LateEntry
             ->flatMap(fn (EventMatch $m) => $m->competitorIds())->contains($entry->id);
 
         if ($placed) {
-            return ['ok' => false, 'message' => __('events.late_entry_already_drawn')];
+            return ['ok' => false, 'message' => __('events::events.late_entry_already_drawn')];
         }
 
         $onMats = \App\Scoreboard\Fleet::matchesOnMats($event);
@@ -94,7 +94,7 @@ class LateEntry
         $final = $category->matches()->where('round', 'Final')->first();
 
         if ($final && $this->spent($final, $onMats)) {
-            return ['ok' => false, 'message' => __('events.late_entry_division_over')];
+            return ['ok' => false, 'message' => __('events::events.late_entry_division_over')];
         }
 
         // 1. A corner nobody is standing in, whose consequences are all still
@@ -325,7 +325,7 @@ class LateEntry
         }
 
         if (! $partner) {
-            return ['ok' => false, 'message' => __('events.late_entry_all_fought')];
+            return ['ok' => false, 'message' => __('events::events.late_entry_all_fought')];
         }
 
         $draw = app(DrawEngine::class);
@@ -400,7 +400,7 @@ class LateEntry
 
     private function nameOf(ClubEventRegistration $entry): string
     {
-        return $entry->user?->full_name ?: $entry->user?->name ?: __('events.athlete');
+        return $entry->user?->full_name ?: $entry->user?->name ?: __('events::events.athlete');
     }
 
     /**

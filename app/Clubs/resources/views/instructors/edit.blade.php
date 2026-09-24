@@ -92,7 +92,7 @@
                         </div>
 
                         <div class="space-y-4" x-data="{ lang: 'en' }">
-                            <x-lang-toggle class="mb-4" />
+                            <x-fields.language-toggle class="mb-4" />
                             <div class="space-y-2">
                                 <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_edit_role_specialty') }}</label>
                                 <input type="text" id="editInstructorRole" name="role" placeholder="{{ __('admin.club_instructors_edit_role_ph') }}"

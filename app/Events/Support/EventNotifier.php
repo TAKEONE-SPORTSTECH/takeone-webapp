@@ -3,7 +3,7 @@
 namespace App\Events\Support;
 
 use App\Events\EventTypeRegistry;
-use App\Jobs\DeliverEventNotification;
+use App\Events\Jobs\DeliverEventNotification;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\EventNotificationSent;
 use Illuminate\Database\QueryException;

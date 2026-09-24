@@ -262,7 +262,7 @@
             <p class="bk-stage-eyebrow text-[10px] font-extrabold uppercase tracking-[0.14em] leading-none">
                 {{ $canManage || $canArrange
                     ? __('personal.personal_event_bracket_manage_draw')
-                    : __('events.public_draw') }}
+                    : __('events::events.public_draw') }}
             </p>
             <h1 class="text-sm font-bold text-white truncate leading-tight mt-0.5">{{ $title }}</h1>
         </div>
@@ -308,9 +308,9 @@
                         :class="unlocked ? 'bk-lock is-open' : 'bk-lock'"
                         class="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-xs font-bold
                                transition-all active:scale-95"
-                        :title="unlocked ? @js(__('events.bracket_lock')) : @js(__('events.bracket_unlock'))">
+                        :title="unlocked ? @js(__('events::events.bracket_lock')) : @js(__('events::events.bracket_unlock'))">
                     <i class="bi" :class="unlocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
-                    <span x-text="unlocked ? @js(__('events.bracket_unlocked')) : @js(__('events.bracket_locked_word'))"></span>
+                    <span x-text="unlocked ? @js(__('events::events.bracket_unlocked')) : @js(__('events::events.bracket_locked_word'))"></span>
                 </button>
 
                 {{-- ===== ONE MENU FOR EVERYTHING THAT IS NOT THE PADLOCK =====
@@ -331,7 +331,7 @@
                         <div class="bk-menu">
 
                             @if($canManage && ! empty($drawActions))
-                                <p class="bk-menu-head">{{ __('events.bracket_the_draw') }}</p>
+                                <p class="bk-menu-head">{{ __('events::events.bracket_the_draw') }}</p>
                                 @foreach($drawActions as $action)
                                     {{-- Admitting a late athlete needs to know
                                          WHO, so it opens the window instead of
@@ -346,7 +346,7 @@
                                     @endif
                                     <form method="POST" action="{{ route('me.events.action', [$ev, $action['action']]) }}"
                                           data-event-action data-after="bracket"
-                                          data-failed="{{ __('events.action_failed') }}">
+                                          data-failed="{{ __('events::events.action_failed') }}">
                                         @csrf
                                         {{-- WHICH division the verb acts on —
                                              kept in step with the board by the
@@ -362,30 +362,30 @@
                                 @endforeach
                             @endif
 
-                            <p class="bk-menu-head">{{ __('events.bracket_view') }}</p>
+                            <p class="bk-menu-head">{{ __('events::events.bracket_view') }}</p>
                             <div class="bk-seg">
                                 <button type="button" class="bk-seg-b" :class="view === 'auto' && 'is-on'"
-                                        @click="window.BracketBoard.setView('auto')">{{ __('events.bracket_view_auto') }}</button>
+                                        @click="window.BracketBoard.setView('auto')">{{ __('events::events.bracket_view_auto') }}</button>
                                 <button type="button" class="bk-seg-b" :class="view === 'desktop' && 'is-on'"
-                                        @click="window.BracketBoard.setView('desktop')">{{ __('events.bracket_view_desktop') }}</button>
+                                        @click="window.BracketBoard.setView('desktop')">{{ __('events::events.bracket_view_desktop') }}</button>
                                 <button type="button" class="bk-seg-b" :class="view === 'mobile' && 'is-on'"
-                                        @click="window.BracketBoard.setView('mobile')">{{ __('events.bracket_view_mobile') }}</button>
+                                        @click="window.BracketBoard.setView('mobile')">{{ __('events::events.bracket_view_mobile') }}</button>
                             </div>
 
-                            <p class="bk-menu-head">{{ __('events.bracket_layout') }}</p>
+                            <p class="bk-menu-head">{{ __('events::events.bracket_layout') }}</p>
                             <div class="bk-seg">
                                 <button type="button" class="bk-seg-b" :class="layout === 'linear' && 'is-on'"
-                                        @click="window.BracketBoard.setLayout('linear')">{{ __('events.bracket_layout_linear') }}</button>
+                                        @click="window.BracketBoard.setLayout('linear')">{{ __('events::events.bracket_layout_linear') }}</button>
                                 <button type="button" class="bk-seg-b" :class="layout === 'split' && 'is-on'"
-                                        @click="window.BracketBoard.setLayout('split')">{{ __('events.bracket_layout_split') }}</button>
+                                        @click="window.BracketBoard.setLayout('split')">{{ __('events::events.bracket_layout_split') }}</button>
                             </div>
 
-                            <p class="bk-menu-head">{{ __('events.bracket_third') }}</p>
+                            <p class="bk-menu-head">{{ __('events::events.bracket_third') }}</p>
                             <div class="bk-seg">
                                 <button type="button" class="bk-seg-b" :class="third === 'match' && 'is-on'"
-                                        @click="window.BracketBoard.setThird('match')">{{ __('events.bracket_third_match') }}</button>
+                                        @click="window.BracketBoard.setThird('match')">{{ __('events::events.bracket_third_match') }}</button>
                                 <button type="button" class="bk-seg-b" :class="third === 'shared' && 'is-on'"
-                                        @click="window.BracketBoard.setThird('shared')">{{ __('events.bracket_third_shared') }}</button>
+                                        @click="window.BracketBoard.setThird('shared')">{{ __('events::events.bracket_third_shared') }}</button>
                             </div>
 
                             <div class="bk-menu-rule"></div>
@@ -397,30 +397,30 @@
                                      and disappears teaches nobody where it is,
                                      and the padlock is right there. --}}
                                 <button type="button" role="menuitem" class="bk-menu-row is-gold"
-                                        :disabled="! unlocked" :title="unlocked ? '' : @js(__('events.bracket_unlock_first'))"
+                                        :disabled="! unlocked" :title="unlocked ? '' : @js(__('events::events.bracket_unlock_first'))"
                                         @click="$dispatch('bracket-add:open')">
                                     <i class="bi bi-person-plus"></i>
-                                    <span>{{ __('events.bracket_add_fighter') }}</span>
+                                    <span>{{ __('events::events.bracket_add_fighter') }}</span>
                                 </button>
 
                                 <button type="button" role="menuitem" class="bk-menu-row"
-                                        :disabled="! unlocked" :title="unlocked ? '' : @js(__('events.bracket_unlock_first'))"
+                                        :disabled="! unlocked" :title="unlocked ? '' : @js(__('events::events.bracket_unlock_first'))"
                                         @click="window.BracketBoard.toggleEdit()">
                                     <i class="bi bi-pencil"></i>
-                                    <span x-text="edit ? @js(__('events.bracket_edit_done')) : @js(__('events.bracket_edit_names'))"></span>
+                                    <span x-text="edit ? @js(__('events::events.bracket_edit_done')) : @js(__('events::events.bracket_edit_names'))"></span>
                                 </button>
                             @endif
 
                             <button type="button" role="menuitem" class="bk-menu-row"
                                     @click="window.BracketBoard.pickBackground()">
                                 <i class="bi bi-image"></i>
-                                <span>{{ __('events.bracket_background') }}</span>
+                                <span>{{ __('events::events.bracket_background') }}</span>
                             </button>
 
                             <button type="button" role="menuitem" class="bk-menu-row" x-show="background" x-cloak
                                     @click="window.BracketBoard.clearBackground()">
                                 <i class="bi bi-x-circle"></i>
-                                <span>{{ __('events.bracket_background_clear') }}</span>
+                                <span>{{ __('events::events.bracket_background_clear') }}</span>
                             </button>
                         </div>
                     </x-slot:actions>

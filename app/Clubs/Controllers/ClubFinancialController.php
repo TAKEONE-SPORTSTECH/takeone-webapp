@@ -3,17 +3,17 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreTransactionRequest;
-use App\Http\Requests\Admin\UpdateTransactionRequest;
+use App\Clubs\Requests\StoreTransactionRequest;
+use App\Clubs\Requests\UpdateTransactionRequest;
 use App\Clubs\Models\ClubMemberSubscription;
 use App\Clubs\Models\ClubRecurringExpense;
 use App\Clubs\Models\ClubTransaction;
 use App\Shop\Models\Order;
 use App\Clubs\Models\Tenant;
-use App\Services\FinancialService;
+use App\Clubs\Support\FinancialService;
 use App\Clubs\Services\RecurringExpenseService;
-use App\Support\ClubCache;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Support\ClubCache;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -58,7 +58,7 @@ class ClubFinancialController extends Controller
                 ->all();
         }
 
-        return view(\App\Support\ClubView::pick('financials', 'clubs'), compact('club', 'transactions', 'summary', 'monthlyData', 'pendingSubscriptions', 'expenseCategories', 'recurringExpenses', 'isTestMode', 'shopOrders', 'focusSubscriptionIds'));
+        return view(\App\Clubs\Support\ClubView::pick('financials', 'clubs'), compact('club', 'transactions', 'summary', 'monthlyData', 'pendingSubscriptions', 'expenseCategories', 'recurringExpenses', 'isTestMode', 'shopOrders', 'focusSubscriptionIds'));
     }
 
     /**

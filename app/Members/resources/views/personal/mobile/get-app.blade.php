@@ -1,4 +1,4 @@
-@extends('layouts.personal-mobile')
+@extends('members::layouts.personal-mobile')
 
 @section('title', __('personal.personal_get_app_page_title'))
 

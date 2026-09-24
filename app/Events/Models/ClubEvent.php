@@ -11,7 +11,7 @@ use App\Events\Models\EventRunSlot;
 use App\Events\Models\EventDocument;
 use App\Events\Models\EventChecklistItem;
 use App\Events\Models\EventExpense;
-use App\Traits\BelongsToTenant;
+use App\Clubs\Concerns\BelongsToTenant;
 use App\Traits\TranslatesAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

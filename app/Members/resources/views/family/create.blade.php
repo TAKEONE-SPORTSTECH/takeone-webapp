@@ -6,14 +6,14 @@
         <div class="w-full md:w-2/3">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div class="px-6 py-4 bg-white border-b border-gray-200 rounded-t-lg">
-                    <h4 class="mb-0 text-lg font-semibold">{{ __('member.family_create_title') }}</h4>
+                    <h4 class="mb-0 text-lg font-semibold">{{ __('members::member.family_create_title') }}</h4>
                 </div>
                 <div class="p-6">
                     <form method="POST" action="{{ route('family.store') }}">
                         @csrf
 
                         <div class="mb-4">
-                            <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_create_full_name') }}</label>
+                            <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_create_full_name') }}</label>
                             <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary @error('full_name') border-red-500 @enderror" id="full_name" name="full_name" value="{{ old('full_name') }}" required>
                             @error('full_name')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -21,7 +21,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_create_email') }} <span class="text-gray-500">{{ __('member.family_create_email_optional') }}</span></label>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_create_email') }} <span class="text-gray-500">{{ __('members::member.family_create_email_optional') }}</span></label>
                             <input type="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary @error('email') border-red-500 @enderror" id="email" name="email" value="{{ old('email') }}">
                             @error('email')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -29,8 +29,8 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="mobile" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_create_mobile_number') }}</label>
-                            <x-country-code-dropdown
+                            <label for="mobile" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_create_mobile_number') }}</label>
+                            <x-fields.phone-code
                                 name="mobile_code"
                                 id="country_code"
                                 :value="old('mobile_code', '+973')"
@@ -41,8 +41,8 @@
                                        name="mobile"
                                        value="{{ old('mobile') }}"
                                        autocomplete="tel"
-                                       placeholder="{{ __('member.family_create_phone_placeholder') }}">
-                            </x-country-code-dropdown>
+                                       placeholder="{{ __('members::member.family_create_phone_placeholder') }}">
+                            </x-fields.phone-code>
                             @error('mobile')
                                 <p class="mt-1 text-sm text-red-600 block">{{ $message }}</p>
                             @enderror
@@ -50,7 +50,7 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <x-gender-dropdown
+                                <x-fields.gender
                                     name="gender"
                                     id="gender"
                                     :value="old('gender')"
@@ -58,10 +58,10 @@
                                     :error="$errors->first('gender')" />
                             </div>
                             <div>
-                                <x-birthdate-dropdown
+                                <x-fields.date-of-birth
                                     name="birthdate"
                                     id="birthdate"
-                                    :label="__('member.family_create_birthdate')"
+                                    :label="__('members::member.family_create_birthdate')"
                                     :value="old('birthdate')"
                                     :required="true"
                                     :min-age="0"
@@ -72,18 +72,18 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <x-blood-type-dropdown
+                                <x-fields.blood-type
                                     name="blood_type"
                                     id="blood_type"
-                                    :label="__('member.family_create_blood_type')"
+                                    :label="__('members::member.family_create_blood_type')"
                                     :value="old('blood_type')"
                                     :error="$errors->first('blood_type')" />
                             </div>
                             <div>
-                                <x-country-dropdown
+                                <x-fields.country
                                     name="nationality"
                                     id="nationality"
-                                    :label="__('member.family_create_nationality')"
+                                    :label="__('members::member.family_create_nationality')"
                                     :value="old('nationality')"
                                     :required="true"
                                     :error="$errors->first('nationality')" />
@@ -92,9 +92,9 @@
 
                         <div class="mb-4">
                             <h5 class="block text-sm font-medium text-gray-700 mb-1 flex justify-between items-center">
-                                {{ __('member.family_create_social_media_links') }}
+                                {{ __('members::member.family_create_social_media_links') }}
                                 <button type="button" class="inline-flex items-center px-3 py-1.5 border border-primary text-primary text-sm font-medium rounded-lg hover:bg-primary hover:text-white transition-colors" id="addSocialLink">
-                                    <i class="bi bi-plus"></i> {{ __('member.family_create_add_link') }}
+                                    <i class="bi bi-plus"></i> {{ __('members::member.family_create_add_link') }}
                                 </button>
                             </h5>
                             <div id="socialLinksContainer">
@@ -112,9 +112,9 @@
                                 @foreach($formLinks as $index => $link)
                                     <div class="social-link-row mb-3 flex items-end gap-2">
                                         <div class="flex-1">
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_create_platform') }}</label>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_create_platform') }}</label>
                                             <select class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary platform-select" name="social_links[{{ $index }}][platform]" required>
-                                                <option value="">{{ __('member.family_create_select_platform') }}</option>
+                                                <option value="">{{ __('members::member.family_create_select_platform') }}</option>
                                                 <option value="facebook" {{ ($link['platform'] ?? '') == 'facebook' ? 'selected' : '' }}>Facebook</option>
                                                 <option value="twitter" {{ ($link['platform'] ?? '') == 'twitter' ? 'selected' : '' }}>Twitter/X</option>
                                                 <option value="instagram" {{ ($link['platform'] ?? '') == 'instagram' ? 'selected' : '' }}>Instagram</option>
@@ -140,7 +140,7 @@
                                             </select>
                                         </div>
                                         <div class="flex-1">
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_create_url') }}</label>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_create_url') }}</label>
                                             <input type="url" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" name="social_links[{{ $index }}][url]" value="{{ $link['url'] ?? '' }}" placeholder="https://example.com/username" required>
                                         </div>
                                         <div>
@@ -154,9 +154,9 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="motto" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.family_create_personal_motto') }}</label>
-                            <textarea class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary @error('motto') border-red-500 @enderror" id="motto" name="motto" rows="3" placeholder="{{ __('member.family_create_motto_placeholder') }}">{{ old('motto') }}</textarea>
-                            <p class="mt-1 text-sm text-gray-500">{{ __('member.family_create_motto_help') }}</p>
+                            <label for="motto" class="block text-sm font-medium text-gray-700 mb-1">{{ __('members::member.family_create_personal_motto') }}</label>
+                            <textarea class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary @error('motto') border-red-500 @enderror" id="motto" name="motto" rows="3" placeholder="{{ __('members::member.family_create_motto_placeholder') }}">{{ old('motto') }}</textarea>
+                            <p class="mt-1 text-sm text-gray-500">{{ __('members::member.family_create_motto_help') }}</p>
                             @error('motto')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -164,10 +164,10 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <x-relationship-dropdown
+                                <x-fields.relationship
                                     name="relationship_type"
                                     id="relationship_type"
-                                    :label="__('member.family_create_relationship')"
+                                    :label="__('members::member.family_create_relationship')"
                                     :value="old('relationship_type')"
                                     :required="true"
                                     :error="$errors->first('relationship_type')" />
@@ -176,12 +176,12 @@
 
                         <div class="mb-4 flex items-center">
                             <input type="checkbox" class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary" id="is_billing_contact" name="is_billing_contact" value="1" {{ old('is_billing_contact') ? 'checked' : '' }}>
-                            <label class="ms-2 text-sm text-gray-700" for="is_billing_contact">{{ __('member.family_create_is_billing_contact') }}</label>
+                            <label class="ms-2 text-sm text-gray-700" for="is_billing_contact">{{ __('members::member.family_create_is_billing_contact') }}</label>
                         </div>
 
                         <div class="flex justify-between">
                             <a href="{{ route('members.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">{{ __('shared.cancel') }}</a>
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">{{ __('member.family_create_title') }}</button>
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">{{ __('members::member.family_create_title') }}</button>
                         </div>
                     </form>
                 </div>
@@ -214,9 +214,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         row.innerHTML = `
             <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __("member.family_create_platform") }}</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __("members::member.family_create_platform") }}</label>
                 <select class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary platform-select" name="social_links[\${socialLinkIndex}][platform]" required>
-                    <option value="">{{ __("member.family_create_select_platform") }}</option>
+                    <option value="">{{ __("members::member.family_create_select_platform") }}</option>
                     <option value="facebook" ${platform === 'facebook' ? 'selected' : ''}>Facebook</option>
                     <option value="twitter" ${platform === 'twitter' ? 'selected' : ''}>Twitter/X</option>
                     <option value="instagram" ${platform === 'instagram' ? 'selected' : ''}>Instagram</option>
@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </select>
             </div>
             <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __("member.family_create_url") }}</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __("members::member.family_create_url") }}</label>
                 <input type="url" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" name="social_links[\${socialLinkIndex}][url]" value="${url}" placeholder="https://example.com/username" required>
             </div>
             <div>

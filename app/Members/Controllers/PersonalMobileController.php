@@ -23,8 +23,8 @@ use Illuminate\View\View;
  */
 class PersonalMobileController extends Controller
 {
-    use \App\Traits\BuildsMemberPayments;
-    use \App\Traits\HandlesClubAuthorization;
+    use \App\Members\Concerns\BuildsMemberPayments;
+    use \App\Clubs\Concerns\HandlesClubAuthorization;
     use \App\Traits\StoresBase64Images;
 
     private function clubIds()
@@ -138,7 +138,7 @@ class PersonalMobileController extends Controller
 
         // Unseen (red-dot) indicators for the feed sub-tabs. The "All" tab is the
         // default active view, so mark it seen now — its dot clears on open.
-        $activity = app(\App\Support\SectionActivity::class);
+        $activity = app(\App\Members\Support\SectionActivity::class);
         $activity->markSeen($user, 'feed:all');
         $feedTabDots = $activity->feedTabDots($user);
 
@@ -534,7 +534,7 @@ class PersonalMobileController extends Controller
     /** URL-safe token identifying a club class slot: paId|day|startTime. */
     private function syncedToken(int $paId, string $day, string $start): string
     {
-        return \App\Support\SyncedClassToken::encode($paId, $day, $start);
+        return \App\Members\Support\SyncedClassToken::encode($paId, $day, $start);
     }
 
     /** Short display label for a club slot's location (facility name / address / text). */
@@ -2101,7 +2101,7 @@ class PersonalMobileController extends Controller
     /** Decode a club-class token into [paId, day, start] (paId null when malformed). */
     private function decodeSyncedToken(string $token): array
     {
-        return \App\Support\SyncedClassToken::decode($token);
+        return \App\Members\Support\SyncedClassToken::decode($token);
     }
 
     /**
@@ -3682,10 +3682,10 @@ class PersonalMobileController extends Controller
     }
 
     /** Mark an app section / feed-tab as seen (clears its unseen indicator). */
-    public function markSectionSeen(Request $request, \App\Support\SectionActivity $activity): JsonResponse
+    public function markSectionSeen(Request $request, \App\Members\Support\SectionActivity $activity): JsonResponse
     {
         $validated = $request->validate([
-            'section' => ['required', 'string', \Illuminate\Validation\Rule::in(\App\Support\SectionActivity::SECTIONS)],
+            'section' => ['required', 'string', \Illuminate\Validation\Rule::in(\App\Members\Support\SectionActivity::SECTIONS)],
         ]);
 
         $activity->markSeen(Auth::user(), $validated['section']);

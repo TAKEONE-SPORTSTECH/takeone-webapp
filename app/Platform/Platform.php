@@ -14,11 +14,10 @@ use App\Support\Modules\AbstractModule;
  * picks from, the settings that apply everywhere, and the commands that back
  * things up, reset a baseline or seed a demo.
  *
- * ⚠️ NOT to be confused with App\Http\Controllers\PlatformController, which
- * despite the name is the PUBLIC club browser — /explore, /{country}/clubs/…,
- * joining a club, collecting a perk, liking a timeline post. That one belongs
- * with Clubs and has not moved; see Documentation/HOUSE-CLEANING.md. The
- * super-admin's own screens are Admin\PlatformController, and they are here.
+ * There used to be a second class called PlatformController that meant the
+ * opposite of this one — the PUBLIC club browser (/explore, /{country}/clubs/…,
+ * joining a club, collecting a perk, liking a timeline post). It has moved into
+ * Clubs as PublicClubController, so the name no longer means two things.
  *
  * The activity catalogue sits here rather than in Clubs because it is
  * explicitly GLOBAL and not tenant-scoped: it is the list every club chooses

@@ -8,7 +8,7 @@ use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
-use App\Support\BoutHistory;
+use App\Members\Support\BoutHistory;
 use Tests\TestCase;
 
 /**

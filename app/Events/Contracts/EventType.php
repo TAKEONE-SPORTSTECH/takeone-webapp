@@ -266,7 +266,7 @@ interface EventType
      *
      * Says nothing about authorization, and grants nothing. The route keeps its
      * middleware stack, the controller re-runs the same checks; only the
-     * dressing changes (App\Http\Middleware\BrandEventPage).
+     * dressing changes (App\Events\Middleware\BrandEventPage).
      *
      * Defaults FALSE in AbstractEventType — a type opts in. Sparring, Open Mat
      * and everything still in the generic bucket keep the member shell they

@@ -251,7 +251,7 @@ class ClubAdminMobileTest extends TestCase
         $markup = file_get_contents(app_path('Clubs/resources/views/financials/mobile.blade.php'));
         $this->assertStringNotContainsString('<select', $markup);
         $this->assertStringNotContainsString('type="date"', $markup);
-        $this->assertStringContainsString('<x-date-picker', $markup);
+        $this->assertStringContainsString('<x-fields.date', $markup);
 
         $res = $this->actingAs($owner)->mobile()->get('/admin/club/'.$club->slug.'/financials');
         $res->assertOk();

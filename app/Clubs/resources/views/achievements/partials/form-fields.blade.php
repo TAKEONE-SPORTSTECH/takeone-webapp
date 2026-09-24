@@ -13,7 +13,7 @@
 
 <div class="space-y-7" x-data="{ lang: 'en' }">
 
-    <x-lang-toggle class="mb-4" />
+    <x-fields.language-toggle class="mb-4" />
 
     {{-- ════════ Basics ════════ --}}
     <section>
@@ -104,9 +104,9 @@
                     write() { formData.achievement_date = (this.d && this.m && /^\d{4}$/.test(this.y)) ? (this.y + '-' + this.m + '-' + this.d) : ''; }
                  }"
                  x-init="parse(formData.achievement_date); $watch('formData.achievement_date', v => parse(v))">
-                <x-select-menu model="d" change="write()" :placeholder="__('admin.ach_f_day')"
+                <x-fields.select model="d" change="write()" :placeholder="__('admin.ach_f_day')"
                     :options="collect(range(1, 31))->map(fn ($dd) => ['value' => sprintf('%02d', $dd), 'label' => (string) $dd])->all()" />
-                <x-select-menu model="m" change="write()" :placeholder="__('admin.ach_f_month')"
+                <x-fields.select model="m" change="write()" :placeholder="__('admin.ach_f_month')"
                     :options="collect($achMonths)->map(fn ($mo) => ['value' => $mo['v'], 'label' => $mo['l']])->all()" />
                 <input type="text" inputmode="numeric" maxlength="4" x-model="y"
                        @input="y = y.replace(/\D/g, '').slice(0, 4); write()"
@@ -259,7 +259,7 @@
             <div class="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent"></div>
         </div>
         <label class="{{ $lbl }}">{{ __('admin.ach_f_visibility') }} <span class="font-normal text-gray-400">— {{ __('admin.ach_f_status_hint') }}</span></label>
-        <x-select-menu model="formData.status" name="status"
+        <x-fields.select model="formData.status" name="status"
             :options="[
                 ['value' => 'active', 'label' => __('admin.ach_f_active')],
                 ['value' => 'inactive', 'label' => __('admin.ach_f_inactive')],

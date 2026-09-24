@@ -13,7 +13,7 @@ use Tests\TestCase;
  * A martial-arts championship is served with the platform's frame taken away
  * and the club's brand over it — on `/me/events/{uuid}` exactly as on
  * `/e/{uuid}` — so one competition has one face whichever door was used to
- * reach it (App\Http\Middleware\BrandEventPage, asked for on 2026-09-07).
+ * reach it (App\Events\Middleware\BrandEventPage, asked for on 2026-09-07).
  *
  * What each test here is really protecting:
  *   · the frame is gone, and the brand is the club's;

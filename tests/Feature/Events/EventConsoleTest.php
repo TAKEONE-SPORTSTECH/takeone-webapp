@@ -296,6 +296,6 @@ class EventConsoleTest extends TestCase
         $this->actingAs($nobody)
             ->get("/me/events/{$event->uuid}/brackets/manage")
             ->assertOk()
-            ->assertViewIs('personal.event-draw-hidden');
+            ->assertViewIs('events::personal.event-draw-hidden');
     }
 }

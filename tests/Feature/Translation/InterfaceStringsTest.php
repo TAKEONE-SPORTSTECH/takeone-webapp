@@ -35,9 +35,9 @@ class InterfaceStringsTest extends TestCase
      */
     public function test_a_stored_string_is_what_the_page_renders(): void
     {
-        Translations::correctInterface('zh', 'events', 'bout_gallery_title', 'ROWS-WIN');
+        Translations::correctInterface('zh', 'events::events', 'bout_gallery_title', 'ROWS-WIN');
 
-        $this->assertSame('ROWS-WIN', __('events.bout_gallery_title', [], 'zh'));
+        $this->assertSame('ROWS-WIN', __('events::events.bout_gallery_title', [], 'zh'));
     }
 
     /** A namespaced file — `scoreboard::bjj_messages` — resolves the same way. */
@@ -55,14 +55,14 @@ class InterfaceStringsTest extends TestCase
      */
     public function test_a_machine_run_never_overwrites_a_persons_words(): void
     {
-        Translations::correctInterface('zh', 'events', 'bout_gallery_title', 'BY HAND');
+        Translations::correctInterface('zh', 'events::events', 'bout_gallery_title', 'BY HAND');
 
         $this->assertFalse(
-            Translations::recordInterface('zh', 'events', 'bout_gallery_title', 'BY MACHINE'),
+            Translations::recordInterface('zh', 'events::events', 'bout_gallery_title', 'BY MACHINE'),
             'a machine write over a human row must be refused',
         );
 
-        $this->assertSame('BY HAND', __('events.bout_gallery_title', [], 'zh'));
+        $this->assertSame('BY HAND', __('events::events.bout_gallery_title', [], 'zh'));
     }
 
     /**
@@ -77,19 +77,19 @@ class InterfaceStringsTest extends TestCase
      */
     public function test_clearing_a_correction_hands_the_string_back(): void
     {
-        $underneath = __('events.bout_gallery_title', [], 'zh');
+        $underneath = __('events::events.bout_gallery_title', [], 'zh');
 
-        Translations::correctInterface('zh', 'events', 'bout_gallery_title', 'TEMPORARY');
-        $this->assertSame('TEMPORARY', __('events.bout_gallery_title', [], 'zh'));
+        Translations::correctInterface('zh', 'events::events', 'bout_gallery_title', 'TEMPORARY');
+        $this->assertSame('TEMPORARY', __('events::events.bout_gallery_title', [], 'zh'));
 
-        Translations::correctInterface('zh', 'events', 'bout_gallery_title', null);
+        Translations::correctInterface('zh', 'events::events', 'bout_gallery_title', null);
 
         $this->assertSame(
             0,
             InterfaceTranslation::where('locale', 'zh')->where('key', 'bout_gallery_title')->count(),
         );
 
-        $this->assertSame($underneath, __('events.bout_gallery_title', [], 'zh'));
+        $this->assertSame($underneath, __('events::events.bout_gallery_title', [], 'zh'));
     }
 
     /** The screen is the super-admin's, and nobody else's. */
@@ -112,26 +112,26 @@ class InterfaceStringsTest extends TestCase
 
         $this->actingAs($admin)
             ->putJson('/admin/languages/zh', [
-                'file' => 'events',
+                'file' => 'events::events',
                 'key' => 'bout_gallery_title',
                 'value' => 'FROM THE SCREEN',
             ])
             ->assertOk()
             ->assertJson(['success' => true]);
 
-        $this->assertSame('FROM THE SCREEN', __('events.bout_gallery_title', [], 'zh'));
+        $this->assertSame('FROM THE SCREEN', __('events::events.bout_gallery_title', [], 'zh'));
     }
 
     /** A locale the platform does not serve is not a place to write rows. */
     public function test_an_unserved_locale_is_refused(): void
     {
         $this->actingAs($this->superAdmin())
-            ->putJson('/admin/languages/xx', ['file' => 'events', 'key' => 'a', 'value' => 'b'])
+            ->putJson('/admin/languages/xx', ['file' => 'events::events', 'key' => 'a', 'value' => 'b'])
             ->assertNotFound();
 
         // English is the SOURCE and is not stored here either.
         $this->actingAs($this->superAdmin())
-            ->putJson('/admin/languages/en', ['file' => 'events', 'key' => 'a', 'value' => 'b'])
+            ->putJson('/admin/languages/en', ['file' => 'events::events', 'key' => 'a', 'value' => 'b'])
             ->assertNotFound();
     }
 

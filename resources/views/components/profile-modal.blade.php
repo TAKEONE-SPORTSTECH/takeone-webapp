@@ -28,7 +28,7 @@
     /*
      * Whether this form insists on gender, birthdate and nationality.
      *
-     * Mirrors the server rule (App\Http\Requests\Concerns\PersonFieldRules)
+     * Mirrors the server rule (App\Members\Requests\Concerns\PersonFieldRules)
      * so the browser never refuses what the server would happily accept — the
      * two must agree or a staff member is stopped by a message no endpoint would
      * have sent. Staff entering somebody else need only a name; the member on
@@ -278,13 +278,13 @@ window.memberPwdAdmin = function (resetUrl, regenerateUrl, name) {
         openSet() { this.pw1 = ''; this.pw2 = ''; this.setOpen = true; },
         async submitSet() {
             if (this.busy) return;
-            if (this.pw1.length < 8) { window.showToast && window.showToast('error', @js(__('member.password_min'))); return; }
-            if (this.pw1 !== this.pw2) { window.showToast && window.showToast('error', @js(__('member.passwords_no_match'))); return; }
+            if (this.pw1.length < 8) { window.showToast && window.showToast('error', @js(__('members::member.password_min'))); return; }
+            if (this.pw1 !== this.pw2) { window.showToast && window.showToast('error', @js(__('members::member.passwords_no_match'))); return; }
             this.busy = true;
             try {
                 const data = await this._post(resetUrl, { password: this.pw1, password_confirmation: this.pw2 });
                 this.setOpen = false;
-                window.showToast && window.showToast('success', data.message || @js(__('member.password_reset_ok')));
+                window.showToast && window.showToast('success', data.message || @js(__('members::member.password_reset_ok')));
             } catch (e) {
                 window.showToast && window.showToast('error', e.message);
             } finally { this.busy = false; }
@@ -292,9 +292,9 @@ window.memberPwdAdmin = function (resetUrl, regenerateUrl, name) {
         async generate() {
             if (this.busy) return;
             const ok = await window.confirmAction({
-                title: @js(__('member.generate_password')),
-                message: @js(__('member.generate_confirm')).replace(':name', this.name),
-                type: 'warning', confirmText: @js(__('member.generate_password')),
+                title: @js(__('members::member.generate_password')),
+                message: @js(__('members::member.generate_confirm')).replace(':name', this.name),
+                type: 'warning', confirmText: @js(__('members::member.generate_password')),
             });
             if (!ok) return;
             this.busy = true;
@@ -309,7 +309,7 @@ window.memberPwdAdmin = function (resetUrl, regenerateUrl, name) {
             } finally { this.busy = false; }
         },
         copy() {
-            const done = () => { this.copied = true; window.showToast && window.showToast('success', @js(__('member.password_copied'))); };
+            const done = () => { this.copied = true; window.showToast && window.showToast('success', @js(__('members::member.password_copied'))); };
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(this.newPw).then(done).catch(() => {});
             } else { done(); }

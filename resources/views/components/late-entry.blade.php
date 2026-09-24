@@ -73,8 +73,8 @@
                             <i class="bi bi-person-plus text-xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black leading-tight">{{ __('events.late_entry_title') }}</h3>
-                            <p class="text-[12px] text-white/85 mt-0.5" x-text="divisionName || '{{ __('events.late_entry_subtitle') }}'"></p>
+                            <h3 class="text-lg font-black leading-tight">{{ __('events::events.late_entry_title') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5" x-text="divisionName || '{{ __('events::events.late_entry_subtitle') }}'"></p>
                         </div>
                         <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
                                 class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -84,7 +84,7 @@
 
                     <div class="relative mt-3 flex flex-wrap gap-1.5">
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold">
-                            <i class="bi bi-shield-check"></i> {{ __('events.late_entry_safe_chip') }}
+                            <i class="bi bi-shield-check"></i> {{ __('events::events.late_entry_safe_chip') }}
                         </span>
                     </div>
                 </div>
@@ -95,14 +95,14 @@
                     <div class="relative">
                         <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                         <input type="search" x-model="term" @input.debounce.300ms="load()"
-                               placeholder="{{ __('events.late_entry_search') }}"
+                               placeholder="{{ __('events::events.late_entry_search') }}"
                                class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
                     </div>
 
                     <template x-if="loading">
                         <div class="py-10 text-center text-muted-foreground text-sm">
                             <i class="bi bi-arrow-repeat animate-spin text-xl block mb-2"></i>
-                            {{ __('events.late_entry_loading') }}
+                            {{ __('events::events.late_entry_loading') }}
                         </div>
                     </template>
 
@@ -111,8 +111,8 @@
                             <span class="w-14 h-14 rounded-2xl bg-muted grid place-items-center mx-auto mb-3">
                                 <i class="bi bi-people text-2xl text-muted-foreground"></i>
                             </span>
-                            <p class="text-sm font-bold text-foreground">{{ __('events.late_entry_none') }}</p>
-                            <p class="text-xs text-muted-foreground mt-1">{{ __('events.late_entry_none_hint') }}</p>
+                            <p class="text-sm font-bold text-foreground">{{ __('events::events.late_entry_none') }}</p>
+                            <p class="text-xs text-muted-foreground mt-1">{{ __('events::events.late_entry_none_hint') }}</p>
                         </div>
                     </template>
 
@@ -128,11 +128,11 @@
                                 <span class="flex items-center gap-1.5 mt-0.5 flex-wrap">
                                     <template x-if="! person.division">
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">
-                                            <i class="bi bi-exclamation-triangle-fill"></i> {{ __('events.late_entry_no_division') }}
+                                            <i class="bi bi-exclamation-triangle-fill"></i> {{ __('events::events.late_entry_no_division') }}
                                         </span>
                                     </template>
                                     <template x-if="person.division">
-                                        <span class="text-[11px] text-muted-foreground truncate" x-text="'{{ __('events.late_entry_currently') }} ' + person.division"></span>
+                                        <span class="text-[11px] text-muted-foreground truncate" x-text="'{{ __('events::events.late_entry_currently') }} ' + person.division"></span>
                                     </template>
                                     <template x-if="person.weight">
                                         <span class="text-[11px] text-muted-foreground" x-text="person.weight + ' kg'"></span>
@@ -154,9 +154,9 @@
                             class="w-full py-3 rounded-xl text-white font-bold text-sm transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
                             :style="'background: {{ $lcColor }}'">
                         <i class="bi" :class="saving ? 'bi-arrow-repeat animate-spin' : 'bi-person-plus'"></i>
-                        <span x-text="saving ? '{{ __('events.late_entry_working') }}' : '{{ __('events.late_entry_submit') }}'"></span>
+                        <span x-text="saving ? '{{ __('events::events.late_entry_working') }}' : '{{ __('events::events.late_entry_submit') }}'"></span>
                     </button>
-                    <p class="text-[11px] text-muted-foreground text-center mt-2">{{ __('events.late_entry_note') }}</p>
+                    <p class="text-[11px] text-muted-foreground text-center mt-2">{{ __('events::events.late_entry_note') }}</p>
                 </div>
             </div>
         </div>

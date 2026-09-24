@@ -200,15 +200,15 @@ window.instructorAddSheet = function () {
                     </div>
                     <div>
                         <label class="form-label">{{ __('admin.phone') }} <span class="text-red-500">*</span></label>
-                        <x-country-code-dropdown name="country_code" id="m_instructor_country_code" value="+973" :required="false">
+                        <x-fields.phone-code name="country_code" id="m_instructor_country_code" value="+973" :required="false">
                             <input type="tel" name="phone" placeholder="{{ __('admin.phone') }}" class="w-full px-3 py-3 text-base bg-transparent focus:outline-none">
-                        </x-country-code-dropdown>
+                        </x-fields.phone-code>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
-                        <x-gender-dropdown name="gender" id="m_instructor_gender" label="{{ __('admin.gender') }}" :required="false" />
-                        <x-birthdate-dropdown name="birthdate" id="m_instructor_birthdate" label="{{ __('admin.dob') }}" :required="false" :minAge="16" :maxAge="80" />
+                        <x-fields.gender name="gender" id="m_instructor_gender" label="{{ __('admin.gender') }}" :required="false" />
+                        <x-fields.date-of-birth name="birthdate" id="m_instructor_birthdate" label="{{ __('admin.dob') }}" :required="false" :minAge="16" :maxAge="80" />
                     </div>
-                    <x-country-dropdown name="nationality" id="m_instructor_nationality" label="{{ __('admin.nationality') }}" :required="false" />
+                    <x-fields.country name="nationality" id="m_instructor_nationality" label="{{ __('admin.nationality') }}" :required="false" />
 
                     <div>
                         <label class="form-label">{{ __('admin.photo') }}</label>
@@ -261,7 +261,7 @@ window.instructorAddSheet = function () {
                         <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ __('admin.ins_professional') }}</span>
                         <div class="flex-1 h-px bg-gray-100"></div>
                     </div>
-                    <x-lang-toggle class="mb-4" />
+                    <x-fields.language-toggle class="mb-4" />
 
                     {{-- Existing-member prefill hint --}}
                     <div x-show="mode === 'existing' && selectedId" x-cloak class="flex items-start gap-2.5 rounded-xl bg-primary/[0.06] border border-primary/10 px-3.5 py-2.5 -mt-1">

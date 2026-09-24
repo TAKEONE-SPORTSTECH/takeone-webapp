@@ -494,7 +494,7 @@ cut('''        <div class="ytc-login-prompt">''', '''    <div id="ytcList">''',
 cut('''                    <div class="ytc-empty" id="ytcEmpty">''', '''            </div>
             </div>''',
     '''        @forelse ($comments as $c)
-            @include('personal.mobile.partials.bout-comment', ['c' => $c, 'isReply' => false])
+            @include('events::personal.mobile.partials.bout-comment', ['c' => $c, 'isReply' => false])
         @empty
             <div class="ytc-empty" id="ytcEmpty">
                 <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
@@ -807,7 +807,7 @@ MRV = """                    <div class="mrv-tabs">
                     </div>
 
                     <div class="mrv-pane mrv-pane-flush is-on" data-mrv-panel="match">
-                        @include('personal.mobile.partials.bout-match-card')
+                        @include('events::personal.mobile.partials.bout-match-card')
                     </div>
 
                     <div class="mrv-pane" data-mrv-panel="points">
@@ -911,7 +911,7 @@ FSH_HEAD = """                    <div class="fsh-head">
                     </div>
 
                     <div class="fsh-list is-on" data-fsh-panel="match">
-                        @include('personal.mobile.partials.bout-match-card')
+                        @include('events::personal.mobile.partials.bout-match-card')
                     </div>
 
                     <div class="fsh-list" data-fsh-panel="points">"""
@@ -958,7 +958,7 @@ PANE = """                <div class="tab-header">
                 <div class="tab-panels">
                     <!-- Match Tab -->
                     <div class="tab-panel active" id="tab-match">
-                        @include('personal.mobile.partials.bout-match-card')
+                        @include('events::personal.mobile.partials.bout-match-card')
                     </div>
 
                     <!-- Points Tab -->

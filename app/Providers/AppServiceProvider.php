@@ -106,13 +106,13 @@ class AppServiceProvider extends ServiceProvider
          *
          * Both observers are created-only, idempotent and best-effort — joining a
          * club or entering an event must never fail because a profile row could
-         * not be written. See App\Support\ProfileHistorySync.
+         * not be written. See App\Members\Support\ProfileHistorySync.
          */
-        \App\Members\Models\Membership::observe(\App\Observers\MembershipObserver::class);
-        \App\Events\Models\ClubEventRegistration::observe(\App\Observers\ClubEventRegistrationObserver::class);
+        \App\Members\Models\Membership::observe(\App\Members\Observers\MembershipObserver::class);
+        \App\Events\Models\ClubEventRegistration::observe(\App\Events\Observers\ClubEventRegistrationObserver::class);
 
         // A new avatar joins the profile's own pictures, whichever path set it.
-        \App\Members\Models\User::observe(\App\Observers\UserObserver::class);
+        \App\Members\Models\User::observe(\App\Members\Observers\UserObserver::class);
 
         // Horizon dashboard — super-admin only
         Horizon::auth(function (Request $request) {
@@ -380,6 +380,19 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('media-read', function (Request $request) {
             return Limit::perMinute(1200)->by((string) ($request->user()?->id ?: $request->ip()));
         });
+
+        // Federations (app/Federations). Each door gets its OWN key: an
+        // un-named `throttle:N,1` counts every request from an address in one
+        // bucket, so a page loading its twenty scripts would use up the
+        // allowance of the verification-code door it is about to call.
+        foreach ([
+            'federation-assets' => 600, 'federation-page' => 120, 'federation-read' => 120,
+            'federation-code' => 5, 'federation-verify' => 10, 'federation-lookup' => 30,
+            'federation-submit' => 10, 'federation-withdraw' => 20,
+        ] as $name => $perMinute) {
+            RateLimiter::for($name, fn (Request $request) => Limit::perMinute($perMinute)
+                ->by($name.'|'.($request->user()?->id ?: $request->ip())));
+        }
 
         // File uploads (gallery, profile pictures, facility images, etc.):
         // 20 per minute per user — generous enough for normal use, blocks DoS.

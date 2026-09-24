@@ -5,7 +5,7 @@
         <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ __('admin.ins_staff_type') }}</span>
         <div class="flex-1 h-px bg-gray-100"></div>
     </div>
-    <x-select-menu model="staffType" :options="[
+    <x-fields.select model="staffType" :options="[
         ['value' => 'instructor', 'label' => __('admin.ins_staff_type_instructor')],
         ['value' => 'secretary',  'label' => __('admin.ins_staff_type_secretary')],
         ['value' => 'operator',   'label' => __('admin.ins_staff_type_operator')],
@@ -36,7 +36,7 @@
         </div>
         <div>
             <label class="form-label">{{ __('admin.ins_wage_period') }}</label>
-            <x-select-menu model="wagePeriod" :options="[
+            <x-fields.select model="wagePeriod" :options="[
                 ['value' => 'monthly', 'label' => __('admin.ins_per_month')],
                 ['value' => 'session', 'label' => __('admin.ins_per_session')],
                 ['value' => 'hourly',  'label' => __('admin.ins_per_hour')],

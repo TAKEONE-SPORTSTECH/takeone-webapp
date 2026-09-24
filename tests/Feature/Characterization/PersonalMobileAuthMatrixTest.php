@@ -16,7 +16,7 @@ use App\Clubs\Models\ClubPackageActivity;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Members\Models\UserScheduleSession;
-use App\Support\SyncedClassToken;
+use App\Members\Support\SyncedClassToken;
 use Illuminate\Support\Facades\Storage;
 use Tests\Feature\Contracts\ContractTestCase;
 

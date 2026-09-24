@@ -12,7 +12,7 @@
     are keyed on a real row id for their edit / skills / media / instructor
     controls, and a derived entry has no such row to act on.
 
-    Only what is NOT already written up by hand appears here (App\Support\ProfileHistory),
+    Only what is NOT already written up by hand appears here (App\Members\Support\ProfileHistory),
     so nothing shows twice, and once the sync has written real rows this block
     empties itself.
 
@@ -29,13 +29,13 @@
             <div class="min-w-0">
                 <h4 class="text-sm font-bold text-gray-900 mb-0.5">
                     {{ $kind === 'tournaments'
-                        ? __('member.derived_tournaments_title')
-                        : __('member.derived_affiliations_title') }}
+                        ? __('members::member.derived_tournaments_title')
+                        : __('members::member.derived_affiliations_title') }}
                 </h4>
                 <p class="text-xs text-muted-foreground mb-0">
                     {{ $kind === 'tournaments'
-                        ? __('member.derived_tournaments_note')
-                        : __('member.derived_affiliations_note') }}
+                        ? __('members::member.derived_tournaments_note')
+                        : __('members::member.derived_affiliations_note') }}
                 </p>
             </div>
         </div>
@@ -80,7 +80,7 @@
                                 @endif
                             </p>
                             <p class="text-xs text-muted-foreground mb-0">
-                                @if ($row->started_at){{ __('member.derived_since', ['date' => $row->started_at->format('M Y')]) }}@endif
+                                @if ($row->started_at){{ __('members::member.derived_since', ['date' => $row->started_at->format('M Y')]) }}@endif
                             </p>
                         </div>
                         <span class="px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0

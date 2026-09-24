@@ -24,18 +24,18 @@
         <!-- Header with Filter -->
         <div class="flex justify-between items-center mb-4">
             <div>
-                <h5 class="font-bold mb-1"><i class="bi bi-diagram-3 me-2"></i>{{ __('member.partials_affiliations_enhanced_title') }}</h5>
-                <p class="text-muted-foreground text-sm mb-0">{{ __('member.partials_affiliations_enhanced_subtitle') }}</p>
+                <h5 class="font-bold mb-1"><i class="bi bi-diagram-3 me-2"></i>{{ __('members::member.partials_affiliations_enhanced_title') }}</h5>
+                <p class="text-muted-foreground text-sm mb-0">{{ __('members::member.partials_affiliations_enhanced_subtitle') }}</p>
             </div>
             <div class="flex gap-2">
                 <select class="form-select form-select-sm" id="skillFilter" style="width: 200px;">
-                    <option value="all">{{ __('member.partials_affiliations_enhanced_all_skills') }}</option>
+                    <option value="all">{{ __('members::member.partials_affiliations_enhanced_all_skills') }}</option>
                     @foreach($allSkills ?? [] as $skill)
                         <option value="{{ $skill }}">{{ $skill }}</option>
                     @endforeach
                 </select>
                 <button class="btn btn-sm btn-outline-secondary" id="resetFilters">
-                    <i class="bi bi-arrow-clockwise"></i> {{ __('member.partials_affiliations_enhanced_reset') }}
+                    <i class="bi bi-arrow-clockwise"></i> {{ __('members::member.partials_affiliations_enhanced_reset') }}
                 </button>
             </div>
         </div>
@@ -48,7 +48,7 @@
                         <div class="card-body text-center text-white p-3">
                             <i class="bi bi-building text-5xl mb-2"></i>
                             <h3 class="font-bold mb-1">{{ $totalAffiliations }}</h3>
-                            <small class="opacity-75">{{ __('member.partials_affiliations_enhanced_total_clubs') }}</small>
+                            <small class="opacity-75">{{ __('members::member.partials_affiliations_enhanced_total_clubs') }}</small>
                         </div>
                     </div>
                 </div>
@@ -57,7 +57,7 @@
                         <div class="card-body text-center text-white p-3">
                             <i class="bi bi-star-fill text-5xl mb-2"></i>
                             <h3 class="font-bold mb-1">{{ $distinctSkills }}</h3>
-                            <small class="opacity-75">{{ __('member.partials_affiliations_enhanced_unique_skills') }}</small>
+                            <small class="opacity-75">{{ __('members::member.partials_affiliations_enhanced_unique_skills') }}</small>
                         </div>
                     </div>
                 </div>
@@ -65,8 +65,8 @@
                     <div class="card shadow-sm h-full" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border: none;">
                         <div class="card-body text-center text-white p-3">
                             <i class="bi bi-calendar-check text-5xl mb-2"></i>
-                            <h3 class="font-bold mb-1">{{ floor($totalMembershipDuration / 12) }}{{ __('member.partials_affiliations_enhanced_years_abbr') }} {{ $totalMembershipDuration % 12 }}{{ __('member.partials_affiliations_enhanced_months_abbr') }}</h3>
-                            <small class="opacity-75">{{ __('member.partials_affiliations_enhanced_total_training') }}</small>
+                            <h3 class="font-bold mb-1">{{ floor($totalMembershipDuration / 12) }}{{ __('members::member.partials_affiliations_enhanced_years_abbr') }} {{ $totalMembershipDuration % 12 }}{{ __('members::member.partials_affiliations_enhanced_months_abbr') }}</h3>
+                            <small class="opacity-75">{{ __('members::member.partials_affiliations_enhanced_total_training') }}</small>
                         </div>
                     </div>
                 </div>
@@ -75,7 +75,7 @@
                         <div class="card-body text-center text-white p-3">
                             <i class="bi bi-people-fill text-5xl mb-2"></i>
                             <h3 class="font-bold mb-1">{{ $totalInstructors ?? 0 }}</h3>
-                            <small class="opacity-75">{{ __('member.partials_affiliations_enhanced_instructors') }}</small>
+                            <small class="opacity-75">{{ __('members::member.partials_affiliations_enhanced_instructors') }}</small>
                         </div>
                     </div>
                 </div>
@@ -87,7 +87,7 @@
                     <div class="card shadow-sm border-0">
                         <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
                             <h6 class="card-title mb-0 text-white">
-                                <i class="bi bi-clock-history me-2"></i>{{ __('member.partials_affiliations_enhanced_membership_timeline') }}
+                                <i class="bi bi-clock-history me-2"></i>{{ __('members::member.partials_affiliations_enhanced_membership_timeline') }}
                             </h6>
                         </div>
                         <div class="card-body p-4" style="max-height: 800px; overflow-y: auto;">
@@ -124,7 +124,7 @@
                                                         <div class="flex gap-3 flex-wrap">
                                                             @if($affiliation->start_date)
                                                                 <small class="opacity-90">
-                                                                    <i class="bi bi-calendar-event me-1"></i>{{ $affiliation->start_date->format('M Y') }} - {{ $isOngoing ? __('member.partials_affiliations_enhanced_present') : ($affiliation->end_date ? $affiliation->end_date->format('M Y') : __('member.partials_affiliations_enhanced_na')) }}
+                                                                    <i class="bi bi-calendar-event me-1"></i>{{ $affiliation->start_date->format('M Y') }} - {{ $isOngoing ? __('members::member.partials_affiliations_enhanced_present') : ($affiliation->end_date ? $affiliation->end_date->format('M Y') : __('members::member.partials_affiliations_enhanced_na')) }}
                                                                 </small>
                                                             @endif
                                                             @if($affiliation->formatted_duration)
@@ -134,14 +134,14 @@
                                                             @endif
                                                             @if($ageAtStart)
                                                                 <small class="opacity-90">
-                                                                    <i class="bi bi-person me-1"></i>{{ __('member.partials_affiliations_enhanced_age_label') }} {{ $ageAtStart }}{{ $ageAtEnd && $ageAtEnd != $ageAtStart ? __('member.partials_affiliations_enhanced_age_to', ['age' => $ageAtEnd]) : '' }}
+                                                                    <i class="bi bi-person me-1"></i>{{ __('members::member.partials_affiliations_enhanced_age_label') }} {{ $ageAtStart }}{{ $ageAtEnd && $ageAtEnd != $ageAtStart ? __('members::member.partials_affiliations_enhanced_age_to', ['age' => $ageAtEnd]) : '' }}
                                                                 </small>
                                                             @endif
                                                         </div>
                                                     </div>
                                                     @if($isOngoing)
                                                         <span class="badge bg-success">
-                                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ __('member.partials_affiliations_enhanced_active') }}
+                                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ __('members::member.partials_affiliations_enhanced_active') }}
                                                         </span>
                                                     @endif
                                                 </div>
@@ -160,7 +160,7 @@
                                                 @if($affiliationSkills->count() > 0)
                                                     <div class="mb-3">
                                                         <h6 class="font-bold mb-2">
-                                                            <i class="bi bi-star-fill me-2 text-warning"></i>{{ __('member.partials_affiliations_enhanced_skills_acquired') }} ({{ $affiliationSkills->count() }})
+                                                            <i class="bi bi-star-fill me-2 text-warning"></i>{{ __('members::member.partials_affiliations_enhanced_skills_acquired') }} ({{ $affiliationSkills->count() }})
                                                         </h6>
                                                         <div class="flex gap-2 flex-wrap">
                                                             @foreach($affiliationSkills as $skill)
@@ -169,10 +169,10 @@
                                                                       data-bs-placement="top"
                                                                       data-bs-html="true"
                                                                       title="<strong>{{ $skill->skill_name }}</strong><br>
-                                                                             {{ __('member.partials_affiliations_enhanced_proficiency_label') }} {{ ucfirst($skill->proficiency_level) }}<br>
-                                                                             {{ __('member.partials_affiliations_enhanced_duration_label') }} {{ $skill->formatted_duration }}<br>
-                                                                             @if($skill->instructor){{ __('member.partials_affiliations_enhanced_instructor_label') }} {{ $skill->instructor->user->full_name ?? __('member.partials_affiliations_enhanced_unknown') }}<br>@endif
-                                                                             @if($skill->start_date){{ __('member.partials_affiliations_enhanced_started_label') }} {{ $skill->start_date->format('M Y') }}@endif">
+                                                                             {{ __('members::member.partials_affiliations_enhanced_proficiency_label') }} {{ ucfirst($skill->proficiency_level) }}<br>
+                                                                             {{ __('members::member.partials_affiliations_enhanced_duration_label') }} {{ $skill->formatted_duration }}<br>
+                                                                             @if($skill->instructor){{ __('members::member.partials_affiliations_enhanced_instructor_label') }} {{ $skill->instructor->user->full_name ?? __('members::member.partials_affiliations_enhanced_unknown') }}<br>@endif
+                                                                             @if($skill->start_date){{ __('members::member.partials_affiliations_enhanced_started_label') }} {{ $skill->start_date->format('M Y') }}@endif">
                                                                     <i class="bi bi-star-fill me-1"></i>{{ $skill->skill_name }}
                                                                     <span class="badge bg-white text-dark ms-1" style="font-size: 0.65rem;">{{ ucfirst($skill->proficiency_level) }}</span>
                                                                 </span>
@@ -185,7 +185,7 @@
                                                 @if($affiliation->subscriptions && $affiliation->subscriptions->count() > 0)
                                                     <div class="mb-3">
                                                         <h6 class="font-bold mb-2">
-                                                            <i class="bi bi-box-seam me-2 text-primary"></i>{{ __('member.partials_affiliations_enhanced_training_packages') }} ({{ $affiliation->subscriptions->count() }})
+                                                            <i class="bi bi-box-seam me-2 text-primary"></i>{{ __('members::member.partials_affiliations_enhanced_training_packages') }} ({{ $affiliation->subscriptions->count() }})
                                                         </h6>
                                                         <div class="flex gap-2 flex-wrap">
                                                             @foreach($affiliation->subscriptions as $subIndex => $subscription)
@@ -208,7 +208,7 @@
                                                 @if($instructors->count() > 0)
                                                     <div class="mb-2">
                                                         <h6 class="font-bold mb-2">
-                                                            <i class="bi bi-people-fill me-2 text-success"></i>{{ __('member.partials_affiliations_enhanced_instructors') }} ({{ $instructors->count() }})
+                                                            <i class="bi bi-people-fill me-2 text-success"></i>{{ __('members::member.partials_affiliations_enhanced_instructors') }} ({{ $instructors->count() }})
                                                         </h6>
                                                         <div class="flex gap-2 flex-wrap">
                                                             @foreach($instructors as $instructor)
@@ -220,8 +220,8 @@
                                                                             {{ mb_strtoupper(mb_substr($instructor->user->full_name ?? 'I', 0, 1, 'UTF-8'), 'UTF-8') }}
                                                                         </div>
                                                                         <div>
-                                                                            <div class="font-semibold text-sm">{{ $instructor->user->full_name ?? __('member.partials_affiliations_enhanced_unknown') }}</div>
-                                                                            <div class="text-muted-foreground" style="font-size: 0.7rem;">{{ $instructor->role ?? __('member.partials_affiliations_enhanced_instructor_role_default') }}</div>
+                                                                            <div class="font-semibold text-sm">{{ $instructor->user->full_name ?? __('members::member.partials_affiliations_enhanced_unknown') }}</div>
+                                                                            <div class="text-muted-foreground" style="font-size: 0.7rem;">{{ $instructor->role ?? __('members::member.partials_affiliations_enhanced_instructor_role_default') }}</div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -251,9 +251,9 @@
                                         <div class="modal-content">
                                             <div class="modal-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
                                                 <h5 class="modal-title text-white">
-                                                    <i class="bi bi-person-badge me-2"></i>{{ __('member.partials_affiliations_enhanced_instructor_profile') }}
+                                                    <i class="bi bi-person-badge me-2"></i>{{ __('members::member.partials_affiliations_enhanced_instructor_profile') }}
                                                 </h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('member.partials_affiliations_enhanced_close') }}"></button>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('members::member.partials_affiliations_enhanced_close') }}"></button>
                                             </div>
                                             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                                                 <div class="text-center mb-4">
@@ -273,8 +273,8 @@
                                                     </div>
 
                                                     <!-- Name & Role -->
-                                                    <h5 class="font-bold mb-1">{{ $instructor->user->full_name ?? __('member.partials_affiliations_enhanced_unknown_instructor') }}</h5>
-                                                    <p class="text-muted-foreground mb-2">{{ $instructor->role ?? __('member.partials_affiliations_enhanced_instructor_role_default') }}</p>
+                                                    <h5 class="font-bold mb-1">{{ $instructor->user->full_name ?? __('members::member.partials_affiliations_enhanced_unknown_instructor') }}</h5>
+                                                    <p class="text-muted-foreground mb-2">{{ $instructor->role ?? __('members::member.partials_affiliations_enhanced_instructor_role_default') }}</p>
 
                                                     <!-- Average Rating -->
                                                     @php
@@ -288,7 +288,7 @@
                                                                     <i class="bi bi-star{{ $i <= round($avgRating) ? '-fill' : '' }} text-warning"></i>
                                                                 @endfor
                                                             </div>
-                                                            <span class="text-muted-foreground text-sm" id="avgMeta_{{ $instructor->id }}">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? __('member.partials_affiliations_enhanced_review_singular') : __('member.partials_affiliations_enhanced_review_plural') }})</span>
+                                                            <span class="text-muted-foreground text-sm" id="avgMeta_{{ $instructor->id }}">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? __('members::member.partials_affiliations_enhanced_review_singular') : __('members::member.partials_affiliations_enhanced_review_plural') }})</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -304,7 +304,7 @@
                                                         <div class="card bg-muted border-0">
                                                             <div class="card-body p-2">
                                                                 <div class="text-2xl mb-0 text-primary">{{ $studentsCount }}</div>
-                                                                <small class="text-muted-foreground">{{ __('member.partials_affiliations_enhanced_students') }}</small>
+                                                                <small class="text-muted-foreground">{{ __('members::member.partials_affiliations_enhanced_students') }}</small>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -312,7 +312,7 @@
                                                         <div class="card bg-muted border-0">
                                                             <div class="card-body p-2">
                                                                 <div class="text-2xl mb-0 text-success">{{ $skillsTaught->count() }}</div>
-                                                                <small class="text-muted-foreground">{{ __('member.partials_affiliations_enhanced_skills') }}</small>
+                                                                <small class="text-muted-foreground">{{ __('members::member.partials_affiliations_enhanced_skills') }}</small>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -321,7 +321,7 @@
                                                 <!-- Skills Taught -->
                                                 @if($skillsTaught->count() > 0)
                                                     <div class="mb-3 text-start">
-                                                        <label class="text-muted-foreground text-sm font-semibold mb-2">{{ __('member.partials_affiliations_enhanced_specializes_in') }}</label>
+                                                        <label class="text-muted-foreground text-sm font-semibold mb-2">{{ __('members::member.partials_affiliations_enhanced_specializes_in') }}</label>
                                                         <div class="flex gap-1 flex-wrap">
                                                             @foreach($skillsTaught as $skill)
                                                                 <span class="badge bg-success">{{ $skill }}</span>
@@ -350,7 +350,7 @@
                                                 <!-- Reviews Section -->
                                                 <div class="mt-4">
                                                     <h6 class="font-bold mb-3">
-                                                        <i class="bi bi-chat-left-text me-2"></i>{{ __('member.partials_affiliations_enhanced_reviews') }}
+                                                        <i class="bi bi-chat-left-text me-2"></i>{{ __('members::member.partials_affiliations_enhanced_reviews') }}
                                                     </h6>
 
                                                     <!-- Add/Edit Review Form -->
@@ -363,7 +363,7 @@
                                                             <form class="instructor-review-form" data-instructor-id="{{ $instructor->id }}" data-review-id="{{ $userReview->id ?? '' }}">
                                                                 @csrf
                                                                 <div class="mb-3">
-                                                                    <label class="form-label text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_your_rating') }}</label>
+                                                                    <label class="form-label text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_your_rating') }}</label>
                                                                     <div class="star-rating" data-rating="{{ $userReview->rating ?? 0 }}">
                                                                         @for($i = 1; $i <= 5; $i++)
                                                                             <i class="bi bi-star{{ $userReview && $i <= $userReview->rating ? '-fill' : '' }} star-input" data-value="{{ $i }}"></i>
@@ -372,12 +372,12 @@
                                                                     <input type="hidden" name="rating" value="{{ $userReview->rating ?? 0 }}" required>
                                                                 </div>
                                                                 <div class="mb-3">
-                                                                    <label class="form-label text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_your_review') }}</label>
-                                                                    <textarea name="comment" class="form-control form-control-sm" rows="3" placeholder="{{ __('member.partials_affiliations_enhanced_share_experience_placeholder') }}">{{ $userReview->comment ?? '' }}</textarea>
+                                                                    <label class="form-label text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_your_review') }}</label>
+                                                                    <textarea name="comment" class="form-control form-control-sm" rows="3" placeholder="{{ __('members::member.partials_affiliations_enhanced_share_experience_placeholder') }}">{{ $userReview->comment ?? '' }}</textarea>
                                                                 </div>
                                                                 <button type="submit" class="btn btn-success btn-sm w-full">
                                                                     <i class="bi bi-{{ $userReview ? 'pencil' : 'plus-circle' }} me-1"></i>
-                                                                    {{ $userReview ? __('member.partials_affiliations_enhanced_update_review') : __('member.partials_affiliations_enhanced_submit_review') }}
+                                                                    {{ $userReview ? __('members::member.partials_affiliations_enhanced_update_review') : __('members::member.partials_affiliations_enhanced_submit_review') }}
                                                                 </button>
                                                             </form>
                                                         </div>
@@ -398,7 +398,7 @@
                                                                             </div>
                                                                         </div>
                                                                         <small class="text-muted-foreground">
-                                                                            {{ $review->wasUpdated() ? __('member.partials_affiliations_enhanced_updated_prefix') : '' }}{{ $review->wasUpdated() ? $review->updated_at->diffForHumans() : $review->reviewed_at->diffForHumans() }}
+                                                                            {{ $review->wasUpdated() ? __('members::member.partials_affiliations_enhanced_updated_prefix') : '' }}{{ $review->wasUpdated() ? $review->updated_at->diffForHumans() : $review->reviewed_at->diffForHumans() }}
                                                                         </small>
                                                                     </div>
                                                                     @if($review->comment)
@@ -412,9 +412,9 @@
                                             </div>
                                             <div class="modal-footer">
                                                 <a href="{{ route('family.show', $instructor->user_id) }}" class="btn btn-primary btn-sm">
-                                                    <i class="bi bi-person-lines-fill me-1"></i>{{ __('member.partials_affiliations_enhanced_view_full_profile') }}
+                                                    <i class="bi bi-person-lines-fill me-1"></i>{{ __('members::member.partials_affiliations_enhanced_view_full_profile') }}
                                                 </a>
-                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('member.partials_affiliations_enhanced_close') }}</button>
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('members::member.partials_affiliations_enhanced_close') }}</button>
                                             </div>
                                         </div>
                                     </div>
@@ -432,14 +432,14 @@
                                                         <h5 class="modal-title text-white">
                                                             <i class="bi bi-box-seam me-2"></i>{{ $subscription->package->name }}
                                                         </h5>
-                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('member.partials_affiliations_enhanced_close') }}"></button>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('members::member.partials_affiliations_enhanced_close') }}"></button>
                                                     </div>
                                                     <div class="modal-body">
                                                         <div class="mb-3">
-                                                            <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_subscription_period') }}</label>
+                                                            <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_subscription_period') }}</label>
                                                             <div>
                                                                 <i class="bi bi-calendar-range me-2 text-primary"></i>
-                                                                {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }}
+                                                                {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }}
                                                             </div>
                                                             @php
                                                                 $durationText = 'N/A';
@@ -453,20 +453,20 @@
                                                                 }
                                                             @endphp
                                                             <small class="text-muted-foreground">
-                                                                <i class="bi bi-hourglass-split me-1"></i>{{ __('member.partials_affiliations_enhanced_duration_label') }} {{ $durationText }}
+                                                                <i class="bi bi-hourglass-split me-1"></i>{{ __('members::member.partials_affiliations_enhanced_duration_label') }} {{ $durationText }}
                                                             </small>
                                                         </div>
 
                                                         @if($subscription->package->description)
                                                             <div class="mb-3">
-                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_description') }}</label>
+                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_description') }}</label>
                                                                 <p class="mb-0">{{ $subscription->package->description }}</p>
                                                             </div>
                                                         @endif
 
                                                         @if($subscription->package->price)
                                                             <div class="mb-3">
-                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_price') }}</label>
+                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_price') }}</label>
                                                                 <div class="text-xl mb-0 text-success">
                                                                     <i class="bi bi-currency-dollar"></i>{{ number_format($subscription->package->price, 2) }}
                                                                 </div>
@@ -475,7 +475,7 @@
 
                                                         @if($subscription->package->packageActivities && $subscription->package->packageActivities->count() > 0)
                                                             <div class="mb-3">
-                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_activities_skills_included') }}</label>
+                                                                <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_activities_skills_included') }}</label>
                                                                 <div class="list-group">
                                                                     @foreach($subscription->package->packageActivities as $pkgActivity)
                                                                         @if($pkgActivity->activity)
@@ -497,7 +497,7 @@
 
                                                                                         @if($activitySkills->count() > 0)
                                                                                             <div class="mb-2">
-                                                                                                <small class="text-muted-foreground block mb-1">{{ __('member.partials_affiliations_enhanced_skills_practiced') }}</small>
+                                                                                                <small class="text-muted-foreground block mb-1">{{ __('members::member.partials_affiliations_enhanced_skills_practiced') }}</small>
                                                                                                 <div class="flex gap-1 flex-wrap">
                                                                                                     @foreach($activitySkills as $actSkill)
                                                                                                         <span class="badge bg-{{ $actSkill->proficiency_level == 'expert' ? 'danger' : ($actSkill->proficiency_level == 'advanced' ? 'warning' : ($actSkill->proficiency_level == 'intermediate' ? 'info' : 'secondary')) }}" style="font-size: 0.7rem;">
@@ -534,17 +534,17 @@
                                                         @if($samePackageSubscriptions->count() > 0)
                                                             <div class="mb-3">
                                                                 <label class="text-muted-foreground text-sm font-semibold">
-                                                                    <i class="bi bi-arrow-repeat me-1"></i>{{ __('member.partials_affiliations_enhanced_other_subscriptions') }}
+                                                                    <i class="bi bi-arrow-repeat me-1"></i>{{ __('members::member.partials_affiliations_enhanced_other_subscriptions') }}
                                                                 </label>
                                                                 <div class="alert alert-info mb-0" style="font-size: 0.85rem;">
-                                                                    <div class="font-semibold mb-1">{{ __('member.partials_affiliations_enhanced_subscribed_times', ['count' => $samePackageSubscriptions->count() + 1]) }}</div>
+                                                                    <div class="font-semibold mb-1">{{ __('members::member.partials_affiliations_enhanced_subscribed_times', ['count' => $samePackageSubscriptions->count() + 1]) }}</div>
                                                                     <ul class="mb-0 ps-3">
                                                                         <li class="text-primary font-semibold">
-                                                                            {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }} {{ __('member.partials_affiliations_enhanced_current_parenthetical') }}
+                                                                            {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} {{ __('members::member.partials_affiliations_enhanced_current_parenthetical') }}
                                                                         </li>
                                                                         @foreach($samePackageSubscriptions as $otherSub)
                                                                             <li>
-                                                                                {{ $otherSub->start_date ? $otherSub->start_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }} - {{ $otherSub->end_date ? $otherSub->end_date->format('M d, Y') : __('member.partials_affiliations_enhanced_na') }}
+                                                                                {{ $otherSub->start_date ? $otherSub->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $otherSub->end_date ? $otherSub->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }}
                                                                                 @php
                                                                                     $gap = 0;
                                                                                     if ($subscription->start_date && $otherSub->start_date) {
@@ -552,7 +552,7 @@
                                                                                     }
                                                                                 @endphp
                                                                                 @if($gap > 0)
-                                                                                    <small class="text-muted-foreground">({{ abs($gap) }} {{ __('member.partials_affiliations_enhanced_months') }} {{ $subscription->start_date->gt($otherSub->start_date) ? __('member.partials_affiliations_enhanced_before') : __('member.partials_affiliations_enhanced_after') }} {{ __('member.partials_affiliations_enhanced_current_lower') }})</small>
+                                                                                    <small class="text-muted-foreground">({{ abs($gap) }} {{ __('members::member.partials_affiliations_enhanced_months') }} {{ $subscription->start_date->gt($otherSub->start_date) ? __('members::member.partials_affiliations_enhanced_before') : __('members::member.partials_affiliations_enhanced_after') }} {{ __('members::member.partials_affiliations_enhanced_current_lower') }})</small>
                                                                                 @endif
                                                                             </li>
                                                                         @endforeach
@@ -562,19 +562,19 @@
                                                         @endif
 
                                                         <div class="mb-0">
-                                                            <label class="text-muted-foreground text-sm font-semibold">{{ __('member.partials_affiliations_enhanced_status') }}</label>
+                                                            <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_status') }}</label>
                                                             <div>
                                                                 <span class="badge bg-{{ $subscription->status == 'active' ? 'success' : 'secondary' }}">
                                                                     {{ ucfirst($subscription->status) }}
                                                                 </span>
                                                                 <span class="badge bg-{{ $subscription->payment_status == 'paid' ? 'success' : 'warning' }} ms-2">
-                                                                    {{ __('member.partials_affiliations_enhanced_payment_label') }} {{ ucfirst($subscription->payment_status) }}
+                                                                    {{ __('members::member.partials_affiliations_enhanced_payment_label') }} {{ ucfirst($subscription->payment_status) }}
                                                                 </span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('member.partials_affiliations_enhanced_close') }}</button>
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('members::member.partials_affiliations_enhanced_close') }}</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -589,8 +589,8 @@
         @else
             <div class="text-center py-5">
                 <i class="bi bi-diagram-3 text-muted-foreground" style="font-size: 3rem;"></i>
-                <h5 class="text-muted-foreground mt-3 mb-2">{{ __('member.partials_affiliations_enhanced_no_affiliations') }}</h5>
-                <p class="text-muted-foreground mb-0">{{ __('member.partials_affiliations_enhanced_no_affiliations_desc') }}</p>
+                <h5 class="text-muted-foreground mt-3 mb-2">{{ __('members::member.partials_affiliations_enhanced_no_affiliations') }}</h5>
+                <p class="text-muted-foreground mb-0">{{ __('members::member.partials_affiliations_enhanced_no_affiliations_desc') }}</p>
             </div>
         @endif
     </div>
@@ -669,7 +669,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Validate rating
             if (!data.rating || data.rating == 0) {
-                window.showToast('error', '{{ __("member.partials_affiliations_enhanced_please_select_rating") }}');
+                window.showToast('error', '{{ __("members::member.partials_affiliations_enhanced_please_select_rating") }}');
                 return;
             }
 
@@ -696,12 +696,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     showAlert(result.message, 'success');
                     setTimeout(() => { window.location.reload(); }, 1000);
                 } else {
-                    showAlert(result.message || '{{ __("member.partials_affiliations_enhanced_error_submitting_review") }}', 'danger');
+                    showAlert(result.message || '{{ __("members::member.partials_affiliations_enhanced_error_submitting_review") }}', 'danger');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showAlert('{{ __("member.partials_affiliations_enhanced_error_submitting_review_retry") }}', 'danger');
+                showAlert('{{ __("members::member.partials_affiliations_enhanced_error_submitting_review_retry") }}', 'danger');
             });
         });
     });
@@ -721,12 +721,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function patchInstructorReview(form, instructorId, review) {
         form.setAttribute('data-review-id', review.id);
         const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) submitBtn.innerHTML = `<i class="bi bi-pencil me-1"></i>{{ __("member.partials_affiliations_enhanced_update_review") }}`;
+        if (submitBtn) submitBtn.innerHTML = `<i class="bi bi-pencil me-1"></i>{{ __("members::member.partials_affiliations_enhanced_update_review") }}`;
 
         const list = document.getElementById(`reviewsList_${instructorId}`);
         if (list) {
             let row = document.getElementById(`review-row-${review.id}`);
-            const reviewerName = (review.reviewer && (review.reviewer.full_name || review.reviewer.name)) || '{{ __("member.partials_affiliations_enhanced_reviewer_you") }}';
+            const reviewerName = (review.reviewer && (review.reviewer.full_name || review.reviewer.name)) || '{{ __("members::member.partials_affiliations_enhanced_reviewer_you") }}';
             const commentHtml = review.comment ? `<p class="mb-0 text-sm text-muted-foreground">${escapeHtml(review.comment)}</p>` : '';
             const cardHtml = `
                 <div class="card-body p-3">
@@ -735,7 +735,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="font-semibold text-sm">${escapeHtml(reviewerName)}</div>
                             <div class="stars-display text-sm">${starsHtml(review.rating)}</div>
                         </div>
-                        <small class="text-muted-foreground">{{ __("member.partials_affiliations_enhanced_updated_just_now") }}</small>
+                        <small class="text-muted-foreground">{{ __("members::member.partials_affiliations_enhanced_updated_just_now") }}</small>
                     </div>
                     ${commentHtml}
                 </div>`;
@@ -755,7 +755,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const headerStars = document.getElementById(`avgStars_${instructorId}`);
         if (headerStars) headerStars.innerHTML = starsHtml(Math.round(avg));
         const headerMeta = document.getElementById(`avgMeta_${instructorId}`);
-        if (headerMeta) headerMeta.textContent = `(${avg.toFixed(1)} / ${count} ${count === 1 ? '{{ __("member.partials_affiliations_enhanced_review_singular") }}' : '{{ __("member.partials_affiliations_enhanced_review_plural") }}'})`;
+        if (headerMeta) headerMeta.textContent = `(${avg.toFixed(1)} / ${count} ${count === 1 ? '{{ __("members::member.partials_affiliations_enhanced_review_singular") }}' : '{{ __("members::member.partials_affiliations_enhanced_review_plural") }}'})`;
     }
 
     function showAlert(message, type) {

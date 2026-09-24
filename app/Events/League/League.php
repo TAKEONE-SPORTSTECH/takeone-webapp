@@ -423,7 +423,7 @@ class League extends AbstractEventType
      * championships made.
      *
      * It also settles the WIDTH question: a branded surface is served from one
-     * blade at every width (App\Http\Middleware\BrandEventPage), which is what
+     * blade at every width (App\Events\Middleware\BrandEventPage), which is what
      * the public poster does too. So `/me/events/{uuid}` and `/e/{uuid}` are
      * the same page in the same shape on a phone and on a laptop, rather than
      * three layouts of one event.

@@ -194,10 +194,10 @@ class EntryDeadline
      */
     private function notify(ClubEvent $event, User $athlete, string $reason): void
     {
-        rescue(fn () => UserNotification::notifyUser($athlete->id, 'event', __('events.entry_deadline_notify_title', [
+        rescue(fn () => UserNotification::notifyUser($athlete->id, 'event', __('events::events.entry_deadline_notify_title', [
             'title' => $event->title,
         ]), [
-            'body' => __('events.entry_deadline_reason_'.$reason),
+            'body' => __('events::events.entry_deadline_reason_'.$reason),
             'icon' => 'bi-clock-history',
             'action_url' => route('me.events.show', $event->uuid),
             'tenant_id' => $event->tenant_id,

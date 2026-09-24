@@ -45,8 +45,8 @@
 
 <div x-data="{ acct: false }" class="flex-none">
     <button type="button" @click="acct = true"
-            aria-label="{{ __('events.public_account') }}"
-            title="{{ __('events.public_account') }}"
+            aria-label="{{ __('events::events.public_account') }}"
+            title="{{ __('events::events.public_account') }}"
             {{ $attributes->merge(['class' => 'm-press grid place-items-center flex-none']) }}>
         <i class="bi bi-person"></i>
     </button>
@@ -78,7 +78,7 @@
                         </span>
                         <div class="min-w-0 flex-1">
                             <h3 class="text-lg font-black leading-tight">{{ $accountName }}</h3>
-                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('events.public_account_signed_in') }}</p>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('events::events.public_account_signed_in') }}</p>
                         </div>
                         <button type="button" @click="acct = false"
                                 aria-label="{{ __('shared.close') }}"
@@ -100,7 +100,7 @@
                         <button type="submit"
                                 class="m-press w-full h-12 rounded-2xl font-black text-[14px] flex items-center justify-center gap-2"
                                 style="background:#fff; border:1px solid hsl(210 14% 88%); color:#b91c1c;">
-                            <i class="bi bi-box-arrow-right"></i>{{ __('events.public_account_sign_out') }}
+                            <i class="bi bi-box-arrow-right"></i>{{ __('events::events.public_account_sign_out') }}
                         </button>
                     </form>
                 </div>

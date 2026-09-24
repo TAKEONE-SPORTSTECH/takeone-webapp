@@ -181,7 +181,7 @@ class Sparring extends AbstractEventType
                 'unqueue_bout' => $this->unqueueBout($event, (int) ($payload['match_id'] ?? 0)),
                 'set_mats' => $this->setMats($event, (int) ($payload['mats'] ?? 1)),
                 'close_session' => $this->closeSession($event),
-                default => ['success' => false, 'message' => __('events.action_unsupported')],
+                default => ['success' => false, 'message' => __('events::events.action_unsupported')],
             };
         } catch (\RuntimeException $e) {
             return ['success' => false, 'message' => $e->getMessage()];

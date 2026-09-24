@@ -4,12 +4,12 @@ namespace App\Members\Controllers;
 
 use App\Events\Support\EntryPhoto;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\HealthRecordRequest;
-use App\Http\Requests\StoreFamilyMemberRequest;
-use App\Http\Requests\TournamentRequest;
-use App\Http\Requests\UpdateFamilyMemberRequest;
-use App\Http\Requests\UpdateGoalRequest;
-use App\Http\Requests\UpdateProfileRequest;
+use App\Members\Requests\HealthRecordRequest;
+use App\Members\Requests\StoreFamilyMemberRequest;
+use App\Members\Requests\TournamentRequest;
+use App\Members\Requests\UpdateFamilyMemberRequest;
+use App\Members\Requests\UpdateGoalRequest;
+use App\Members\Requests\UpdateProfileRequest;
 use App\Http\Requests\UploadImageRequest;
 use App\Members\Models\Attendance;
 use App\Members\Models\Goal;
@@ -19,8 +19,8 @@ use App\Members\Models\Person;
 use App\Members\Models\User;
 use App\Members\Models\UserNotification;
 use App\Members\Models\UserRelationship;
-use App\Services\FamilyService;
-use App\Services\KinshipService;
+use App\Members\Support\FamilyService;
+use App\Members\Support\KinshipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -29,7 +29,7 @@ use Illuminate\Support\Str;
 
 class FamilyController extends Controller
 {
-    use \App\Traits\ComputesAttendanceStats;
+    use \App\Members\Concerns\ComputesAttendanceStats;
     use \App\Traits\StoresBase64Images;
 
     protected $familyService;
@@ -156,8 +156,8 @@ class FamilyController extends Controller
             // What the platform already knows about this member's clubs and
             // events — the two tabs otherwise show only what they typed in
             // themselves. Read-only, de-duplicated against the self-reported rows.
-            'derivedAffiliations' => app(\App\Support\ProfileHistory::class)->derivedAffiliations($user),
-            'derivedTournaments'  => app(\App\Support\ProfileHistory::class)->derivedTournaments($user),
+            'derivedAffiliations' => app(\App\Members\Support\ProfileHistory::class)->derivedAffiliations($user),
+            'derivedTournaments'  => app(\App\Members\Support\ProfileHistory::class)->derivedTournaments($user),
             'relationship' => (object) [
                 'dependent' => $user,
                 'relationship_type' => 'self',
@@ -386,7 +386,7 @@ class FamilyController extends Controller
 
         return response()->json([
             'success' => true,
-            'matches' => $matches->map(fn ($u) => $this->candidatePayload($u, __('member.matched_via_phone')))->values(),
+            'matches' => $matches->map(fn ($u) => $this->candidatePayload($u, __('members::member.matched_via_phone')))->values(),
         ]);
     }
 
@@ -429,7 +429,7 @@ class FamilyController extends Controller
                 ->get(['id', 'full_name', 'name', 'profile_picture', 'updated_at']);
 
             foreach ($exact as $u) {
-                $results->push($this->candidatePayload($u, __('member.matched_via_contact')));
+                $results->push($this->candidatePayload($u, __('members::member.matched_via_contact')));
             }
         }
 
@@ -441,7 +441,7 @@ class FamilyController extends Controller
             ->get(['id', 'full_name', 'name', 'profile_picture', 'updated_at']);
 
         foreach ($byName as $u) {
-            $results->push($this->candidatePayload($u, __('member.matched_via_name')));
+            $results->push($this->candidatePayload($u, __('members::member.matched_via_name')));
         }
 
         $byGuardian = UserRelationship::query()
@@ -458,7 +458,7 @@ class FamilyController extends Controller
 
         foreach ($byGuardian as $rel) {
             $guardianName = $rel->guardian->full_name ?: $rel->guardian->name;
-            $results->push($this->candidatePayload($rel->dependent, __('member.matched_via_guardian', ['name' => $guardianName])));
+            $results->push($this->candidatePayload($rel->dependent, __('members::member.matched_via_guardian', ['name' => $guardianName])));
         }
 
         return response()->json([
@@ -484,7 +484,7 @@ class FamilyController extends Controller
 
         $actor = Auth::user();
         if ((int) $data['user_id'] === (int) $actor->id) {
-            return response()->json(['success' => false, 'message' => __('member.cannot_link_self')], 422);
+            return response()->json(['success' => false, 'message' => __('members::member.cannot_link_self')], 422);
         }
 
         $target = User::findOrFail($data['user_id']);
@@ -496,7 +496,7 @@ class FamilyController extends Controller
         // child, before you're recorded as their other parent too) must not
         // block linking, that's exactly the case this action exists for.
         if ($this->kin->areDirectlyLinked($me, $counterpart)) {
-            return response()->json(['success' => false, 'message' => __('member.already_linked')], 422);
+            return response()->json(['success' => false, 'message' => __('members::member.already_linked')], 422);
         }
 
         try {
@@ -542,8 +542,8 @@ class FamilyController extends Controller
         return response()->json([
             'success' => true,
             'message' => $edge->status === 'pending'
-                ? __('member.link_request_sent')
-                : __('member.link_added'),
+                ? __('members::member.link_request_sent')
+                : __('members::member.link_added'),
             'status' => $edge->status,
         ]);
     }
@@ -698,8 +698,8 @@ class FamilyController extends Controller
             // What the platform already knows about this member's clubs and
             // events — the two tabs otherwise show only what they typed in
             // themselves. Read-only, de-duplicated against the self-reported rows.
-            'derivedAffiliations' => app(\App\Support\ProfileHistory::class)->derivedAffiliations($relationship->dependent),
-            'derivedTournaments'  => app(\App\Support\ProfileHistory::class)->derivedTournaments($relationship->dependent),
+            'derivedAffiliations' => app(\App\Members\Support\ProfileHistory::class)->derivedAffiliations($relationship->dependent),
+            'derivedTournaments'  => app(\App\Members\Support\ProfileHistory::class)->derivedTournaments($relationship->dependent),
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,

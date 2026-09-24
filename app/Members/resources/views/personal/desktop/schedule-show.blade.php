@@ -412,7 +412,7 @@
                     @endif
                     @if($hasCoords)
                         <div class="mt-3 relative">
-                            <x-location-map
+                            <x-fields.location-map
                                 :id="'classLocMapDesktop'"
                                 :lat="$location['lat']"
                                 :lng="$location['lng']"

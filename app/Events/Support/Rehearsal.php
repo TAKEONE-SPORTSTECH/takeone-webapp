@@ -152,11 +152,11 @@ class Rehearsal
     public function begin(ClubEvent $event, ?User $actor = null): EventRehearsal
     {
         if ($event->hasStarted()) {
-            throw new \RuntimeException(__('events.rehearsal_event_started'));
+            throw new \RuntimeException(__('events::events.rehearsal_event_started'));
         }
 
         if ($this->active($event)) {
-            throw new \RuntimeException(__('events.rehearsal_already_running'));
+            throw new \RuntimeException(__('events::events.rehearsal_already_running'));
         }
 
         $this->forget($event->id);

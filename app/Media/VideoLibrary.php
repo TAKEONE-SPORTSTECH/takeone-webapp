@@ -9,7 +9,7 @@ use App\Events\Models\EventCategory;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventRecording;
 use App\Media\Models\MediaFile;
-use App\Support\BoutStage;
+use App\Events\Support\BoutStage;
 use App\Members\Models\User;
 use Illuminate\Support\Collection;
 use App\Media\Models\MediaFileSubject;
@@ -95,7 +95,7 @@ class VideoLibrary
                 'id' => $match->category_id,
                 // The weight class is the name people search for; the category
                 // name is the fallback, and a name is not a weight.
-                'title' => $category?->weight_class ?: ($category?->name ?: __('events.bout_video_ungrouped')),
+                'title' => $category?->weight_class ?: ($category?->name ?: __('events::events.bout_video_ungrouped')),
                 'subtitle' => $category?->weight_class ? $category->name : null,
                 'sort' => $category?->sort_order ?? 9999,
                 'bouts' => [],
@@ -295,8 +295,8 @@ class VideoLibrary
                 'arena' => $this->arena->for($match->event, $match, $angles),
                 'preview' => $angles[0]['hls'],
                 'title' => $match->{$theirs.'_name'}
-                    ? __('events.bout_video_vs', ['name' => $match->{$theirs.'_name'}])
-                    : __('events.bout_video_bout_n', ['n' => $match->match_no]),
+                    ? __('events::events.bout_video_vs', ['name' => $match->{$theirs.'_name'}])
+                    : __('events::events.bout_video_bout_n', ['n' => $match->match_no]),
                 'subtitle' => $match->event->title,
                 'meta' => $match->category?->weight_class ?: $match->category?->name,
                 'date' => $match->event->date,

@@ -84,8 +84,8 @@
         async copy() {
             try {
                 await navigator.clipboard.writeText(this.url);
-                window.showToast('success', @js(__('events.public_copied')));
-            } catch (e) { window.showToast('info', @js(__('events.public_copy_manual'))); }
+                window.showToast('success', @js(__('events::events.public_copied')));
+            } catch (e) { window.showToast('info', @js(__('events::events.public_copy_manual'))); }
         },
 
         share() {
@@ -103,10 +103,10 @@
             <i class="bi text-lg" :class="isPublic ? 'bi-globe2' : 'bi-eye-slash'"></i>
         </span>
         <span class="min-w-0 flex-1">
-            <span class="block text-sm font-bold text-foreground">{{ __('events.public_page') }}</span>
+            <span class="block text-sm font-bold text-foreground">{{ __('events::events.public_page') }}</span>
             <span class="block text-[11px] mt-0.5 truncate"
                   :class="isPublic ? 'text-green-600 font-semibold' : 'text-muted-foreground'"
-                  x-text="isPublic ? @js(__('events.public_live')) : @js(__('events.public_off'))"></span>
+                  x-text="isPublic ? @js(__('events::events.public_live')) : @js(__('events::events.public_off'))"></span>
         </span>
         <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
     </button>
@@ -136,7 +136,7 @@
                             <i class="bi bi-globe2 text-xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black leading-tight">{{ __('events.public_page') }}</h3>
+                            <h3 class="text-lg font-black leading-tight">{{ __('events::events.public_page') }}</h3>
                             <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $title }}</p>
                         </div>
                         <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
@@ -165,9 +165,9 @@
                             </span>
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-black text-foreground"
-                                   x-text="isPublic ? @js(__('events.public_live')) : @js(__('events.public_off'))"></p>
+                                   x-text="isPublic ? @js(__('events::events.public_live')) : @js(__('events::events.public_off'))"></p>
                                 <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5"
-                                   x-text="isPublic ? @js(__('events.public_live_hint')) : @js(__('events.public_off_hint'))"></p>
+                                   x-text="isPublic ? @js(__('events::events.public_live_hint')) : @js(__('events::events.public_off_hint'))"></p>
                             </div>
 
                             {{-- the switch --}}
@@ -189,17 +189,17 @@
                          rows with two icon colours makes them read each line to
                          find out. Two headed groups answer it at a glance. --}}
                     <div class="rounded-2xl bg-muted/50 p-4 space-y-3.5">
-                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('events.public_shows') }}</p>
+                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('events::events.public_shows') }}</p>
 
                         @foreach ([
-                            ['bi-check-lg', 'text-green-600', 'bg-green-100', __('events.public_shows_yes'), [
-                                __('events.public_shows_poster'),
-                                __('events.public_shows_rules'),
-                                __('events.public_shows_draw'),
+                            ['bi-check-lg', 'text-green-600', 'bg-green-100', __('events::events.public_shows_yes'), [
+                                __('events::events.public_shows_poster'),
+                                __('events::events.public_shows_rules'),
+                                __('events::events.public_shows_draw'),
                             ]],
-                            ['bi-x-lg', 'text-red-500', 'bg-red-100', __('events.public_shows_no'), [
-                                __('events.public_hides_names'),
-                                __('events.public_hides_money'),
+                            ['bi-x-lg', 'text-red-500', 'bg-red-100', __('events::events.public_shows_no'), [
+                                __('events::events.public_hides_names'),
+                                __('events::events.public_hides_money'),
                             ]],
                         ] as [$icon, $tone, $plate, $heading, $rows])
                             <div>
@@ -230,8 +230,8 @@
                                 <i class="bi text-lg" :class="autoAccept ? 'bi-lightning-charge-fill' : 'bi-person-check'"></i>
                             </span>
                             <div class="min-w-0 flex-1">
-                                <p class="text-sm font-black text-foreground">{{ __('events.public_auto_accept') }}</p>
-                                <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events.public_auto_accept_hint') }}</p>
+                                <p class="text-sm font-black text-foreground">{{ __('events::events.public_auto_accept') }}</p>
+                                <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events::events.public_auto_accept_hint') }}</p>
                             </div>
                             <button type="button" @click="setAuto(! autoAccept)" :disabled="savingAuto"
                                     class="m-press relative w-12 h-7 rounded-full flex-shrink-0 transition-colors disabled:opacity-50"
@@ -265,13 +265,13 @@
                         <button type="button" @click="copy()"
                                 class="m-press w-full text-start rounded-2xl border-2 p-2.5 flex items-center gap-3 transition-colors"
                                 style="border-color: {{ $c }}33; background: {{ $c }}0d;"
-                                aria-label="{{ __('events.public_copy') }}">
+                                aria-label="{{ __('events::events.public_copy') }}">
                             <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 text-white"
                                   style="background: {{ $c }};">
                                 <i class="bi bi-link-45deg text-lg"></i>
                             </span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ __('events.public_link_label') }}</span>
+                                <span class="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ __('events::events.public_link_label') }}</span>
                                 <span class="block text-[11.5px] font-mono text-foreground truncate mt-0.5" x-text="url"></span>
                             </span>
                             <span class="w-9 h-9 rounded-xl bg-white border border-gray-200 grid place-items-center flex-shrink-0 text-muted-foreground">
@@ -279,7 +279,7 @@
                             </span>
                         </button>
 
-                        <p class="text-[10.5px] text-muted-foreground text-center">{{ __('events.public_copy_hint') }}</p>
+                        <p class="text-[10.5px] text-muted-foreground text-center">{{ __('events::events.public_copy_hint') }}</p>
 
                         {{-- The three ways to hand it on, at equal weight —
                              including the QR, which is how most people meet an
@@ -294,7 +294,7 @@
                                 <span class="w-9 h-9 rounded-xl bg-green-50 text-green-600 grid place-items-center">
                                     <i class="bi bi-whatsapp text-base"></i>
                                 </span>
-                                <span class="text-[11px] font-bold text-foreground">{{ __('events.public_whatsapp') }}</span>
+                                <span class="text-[11px] font-bold text-foreground">{{ __('events::events.public_whatsapp') }}</span>
                             </a>
 
                             <button type="button" @click="share()"
@@ -303,14 +303,14 @@
                                       style="background: {{ $c }}1a; color: {{ $c }};">
                                     <i class="bi bi-share-fill text-base"></i>
                                 </span>
-                                <span class="text-[11px] font-bold text-foreground">{{ __('events.public_share_btn') }}</span>
+                                <span class="text-[11px] font-bold text-foreground">{{ __('events::events.public_share_btn') }}</span>
                             </button>
 
                             <x-qr-code :url="$url"
                                        :title="$title"
-                                       :caption="__('events.public_qr_caption')"
+                                       :caption="__('events::events.public_qr_caption')"
                                        :filename="'qr-event-public-'.$event"
-                                       :label="__('events.public_qr')"
+                                       :label="__('events::events.public_qr')"
                                        icon="bi-qr-code"
                                        button-class="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl border border-gray-200 bg-white w-full text-foreground">
                                 {{-- The same tile as its two siblings: plate,
@@ -320,7 +320,7 @@
                                     <span class="w-9 h-9 rounded-xl bg-muted text-foreground grid place-items-center">
                                         <i class="bi bi-qr-code text-base"></i>
                                     </span>
-                                    <span class="text-[11px] font-bold text-foreground">{{ __('events.public_qr') }}</span>
+                                    <span class="text-[11px] font-bold text-foreground">{{ __('events::events.public_qr') }}</span>
                                 </x-slot:trigger>
                             </x-qr-code>
                         </div>
@@ -332,7 +332,7 @@
                         <a :href="url" target="_blank" rel="noopener"
                            class="m-press w-full py-3 rounded-2xl border-2 text-[12px] font-black flex items-center justify-center gap-2 no-underline"
                            style="border-color: {{ $c }}40; color: {{ $c }};">
-                            <i class="bi bi-box-arrow-up-right"></i>{{ __('events.public_preview') }}
+                            <i class="bi bi-box-arrow-up-right"></i>{{ __('events::events.public_preview') }}
                         </a>
                     </div>
                 </div>

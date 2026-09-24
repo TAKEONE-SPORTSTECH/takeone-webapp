@@ -47,10 +47,10 @@
                     <i class="bi bi-person-plus text-xl"></i>
                 </span>
                 <div class="min-w-0 flex-1">
-                    <h3 class="text-lg font-black leading-tight">{{ __('member.add_family_member') }}</h3>
-                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('member.add_member_subtitle') }}</p>
+                    <h3 class="text-lg font-black leading-tight">{{ __('members::member.add_family_member') }}</h3>
+                    <p class="text-[12px] text-white/85 mt-0.5">{{ __('members::member.add_member_subtitle') }}</p>
                 </div>
-                <button type="button" @click="close()" aria-label="{{ __('member.close') }}"
+                <button type="button" @click="close()" aria-label="{{ __('members::member.close') }}"
                         class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
                     <i class="bi bi-x-lg"></i>
                 </button>
@@ -66,27 +66,27 @@
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-3">
                     <div class="flex items-center gap-2 mb-3">
                         <i class="bi bi-person-lines-fill text-primary text-sm"></i>
-                        <span class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{{ __('member.who_are_they') }}</span>
+                        <span class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{{ __('members::member.who_are_they') }}</span>
                     </div>
 
                     <div class="mb-3">
-                        <label for="{{ $p }}_full_name" class="tf-label">{{ __('member.full_name') }} <span class="text-red-500">*</span></label>
+                        <label for="{{ $p }}_full_name" class="tf-label">{{ __('members::member.full_name') }} <span class="text-red-500">*</span></label>
                         <input type="text" id="{{ $p }}_full_name" name="full_name" value="{{ old('full_name') }}"
-                               class="tf-input" placeholder="{{ __('member.enter_full_name') }}" required>
+                               class="tf-input" placeholder="{{ __('members::member.enter_full_name') }}" required>
                     </div>
 
                     <div class="mb-1">
-                        <label class="tf-label">{{ __('member.mobile_number') }}</label>
-                        <x-country-code-dropdown
+                        <label class="tf-label">{{ __('members::member.mobile_number') }}</label>
+                        <x-fields.phone-code
                             name="mobile_code"
                             :id="$p . '_country_code'"
                             :value="old('mobile_code', '+973')"
                             :required="false">
                             <input id="{{ $p }}_mobile_number" type="tel" name="mobile" value="{{ old('mobile') }}"
                                    class="w-full px-4 py-3 text-base bg-transparent focus:outline-none"
-                                   autocomplete="tel" placeholder="{{ __('member.phone_number') }}"
+                                   autocomplete="tel" placeholder="{{ __('members::member.phone_number') }}"
                                    @input="onMobileInput($event.target.value)">
-                        </x-country-code-dropdown>
+                        </x-fields.phone-code>
 
                         {{-- Auto-suggest: an existing account already uses this number --}}
                         <template x-for="match in suggestMatches" :key="match.id">
@@ -97,8 +97,8 @@
                                     <template x-if="!match.avatar"><i class="bi bi-person-fill text-sky-400"></i></template>
                                 </span>
                                 <span class="min-w-0 flex-1">
-                                    <span class="block text-sm font-semibold text-foreground truncate" x-text="'{{ __('member.suggest_existing_prefix') }} ' + match.name"></span>
-                                    <span class="block text-[11px] text-sky-700">{{ __('member.suggest_existing_cta') }}</span>
+                                    <span class="block text-sm font-semibold text-foreground truncate" x-text="'{{ __('members::member.suggest_existing_prefix') }} ' + match.name"></span>
+                                    <span class="block text-[11px] text-sky-700">{{ __('members::member.suggest_existing_cta') }}</span>
                                 </span>
                                 <i class="bi bi-chevron-right text-sky-400 flex-shrink-0"></i>
                             </button>
@@ -110,20 +110,20 @@
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-3">
                     <div class="flex items-center gap-2 mb-3">
                         <i class="bi bi-people text-primary text-sm"></i>
-                        <span class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{{ __('member.relationship_to_you') }}</span>
+                        <span class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{{ __('members::member.relationship_to_you') }}</span>
                     </div>
                     <div class="mb-3">
-                        <x-relationship-dropdown
+                        <x-fields.relationship
                             name="relationship_type"
                             :id="$p . '_relationship_type'"
-                            :label="__('member.relationship')"
+                            :label="__('members::member.relationship')"
                             :value="old('relationship_type')"
                             :required="true" />
                     </div>
                     <label class="flex items-center gap-2.5 cursor-pointer select-none">
                         <input type="checkbox" id="{{ $p }}_is_billing_contact" name="is_billing_contact" value="1"
                                class="w-4 h-4 rounded border-primary/30 text-primary focus:ring-primary/25" {{ old('is_billing_contact') ? 'checked' : '' }}>
-                        <span class="text-sm text-foreground">{{ __('member.set_as_billing_contact') }}</span>
+                        <span class="text-sm text-foreground">{{ __('members::member.set_as_billing_contact') }}</span>
                     </label>
                 </div>
 
@@ -131,30 +131,30 @@
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-3">
                     <div class="flex items-center gap-2 mb-3">
                         <i class="bi bi-person-badge text-primary text-sm"></i>
-                        <span class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{{ __('member.details') }}</span>
+                        <span class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{{ __('members::member.details') }}</span>
                     </div>
 
                     <div class="mb-3">
-                        <x-gender-dropdown name="gender" :id="$p . '_gender'" :label="__('member.gender_label')" :value="old('gender')" :required="true" />
+                        <x-fields.gender name="gender" :id="$p . '_gender'" :label="__('members::member.gender_label')" :value="old('gender')" :required="true" />
                     </div>
                     <div class="mb-3">
-                        <x-birthdate-dropdown
+                        <x-fields.date-of-birth
                             name="birthdate"
                             :id="$p . '_birthdate'"
-                            :label="__('member.date_of_birth')"
+                            :label="__('members::member.date_of_birth')"
                             :value="old('birthdate')"
                             :required="true"
                             :min-age="0"
                             :max-age="120" />
                     </div>
                     <div class="mb-3">
-                        <x-country-dropdown name="nationality" :id="$p . '_nationality'" :label="__('member.nationality_label')" :value="old('nationality')" :required="true" />
+                        <x-fields.country name="nationality" :id="$p . '_nationality'" :label="__('members::member.nationality_label')" :value="old('nationality')" :required="true" />
                     </div>
                     <div class="mb-3">
-                        <x-blood-type-dropdown name="blood_type" :id="$p . '_blood_type'" :label="__('member.blood_type_label')" :value="old('blood_type')" />
+                        <x-fields.blood-type name="blood_type" :id="$p . '_blood_type'" :label="__('members::member.blood_type_label')" :value="old('blood_type')" />
                     </div>
                     <div>
-                        <x-marital-status-dropdown name="marital_status" :id="$p . '_marital_status'" :label="__('member.marital_status_label')" :value="old('marital_status')" />
+                        <x-fields.marital-status name="marital_status" :id="$p . '_marital_status'" :label="__('members::member.marital_status_label')" :value="old('marital_status')" />
                     </div>
                 </div>
 
@@ -166,8 +166,8 @@
                             <i class="bi bi-sliders text-primary"></i>
                         </span>
                         <span class="flex-1 min-w-0">
-                            <span class="block text-sm font-semibold text-foreground">{{ __('member.more_details') }}</span>
-                            <span class="block text-[11px] text-muted-foreground">{{ __('member.more_details_subtitle') }}</span>
+                            <span class="block text-sm font-semibold text-foreground">{{ __('members::member.more_details') }}</span>
+                            <span class="block text-[11px] text-muted-foreground">{{ __('members::member.more_details_subtitle') }}</span>
                         </span>
                         <i class="bi bi-chevron-down text-muted-foreground transition-transform" :class="{ 'rotate-180': more }"></i>
                     </button>
@@ -178,85 +178,85 @@
 
                         {{-- Motto --}}
                         <div>
-                            <label for="{{ $p }}_motto" class="tf-label">{{ __('member.personal_motto') }}</label>
+                            <label for="{{ $p }}_motto" class="tf-label">{{ __('members::member.personal_motto') }}</label>
                             <textarea id="{{ $p }}_motto" name="motto" rows="2" class="tf-textarea"
-                                      placeholder="{{ __('member.motto_placeholder') }}">{{ old('motto') }}</textarea>
+                                      placeholder="{{ __('members::member.motto_placeholder') }}">{{ old('motto') }}</textarea>
                         </div>
 
                         {{-- Emergency contacts --}}
                         <div>
                             <div class="flex justify-between items-center mb-2">
-                                <label class="tf-label mb-0"><i class="bi bi-telephone-fill text-red-500 mr-1"></i>{{ __('member.emergency_contacts_label') }}</label>
+                                <label class="tf-label mb-0"><i class="bi bi-telephone-fill text-red-500 mr-1"></i>{{ __('members::member.emergency_contacts_label') }}</label>
                                 <button type="button" @click="addContact()" class="text-xs text-primary font-medium flex items-center gap-1">
-                                    <i class="bi bi-plus-circle"></i> {{ __('member.add') }}
+                                    <i class="bi bi-plus-circle"></i> {{ __('members::member.add') }}
                                 </button>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <template x-for="(contact, i) in contacts" :key="i">
                                     <div class="p-3 bg-gray-50 rounded-xl space-y-2">
                                         <div class="flex items-center gap-2">
-                                            <input type="text" x-model="contact.name" placeholder="{{ __('member.full_name_short') }}" class="tf-input text-sm py-2 flex-1">
+                                            <input type="text" x-model="contact.name" placeholder="{{ __('members::member.full_name_short') }}" class="tf-input text-sm py-2 flex-1">
                                             <button type="button" @click="contacts.splice(i,1)" class="text-red-400 hover:text-red-600 flex-shrink-0 w-8 h-8 flex items-center justify-center">
                                                 <i class="bi bi-x-circle"></i>
                                             </button>
                                         </div>
-                                        <x-select-menu model="contact.relationship"
-                                            placeholder="{{ __('member.relationship') }}"
+                                        <x-fields.select model="contact.relationship"
+                                            placeholder="{{ __('members::member.relationship') }}"
                                             :options="[
-                                                ['value' => 'parent', 'label' => __('member.rel_parent')],
-                                                ['value' => 'spouse', 'label' => __('member.rel_spouse')],
-                                                ['value' => 'sibling', 'label' => __('member.rel_sibling')],
-                                                ['value' => 'child', 'label' => __('member.rel_child')],
-                                                ['value' => 'friend', 'label' => __('member.rel_friend')],
-                                                ['value' => 'other', 'label' => __('member.rel_other')],
+                                                ['value' => 'parent', 'label' => __('members::member.rel_parent')],
+                                                ['value' => 'spouse', 'label' => __('members::member.rel_spouse')],
+                                                ['value' => 'sibling', 'label' => __('members::member.rel_sibling')],
+                                                ['value' => 'child', 'label' => __('members::member.rel_child')],
+                                                ['value' => 'friend', 'label' => __('members::member.rel_friend')],
+                                                ['value' => 'other', 'label' => __('members::member.rel_other')],
                                             ]" />
                                         <div class="flex items-center gap-2">
                                             <input type="text" x-model="contact.phone_code" placeholder="+973" class="tf-input text-sm py-2 w-20 text-center">
-                                            <input type="tel" x-model="contact.phone" placeholder="{{ __('member.phone_number') }}" class="tf-input text-sm py-2 flex-1">
+                                            <input type="tel" x-model="contact.phone" placeholder="{{ __('members::member.phone_number') }}" class="tf-input text-sm py-2 flex-1">
                                         </div>
                                     </div>
                                 </template>
                             </div>
                             <p x-show="contacts.length === 0" class="text-gray-400 text-xs text-center py-2.5 border border-dashed border-gray-200 rounded-xl">
-                                {{ __('member.no_contacts') }}
+                                {{ __('members::member.no_contacts') }}
                             </p>
                         </div>
 
                         {{-- Health conditions --}}
                         <div>
                             <div class="flex justify-between items-center mb-2">
-                                <label class="tf-label mb-0"><i class="bi bi-clipboard2-pulse-fill text-amber-500 mr-1"></i>{{ __('member.chronic_conditions_label') }}</label>
+                                <label class="tf-label mb-0"><i class="bi bi-clipboard2-pulse-fill text-amber-500 mr-1"></i>{{ __('members::member.chronic_conditions_label') }}</label>
                                 <button type="button" @click="addCondition()" class="text-xs text-primary font-medium flex items-center gap-1">
-                                    <i class="bi bi-plus-circle"></i> {{ __('member.add') }}
+                                    <i class="bi bi-plus-circle"></i> {{ __('members::member.add') }}
                                 </button>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <template x-for="(cond, i) in conditions" :key="i">
                                     <div class="p-3 bg-amber-50 border border-amber-100 rounded-xl space-y-2">
                                         <div class="flex items-center gap-2">
-                                            <input type="text" x-model="cond.condition" placeholder="{{ __('member.condition_placeholder') }}" class="tf-input text-sm py-2 flex-1">
+                                            <input type="text" x-model="cond.condition" placeholder="{{ __('members::member.condition_placeholder') }}" class="tf-input text-sm py-2 flex-1">
                                             <button type="button" @click="conditions.splice(i,1)" class="text-red-400 hover:text-red-600 flex-shrink-0 w-8 h-8 flex items-center justify-center">
                                                 <i class="bi bi-x-circle"></i>
                                             </button>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <input type="date" x-model="cond.noted_at" class="tf-input text-sm py-2 flex-1">
-                                            <input type="text" x-model="cond.notes" placeholder="{{ __('member.notes') }}" class="tf-input text-sm py-2 flex-1">
+                                            <input type="text" x-model="cond.notes" placeholder="{{ __('members::member.notes') }}" class="tf-input text-sm py-2 flex-1">
                                         </div>
                                     </div>
                                 </template>
                             </div>
                             <p x-show="conditions.length === 0" class="text-gray-400 text-xs text-center py-2.5 border border-dashed border-gray-200 rounded-xl">
-                                {{ __('member.no_conditions') }}
+                                {{ __('members::member.no_conditions') }}
                             </p>
                         </div>
 
                         {{-- Identity documents (type + number; files can be uploaded after saving) --}}
                         <div>
                             <div class="flex justify-between items-center mb-2">
-                                <label class="tf-label mb-0"><i class="bi bi-file-earmark-person-fill text-primary mr-1"></i>{{ __('member.identity_documents') }}</label>
+                                <label class="tf-label mb-0"><i class="bi bi-file-earmark-person-fill text-primary mr-1"></i>{{ __('members::member.identity_documents') }}</label>
                                 <button type="button" @click="addDoc()" class="text-xs text-primary font-medium flex items-center gap-1">
-                                    <i class="bi bi-plus-circle"></i> {{ __('member.add') }}
+                                    <i class="bi bi-plus-circle"></i> {{ __('members::member.add') }}
                                 </button>
                             </div>
                             <div class="flex flex-col gap-2">
@@ -264,27 +264,27 @@
                                     <div class="p-3 bg-gray-50 rounded-xl space-y-2">
                                         <div class="flex items-center gap-2">
                                             <div class="flex-1">
-                                                <x-select-menu model="doc.type"
-                                                    placeholder="{{ __('member.document_type') }}"
+                                                <x-fields.select model="doc.type"
+                                                    placeholder="{{ __('members::member.document_type') }}"
                                                     :options="[
-                                                        ['value' => 'National ID', 'label' => __('member.doc_national_id')],
-                                                        ['value' => 'Passport', 'label' => __('member.doc_passport')],
-                                                        ['value' => 'CPR', 'label' => __('member.doc_cpr')],
-                                                        ['value' => 'Driving Licence', 'label' => __('member.doc_driving_licence')],
-                                                        ['value' => 'Residence Permit', 'label' => __('member.doc_residence_permit')],
-                                                        ['value' => 'Other', 'label' => __('member.doc_other')],
+                                                        ['value' => 'National ID', 'label' => __('members::member.doc_national_id')],
+                                                        ['value' => 'Passport', 'label' => __('members::member.doc_passport')],
+                                                        ['value' => 'CPR', 'label' => __('members::member.doc_cpr')],
+                                                        ['value' => 'Driving Licence', 'label' => __('members::member.doc_driving_licence')],
+                                                        ['value' => 'Residence Permit', 'label' => __('members::member.doc_residence_permit')],
+                                                        ['value' => 'Other', 'label' => __('members::member.doc_other')],
                                                     ]" />
                                             </div>
                                             <button type="button" @click="docs.splice(i,1)" class="text-red-400 hover:text-red-600 flex-shrink-0 w-8 h-8 flex items-center justify-center">
                                                 <i class="bi bi-x-circle"></i>
                                             </button>
                                         </div>
-                                        <input type="text" x-model="doc.number" placeholder="{{ __('member.document_number') }}" class="tf-input text-sm py-2 font-mono">
+                                        <input type="text" x-model="doc.number" placeholder="{{ __('members::member.document_number') }}" class="tf-input text-sm py-2 font-mono">
                                     </div>
                                 </template>
                             </div>
                             <p x-show="docs.length === 0" class="text-gray-400 text-xs text-center py-2.5 border border-dashed border-gray-200 rounded-xl">
-                                {{ __('member.no_documents_added') }}
+                                {{ __('members::member.no_documents_added') }}
                             </p>
                         </div>
 
@@ -298,12 +298,12 @@
              style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
             <button type="button" @click="close()"
                     class="m-press px-5 py-3 rounded-xl text-sm font-semibold text-foreground bg-muted hover:bg-gray-200 transition-colors">
-                {{ __('member.cancel') }}
+                {{ __('members::member.cancel') }}
             </button>
             <button type="button" @click="submit()" :disabled="submitting"
                     class="m-press flex-1 px-5 py-3 rounded-xl text-sm font-bold text-white bg-primary hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
-                <span x-show="!submitting" class="flex items-center gap-2"><i class="bi bi-person-plus"></i> {{ __('member.add_member') }}</span>
-                <span x-show="submitting" class="flex items-center gap-2"><span class="inline-block animate-spin">↻</span> {{ __('member.adding') }}</span>
+                <span x-show="!submitting" class="flex items-center gap-2"><i class="bi bi-person-plus"></i> {{ __('members::member.add_member') }}</span>
+                <span x-show="submitting" class="flex items-center gap-2"><span class="inline-block animate-spin">↻</span> {{ __('members::member.adding') }}</span>
             </button>
         </div>
     </div>
@@ -388,11 +388,11 @@ function memberCreateSheetMobile() {
 
         validate() {
             const required = [
-                ['{{ $p }}_full_name', @js(__('member.js_full_name_req'))],
-                ['{{ $p }}_gender', @js(__('member.js_gender_req'))],
-                ['{{ $p }}_birthdate', @js(__('member.js_birthdate_req'))],
-                ['{{ $p }}_nationality', @js(__('member.js_nationality_req'))],
-                ['{{ $p }}_relationship_type', @js(__('member.js_relationship_req'))],
+                ['{{ $p }}_full_name', @js(__('members::member.js_full_name_req'))],
+                ['{{ $p }}_gender', @js(__('members::member.js_gender_req'))],
+                ['{{ $p }}_birthdate', @js(__('members::member.js_birthdate_req'))],
+                ['{{ $p }}_nationality', @js(__('members::member.js_nationality_req'))],
+                ['{{ $p }}_relationship_type', @js(__('members::member.js_relationship_req'))],
             ];
             let ok = true, firstMsg = '';
             required.forEach(([id, msg]) => {
@@ -401,7 +401,7 @@ function memberCreateSheetMobile() {
                 if (empty) { this.flag(id); if (ok) firstMsg = msg; ok = false; }
                 else { this.unflag(id); }
             });
-            if (!ok && window.showToast) window.showToast('error', firstMsg || @js(__('member.js_fill_required')));
+            if (!ok && window.showToast) window.showToast('error', firstMsg || @js(__('members::member.js_fill_required')));
             return ok;
         },
 
@@ -424,7 +424,7 @@ function memberCreateSheetMobile() {
             .then(async (res) => {
                 const data = await res.json().catch(() => ({}));
                 if (res.ok && data.success) {
-                    if (window.showToast) window.showToast('success', data.message || @js(__('member.js_member_added')));
+                    if (window.showToast) window.showToast('success', data.message || @js(__('members::member.js_member_added')));
                     setTimeout(() => {
                         this.close();
                         window.location.href = data.redirect || '{{ route('members.index') }}';
@@ -434,11 +434,11 @@ function memberCreateSheetMobile() {
                     if (window.showToast) window.showToast('error', Array.isArray(first) ? first[0] : String(first));
                     this.submitting = false;
                 } else {
-                    throw new Error(data.message || @js(__('member.js_could_not_add')));
+                    throw new Error(data.message || @js(__('members::member.js_could_not_add')));
                 }
             })
             .catch((err) => {
-                if (window.showToast) window.showToast('error', err.message || @js(__('member.js_went_wrong')));
+                if (window.showToast) window.showToast('error', err.message || @js(__('members::member.js_went_wrong')));
                 this.submitting = false;
             });
         },

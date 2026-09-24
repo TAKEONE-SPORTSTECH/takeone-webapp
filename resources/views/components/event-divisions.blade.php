@@ -121,8 +121,8 @@
         'preview' => route('me.events.divisions.preview', $event),
     ] : null;
 
-    // The drawn 3:4 portrait a person falls back to (App\Support\Avatars).
-    $avatars = \App\Support\Avatars::fallbacks();
+    // The drawn 3:4 portrait a person falls back to (App\Members\Support\Avatars).
+    $avatars = \App\Members\Support\Avatars::fallbacks();
 
     /* The sport's own belt ladder, so a division can say which grades it is for
        instead of that being typed into its name. One list (BeltRank::ladder),
@@ -178,93 +178,93 @@
     ], \App\Sports\Combat\BeltRank::ladder());
 
     $words = [
-        'entrants' => __('events.divisions_entrants'),
-        'cap' => __('events.divisions_cap'),
-        'no_cap' => __('events.divisions_no_cap'),
-        'day' => __('events.divisions_day'),
-        'male' => __('events.divisions_gender_male'),
-        'female' => __('events.divisions_gender_female'),
-        'untitled' => __('events.divisions_untitled'),
-        'needs_name' => __('events.divisions_needs_name'),
-        'heading' => __('events.divisions_heading'),
-        'heading_hint' => __('events.divisions_heading_hint'),
-        'heading_name' => __('events.divisions_heading_name'),
-        'delete_ask' => __('events.divisions_delete_ask'),
-        'delete' => __('events.divisions_delete'),
-        'failed' => __('events.divisions_failed'),
-        'created' => __('events.division_created'),
-        'saved' => __('events.division_saved'),
-        'deleted' => __('events.division_deleted'),
+        'entrants' => __('events::events.divisions_entrants'),
+        'cap' => __('events::events.divisions_cap'),
+        'no_cap' => __('events::events.divisions_no_cap'),
+        'day' => __('events::events.divisions_day'),
+        'male' => __('events::events.divisions_gender_male'),
+        'female' => __('events::events.divisions_gender_female'),
+        'untitled' => __('events::events.divisions_untitled'),
+        'needs_name' => __('events::events.divisions_needs_name'),
+        'heading' => __('events::events.divisions_heading'),
+        'heading_hint' => __('events::events.divisions_heading_hint'),
+        'heading_name' => __('events::events.divisions_heading_name'),
+        'delete_ask' => __('events::events.divisions_delete_ask'),
+        'delete' => __('events::events.divisions_delete'),
+        'failed' => __('events::events.divisions_failed'),
+        'created' => __('events::events.division_created'),
+        'saved' => __('events::events.division_saved'),
+        'deleted' => __('events::events.division_deleted'),
         // The second ask, when the group is not empty. The server sends the
         // sentence WITH the count in it, so this is only the fallback.
         // The delete question, composed on the CLIENT from the row it is
         // asking about — the counts are already in the list, so one dialog can
         // say exactly what will happen instead of two appearing in a row.
-        'ask_people' => __('events.division_delete_ask_people', ['count' => ':count']),
-        'ask_draw' => __('events.division_delete_ask_draw', ['bouts' => ':bouts']),
-        'ask_both' => __('events.division_delete_ask_both', ['count' => ':count', 'bouts' => ':bouts']),
-        'has_results' => __('events.division_has_results'),
-        'bouts_one' => trans_choice('events.division_bouts_count', 1, ['count' => 1]),
-        'bouts_many' => trans_choice('events.division_bouts_count', 2, ['count' => ':count']),
-        'yrs' => __('events.divisions_yrs'),
-        'kg' => __('events.divisions_kg'),
-        'move_up' => __('events.divisions_move_up'),
-        'move_down' => __('events.divisions_move_down'),
-        'drag' => __('events.divisions_drag'),
-        'order_saved' => __('events.divisions_order_saved'),
-        'duplicate' => __('events.divisions_duplicate'),
-        'copied' => __('events.division_copied'),
-        'belts_any' => __('events.divisions_belts_any'),
-        'name_auto' => __('events.divisions_name_auto'),
+        'ask_people' => __('events::events.division_delete_ask_people', ['count' => ':count']),
+        'ask_draw' => __('events::events.division_delete_ask_draw', ['bouts' => ':bouts']),
+        'ask_both' => __('events::events.division_delete_ask_both', ['count' => ':count', 'bouts' => ':bouts']),
+        'has_results' => __('events::events.division_has_results'),
+        'bouts_one' => trans_choice('events::events.division_bouts_count', 1, ['count' => 1]),
+        'bouts_many' => trans_choice('events::events.division_bouts_count', 2, ['count' => ':count']),
+        'yrs' => __('events::events.divisions_yrs'),
+        'kg' => __('events::events.divisions_kg'),
+        'move_up' => __('events::events.divisions_move_up'),
+        'move_down' => __('events::events.divisions_move_down'),
+        'drag' => __('events::events.divisions_drag'),
+        'order_saved' => __('events::events.divisions_order_saved'),
+        'duplicate' => __('events::events.divisions_duplicate'),
+        'copied' => __('events::events.division_copied'),
+        'belts_any' => __('events::events.divisions_belts_any'),
+        'name_auto' => __('events::events.divisions_name_auto'),
         // The words a generated name is built from. Here rather than in the
         // script so the name an organiser reads is in their own language.
-        'group' => __('events.divisions_group'),
-        'belt_word' => __('events.divisions_belt_word'),
-        'age_kids' => __('events.divisions_age_kids'),
-        'age_youth' => __('events.divisions_age_youth'),
-        'age_adult' => __('events.divisions_age_adult'),
-        'age_master' => __('events.divisions_age_master'),
+        'group' => __('events::events.divisions_group'),
+        'belt_word' => __('events::events.divisions_belt_word'),
+        'age_kids' => __('events::events.divisions_age_kids'),
+        'age_youth' => __('events::events.divisions_age_youth'),
+        'age_adult' => __('events::events.divisions_age_adult'),
+        'age_master' => __('events::events.divisions_age_master'),
         'belt_labels' => collect($beltLadder)->pluck('label', 'value')->all(),
-        'presets' => __('events.divisions_add_preset'),
-        'preset_title' => __('events.divisions_preset_title'),
-        'preset_hint' => __('events.divisions_preset_hint'),
-        'preset_add' => __('events.divisions_preset_add'),
-        'select_all' => __('events.divisions_select_all'),
-        'clear_all' => __('events.divisions_clear_all'),
-        'belts_all' => __('events.divisions_belts_all'),
-        'men' => __('events.divisions_men'),
-        'women' => __('events.divisions_women'),
-        'adding' => __('events.divisions_adding'),
-        'preset_added' => __('events.divisions_preset_added'),
-        'tab_settings' => __('events.divisions_tab_settings'),
-        'tab_people' => __('events.divisions_tab_people'),
-        'people_after_save' => __('events.divisions_people_after_save'),
-        'people_fit' => __('events.divisions_people_fit'),
-        'people_all' => __('events.divisions_people_all'),
-        'people_selected' => __('events.divisions_people_selected'),
-        'people_none_selected' => __('events.divisions_people_none_selected'),
-        'people_none' => __('events.divisions_people_none'),
-        'people_outside' => __('events.divisions_people_outside'),
-        'people_unknown' => __('events.divisions_people_unknown'),
-        'people_save' => __('events.divisions_people_save'),
-        'people_saved' => __('events.divisions_people_saved'),
-        'any_age' => __('events.divisions_any_age'),
-        'any_gender' => __('events.divisions_gender_any'),
-        'format_ko' => __('events.divisions_format_knockout'),
-        'format_rr' => __('events.divisions_format_round_robin'),
-        'ruleset_gi' => __('events.divisions_ruleset_gi'),
-        'ruleset_nogi' => __('events.divisions_ruleset_nogi'),
-        'ruleset_hint' => __('events.divisions_ruleset_hint'),
-        'fits_none' => __('events.divisions_fits_none'),
-        'fits_one' => trans_choice('events.divisions_fits', 1, ['count' => 1]),
-        'fits_many' => trans_choice('events.divisions_fits', 2, ['count' => ':count']),
-        'fits_of' => __('events.divisions_fits_of', ['total' => ':total']),
-        'fits_here' => __('events.divisions_fits_here', ['count' => ':count']),
-        'fits_unknown' => __('events.divisions_fits_unknown', ['count' => ':count']),
-        'fits_counting' => __('events.divisions_fits_counting'),
-        'stream_title' => __('events.divisions_section_stream'),
-        'stream_hint' => __('events.divisions_stream_hint'),
-        'stream_any' => __('events.divisions_stream_any'),
+        'presets' => __('events::events.divisions_add_preset'),
+        'preset_title' => __('events::events.divisions_preset_title'),
+        'preset_hint' => __('events::events.divisions_preset_hint'),
+        'preset_add' => __('events::events.divisions_preset_add'),
+        'select_all' => __('events::events.divisions_select_all'),
+        'clear_all' => __('events::events.divisions_clear_all'),
+        'belts_all' => __('events::events.divisions_belts_all'),
+        'men' => __('events::events.divisions_men'),
+        'women' => __('events::events.divisions_women'),
+        'adding' => __('events::events.divisions_adding'),
+        'preset_added' => __('events::events.divisions_preset_added'),
+        'tab_settings' => __('events::events.divisions_tab_settings'),
+        'tab_people' => __('events::events.divisions_tab_people'),
+        'people_after_save' => __('events::events.divisions_people_after_save'),
+        'people_fit' => __('events::events.divisions_people_fit'),
+        'people_all' => __('events::events.divisions_people_all'),
+        'people_selected' => __('events::events.divisions_people_selected'),
+        'people_none_selected' => __('events::events.divisions_people_none_selected'),
+        'people_none' => __('events::events.divisions_people_none'),
+        'people_outside' => __('events::events.divisions_people_outside'),
+        'people_unknown' => __('events::events.divisions_people_unknown'),
+        'people_save' => __('events::events.divisions_people_save'),
+        'people_saved' => __('events::events.divisions_people_saved'),
+        'any_age' => __('events::events.divisions_any_age'),
+        'any_gender' => __('events::events.divisions_gender_any'),
+        'format_ko' => __('events::events.divisions_format_knockout'),
+        'format_rr' => __('events::events.divisions_format_round_robin'),
+        'ruleset_gi' => __('events::events.divisions_ruleset_gi'),
+        'ruleset_nogi' => __('events::events.divisions_ruleset_nogi'),
+        'ruleset_hint' => __('events::events.divisions_ruleset_hint'),
+        'fits_none' => __('events::events.divisions_fits_none'),
+        'fits_one' => trans_choice('events::events.divisions_fits', 1, ['count' => 1]),
+        'fits_many' => trans_choice('events::events.divisions_fits', 2, ['count' => ':count']),
+        'fits_of' => __('events::events.divisions_fits_of', ['total' => ':total']),
+        'fits_here' => __('events::events.divisions_fits_here', ['count' => ':count']),
+        'fits_unknown' => __('events::events.divisions_fits_unknown', ['count' => ':count']),
+        'fits_counting' => __('events::events.divisions_fits_counting'),
+        'stream_title' => __('events::events.divisions_section_stream'),
+        'stream_hint' => __('events::events.divisions_stream_hint'),
+        'stream_any' => __('events::events.divisions_stream_any'),
     ];
 @endphp
 
@@ -395,7 +395,7 @@
     </template>
 
     <p x-show="! rows().length" x-cloak class="text-[11px] text-muted-foreground text-center py-3">
-        {{ __('events.divisions_empty') }}
+        {{ __('events::events.divisions_empty') }}
     </p>
 
     @if($canManage && ! $headerAdd)
@@ -416,7 +416,7 @@
         <div class="flex items-stretch gap-2">
             <button type="button" @click="openNew()"
                     class="m-press flex-1 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground flex items-center justify-center gap-2 transition-colors hover:bg-muted/60">
-                <i class="bi bi-plus-lg"></i> {{ __('events.divisions_add') }}
+                <i class="bi bi-plus-lg"></i> {{ __('events::events.divisions_add') }}
             </button>
             {{-- A title for the divisions that follow it. Beside Add rather than
                  under it, because the two are alternatives — one adds a thing
@@ -424,7 +424,7 @@
             <button type="button" @click="openNew(true)"
                     class="m-press py-2.5 px-3.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground flex items-center justify-center gap-2 transition-colors hover:bg-muted/60">
                 <i class="bi bi-bookmark-plus"></i>
-                <span class="hidden sm:inline">{{ __('events.divisions_add_heading') }}</span>
+                <span class="hidden sm:inline">{{ __('events::events.divisions_add_heading') }}</span>
             </button>
             {{-- The federation's own weight classes, in one press.
 
@@ -503,11 +503,11 @@
                             <h3 class="text-lg font-black leading-tight truncate"
                                 x-text="form.name || (form.is_heading
                                     ? words.heading
-                                    : (editing === null ? @js(__('events.divisions_new')) : @js(__('events.divisions_edit'))))"></h3>
+                                    : (editing === null ? @js(__('events::events.divisions_new')) : @js(__('events::events.divisions_edit'))))"></h3>
                             <p class="text-[12px] text-white/85 mt-0.5"
                                x-text="form.is_heading
                                     ? words.heading
-                                    : (editing === null ? @js(__('events.divisions_new')) : @js(__('events.divisions_edit')))"></p>
+                                    : (editing === null ? @js(__('events::events.divisions_new')) : @js(__('events::events.divisions_edit')))"></p>
                         </div>
 
                         @if($bracketUrl)
@@ -526,8 +526,8 @@
                                  been saved, and none for a title. --}}
                             <a x-show="editing !== null && ! form.is_heading" x-cloak
                                :href="@js($bracketUrl) + '?division=' + editing"
-                               aria-label="{{ __('events.divisions_open_bracket') }}"
-                               title="{{ __('events.divisions_open_bracket') }}"
+                               aria-label="{{ __('events::events.divisions_open_bracket') }}"
+                               title="{{ __('events::events.divisions_open_bracket') }}"
                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform text-white no-underline">
                                 <i class="bi bi-diagram-3-fill bracket-icon"></i>
                             </a>
@@ -597,9 +597,9 @@
                 <div x-show="tab === 'settings'" class="flex-1 overflow-y-auto px-5 py-4 space-y-5">
 
                     <div>
-                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_name') }}</label>
+                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_name') }}</label>
                         <input x-model="form.name" @input="nameTyped()" type="text" maxlength="80"
-                               placeholder="{{ __('events.divisions_name_ph') }}"
+                               placeholder="{{ __('events::events.divisions_name_ph') }}"
                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                                :class="errors.name ? 'border-red-400' : 'border-gray-200'">
                         <p x-show="errors.name" x-cloak class="mt-1 text-xs text-red-500" x-text="errors.name"></p>
@@ -635,10 +635,10 @@
                         <section>
                             <div class="flex items-center gap-2 mb-2.5">
                                 <i class="bi bi-person-bounding-box text-[13px] text-muted-foreground"></i>
-                                <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events.divisions_section_for') }}</h4>
+                                <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events::events.divisions_section_for') }}</h4>
                                 <span class="h-px flex-1 bg-gray-100"></span>
                             </div>
-                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_gender') }}</label>
+                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_gender') }}</label>
                             <div class="grid grid-cols-3 gap-2 mb-3">
                                 @foreach([['', 'divisions_gender_any', 'bi-people'], ['Male', 'divisions_gender_male', 'bi-gender-male'], ['Female', 'divisions_gender_female', 'bi-gender-female']] as [$g, $k, $icon])
                                     <button type="button" @click="form.gender = @js($g); settingsChanged()"
@@ -646,31 +646,31 @@
                                             :class="(form.gender || '') === @js($g) ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-foreground'"
                                             :aria-pressed="(form.gender || '') === @js($g)">
                                         <i class="bi {{ $icon }} text-base"></i>
-                                        <span class="block text-[11px] font-bold mt-0.5">{{ __('events.'.$k) }}</span>
+                                        <span class="block text-[11px] font-bold mt-0.5">{{ __('events::events.'.$k) }}</span>
                                     </button>
                                 @endforeach
                             </div>
 
                             {{-- Age --}}
-                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_age') }}</label>
+                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_age') }}</label>
                             <div class="grid grid-cols-2 gap-2 mb-1">
                                 <input x-model="form.min_age" @input="settingsChanged()" type="number" min="2" max="100" inputmode="numeric"
-                                       placeholder="{{ __('events.divisions_from') }}"
+                                       placeholder="{{ __('events::events.divisions_from') }}"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                                 <input x-model="form.max_age" @input="settingsChanged()" type="number" min="2" max="100" inputmode="numeric"
-                                       placeholder="{{ __('events.divisions_to') }}"
+                                       placeholder="{{ __('events::events.divisions_to') }}"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                             </div>
                             <p x-show="errors.max_age" x-cloak class="mb-2 text-xs text-red-500" x-text="errors.max_age"></p>
 
                             {{-- Weight --}}
-                            <label class="block text-[11px] font-semibold text-gray-500 mb-1 mt-2">{{ __('events.divisions_weight') }}</label>
+                            <label class="block text-[11px] font-semibold text-gray-500 mb-1 mt-2">{{ __('events::events.divisions_weight') }}</label>
                             <div class="grid grid-cols-2 gap-2 mb-1">
                                 <input x-model="form.min_weight" @input="settingsChanged()" type="number" min="10" max="300" step="0.1" inputmode="decimal"
-                                       placeholder="{{ __('events.divisions_from') }}"
+                                       placeholder="{{ __('events::events.divisions_from') }}"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                                 <input x-model="form.max_weight" @input="settingsChanged()" type="number" min="10" max="300" step="0.1" inputmode="decimal"
-                                       placeholder="{{ __('events.divisions_to') }}"
+                                       placeholder="{{ __('events::events.divisions_to') }}"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                             </div>
                             <p x-show="errors.max_weight" x-cloak class="text-xs text-red-500" x-text="errors.max_weight"></p>
@@ -714,7 +714,7 @@
                         <section>
                             <div class="flex items-center gap-2 mb-2.5">
                                 <i class="bi bi-award text-[13px] text-muted-foreground"></i>
-                                <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events.divisions_section_belts') }}</h4>
+                                <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events::events.divisions_section_belts') }}</h4>
                                 <span class="h-px flex-1 bg-gray-100"></span>
                             </div>
                             {{-- FIVE TO A ROW, equal cells. Content-sized chips put "Red" and
@@ -745,10 +745,10 @@
                         <section>
                             <div class="flex items-center gap-2 mb-2.5">
                                 <i class="bi bi-flag text-[13px] text-muted-foreground"></i>
-                                <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events.divisions_section_runs') }}</h4>
+                                <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events::events.divisions_section_runs') }}</h4>
                                 <span class="h-px flex-1 bg-gray-100"></span>
                             </div>
-                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_format') }}</label>
+                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_format') }}</label>
                                                     <div class="space-y-2">
                                                         <button type="button" @click="form.format = 'knockout'"
                                                                 class="m-press w-full text-start rounded-2xl border-2 p-3.5 transition-colors"
@@ -760,8 +760,8 @@
                                                                     <i class="bi bi-diagram-3-fill bracket-icon text-lg"></i>
                                                                 </span>
                                                                 <div class="min-w-0 flex-1">
-                                                                    <p class="text-sm font-black text-foreground">{{ __('events.divisions_format_knockout') }}</p>
-                                                                    <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events.divisions_format_knockout_hint') }}</p>
+                                                                    <p class="text-sm font-black text-foreground">{{ __('events::events.divisions_format_knockout') }}</p>
+                                                                    <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events::events.divisions_format_knockout_hint') }}</p>
                                                                 </div>
                                                                 <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 mt-0.5 transition-colors"
                                                                       :class="form.format === 'knockout' ? 'border-transparent text-white' : 'border-gray-300'"
@@ -781,8 +781,8 @@
                                                                     <i class="bi bi-arrow-repeat text-lg"></i>
                                                                 </span>
                                                                 <div class="min-w-0 flex-1">
-                                                                    <p class="text-sm font-black text-foreground">{{ __('events.divisions_format_round_robin') }}</p>
-                                                                    <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events.divisions_format_round_robin_hint') }}</p>
+                                                                    <p class="text-sm font-black text-foreground">{{ __('events::events.divisions_format_round_robin') }}</p>
+                                                                    <p class="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ __('events::events.divisions_format_round_robin_hint') }}</p>
                                                                 </div>
                                                                 <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 mt-0.5 transition-colors"
                                                                       :class="form.format === 'round_robin' ? 'border-transparent text-white' : 'border-gray-300'"
@@ -793,18 +793,18 @@
                                                         </button>
                                                     </div>
 
-                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_capacity') }}</label>
+                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_capacity') }}</label>
                                                     <input x-model="form.capacity" type="number" min="2" inputmode="numeric"
-                                                           placeholder="{{ __('events.divisions_no_cap') }}"
+                                                           placeholder="{{ __('events::events.divisions_no_cap') }}"
                                                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                                                            :class="errors.capacity ? 'border-red-400' : 'border-gray-200'">
-                                                    <p class="mt-1 text-[10px] text-muted-foreground">{{ __('events.divisions_capacity_hint') }}</p>
+                                                    <p class="mt-1 text-[10px] text-muted-foreground">{{ __('events::events.divisions_capacity_hint') }}</p>
                                                     <p x-show="errors.capacity" x-cloak class="mt-1 text-xs text-red-500" x-text="errors.capacity"></p>
                         </section>
                         <section x-show="days > 1 && phases.length" x-cloak>
                             <div class="flex items-center gap-2 mb-2.5">
                                 <i class="bi bi-calendar3 text-[13px] text-muted-foreground"></i>
-                                <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events.divisions_section_days') }}</h4>
+                                <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events::events.divisions_section_days') }}</h4>
                                 <span class="h-px flex-1 bg-gray-100"></span>
                             </div>
                             {{-- ===== Which day each phase lands on =====
@@ -814,7 +814,7 @@
                                                      absolutely-positioned panel inside this scrolling body
                                                      would be clipped by it. --}}
                                                 <div x-show="days > 1 && phases.length" x-cloak>
-                                                    <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_days') }}</label>
+                                                    <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_days') }}</label>
                                                     <div class="space-y-2">
                                                         <template x-for="ph in phases" :key="ph.key">
                                                             <div class="rounded-xl border border-gray-100 p-2.5">
@@ -913,7 +913,7 @@
 
                                             <button type="button" x-show="canDelete()" x-cloak @click="remove()" :disabled="saving"
                                                     class="m-press w-full py-2.5 rounded-xl border border-red-300 text-red-600 font-semibold text-sm flex items-center justify-center gap-2 transition-colors hover:bg-red-50 disabled:opacity-60">
-                                                <i class="bi bi-trash"></i> {{ __('events.divisions_delete') }}
+                                                <i class="bi bi-trash"></i> {{ __('events::events.divisions_delete') }}
                                             </button>
                     </div>
                 </div>
@@ -1071,7 +1071,7 @@
                             class="m-press w-full py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[.98] transition disabled:opacity-60"
                             style="background: {{ $c }}">
                         <i class="bi bi-check2"></i>
-                        <span x-text="saving ? @js(__('events.divisions_saving')) : @js(__('events.divisions_save'))"></span>
+                        <span x-text="saving ? @js(__('events::events.divisions_saving')) : @js(__('events::events.divisions_save'))"></span>
                     </button>
                 </div>
             </div>
@@ -1112,8 +1112,8 @@
                             <i class="bi bi-plus-lg text-xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black leading-tight">{{ __('events.divisions_add_title') }}</h3>
-                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('events.divisions_add_hint') }}</p>
+                            <h3 class="text-lg font-black leading-tight">{{ __('events::events.divisions_add_title') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('events::events.divisions_add_hint') }}</p>
                         </div>
                         <button type="button" @click="addOpen = false" aria-label="{{ __('shared.close') }}"
                                 class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -1137,8 +1137,8 @@
                                 <i class="bi {{ $addIcon }} text-base"></i>
                             </span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-bold text-foreground">{{ __('events.'.$addLabel) }}</span>
-                                <span class="block text-[11px] text-muted-foreground mt-0.5">{{ __('events.'.$addHint) }}</span>
+                                <span class="block text-sm font-bold text-foreground">{{ __('events::events.'.$addLabel) }}</span>
+                                <span class="block text-[11px] text-muted-foreground mt-0.5">{{ __('events::events.'.$addHint) }}</span>
                             </span>
                             <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
                         </button>
@@ -1212,7 +1212,7 @@
                          known — and an absolute panel inside this scrolling body
                          would be clipped by it. --}}
                     <div>
-                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_age') }}</label>
+                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_age') }}</label>
 
                         {{-- A GRID, not a wrapping row: the bands are one choice
                              of four, and content-sized buttons made "Kids" a
@@ -1239,7 +1239,7 @@
                     {{-- Gender. The table has one list per gender and the weights
                          differ, so this is a fork in the data, not a filter. --}}
                     <div>
-                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_gender') }}</label>
+                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_gender') }}</label>
                         <div class="grid grid-cols-2 gap-2">
                             <template x-for="g in ['male', 'female']" :key="g">
                                 <button type="button" x-show="genderInBand(g)" @click="presetGender = g; presetPick = {}"
@@ -1255,7 +1255,7 @@
                     {{-- The classes themselves, with select-all. --}}
                     <div>
                         <div class="flex items-center justify-between mb-1">
-                            <label class="block text-[11px] font-semibold text-gray-500">{{ __('events.divisions_weight') }}</label>
+                            <label class="block text-[11px] font-semibold text-gray-500">{{ __('events::events.divisions_weight') }}</label>
                             <button type="button" @click="togglePresetAll()"
                                     class="text-[11px] font-bold text-primary"
                                     x-text="allPresetPicked() ? words.clear_all : words.select_all"></button>
@@ -1279,13 +1279,13 @@
                         </div>
 
                         <p x-show="! presetClasses().length" x-cloak
-                           class="text-[11px] text-muted-foreground text-center py-3">{{ __('events.divisions_empty') }}</p>
+                           class="text-[11px] text-muted-foreground text-center py-3">{{ __('events::events.divisions_empty') }}</p>
                     </div>
 
                     {{-- Belts for every division this makes. Same chips as the
                          editor, because it is the same question. --}}
                     <div>
-                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_belts') }}</label>
+                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_belts') }}</label>
                         <div class="grid grid-cols-5 gap-1.5">
                             <button type="button" @click="presetBelts = []"
                                     class="m-press px-1 py-1.5 rounded-full text-[11px] font-bold border transition-all truncate"
@@ -1316,7 +1316,7 @@
                          own, which is what a class of three entrants in an
                          otherwise bracketed event needs. --}}
                     <div>
-                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events.divisions_format') }}</label>
+                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">{{ __('events::events.divisions_format') }}</label>
                         <div class="grid grid-cols-2 gap-2">
                             <template x-for="f in [
                                 { v: 'knockout', label: words.format_ko, icon: 'bi-diagram-3-fill bracket-icon' },

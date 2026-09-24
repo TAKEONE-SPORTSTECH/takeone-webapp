@@ -3,14 +3,14 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\SendNotificationRequest;
-use App\Jobs\SendClubNotification;
+use App\Clubs\Requests\SendNotificationRequest;
+use App\Clubs\Jobs\SendClubNotification;
 use App\Clubs\Models\ClubNotification;
 use App\Members\Models\Membership;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Members\Models\UserNotification;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,7 +27,7 @@ class ClubNotificationController extends Controller
             ->latest('sent_at')
             ->paginate(20);
 
-        return view(\App\Support\ClubView::pick('notifications', 'clubs'), compact('club', 'notifications'));
+        return view(\App\Clubs\Support\ClubView::pick('notifications', 'clubs'), compact('club', 'notifications'));
     }
 
     public function store(SendNotificationRequest $request, Tenant $club)

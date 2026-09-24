@@ -71,7 +71,7 @@
                         {{-- Expense Category --}}
                         <div x-show="expenseType === 'expense'" x-transition>
                             <label class="form-label">{{ __('shared.components_expense_modal_expense_category') }}</label>
-                            <x-select-menu name="category" :value="''" :placeholder="__('shared.components_expense_modal_select_category')"
+                            <x-fields.select name="category" :value="''" :placeholder="__('shared.components_expense_modal_select_category')"
                                            :options="[
                                                ['value' => 'rent', 'label' => __('shared.components_expense_modal_cat_rent')],
                                                ['value' => 'utilities', 'label' => __('shared.components_expense_modal_cat_utilities')],

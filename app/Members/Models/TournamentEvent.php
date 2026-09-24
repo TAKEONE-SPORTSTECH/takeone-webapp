@@ -3,7 +3,7 @@
 namespace App\Members\Models;
 
 use App\Traits\DeletesUploadedFiles;
-use App\Traits\HasVerificationState;
+use App\Members\Concerns\HasVerificationState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -35,7 +35,7 @@ class TournamentEvent extends Model
     /**
      * Evidence lives on the private local disk; purge it before the row is removed.
      * verification_status / verification_method / verified_* are set ONLY by
-     * App\Services\AchievementVerificationService — deliberately never fillable.
+     * App\Members\Support\AchievementVerificationService — deliberately never fillable.
      */
     protected array $fileUploads = [
         'evidence_path' => 'local',

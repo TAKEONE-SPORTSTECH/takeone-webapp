@@ -50,10 +50,10 @@
         async remove() {
             if (this.busy) return;
             if (! await window.confirmAction({
-                title: @js(__('events.cover_remove_title')),
-                message: @js(__('events.cover_remove_body')),
+                title: @js(__('events::events.cover_remove_title')),
+                message: @js(__('events::events.cover_remove_body')),
                 type: 'danger',
-                confirmText: @js(__('events.cover_remove_confirm')),
+                confirmText: @js(__('events::events.cover_remove_confirm')),
             })) return;
 
             this.busy = true;
@@ -71,7 +71,7 @@
                 this.announce();
                 window.showToast('success', data.message);
             } catch (e) {
-                window.showToast('error', e.message || @js(__('events.cover_failed')));
+                window.showToast('error', e.message || @js(__('events::events.cover_failed')));
             } finally {
                 this.busy = false;
             }
@@ -132,9 +132,9 @@
             </template>
         </span>
         <span class="min-w-0 flex-1">
-            <span class="block text-sm font-bold text-foreground">{{ __('events.cover_title') }}</span>
+            <span class="block text-sm font-bold text-foreground">{{ __('events::events.cover_title') }}</span>
             <span class="block text-[11px] text-muted-foreground mt-0.5"
-                  x-text="photo ? @js(__('events.cover_sub_set')) : @js(__('events.cover_sub_none'))"></span>
+                  x-text="photo ? @js(__('events::events.cover_sub_set')) : @js(__('events::events.cover_sub_none'))"></span>
         </span>
         <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
     </button>
@@ -166,8 +166,8 @@
                             <i class="bi bi-image-fill text-xl"></i>
                         </span>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black leading-tight">{{ __('events.cover_title') }}</h3>
-                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('events.cover_sheet_sub') }}</p>
+                            <h3 class="text-lg font-black leading-tight">{{ __('events::events.cover_title') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ __('events::events.cover_sheet_sub') }}</p>
                         </div>
                         <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
                                 class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -183,7 +183,7 @@
                     {{-- ===== What a visitor will actually see =====
                          The real composition at a small size: picture, scrim,
                          and the same type block the cover draws. --}}
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('events.cover_preview') }}</p>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('events::events.cover_preview') }}</p>
 
                     <div class="relative mx-auto rounded-2xl overflow-hidden border border-gray-200 shadow-sm"
                          style="width: 172px; aspect-ratio: 390 / 844; background: #070b14;">
@@ -220,7 +220,7 @@
                     </div>
 
                     <p class="text-[11.5px] text-muted-foreground text-center mt-3 leading-relaxed">
-                        {{ __('events.cover_hint') }}
+                        {{ __('events::events.cover_hint') }}
                     </p>
 
                     {{-- ===== Choose the picture — the SHARED cropper =====
@@ -234,23 +234,23 @@
                             :width="1200" :height="1600" shape="rectangle" :canvasHeight="300"
                             folder="event-cover" :filename="'cover'"
                             :uploadUrl="route('me.events.cover.store', $event)"
-                            :buttonText="__('events.cover_choose')"
+                            :buttonText="__('events::events.cover_choose')"
                             button-class="w-full rounded-xl px-4 py-3 text-white text-sm font-bold flex items-center justify-center gap-2"
                             :showControls="false"
                             :showCancel="false"
                             sheetMaxWidth="100%"
                             sheetClass="rounded-t-3xl overflow-hidden shadow-2xl bg-background"
                             editorAlign="items-end"
-                            :saveText="__('events.cover_save')"
+                            :saveText="__('events::events.cover_save')"
                             :uploadAsIs="true"
-                            :uploadAsIsText="__('events.cover_upload_as_is')" />
+                            :uploadAsIsText="__('events::events.cover_upload_as_is')" />
                     </div>
 
                     {{-- ===== Take it off ===== --}}
                     <template x-if="photo">
                         <button type="button" @click="remove()" :disabled="busy"
                                 class="m-press w-full mt-2.5 rounded-xl px-4 py-3 border border-red-200 text-red-600 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50">
-                            <i class="bi bi-trash3"></i>{{ __('events.cover_remove') }}
+                            <i class="bi bi-trash3"></i>{{ __('events::events.cover_remove') }}
                         </button>
                     </template>
                 </div>

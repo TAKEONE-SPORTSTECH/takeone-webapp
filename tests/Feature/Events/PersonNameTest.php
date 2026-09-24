@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Events;
 
-use App\Support\PersonName;
+use App\Members\Support\PersonName;
 use Tests\TestCase;
 
 /**

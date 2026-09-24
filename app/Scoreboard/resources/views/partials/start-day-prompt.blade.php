@@ -25,11 +25,11 @@
 @once
 <div id="tkStartDayScrim" hidden role="dialog" aria-modal="true" aria-labelledby="tkStartDayTitle">
     <div id="tkStartDayCard">
-        <h2 id="tkStartDayTitle">{{ __('events.start_day_title') }}</h2>
-        <p id="tkStartDayBody">{{ __('events.start_day_body') }}</p>
+        <h2 id="tkStartDayTitle">{{ __('events::events.start_day_title') }}</h2>
+        <p id="tkStartDayBody">{{ __('events::events.start_day_body') }}</p>
         <div id="tkStartDayActions">
             <button type="button" id="tkStartDayCancel">{{ __('shared.cancel') }}</button>
-            <button type="button" id="tkStartDayOk">{{ __('events.start_day_confirm') }}</button>
+            <button type="button" id="tkStartDayOk">{{ __('events::events.start_day_confirm') }}</button>
         </div>
     </div>
 </div>

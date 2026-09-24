@@ -282,6 +282,46 @@ class PageRenderSmokeTest extends TestCase
         $this->assertAnswered($uri, $response);
     }
 
+    /**
+     * The super-admin's own pages, which have a mobile Blade of their own.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function platformPages(): array
+    {
+        $cases = [];
+
+        foreach (self::authenticatedPages() as $uri => $case) {
+            if (str_starts_with($uri, '/admin') && ! str_starts_with($uri, '/admin/club')) {
+                $cases[$uri] = $case;
+            }
+        }
+
+        return $cases;
+    }
+
+    /**
+     * The super-admin's pages through a phone user-agent.
+     *
+     * These controllers pick their view with `view()->exists($mobile) ? … : …`,
+     * so a missing mobile Blade does not throw — it serves the DESKTOP screen
+     * to a phone and logs nothing. A desktop-only smoke pass cannot see that,
+     * and neither can a test of view names alone: this one renders the mobile
+     * half for real.
+     */
+    #[DataProvider('platformPages')]
+    public function test_platform_page_answers_on_a_phone(string $uri): void
+    {
+        $response = $this->actingAs($this->superAdminOwningAClub())
+            ->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
+                    .'(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
+            ])
+            ->get($uri);
+
+        $this->assertAnswered($uri, $response);
+    }
+
     /** Guard the guard: the list must not silently shrink to nothing. */
     public function test_the_smoke_list_still_covers_the_pages_it_did(): void
     {

@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 @section('club-admin-content')
 <div>
@@ -9,7 +9,7 @@
         </div>
         <div class="flex gap-2">
             <div class="w-44">
-                <x-select-menu
+                <x-fields.select
                     :value="'30'"
                     :options="[
                         ['value' => '7',   'label' => __('admin.club_analytics_index_last_7_days')],

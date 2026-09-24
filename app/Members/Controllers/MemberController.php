@@ -3,15 +3,15 @@
 namespace App\Members\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ConfirmDeleteRequest;
-use App\Http\Requests\HealthRecordRequest;
-use App\Http\Requests\StoreMemberRequest;
-use App\Http\Requests\TournamentRequest;
-use App\Http\Requests\UpdateGoalRequest;
-use App\Http\Requests\UpdateMemberRequest;
+use App\Members\Requests\ConfirmDeleteRequest;
+use App\Members\Requests\HealthRecordRequest;
+use App\Members\Requests\StoreMemberRequest;
+use App\Members\Requests\TournamentRequest;
+use App\Members\Requests\UpdateGoalRequest;
+use App\Members\Requests\UpdateMemberRequest;
 use App\Http\Requests\UploadImageRequest;
-use App\Http\Requests\StoreCertificationRequest;
-use App\Http\Requests\StoreWorkHistoryRequest;
+use App\Members\Requests\StoreCertificationRequest;
+use App\Members\Requests\StoreWorkHistoryRequest;
 use App\Members\Models\Attendance;
 use App\Events\Models\ClubEventRegistration;
 use App\Members\Models\Goal;
@@ -25,7 +25,7 @@ use App\Members\Models\TournamentEvent;
 use App\Events\Support\EntryPhoto;
 use App\Members\Models\User;
 use App\Members\Models\UserRelationship;
-use App\Services\KinshipService;
+use App\Members\Support\KinshipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -37,14 +37,14 @@ use Illuminate\Support\Str;
 
 class MemberController extends Controller
 {
-    use \App\Traits\BuildsMemberPayments;
-    use \App\Traits\ComputesAttendanceStats;
+    use \App\Members\Concerns\BuildsMemberPayments;
+    use \App\Members\Concerns\ComputesAttendanceStats;
     use \App\Traits\StoresBase64Images;
 
     /**
      * Display a listing of members (family dashboard).
      *
-     * Sourced from the kinship graph (App\Services\KinshipService) rather than
+     * Sourced from the kinship graph (App\Members\Support\KinshipService) rather than
      * the legacy user_relationships table, so this list always matches what
      * the Family Tree shows — a relative added via any tree flow (spouse,
      * parent, existing person, etc.) appears here too, not just dependents
@@ -114,7 +114,7 @@ class MemberController extends Controller
         // The mobile shell labels its header from $shellTitle for routes that
         // aren't in its own nav list.
         return view($view, compact('user', 'dependents'))
-            ->with('shellTitle', __('family.title'));
+            ->with('shellTitle', __('members::family.title'));
     }
 
     /**
@@ -140,7 +140,7 @@ class MemberController extends Controller
         $guardian = Auth::user();
 
         // Use FamilyService to create the dependent
-        $familyService = app(\App\Services\FamilyService::class);
+        $familyService = app(\App\Members\Support\FamilyService::class);
         $dependent = $familyService->createDependent($guardian, $validated);
 
         return redirect()->route('members.index')
@@ -153,7 +153,7 @@ class MemberController extends Controller
      * @param  int  $id
      * @return \Illuminate\View\View
      */
-    public function show($uuid, \App\Support\ProfileHistory $profileHistory)
+    public function show($uuid, \App\Members\Support\ProfileHistory $profileHistory)
     {
         $user = Auth::user();
 
@@ -344,7 +344,7 @@ class MemberController extends Controller
             ->map(function ($d) use ($memberId) {
                 $isChallenger = $d->challenger_id === $memberId;
                 $rival = $isChallenger ? $d->opponent : $d->challenger;
-                $rivalName = $rival?->full_name ?? $d->opponent_name ?? $d->opponent_handle ?? __('member.opponent');
+                $rivalName = $rival?->full_name ?? $d->opponent_name ?? $d->opponent_handle ?? __('members::member.opponent');
 
                 $result = null;
                 if ($d->status === 'completed') {
@@ -532,12 +532,12 @@ class MemberController extends Controller
             'tournamentEvents' => $tournamentEvents,
             // The platform's own record of the same competitions: the event to
             // open, and every bout the member fought there, from their corner.
-            // Keyed by tournament_events.id — see App\Support\BoutHistory.
-            'tournamentBouts' => app(\App\Support\BoutHistory::class)
+            // Keyed by tournament_events.id — see App\Members\Support\BoutHistory.
+            'tournamentBouts' => app(\App\Members\Support\BoutHistory::class)
                 ->forTournaments($relationship->dependent, $tournamentEvents, $user),
             // What the platform already KNOWS, for the two tabs that otherwise
             // only ever show what the member typed in themselves. Read-only and
-            // de-duplicated against the self-reported rows — see App\Support\ProfileHistory.
+            // de-duplicated against the self-reported rows — see App\Members\Support\ProfileHistory.
             'derivedAffiliations' => $profileHistory->derivedAffiliations($relationship->dependent),
             'derivedTournaments'  => $profileHistory->derivedTournaments($relationship->dependent),
             'awardCounts' => $awardCounts,
@@ -655,7 +655,7 @@ class MemberController extends Controller
         if (! empty($member->email)) {
             try {
                 \Illuminate\Support\Facades\Mail::to($member)
-                    ->send(new \App\Mail\GeneratedPasswordEmail($member, $newPassword));
+                    ->send(new \App\Members\Mail\GeneratedPasswordEmail($member, $newPassword));
                 $emailed = true;
             } catch (\Throwable $e) {
                 report($e);
@@ -1224,7 +1224,7 @@ class MemberController extends Controller
         $existing = $member->healthRecords()->where('recorded_at', $validated['recorded_at'])->first();
         if ($existing) {
             if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => __('member.health_duplicate_date')], 422);
+                return response()->json(['success' => false, 'message' => __('members::member.health_duplicate_date')], 422);
             }
 
             return redirect()->back()
@@ -1236,7 +1236,7 @@ class MemberController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => __('member.weight_added'),
+                'message' => __('members::member.weight_added'),
                 'record' => [
                     'id' => $record->id,
                     'weight' => is_null($record->weight) ? null : (float) $record->weight,
@@ -1384,7 +1384,7 @@ class MemberController extends Controller
      * AchievementVerificationService::resetAfterEdit(). Verification columns are
      * never fillable, so a client can't smuggle a status in through the form.
      */
-    public function updateTournament(TournamentRequest $request, $id, string $uuid, \App\Services\AchievementVerificationService $service)
+    public function updateTournament(TournamentRequest $request, $id, string $uuid, \App\Members\Support\AchievementVerificationService $service)
     {
         $this->authorizeMemberWrite(Auth::user(), (int) $id);
 
@@ -1455,7 +1455,7 @@ class MemberController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('member.tournament_updated'),
+            'message' => __('members::member.tournament_updated'),
             'tournament' => $this->tournamentPayload($tournament),
         ]);
     }
@@ -1482,7 +1482,7 @@ class MemberController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('member.tournament_deleted'),
+            'message' => __('members::member.tournament_deleted'),
             'uuid' => $uuid,
         ]);
     }
@@ -1516,7 +1516,7 @@ class MemberController extends Controller
      * per record: one notification a day, otherwise a member could storm every club
      * admin's notifications by clicking the button.
      */
-    public function requestTournamentVerification(Request $request, $id, string $uuid, \App\Services\AchievementVerificationService $service)
+    public function requestTournamentVerification(Request $request, $id, string $uuid, \App\Members\Support\AchievementVerificationService $service)
     {
         $this->authorizeMemberWrite(Auth::user(), (int) $id);
 
@@ -1536,7 +1536,7 @@ class MemberController extends Controller
             && in_array($tournament->verification_status, [TournamentEvent::STATUS_VERIFIED, TournamentEvent::STATUS_REJECTED], true)) {
             return response()->json([
                 'success' => false,
-                'message' => __('member.tournament_verify_decided'),
+                'message' => __('members::member.tournament_verify_decided'),
             ], 422);
         }
 
@@ -1544,7 +1544,7 @@ class MemberController extends Controller
         if (RateLimiter::tooManyAttempts($key, 1)) {
             return response()->json([
                 'success' => false,
-                'message' => __('member.tournament_verify_cooldown', [
+                'message' => __('members::member.tournament_verify_cooldown', [
                     'hours' => max(1, (int) ceil(RateLimiter::availableIn($key) / 3600)),
                 ]),
             ], 429);
@@ -1557,13 +1557,13 @@ class MemberController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => $wasPending ? __('member.tournament_verify_reminded') : __('Verification requested from the club.'),
+            'message' => $wasPending ? __('members::member.tournament_verify_reminded') : __('Verification requested from the club.'),
             'verification' => $this->verificationPayload($tournament->fresh('verifiedByTenant')),
         ]);
     }
 
     /** Member asks the named platform club to confirm a club affiliation. */
-    public function requestAffiliationVerification(Request $request, $id, string $uuid, \App\Services\AchievementVerificationService $service)
+    public function requestAffiliationVerification(Request $request, $id, string $uuid, \App\Members\Support\AchievementVerificationService $service)
     {
         $this->authorizeMemberWrite(Auth::user(), (int) $id);
 
@@ -1581,7 +1581,7 @@ class MemberController extends Controller
     }
 
     /** Member asks the employer (a platform club matched by name) to confirm a job. */
-    public function requestWorkVerification(Request $request, $id, string $uuid, \App\Services\AchievementVerificationService $service)
+    public function requestWorkVerification(Request $request, $id, string $uuid, \App\Members\Support\AchievementVerificationService $service)
     {
         $this->authorizeMemberWrite(Auth::user(), (int) $id);
 
@@ -1795,7 +1795,7 @@ class MemberController extends Controller
     /**
      * Store a new goal for the specified member.
      */
-    public function storeGoal(\App\Http\Requests\StoreGoalRequest $request, $id)
+    public function storeGoal(\App\Members\Requests\StoreGoalRequest $request, $id)
     {
         $user = Auth::user();
 
@@ -1855,7 +1855,7 @@ class MemberController extends Controller
     /**
      * Store a new attendance record for the specified member.
      */
-    public function storeAttendance(\App\Http\Requests\StoreAttendanceRequest $request, $id)
+    public function storeAttendance(\App\Members\Requests\StoreAttendanceRequest $request, $id)
     {
         $user = Auth::user();
 
@@ -1898,7 +1898,7 @@ class MemberController extends Controller
     /**
      * Store a new free-form event-participation log entry for the member.
      */
-    public function storeMemberEvent(\App\Http\Requests\StoreMemberEventRequest $request, $id)
+    public function storeMemberEvent(\App\Members\Requests\StoreMemberEventRequest $request, $id)
     {
         $user = Auth::user();
 
@@ -2660,7 +2660,7 @@ class MemberController extends Controller
     /**
      * Member (or guardian/super-admin) asks the named club to verify a self-claimed skill.
      */
-    public function requestSkillVerification($id, $affiliationId, string $uuid, \App\Services\AchievementVerificationService $service)
+    public function requestSkillVerification($id, $affiliationId, string $uuid, \App\Members\Support\AchievementVerificationService $service)
     {
         $this->authorizeMemberWrite(Auth::user(), (int) $id);
 

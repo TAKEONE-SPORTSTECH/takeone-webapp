@@ -4,7 +4,7 @@
      shared by every personal/desktop/* page so the section reads as one hub. --}}
 @php
     $__subnavRoute = request()->route()?->getName();
-    $__subnavDots = auth()->user() ? app(\App\Support\SectionActivity::class)->navDots(auth()->user()) : [];
+    $__subnavDots = auth()->user() ? app(\App\Members\Support\SectionActivity::class)->navDots(auth()->user()) : [];
     $__subnavTabs = [
         ['route' => 'me.home', 'icon' => 'bi-newspaper', 'label' => __('nav.tab_feed'), 'dot' => $__subnavDots['feed'] ?? false],
         ['route' => 'me.schedule', 'icon' => 'bi-calendar-week', 'label' => __('nav.tab_schedule'), 'dot' => false],

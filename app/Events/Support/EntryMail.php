@@ -2,7 +2,7 @@
 
 namespace App\Events\Support;
 
-use App\Mail\EventEntryEmail;
+use App\Events\Mail\EventEntryEmail;
 use App\Members\Models\User;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
@@ -90,7 +90,7 @@ class EntryMail
 
                 if ($amount > 0) {
                     $owed = EventFee::display($amount, EventFee::currency($event));
-                    $payHow = __('events.entry_mail_pay_how');
+                    $payHow = __('events::events.entry_mail_pay_how');
                 }
             }
 

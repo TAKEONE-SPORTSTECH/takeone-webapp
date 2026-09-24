@@ -128,7 +128,7 @@ window.instructorEditSheet = function () {
                     <label class="form-label">{{ __('admin.full_name') }}</label>
                     <input type="text" name="name" x-model="name" placeholder="{{ __('admin.full_name') }}" class="form-control">
                 </div>
-                <x-lang-toggle class="mb-4" />
+                <x-fields.language-toggle class="mb-4" />
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="form-label">{{ __('admin.ins_role') }}</label>

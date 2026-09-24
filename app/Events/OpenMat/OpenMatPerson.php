@@ -63,7 +63,7 @@ class OpenMatPerson extends Model
             'photo' => ($user?->profile_picture && $user->profile_picture_is_public)
                 ? file_url($user->profile_picture)
                 : null,
-            'fallback' => \App\Support\Avatar::placeholder($user?->gender),
+            'fallback' => \App\Members\Support\Avatar::placeholder($user?->gender),
             // Their open-mat record, and only that — never a competitive one.
             'record' => $this->user_id ? OpenMatResult::summaryFor($this->user_id) : null,
             // Which corner of which mat they are standing in right now, if any.

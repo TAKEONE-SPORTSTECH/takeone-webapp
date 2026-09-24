@@ -73,7 +73,7 @@ class ResultFiling
             return;
         }
 
-        throw new EventNotUnderWay(__('events.result_before_start'));
+        throw new EventNotUnderWay(__('events::events.result_before_start'));
     }
 
     /**

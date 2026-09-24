@@ -48,10 +48,10 @@
      data-command-base="{{ $cameraCommandBase }}">
 
     <div class="mc-head">
-        <span class="mc-title">{{ __('events.mat_cameras_footage') }}</span>
+        <span class="mc-title">{{ __('events::events.mat_cameras_footage') }}</span>
         <span class="mc-note" data-mc-note></span>
         <button type="button" class="mc-btn" data-mc-refresh>
-            <span aria-hidden="true">⟳</span> {{ __('events.mat_cameras_refresh') }}
+            <span aria-hidden="true">⟳</span> {{ __('events::events.mat_cameras_refresh') }}
         </button>
     </div>
 
@@ -64,8 +64,8 @@
     <div class="mc-body" data-mc-body></div>
 
     <div class="mc-empty" data-mc-empty hidden>
-        <div class="mc-empty-t">{{ __('events.mat_cameras_none') }}</div>
-        <div class="mc-empty-s">{{ __('events.mat_cameras_none_hint') }}</div>
+        <div class="mc-empty-t">{{ __('events::events.mat_cameras_none') }}</div>
+        <div class="mc-empty-s">{{ __('events::events.mat_cameras_none_hint') }}</div>
     </div>
 </div>
 
@@ -191,53 +191,53 @@
      * compiled view is broken PHP. Pre-assigning is the documented shape.
      */
     $matCameraStrings = [
-    'live' => __('events.mat_cameras_live'),
-    'offline' => __('events.mat_cameras_offline'),
-    'rec' => __('events.mat_cameras_rec'),
-    'rolling' => __('events.mat_cameras_rolling'),
-    'stop' => __('events.mat_cameras_stop'),
-    'angle' => __('events.mat_cameras_angle', ['n' => '%n%']),
-    'storage' => __('events.mat_cameras_storage'),
-    'battery' => __('events.mat_cameras_battery'),
-    'clips' => __('events.mat_cameras_clips'),
-    'beat' => __('events.mat_cameras_beat'),
-    'of' => __('events.mat_cameras_of', ['total' => '%total%']),
-    'on_phone' => __('events.mat_cameras_on_phone', ['n' => '%n%']),
-    'in_vault' => __('events.mat_cameras_in_vault', ['n' => '%n%']),
-    'never' => __('events.mat_cameras_never'),
-    'capture' => __('events.mat_cameras_capture'),
-    'fps' => __('events.mat_cameras_fps'),
-    'zoom' => __('events.mat_cameras_zoom'),
-    'exposure' => __('events.mat_cameras_exposure'),
-    'auto' => __('events.mat_cameras_auto_upload'),
-    'auto_hint' => __('events.mat_cameras_auto_upload_hint'),
-    'pending' => __('events.mat_cameras_pending'),
-    'unknown' => __('events.mat_cameras_unknown'),
-    'footage' => __('events.mat_cameras_footage'),
-    'footage_none' => __('events.mat_cameras_footage_none'),
-    'send_all' => __('events.mat_cameras_send_all'),
-    'free_space' => __('events.mat_cameras_free_space'),
-    'free_space_hint' => __('events.mat_cameras_free_space_hint'),
-    'erase_all' => __('events.mat_cameras_erase_all'),
-    'erase_all_hint' => __('events.mat_cameras_erase_all_hint', ['n' => '%n%']),
-    'erase_hold' => __('events.mat_cameras_erase_all_hold'),
-    'bout' => __('events.mat_cameras_bout', ['n' => '%n%']),
-    'clip' => __('events.mat_cameras_clip'),
-    'play' => __('events.mat_cameras_play'),
-    'upload' => __('events.mat_cameras_upload'),
-    'stop' => __('events.mat_cameras_stop_upload'),
-    'del' => __('events.mat_cameras_delete'),
-    'del_confirm' => __('events.mat_cameras_delete_confirm'),
-    'del_only' => __('events.mat_cameras_delete_only_copy'),
-    's_phone' => __('events.mat_cameras_state_phone'),
-    's_sending' => __('events.mat_cameras_state_sending'),
-    's_processing' => __('events.mat_cameras_state_processing'),
-    's_vault' => __('events.mat_cameras_state_vault'),
-    's_failed' => __('events.mat_cameras_state_failed'),
-    's_gone' => __('events.mat_cameras_state_gone'),
-    's_unfiled' => __('events.mat_cameras_state_unfiled'),
-    'unfiled_hint' => __('events.mat_cameras_unfiled_hint'),
-    'asked' => __('events.mat_cameras_asked_report'),
+    'live' => __('events::events.mat_cameras_live'),
+    'offline' => __('events::events.mat_cameras_offline'),
+    'rec' => __('events::events.mat_cameras_rec'),
+    'rolling' => __('events::events.mat_cameras_rolling'),
+    'stop' => __('events::events.mat_cameras_stop'),
+    'angle' => __('events::events.mat_cameras_angle', ['n' => '%n%']),
+    'storage' => __('events::events.mat_cameras_storage'),
+    'battery' => __('events::events.mat_cameras_battery'),
+    'clips' => __('events::events.mat_cameras_clips'),
+    'beat' => __('events::events.mat_cameras_beat'),
+    'of' => __('events::events.mat_cameras_of', ['total' => '%total%']),
+    'on_phone' => __('events::events.mat_cameras_on_phone', ['n' => '%n%']),
+    'in_vault' => __('events::events.mat_cameras_in_vault', ['n' => '%n%']),
+    'never' => __('events::events.mat_cameras_never'),
+    'capture' => __('events::events.mat_cameras_capture'),
+    'fps' => __('events::events.mat_cameras_fps'),
+    'zoom' => __('events::events.mat_cameras_zoom'),
+    'exposure' => __('events::events.mat_cameras_exposure'),
+    'auto' => __('events::events.mat_cameras_auto_upload'),
+    'auto_hint' => __('events::events.mat_cameras_auto_upload_hint'),
+    'pending' => __('events::events.mat_cameras_pending'),
+    'unknown' => __('events::events.mat_cameras_unknown'),
+    'footage' => __('events::events.mat_cameras_footage'),
+    'footage_none' => __('events::events.mat_cameras_footage_none'),
+    'send_all' => __('events::events.mat_cameras_send_all'),
+    'free_space' => __('events::events.mat_cameras_free_space'),
+    'free_space_hint' => __('events::events.mat_cameras_free_space_hint'),
+    'erase_all' => __('events::events.mat_cameras_erase_all'),
+    'erase_all_hint' => __('events::events.mat_cameras_erase_all_hint', ['n' => '%n%']),
+    'erase_hold' => __('events::events.mat_cameras_erase_all_hold'),
+    'bout' => __('events::events.mat_cameras_bout', ['n' => '%n%']),
+    'clip' => __('events::events.mat_cameras_clip'),
+    'play' => __('events::events.mat_cameras_play'),
+    'upload' => __('events::events.mat_cameras_upload'),
+    'stop' => __('events::events.mat_cameras_stop_upload'),
+    'del' => __('events::events.mat_cameras_delete'),
+    'del_confirm' => __('events::events.mat_cameras_delete_confirm'),
+    'del_only' => __('events::events.mat_cameras_delete_only_copy'),
+    's_phone' => __('events::events.mat_cameras_state_phone'),
+    's_sending' => __('events::events.mat_cameras_state_sending'),
+    's_processing' => __('events::events.mat_cameras_state_processing'),
+    's_vault' => __('events::events.mat_cameras_state_vault'),
+    's_failed' => __('events::events.mat_cameras_state_failed'),
+    's_gone' => __('events::events.mat_cameras_state_gone'),
+    's_unfiled' => __('events::events.mat_cameras_state_unfiled'),
+    'unfiled_hint' => __('events::events.mat_cameras_unfiled_hint'),
+    'asked' => __('events::events.mat_cameras_asked_report'),
     ];
 @endphp
 

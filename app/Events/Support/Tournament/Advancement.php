@@ -83,7 +83,7 @@ abstract class Advancement implements PropagatesResults
         if ($winner !== null && ! $match->{$winner.'_name'}) {
             return [
                 'ok' => false,
-                'message' => __('events.outcome_empty_side'),
+                'message' => __('events::events.outcome_empty_side'),
                 'match' => $this->row($match),
                 'advanced' => [],
                 'podium' => [],

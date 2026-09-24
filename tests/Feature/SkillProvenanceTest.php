@@ -9,7 +9,7 @@ use App\Clubs\Models\ClubAffiliation;
 use App\Members\Models\SkillAcquisition;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
-use App\Services\AchievementVerificationService;
+use App\Members\Support\AchievementVerificationService;
 use Tests\TestCase;
 
 /**

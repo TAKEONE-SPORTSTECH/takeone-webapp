@@ -2,7 +2,7 @@
 
 namespace App\Events\Support;
 
-use App\Http\Middleware\SealEventPage;
+use App\Events\Middleware\SealEventPage;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route as RouteFacade;

@@ -4,7 +4,7 @@ namespace App\Members\Support;
 
 use App\Members\Models\User;
 use App\Members\Models\UserPhoto;
-use App\Support\Avatar;
+use App\Members\Support\Avatar;
 use App\Support\StoragePath;
 use App\Traits\StoresBase64Images;
 

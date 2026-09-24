@@ -26,7 +26,7 @@ class ScreenMediaController extends Controller
         }
 
         if (! in_array($slot, ScreenMedia::SLOTS, true)) {
-            return response()->json(['success' => false, 'message' => __('events.screen_audio_unknown_slot')], 422);
+            return response()->json(['success' => false, 'message' => __('events::events.screen_audio_unknown_slot')], 422);
         }
 
         // A first pass on what the client claims, so an obviously wrong upload is
@@ -41,7 +41,7 @@ class ScreenMediaController extends Controller
         if (! $media) {
             return response()->json([
                 'success' => false,
-                'message' => __('events.screen_audio_rejected'),
+                'message' => __('events::events.screen_audio_rejected'),
             ], 422);
         }
 
@@ -53,7 +53,7 @@ class ScreenMediaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('events.screen_audio_saved'),
+            'message' => __('events::events.screen_audio_saved'),
             'media' => $this->row($media),
         ]);
     }
@@ -101,7 +101,7 @@ class ScreenMediaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('events.screen_audio_removed'),
+            'message' => __('events::events.screen_audio_removed'),
             'slot' => $slot,
         ]);
     }
@@ -121,7 +121,7 @@ class ScreenMediaController extends Controller
 
         // A 404 rather than a 403, and the same one an unknown uuid would get:
         // a prober learns nothing about which events exist.
-        return response()->json(['success' => false, 'message' => __('events.screen_audio_denied')], 404);
+        return response()->json(['success' => false, 'message' => __('events::events.screen_audio_denied')], 404);
     }
 
     /** Only what the uploader needs to see. No paths, no disk, no ids. */

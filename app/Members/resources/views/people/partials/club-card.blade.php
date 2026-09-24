@@ -50,7 +50,7 @@
             @if(!empty($a->note))
                 {{ $a->note }}
             @elseif($active)
-                {{ __('member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}
+                {{ __('members::member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}
             @else
                 {{ optional($a->start_date)->format('M Y') ?: '—' }} – {{ optional($a->end_date)->format('M Y') }}
             @endif
@@ -63,9 +63,9 @@
         <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;background:#f2effe;color:#6d4bd8">{{ $a->badge }}</span>
     @elseif($active)
         <span style="display:flex;align-items:center;gap:5px;flex-shrink:0;font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;background:#e7f7ee;color:#15803d">
-            <span style="width:6px;height:6px;border-radius:50%;background:#22c55e"></span>{{ __('member.active') }}
+            <span style="width:6px;height:6px;border-radius:50%;background:#22c55e"></span>{{ __('members::member.active') }}
         </span>
     @else
-        <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;background:#f1f2f7;color:#7a7f94">{{ __('member.left') }}</span>
+        <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;background:#f1f2f7;color:#7a7f94">{{ __('members::member.left') }}</span>
     @endif
 </{{ $tag }}>

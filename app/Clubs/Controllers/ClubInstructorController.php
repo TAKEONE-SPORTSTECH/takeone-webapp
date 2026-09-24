@@ -4,8 +4,8 @@ namespace App\Clubs\Controllers;
 
 use App\Events\Support\EntryPhoto;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreInstructorRequest;
-use App\Http\Requests\Admin\UpdateInstructorRequest;
+use App\Clubs\Requests\StoreInstructorRequest;
+use App\Clubs\Requests\UpdateInstructorRequest;
 use App\Http\Requests\UploadImageRequest;
 use App\Clubs\Models\ClubInstructor;
 use App\Clubs\Models\ClubRecurringExpense;
@@ -15,8 +15,8 @@ use App\Members\Models\SkillAcquisition;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Clubs\Services\RecurringExpenseService;
-use App\Support\ClubCache;
-use App\Traits\HandlesClubAuthorization;
+use App\Clubs\Support\ClubCache;
+use App\Clubs\Concerns\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
@@ -49,7 +49,7 @@ class ClubInstructorController extends Controller
             ->where('slug', 'not like', 'member-%')
             ->orderBy('id')->get(['id', 'slug', 'name']);
 
-        return view(\App\Support\ClubView::pick('instructors', 'clubs'),
+        return view(\App\Clubs\Support\ClubView::pick('instructors', 'clubs'),
             compact('club', 'instructors', 'packageSlots', 'slotCountByInstructor', 'availableRoles'));
     }
 
@@ -189,8 +189,8 @@ class ClubInstructorController extends Controller
         // Accumulated years practised per skill (keyed by lower-cased name), so each
         // skill tag can show "how long they've done it".
         $skillYears = [];
-        foreach (\App\Support\SkillExperience::monthsPerSkill($user) as $key => $months) {
-            if ($label = \App\Support\SkillExperience::format($months)) {
+        foreach (\App\Members\Support\SkillExperience::monthsPerSkill($user) as $key => $months) {
+            if ($label = \App\Members\Support\SkillExperience::format($months)) {
                 $skillYears[$key] = $label;
             }
         }

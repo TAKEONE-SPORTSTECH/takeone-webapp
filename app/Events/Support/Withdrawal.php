@@ -55,11 +55,11 @@ class Withdrawal
         $registration = $this->registrationFor($event, $athlete);
 
         if (! $registration) {
-            return ['ok' => false, 'message' => __('events.withdraw_not_entered')];
+            return ['ok' => false, 'message' => __('events::events.withdraw_not_entered')];
         }
 
         if ($event->hasEnded()) {
-            return ['ok' => false, 'message' => __('events.withdraw_event_over')];
+            return ['ok' => false, 'message' => __('events::events.withdraw_event_over')];
         }
 
         $existing = EventWithdrawalRequest::where('event_id', $event->id)
@@ -71,7 +71,7 @@ class Withdrawal
         if ($existing && $existing->isPending()) {
             return [
                 'ok' => true,
-                'message' => __('events.withdraw_already_pending'),
+                'message' => __('events::events.withdraw_already_pending'),
                 'request' => $this->present($existing),
             ];
         }
@@ -108,7 +108,7 @@ class Withdrawal
 
         return [
             'ok' => true,
-            'message' => __('events.withdraw_received'),
+            'message' => __('events::events.withdraw_received'),
             'request' => $this->present($request),
         ];
     }
@@ -125,7 +125,7 @@ class Withdrawal
             ->first();
 
         if (! $request || ! $request->isPending()) {
-            return ['ok' => false, 'message' => __('events.withdraw_nothing_to_cancel')];
+            return ['ok' => false, 'message' => __('events::events.withdraw_nothing_to_cancel')];
         }
 
         $request->forceFill(['state' => 'cancelled', 'decided_at' => now()])->save();
@@ -134,7 +134,7 @@ class Withdrawal
 
         return [
             'ok' => true,
-            'message' => __('events.withdraw_cancelled'),
+            'message' => __('events::events.withdraw_cancelled'),
             'request' => $this->present($request->fresh()),
         ];
     }
@@ -187,11 +187,11 @@ class Withdrawal
         $event = $request->event;
 
         if (! $event || ! $this->access->canManage($event, $actor)) {
-            return ['ok' => false, 'message' => __('events.withdraw_not_yours')];
+            return ['ok' => false, 'message' => __('events::events.withdraw_not_yours')];
         }
 
         if (! $request->isPending()) {
-            return ['ok' => false, 'message' => __('events.withdraw_already_decided')];
+            return ['ok' => false, 'message' => __('events::events.withdraw_already_decided')];
         }
 
         $registration = ClubEventRegistration::where('event_id', $event->id)
@@ -217,7 +217,7 @@ class Withdrawal
         if (($removal['ok'] ?? false) !== true) {
             return [
                 'ok' => false,
-                'message' => $removal['row']['message'] ?? __('events.withdraw_cannot_remove'),
+                'message' => $removal['row']['message'] ?? __('events::events.withdraw_cannot_remove'),
             ];
         }
 
@@ -234,11 +234,11 @@ class Withdrawal
         $event = $request->event;
 
         if (! $event || ! $this->access->canManage($event, $actor)) {
-            return ['ok' => false, 'message' => __('events.withdraw_not_yours')];
+            return ['ok' => false, 'message' => __('events::events.withdraw_not_yours')];
         }
 
         if (! $request->isPending()) {
-            return ['ok' => false, 'message' => __('events.withdraw_already_decided')];
+            return ['ok' => false, 'message' => __('events::events.withdraw_already_decided')];
         }
 
         return $this->settle($request, $actor, 'refused', $response, false);
@@ -262,8 +262,8 @@ class Withdrawal
         return [
             'ok' => true,
             'message' => $granted
-                ? __('events.withdraw_granted', ['name' => $request->athlete?->full_name ?? ''])
-                : __('events.withdraw_refused', ['name' => $request->athlete?->full_name ?? '']),
+                ? __('events::events.withdraw_granted', ['name' => $request->athlete?->full_name ?? ''])
+                : __('events::events.withdraw_refused', ['name' => $request->athlete?->full_name ?? '']),
             'request' => $this->present($request),
         ];
     }
@@ -282,10 +282,10 @@ class Withdrawal
         $name = $athlete->full_name ?: $athlete->name;
 
         foreach ($this->audience->managers($event) as $managerId) {
-            rescue(fn () => UserNotification::notifyUser($managerId, 'event', __('events.withdraw_notify_title', [
+            rescue(fn () => UserNotification::notifyUser($managerId, 'event', __('events::events.withdraw_notify_title', [
                 'name' => $name,
             ]), [
-                'body' => __('events.withdraw_notify_body', ['title' => $event->title]),
+                'body' => __('events::events.withdraw_notify_body', ['title' => $event->title]),
                 'icon' => 'bi-box-arrow-left',
                 'action_url' => route('events.public', $event->uuid),
                 'subject_type' => (new ClubEvent)->getMorphClass(),
@@ -301,11 +301,11 @@ class Withdrawal
         $event = $request->event;
 
         rescue(fn () => UserNotification::notifyUser((int) $request->user_id, 'event', $granted
-            ? __('events.withdraw_athlete_granted_title', ['title' => $event->title])
-            : __('events.withdraw_athlete_refused_title', ['title' => $event->title]), [
+            ? __('events::events.withdraw_athlete_granted_title', ['title' => $event->title])
+            : __('events::events.withdraw_athlete_refused_title', ['title' => $event->title]), [
                 'body' => $request->response ?: ($granted
-                    ? __('events.withdraw_athlete_granted_body')
-                    : __('events.withdraw_athlete_refused_body')),
+                    ? __('events::events.withdraw_athlete_granted_body')
+                    : __('events::events.withdraw_athlete_refused_body')),
                 'icon' => $granted ? 'bi-box-arrow-left' : 'bi-x-circle',
                 // The event's OWN page, never the platform member shell — a
                 // deep link that breaks the seal throws the athlete out of the

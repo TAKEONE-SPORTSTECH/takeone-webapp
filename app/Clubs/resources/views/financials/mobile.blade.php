@@ -1,4 +1,4 @@
-@extends('layouts.admin-club-mobile')
+@extends('clubs::layouts.admin-club-mobile')
 
 @section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_financials'))
 
@@ -834,7 +834,7 @@
                     <div x-show="txMode === 'edit'" x-cloak class="py-3">
                         <span class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{{ __('admin.fin_type') }}</span>
                         <div class="mt-1.5">
-                            <x-select-menu model="tx.type" name="type" :options="[
+                            <x-fields.select model="tx.type" name="type" :options="[
                                 ['value' => 'income',  'label' => __('admin.fin_income')],
                                 ['value' => 'expense', 'label' => __('admin.fin_expense')],
                                 ['value' => 'refund',  'label' => __('admin.fin_refund')],
@@ -892,7 +892,7 @@
                         <div class="mt-1.5">
                             {{-- Custom calendar (Design Rule #4). A recurring rule may point at a day
                                  later this month, so the "no future dates" cap is for one-offs only. --}}
-                            <x-date-picker model="tx.transaction_date"
+                            <x-fields.date model="tx.transaction_date"
                                            max-expr="txIsRecurring ? null : '{{ $today }}'"
                                            name-expr="txIsRecurring ? 'recurring_date' : 'transaction_date'" />
                         </div>

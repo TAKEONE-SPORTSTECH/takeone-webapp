@@ -195,7 +195,13 @@ class RouteIntegrityTest extends TestCase
      * on the public entry list, where the public key is the only identifier
      * present. One route added on purpose.
      */
-    private const EXPECTED_ROUTE_COUNT = 767;
+    /*
+     * 769 since 2026-09-23: +2, the federation dashboard (federations.home,
+     * federations.dashboard) in app/Federations/routes.php. The Clubs/Members
+     * file moves the same day changed no route — the table was diffed before
+     * and after, URI by URI, name, middleware and action.
+     */
+    private const EXPECTED_ROUTE_COUNT = 769;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -433,6 +439,7 @@ class RouteIntegrityTest extends TestCase
         // route the run-day work added carries a name. Twelve routes remain
         // unnamed, the same twelve as before, so nothing lost a name in the
         // model moves either.
-        $this->assertCount(755, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 757 on 2026-09-23: the two federation routes, both named.
+        $this->assertCount(757, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

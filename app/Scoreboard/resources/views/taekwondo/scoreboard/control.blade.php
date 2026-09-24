@@ -266,7 +266,7 @@
            camera addresses — a console with no camera surface shows no
            camera button. --}}
       @if ($cameraUrl ?? null)
-        <button id="btnCameras" class="btn">{{ __('events.mat_cameras_tab') }}</button>
+        <button id="btnCameras" class="btn">{{ __('events::events.mat_cameras_tab') }}</button>
       @endif
       {{-- A panel the event's own PACKAGE contributes (AbstractEventType::matPanel).
            Absent for every championship, so this row is unchanged for them. An
@@ -318,7 +318,7 @@
 <div id="camerasModal" hidden class="scrim" style="z-index:50;">
   <div class="sheet" style="width:980px; max-height:900px; overflow-y:auto;">
     <div class="sheet-head">
-      <div class="sheet-title">{{ __('events.mat_cameras_title', ['court' => $court]) }}</div>
+      <div class="sheet-title">{{ __('events::events.mat_cameras_title', ['court' => $court]) }}</div>
       <button id="camerasClose" class="btn sheet-close">✕</button>
     </div>
     @include('partials.mat-cameras', ['cameraUrl' => $cameraUrl, 'cameraCommandBase' => $cameraCommandBase])

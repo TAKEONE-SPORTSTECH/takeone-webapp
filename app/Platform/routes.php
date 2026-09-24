@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\Route;
 | routes/web.php, the group included. A module must never quietly opt out of
 | session, CSRF, auth, two-factor or a throttle by changing address.
 |
-| ⚠️ PlatformController here is App\Platform\Controllers\PlatformController —
-| the SUPER-ADMIN's screens. The public club browser of the same name is still
-| App\Http\Controllers\PlatformController and is not this.
+| PlatformController here is this module's own — the SUPER-ADMIN's screens. The
+| public club browser that used to share the name now lives in App\Clubs, under
+| a name that says what it does.
 */
 
 /*

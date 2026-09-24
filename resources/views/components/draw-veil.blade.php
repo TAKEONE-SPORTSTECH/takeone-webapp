@@ -31,6 +31,6 @@
             <i class="bi bi-lock-fill text-xl"></i>
         </span>
         <p class="text-sm font-bold text-foreground">{{ $message }}</p>
-        <p class="text-[11.5px] text-muted-foreground mt-1">{{ __('events.draw_hidden_sub') }}</p>
+        <p class="text-[11.5px] text-muted-foreground mt-1">{{ __('events::events.draw_hidden_sub') }}</p>
     </div>
 </div>

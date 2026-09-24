@@ -111,10 +111,10 @@ class BoutFilm
     private function angleLabel(string $angle): string
     {
         return match ($angle) {
-            'corner_a' => __('events.bout_video_angle_corner_a'),
-            'corner_b' => __('events.bout_video_angle_corner_b'),
-            'overhead' => __('events.bout_video_angle_overhead'),
-            default => __('events.bout_video_angle_main'),
+            'corner_a' => __('events::events.bout_video_angle_corner_a'),
+            'corner_b' => __('events::events.bout_video_angle_corner_b'),
+            'overhead' => __('events::events.bout_video_angle_overhead'),
+            default => __('events::events.bout_video_angle_main'),
         };
     }
 }

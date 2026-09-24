@@ -1,0 +1,170 @@
+<?php
+
+namespace App\Clubs\Support;
+
+use App\Clubs\Models\Business;
+use App\Clubs\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubTransaction;
+use App\Members\Models\Membership;
+use Illuminate\Support\Collection;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Http (BusinessDashboardController). A chain sits ABOVE clubs and
+ * aggregates across them, so it belongs to the platform, not inside App\Clubs.
+ */
+
+/**
+ * Aggregates performance metrics across every club in a business (chain).
+ * Uses a fixed number of grouped queries regardless of how many clubs exist.
+ */
+class ChainDashboardService
+{
+    /** Subscription payment statuses that count as money still owed. */
+    private const UNPAID_STATUSES = ['unpaid', 'pending_approval'];
+
+    /** Subscription statuses considered active. */
+    private const ACTIVE_SUB_STATUSES = ['active', 'pending'];
+
+    /**
+     * Build the chain dashboard payload: per-club rows plus combined totals.
+     *
+     * @return array{clubs: Collection, totals: array}
+     */
+    public function build(Business $business): array
+    {
+        $clubs = $business->clubs()
+            ->select('id', 'club_name', 'slug', 'logo', 'currency')
+            ->orderBy('club_name')
+            ->get();
+
+        $clubIds = $clubs->pluck('id')->all();
+
+        if (empty($clubIds)) {
+            return [
+                'clubs' => collect(),
+                'totals' => $this->emptyTotals(),
+                'revenue_chart' => ['labels' => [], 'datasets' => []],
+            ];
+        }
+
+        $members = Membership::whereIn('tenant_id', $clubIds)
+            ->where('status', 'active')
+            ->selectRaw('tenant_id, COUNT(*) as c')
+            ->groupBy('tenant_id')
+            ->pluck('c', 'tenant_id');
+
+        $activeSubs = ClubMemberSubscription::whereIn('tenant_id', $clubIds)
+            ->whereIn('status', self::ACTIVE_SUB_STATUSES)
+            ->selectRaw('tenant_id, COUNT(*) as c')
+            ->groupBy('tenant_id')
+            ->pluck('c', 'tenant_id');
+
+        $income = ClubTransaction::whereIn('tenant_id', $clubIds)
+            ->where('type', 'income')
+            ->selectRaw('tenant_id, COALESCE(SUM(amount),0) as s')
+            ->groupBy('tenant_id')
+            ->pluck('s', 'tenant_id');
+
+        $expenses = ClubTransaction::whereIn('tenant_id', $clubIds)
+            ->where('type', 'expense')
+            ->selectRaw('tenant_id, COALESCE(SUM(amount),0) as s')
+            ->groupBy('tenant_id')
+            ->pluck('s', 'tenant_id');
+
+        $cashToCollect = ClubMemberSubscription::whereIn('tenant_id', $clubIds)
+            ->whereIn('payment_status', self::UNPAID_STATUSES)
+            ->selectRaw('tenant_id, COALESCE(SUM(amount_due),0) as s')
+            ->groupBy('tenant_id')
+            ->pluck('s', 'tenant_id');
+
+        $rows = $clubs->map(function ($club) use ($members, $activeSubs, $income, $expenses, $cashToCollect) {
+            $rev = (float) ($income[$club->id] ?? 0);
+            $exp = (float) ($expenses[$club->id] ?? 0);
+
+            return [
+                'id' => $club->id,
+                'name' => $club->club_name,
+                'slug' => $club->slug,
+                'logo' => $club->logo,
+                'currency' => $club->currency ?: '',
+                'members' => (int) ($members[$club->id] ?? 0),
+                'active_subs' => (int) ($activeSubs[$club->id] ?? 0),
+                'revenue' => $rev,
+                'expenses' => $exp,
+                'net' => $rev - $exp,
+                'cash_to_collect' => (float) ($cashToCollect[$club->id] ?? 0),
+            ];
+        });
+
+        $totals = [
+            'clubs' => $rows->count(),
+            'members' => (int) $rows->sum('members'),
+            'active_subs' => (int) $rows->sum('active_subs'),
+            'revenue' => (float) $rows->sum('revenue'),
+            'expenses' => (float) $rows->sum('expenses'),
+            'net' => (float) $rows->sum('net'),
+            'cash_to_collect' => (float) $rows->sum('cash_to_collect'),
+            // Most clubs share one currency; surface the first for display.
+            'currency' => $rows->first()['currency'] ?? '',
+        ];
+
+        return ['clubs' => $rows, 'totals' => $totals, 'revenue_chart' => $this->monthlyRevenueByClub($clubIds, $clubs)];
+    }
+
+    private function emptyTotals(): array
+    {
+        return [
+            'clubs' => 0, 'members' => 0, 'active_subs' => 0,
+            'revenue' => 0.0, 'expenses' => 0.0, 'net' => 0.0,
+            'cash_to_collect' => 0.0, 'currency' => '',
+        ];
+    }
+
+    /**
+     * Monthly revenue trend per club (last N months) for the chain dashboard's line chart.
+     *
+     * @param  array<int>  $clubIds
+     * @param  Collection  $clubs
+     */
+    private function monthlyRevenueByClub(array $clubIds, Collection $clubs, int $months = 6): array
+    {
+        if (empty($clubIds)) {
+            return ['labels' => [], 'datasets' => []];
+        }
+
+        $now = now();
+        $start = $now->copy()->subMonths($months - 1)->startOfMonth();
+
+        $rows = ClubTransaction::whereIn('tenant_id', $clubIds)
+            ->where('type', 'income')
+            ->where('transaction_date', '>=', $start)
+            ->selectRaw("tenant_id, strftime('%Y-%m', transaction_date) as month_key, COALESCE(SUM(amount),0) as total")
+            ->groupBy('tenant_id', 'month_key')
+            ->get()
+            ->groupBy('tenant_id');
+
+        $labels = [];
+        $monthKeys = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $date = $now->copy()->subMonths($i);
+            $labels[] = $date->format('M');
+            $monthKeys[] = $date->format('Y-m');
+        }
+
+        $palette = ['#8b5cf6', '#06b6d4', '#f59e0b', '#ec4899', '#10b981', '#6366f1', '#ef4444', '#14b8a6'];
+
+        $datasets = $clubs->values()->map(function ($club, $i) use ($rows, $monthKeys, $palette) {
+            $clubRows = $rows->get($club->id, collect())->keyBy('month_key');
+
+            return [
+                'label' => $club->club_name,
+                'data' => array_map(fn ($key) => (float) ($clubRows->get($key)?->total ?? 0), $monthKeys),
+                'color' => $palette[$i % count($palette)],
+                'fill' => false,
+            ];
+        })->all();
+
+        return ['labels' => $labels, 'datasets' => $datasets];
+    }
+}

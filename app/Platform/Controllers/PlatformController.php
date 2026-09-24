@@ -5,9 +5,9 @@ namespace App\Platform\Controllers;
 use App\Events\Support\EntryPhoto;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RestoreBackupRequest;
-use App\Http\Requests\Admin\StorePlatformMemberRequest;
-use App\Http\Requests\HealthRecordRequest;
-use App\Http\Requests\TournamentRequest;
+use App\Members\Requests\StorePlatformMemberRequest;
+use App\Members\Requests\HealthRecordRequest;
+use App\Members\Requests\TournamentRequest;
 use App\Http\Requests\UploadImageRequest;
 use App\Members\Models\Attendance;
 use App\Clubs\Models\Business;
@@ -44,7 +44,7 @@ class PlatformController extends Controller
 
         $clubsCount = $clubs->count();
 
-        return view('admin.platform.index', compact('clubs', 'clubsCount'));
+        return view('platform::index', compact('clubs', 'clubsCount'));
     }
 
     /**
@@ -63,7 +63,7 @@ class PlatformController extends Controller
                 'businessesPending' => Business::where('status', Business::STATUS_PENDING)->count(),
             ];
 
-            return view('admin.platform.mobile.index', compact('stats'));
+            return view('platform::mobile.index', compact('stats'));
         }
 
         // ── Desktop platform control-center dashboard ──
@@ -120,7 +120,7 @@ class PlatformController extends Controller
         $pendingBusinesses = Business::with('owner')->withCount('clubs')
             ->where('status', Business::STATUS_PENDING)->latest()->take(4)->get();
 
-        return view('admin.platform.dashboard', compact(
+        return view('platform::dashboard', compact(
             'stats', 'series', 'topClubs', 'recentClubs', 'recentMembers', 'pendingBusinesses'
         ));
     }
@@ -133,7 +133,7 @@ class PlatformController extends Controller
         $realtime = app(\Takeone\Realtime\RealtimeManager::class);
         $whatsapp = app(\App\Services\WhatsAppManager::class);
 
-        return view('admin.platform.settings', [
+        return view('platform::settings', [
             'toastsEnabled'    => \App\Platform\Models\PlatformSetting::getBool('toasts_enabled', true),
             'realtimeSettings' => $realtime->adminSettings(),
             'realtimeStatus'   => $realtime->probe(),
@@ -281,9 +281,9 @@ class PlatformController extends Controller
 
         $logNames = \Spatie\Activitylog\Models\Activity::distinct()->pluck('log_name')->filter()->sort()->values();
 
-        $mobile = $request->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.audit-log');
+        $mobile = $request->attributes->get('is_mobile') && view()->exists('platform::mobile.audit-log');
 
-        return view($mobile ? 'admin.platform.mobile.audit-log' : 'admin.platform.audit-log.index', compact('logs', 'search', 'logName', 'event', 'dateFrom', 'dateTo', 'logNames'));
+        return view($mobile ? 'platform::mobile.audit-log' : 'platform::audit-log.index', compact('logs', 'search', 'logName', 'event', 'dateFrom', 'dateTo', 'logNames'));
     }
 
     /**
@@ -319,12 +319,12 @@ class PlatformController extends Controller
 
         // AJAX search / sort / pagination returns just the results region for in-place swap.
         if ($request->ajax()) {
-            return view('admin.platform.clubs._results', compact('clubs', 'search'));
+            return view('platform::clubs._results', compact('clubs', 'search'));
         }
 
-        $mobile = $request->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.clubs');
+        $mobile = $request->attributes->get('is_mobile') && view()->exists('platform::mobile.clubs');
 
-        return view($mobile ? 'admin.platform.mobile.clubs' : 'admin.platform.clubs.index', compact('clubs', 'search', 'sort'));
+        return view($mobile ? 'platform::mobile.clubs' : 'platform::clubs.index', compact('clubs', 'search', 'sort'));
     }
 
     /**
@@ -385,17 +385,17 @@ class PlatformController extends Controller
         // AJAX search / pagination returns just the results region for in-place swap
         // (mobile gets its own compact card layout).
         if ($request->ajax()) {
-            $resultsView = $isMobile && view()->exists('admin.platform.members._results-mobile')
-                ? 'admin.platform.members._results-mobile'
-                : 'admin.platform.members._results';
+            $resultsView = $isMobile && view()->exists('platform::members._results-mobile')
+                ? 'platform::members._results-mobile'
+                : 'platform::members._results';
 
             return view($resultsView, compact('members', 'search', 'sort', 'filterCount'));
         }
 
-        $mobile = $isMobile && view()->exists('admin.platform.mobile.members');
+        $mobile = $isMobile && view()->exists('platform::mobile.members');
 
         return view(
-            $mobile ? 'admin.platform.mobile.members' : 'admin.platform.members.index',
+            $mobile ? 'platform::mobile.members' : 'platform::members.index',
             compact('members', 'search', 'sort', 'filterState', 'filterCount', 'filterClubs', 'filterNationalities')
         );
     }
@@ -597,7 +597,7 @@ class PlatformController extends Controller
             ];
         });
 
-        return view('admin.platform.clubs.add', compact('users'));
+        return view('platform::clubs.add', compact('users'));
     }
 
     /**
@@ -695,7 +695,7 @@ class PlatformController extends Controller
             ];
         });
 
-        return view('admin.platform.clubs.edit', compact('club', 'users'));
+        return view('platform::clubs.edit', compact('club', 'users'));
     }
 
     /**
@@ -830,7 +830,7 @@ class PlatformController extends Controller
             $entries = $this->tailLogEntries($path, $limit, $filter, $level, $truncated);
         }
 
-        return view('admin.platform.logs', [
+        return view('platform::logs', [
             'entries' => $entries,
             'filter' => $filter,
             'level' => $level,
@@ -921,9 +921,9 @@ class PlatformController extends Controller
 
     public function backup()
     {
-        $mobile = request()->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.backup');
+        $mobile = request()->attributes->get('is_mobile') && view()->exists('platform::mobile.backup');
 
-        return view($mobile ? 'admin.platform.mobile.backup' : 'admin.platform.backup.index');
+        return view($mobile ? 'platform::mobile.backup' : 'platform::backup.index');
     }
 
     /**
@@ -1229,8 +1229,8 @@ class PlatformController extends Controller
             // What the platform already knows about this member's clubs and
             // events — the two tabs otherwise show only what they typed in
             // themselves. Read-only, de-duplicated against the self-reported rows.
-            'derivedAffiliations' => app(\App\Support\ProfileHistory::class)->derivedAffiliations($relationship->dependent),
-            'derivedTournaments'  => app(\App\Support\ProfileHistory::class)->derivedTournaments($relationship->dependent),
+            'derivedAffiliations' => app(\App\Members\Support\ProfileHistory::class)->derivedAffiliations($relationship->dependent),
+            'derivedTournaments'  => app(\App\Members\Support\ProfileHistory::class)->derivedTournaments($relationship->dependent),
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,
@@ -1312,7 +1312,7 @@ class PlatformController extends Controller
             'mobile' => 'nullable|string|max:20',
             /*
              * Presence follows WHO is filling the form, exactly as
-             * App\Http\Requests\Concerns\PersonFieldRules does for every other
+             * App\Members\Requests\Concerns\PersonFieldRules does for every other
              * person form — this endpoint validates inline, so it has to make the
              * same decision rather than inherit it. A super admin editing somebody
              * else is the case that must not be asked for what it does not have.

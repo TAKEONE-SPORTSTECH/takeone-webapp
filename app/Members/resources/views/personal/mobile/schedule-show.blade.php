@@ -1,4 +1,4 @@
-@extends('layouts.personal-mobile')
+@extends('members::layouts.personal-mobile')
 
 @section('title', $s['title'])
 
@@ -443,7 +443,7 @@
                 @endif
                 @if($hasCoords)
                     <div class="mt-3 relative">
-                        <x-location-map
+                        <x-fields.location-map
                             :id="'classLocMap'"
                             :lat="$location['lat']"
                             :lng="$location['lng']"

@@ -18,7 +18,7 @@ use App\Trainers\Models\InstructorReview;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
 use App\Members\Models\UserScheduleSession;
-use App\Support\SyncedClassToken;
+use App\Members\Support\SyncedClassToken;
 use Illuminate\Support\Facades\Storage;
 use Tests\Feature\Contracts\ContractTestCase;
 
@@ -320,7 +320,7 @@ class PersonalMobileWriteCharacterizationTest extends ContractTestCase
      * all — an unknown or missing section returned 200 {"success":true} while
      * writing nothing, so the caller was told a write succeeded that never
      * happened. `section` is now validated against
-     * App\Support\SectionActivity::SECTIONS and anything else is a 422.
+     * App\Members\Support\SectionActivity::SECTIONS and anything else is a 422.
      */
     public function test_mark_section_seen_refuses_an_unknown_section_and_writes_nothing(): void
     {
@@ -356,7 +356,7 @@ class PersonalMobileWriteCharacterizationTest extends ContractTestCase
     {
         $user = $this->createUser();
 
-        foreach (\App\Support\SectionActivity::SECTIONS as $section) {
+        foreach (\App\Members\Support\SectionActivity::SECTIONS as $section) {
             $this->actingAs($user)
                 ->postJson(route('me.seen'), ['section' => $section])
                 ->assertOk()

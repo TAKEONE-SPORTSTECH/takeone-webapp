@@ -1,4 +1,4 @@
-@extends('layouts.admin-club-mobile')
+@extends('clubs::layouts.admin-club-mobile')
 
 @section('title', ($event->title ?? __('admin.nav_events')) . ' · ' . __('admin.evt_participants'))
 

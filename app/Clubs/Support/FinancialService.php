@@ -1,0 +1,133 @@
+<?php
+
+namespace App\Clubs\Support;
+
+use App\Clubs\Models\ClubMemberSubscription;
+use App\Clubs\Models\ClubTransaction;
+use App\Clubs\Models\Tenant;
+use App\Clubs\Support\ClubCache;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+
+/*
+ * Shared kernel — deliberately NOT private to a module.
+ * Consumed by App\Clubs (ClubAdminController, ClubFinancialController,
+ * ClubMemberAdminController) AND App\Shop (ClubShopController, ClubOrderController).
+ * The club's books are written by more than one vertical, so this is deliberately
+ * shared rather than club-private — moving it into App\Clubs would force a hole in
+ * the module boundary the shop would have to reach through.
+ */
+
+class FinancialService
+{
+    /**
+     * Record a manual income or expense transaction for a club.
+     */
+    public function recordTransaction(Tenant $club, array $data): ClubTransaction
+    {
+        $transaction = ClubTransaction::create(array_merge($data, ['tenant_id' => $club->id]));
+        ClubCache::flushFinancials($club->id);
+
+        return $transaction;
+    }
+
+    /**
+     * Calculate summary totals from an already-loaded transaction collection.
+     * Includes cash-to-collect from unpaid subscriptions (requires one extra query).
+     */
+    public function getSummary(int $clubId, Collection $transactions, bool $isTestMode = true): array
+    {
+        $byType = $transactions->groupBy('type');
+        $totalIncome = (float) $byType->get('income', collect())->sum('amount');
+        $totalExpenses = (float) $byType->get('expense', collect())->sum('amount');
+        $totalRefunds = (float) $byType->get('refund', collect())->sum('amount');
+
+        return [
+            'total_income' => $totalIncome,
+            'total_expenses' => $totalExpenses,
+            'refunds' => $totalRefunds,
+            'net_profit' => $totalIncome - $totalExpenses - $totalRefunds,
+            'pending' => (float) ClubMemberSubscription::where('tenant_id', $clubId)
+                ->where('is_test', $isTestMode)
+                ->whereIn('payment_status', ['unpaid', 'pending_approval'])
+                ->sum('amount_due'),
+        ];
+    }
+
+    /**
+     * Build 12-month income/expense/profit chart data from a transaction collection.
+     */
+    public function getMonthlyData(Collection $transactions, int $clubId, bool $isTestMode = true): array
+    {
+        // Calendar-year view: always Jan → Dec of the current year.
+        $yearStart = now()->startOfYear();
+        $yearEnd = now()->endOfYear();
+
+        $byMonth = $transactions
+            ->filter(fn ($t) => Carbon::parse($t->transaction_date)->between($yearStart, $yearEnd))
+            ->groupBy(fn ($t) => Carbon::parse($t->transaction_date)->format('Y-m'));
+
+        // Monthly cash to collect: unpaid subscriptions grouped by start_date month (PHP-side, DB-agnostic)
+        $pendingByMonth = ClubMemberSubscription::where('tenant_id', $clubId)
+            ->where('is_test', $isTestMode)
+            ->whereIn('payment_status', ['unpaid', 'pending_approval'])
+            ->whereBetween('start_date', [$yearStart, $yearEnd])
+            ->get(['start_date', 'amount_due'])
+            ->groupBy(fn ($s) => Carbon::parse($s->start_date)->format('Y-m'))
+            ->map(fn ($items) => $items->sum('amount_due'));
+
+        $monthlyData = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $date = $yearStart->copy()->month($m);
+            $month = $byMonth->get($date->format('Y-m'), collect());
+            $income = (float) $month->where('type', 'income')->sum('amount');
+            $expense = (float) $month->where('type', 'expense')->sum('amount');
+            $refund = (float) $month->where('type', 'refund')->sum('amount');
+
+            $monthlyData[] = [
+                'month' => $date->format('M'),
+                'year_month' => $date->format('Y-m'),
+                'income' => $income,
+                'expenses' => $expense,
+                'refunds' => $refund,
+                'profit' => $income - $expense - $refund,
+                'cash_to_collect' => (float) ($pendingByMonth->get($date->format('Y-m')) ?? 0),
+            ];
+        }
+
+        return $monthlyData;
+    }
+
+    /**
+     * Unpaid / pending subscriptions that make up the "Cash to Collect" figure.
+     * Returned with user + package so the transactions modal can list them per month.
+     */
+    public function getCashToCollect(int $clubId, bool $isTestMode = true): Collection
+    {
+        $cutoff = now()->subMonths(11)->startOfMonth();
+
+        return ClubMemberSubscription::where('tenant_id', $clubId)
+            ->where('is_test', $isTestMode)
+            ->whereIn('payment_status', ['unpaid', 'pending_approval'])
+            ->where('start_date', '>=', $cutoff)
+            ->with(['user', 'package'])
+            ->orderByDesc('start_date')
+            ->get();
+    }
+
+    /**
+     * Group expense transactions by category for the breakdown chart.
+     */
+    public function getExpenseBreakdown(Collection $transactions): Collection
+    {
+        return $transactions
+            ->where('type', 'expense')
+            ->groupBy(fn ($t) => $t->category ?? 'Other')
+            ->map(fn ($items, $cat) => [
+                'category' => $cat,
+                'items' => $items,
+                'total' => $items->sum('amount'),
+            ])
+            ->values();
+    }
+}

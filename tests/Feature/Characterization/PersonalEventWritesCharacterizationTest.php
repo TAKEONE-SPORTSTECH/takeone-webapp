@@ -36,7 +36,7 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
         /* These scenarios are all TAEKWONDO CHAMPIONSHIPS, and that package
            opted into the branded event surface on 2026-09-08 — which serves the
            MOBILE blade at every width and drops the platform's chrome
-           (App\Http\Middleware\BrandEventPage). This file pins what the
+           (App\Events\Middleware\BrandEventPage). This file pins what the
            CONTROLLER does, so the dressing is switched off here and asserted
            where it belongs, in tests/Feature/Events/BrandedEventSurfaceTest.php.
            Without this the device-split assertions below would be measuring the
@@ -99,10 +99,10 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
 
         // NOTE: `create` is NOT device-split — the same Blade serves both.
         $this->asDesktop($organiser)->get(route('me.events.create'))
-            ->assertOk()->assertViewIs('personal.event-create');
+            ->assertOk()->assertViewIs('events::personal.event-create');
 
         $this->asMobile($organiser)->get(route('me.events.create'))
-            ->assertOk()->assertViewIs('personal.event-create');
+            ->assertOk()->assertViewIs('events::personal.event-create');
     }
 
     public function test_create_offers_the_clubs_the_member_belongs_to_or_runs(): void
@@ -209,7 +209,7 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
         [$organiser, $club, $event] = $this->scenario();
 
         $response = $this->asDesktop($organiser)->get(route('me.events.edit', $event->uuid));
-        $response->assertOk()->assertViewIs('personal.event-create');
+        $response->assertOk()->assertViewIs('events::personal.event-create');
         $response->assertViewHas('mode', 'edit');
         $response->assertViewHas('divisions', []);
 
@@ -685,9 +685,9 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
         $this->assertArrayHasKey('squad', $json->json());
 
         $this->asDesktop($organiser)->get(route('me.events.next-up', $event->uuid))
-            ->assertOk()->assertViewIs('personal.desktop.event-next-up');
+            ->assertOk()->assertViewIs('events::personal.desktop.event-next-up');
         $this->asMobile($organiser)->get(route('me.events.next-up', $event->uuid))
-            ->assertOk()->assertViewIs('personal.mobile.event-next-up');
+            ->assertOk()->assertViewIs('events::personal.mobile.event-next-up');
     }
 
     /** The venue board is deliberately impersonal — and NOT device-split. */
@@ -697,7 +697,7 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
         $this->drawnDivision($event, $club);
 
         $view = $this->asMobile($organiser)->get(route('me.events.board', $event->uuid));
-        $view->assertOk()->assertViewIs('personal.event-board');
+        $view->assertOk()->assertViewIs('events::personal.event-board');
 
         $payload = $this->actingAs($organiser)->getJson(route('me.events.board', $event->uuid));
         $payload->assertOk()->assertJson(['success' => true]);
@@ -772,13 +772,13 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
         $this->drawnDivision($event, $club);
 
         $this->asDesktop($organiser)->get(route('me.events.people', $event->uuid))
-            ->assertOk()->assertViewIs('personal.event-people');
+            ->assertOk()->assertViewIs('events::personal.event-people');
 
         $this->asMobile($organiser)->get(route('me.events.people', $event->uuid))
-            ->assertOk()->assertViewIs('personal.event-people');
+            ->assertOk()->assertViewIs('events::personal.event-people');
 
         $this->asDesktop($organiser)->get(route('me.events.officiating', $event->uuid))
-            ->assertOk()->assertViewIs('personal.event-officials');
+            ->assertOk()->assertViewIs('events::personal.event-officials');
     }
 
     public function test_entry_roster_and_claims_are_json_and_scoped(): void
@@ -806,7 +806,7 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
         [$organiser, , $event] = $this->scenario();
 
         foreach ([
-            'me.events.next-up' => 'personal.mobile.event-next-up',
+            'me.events.next-up' => 'events::personal.mobile.event-next-up',
         ] as $name => $view) {
             $this->asDesktop($organiser)->get(route($name, $event->uuid))
                 ->assertOk()

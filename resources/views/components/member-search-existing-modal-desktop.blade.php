@@ -18,7 +18,7 @@
 
             <div class="flex items-center justify-between p-4 bg-primary text-white rounded-t-lg">
                 <h5 class="text-lg font-medium flex items-center">
-                    <i class="bi bi-search me-2"></i>{{ __('member.search_existing_title') }}
+                    <i class="bi bi-search me-2"></i>{{ __('members::member.search_existing_title') }}
                 </h5>
                 <button type="button" @click="close()" class="text-white hover:text-gray-200 text-2xl leading-none">&times;</button>
             </div>
@@ -29,15 +29,15 @@
                         <div class="relative mb-3">
                             <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                             <input type="text" x-model="q" @input="onSearchInput()"
-                                   placeholder="{{ __('member.search_existing_placeholder') }}"
+                                   placeholder="{{ __('members::member.search_existing_placeholder') }}"
                                    class="w-full ps-10 pe-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                         </div>
 
                         <template x-if="searching">
-                            <p class="text-center text-xs text-muted-foreground py-6">{{ __('member.searching') }}</p>
+                            <p class="text-center text-xs text-muted-foreground py-6">{{ __('members::member.searching') }}</p>
                         </template>
                         <template x-if="!searching && q.length > 0 && results.length === 0">
-                            <p class="text-center text-xs text-muted-foreground py-6">{{ __('member.no_results') }}</p>
+                            <p class="text-center text-xs text-muted-foreground py-6">{{ __('members::member.no_results') }}</p>
                         </template>
 
                         <div class="space-y-2">
@@ -70,37 +70,37 @@
                                 <span class="block text-sm font-bold text-foreground truncate" x-text="selected.name"></span>
                                 <span class="block text-[11px] text-sky-700" x-text="selected.matched_via"></span>
                             </span>
-                            <button type="button" @click="selected = null" class="text-xs font-semibold text-sky-700 flex-shrink-0">{{ __('member.change') }}</button>
+                            <button type="button" @click="selected = null" class="text-xs font-semibold text-sky-700 flex-shrink-0">{{ __('members::member.change') }}</button>
                         </div>
 
-                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('member.relationship_to_you') }}</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('members::member.relationship_to_you') }}</label>
                         <div class="grid grid-cols-3 gap-2 mb-4">
                             <button type="button" @click="type = 'parent'"
                                     class="py-2.5 rounded-lg text-xs font-bold border transition-colors"
                                     :class="type==='parent' ? 'bg-primary border-primary text-white' : 'bg-white border-gray-200 text-foreground'">
-                                {{ __('member.rel_parent') }}
+                                {{ __('members::member.rel_parent') }}
                             </button>
                             <button type="button" @click="type = 'child'"
                                     class="py-2.5 rounded-lg text-xs font-bold border transition-colors"
                                     :class="type==='child' ? 'bg-primary border-primary text-white' : 'bg-white border-gray-200 text-foreground'">
-                                {{ __('member.rel_child') }}
+                                {{ __('members::member.rel_child') }}
                             </button>
                             <button type="button" @click="type = 'spouse'"
                                     class="py-2.5 rounded-lg text-xs font-bold border transition-colors"
                                     :class="type==='spouse' ? 'bg-primary border-primary text-white' : 'bg-white border-gray-200 text-foreground'">
-                                {{ __('member.rel_spouse') }}
+                                {{ __('members::member.rel_spouse') }}
                             </button>
                         </div>
-                        <p class="text-[11px] text-muted-foreground">{{ __('member.link_notice') }}</p>
+                        <p class="text-[11px] text-muted-foreground">{{ __('members::member.link_notice') }}</p>
                     </div>
                 </template>
             </div>
 
             <div class="flex justify-between items-center p-4 bg-gray-50 border-t rounded-b-lg">
-                <button type="button" class="btn btn-secondary" @click="close()">{{ __('member.cancel') }}</button>
+                <button type="button" class="btn btn-secondary" @click="close()">{{ __('members::member.cancel') }}</button>
                 <button type="button" class="btn btn-primary" @click="link()" :disabled="!selected || !type || linking">
-                    <span x-show="!linking"><i class="bi bi-link-45deg me-1"></i>{{ __('member.link_as_family') }}</span>
-                    <span x-show="linking"><span class="inline-block animate-spin me-1">↻</span>{{ __('member.linking') }}</span>
+                    <span x-show="!linking"><i class="bi bi-link-45deg me-1"></i>{{ __('members::member.link_as_family') }}</span>
+                    <span x-show="linking"><span class="inline-block animate-spin me-1">↻</span>{{ __('members::member.linking') }}</span>
                 </button>
             </div>
         </div>
@@ -163,10 +163,10 @@ function memberSearchExistingModal() {
                     window.dispatchEvent(new CustomEvent('family-member-linked'));
                     this.close();
                 } else if (window.showToast) {
-                    window.showToast('error', data.message || '{{ __('member.js_could_not_add') }}');
+                    window.showToast('error', data.message || '{{ __('members::member.js_could_not_add') }}');
                 }
             } catch (e) {
-                if (window.showToast) window.showToast('error', '{{ __('member.js_went_wrong') }}');
+                if (window.showToast) window.showToast('error', '{{ __('members::member.js_went_wrong') }}');
             } finally {
                 this.linking = false;
             }

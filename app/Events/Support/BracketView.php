@@ -346,7 +346,7 @@ class BracketView
     {
         return [
             'competitor_id' => $r->id,
-            'name' => $r->user?->full_name ?: $r->user?->name ?: __('events.athlete'),
+            'name' => $r->user?->full_name ?: $r->user?->name ?: __('events::events.athlete'),
             'seed' => null,
             'country' => $r->countryCode(),
             // Unpaid or not yet weighed in — in the draw, but at risk of coming

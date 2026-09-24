@@ -45,7 +45,7 @@ class UserPhotoController extends Controller
         if ($member->photos()->count() >= self::MAX_PHOTOS) {
             return response()->json([
                 'success' => false,
-                'message' => __('member.photos_limit_reached', ['max' => self::MAX_PHOTOS]),
+                'message' => __('members::member.photos_limit_reached', ['max' => self::MAX_PHOTOS]),
             ], 422);
         }
 
@@ -56,7 +56,7 @@ class UserPhotoController extends Controller
         );
 
         if ($path === null) {
-            return response()->json(['success' => false, 'message' => __('member.photo_invalid')], 422);
+            return response()->json(['success' => false, 'message' => __('members::member.photo_invalid')], 422);
         }
 
         $photo = $member->photos()->create([
@@ -88,7 +88,7 @@ class UserPhotoController extends Controller
         return response()->json([
             'success' => true,
             'url' => $record->url(),
-            'message' => __('member.photo_is_now_avatar'),
+            'message' => __('members::member.photo_is_now_avatar'),
         ]);
     }
 
@@ -113,7 +113,7 @@ class UserPhotoController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('member.photo_removed'),
+            'message' => __('members::member.photo_removed'),
             'avatar_url' => $nextAvatar?->url(),
             'was_avatar' => $wasAvatar,
         ]);

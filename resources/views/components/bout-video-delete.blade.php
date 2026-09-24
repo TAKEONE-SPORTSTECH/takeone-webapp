@@ -71,8 +71,8 @@
         data-label="{{ $label }}"
         data-tile="{{ $tile }}"
         data-shelf="{{ $shelf }}"
-        aria-label="{{ __('events.bout_card_delete') }}"
-        title="{{ __('events.bout_card_delete') }}"
+        aria-label="{{ __('events::events.bout_card_delete') }}"
+        title="{{ __('events::events.bout_card_delete') }}"
         {{ $attributes->merge(['class' => $class]) }}>
     <i class="bi bi-trash3 text-[13px]"></i>
 </button>
@@ -113,12 +113,12 @@
 
             const sure = typeof window.confirmAction === 'function'
                 ? await window.confirmAction({
-                    title: @js(__('events.bout_card_delete_title')),
+                    title: @js(__('events::events.bout_card_delete_title')),
                     message: btn.dataset.label
-                        ? btn.dataset.label + ' — ' + @js(__('events.bout_card_delete_body'))
-                        : @js(__('events.bout_card_delete_body')),
+                        ? btn.dataset.label + ' — ' + @js(__('events::events.bout_card_delete_body'))
+                        : @js(__('events::events.bout_card_delete_body')),
                     type: 'danger',
-                    confirmText: @js(__('events.bout_card_delete')),
+                    confirmText: @js(__('events::events.bout_card_delete')),
                 })
                 : false;
 
@@ -152,7 +152,7 @@
                     return;
                 }
 
-                say('success', data.message || @js(__('events.bout_card_deleted')));
+                say('success', data.message || @js(__('events::events.bout_card_deleted')));
 
                 const tile = btn.closest(btn.dataset.tile || '[data-bout-tile]');
 

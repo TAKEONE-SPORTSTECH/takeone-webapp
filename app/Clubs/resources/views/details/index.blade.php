@@ -1,4 +1,4 @@
-@extends('layouts.admin-club')
+@extends('clubs::layouts.admin-club')
 
 @section('club-admin-content')
 <div class="space-y-6" x-data="{ activeTab: 'basic', showDeleteClubModal: false, showOwnerModal: false, ownerTab: 'existing' }">
@@ -56,7 +56,7 @@
         @csrf
         @method('PUT')
 
-        <x-lang-toggle class="mb-4" />
+        <x-fields.language-toggle class="mb-4" />
 
         <!-- Basic Tab -->
         <div class="tab-content" id="tab-basic" x-show="activeTab === 'basic'">
@@ -138,14 +138,14 @@
                             <label class="form-label">{{ __('admin.club_details_index_club_email_label') }}</label>
                             <input type="email" name="email" class="form-control" value="{{ old('email', $club->email) }}" placeholder="{{ __('admin.club_details_index_club_email_placeholder') }}">
                         </div>
-                        <x-country-dropdown
+                        <x-fields.country
                             name="country"
                             id="countrySelect"
                             :value="old('country', $club->country)"
                             :label="__('admin.club_details_index_country_label')" />
                         <div>
                             <label class="form-label">{{ __('admin.club_details_index_club_phone_label') }}</label>
-                            <x-country-code-dropdown
+                            <x-fields.phone-code
                                 name="phone_code"
                                 id="phoneCode"
                                 :value="old('phone_code', $club->phone['code'] ?? '+973')"
@@ -155,14 +155,14 @@
                                        name="phone_number"
                                        value="{{ old('phone_number', $club->phone['number'] ?? '') }}"
                                        placeholder="12345678">
-                            </x-country-code-dropdown>
+                            </x-fields.phone-code>
                         </div>
-                        <x-currency-dropdown
+                        <x-fields.currency
                             name="currency"
                             id="currencySelect"
                             :value="old('currency', $club->currency)"
                             :label="__('admin.club_details_index_currency_label')" />
-                        <x-timezone-dropdown
+                        <x-fields.timezone
                             name="timezone"
                             id="timezoneSelect"
                             :value="old('timezone', $club->timezone)"
@@ -265,7 +265,7 @@
                     </h5>
                 </div>
                 <div class="card-body space-y-4">
-                    <x-location-map
+                    <x-fields.location-map
                         id="clubDetailsLoc"
                         :lat="old('gps_lat', $club->gps_lat)"
                         :lng="old('gps_long', $club->gps_long)"
@@ -486,12 +486,12 @@
                         <label class="form-label font-medium">{{ __('admin.club_details_index_reg_requirements_label') }}</label>
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_reg_requirements_help') }}</small>
                         <p class="small font-semibold mb-1"><span class="fi fi-gb me-1"></span> {{ __('admin.club_details_index_english') }}</p>
-                        <x-rich-text-editor name="registration_requirements" :value="$club->registration_requirements ?? ''"
+                        <x-fields.rich-text name="registration_requirements" :value="$club->registration_requirements ?? ''"
                             ai-label="Registration requirements" ai-group="registration_requirements"
                             :ai-purpose="'What a new member must provide to register at '.$club->club_name.' — e.g. valid ID/CPR, recent photo, minimum age, medical clearance for contact sports, proof of payment. Present as a short checklist.'"
                             :placeholder="__('admin.club_details_index_reg_requirements_placeholder')" />
                         <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh me-1"></span> {{ __('admin.club_details_index_arabic') }}</p>
-                        <x-rich-text-editor name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
+                        <x-fields.rich-text name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
                             ai-label="Registration requirements (Arabic)" ai-group="registration_requirements"
                             :ai-purpose="'What a new member must provide to register at '.$club->club_name.' — ID/CPR, recent photo, minimum age, medical clearance, proof of payment. Present as a short checklist.'"
                             placeholder="ما يحتاجه الأعضاء للتسجيل…" />
@@ -502,12 +502,12 @@
                         <label class="form-label font-medium">{{ __('admin.club_details_index_terms_conditions_label') }}</label>
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_terms_help') }}</small>
                         <p class="small font-semibold mb-1"><span class="fi fi-gb me-1"></span> {{ __('admin.club_details_index_english') }}</p>
-                        <x-rich-text-editor name="registration_terms" :value="$club->registration_terms ?? ''" min-height="200px"
+                        <x-fields.rich-text name="registration_terms" :value="$club->registration_terms ?? ''" min-height="200px"
                             ai-label="Registration terms & conditions" ai-group="registration_terms"
                             :ai-purpose="'Professional joining terms & conditions for '.$club->club_name.', covering membership, payment and refunds, code of conduct, liability and injury risk, and cancellation. Use clear headed sections.'"
                             :placeholder="__('admin.club_details_index_terms_placeholder')" />
                         <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh me-1"></span> {{ __('admin.club_details_index_arabic') }}</p>
-                        <x-rich-text-editor name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl" min-height="200px"
+                        <x-fields.rich-text name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl" min-height="200px"
                             ai-label="Registration terms & conditions (Arabic)" ai-group="registration_terms"
                             :ai-purpose="'Professional joining terms & conditions for '.$club->club_name.', covering membership, payment and refunds, conduct, liability and injury risk, and cancellation. Use clear headed sections.'"
                             placeholder="شروط وأحكام النادي للانضمام…" />
@@ -526,7 +526,7 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted text-sm mb-4">{{ __('admin.club_details_index_social_media_help') }}</p>
-                    <x-social-links-editor :links="$club->socialLinks" containerId="clubSocialLinksContainer" />
+                    <x-fields.social-links :links="$club->socialLinks" containerId="clubSocialLinksContainer" />
                 </div>
             </div>
         </div>

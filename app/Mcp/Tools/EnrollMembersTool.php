@@ -5,7 +5,7 @@ namespace App\Mcp\Tools;
 use App\Clubs\Models\ClubPackage;
 use App\Members\Models\Membership;
 use App\Members\Models\User;
-use App\Services\SubscriptionService;
+use App\Clubs\Support\SubscriptionService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;

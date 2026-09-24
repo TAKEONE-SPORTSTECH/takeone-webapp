@@ -5,7 +5,7 @@ namespace Tests\Feature\Events;
 use App\Clubs\Models\Tenant;
 use App\Events\Support\EntryMail;
 use App\Events\Support\PublicEntry;
-use App\Mail\EventEntryEmail;
+use App\Events\Mail\EventEntryEmail;
 use App\Members\Models\User;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\EventPublicEntry;

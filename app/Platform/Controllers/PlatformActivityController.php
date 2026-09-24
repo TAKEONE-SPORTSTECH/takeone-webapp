@@ -536,9 +536,9 @@ PROMPT;
             ->orderBy('name')
             ->get();
 
-        $mobile = $request->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.activities');
+        $mobile = $request->attributes->get('is_mobile') && view()->exists('platform::mobile.activities');
 
-        return view($mobile ? 'admin.platform.mobile.activities' : 'admin.platform.activities', compact('activities'));
+        return view($mobile ? 'platform::mobile.activities' : 'platform::activities', compact('activities'));
     }
 
     public function store(Request $request)
