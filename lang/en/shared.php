@@ -927,4 +927,27 @@ return [
     'saving' => 'Saving',
     'clear' => 'Clear',
     'all' => 'All',
+
+    // <x-fields.person-picker>
+    'person_picker_email' => 'Email',
+    'person_picker_member' => 'Find a member',
+    'person_picker_search' => 'Name, phone, email or TakeOne ID…',
+    'person_picker_none' => 'No TakeOne member matches that.',
+    'person_picker_change' => 'Change',
+    'person_picker_searching' => 'Searching…',
+
+    // Club modal — owner by email
+    'tabs_basic_info_owner_email_use' => 'Use',
+    'tabs_basic_info_owner_email_help' => 'Must be the email of an existing TakeOne account.',
+    'tabs_basic_info_owner_email_not_found' => 'No TakeOne account uses that email.',
+    'tabs_basic_info_owner_email_failed' => 'Couldn\'t check that email. Try again.',
+
+    // <x-fields.member-search>
+    'member_search_placeholder' => 'Name, phone, email or TakeOne ID…',
+    'member_search_browse_all' => 'Browse all members',
+
+    // Club contact — borrow a member's email and phone
+    'contact_use_member' => "Use a member's email & phone",
+    'contact_use_member_help' => "No real contact yet? Find a TakeOne member by name, phone, email or TakeOne ID and use theirs.",
+    'contact_used_member' => "Filled with :name's email and phone — edit them any time.",
 ];

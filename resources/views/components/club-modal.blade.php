@@ -211,37 +211,70 @@
         }
     }
 
+    // Every value here is a member's own text (name, email, phone) — built with
+    // textContent / attributes, never HTML strings, so a name can never run as
+    // script in the super-admin's browser.
+    function ownerPickerEl(tag, cls, text) {
+        const el = document.createElement(tag);
+        if (cls) el.className = cls;
+        if (text !== undefined && text !== null) el.textContent = String(text);
+        return el;
+    }
+
+    // getUsers() sends a full URL; older callers passed a storage path.
+    function ownerPickerPhoto(picture) {
+        const p = String(picture || '');
+        return /^(https?:)?\//.test(p) ? p : '/file/' + p;
+    }
+
+    function ownerPickerRow(name, email, mobile, picture) {
+        const row = ownerPickerEl('div', 'flex items-center gap-3');
+        if (picture) {
+            const img = ownerPickerEl('img', 'rounded-full w-12 h-12 object-cover');
+            img.src = ownerPickerPhoto(picture);
+            img.alt = String(name || '');
+            row.appendChild(img);
+        } else {
+            row.appendChild(ownerPickerEl('div', 'rounded-full bg-primary text-white flex items-center justify-center w-12 h-12 text-xl font-semibold', String(name || '?').charAt(0)));
+        }
+        const info = ownerPickerEl('div', 'flex-1');
+        info.appendChild(ownerPickerEl('div', 'font-semibold', name || ''));
+        const meta = ownerPickerEl('div', 'text-sm text-muted-foreground');
+        meta.appendChild(ownerPickerEl('i', 'bi bi-envelope me-1'));
+        meta.appendChild(document.createTextNode(String(email || '')));
+        if (mobile) {
+            const ph = ownerPickerEl('span', 'ms-2');
+            ph.appendChild(ownerPickerEl('i', 'bi bi-phone me-1'));
+            ph.appendChild(document.createTextNode(String(mobile)));
+            meta.appendChild(ph);
+        }
+        info.appendChild(meta);
+        row.appendChild(info);
+        return row;
+    }
+
     function displayUsersInternal(users) {
         const resultsDiv = document.getElementById('userPickerResultsInternal');
         const noResultsDiv = document.getElementById('userPickerNoResultsInternal');
 
         if (!resultsDiv) return;
 
+        resultsDiv.replaceChildren();
+
         if (users.length === 0) {
-            resultsDiv.innerHTML = '';
             if (noResultsDiv) noResultsDiv.style.display = 'block';
             return;
         }
 
         if (noResultsDiv) noResultsDiv.style.display = 'none';
 
-        resultsDiv.innerHTML = users.map(user => `
-            <div class="user-picker-item" onclick="selectUserInternal(${user.id}, '${user.full_name}', '${user.email}', '${user.mobile_formatted || ''}', '${user.profile_picture || ''}')">
-                <div class="flex items-center gap-3">
-                    ${user.profile_picture
-                        ? `<img src="/file/${user.profile_picture}" alt="${user.full_name}" class="rounded-full w-12 h-12 object-cover">`
-                        : `<div class="rounded-full bg-primary text-white flex items-center justify-center w-12 h-12 text-xl font-semibold">${user.full_name.charAt(0)}</div>`
-                    }
-                    <div class="flex-1">
-                        <div class="font-semibold">${user.full_name}</div>
-                        <div class="text-sm text-muted-foreground">
-                            <i class="bi bi-envelope me-1"></i>${user.email}
-                            ${user.mobile_formatted ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${user.mobile_formatted}</span>` : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
+        users.forEach(user => {
+            const mobile = user.mobile_formatted || user.mobile || '';
+            const item = ownerPickerEl('div', 'user-picker-item');
+            item.appendChild(ownerPickerRow(user.full_name, user.email, mobile, user.profile_picture));
+            item.addEventListener('click', () => selectUserInternal(user.id, user.full_name || '', user.email || '', mobile, user.profile_picture || ''));
+            resultsDiv.appendChild(item);
+        });
     }
 
     function selectUserInternal(id, name, email, mobile, picture) {
@@ -253,21 +286,7 @@
 
         const ownerDisplay = document.getElementById('ownerDisplay');
         if (ownerDisplay) {
-            ownerDisplay.innerHTML = `
-                <div class="flex items-center gap-3">
-                    ${picture
-                        ? `<img src="/file/${picture}" alt="${name}" class="rounded-full w-12 h-12 object-cover">`
-                        : `<div class="rounded-full bg-primary text-white flex items-center justify-center w-12 h-12 text-xl font-semibold">${name.charAt(0)}</div>`
-                    }
-                    <div class="flex-1">
-                        <div class="font-semibold">${name}</div>
-                        <div class="text-sm text-muted-foreground">
-                            <i class="bi bi-envelope me-1"></i>${email}
-                            ${mobile ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${mobile}</span>` : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
+            ownerDisplay.replaceChildren(ownerPickerRow(name, email, mobile, picture));
         }
 
         hideUserPicker();

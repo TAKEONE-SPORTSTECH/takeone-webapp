@@ -945,4 +945,26 @@ return [
     'zoom_in' => 'تكبير',
     'zoom_out' => 'تصغير',
 
+    // <x-fields.person-picker>
+    'person_picker_email' => 'البريد الإلكتروني',
+    'person_picker_member' => 'ابحث عن عضو',
+    'person_picker_search' => 'الاسم أو الهاتف أو البريد أو معرّف TakeOne…',
+    'person_picker_none' => 'لا يوجد عضو في TakeOne يطابق ذلك.',
+    'person_picker_change' => 'تغيير',
+    'person_picker_searching' => 'جارٍ البحث…',
+
+    // Club modal — owner by email
+    'tabs_basic_info_owner_email_use' => 'استخدام',
+    'tabs_basic_info_owner_email_help' => 'يجب أن يكون بريد حساب موجود في TakeOne.',
+    'tabs_basic_info_owner_email_not_found' => 'لا يوجد حساب في TakeOne بهذا البريد.',
+    'tabs_basic_info_owner_email_failed' => 'تعذّر التحقق من البريد. حاول مجددًا.',
+
+    // <x-fields.member-search>
+    'member_search_placeholder' => 'الاسم أو الهاتف أو البريد أو معرّف TakeOne…',
+    'member_search_browse_all' => 'تصفح جميع الأعضاء',
+
+    // Club contact — borrow a member's email and phone
+    'contact_use_member' => "استخدم بريد وهاتف عضو",
+    'contact_use_member_help' => "لا توجد بيانات تواصل حقيقية بعد؟ ابحث عن عضو في TakeOne بالاسم أو الهاتف أو البريد أو معرّف TakeOne واستخدم بياناته.",
+    'contact_used_member' => "تم ملؤها ببريد وهاتف :name — يمكنك تعديلها في أي وقت.",
 ];

@@ -3,12 +3,13 @@
 namespace App\Clubs\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreClubRequest;
-use App\Http\Requests\Admin\UpdateClubApiRequest;
+use App\Clubs\Requests\StoreClubRequest;
+use App\Clubs\Requests\UpdateClubApiRequest;
 use App\Clubs\Models\ClubBankAccount;
 use App\Clubs\Models\ClubSocialLink;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
+use App\Members\Support\MemberLookup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -40,6 +41,53 @@ class ClubApiController extends Controller
             });
 
         return response()->json($users);
+    }
+
+    /**
+     * Find a club owner — by name, phone, email or TakeOne ID, through
+     * App\Members\Support\MemberLookup (the one "Find a member" search).
+     * Super-admin only (the route's stack). Shaped for <x-fields.member-search>
+     * plus the id the club forms post as owner_user_id.
+     */
+    public function lookupUsers(Request $request)
+    {
+        return response()->json(['people' => MemberLookup::search((string) $request->query('q', ''))
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->full_name ?: $u->name,
+                'email' => $u->email,
+                'mobile' => $u->mobile_formatted,
+                'photo' => MemberLookup::photo($u),
+                // For "use this member's email & phone" on the club contact fields.
+                'phone_code' => is_array($u->mobile) ? (string) ($u->mobile['code'] ?? '') : '',
+                'phone_number' => is_array($u->mobile) ? (string) ($u->mobile['number'] ?? '') : '',
+            ])->values()]);
+    }
+
+    /**
+     * The one member who uses an email — the club modal's "Email" way of
+     * choosing an owner. Exact match only (no browsing), super-admin only (the
+     * route's stack); the same one answer for a malformed and an unknown email.
+     * Shaped for the modal's own selectUserInternal(): a raw picture path.
+     */
+    public function findUserByEmail(Request $request)
+    {
+        $email = mb_strtolower(trim((string) $request->query('email', '')));
+        $user = filter_var($email, FILTER_VALIDATE_EMAIL) && mb_strlen($email) <= 191
+            ? User::where('email', $email)->first(['id', 'full_name', 'name', 'email', 'mobile', 'profile_picture'])
+            : null;
+
+        if (! $user) {
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json(['found' => true, 'user' => [
+            'id' => $user->id,
+            'full_name' => $user->full_name ?: $user->name,
+            'email' => $user->email,
+            'mobile' => $user->mobile_formatted,
+            'profile_picture' => $user->profile_picture,
+        ]]);
     }
 
     /**
@@ -128,7 +176,7 @@ class ClubApiController extends Controller
     /**
      * Store a new club.
      */
-    public function store(StoreClubRequest $request, \App\Services\ClubCreationService $clubs)
+    public function store(StoreClubRequest $request, \App\Clubs\Support\ClubCreationService $clubs)
     {
         try {
             $club = $clubs->createFromValidatedRequest($request);

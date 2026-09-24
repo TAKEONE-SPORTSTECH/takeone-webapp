@@ -8,6 +8,43 @@
     <h5 class="font-bold mb-3">{{ __('shared.modal_tabs_contact_title') }}</h5>
     <p class="text-muted-foreground mb-4">{{ __('shared.modal_tabs_contact_subtitle') }}</p>
 
+    {{-- No real contact yet? Borrow a TakeOne member's email and phone: switches
+         both to "custom" and fills them. They stay editable and post as typed.
+         Super-admin only — the member search behind it is. --}}
+    @if (auth()->user()?->isSuperAdmin())
+    <div class="mb-4" x-data="{
+            open: false, used: '',
+            use(p) {
+                const tab = $el.parentElement;
+                const pick = (id) => { const r = tab.querySelector('#' + id); if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); } };
+                if (p.email) {
+                    pick('email_option_custom');
+                    const e = tab.querySelector('[name=email]'); if (e) { e.value = p.email; e.dispatchEvent(new Event('input', { bubbles: true })); }
+                }
+                if (p.phone_number) {
+                    pick('phone_option_custom');
+                    const n = tab.querySelector('[name=phone_number]'); if (n) { n.value = p.phone_number; n.dispatchEvent(new Event('input', { bubbles: true })); }
+                    const g = tab.querySelector('[data-phone-group]'); const code = String(p.phone_code || '').trim();
+                    if (g && code && window.Alpine) { const d = Alpine.$data(g); const c = (d.countries || []).find(c => c.code === code); if (c) { d.selectedCode = c.code; d.selectedFlag = c.flag; } }
+                }
+                this.used = p.name; this.open = false;
+            },
+         }" @member-picked="use($event.detail)">
+        <button type="button" @click="open = !open" x-show="!open"
+                class="px-3 py-1.5 rounded-full text-xs font-medium border border-primary text-primary hover:bg-primary hover:text-white transition-colors inline-flex items-center gap-1.5">
+            <i class="bi bi-person-lines-fill"></i>{{ __('shared.contact_use_member') }}
+        </button>
+        <div x-show="open" x-cloak class="rounded-xl border border-gray-100 bg-muted/30 p-3">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <p class="text-xs text-muted-foreground mb-0">{{ __('shared.contact_use_member_help') }}</p>
+                <button type="button" @click="open = false" class="w-7 h-7 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0" aria-label="{{ __('shared.close') }}"><i class="bi bi-x-lg text-xs"></i></button>
+            </div>
+            <x-fields.member-search :search-url="route('admin.api.users.lookup')" input-class="form-control" :placeholder="__('shared.member_search_placeholder')" />
+        </div>
+        <p x-show="used" x-cloak class="text-xs text-green-600 mt-2 mb-0"><i class="bi bi-check-circle-fill me-1"></i><span x-text="@js(__('shared.contact_used_member')).replace(':name', used)"></span></p>
+    </div>
+    @endif
+
     <!-- Club Email -->
     <div class="mb-4">
         <label class="form-label">{{ __('shared.modal_tabs_contact_club_email') }}</label>
@@ -108,7 +145,7 @@
 
         <!-- Custom Phone Input -->
         <div id="customPhoneInput" style="display: {{ ($isEdit && $club->phone) ? 'block' : 'none' }};">
-            <x-country-code-dropdown
+            <x-fields.phone-code
                 name="phone_code"
                 id="phone_code"
                 :value="$isEdit && $club->phone ? ($club->phone['code'] ?? '+973') : old('phone_code', '+973')"
@@ -120,7 +157,7 @@
                        id="phone_number"
                        value="{{ $isEdit && $club->phone ? ($club->phone['number'] ?? '') : old('phone_number') }}"
                        placeholder="12345678">
-            </x-country-code-dropdown>
+            </x-fields.phone-code>
             <small class="text-muted-foreground">{{ __('shared.modal_tabs_contact_phone_hint') }}</small>
         </div>
     </div>
