@@ -26,7 +26,7 @@ window.TAKEONE_STRINGS_SEED = {
   "All": ["الكل", "Tous"], "Upcoming": ["القادمة", "À venir"], "Live": ["مباشر", "En direct"], "Completed": ["مكتملة", "Terminé"], "Planning": ["قيد التخطيط", "En préparation"],
   "Registration open": ["التسجيل مفتوح", "Inscriptions ouvertes"], "Approved": ["مقبول", "Approuvé"], "Pending": ["قيد المراجعة", "En attente"], "Declined": ["مرفوض", "Refusé"],
   "Approve": ["قبول", "Approuver"], "Decline": ["رفض", "Refuser"], "Delete": ["حذف", "Supprimer"], "Delete selected": ["حذف المحدد", "Supprimer la sélection"],
-  "Clear all": ["مسح الكل", "Tout effacer"], "Search": ["بحث", "Rechercher"], "Filter": ["تصفية", "Filtrer"], "Details": ["التفاصيل", "Détails"],
+  "Select competition types": ["اختر أنواع المنافسات", "Choisir les types de compétition"], "Done": ["تم", "Terminé"], "Clear all": ["مسح الكل", "Tout effacer"], "Search": ["بحث", "Rechercher"], "Filter": ["تصفية", "Filtrer"], "Details": ["التفاصيل", "Détails"],
   "Athlete": ["اللاعب", "Athlète"], "Club": ["النادي", "Club"], "Contact": ["التواصل", "Contact"], "National ID": ["الرقم الشخصي", "N° d’identité"],
   "Takeone ID": ["رقم Takeone", "ID Takeone"], "Division": ["الفئة", "Catégorie"], "Nationality": ["الجنسية", "Nationalité"], "Gender": ["الجنس", "Sexe"],
   "Male": ["ذكر", "Homme"], "Female": ["أنثى", "Femme"], "Men": ["رجال", "Hommes"], "Women": ["سيدات", "Femmes"], "Age": ["العمر", "Âge"],

@@ -220,6 +220,34 @@ class FederationApiController extends Controller
     }
 
     /**
+     * The QR code for an event's club invitation — public, like the link it
+     * encodes (the invitation page is what a club opens without signing in).
+     *
+     * The address inside it is built HERE from the event's own uuid, never
+     * taken from the request: this can only ever draw a TakeOne invitation,
+     * so it is not an open QR service anyone could point anywhere. The per-club
+     * personal links carry a secret token and are deliberately not offered.
+     */
+    public function inviteQr(Request $request, FederationEvent $event, string $format): Response
+    {
+        abort_unless(config('federations.enabled'), 404);
+        $url = route('federations.app.invitation').'?event='.rawurlencode($event->uuid);
+
+        $headers = ['Cache-Control' => 'public, max-age=86400', 'X-Content-Type-Options' => 'nosniff'];
+        if ($request->boolean('download')) {
+            $headers['Content-Disposition'] = 'attachment; filename="invitation-qr-'.(Str::slug((string) $event->name) ?: 'event').'.'.$format.'"';
+        }
+
+        if ($format === 'png') {
+            $png = (new \BaconQrCode\Writer(new \BaconQrCode\Renderer\GDLibRenderer(1024, 4)))->writeString($url);
+
+            return response($png, 200, ['Content-Type' => 'image/png'] + $headers);
+        }
+
+        return response(\App\Support\Qr::svg($url, 512, 2), 200, ['Content-Type' => 'image/svg+xml; charset=utf-8'] + $headers);
+    }
+
+    /**
      * A document the organiser attached for clubs to read. Public by design —
      * the invitation page lists it before any club has signed in — reached
      * only by its own uuid, never by a path.
@@ -256,6 +284,42 @@ class FederationApiController extends Controller
     }
 
     /** @return array{root: Federation, manager: bool, sports: array, role: string} */
+    /** The Statistics page's figures — read-only, the viewer's own scope (FederationStatistics). */
+    public function statistics(Request $request, \App\Federations\Services\FederationStatistics $statistics): JsonResponse
+    {
+        $access = $this->access($request);
+
+        return response()->json(['success' => true, 'stats' => $statistics->payload($access)], 200, ['Cache-Control' => 'no-store, private']);
+    }
+
+    /** Clubs page → "Add club": existing platform clubs, by club name or owner name, phone or email. */
+    public function clubSearch(Request $request, \App\Federations\Services\FederationClubPicker $picker): JsonResponse
+    {
+        $access = $this->access($request);
+        abort_unless($picker->mayAdd($access), 403);
+        $data = $request->validate(['q' => ['required', 'string', 'min:2', 'max:80']]);
+
+        return response()->json(['success' => true, 'clubs' => $picker->search($access, $data['q'])], 200, ['Cache-Control' => 'no-store, private']);
+    }
+
+    /** Affiliate an existing club with the viewer's federation; answers with the refreshed club list. */
+    public function clubAdd(Request $request, \App\Federations\Services\FederationClubPicker $picker): JsonResponse
+    {
+        $access = $this->access($request);
+        $data = $request->validate(['club' => ['required', 'string', 'max:120', 'regex:/^[a-z0-9\-]+$/']]);
+        $ok = $picker->add($request->user(), $access, $data['club']);
+
+        return $ok
+            ? response()->json(['success' => true, 'message' => 'Club added.'] + $picker->clubs($access))
+            : response()->json(['success' => false, 'message' => 'That club could not be added.'], 422);
+    }
+
+    /** The club list again — what a `clubs` refresh signal re-fetches. */
+    public function clubList(Request $request, \App\Federations\Services\FederationClubPicker $picker): JsonResponse
+    {
+        return response()->json(['success' => true] + $picker->clubs($this->access($request)), 200, ['Cache-Control' => 'no-store, private']);
+    }
+
     private function access(Request $request): array
     {
         abort_unless(config('federations.enabled'), 404);

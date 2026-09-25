@@ -59,6 +59,8 @@ class DecideClubApplication extends Command
 
             return self::FAILURE;
         }
+        // Open dashboards show the decision without a refresh.
+        \App\Federations\Support\FederationPulse::federation($app->federation);
 
         return self::SUCCESS;
     }

@@ -26,6 +26,17 @@ class FederationAppController extends Controller
 {
     public const HOME = 'Events Dashboard.dc.html';
 
+    /**
+     * Every screen of the dashboard has its own address — /federation/events,
+     * /federation/events/<event uuid>/registrations, /federation/settings… —
+     * all answered by home(); the bridge (takeone-bridge.js › routes) opens the
+     * screen the address names and keeps the address in step as you move.
+     * Also the only shape a sign-in may return to (FederationLoginController).
+     */
+    public const SECTIONS = 'statistics|events|clubs|calendar|athletes|officials|financials|reports|settings';
+
+    public const DEEP_LINK = '#^/federation/('.self::SECTIONS.')(/[A-Za-z0-9-]{1,64}){0,2}/?$#';
+
     public function __construct(private FederationApp $app, private FederationDirectory $directory, private FederationBilling $billing, private FederationEvents $events, private FederationDesk $desk, private FederationDraws $draws, private FederationStrings $strings, private FederationMessages $messages) {}
 
     /**
@@ -100,10 +111,7 @@ class FederationAppController extends Controller
                 'email' => strtolower((string) $user->email),
                 'twoFactor' => $user->hasTwoFactorEnabled(),
             ],
-            'events' => $this->events->payload($access),
-            'fedstore' => $this->desk->store($access),
-            'draws' => $this->draws->payload($access),
-            'messageClubs' => $this->messages->clubMap($access),
+            ...$this->live($access, $user),
             'takeoneBank' => (function () {
                 $b = (array) config('federations.takeone_bank');
                 $iban = preg_replace('/\s+/', '', (string) ($b['iban'] ?? ''));
@@ -111,17 +119,8 @@ class FederationAppController extends Controller
                 return ['beneficiary' => (string) ($b['beneficiary'] ?? ''), 'bank' => $b['bank'] ?? null,
                     'iban' => $iban !== '' ? trim(chunk_split(strtoupper($iban), 4, ' ')) : null, 'swift' => $b['swift'] ?? null];
             })(),
-            // The prototype's own storage keys, filled from the server. The
-            // bridge writes them before the page reads them.
-            'store' => [
-                'fed-orgs' => $this->directory->orgs($root),
-                'fed-users' => $this->directory->users($root, $user, $access),
-                'fed-region' => $this->directory->region($root),
-                'takeone_club_regs' => $this->desk->regs($access),
-                'takeone_strings' => $this->strings->table($access),
-                'fed-messages' => $this->messages->threads($access),
-            ] + $this->billing->payloads($root),
             'urls' => [
+                'state' => \Illuminate\Support\Facades\Route::has('federations.api.state') ? route('federations.api.state') : null,
                 'logout' => route('federations.logout'),
                 'security' => $this->securityUrl(),
                 'orgs' => route('federations.api.orgs'),
@@ -139,10 +138,56 @@ class FederationAppController extends Controller
                 'strings' => route('federations.api.strings'),
                 'messages' => route('federations.api.messages'),
                 'messagesRead' => route('federations.api.messages.read'),
+                // Guarded: a stale route cache must never take the dashboard down.
+                'statistics' => \Illuminate\Support\Facades\Route::has('federations.api.statistics') ? route('federations.api.statistics') : null,
+                'clubs' => \Illuminate\Support\Facades\Route::has('federations.api.clubs') ? route('federations.api.clubs') : null,
+                'clubSearch' => \Illuminate\Support\Facades\Route::has('federations.api.clubs.search') ? route('federations.api.clubs.search') : null,
+                'clubAdd' => \Illuminate\Support\Facades\Route::has('federations.api.clubs.add') ? route('federations.api.clubs.add') : null,
             ],
         ], $base,
             // Live updates: the platform's own MQTT client, and nothing else of the shell.
-            app(\Illuminate\Foundation\Vite::class)(['resources/js/realtime-only.js'])->toHtml()));
+            // ⚠️ The client starts only on a page carrying `rt-user` (realtime.js
+            // boot()) — without it the script loads and never connects, which is
+            // how every live signal here was silently lost.
+            '<meta name="rt-user" content="'.(int) $user->id.'">'."\n"
+            .app(\Illuminate\Foundation\Vite::class)(['resources/js/realtime-only.js'])->toHtml()));
+    }
+
+    /**
+     * Everything on a staff dashboard that changes: the events, the desk's
+     * lists, the draws, who may be messaged, and the prototype's own storage
+     * keys. The page is handed it on load, and asks for it again (state())
+     * whenever a FederationPulse says something in its federation changed.
+     */
+    private function live(array $access, $user): array
+    {
+        $root = $access['root'];
+
+        return [
+            'events' => $this->events->payload($access),
+            'fedstore' => $this->desk->store($access),
+            'draws' => $this->draws->payload($access),
+            'messageClubs' => $this->messages->clubMap($access),
+            // The prototype's own storage keys, filled from the server. The
+            // bridge writes them before the page reads them.
+            'store' => [
+                'fed-orgs' => $this->directory->orgs($root),
+                'fed-users' => $this->directory->users($root, $user, $access),
+                'fed-region' => $this->directory->region($root),
+                'takeone_club_regs' => $this->desk->regs($access),
+                'takeone_strings' => $this->strings->table($access),
+                'fed-messages' => $this->messages->threads($access),
+            ] + $this->billing->payloads($root),
+        ];
+    }
+
+    /** The live half of a staff page, re-read after a FederationPulse — the viewer's own scope only. */
+    public function state(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->ensureEnabled();
+        $access = $this->staffAccess($request);
+
+        return response()->json(['success' => true] + $this->live($access, $request->user()), 200, ['Cache-Control' => 'no-store, private']);
     }
 
     /** The club invitation — public: a club opens it from a link. */

@@ -113,7 +113,9 @@
     return url;
   };
 
+  var savingEvents = {};   // id -> true while its save is on the wire
   window.TakeOneFed.saveEvent = function (ev, comp) {
+    savingEvents[ev.id] = true;
     var docs = (ev.docs || []).slice();
     Promise.all(docs.map(function (d) {
       if (d.uuid) return Promise.resolve({uuid: d.uuid, name: d.name});
@@ -126,6 +128,7 @@
       try { org = comp && comp.curOrg ? comp.curOrg().id : null; } catch (e) {}
       return jsonPost(urls.events, {event: body, orgId: org});
     }).then(function (j) {
+      delete savingEvents[ev.id];
       if (!j.__ok || !j.event) return window.location.reload();
       if (comp && comp.setState) comp.setState(function (st) {
         return {events: (st.events || []).map(function (e) { return e.id === j.event.id ? Object.assign({}, e, j.event) : e; })};
@@ -314,6 +317,7 @@
       if (out.status === 401 || out.status === 419) return window.location.reload();
       if (!out.ok || !out.json || !(r[2] in out.json)) return window.location.reload();
       var server = out.json[r[2]];
+      delete dirty[key];
       put(key, server);
       window.dispatchEvent(new CustomEvent('fedstore-change', {detail: key}));
       // The page keeps some lists in its own state. If the server refused part
@@ -346,10 +350,194 @@
   }
   var lastRegs = ls.getItem('takeone_club_regs');
 
+  // ------------------------------------------------------------ routes
+  // Every screen has its own address, so a screen can be bookmarked, shared,
+  // refreshed and reached with Back/Forward:
+  //
+  //   /federation/<section>                     statistics, events, clubs, …
+  //   /federation/events/<event uuid>/<tab>     overview, statistics,
+  //                                             registrations, divisions, draw,
+  //                                             schedule, financials
+  //   ?filter=<tab>   the small All / Registered / Pending switches
+  //
+  // The server answers every one of them with this same page
+  // (FederationAppController::SECTIONS); this reads the address once the page
+  // is up, opens that screen, and from then on writes the address whenever the
+  // screen changes. The prototype is never edited: its own state (nav, view,
+  // selectedId, tab…) stays the truth, the address is its reflection.
+  var SECTIONS = ['statistics', 'events', 'clubs', 'calendar', 'athletes', 'officials', 'financials', 'reports', 'settings'];
+  var TABS = {overview: 'overview', stats: 'statistics', regs: 'registrations', divs: 'divisions', draw: 'draw', schedule: 'schedule', fin: 'financials'};
+  var TAB_OF = {}; Object.keys(TABS).forEach(function (k) { TAB_OF[TABS[k]] = k; });
+  // Per section, the small tab switch that has its own `?filter=`.
+  var FILTERS = {clubs: 'clubTab', athletes: 'athTab'};
+  var ROOT = '/federation';
+  var routing = false, lastUrl = null;
+
+  function cap(x) { x = String(x || ''); return x.charAt(0).toUpperCase() + x.slice(1); }
+
+  function urlOf(st) {
+    var nav = SECTIONS.indexOf(st.nav) >= 0 ? st.nav : 'statistics';
+    var path = ROOT + '/' + nav, q = '';
+    if (nav === 'events' && st.view === 'detail' && st.selectedId) {
+      path += '/' + encodeURIComponent(st.selectedId) + '/' + (TABS[st.tab] || 'overview');
+    }
+    var fk = FILTERS[nav];
+    if (fk && st[fk] && st[fk] !== 'All') q = '?filter=' + encodeURIComponent(String(st[fk]).toLowerCase());
+    return path + q;
+  }
+
+  function stateOf(loc, comp) {
+    var parts = loc.pathname.replace(/\/+$/, '').split('/').slice(2);   // after /federation
+    var nav = SECTIONS.indexOf(parts[0]) >= 0 ? parts[0] : 'statistics';
+    if (nav === 'settings' && comp.isRestricted && comp.isRestricted()) nav = 'statistics';
+    var st = {nav: nav, view: 'overview'};
+    if (nav === 'events' && parts[1]) {
+      var id = decodeURIComponent(parts[1]);
+      var known = (comp.state.events || []).some(function (e) { return String(e.id) === id; });
+      // An event this viewer cannot see (or that is gone) opens the list — the
+      // same answer whether it exists or not.
+      if (known) { st.view = 'detail'; st.selectedId = id; st.tab = TAB_OF[parts[2]] || 'overview'; }
+    }
+    var fk = FILTERS[nav], f = new URLSearchParams(loc.search).get('filter');
+    if (fk) st[fk] = f ? cap(f) : 'All';
+    return st;
+  }
+
+  function titleOf(st) {
+    var fed = (boot.federation && boot.federation.name) || 'Federation';
+    var label = cap(st.nav);
+    if (st.nav === 'events' && st.view === 'detail') {
+      var ev = (st.events || []).filter(function (e) { return String(e.id) === String(st.selectedId); })[0];
+      if (ev) label = (ev.name || 'Event') + ' · ' + cap(TABS[st.tab] || 'overview');
+    }
+    return label + ' · ' + fed;
+  }
+
+  function sync() {
+    var comp = window.TakeOneFed.comp;
+    if (!comp || routing) return;
+    var url = urlOf(comp.state);
+    if (url === lastUrl) return;
+    var samePath = lastUrl && url.split('?')[0] === lastUrl.split('?')[0];
+    lastUrl = url;
+    try {
+      // A new screen is a history entry; a filter flip on the same screen is not.
+      if (samePath) history.replaceState({fed: 1}, '', url); else history.pushState({fed: 1}, '', url);
+    } catch (e) {}
+    document.title = titleOf(comp.state);
+  }
+
+  function go(loc) {
+    var comp = window.TakeOneFed.comp;
+    if (!comp) return;
+    var st = stateOf(loc, comp);
+    routing = true;
+    comp.setState(st, function () {
+      routing = false;
+      if (st.view === 'detail' && comp.loadClubRegs) comp.loadClubRegs();
+      lastUrl = urlOf(comp.state);
+      // A link to something that is not there is corrected, not kept.
+      if (lastUrl !== loc.pathname.replace(/\/+$/, '') + loc.search) { try { history.replaceState({fed: 1}, '', lastUrl); } catch (e) {} }
+      document.title = titleOf(comp.state);
+    });
+  }
+
+  (function startRoutes(n) {
+    var comp = window.TakeOneFed.comp;
+    if (!comp) { if (n < 200) setTimeout(function () { startRoutes(n + 1); }, 50); return; }
+    // Every change of screen goes through setState: watch it, and write the
+    // address once the change has landed.
+    var set = comp.setState;
+    comp.setState = function () {
+      var r = set.apply(this, arguments);
+      if (!routing) setTimeout(sync, 0);
+      return r;
+    };
+    window.addEventListener('popstate', function () { go(window.location); });
+    go(window.location);
+  })(0);
+
+  // ------------------------------------------------------------ live
+  // Nothing on these pages waits for a refresh. Whenever anything in this
+  // federation changes — a club submits its entry, another staff member
+  // saves, a result is recorded, an invoice is confirmed — the server sends a
+  // FederationPulse ({action: 'refresh'}, no data) and this re-reads the
+  // viewer's own state (/federation/api/state) and hands it to the page,
+  // which redraws in place. A key the page is still saving is left alone:
+  // its own answer is on the way and is newer than this read.
+  var dirty = {};
+  var liveT = null, liveBusy = false, liveAgain = false;
+  function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function applyState(j) {
+    if (!j || !j.success) return;
+    var st = j.store || {};
+    Object.keys(st).forEach(function (k) {
+      if (dirty[k] || inflight[k]) return;
+      var v = typeof st[k] === 'string' ? st[k] : JSON.stringify(st[k]);
+      if (ls.getItem(k) === v) return;
+      put(k, st[k]);
+      if (k === 'takeone_club_regs') {
+        lastRegs = v;
+        try { window.dispatchEvent(new StorageEvent('storage', {key: k})); } catch (e) {}
+      }
+      window.dispatchEvent(new CustomEvent('fedstore-change', {detail: k}));
+    });
+    if (j.draws && !same(j.draws, draws)) {
+      Object.keys(draws).forEach(function (k) { delete draws[k]; });
+      Object.keys(j.draws).forEach(function (k) { draws[k] = j.draws[k]; });
+    }
+    if (j.messageClubs) msgClubs = j.messageClubs;
+    if (j.fedstore && window.TakeOneFed.adoptStaffStore) window.TakeOneFed.adoptStaffStore(j.fedstore);
+    var comp = window.TakeOneFed.comp;
+    if (j.events) {
+      boot.events = j.events;
+      if (comp && comp.setState) comp.setState(function (cs) {
+        var local = cs.events || [], byId = {};
+        local.forEach(function (e) { byId[e.id] = e; });
+        var ids = {};
+        var next = j.events.map(function (e) { ids[e.id] = true; return byId[e.id] ? Object.assign({}, byId[e.id], e) : e; });
+        // One just created here whose save has not landed yet stays.
+        local.forEach(function (e) { if (!ids[e.id] && savingEvents[e.id]) next.unshift(e); });
+        return {events: next};
+      });
+    }
+    if (comp && comp.setState) comp.setState(function (cs) { return {fsTick: (cs.fsTick || 0) + 1}; });
+  }
+  function pull() {
+    if (!urls.state) return;
+    if (liveBusy) { liveAgain = true; return; }
+    liveBusy = true;
+    fetch(urls.state, {credentials: 'same-origin', headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function (r) {
+        if (r.status === 401) { window.location.reload(); return null; }
+        return r.ok ? r.json() : null;
+      })
+      .then(applyState)
+      .catch(function () {})
+      .then(function () { liveBusy = false; if (liveAgain) { liveAgain = false; pull(); } });
+  }
+  function soon() { clearTimeout(liveT); liveT = setTimeout(pull, 300); }
+  window.TakeOneFed.refresh = soon;
+  window.addEventListener('realtime:federation', function (e) {
+    if (e.detail && e.detail.action === 'refresh') soon();
+  });
+  // Signals sent while the connection was down, or while the tab slept, are
+  // gone — so coming back is itself a reason to re-read.
+  var wasConnected = false;
+  window.addEventListener('realtime:status', function (e) {
+    var up = !!(e.detail && e.detail.connected);
+    if (up && wasConnected === 'lost') soon();
+    wasConnected = up ? true : (wasConnected ? 'lost' : false);
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') soon();
+  });
+
   Storage.prototype.setItem = function (key, value) {
     rawSet.call(this, key, value);
     if (this === ls && !quiet && key === 'takeone_club_regs') regsRemoved(value);
     if (this === ls && !quiet && route(key)) {
+      dirty[key] = true;
       clearTimeout(timers[key]);
       timers[key] = setTimeout(function () { send(key); }, 250);
     }

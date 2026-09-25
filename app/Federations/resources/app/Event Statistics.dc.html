@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#eef1f6;font-family:'Poppins',system-ui,sans-serif;color:#1e2c4f;-webkit-font-smoothing:antialiased}
+a{color:#8a6d20}a:hover{color:#1e2c4f}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div style="min-height:100vh;background:#eef1f6;font-family:'Poppins',system-ui,sans-serif;color:#1e2c4f;padding:clamp(16px,3vw,36px);box-sizing:border-box">
+<div style="max-width:1400px;margin:0 auto">
+
+        <sc-if value="{{ es.empty }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box;text-align:center;padding:52px 24px">
+            <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:16px;background:#fdf6e6;border:1px solid #e7cf94;display:grid;place-items:center;color:#8a6d20"><svg width="26" height="26" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-6"></path></svg></div>
+            <div style="font-size:1.05rem;font-weight:700;margin-bottom:6px">No kumite matches yet</div>
+            <p style="margin:0 auto 18px;max-width:440px;font-size:.84rem;line-height:1.6;color:#6b7689">Statistics appear once athletes are registered in kumite divisions and results are entered. You can preview the page with a sample roster.</p>
+            <button onClick="{{ es.showSample }}" style="height:40px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:10px;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;cursor:pointer;box-shadow:0 6px 16px rgba(202,161,79,.3)">Preview with sample data</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ es.ready }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px">
+            <div style="flex:1 1 280px;min-width:0">
+              <div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Kumite individuals &#183; WKF rules</div>
+              <h2 style="margin:4px 0 2px;font-size:1.25rem;font-weight:700">Event statistics</h2>
+              <div style="font-size:.78rem;color:#6b7689">{{ es.sub }}</div>
+            </div>
+            <button onClick="{{ es.exportCsv }}" style="height:40px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="border-color:#caa14f"><svg width="15" height="15" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>Export CSV</button>
+            <button onClick="{{ es.print }}" style="height:40px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:10px;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;cursor:pointer;box-shadow:0 6px 16px rgba(202,161,79,.3)">Print report</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;background:#fdf6e6;border:1px solid #e7cf94;font-size:.76rem;line-height:1.5;color:#7a5a12;margin-bottom:12px"><b style="flex:none">&#9432;</b><span>{{ es.banner }}</span></div>
+
+          <div style="position:sticky;top:0;z-index:30;margin:0 -4px 16px;padding:10px 4px;background:rgba(238,241,246,.94);backdrop-filter:blur(8px);display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;background:#fff;border:1px solid #e3e7ee;border-radius:12px;padding:4px">
+              <sc-for list="{{ es.sections }}" as="c" hint-placeholder-count="5"><button onClick="{{ c.go }}" style="height:32px;padding:0 12px;border:0;border-radius:9px;background:transparent;font-family:inherit;font-size:.76rem;font-weight:600;color:#1e2c4f;cursor:pointer" style-hover="background:#fdf6e6;color:#8a6d20">{{ c.label }}</button></sc-for>
+            </div>
+            <div style="flex:1"></div>
+            <div style="position:relative"><select value="{{ es.fCat }}" onChange="{{ es.onCat }}" aria-label="Category" style="height:40px;padding:0 32px 0 12px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.78rem;font-weight:500;color:#1e2c4f;cursor:pointer;appearance:none;-webkit-appearance:none;max-width:220px"><sc-for list="{{ es.catOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select><span style="position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:.62rem;color:#8a6d20;pointer-events:none">&#9662;</span></div>
+            <div style="position:relative"><select value="{{ es.fRing }}" onChange="{{ es.onRing }}" aria-label="Tatami" style="height:40px;padding:0 32px 0 12px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.78rem;font-weight:500;color:#1e2c4f;cursor:pointer;appearance:none;-webkit-appearance:none;max-width:220px"><sc-for list="{{ es.ringOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select><span style="position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:.62rem;color:#8a6d20;pointer-events:none">&#9662;</span></div>
+            <div style="position:relative"><select value="{{ es.fSes }}" onChange="{{ es.onSes }}" aria-label="Session" style="height:40px;padding:0 32px 0 12px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.78rem;font-weight:500;color:#1e2c4f;cursor:pointer;appearance:none;-webkit-appearance:none;max-width:220px"><option value="all">All day</option><option value="am">Morning (before 13:00)</option><option value="pm">Afternoon (13:00+)</option></select><span style="position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:.62rem;color:#8a6d20;pointer-events:none">&#9662;</span></div>
+            <sc-if value="{{ es.hasFilter }}" hint-placeholder-val="{{ false }}"><button onClick="{{ es.reset }}" style="height:40px;padding:0 12px;border:0;background:transparent;font-family:inherit;font-size:.76rem;font-weight:600;color:#b4483c;cursor:pointer">Reset</button></sc-if>
+          </div>
+
+          <section id="es-overview" style="margin-bottom:18px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:16px">
+              <sc-for list="{{ es.kpis }}" as="k" hint-placeholder-count="6">
+                <div title="{{ k.tip }}" style="background:#fff;border-radius:16px;border:1px solid #e3e7ee;padding:16px;box-shadow:0 8px 24px rgba(30,44,79,.06);position:relative;overflow:hidden">
+                  <span style="{{ k.bar }}"></span>
+                  <div style="font-size:.72rem;font-weight:500;color:#6b7689;margin-bottom:6px">{{ k.label }}</div>
+                  <div style="font-size:1.6rem;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1">{{ k.value }}</div>
+                  <div style="font-size:.7rem;color:#6b7689;margin-top:4px">{{ k.sub }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ es.noData }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box;text-align:center;padding:30px">
+                <div style="font-size:.9rem;font-weight:600;margin-bottom:6px">No completed matches for these filters</div>
+                <button onClick="{{ es.reset }}" style="height:40px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;cursor:pointer">Reset filters</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ es.hasData }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px">
+                <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box;flex:1.4 1 420px">
+                  <div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Pace</div><h3 style="margin:4px 0 14px;font-size:1.02rem;font-weight:700;color:#1e2c4f">Matches completed per hour</h3>
+                  <div style="display:flex;align-items:flex-end;gap:6px;height:170px;border-bottom:1px solid #e3e7ee;padding:0 2px">
+                    <sc-for list="{{ es.hours }}" as="b" hint-placeholder-count="9">
+                      <div title="{{ b.tip }}" style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px"><span style="font-size:.66rem;font-weight:600;color:#1e2c4f;font-variant-numeric:tabular-nums">{{ b.n }}</span><div style="{{ b.bar }}"></div></div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;gap:6px;padding:6px 2px 0"><sc-for list="{{ es.hours }}" as="b" hint-placeholder-count="9"><span style="flex:1;text-align:center;font-size:.64rem;color:#6b7689">{{ b.label }}</span></sc-for></div>
+                  <div style="font-size:.7rem;color:#6b7689;margin-top:8px">{{ es.paceNote }}</div>
+                </div>
+                <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box;flex:1 1 300px">
+                  <div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Results</div><h3 style="margin:4px 0 14px;font-size:1.02rem;font-weight:700;color:#1e2c4f">How matches were won</h3>
+                  <div style="display:flex;flex-direction:column;gap:11px">
+                    <sc-for list="{{ es.winTypes }}" as="w" hint-placeholder-count="6">
+                      <div title="{{ w.tip }}"><div style="display:flex;gap:8px;font-size:.78rem;margin-bottom:5px"><span style="flex:1;color:#1e2c4f">{{ w.label }}</span><b style="font-variant-numeric:tabular-nums">{{ w.n }}</b><span style="width:40px;text-align:right;color:#6b7689">{{ w.pct }}</span></div>
+                      <div style="height:8px;border-radius:4px;background:#eef1f6"><div style="{{ w.bar }}"></div></div></div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
+                <sc-for list="{{ es.highlights }}" as="x" hint-placeholder-count="3">
+                  <div onClick="{{ x.open }}" role="button" tabindex="0" style="background:#fff;border-radius:16px;border:1px solid #e3e7ee;padding:16px;cursor:pointer;display:flex;gap:12px;align-items:flex-start" style-hover="border-color:#caa14f;box-shadow:0 10px 26px rgba(202,161,79,.16)">
+                    <span style="{{ x.icon }}">{{ x.glyph }}</span>
+                    <div style="min-width:0"><div style="font-size:.66rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#6b7689">{{ x.label }}</div><div style="font-size:.9rem;font-weight:700;margin:2px 0">{{ x.cat }}</div><div style="font-size:.74rem;color:#6b7689">{{ x.stat }}</div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </section>
+
+          <section id="es-categories" style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box;margin-bottom:18px">
+            <div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Categories</div><h3 style="margin:4px 0 14px;font-size:1.02rem;font-weight:700;color:#1e2c4f">By age, gender and weight</h3>
+            <div style="overflow-x:auto">
+              <div style="min-width:880px">
+                <div style="display:grid;grid-template-columns:minmax(210px,1.6fr) 70px 96px 72px 84px 76px 76px minmax(170px,1.2fr);gap:10px;padding:0 10px 8px;border-bottom:1px solid #eef1f6;font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4"><span>Category</span><span style="text-align:right">Athletes</span><span style="text-align:right">Matches</span><span style="text-align:right">Avg pts</span><span style="text-align:right">Close</span><span style="text-align:right">Avg bout</span><span style="text-align:right">Penalties</span><span>Leader</span></div>
+                <sc-for list="{{ es.cats }}" as="c" hint-placeholder-count="5">
+                  <div onClick="{{ c.open }}" role="button" tabindex="0" style="display:grid;grid-template-columns:minmax(210px,1.6fr) 70px 96px 72px 84px 76px 76px minmax(170px,1.2fr);gap:10px;align-items:center;padding:11px 10px;border-bottom:1px solid #f1f3f7;cursor:pointer;font-size:.8rem;font-variant-numeric:tabular-nums" style-hover="background:#fbf8f0">
+                    <div style="min-width:0"><div style="font-weight:600">{{ c.label }}</div><div style="font-size:.68rem;color:#6b7689">Tatami {{ c.ring }} &#183; {{ c.status }}</div></div>
+                    <span style="text-align:right">{{ c.athletes }}</span>
+                    <div style="text-align:right"><div>{{ c.matches }}</div><div style="height:4px;border-radius:2px;background:#eef1f6;margin-top:4px"><div style="{{ c.prog }}"></div></div></div>
+                    <span style="text-align:right;font-weight:600">{{ c.avg }}</span>
+                    <span style="text-align:right"><span style="{{ c.closeStyle }}">{{ c.close }}</span></span>
+                    <span style="text-align:right">{{ c.bout }}</span>
+                    <span style="text-align:right">{{ c.pens }}</span>
+                    <span style="font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.leader }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="font-size:.7rem;color:#6b7689;margin-top:10px">Close = decided by 1 point or less, Senshu or Hantei. Click a category to see its matches.</div>
+          </section>
+
+          <section id="es-athletes" style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box;margin-bottom:18px">
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px">
+              <div style="flex:1 1 200px"><div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Athletes</div><h3 style="margin:4px 0 14px;font-size:1.02rem;font-weight:700;color:#1e2c4f;margin-bottom:0">Performance</h3></div>
+              <input value="{{ es.q }}" onChange="{{ es.onQ }}" placeholder="Search athlete or club" aria-label="Search athletes" style="height:40px;width:min(260px,100%);border:1px solid #d5dae3;border-radius:10px;padding:0 12px;font-family:inherit;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+              <div style="display:flex;gap:4px;flex-wrap:wrap"><sc-for list="{{ es.sorts }}" as="o" hint-placeholder-count="4"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div>
+            </div>
+            <div style="overflow-x:auto">
+              <div style="min-width:900px" role="table" aria-label="Athlete performance">
+                <div role="row" style="display:grid;grid-template-columns:34px minmax(180px,1.4fr) minmax(150px,1fr) 64px 60px 60px 64px 64px minmax(140px,1fr);gap:10px;padding:0 10px 8px;border-bottom:1px solid #eef1f6;font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4"><span></span><span>Athlete</span><span>Category</span><span style="text-align:right">W–L</span><span style="text-align:right">Win %</span><span style="text-align:right">Pts for</span><span style="text-align:right">Against</span><span style="text-align:right">Avg / bout</span><span>Top technique</span></div>
+                <sc-for list="{{ es.athletes }}" as="a" hint-placeholder-count="8">
+                  <div role="row" onClick="{{ a.open }}" tabindex="0" style="display:grid;grid-template-columns:34px minmax(180px,1.4fr) minmax(150px,1fr) 64px 60px 60px 64px 64px minmax(140px,1fr);gap:10px;align-items:center;padding:9px 10px;border-bottom:1px solid #f1f3f7;cursor:pointer;font-size:.8rem;font-variant-numeric:tabular-nums" style-hover="background:#fbf8f0">
+                    <span style="width:30px;height:40px;border-radius:7px;background:#fdf6e6;border:1px solid #e7cf94;display:grid;place-items:center;font-size:.62rem;font-weight:700;color:#8a6d20">{{ a.initials }}</span>
+                    <div style="min-width:0"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.name }}</div><div style="font-size:.68rem;color:#6b7689;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.club }}</div></div>
+                    <span style="font-size:.74rem;color:#5d6880">{{ a.cat }}</span>
+                    <span style="text-align:right">{{ a.wl }}</span>
+                    <span style="text-align:right;font-weight:700">{{ a.win }}</span>
+                    <span style="text-align:right">{{ a.pf }}</span>
+                    <span style="text-align:right;color:#6b7689">{{ a.pa }}</span>
+                    <span style="text-align:right">{{ a.avg }}</span>
+                    <span style="font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.tech }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <sc-if value="{{ es.athNone }}" hint-placeholder-val="{{ false }}"><div style="padding:18px;text-align:center;font-size:.8rem;color:#6b7689">No athletes match your search.</div></sc-if>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap"><span style="font-size:.72rem;color:#6b7689">{{ es.athCount }}</span><sc-if value="{{ es.athMore }}" hint-placeholder-val="{{ false }}"><button onClick="{{ es.showMore }}" style="height:40px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.78rem;font-weight:600;color:#1e2c4f;cursor:pointer;height:36px">Show more</button></sc-if></div>
+          </section>
+
+          <section id="es-techniques" style="margin-bottom:18px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
+              <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box">
+                <div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Techniques</div><h3 style="margin:4px 0 14px;font-size:1.02rem;font-weight:700;color:#1e2c4f">Scores by value</h3>
+                <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;margin-bottom:14px"><sc-for list="{{ es.values }}" as="v" hint-placeholder-count="3"><span style="{{ v.seg }}"></span></sc-for></div>
+                <div style="display:flex;flex-direction:column;gap:10px"><sc-for list="{{ es.values }}" as="v" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;font-size:.8rem"><span style="{{ v.sw }}"></span><span style="flex:1"><b>{{ v.name }}</b> <span style="color:#6b7689">{{ v.pts }}</span></span><span style="font-variant-numeric:tabular-nums">{{ v.n }}</span><span style="width:40px;text-align:right;color:#6b7689">{{ v.pct }}</span></div>
+                </sc-for></div>
+                <div style="margin-top:16px;padding-top:12px;border-top:1px solid #eef1f6;font-size:.76rem;color:#1e2c4f">{{ es.senshuLine }}</div>
+              </div>
+              <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box">
+                <div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Techniques</div><h3 style="margin:4px 0 14px;font-size:1.02rem;font-weight:700;color:#1e2c4f">Most effective techniques</h3>
+                <div style="display:flex;flex-direction:column;gap:10px"><sc-for list="{{ es.techs }}" as="t" hint-placeholder-count="6">
+                  <div><div style="display:flex;gap:8px;font-size:.78rem;margin-bottom:5px"><span style="flex:1">{{ t.name }}</span><span style="color:#6b7689">{{ t.n }} scores</span><b style="width:52px;text-align:right;font-variant-numeric:tabular-nums">{{ t.pts }} pts</b></div>
+                  <div style="height:8px;border-radius:4px;background:#eef1f6"><div style="{{ t.bar }}"></div></div></div>
+                </sc-for></div>
+              </div>
+              <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box">
+                <div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Techniques</div><h3 style="margin:4px 0 14px;font-size:1.02rem;font-weight:700;color:#1e2c4f">Target area and timing</h3>
+                <div style="display:flex;height:34px;border-radius:10px;overflow:hidden;margin-bottom:8px;font-size:.74rem;font-weight:600">
+                  <div style="{{ es.jodanStyle }}">Jodan {{ es.jodanPct }}</div><div style="{{ es.chudanStyle }}">Chudan {{ es.chudanPct }}</div>
+                </div>
+                <div style="font-size:.7rem;color:#6b7689;margin-bottom:16px">Share of all scoring techniques by target (head / body).</div>
+                <div style="font-size:.74rem;font-weight:600;margin-bottom:8px">When points are scored in the bout</div>
+                <div style="display:flex;align-items:flex-end;gap:6px;height:100px;border-bottom:1px solid #e3e7ee">
+                  <sc-for list="{{ es.timing }}" as="b" hint-placeholder-count="6"><div title="{{ b.tip }}" style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px"><span style="font-size:.62rem;color:#1e2c4f">{{ b.n }}</span><div style="{{ b.bar }}"></div></div></sc-for>
+                </div>
+                <div style="display:flex;gap:6px;padding-top:5px"><sc-for list="{{ es.timing }}" as="b" hint-placeholder-count="6"><span style="flex:1;text-align:center;font-size:.6rem;color:#6b7689">{{ b.label }}</span></sc-for></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="es-rings" style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0;box-sizing:border-box;margin-bottom:18px">
+            <div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Operations</div><h3 style="margin:4px 0 14px;font-size:1.02rem;font-weight:700;color:#1e2c4f">Tatami</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+              <sc-for list="{{ es.rings }}" as="r" hint-placeholder-count="4">
+                <div style="border:1px solid #e3e7ee;border-radius:14px;padding:14px">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="width:34px;height:34px;border-radius:10px;background:#1e2c4f;color:#edcd85;display:grid;place-items:center;font-size:.8rem;font-weight:700">{{ r.n }}</span><div style="flex:1"><div style="font-size:.86rem;font-weight:700">Tatami {{ r.n }}</div><div style="font-size:.68rem;color:#6b7689">{{ r.cats }}</div></div><span style="{{ r.stStyle }}">{{ r.st }}</span></div>
+                  <div style="height:6px;border-radius:3px;background:#eef1f6;margin-bottom:10px"><div style="{{ r.prog }}"></div></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.7rem;color:#6b7689">
+                    <div>Matches<b style="display:block;font-size:.9rem;color:#1e2c4f">{{ r.done }}</b></div>
+                    <div>Avg per match<b style="display:block;font-size:.9rem;color:#1e2c4f">{{ r.avg }}</b></div>
+                    <div>Mat in use<b style="display:block;font-size:.9rem;color:#1e2c4f">{{ r.util }}</b></div>
+                    <div>vs schedule<b style="{{ r.delayStyle }}">{{ r.delay }}</b></div>
+                  </div>
+                  <div style="font-size:.7rem;color:#5d6880;margin-top:10px;padding-top:8px;border-top:1px solid #f1f3f7">{{ r.next }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size:.7rem;color:#6b7689;margin-top:10px">Schedule assumes 4-minute slots from 09:00. Referee assignments are not tracked yet.</div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ es.modalOpen }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ es.closeModal }}" style="position:fixed;inset:0;background:rgba(30,44,79,.5);z-index:85;display:grid;place-items:center;padding:20px">
+            <div onClick="{{ stopEvt }}" role="dialog" aria-modal="true" style="background:#fff;border-radius:20px;border-top:4px solid #d8b25f;max-width:640px;width:100%;max-height:88vh;overflow:auto;scrollbar-width:thin;padding:24px;box-sizing:border-box;box-shadow:0 30px 80px rgba(30,44,79,.35);animation:rise .22s ease both">
+              <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+                <sc-if value="{{ es.m.isAth }}" hint-placeholder-val="{{ false }}"><span style="width:54px;height:72px;flex:none;border-radius:10px;background:#fdf6e6;border:1px solid #e7cf94;display:grid;place-items:center;font-size:.9rem;font-weight:700;color:#8a6d20">{{ es.m.initials }}</span></sc-if>
+                <div style="flex:1;min-width:0"><div style="font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">{{ es.m.eyebrow }}</div><div style="font-size:1.15rem;font-weight:700;margin-top:2px">{{ es.m.title }}</div><div style="font-size:.76rem;color:#6b7689;margin-top:2px">{{ es.m.sub }}</div></div>
+                <button onClick="{{ es.closeModal }}" aria-label="Close" style="width:34px;height:34px;flex:none;border:1px solid #d5dae3;border-radius:9px;background:#fff;color:#6b7689;cursor:pointer" style-hover="border-color:#caa14f;color:#1e2c4f">&#10005;</button>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px">
+                <sc-for list="{{ es.m.stats }}" as="t" hint-placeholder-count="4"><div style="padding:10px 12px;border-radius:12px;background:#f7f8fb;border:1px solid #eef1f6"><div style="font-size:.64rem;color:#6b7689">{{ t.label }}</div><div style="font-size:1rem;font-weight:700;margin-top:2px">{{ t.value }}</div></div></sc-for>
+              </div>
+              <sc-if value="{{ es.m.isAth }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:.7rem;font-weight:600;color:#6b7689;margin-bottom:6px">Target split</div>
+                <div style="display:flex;height:24px;border-radius:8px;overflow:hidden;margin-bottom:16px;font-size:.68rem;font-weight:600"><div style="{{ es.m.jodan }}">Jodan {{ es.m.jodanPct }}</div><div style="{{ es.m.chudan }}">Chudan {{ es.m.chudanPct }}</div></div>
+              </sc-if>
+              <div style="font-size:.7rem;font-weight:600;color:#6b7689;margin-bottom:8px">{{ es.m.listTitle }}</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{ es.m.matches }}" as="x" hint-placeholder-count="3">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:#f7f8fb;font-size:.78rem">
+                    <div style="min-width:0;display:flex;align-items:center;gap:8px"><span style="width:8px;height:22px;border-radius:3px;background:#c0392b;flex:none"></span><span style="{{ x.aStyle }}">{{ x.a }}</span></div>
+                    <div style="text-align:center"><div style="font-weight:700;font-variant-numeric:tabular-nums">{{ x.score }}</div><div style="font-size:.6rem;color:#6b7689;white-space:nowrap">{{ x.meta }}</div></div>
+                    <div style="min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:8px"><span style="{{ x.bStyle }}">{{ x.b }}</span><span style="width:8px;height:22px;border-radius:3px;background:#2f5fa8;flex:none"></span></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  // Event statistics — kumite individuals (WKF). Standalone copy of the dashboard's event Statistics tab.
+  // Inputs (props): event = {id, name, status, mats, breakOn, breakFrom, breakTo}
+  //                 regs  = [{name, club, gender:'M'|'F', ageGroup, division:'Kumite -67 kg'}]
+  // Without regs it shows the empty state with a sample-data preview.
+  state = {esSample: false, esCat: 'all', esRing: 'all', esSession: 'all', esSort: 'win', esQ: '', esPage: 1, esModal: null};
+  get events() { return [this.props.event || {id: 'demo', name: 'Gulf Karate Open 2026', status: 'Live', mats: 4}]; }
+  cssToObj(str) { const o = {}; String(str).split(';').forEach(p => { const i = p.indexOf(':'); if (i < 0) return; const key = p.slice(0, i).trim(); if (!key) return; o[key.replace(/-([a-z])/g, (m, c) => c.toUpperCase())] = p.slice(i + 1).trim(); }); return o; }
+  esSampleRoster() {
+    const fm = ['Hamad','Ali','Yusuf','Omar','Khalid','Hussain','Ahmed','Mohamed','Abdulla','Faisal','Jassim','Rashid','Salman','Isa','Nasser','Majed'];
+    const ff = ['Noor','Maryam','Fatema','Zainab','Reem','Aisha','Layla','Sara','Hawra','Dana','Latifa','Shaikha','Amna','Mai','Ruqaya','Hessa'];
+    const ln = ['Al Sayed','Jaber','Al Doseri','Janahi','Al Noaimi','Radhi','Buhiji','Al Aradi','Karimi','Al Ansari','Al Qassab','Mubarak','Al Mahmood','Fakhro','Al Khaja','Kanoo'];
+    const clubs = ['Bahrain Karate Union','Manama Karate Club','Riffa Karate Center','Manama Fight Lab','Busaiteen Shotokan Dojo','Hamad Town Karate Club','Zallaq Karate Academy','Falcon Dojo, Dubai'];
+    const divs = [['M','Séniors','Kumite -67 kg',12],['M','Séniors','Kumite -75 kg',10],['F','Séniors','Kumite -55 kg',8],['M','Juniors','Kumite -61 kg',11],['F','Juniors','Kumite -53 kg',9],['M','Cadets','Kumite -57 kg',14],['F','Cadets','Kumite -47 kg',7]];
+    const out = [];
+    divs.forEach(([g, age, div, n], di) => { for (let i = 0; i < n; i++) out.push({name: (g === 'M' ? fm : ff)[(i * 7 + di * 3) % 16] + ' ' + ln[(i * 5 + di * 11) % 16], club: clubs[(i * 3 + di) % clubs.length], gender: g, ageGroup: age, division: div}); });
+    return out;
+  }
+  esHash(str) { let x = 2166136261; for (let i = 0; i < str.length; i++) { x ^= str.charCodeAt(i); x = Math.imul(x, 16777619); } return x >>> 0; }
+  esRng(seed) { let a = seed; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  esSim(A, B, r, limit) {
+    const pR = Math.min(.8, Math.max(.2, .5 + (A.str - B.str) * .45));
+    const n = Math.floor(r() * 6) + (r() < .85 ? 1 : 0);
+    const times = Array.from({length: n}, () => Math.round(r() * (limit - 3)) + 2).sort((x, y) => x - y);
+    let acts = [], end = limit, early = false;
+    const tally = () => acts.reduce((o, x) => { o[x.side] += x.v; return o; }, {a: 0, b: 0});
+    for (const t of times) {
+      const side = r() < pR ? 'a' : 'b', x = r(), v = x < .62 ? 1 : x < .87 ? 2 : 3; let tech, tgt;
+      if (v === 1) { tech = r() < .68 ? 'Gyaku-zuki' : 'Kizami-zuki'; tgt = r() < .58 ? 'Jodan' : 'Chudan'; }
+      else if (v === 2) { tech = r() < .74 ? 'Chudan mawashi-geri' : 'Ushiro-geri'; tgt = 'Chudan'; }
+      else { const y = r(); tech = y < .55 ? 'Jodan mawashi-geri' : y < .75 ? 'Ura-mawashi-geri' : 'Sweep + punch'; tgt = tech === 'Sweep + punch' ? 'Chudan' : 'Jodan'; }
+      acts.push({t, side, v, tech, tgt});
+      const sc = tally(); if (Math.abs(sc.a - sc.b) >= 8) { early = true; end = t; break; }
+    }
+    const pens = [], np = Math.floor(r() * r() * 4);
+    for (let i = 0; i < np; i++) { const x = r(); pens.push({t: Math.round(r() * end), side: r() < .5 ? 'a' : 'b', type: x < .55 ? 'Chukoku' : x < .85 ? 'Keikoku' : x < .97 ? 'Hansoku-chui' : 'Hansoku'}); }
+    pens.sort((x, y) => x.t - y.t);
+    const hans = pens.find(p => p.type === 'Hansoku'), kiken = !hans && !early && r() < .015;
+    let w, type;
+    if (hans) { end = Math.min(end, hans.t); acts = acts.filter(x => x.t <= end); w = hans.side === 'a' ? 'b' : 'a'; type = 'Hansoku'; }
+    else if (kiken) { end = Math.max(10, Math.round(end * r())); acts = acts.filter(x => x.t <= end); w = r() < .5 ? 'a' : 'b'; type = 'Kiken'; }
+    const sc = tally(), first = acts[0] ? acts[0].side : null;
+    if (!type) {
+      if (early) { w = sc.a > sc.b ? 'a' : 'b'; type = '8-point gap'; }
+      else if (sc.a !== sc.b) { w = sc.a > sc.b ? 'a' : 'b'; type = 'Points'; }
+      else if (first) { w = first; type = 'Senshu'; }
+      else { w = r() < pR ? 'a' : 'b'; type = 'Hantei'; }
+    }
+    return {A, B, sa: sc.a, sb: sc.b, acts, pens: pens.filter(p => p.t <= end), w, type, first, bout: end, wall: Math.round(end * 1.55 + 50 + r() * 40)};
+  }
+  esBuild(ev, regs, sample) {
+    const key = [ev.id, ev.status, ev.mats, ev.breakOn, ev.breakFrom, sample, regs.map(r => r.name + r.division + r.gender).join('|')].join('~');
+    if (this._esC && this._esC.key === key) return this._esC.data;
+    const groups = {};
+    regs.forEach(r => { const g = r.gender === 'F' ? 'F' : 'M', age = r.ageGroup || 'Séniors', k = g + '|' + age + '|' + r.division;
+      (groups[k] = groups[k] || []).push({name: r.name, club: r.club || '—', id: r.name + '@' + (r.club || ''), cat: k}); });
+    const rings = Math.max(1, Math.min(8, parseInt(ev.mats) || 4));
+    const clock = Array(rings).fill(9 * 3600), plan = Array(rings).fill(9 * 3600);
+    const toS = x => { const p = String(x || '').split(':'); return (+p[0] || 0) * 3600 + (+p[1] || 0) * 60; };
+    const brk = ev.breakOn && ev.breakFrom && ev.breakTo ? [toS(ev.breakFrom), toS(ev.breakTo)] : null;
+    const matches = [], cats = [];
+    Object.keys(groups).sort().forEach((gk, gi) => {
+      const [g, age, div] = gk.split('|'), r = this.esRng(this.esHash(gk + ev.id));
+      const list = groups[gk].slice().sort((a, b) => this.esHash(a.id + ev.id) - this.esHash(b.id + ev.id));
+      list.forEach(a => { a.str = (this.esHash(a.id) % 1000) / 1000; });
+      const ring = gi % rings, limit = age === 'Séniors' || /^Vét/.test(age) ? 180 : 120;
+      cats.push({key: gk, label: (g === 'F' ? 'Female' : 'Male') + ' ' + age + ' · ' + div.replace(/^Kumite\s*/i, ''), athletes: list.length, ring: ring + 1});
+      let size = 1; while (size < list.length) size *= 2;
+      let slots = Array(size).fill(null), p = 0;
+      for (let i = 0; i < size && p < list.length; i += 2) slots[i] = list[p++];
+      for (let i = 1; i < size && p < list.length; i += 2) slots[i] = list[p++];
+      while (slots.length > 1) {
+        const rn = {2: 'Final', 4: 'Semi-final', 8: 'Quarter-final'}[slots.length] || 'Round of ' + slots.length, next = [];
+        for (let i = 0; i < slots.length; i += 2) {
+          const a = slots[i], b = slots[i + 1];
+          if (!a || !b) { next.push(a || b); continue; }
+          const m = this.esSim(a, b, r, limit);
+          let st = clock[ring]; if (brk && st >= brk[0] && st < brk[1]) st = brk[1];
+          Object.assign(m, {cat: gk, round: rn, ring: ring + 1, start: st, plan: plan[ring], no: matches.length + 1});
+          plan[ring] += 240; clock[ring] = st + m.wall + 45;
+          matches.push(m); next.push(m.w === 'a' ? a : b);
+        }
+        slots = next;
+      }
+    });
+    matches.sort((x, y) => x.start - y.start);
+    const ratio = sample || ev.status === 'Completed' ? 1 : ev.status === 'Live' ? .72 : 1;
+    const cut = Math.ceil(matches.length * ratio);
+    matches.forEach((m, i) => { m.done = i < cut; m.no = i + 1; });
+    const data = {matches, cats, rings, athletes: regs.length};
+    this._esC = {key, data};
+    return data;
+  }
+  evStatsVals() {
+    const s = this.state, ev = (s.events || []).find(e => e.id === s.selectedId) || {};
+    const css = x => this.cssToObj(x);
+    let regs = (s.regs || []).filter(r => /^kumite/i.test(r.division || ''));
+    const sample = !regs.length && !!s.esSample;
+    if (sample) regs = this.esSampleRoster();
+    const blank = {kpis: [], sections: [], m: {stats: [], matches: []}};
+    if (!regs.length) return {...blank, empty: true, ready: false, showSample: () => this.setState({esSample: true})};
+    const D = this.esBuild(ev, regs, sample);
+    const hhmm = t => String(Math.floor(t / 3600)).padStart(2, '0') + ':' + String(Math.floor(t % 3600 / 60)).padStart(2, '0');
+    const mmss = t => Math.floor(t / 60) + ':' + String(Math.round(t % 60)).padStart(2, '0');
+    const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+    const avgOf = (arr, f) => arr.length ? arr.reduce((x, m) => x + f(m), 0) / arr.length : 0;
+    const fc = s.esCat || 'all', fr = s.esRing || 'all', fs = s.esSession || 'all';
+    const timeOk = m => fs === 'all' || (fs === 'am' ? m.start < 13 * 3600 : m.start >= 13 * 3600);
+    const ringOk = m => fr === 'all' || String(m.ring) === fr;
+    const all = D.matches.filter(m => (fc === 'all' || m.cat === fc) && ringOk(m) && timeOk(m));
+    const F = all.filter(m => m.done), n = F.length;
+    const isClose = m => Math.abs(m.sa - m.sb) <= 1 || m.type === 'Senshu' || m.type === 'Hantei';
+    const pts = F.reduce((x, m) => x + m.sa + m.sb, 0), pens = F.reduce((x, m) => x + m.pens.length, 0);
+    const hans = F.reduce((x, m) => x + m.pens.filter(p => /^Hansoku/.test(p.type)).length, 0);
+    const withFirst = F.filter(m => m.first), fsWin = pct(withFirst.filter(m => m.first === m.w).length, withFirst.length);
+    const catOf = k => D.cats.find(c => c.key === k) || {label: k};
+    const nameOf = (m, side) => side === 'a' ? m.A.name : m.B.name;
+    const openCat = k => this.setState({esModal: {type: 'cat', key: k}});
+    const openAth = id => this.setState({esModal: {type: 'ath', id}});
+    const scrollTo = id => { const el = document.getElementById(id); if (!el) return; let p = el.parentElement;
+      while (p && p !== document.body && !((/(auto|scroll)/).test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight)) p = p.parentElement;
+      if (p && p !== document.body) p.scrollTop += el.getBoundingClientRect().top - p.getBoundingClientRect().top - 130;
+      else window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - 130, behavior: 'smooth'}); };
+    const bar = (w, col) => css('height:100%;border-radius:4px;background:' + col + ';width:' + Math.max(0, Math.min(100, w)) + '%');
+    const kc = ['#d8b25f', '#1e2c4f', '#2f7a4f', '#a8620f', '#b4483c', '#2f5fa8'];
+    const v = {ready: true, empty: false, noData: n === 0, hasData: n > 0,
+      sub: (ev.name || 'Event') + ' · ' + D.cats.length + ' categories · ' + D.athletes + ' athletes · ' + D.rings + ' tatami',
+      banner: sample ? 'Sample data: this event has no kumite registrations yet, so a demo roster of ' + D.athletes + ' athletes is shown.' : 'Live scoring is not connected yet. Results are simulated from the ' + D.athletes + ' registered kumite athletes so the layout can be reviewed.',
+      sections: [['es-overview', 'Overview'], ['es-categories', 'Categories'], ['es-athletes', 'Athletes'], ['es-techniques', 'Techniques'], ['es-rings', 'Tatami']].map(([id, label]) => ({label, go: () => scrollTo(id)})),
+      fCat: fc, fRing: fr, fSes: fs,
+      catOpts: [{value: 'all', label: 'All categories'}, ...D.cats.map(c => ({value: c.key, label: c.label}))],
+      ringOpts: [{value: 'all', label: 'All tatami'}, ...Array.from({length: D.rings}, (_, i) => ({value: String(i + 1), label: 'Tatami ' + (i + 1)}))],
+      onCat: e => this.setState({esCat: e.target.value, esPage: 1}), onRing: e => this.setState({esRing: e.target.value, esPage: 1}), onSes: e => this.setState({esSession: e.target.value, esPage: 1}),
+      hasFilter: fc !== 'all' || fr !== 'all' || fs !== 'all', reset: () => this.setState({esCat: 'all', esRing: 'all', esSession: 'all', esPage: 1}),
+      print: () => window.print()
+    };
+    v.kpis = [
+      ['Matches completed', n + ' / ' + all.length, (all.length - n) + ' remaining', 'Completed matches out of all scheduled bouts in the filter'],
+      ['Avg bout time', mmss(avgOf(F, m => m.bout)), 'Wall time ' + mmss(avgOf(F, m => m.wall)) + ' incl. stoppages', 'Match clock time; wall time includes stoppages and bowing'],
+      ['Avg points per match', avgOf(F, m => m.sa + m.sb).toFixed(1), pts + ' points scored', 'Both athletes combined'],
+      ['Close matches', pct(F.filter(isClose).length, n) + '%', F.filter(isClose).length + ' by ≤1 pt, Senshu or Hantei', 'Decided by one point or less, first-score advantage, or judges'],
+      ['Penalties', String(pens), (n ? (pens / n).toFixed(2) : '0.00') + ' per match · ' + hans + ' Hansoku', 'Chukoku, Keikoku, Hansoku-chui and Hansoku'],
+      ['Scoring first wins', fsWin + '%', withFirst.length + ' bouts with a score', 'Share of bouts won by the athlete who scored first (Senshu holder)']
+    ].map(([label, value, sub, tip], i) => ({label, value, sub, tip, bar: css('position:absolute;left:0;top:0;right:0;height:3px;background:' + kc[i])}));
+    const endH = Math.max(17, ...F.map(m => Math.floor((m.start + m.wall) / 3600)));
+    const hrs = []; for (let hh = 9; hh <= endH; hh++) hrs.push(hh);
+    const hc = hrs.map(hh => F.filter(m => Math.floor((m.start + m.wall) / 3600) === hh).length), hMax = Math.max(1, ...hc), peak = hc.indexOf(Math.max(...hc));
+    v.hours = hrs.map((hh, i) => ({label: String(hh).padStart(2, '0'), n: String(hc[i] || ''), tip: hc[i] + ' matches finished ' + hh + ':00–' + (hh + 1) + ':00',
+      bar: css('width:100%;border-radius:6px 6px 0 0;background:' + (i === peak ? 'linear-gradient(180deg,#edcd85,#d0a854)' : '#1e2c4f') + ';height:' + (hc[i] / hMax * 100) + '%;min-height:' + (hc[i] ? 3 : 0) + 'px')}));
+    v.paceNote = n ? 'Peak ' + String(hrs[peak]).padStart(2, '0') + ':00–' + String(hrs[peak] + 1).padStart(2, '0') + ':00 with ' + hc[peak] + ' matches. First bout ' + hhmm(Math.min(...F.map(m => m.start))) + ', last finish ' + hhmm(Math.max(...F.map(m => m.start + m.wall))) + '.' : '';
+    const wt = [['Points', 'Higher score at the end of the bout'], ['8-point gap', 'Technical superiority: bout stopped at an 8-point lead'], ['Senshu', 'Level score; first unopposed score wins'], ['Hantei', 'Level score, no Senshu: judges decide'], ['Hansoku', 'Opponent disqualified from the bout'], ['Kiken', 'Opponent withdrew or could not continue']];
+    const wMax = Math.max(1, ...wt.map(([k]) => F.filter(m => m.type === k).length));
+    v.winTypes = wt.map(([k, tip], i) => { const c = F.filter(m => m.type === k).length; return {label: k, tip, n: String(c), pct: pct(c, n) + '%', bar: bar(c / wMax * 100, i === 0 ? '#1e2c4f' : i === 1 ? '#2f7a4f' : i < 4 ? '#d8b25f' : '#b4483c')}; });
+    const catRows = D.cats.map(c => { const cm = D.matches.filter(m => m.cat === c.key && ringOk(m) && timeOk(m)), cd = cm.filter(m => m.done);
+      const wins = {}; cd.forEach(m => { const wn = m.w === 'a' ? m.A : m.B; wins[wn.id] = wins[wn.id] || {a: wn, n: 0}; wins[wn.id].n++; });
+      const lead = Object.values(wins).sort((x, y) => y.n - x.n)[0];
+      const fin = cm.find(m => m.round === 'Final');
+      return {c, cm, cd, avg: avgOf(cd, m => m.sa + m.sb), close: pct(cd.filter(isClose).length, cd.length), pens: cd.reduce((x, m) => x + m.pens.length, 0),
+        status: c.athletes < 2 ? c.athletes + ' athlete · no bouts (walkover)' : !cm.length ? (fr !== 'all' || fs !== 'all' ? 'no matches in filter' : 'no bouts scheduled') : fin && fin.done ? 'Champion: ' + (fin.w === 'a' ? fin.A.name : fin.B.name) : cd.length === cm.length ? 'complete' : cd.length ? 'in progress' : 'not started',
+        leader: lead ? lead.a.name + ' · ' + lead.n + ' win' + (lead.n > 1 ? 's' : '') : '—'}; });
+    v.cats = catRows.filter(x => fc === 'all' || x.c.key === fc).map(x => ({label: x.c.label, ring: x.c.ring, status: x.status, athletes: x.c.athletes, matches: x.cd.length + ' / ' + x.cm.length,
+      prog: css('height:100%;border-radius:2px;background:#d8b25f;width:' + pct(x.cd.length, x.cm.length) + '%'),
+      avg: x.cd.length ? x.avg.toFixed(1) : '—', close: x.cd.length ? x.close + '%' : '—',
+      closeStyle: css('font-weight:600;padding:2px 8px;border-radius:999px;' + (x.close >= 40 ? 'color:#a8620f;background:#fdf1e0' : 'color:#1e2c4f;background:#eef1f6')),
+      bout: x.cd.length ? mmss(avgOf(x.cd, m => m.bout)) : '—', pens: String(x.pens), leader: x.leader, open: () => openCat(x.c.key)}));
+    const elig = catRows.filter(x => x.cd.length >= 2);
+    const pick = f => elig.slice().sort((a, b) => f(b) - f(a))[0];
+    const hl = [['Highest scoring', pick(x => x.avg), x => x.avg.toFixed(1) + ' points per match', '#2f7a4f', '▲'], ['Most competitive', pick(x => x.close), x => x.close + '% close matches', '#a8620f', '≈'], ['Most penalties', pick(x => x.pens / x.cd.length), x => (x.pens / x.cd.length).toFixed(2) + ' penalties per match', '#b4483c', '!']];
+    v.highlights = hl.filter(x => x[1]).map(([label, x, f, col, g]) => ({label, cat: x.c.label, stat: f(x), glyph: g, open: () => openCat(x.c.key),
+      icon: css('width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;font-weight:700;color:' + col + ';background:' + col + '1a;border:1px solid ' + col + '40')}));
+    const A = {};
+    F.forEach(m => ['a', 'b'].forEach(sd => { const at = sd === 'a' ? m.A : m.B, o = sd === 'a' ? 'b' : 'a';
+      const e = A[at.id] = A[at.id] || {at, w: 0, l: 0, pf: 0, pa: 0, tech: {}, tgt: {Jodan: 0, Chudan: 0}, pens: 0, first: 0, ms: []};
+      if (m.w === sd) e.w++; else e.l++;
+      e.pf += sd === 'a' ? m.sa : m.sb; e.pa += sd === 'a' ? m.sb : m.sa;
+      m.acts.filter(x => x.side === sd).forEach(x => { e.tech[x.tech] = (e.tech[x.tech] || 0) + x.v; e.tgt[x.tgt]++; });
+      e.pens += m.pens.filter(p => p.side === sd).length; if (m.first === sd) e.first++; e.ms.push(m); }));
+    const q = (s.esQ || '').trim().toLowerCase(), sort = s.esSort || 'win';
+    const rows = Object.values(A).filter(e => !q || e.at.name.toLowerCase().includes(q) || e.at.club.toLowerCase().includes(q)).map(e => {
+      const mt = e.w + e.l, top = Object.entries(e.tech).sort((x, y) => y[1] - x[1])[0];
+      return {...e, mt, wr: mt ? e.w / mt : 0, avg: mt ? e.pf / mt : 0, top: top ? top[0] + ' · ' + top[1] + ' pts' : '—'}; })
+      .sort((x, y) => sort === 'pts' ? y.pf - x.pf : sort === 'avg' ? y.avg - x.avg : sort === 'matches' ? y.mt - x.mt : (y.wr - x.wr) || (y.w - x.w) || (y.pf - x.pf));
+    const page = s.esPage || 1, shown = rows.slice(0, page * 12);
+    v.q = s.esQ || ''; v.onQ = e => this.setState({esQ: e.target.value, esPage: 1});
+    v.sorts = [['win', 'Win %'], ['pts', 'Points'], ['avg', 'Avg'], ['matches', 'Matches']].map(([k, l]) => ({label: l, onClick: () => this.setState({esSort: k}),
+      style: css('height:32px;padding:0 12px;border-radius:9px;font-family:inherit;font-size:.74rem;cursor:pointer;' + (k === sort ? 'font-weight:600;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);border:0' : 'font-weight:500;color:#5d6880;background:#fff;border:1px solid #d5dae3'))}));
+    v.athletes = shown.map(e => ({name: e.at.name, club: e.at.club, cat: catOf(e.at.cat).label, initials: e.at.name.split(' ').map(w => w[0]).slice(0, 2).join(''),
+      wl: e.w + '–' + e.l, win: Math.round(e.wr * 100) + '%', pf: String(e.pf), pa: String(e.pa), avg: e.avg.toFixed(1), tech: e.top, open: () => openAth(e.at.id)}));
+    v.athNone = rows.length === 0; v.athCount = 'Showing ' + shown.length + ' of ' + rows.length + ' athletes';
+    v.athMore = rows.length > shown.length; v.showMore = () => this.setState({esPage: page + 1});
+    const acts = F.flatMap(m => m.acts);
+    const vc = [1, 2, 3].map(k => acts.filter(x => x.v === k).length), vcol = ['#1e2c4f', '#d8b25f', '#2f7a4f'];
+    v.values = [['Yuko', '1 pt'], ['Waza-ari', '2 pts'], ['Ippon', '3 pts']].map(([nm, p], i) => ({name: nm, pts: p, n: String(vc[i]), pct: pct(vc[i], acts.length) + '%',
+      seg: css('height:100%;background:' + vcol[i] + ';width:' + pct(vc[i], acts.length) + '%'), sw: css('width:10px;height:10px;border-radius:3px;flex:none;background:' + vcol[i])}));
+    v.senshuLine = 'The athlete who scored first won ' + fsWin + '% of bouts. ' + F.filter(m => m.type === 'Senshu').length + ' bouts were decided on Senshu.';
+    const tm = {}; acts.forEach(x => { tm[x.tech] = tm[x.tech] || {n: 0, p: 0}; tm[x.tech].n++; tm[x.tech].p += x.v; });
+    const tl = Object.entries(tm).sort((x, y) => y[1].p - x[1].p), tMax = Math.max(1, ...tl.map(x => x[1].p));
+    v.techs = tl.map(([k, o], i) => ({name: k, n: String(o.n), pts: String(o.p), bar: bar(o.p / tMax * 100, i === 0 ? 'linear-gradient(90deg,#d0a854,#edcd85)' : '#1e2c4f')}));
+    const jd = acts.filter(x => x.tgt === 'Jodan').length, jp = pct(jd, acts.length);
+    v.jodanPct = jp + '%'; v.chudanPct = (acts.length ? 100 - jp : 0) + '%';
+    v.jodanStyle = css('display:grid;place-items:center;color:#fff;background:#1e2c4f;width:' + (acts.length ? jp : 50) + '%;min-width:70px');
+    v.chudanStyle = css('display:grid;place-items:center;color:#1e2c4f;background:#edcd85;flex:1;min-width:70px');
+    const tb = [0, 1, 2, 3, 4, 5].map(i => acts.filter(x => Math.min(5, Math.floor(x.t / 30)) === i).length), tbMax = Math.max(1, ...tb);
+    v.timing = tb.map((c, i) => ({label: i === 5 ? '2:30+' : mmss(i * 30), n: String(c), tip: c + ' scores between ' + mmss(i * 30) + ' and ' + mmss(i * 30 + 30), bar: css('width:100%;border-radius:5px 5px 0 0;background:#d8b25f;height:' + (c / tbMax * 100) + '%')}));
+    v.rings = Array.from({length: D.rings}, (_, i) => { const rm = D.matches.filter(m => m.ring === i + 1 && timeOk(m) && (fc === 'all' || m.cat === fc)), rd = rm.filter(m => m.done);
+      const nx = rm.find(m => !m.done), last = rd[rd.length - 1];
+      const span = rd.length ? (last.start + last.wall) - rd[0].start : 0, busy = rd.reduce((x, m) => x + m.wall, 0);
+      const delay = last ? Math.round((last.start - last.plan) / 60) : 0;
+      return {n: String(i + 1), cats: [...new Set(rm.map(m => catOf(m.cat).label))].slice(0, 2).join(', ') || 'No matches', done: rd.length + ' / ' + rm.length,
+        avg: rd.length ? mmss(avgOf(rd, m => m.wall)) : '—', util: span ? pct(busy, span) + '%' : '—',
+        delay: !rd.length ? '—' : delay > 0 ? '+' + delay + ' min' : delay + ' min', delayStyle: css('display:block;font-size:.9rem;color:' + (delay > 15 ? '#b4483c' : delay > 0 ? '#a8620f' : '#2f7a4f')),
+        st: nx ? (rd.length ? 'Running' : 'Waiting') : rm.length ? 'Finished' : 'Idle',
+        stStyle: css('font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;' + (nx && rd.length ? 'color:#2f7a4f;background:#e8f5ee' : nx ? 'color:#a8620f;background:#fdf1e0' : 'color:#6b7689;background:#eef1f6')),
+        prog: css('height:100%;border-radius:3px;background:#1e2c4f;width:' + pct(rd.length, rm.length) + '%'),
+        next: nx ? 'Up next ' + hhmm(nx.start) + ': ' + nx.A.name + ' vs ' + nx.B.name + ' · ' + nx.round : last ? 'Finished at ' + hhmm(last.start + last.wall) : ''}; });
+    const mrow = m => ({a: m.A.name, b: m.B.name, score: m.sa + ' – ' + m.sb, meta: m.round + ' · ' + m.type + ' · T' + m.ring + ' ' + hhmm(m.start),
+      aStyle: css('overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:' + (m.w === 'a' ? 700 : 400) + ';color:' + (m.w === 'a' ? '#1e2c4f' : '#6b7689')),
+      bStyle: css('overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;font-weight:' + (m.w === 'b' ? 700 : 400) + ';color:' + (m.w === 'b' ? '#1e2c4f' : '#6b7689'))});
+    const md = s.esModal; v.modalOpen = !!md; v.closeModal = () => this.setState({esModal: null}); v.m = {stats: [], matches: []};
+    if (md && md.type === 'cat') { const x = catRows.find(r => r.c.key === md.key);
+      if (x) v.m = {isAth: false, eyebrow: 'Category', title: x.c.label, sub: 'Tatami ' + x.c.ring + ' · ' + x.c.athletes + ' athletes · ' + x.status,
+        stats: [['Matches', x.cd.length + ' / ' + x.cm.length], ['Avg points', x.cd.length ? x.avg.toFixed(1) : '—'], ['Close matches', x.cd.length ? x.close + '%' : '—'], ['Penalties', String(x.pens)]].map(([label, value]) => ({label, value})),
+        listTitle: 'Completed matches (Aka red · Ao blue)', matches: x.cd.slice().reverse().map(mrow)}; }
+    if (md && md.type === 'ath') { const e = A[md.id];
+      if (e) { const mt = e.w + e.l, tg = e.tgt.Jodan + e.tgt.Chudan, jpp = pct(e.tgt.Jodan, tg), top = Object.entries(e.tech).sort((x, y) => y[1] - x[1])[0];
+        v.m = {isAth: true, initials: e.at.name.split(' ').map(w => w[0]).slice(0, 2).join(''), eyebrow: 'Athlete profile', title: e.at.name, sub: e.at.club + ' · ' + catOf(e.at.cat).label,
+          stats: [['Win rate', pct(e.w, mt) + '% (' + e.w + '–' + e.l + ')'], ['Avg points scored', (mt ? e.pf / mt : 0).toFixed(1)], ['Avg conceded', (mt ? e.pa / mt : 0).toFixed(1)], ['Scored first', pct(e.first, mt) + '% of bouts'], ['Top technique', top ? top[0] : '—'], ['Penalties', String(e.pens)]].map(([label, value]) => ({label, value})),
+          jodanPct: jpp + '%', chudanPct: (tg ? 100 - jpp : 0) + '%',
+          jodan: css('display:grid;place-items:center;color:#fff;background:#1e2c4f;min-width:64px;width:' + (tg ? jpp : 50) + '%'), chudan: css('display:grid;place-items:center;color:#1e2c4f;background:#edcd85;flex:1;min-width:64px'),
+          listTitle: 'Match log', matches: e.ms.map(mrow)}; } }
+    v.exportCsv = () => { const qq = x => '"' + String(x).replace(/"/g, '""') + '"';
+      const rowsC = [['Match', 'Category', 'Round', 'Tatami', 'Start', 'Aka', 'Aka club', 'Ao', 'Ao club', 'Score', 'Winner', 'Win type', 'Bout time', 'Penalties']];
+      F.forEach(m => rowsC.push([m.no, catOf(m.cat).label, m.round, m.ring, hhmm(m.start), m.A.name, m.A.club, m.B.name, m.B.club, m.sa + '-' + m.sb, m.w === 'a' ? m.A.name : m.B.name, m.type, mmss(m.bout), m.pens.map(p => (p.side === 'a' ? 'Aka ' : 'Ao ') + p.type).join('; ')]));
+      const blob = new Blob([rowsC.map(r => r.map(qq).join(',')).join('\n')], {type: 'text/csv'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (ev.name || 'event').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-kumite-stats.csv'; a.click(); };
+    return v;
+  }
+
+  renderVals() {
+    const ev = this.events[0];
+    const orig = this.state;
+    this.state = {...orig, events: this.events, selectedId: ev.id, regs: this.props.regs || []};
+    const es = this.evStatsVals();
+    this.state = orig;
+    return {es, stopEvt: e => e.stopPropagation()};
+  }
+}
+</script>
+</body>
+</html>

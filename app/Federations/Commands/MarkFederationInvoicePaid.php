@@ -53,6 +53,9 @@ class MarkFederationInvoicePaid extends Command
             ]);
         }
 
+        // Open dashboards show the paid invoice without a refresh.
+        \App\Federations\Support\FederationPulse::federation($federation);
+
         $this->info("{$invoice->number} marked paid for {$federation->name}.");
 
         return self::SUCCESS;

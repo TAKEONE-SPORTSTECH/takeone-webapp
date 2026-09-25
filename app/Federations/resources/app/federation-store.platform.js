@@ -33,6 +33,7 @@
   };
 
   // The event the dashboard has open, set by the bridge when one is opened.
+  function T0() { return (window.TakeOneFed = window.TakeOneFed || {}); }
   function cur() { return (window.TakeOneFed && window.TakeOneFed.currentEvent) || null; }
   function changed(k) { window.dispatchEvent(new CustomEvent('fedstore-change', {detail: k || 'store'})); }
   function csrf() { var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.getAttribute('content') : ''; }
@@ -62,7 +63,7 @@
   // An answer from the dashboard's doors carries its own lists.
   function adoptStaff(j) {
     if (j.clubs) C.clubs = j.clubs; if (j.athletes) C.athletes = j.athletes; if (j.transfers) C.transfers = j.transfers;
-    if (j.entriesByEvent) C.byEvent = j.entriesByEvent; if (j.clubLinks) C.links = j.clubLinks;
+    if (j.entriesByEvent) C.byEvent = j.entriesByEvent; if (j.clubLinks) C.links = j.clubLinks; if (j.directory) S.directory = j.directory;
     changed('store');
   }
 
@@ -189,6 +190,21 @@
       if (urls.transferDecide) req('POST', urls.transferDecide, {transfer: id, approve: !!approve}).then(function (j) { if (j.__ok) adoptStaff(j); else window.location.reload(); });
     },
 
+    // ------------------------------------------------------------- clubs
+    // Clubs page → "Add club". Both answer a Promise; the page draws from it.
+    canAddClubs: function () { return !!urls.clubAdd; },
+    searchClubs: function (q) {
+      if (!urls.clubSearch || String(q || '').trim().length < 2) return Promise.resolve([]);
+      return req('GET', urls.clubSearch + '?q=' + encodeURIComponent(String(q).trim())).then(function (j) { return j.__ok ? (j.clubs || []) : null; });
+    },
+    addClub: function (key) {
+      if (!urls.clubAdd) return Promise.resolve({ok: false});
+      return req('POST', urls.clubAdd, {club: key}).then(function (j) {
+        if (j.__ok) adoptStaff(j);
+        return {ok: !!j.__ok, message: j.message || ''};
+      });
+    },
+
     // Writes the invitation used to make one by one. It now submits once
     // (TakeOneFed.submitEntry); these stay so nothing calling them breaks.
     saveClub: function (c) { return c.id || null; },
@@ -219,6 +235,21 @@
     },
     reset: function () {}
   };
+
+  // A FederationPulse re-read (takeone-bridge.js): the desk's lists again.
+  T0().adoptStaffStore = function (fs) {
+    if (!fs) return;
+    if (fs.inviteEvents) C.events = fs.inviteEvents;
+    adoptStaff(fs);
+  };
+
+  // Another staff member added a club: re-fetch the list this viewer may see.
+  var clubsT = null;
+  window.addEventListener('realtime:federation', function (e) {
+    if (!e.detail || e.detail.action !== 'clubs' || !urls.clubs) return;
+    clearTimeout(clubsT);
+    clubsT = setTimeout(function () { req('GET', urls.clubs).then(function (j) { if (j.__ok) adoptStaff(j); }); }, 150);
+  });
 
   // ------------------------------------------------------------ platform
   var T = window.TakeOneFed = window.TakeOneFed || {};

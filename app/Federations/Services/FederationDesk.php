@@ -81,7 +81,7 @@ class FederationDesk
         }
 
         return [
-            'directory' => $this->directory($ids, $athleteIds),
+            'directory' => $this->directory($ids, $athleteIds, $clubs, $this->sportsOf($access)),
             'officials' => $this->officials($entries),
             'clubs' => $clubs->map(fn ($c) => $this->registry->club($c))->concat($extra)->values()->all(),
             'athletes' => FederationAthlete::with('user')->whereIn('id', $athleteIds)->get()->map(fn ($a) => $this->registry->athlete($a, $ids))->values()->all(),
@@ -97,9 +97,11 @@ class FederationDesk
      * `athData`): who they are, where they compete, and what they have
      * entered. Real records only.
      */
-    private function directory(Collection $ids, Collection $athleteIds): array
+    private function directory(Collection $ids, Collection $athleteIds, Collection $clubs, array $sports): array
     {
-        return FederationAthlete::with('user')->whereIn('id', $athleteIds)->orderBy('takeone_id')->get()->map(function (FederationAthlete $a) use ($ids) {
+        $members = $this->clubMembers($clubs, $sports);
+
+        $rows = FederationAthlete::with('user')->whereIn('id', $athleteIds)->orderBy('takeone_id')->get()->map(function (FederationAthlete $a) use ($ids) {
             $u = $a->user;
             $cur = $this->registry->currentClub($a, $ids);
             $club = $cur ? ($cur->club?->club?->club_name ?? $cur->application?->name) : null;
@@ -121,8 +123,113 @@ class FederationDesk
                 'tk' => $a->takeone_id,
                 'events' => $entries->count(),
                 'sports' => $sports,
+                'key' => $a->takeone_id,
+                'userId' => $a->user_id,
             ];
-        })->values()->all();
+        })->values();
+
+        // Club members: the federation's clubs' own rosters, whether or not
+        // they have entered anything. One row per person — an athlete already
+        // listed above only gains the "practises" mark.
+        $byUser = $rows->keyBy('userId');
+        $out = $rows->map(function (array $r) use ($members) {
+            $m = $members[$r['userId']] ?? null;
+            if ($m && $m['activities'] !== []) {
+                $r['practises'] = true;
+                $r['sports'] = array_merge(array_map(fn ($n) => [$n, 'Enrolled'], $m['activities']), $r['sports']);
+            }
+
+            return $r;
+        })->all();
+        foreach ($members as $uid => $m) {
+            if ($byUser->has($uid)) {
+                continue;
+            }
+            $u = $m['user'];
+            // Contact details and ID numbers stay with the club: a member who
+            // never entered a federation event did not hand them over.
+            $out[] = [
+                'name' => $u->full_name ?: $u->name,
+                'club' => $m['club'],
+                'gender' => $u->gender === 'Female' ? 'F' : 'M',
+                'dob' => '—',
+                'age' => $u->birthdate ? $u->birthdate->age : '—',
+                'nat' => $u->nationality ?: '—',
+                'natId' => '—', 'mobile' => '—', 'email' => '—',
+                'tk' => '',
+                'events' => 0,
+                'sports' => array_map(fn ($n) => [$n, 'Enrolled'], $m['activities']),
+                'practises' => $m['activities'] !== [],
+                'member' => true,
+                'key' => 'm-'.$u->uuid,
+            ];
+        }
+
+        return array_map(function (array $r) {
+            unset($r['userId']);
+            $r['practises'] ??= false;
+
+            return $r;
+        }, $out);
+    }
+
+    /** The sports this viewer's federation governs (a sport-limited viewer: theirs). */
+    private function sportsOf(array $access): array
+    {
+        if ($access['sports'] !== []) {
+            return $access['sports'];
+        }
+        $root = $access['root'];
+
+        return array_values(array_filter((array) ($root->sports ?: [$root->sport])));
+    }
+
+    /**
+     * Members of the federation's approved clubs, each with the activities of
+     * the federation's sports they are enrolled in now (an active
+     * subscription to a package that teaches one).
+     *
+     * @return array<int, array{user: User, club: string, activities: array<int,string>}>
+     */
+    private function clubMembers(Collection $clubs, array $sports): array
+    {
+        $tenants = $clubs->filter(fn ($c) => $c instanceof FederationClub && $c->club)->mapWithKeys(fn ($c) => [$c->tenant_id => $c->club->club_name]);
+        if ($tenants->isEmpty()) {
+            return [];
+        }
+
+        $enrolled = [];
+        if ($sports !== []) {
+            DB::table('club_member_subscriptions as s')
+                ->join('club_package_activities as pa', 'pa.package_id', '=', 's.package_id')
+                ->join('club_activities as a', 'a.id', '=', 'pa.activity_id')
+                ->whereIn('s.tenant_id', $tenants->keys())
+                ->where('s.status', 'active')
+                ->where(fn ($w) => $w->whereNull('s.end_date')->orWhereDate('s.end_date', '>=', now()->toDateString()))
+                ->where(function ($w) use ($sports) {
+                    foreach ($sports as $sport) {
+                        $w->orWhere('a.name', 'like', '%'.str_replace(['%', '_'], '', $sport).'%');
+                    }
+                })
+                ->select('s.user_id', 'a.name')->distinct()->get()
+                ->each(function ($row) use (&$enrolled) { $enrolled[$row->user_id][] = $row->name; });
+        }
+
+        $rows = DB::table('memberships')->whereIn('tenant_id', $tenants->keys())->where('status', 'active')
+            ->orderBy('id')->limit(5000)->get(['tenant_id', 'user_id']);
+        $users = User::whereIn('id', $rows->pluck('user_id')->unique())
+            ->get(['id', 'uuid', 'name', 'full_name', 'gender', 'birthdate', 'nationality'])->keyBy('id');
+
+        $out = [];
+        foreach ($rows as $row) {
+            $u = $users[$row->user_id] ?? null;
+            if (! $u || isset($out[$u->id])) {
+                continue;
+            }
+            $out[$u->id] = ['user' => $u, 'club' => $tenants[$row->tenant_id], 'activities' => array_values(array_unique($enrolled[$u->id] ?? []))];
+        }
+
+        return $out;
     }
 
     /**

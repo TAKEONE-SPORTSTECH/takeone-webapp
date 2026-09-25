@@ -6,6 +6,7 @@ use App\Federations\Controllers\FederationApiController;
 use App\Federations\Controllers\FederationAppController;
 use App\Federations\Controllers\FederationInviteController;
 use App\Federations\Controllers\FederationLoginController;
+use App\Federations\Middleware\PulseFederation;
 use App\Federations\Middleware\SealFederation;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +54,10 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
     // Home checks sign-in itself, so a signed-out visitor lands on the
     // federation's door rather than the platform's.
     Route::middleware(['throttle:federation-page'])->get('/', [FederationAppController::class, 'home'])->name('home');
+    // Every screen's own address: the same page, opened where the address says.
+    Route::middleware(['throttle:federation-page'])->get('/{section}/{rest?}', [FederationAppController::class, 'home'])
+        ->where('section', FederationAppController::SECTIONS)->where('rest', '[A-Za-z0-9/-]{0,140}')
+        ->name('section');
     Route::middleware(['throttle:federation-page'])->get('/app/Events Dashboard.dc.html', [FederationAppController::class, 'dashboardFile'])
         ->name('app.dashboard');
 
@@ -84,7 +89,9 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
 
     // The dashboard's writes (forwarded by takeone-bridge.js). JSON, CSRF,
     // throttled as writes.
-    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:admin-write'])
+    // PulseFederation: once a write succeeds, every open dashboard in the
+    // federation's tree re-reads (live updates, no refresh).
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:admin-write', PulseFederation::class])
         ->prefix('api')->name('api.')->group(function () {
             Route::post('/orgs', [FederationApiController::class, 'orgs'])->name('orgs');
             Route::post('/users', [FederationApiController::class, 'users'])->name('users');
@@ -100,15 +107,26 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
             Route::post('/draws', [FederationApiController::class, 'draw'])->name('draws');
             Route::post('/strings', [FederationApiController::class, 'strings'])->name('strings');
             Route::post('/messages', [FederationApiController::class, 'messages'])->name('messages');
+            Route::post('/clubs', [FederationApiController::class, 'clubAdd'])->name('clubs.add');
         });
 
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-page'])
         ->get('/api/messages', [FederationApiController::class, 'messages'])->name('api.messages.read');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-read'])
+        ->get('/api/state', [FederationAppController::class, 'state'])->name('api.state');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-read'])
+        ->get('/api/statistics', [FederationApiController::class, 'statistics'])->name('api.statistics');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-read'])
+        ->get('/api/clubs', [FederationApiController::class, 'clubList'])->name('api.clubs');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
+        ->get('/api/clubs/search', [FederationApiController::class, 'clubSearch'])->name('api.clubs.search');
 
     Route::middleware(['throttle:federation-read'])->group(function () {
         Route::get('/logo/{federation:uuid}', [FederationApiController::class, 'logo'])->name('logo');
         Route::get('/event-media/{event:uuid}/{kind}', [FederationApiController::class, 'eventMedia'])
             ->where('kind', 'logo|art-p|art-l')->name('event-media');
+        Route::get('/invite-qr/{event:uuid}.{format}', [FederationApiController::class, 'inviteQr'])
+            ->where('event', '[0-9a-fA-F-]{36}')->where('format', 'svg|png')->name('invite-qr');
         Route::get('/event-doc/{document}', [FederationApiController::class, 'eventDocument'])
             ->whereUuid('document')->name('event-doc');
     });
@@ -118,8 +136,8 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
         Route::post('/code', [FederationInviteController::class, 'code'])->middleware('throttle:federation-code')->name('code');
         Route::post('/verify', [FederationInviteController::class, 'verify'])->middleware('throttle:federation-verify')->name('verify');
         Route::get('/lookup', [FederationInviteController::class, 'lookup'])->middleware('throttle:federation-lookup')->name('lookup');
-        Route::post('/submit', [FederationInviteController::class, 'submit'])->middleware('throttle:federation-submit')->name('submit');
-        Route::post('/withdraw', [FederationInviteController::class, 'withdraw'])->middleware('throttle:federation-withdraw')->name('withdraw');
+        Route::post('/submit', [FederationInviteController::class, 'submit'])->middleware(['throttle:federation-submit', PulseFederation::class])->name('submit');
+        Route::post('/withdraw', [FederationInviteController::class, 'withdraw'])->middleware(['throttle:federation-withdraw', PulseFederation::class])->name('withdraw');
     });
     Route::middleware('throttle:federation-read')->group(function () {
         Route::get('/invite-club-logo/{application}', [FederationInviteController::class, 'clubLogo'])->whereUuid('application')->name('invite.club-logo');
@@ -144,12 +162,12 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])
         Route::get('/', [FederationAdminController::class, 'index'])->name('index');
         Route::get('/create', [FederationAdminController::class, 'create'])->name('create');
         Route::get('/people', [FederationAdminController::class, 'people'])->middleware('throttle:federation-read')->name('people');
-        Route::post('/', [FederationAdminController::class, 'store'])->middleware(['throttle:admin-write', 'throttle:uploads'])->name('store');
+        Route::post('/', [FederationAdminController::class, 'store'])->middleware(['throttle:admin-write', 'throttle:uploads', PulseFederation::class])->name('store');
         Route::get('/{federation:uuid}/edit', [FederationAdminController::class, 'edit'])->name('edit');
-        Route::put('/{federation:uuid}', [FederationAdminController::class, 'update'])->middleware(['throttle:admin-write', 'throttle:uploads'])->name('update');
+        Route::put('/{federation:uuid}', [FederationAdminController::class, 'update'])->middleware(['throttle:admin-write', 'throttle:uploads', PulseFederation::class])->name('update');
         // Delete hides it (soft delete — records and files kept); restore brings it back.
-        Route::delete('/{federation:uuid}', [FederationAdminController::class, 'destroy'])->middleware('throttle:admin-write')->name('destroy');
-        Route::post('/{uuid}/restore', [FederationAdminController::class, 'restore'])->middleware('throttle:admin-write')->whereUuid('uuid')->name('restore');
+        Route::delete('/{federation:uuid}', [FederationAdminController::class, 'destroy'])->middleware(['throttle:admin-write', PulseFederation::class])->name('destroy');
+        Route::post('/{uuid}/restore', [FederationAdminController::class, 'restore'])->middleware(['throttle:admin-write', PulseFederation::class])->whereUuid('uuid')->name('restore');
         Route::get('/{federation:uuid}/documents/{document:uuid}', [FederationAdminController::class, 'document'])->name('document');
-        Route::delete('/{federation:uuid}/documents/{document:uuid}', [FederationAdminController::class, 'destroyDocument'])->middleware('throttle:admin-write')->name('document.destroy');
+        Route::delete('/{federation:uuid}/documents/{document:uuid}', [FederationAdminController::class, 'destroyDocument'])->middleware(['throttle:admin-write', PulseFederation::class])->name('document.destroy');
     });

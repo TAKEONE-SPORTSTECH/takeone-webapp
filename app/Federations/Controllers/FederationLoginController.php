@@ -50,7 +50,8 @@ class FederationLoginController extends Controller
     {
         abort_unless(config('federations.enabled'), 404);
 
-        $request->session()->put('url.intended', route('federations.home'));
+        $landing = $this->landing($request);
+        $request->session()->put('url.intended', $landing);
         $response = $auth->store($request);
 
         // Signed in, no 2FA step: the dashboard.
@@ -59,7 +60,7 @@ class FederationLoginController extends Controller
             // no federation" — inside the surface.
             $request->session()->forget('url.intended');
 
-            return redirect()->route('federations.home');
+            return redirect()->to($landing);
         }
 
         if ($response instanceof RedirectResponse) {
@@ -78,6 +79,26 @@ class FederationLoginController extends Controller
         return $response;
     }
 
+    /**
+     * Where a sign-in lands: the dashboard screen the visitor was sent here
+     * from (a shared link to /federation/events/<uuid>/draw), or home. Only an
+     * address of this dashboard on this host qualifies — never anything else
+     * the session or the request might hold, so this is no open redirect.
+     */
+    private function landing(Request $request): string
+    {
+        $u = (string) $request->session()->get('url.intended', '');
+        $host = parse_url($u, PHP_URL_HOST);
+        $path = (string) parse_url($u, PHP_URL_PATH);
+        $query = (string) parse_url($u, PHP_URL_QUERY);
+
+        if ((! $host || $host === $request->getHost()) && preg_match(FederationAppController::DEEP_LINK, $path)) {
+            return url($path).(preg_match('/^[a-z]+=[a-z-]{1,20}(&[a-z]+=[a-z-]{1,20})?$/', $query) ? '?'.$query : '');
+        }
+
+        return route('federations.home');
+    }
+
     /** The 2FA step, in the federation's own look. */
     public function verify(Request $request): Response
     {
@@ -86,7 +107,7 @@ class FederationLoginController extends Controller
         if (! $request->session()->has('two_factor.user_id')) {
             return redirect()->route('federations.login');
         }
-        $request->session()->put('url.intended', route('federations.home'));
+        $request->session()->put('url.intended', $this->landing($request));
 
         return response()->view('federations::auth.login', ['step' => 'otp'])
             ->header('Cache-Control', 'no-store, private');
