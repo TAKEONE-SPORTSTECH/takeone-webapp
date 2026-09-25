@@ -959,10 +959,18 @@ function clearOwnerSelection() {
 }
 
 function confirmOwnerTransfer() {
-    const tab = document.querySelector('[x-data]').__x?.$data?.ownerTab
-               || (document.querySelector('.border-primary.text-primary')?.textContent?.includes('Link') ? 'existing' : 'new');
-
     const btn = document.getElementById('confirmTransferBtn');
+    // Alpine 3: read the modal's own tab state (`__x` was Alpine 2 and is
+    // always undefined here, which sent every transfer down the 'new' branch).
+    let tab = 'existing';
+    try { tab = window.Alpine?.$data(btn)?.ownerTab || 'existing'; } catch (e) {}
+    // The "Create new" tab has no fields of its own — it opens the
+    // registration form — so the confirm button only ever links an existing member.
+    if (tab !== 'existing') {
+        window.showToast('error', '{{ __('admin.club_details_index_js_select_member') }}');
+        return;
+    }
+
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{{ __('admin.club_details_index_js_transferring') }}';
 
