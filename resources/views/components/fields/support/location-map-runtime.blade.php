@@ -12,6 +12,7 @@ window.LocationMap = (function () {
     const BASE = 'https://unpkg.com/leaflet@' + LEAFLET_VERSION + '/dist/';
     const instances = {};
     const pending = {};          // positions set before a map is built
+    const configs = {};          // last config per id, so refresh() can rebuild
     let leafletPromise = null;
 
     /** Is an existing instance still bound to a live, in-document element? */
@@ -179,6 +180,7 @@ window.LocationMap = (function () {
     function create(cfg) {
         cfg = Object.assign({ defaultLat: 25.2048, defaultLng: 55.2708, zoom: 13, draggable: true }, cfg || {});
         if (!cfg.id) return;
+        configs[cfg.id] = cfg;
         if (instances[cfg.id] && attached(cfg.id)) return;   // already live; otherwise rebuild
         if (instances[cfg.id]) teardown(cfg.id);
         ensureLeaflet()
@@ -204,8 +206,15 @@ window.LocationMap = (function () {
             }
         },
         refresh: function (id) {
+            // No live map (e.g. the admin shell swapped the page back in and
+            // did not re-run its one-time create script): build it now.
+            if (!attached(id)) {
+                const el = document.getElementById(id + 'Map');
+                if (el) create(configs[id] || { id: id });
+                return;
+            }
             const inst = instances[id];
-            if (inst) setTimeout(function () { inst.map.invalidateSize(); }, 60);
+            setTimeout(function () { inst.map.invalidateSize(); }, 60);
         },
         get: function (id) { return instances[id] || null; },
     };
