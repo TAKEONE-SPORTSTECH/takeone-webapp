@@ -111,7 +111,9 @@ class FederationDesk
                 ->unique(fn ($x) => $x[0])->values()->all();
 
             return [
-                'name' => $u?->full_name ?: $u?->name,
+                // Never null: an athlete whose account was deleted keeps their entries
+                // and results, and the dashboard draws initials from this string.
+                'name' => $u?->full_name ?: $u?->name ?: 'Deleted member',
                 'club' => $club ?: '—',
                 'gender' => $u?->gender === 'Female' ? 'F' : 'M',
                 'dob' => $u?->birthdate ? $u->birthdate->format('j M Y') : '—',

@@ -182,7 +182,9 @@ class FederationRegistry
         $cur = $this->currentClub($a, $federationIds);
         $row = [
             'id' => $a->takeone_id,
-            'name' => $u?->full_name ?: $u?->name,
+            // Never null: an athlete whose account was deleted keeps their entries
+            // and results, and the dashboard draws initials from this string.
+            'name' => $u?->full_name ?: $u?->name ?: 'Deleted member',
             'clubId' => $this->clubKeyOf($cur),
         ];
         if (! $private) {
