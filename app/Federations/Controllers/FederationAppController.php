@@ -106,6 +106,8 @@ class FederationAppController extends Controller
             'mode' => 'staff',
             'favicon' => \App\Federations\Support\FederationBrand::favicon($root),
             'federation' => ['uuid' => $root->uuid, 'name' => $root->name],
+            // What the page OFFERS; the endpoint decides (FederationEvents::delete).
+            'canDeleteEvents' => (bool) ($access['manager'] ?? false),
             'user' => [
                 'name' => $user->full_name ?: $user->name,
                 'email' => strtolower((string) $user->email),
@@ -128,6 +130,7 @@ class FederationAppController extends Controller
                 'region' => route('federations.api.region'),
                 'billing' => route('federations.api.billing'),
                 'events' => route('federations.api.events'),
+                'eventDelete' => \Illuminate\Support\Facades\Route::has('federations.api.events.delete') ? route('federations.api.events.delete') : null,
                 'uploads' => route('federations.api.uploads'),
                 'entryConfirm' => route('federations.api.entries.confirm'),
                 'transferReply' => route('federations.api.transfers.reply'),

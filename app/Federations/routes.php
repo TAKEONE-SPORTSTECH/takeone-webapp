@@ -98,6 +98,7 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
             Route::post('/region', [FederationApiController::class, 'region'])->name('region');
             Route::post('/billing', [FederationApiController::class, 'billing'])->name('billing');
             Route::post('/events', [FederationApiController::class, 'event'])->name('events');
+            Route::post('/events/delete', [FederationApiController::class, 'eventDelete'])->name('events.delete');
             Route::post('/uploads', [FederationApiController::class, 'upload'])->middleware('throttle:uploads')->name('uploads');
             Route::post('/entries/confirm', [FederationApiController::class, 'entryConfirm'])->name('entries.confirm');
             Route::post('/transfers/reply', [FederationApiController::class, 'transferReply'])->name('transfers.reply');

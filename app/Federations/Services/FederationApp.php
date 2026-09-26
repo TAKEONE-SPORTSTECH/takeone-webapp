@@ -464,6 +464,28 @@ class FederationApp
                 'event-sel' => ['const sel = s.events.find(e => e.id === s.selectedId) || s.events[0];', 'const sel = s.events.find(e => e.id === s.selectedId) || s.events[0] || window.TakeOneFed.blankEvent();', 1],
                 'event-id' => ["const target = s.eMode === 'create' ? {id: Date.now(), reg: 0, checkins: 0, divisions: 0} : null;", "const target = s.eMode === 'create' ? {id: window.TakeOneFed.newId(), reg: 0, checkins: 0, divisions: 0} : null;", 1],
                 'event-save' => ["        this.setState({events: target ? [apply(target), ...s.events] : s.events.map(e => e.id === sel.id ? apply(e) : e),\n          editOpen: false, eMode: null, filter: target ? 'All' : s.filter});", "        const __ev = target ? apply(target) : apply(sel); window.TakeOneFed.saveEvent(__ev, this);\n        this.setState({events: target ? [__ev, ...s.events] : s.events.map(e => e.id === sel.id ? __ev : e),\n          editOpen: false, eMode: null, filter: target ? 'All' : s.filter});", 1],
+                // PLATFORM: a manager can delete an event from its edit form. Two
+                // steps (ask, then confirm) — no native dialog — and the server
+                // decides (FederationEvents::delete); the flag only offers it.
+                'event-del-reset' => ["openEdit: () => this.setState({editOpen: true, eMode: 'edit',", "openEdit: () => this.setState({editOpen: true, eMode: 'edit', eDelAsk: false, eDelBusy: false, eDelErr: false,", 1],
+                'event-del-vals' => ["eSaveLabel: s.eMode === 'create' ? 'Create event' : 'Save changes',",
+                    "eSaveLabel: s.eMode === 'create' ? 'Create event' : 'Save changes',\n"
+                    ."      eDelShow: s.eMode === 'edit' && !s.eDelAsk && !!sel.id && !!(window.TakeOneFed && window.TakeOneFed.canDeleteEvents && window.TakeOneFed.canDeleteEvents()),\n"
+                    ."      eDelAsking: s.eMode === 'edit' && !!s.eDelAsk,\n"
+                    ."      eDelText: s.eDelErr ? 'This event could not be deleted. Try again.' : 'Delete “' + (sel.name || 'this event') + '”? It leaves every list; its entries, draws and results are kept.',\n"
+                    ."      eDelLabel: s.eDelBusy ? 'Deleting…' : 'Yes, delete',\n"
+                    ."      onDelAsk: () => this.setState({eDelAsk: true, eDelErr: false}),\n"
+                    ."      onDelCancel: () => this.setState({eDelAsk: false, eDelErr: false}),\n"
+                    ."      onDelConfirm: () => { if (this.state.eDelBusy) return; this.setState({eDelBusy: true, eDelErr: false}); window.TakeOneFed.deleteEvent(sel.id, this).then(ok => { if (!ok) this.setState({eDelBusy: false, eDelErr: true}); }); },", 1],
+                'event-del-button' => ['<div style="display:flex;gap:10px;justify-content:flex-end;padding:14px 28px 18px;border-top:1px solid #eef1f6;background:#fbfcfe;flex:none">'."\n".'          <button onClick="{{ closeEdit }}"',
+                    '<div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding:14px 28px 18px;border-top:1px solid #eef1f6;background:#fbfcfe;flex:none">'."\n"
+                    .'          <sc-if value="{{ eDelShow }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onDelAsk }}" style="height:44px;padding:0 18px;margin-inline-end:auto;border:1px solid #e3b4ae;border-radius:11px;background:#fff;font-family:inherit;font-size:.84rem;font-weight:600;color:#b4483c;cursor:pointer" style-hover="border-color:#b4483c;background:#fdf1ef">Delete event</button></sc-if>'."\n"
+                    .'          <sc-if value="{{ eDelAsking }}" hint-placeholder-val="{{ false }}"><div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:#fdf1ef;border:1px solid #e3b4ae">'
+                    .'<span style="flex:1 1 240px;font-size:.8rem;line-height:1.5;color:#7a2e25">{{ eDelText }}</span>'
+                    .'<button onClick="{{ onDelCancel }}" style="height:38px;padding:0 14px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-family:inherit;font-size:.8rem;font-weight:600;color:#6b7689;cursor:pointer">Keep it</button>'
+                    .'<button onClick="{{ onDelConfirm }}" style="height:38px;padding:0 16px;border:0;border-radius:10px;background:#b4483c;font-family:inherit;font-size:.8rem;font-weight:600;color:#fff;cursor:pointer" style-hover="background:#9a3a30">{{ eDelLabel }}</button>'
+                    .'</div></sc-if>'."\n"
+                    .'          <button onClick="{{ closeEdit }}"', 1],
                 'event-quick-id' => ['const ev = {id: Date.now(), name: s.fName.trim(), sport: s.fSport,', 'const ev = {id: window.TakeOneFed.newId(), name: s.fName.trim(), sport: s.fSport,', 1],
                 'event-quick-save' => ["        this.setState({events: [ev, ...s.events], createOpen: false, filter: 'All', fName: '', fVenue: '', fDate: ''});", "        window.TakeOneFed.saveEvent(ev, this);\n        this.setState({events: [ev, ...s.events], createOpen: false, filter: 'All', fName: '', fVenue: '', fDate: ''});", 1],
                 // Documents upload as they are picked; the event save attaches them.

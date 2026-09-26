@@ -136,6 +136,21 @@
     }).catch(function () { window.location.reload(); });
   };
 
+  // Deleting an event is a manager's call. The flag only decides whether the
+  // button is OFFERED; the server decides (FederationEvents::delete).
+  window.TakeOneFed.canDeleteEvents = function () { return !!boot.canDeleteEvents && !!urls.eventDelete; };
+  window.TakeOneFed.deleteEvent = function (id, comp) {
+    if (!id || !urls.eventDelete) return Promise.resolve(false);
+    return jsonPost(urls.eventDelete, {event: id}).then(function (j) {
+      if (!j.__ok || !j.success) return false;
+      if (comp && comp.setState) comp.setState(function (st) {
+        return {events: (st.events || []).filter(function (e) { return e.id !== id; }),
+          editOpen: false, eMode: null, eDelAsk: false, eDelBusy: false, view: 'overview', selectedId: null};
+      });
+      return true;
+    }).catch(function () { return false; });
+  };
+
   // The federation approves one registered athlete.
   window.TakeOneFed.approveReg = function (r) {
     if (!r || !r.entryId || !urls.regsApprove) return;

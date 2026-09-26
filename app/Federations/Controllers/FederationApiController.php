@@ -98,6 +98,16 @@ class FederationApiController extends Controller
             : response()->json(['success' => false, 'message' => 'This event could not be saved.'], 422);
     }
 
+    public function eventDelete(Request $request, FederationEvents $events): JsonResponse
+    {
+        $access = $this->access($request);
+        $data = $request->validate(['event' => ['required', 'uuid']]);
+
+        return $events->delete($request->user(), $access, $data['event'])
+            ? response()->json(['success' => true, 'message' => 'Event deleted.', 'event' => ['id' => $data['event']]])
+            : response()->json(['success' => false, 'message' => 'This event could not be deleted.'], 422);
+    }
+
     public function upload(Request $request, FederationEvents $events): JsonResponse
     {
         $access = $this->access($request);

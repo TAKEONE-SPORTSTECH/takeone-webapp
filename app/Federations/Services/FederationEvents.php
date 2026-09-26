@@ -284,6 +284,31 @@ class FederationEvents
         $event->documents()->whereNotIn('id', $keep)->get()->each->delete();
     }
 
+    /**
+     * Delete an event: a SOFT delete, so it leaves every list and screen but
+     * its entries, draws, results and files are all kept and it can be
+     * restored. Only a manager (the federation's owner, unrestricted staff, a
+     * platform administrator) may, and only an event in their own tree —
+     * anything else answers exactly as a missing event does.
+     */
+    public function delete(User $user, array $access, string $uuid): bool
+    {
+        if (! ($access['manager'] ?? false)) {
+            return false;
+        }
+        $event = $this->find($access, $uuid);
+        if (! $event) {
+            return false;
+        }
+
+        $event->delete();
+        activity()->causedBy($user)
+            ->withProperties(['event' => $event->uuid, 'name' => $event->name, 'federation' => $event->federation?->uuid])
+            ->log('federation.event_deleted');
+
+        return true;
+    }
+
     /** Stage a document picked in an open form. */
     public function stage(User $user, array $access, UploadedFile $file): ?string
     {
