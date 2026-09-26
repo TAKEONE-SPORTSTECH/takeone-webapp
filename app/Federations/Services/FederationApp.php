@@ -520,6 +520,17 @@ class FederationApp
                 'reg-status' => ["division: this.weightClassOf(g, ag, kg), status: 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", "division: this.weightClassOf(g, ag, kg), status: a.approval === 'Approved' ? 'Approved' : 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", 1],
                 'reg-approve' => ["onApprove: () => this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)})", "onApprove: () => { window.TakeOneFed.approveReg(r); this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)}); }", 1],
                 // PLATFORM: the Athletes page lists real athletes, not its sample.
+                // PLATFORM: the Athletes page shows a member's face where they made
+                // one public (FederationDesk::photo), painted as the tile's
+                // background the way the Registrations rows do; initials otherwise.
+                'ath-photo-row' => ["takeoneId: a.tk || '\\u2014', initials: inits(a.name),",
+                    "takeoneId: a.tk || '\\u2014', initials: a.photo ? '' : inits(a.name), avStyle: Object.assign(this.cssToObj('width:36px;height:48px;border-radius:8px;background:#eef1f6;background-size:cover;background-position:center;display:grid;place-items:center;font-size:.72rem;font-weight:600;color:#1e2c4f'), a.photo ? {backgroundImage: 'url(\"' + a.photo + '\")'} : {}),", 1],
+                'ath-photo-sel' => ["const athSel = selA ? {...selA, takeoneId: selA.tk || '\\u2014', initials: inits(selA.name),",
+                    "const athSel = selA ? {...selA, takeoneId: selA.tk || '\\u2014', initials: selA.photo ? '' : inits(selA.name), avStyle: Object.assign(this.cssToObj('width:72px;height:96px;border-radius:12px;background:#eef1f6;background-size:cover;background-position:center;display:grid;place-items:center;font-size:1.1rem;font-weight:700;color:#1e2c4f;flex:none'), selA.photo ? {backgroundImage: 'url(\"' + selA.photo + '\")'} : {}),", 1],
+                'ath-photo-row-tile' => ['<div style="width:36px;height:48px;border-radius:8px;background:#eef1f6;display:grid;place-items:center;font-size:.72rem;font-weight:600;color:#1e2c4f">{{ a.initials }}</div>',
+                    '<div style="{{ a.avStyle }}">{{ a.initials }}</div>', 1],
+                'ath-photo-sel-tile' => ['<div style="width:72px;height:96px;border-radius:12px;background:#eef1f6;display:grid;place-items:center;font-size:1.1rem;font-weight:700;color:#1e2c4f;flex:none">{{ athSel.initials }}</div>',
+                    '<div style="{{ athSel.avStyle }}">{{ athSel.initials }}</div>', 1],
                 'athletes-data' => [["    const athData = [\n      {name:'Yusuf Al Doseri'", "\n    ];\n    const q = s.athQuery"], "    const athData = window.TakeOneFed.athleteDirectory();\n    const q = s.athQuery", 1],
                 'athletes-dedupe' => ["    (s.regs || []).filter(r => String(r.id).indexOf('ext-') === 0).forEach(r => {\n      athData.push({", "    (s.regs || []).filter(r => String(r.id).indexOf('ext-') === 0).forEach(r => {\n      if (!athData.some(x => x.tk === r.takeoneId)) athData.push({", 1],
                 // PLATFORM: the officials clubs actually named, not the sample list.

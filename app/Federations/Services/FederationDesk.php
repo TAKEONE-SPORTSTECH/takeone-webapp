@@ -11,6 +11,7 @@ use App\Federations\Models\FederationEntryAthlete;
 use App\Federations\Models\FederationEvent;
 use App\Federations\Models\FederationTransfer;
 use App\Members\Models\User;
+use App\Members\Support\ProfilePhoto;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -97,6 +98,16 @@ class FederationDesk
      * `athData`): who they are, where they compete, and what they have
      * entered. Real records only.
      */
+    /**
+     * The athlete's face for the Athletes page, or null (the page then draws
+     * initials). Only a picture the member made public: this is a surface
+     * wider than their own profile (CLAUDE.md -> Profile Pictures Are 3:4).
+     */
+    private function photo(?User $u): ?string
+    {
+        return $u && $u->profile_picture_is_public && ProfilePhoto::path($u) ? ProfilePhoto::url($u) : null;
+    }
+
     private function directory(Collection $ids, Collection $athleteIds, Collection $clubs, array $sports): array
     {
         $members = $this->clubMembers($clubs, $sports);
@@ -126,6 +137,7 @@ class FederationDesk
                 'events' => $entries->count(),
                 'sports' => $sports,
                 'key' => $a->takeone_id,
+                'photo' => $this->photo($u),
                 'userId' => $a->user_id,
             ];
         })->values();
@@ -164,6 +176,7 @@ class FederationDesk
                 'practises' => $m['activities'] !== [],
                 'member' => true,
                 'key' => 'm-'.$u->uuid,
+                'photo' => $this->photo($u),
             ];
         }
 
@@ -220,7 +233,7 @@ class FederationDesk
         $rows = DB::table('memberships')->whereIn('tenant_id', $tenants->keys())->where('status', 'active')
             ->orderBy('id')->limit(5000)->get(['tenant_id', 'user_id']);
         $users = User::whereIn('id', $rows->pluck('user_id')->unique())
-            ->get(['id', 'uuid', 'name', 'full_name', 'gender', 'birthdate', 'nationality'])->keyBy('id');
+            ->get(['id', 'uuid', 'name', 'full_name', 'gender', 'birthdate', 'nationality', 'profile_picture', 'profile_picture_is_public'])->keyBy('id');
 
         $out = [];
         foreach ($rows as $row) {
