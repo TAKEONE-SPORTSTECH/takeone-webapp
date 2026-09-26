@@ -38,7 +38,6 @@
                         <th class="px-4 py-3 font-medium">{{ __('platform.members_results_gender') }}</th>
                         <th class="px-4 py-3 font-medium">{{ __('platform.members_results_age') }}</th>
                         <th class="px-4 py-3 font-medium">{{ __('platform.members_results_nationality') }}</th>
-                        <th class="px-4 py-3 font-medium">{{ __('platform.members_results_category') }}</th>
                         <th class="px-4 py-3 font-medium">{{ __('platform.members_results_clubs') }}</th>
                         <th class="px-4 py-3 font-medium whitespace-nowrap">{{ __('platform.members_results_member_since') }}</th>
                     </tr>
@@ -48,14 +47,6 @@
                         @php
                             $tAge   = $member->age;
                             $tMale  = ($member->gender ?? 'Male') === 'Male';
-                            $tCat   = $tAge !== null ? match(true) {
-                                $tAge < 6  => null,
-                                $tAge < 12 => 'Kids',
-                                $tAge < 15 => 'Cadet',
-                                $tAge < 18 => 'Junior',
-                                $tAge < 31 => 'Senior',
-                                default    => 'Masters',
-                            } : null;
                             $tClubs = $member->member_clubs_count ?? 0;
                         @endphp
                         <tr class="member-card-wrapper hover:bg-muted/40 transition-colors cursor-pointer"
@@ -63,8 +54,7 @@
                             data-popup-url="{{ route('admin.platform.members.popup', $member->id) }}"
                             data-member-name="{{ $member->full_name ?? '' }}"
                             data-member-gender="{{ $member->gender ?? '' }}"
-                            data-age="{{ $tAge ?? '' }}"
-                            data-tkd-category="{{ $tCat ?? '' }}">
+                            data-age="{{ $tAge ?? '' }}">
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-3 min-w-0">
                                     <span class="w-9 h-9 rounded-full overflow-hidden shrink-0 grid place-items-center text-white font-bold text-xs"
@@ -86,15 +76,6 @@
                             <td class="px-4 py-3 text-muted-foreground whitespace-nowrap">{{ $tAge !== null ? $tAge . ' ' . __('platform.members_results_yrs') : '—' }}</td>
                             <td class="px-4 py-3 text-muted-foreground">
                                 <span class="nationality-display" data-iso3="{{ $member->nationality }}">{{ $member->nationality ?? '—' }}</span>
-                            </td>
-                            <td class="px-4 py-3">
-                                @if($tCat)
-                                    <span class="inline-flex items-center gap-1 font-medium {{ $tMale ? 'text-primary' : 'text-pink-600' }}">
-                                        <i class="bi bi-trophy-fill text-xs"></i>{{ $tCat }}
-                                    </span>
-                                @else
-                                    <span class="text-muted-foreground">—</span>
-                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 @if($tClubs > 0)

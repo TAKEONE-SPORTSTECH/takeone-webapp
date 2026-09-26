@@ -1140,13 +1140,28 @@
         document.getElementById('mpRemoveModal').classList.remove('hidden');
     };
 
-    document.getElementById('mpRemoveNameInput')?.addEventListener('input', function () {
-        const expected = document.getElementById('mpRemoveNameExpected').textContent.trim();
-        document.getElementById('mpRemoveConfirmBtn').disabled =
-            this.value.trim().toLowerCase() !== expected.toLowerCase();
-    });
+    // Delegated off `document`, once: the admin shell swaps this markup in
+    // place and runs this script only once per session, so a listener bound
+    // straight onto the input dies with the first swap — and the Remove button
+    // then stays disabled whatever is typed.
+    // Names compare with whitespace folded: copying a name off the page
+    // collapses a double or non-breaking space the stored name still has.
+    const mpFoldName = (v) => String(v || '').normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+    if (!window.__mpRemoveBound) {
+        window.__mpRemoveBound = true;
+        document.addEventListener('input', function (e) {
+            if (e.target?.id !== 'mpRemoveNameInput') return;
+            const expected = document.getElementById('mpRemoveNameExpected')?.textContent;
+            const confirmBtn = document.getElementById('mpRemoveConfirmBtn');
+            if (confirmBtn) confirmBtn.disabled = mpFoldName(e.target.value) !== mpFoldName(expected);
+        });
+        document.addEventListener('click', function (e) {
+            const confirmBtn = e.target?.closest?.('#mpRemoveConfirmBtn');
+            if (confirmBtn && !confirmBtn.disabled) mpConfirmRemove.call(confirmBtn);
+        });
+    }
 
-    document.getElementById('mpRemoveConfirmBtn')?.addEventListener('click', async function () {
+    async function mpConfirmRemove() {
         const btn    = document.getElementById('mpRemoveBtn');
         const url    = btn.dataset.removeUrl;
 
@@ -1166,8 +1181,12 @@
                 document.getElementById('mpRemoveModal').classList.add('hidden');
                 window.showToast('success', data.message);
                 closeMemberPopup();
-                const card = document.querySelector(`[data-member-id="${_mpCurrentUserId}"]`);
-                if (card) card.closest('.member-item')?.remove();
+                // Every rendering of the member leaves the list, not just the first.
+                const goneId = String(_mpCurrentUserId);
+                document.querySelectorAll('[data-member-id]').forEach(card => {
+                    if (card.getAttribute('data-member-id') === goneId) (card.closest('.member-item') || card).remove();
+                });
+                this.innerHTML = '{{ __("admin.partials_member_popup_remove_member") }}';
             } else {
                 window.showToast('error', data.message || '{{ __("admin.partials_member_popup_could_not_remove") }}');
                 this.disabled = false;
@@ -1178,7 +1197,7 @@
             this.disabled = false;
             this.innerHTML = '{{ __("admin.partials_member_popup_remove_member") }}';
         }
-    });
+    }
 
     // ── Verify member email (admin marks account as verified → can log in) ──
     window.verifyMemberEmail = async function () {
@@ -1243,10 +1262,15 @@
             if (data.success) {
                 window.showToast('success', data.message || '{{ __("admin.partials_member_popup_member_deleted") }}');
                 closeMemberPopup();
-                const card = document.querySelector(`[data-member-id="${_mpCurrentUserId}"]`);
-                if (card) {
+                // EVERY rendering of the member goes — a list can draw one person
+                // twice (the platform page keeps a card grid AND a table row).
+                const goneId = String(_mpCurrentUserId);
+                document.querySelectorAll('[data-member-id]').forEach(card => {
+                    if (card.getAttribute('data-member-id') !== goneId) return;
                     (card.closest('.member-item') || card.closest('.member-card-wrapper') || card).remove();
-                }
+                });
+                // The host list re-reads its counts and paging (No-Reload rule).
+                window.dispatchEvent(new CustomEvent('member-deleted', { detail: { id: goneId } }));
             } else {
                 window.showToast('error', data.message || '{{ __("admin.partials_member_popup_could_not_delete") }}');
             }

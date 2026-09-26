@@ -93,6 +93,22 @@
         };
         window.addEventListener('member-filters:apply', window.__memberFiltersApply);
 
+        // A member deleted here, or by another super-admin (realtime:members
+        // refresh signal): re-read the list as it stands — search, sort,
+        // filters and page kept — so counts and paging are right at once.
+        // Stored on window for the same no-stacking reason as above.
+        if (window.__membersListRefresh) {
+            window.removeEventListener('member-deleted', window.__membersListRefresh);
+            window.removeEventListener('realtime:members', window.__membersListRefresh);
+        }
+        window.__membersListRefresh = function (e) {
+            if (e.type === 'realtime:members' && (e.detail || {}).action !== 'refresh') return;
+            if (!document.body.contains(resultsEl)) return;
+            loadResults(location.pathname + location.search);
+        };
+        window.addEventListener('member-deleted', window.__membersListRefresh);
+        window.addEventListener('realtime:members', window.__membersListRefresh);
+
         searchEl.addEventListener('input', function(e) {
             clearTimeout(searchDebounce);
             const term = e.target.value.trim();

@@ -1455,12 +1455,25 @@ class PlatformController extends Controller
         }
 
         $memberName = $member->full_name;
+        $deletedId = $member->id;
         $member->delete();
+
+        // Every other super-admin with the members list open re-reads it
+        // (a refresh signal: nothing about the member travels).
+        rescue(function () {
+            $batch = User::whereHas('roles', fn ($q) => $q->where('slug', 'super-admin'))
+                ->where('id', '!=', Auth::id())->pluck('id')
+                ->map(fn ($uid) => ['topic' => \Takeone\Realtime\Support\Topics::user((int) $uid, 'members'), 'payload' => ['action' => 'refresh']])
+                ->values()->all();
+            if ($batch !== []) {
+                \Realtime()->publishMany($batch);
+            }
+        }, report: true);
 
         $msg = $memberName.' has been deleted successfully.';
 
         return $wantsJson
-            ? response()->json(['success' => true, 'message' => $msg])
+            ? response()->json(['success' => true, 'message' => $msg, 'member' => ['id' => $deletedId]])
             : redirect()->route('admin.platform.members')->with('success', $msg);
     }
 
