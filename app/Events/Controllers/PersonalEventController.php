@@ -230,7 +230,11 @@ class PersonalEventController extends Controller
     public function show(ClubEvent $event, Request $request): View
     {
         $me = Auth::user();
-        $this->assertVisible($event, $me);
+        // READ-only widening for federation staff (FederationEventView). Every
+        // write here keeps assertVisible(), which this does not touch.
+        abort_if($event->is_archived, 404);
+        abort_unless($this->isEligible($event, $me) || $this->canManage($event, $me)
+            || \App\Federations\Support\FederationEventView::sees($event, $me), 403);
 
         $type = $this->typeFor($event);
 

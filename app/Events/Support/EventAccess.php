@@ -24,7 +24,11 @@ class EventAccess
             return false;
         }
 
-        return $this->eligible($event, $user) || $this->canManage($event, $user);
+        return $this->eligible($event, $user) || $this->canManage($event, $user)
+            // Federation staff READ events their own athletes competed in —
+            // viewing only, never canManage (App\Federations\Support\FederationEventView).
+            || (class_exists(\App\Federations\Support\FederationEventView::class)
+                && \App\Federations\Support\FederationEventView::sees($event, $user));
     }
 
     /**
