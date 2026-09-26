@@ -114,6 +114,10 @@ class AppServiceProvider extends ServiceProvider
         // A new avatar joins the profile's own pictures, whichever path set it.
         \App\Members\Models\User::observe(\App\Members\Observers\UserObserver::class);
 
+        // A deleted member leaves every open federation dashboard at once,
+        // whichever path deleted them (admin, self-service, a guardian).
+        \App\Members\Models\User::deleted(fn ($user) => \App\Federations\Support\FederationPulse::forDeletedMember($user));
+
         // Horizon dashboard — super-admin only
         Horizon::auth(function (Request $request) {
             return $request->user()?->hasRole('super-admin') ?? false;

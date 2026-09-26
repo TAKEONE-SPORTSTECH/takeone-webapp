@@ -48,7 +48,7 @@ class FederationDesk
     }
 
     /** `window.__TAKEONE_FED.fedstore` for the dashboard. */
-    public function store(array $access): array
+    public function store(array $access, ?User $viewer = null): array
     {
         $ids = $this->ids($access);
         $clubs = $this->registry->clubsOf($ids);
@@ -82,7 +82,7 @@ class FederationDesk
         }
 
         return [
-            'directory' => $this->directory($ids, $athleteIds, $clubs, $this->sportsOf($access)),
+            'directory' => $this->directory($ids, $athleteIds, $clubs, $this->sportsOf($access), $viewer),
             'officials' => $this->officials($entries),
             'clubs' => $clubs->map(fn ($c) => $this->registry->club($c))->concat($extra)->values()->all(),
             'athletes' => FederationAthlete::with('user')->whereIn('id', $athleteIds)->get()->map(fn ($a) => $this->registry->athlete($a, $ids))->values()->all(),
@@ -94,11 +94,6 @@ class FederationDesk
     }
 
     /**
-     * The Athletes page's list, in the prototype's own row shape (its built-in
-     * `athData`): who they are, where they compete, and what they have
-     * entered. Real records only.
-     */
-    /**
      * The athlete's face for the Athletes page, or null (the page then draws
      * initials). Only a picture the member made public: this is a surface
      * wider than their own profile (CLAUDE.md -> Profile Pictures Are 3:4).
@@ -108,15 +103,148 @@ class FederationDesk
         return $u && $u->profile_picture_is_public && ProfilePhoto::path($u) ? ProfilePhoto::url($u) : null;
     }
 
-    private function directory(Collection $ids, Collection $athleteIds, Collection $clubs, array $sports): array
+    /** The CPR number from the member's own identity documents (never the scan). */
+    private function cpr(?User $u): ?string
+    {
+        foreach ((array) ($u?->documents ?? []) as $doc) {
+            if (is_array($doc) && strtoupper((string) ($doc['type'] ?? '')) === 'CPR' && trim((string) ($doc['number'] ?? '')) !== '') {
+                return trim((string) $doc['number']);
+            }
+        }
+
+        return null;
+    }
+
+    private function mobile(?User $u): string
+    {
+        $m = is_array($u?->mobile) ? trim(($u->mobile['code'] ?? '').' '.($u->mobile['number'] ?? '')) : '';
+
+        return $m !== '' ? $m : '—';
+    }
+
+    /**
+     * The federation's sports this person competed in, named as the
+     * federation names them (an event stores 'karate', the federation
+     * 'Karate'). With no sport list, every sport they competed in counts.
+     */
+    private function competedSports(array $events, array $sports): array
+    {
+        $out = [];
+        foreach ($events as $e) {
+            $raw = trim((string) ($e['sport'] ?? ''));
+            if ($raw === '') {
+                continue;
+            }
+            $name = collect($sports)->first(fn ($sp) => strcasecmp($sp, $raw) === 0) ?? ($sports === [] ? ucfirst($raw) : null);
+            if ($name !== null) {
+                $out[$name] = true;
+            }
+        }
+
+        return array_keys($out);
+    }
+
+    /** Club enrolment and competition, as the Athletes page's sport chips. */
+    private function practiceChips(array $activities, array $competed): array
+    {
+        $chips = array_map(fn ($n) => [$n, 'Enrolled'], $activities);
+        foreach ($competed as $sp) {
+            if (! collect($activities)->contains(fn ($a) => stripos($a, $sp) !== false)) {
+                $chips[] = [$sp, 'Competed'];
+            }
+        }
+
+        return $chips;
+    }
+
+    /**
+     * A platform club's own page, or null. Country-prefixed (`clubs.show` is
+     * bound under `{country}`), and only for an ISO code — a country stored as
+     * a name would be a 404, and a dead link is not rendered.
+     */
+    private function clubHref($tenant): ?string
+    {
+        $country = strtolower(trim((string) ($tenant->country ?? '')));
+
+        return $tenant && $tenant->slug && preg_match('/^[a-z]{2,3}$/', $country)
+            ? route('clubs.show', ['country' => $country, 'slug' => $tenant->slug]) : null;
+    }
+
+    /** The nationality as the card shows it: the full name and our own flag file. */
+    private function nationality(?string $code): array
+    {
+        return [
+            'natName' => $code ? (\App\Support\Countries::name($code) ?: $code) : '—',
+            'natFlag' => $code ? \App\Support\Flag::url($code) : null,
+        ];
+    }
+
+    /**
+     * The events each person took part in, newest first: the federation's own
+     * entries, and platform events they joined as a competitor. A club's
+     * internal sessions stay the club's business.
+     *
+     * @return array<int, array<int, array{name: string, date: string}>> user id => events
+     */
+    private function eventsByUser(Collection $userIds, ?User $viewer = null): array
+    {
+        $out = [];
+        if ($userIds->isEmpty()) {
+            return $out;
+        }
+        FederationEntryAthlete::with('entry.event', 'athlete')->where('status', 'Active')
+            ->whereHas('athlete', fn ($q) => $q->whereIn('user_id', $userIds))->get()
+            ->each(function (FederationEntryAthlete $ea) use (&$out) {
+                $e = $ea->entry?->event;
+                if ($e) {
+                    $out[$ea->athlete->user_id]['f'.$e->id] = ['name' => $e->name, 'sport' => (string) $e->sport, 'fed' => $e->uuid, 'url' => null, 'date' => $e->starts_on ? \Illuminate\Support\Carbon::parse($e->starts_on)->format('Y-m-d') : ''];
+                }
+            });
+        $joined = DB::table('club_event_registrations as r')->join('club_events as e', 'e.id', '=', 'r.event_id')
+            ->whereIn('r.user_id', $userIds)->where('r.status', 'joined')->where('r.role', 'participant')
+            ->where('e.scope', '!=', 'internal')
+            ->get(['r.user_id', 'e.id', 'e.title', 'e.date', 'e.sport']);
+        // A platform event links to the page THIS viewer can open, never to a
+        // 404: the event page when EventAccess lets them see it (host club,
+        // organisers, eligible members, platform staff), else its public page
+        // when that opens for anybody, else nothing. No access is widened.
+        $publisher = app(\App\Events\Support\PublicEvent::class);
+        $access = app(\App\Events\Support\EventAccess::class);
+        $urls = \App\Events\Models\ClubEvent::whereIn('id', $joined->pluck('id')->unique())->get()
+            ->mapWithKeys(fn ($ev) => [$ev->id => $viewer && $access->visible($ev, $viewer) ? route('me.events.show', $ev->uuid)
+                : ($publisher->isPublic($ev) ? route('events.public', $ev->uuid) : null)]);
+        $joined->each(function ($row) use (&$out, $urls) {
+            $out[$row->user_id]['c'.$row->id] = ['name' => (string) $row->title, 'sport' => (string) $row->sport, 'fed' => null, 'url' => $urls[$row->id] ?? null, 'date' => $row->date ? substr((string) $row->date, 0, 10) : ''];
+        });
+
+        return array_map(function (array $list) {
+            $list = array_values($list);
+            usort($list, fn ($a, $b) => strcmp($b['date'], $a['date']));
+
+            return array_map(fn ($e) => ['name' => $e['name'], 'sport' => $e['sport'], 'fed' => $e['fed'], 'url' => $e['url'], 'date' => $e['date'] !== '' ? \Illuminate\Support\Carbon::parse($e['date'])->format('j M Y') : 'Date TBC'], $list);
+        }, $out);
+    }
+
+    /**
+     * The Athletes page's list, in the prototype's own row shape (its built-in
+     * `athData`): who they are, where they compete, and what they have
+     * entered. Real records only.
+     */
+    private function directory(Collection $ids, Collection $athleteIds, Collection $clubs, array $sports, ?User $viewer = null): array
     {
         $members = $this->clubMembers($clubs, $sports);
+        $events = $this->eventsByUser(FederationAthlete::whereIn('id', $athleteIds)->pluck('user_id')->merge(array_keys($members))->unique()->values(), $viewer);
 
-        $rows = FederationAthlete::with('user')->whereIn('id', $athleteIds)->orderBy('takeone_id')->get()->map(function (FederationAthlete $a) use ($ids) {
+        // A deleted account leaves the Athletes list. Its entries, draws and
+        // results are kept (they are the event's history), so only this list
+        // drops it — whereHas skips soft-deleted users.
+        $rows = FederationAthlete::with('user')->whereIn('id', $athleteIds)->whereHas('user')->orderBy('takeone_id')->get()->map(function (FederationAthlete $a) use ($ids, $events) {
             $u = $a->user;
             $cur = $this->registry->currentClub($a, $ids);
             $club = $cur ? ($cur->club?->club?->club_name ?? $cur->application?->name) : null;
-            $mobile = is_array($u?->mobile) ? trim(($u->mobile['code'] ?? '').' '.($u->mobile['number'] ?? '')) : '';
+            // A platform club's own logo, or the one an applying club uploaded.
+            $clubLogo = $cur?->club?->club?->logo ? file_url($cur->club->club->logo)
+                : ($cur?->application?->logo ? route('federations.invite.club-logo', $cur->application->uuid) : null);
             $entries = FederationEntryAthlete::with('entry.event')->where('federation_athlete_id', $a->id)->where('status', 'Active')->get();
             $sports = $entries->map(fn ($ea) => [(string) $ea->entry?->event?->sport, $ea->weight ? rtrim(rtrim(number_format($ea->weight, 1), '0'), '.').' kg' : '—'])
                 ->unique(fn ($x) => $x[0])->values()->all();
@@ -126,15 +254,19 @@ class FederationDesk
                 // and results, and the dashboard draws initials from this string.
                 'name' => $u?->full_name ?: $u?->name ?: 'Deleted member',
                 'club' => $club ?: '—',
+                'clubLogo' => $clubLogo,
+                'clubUrl' => $cur?->club?->club ? $this->clubHref($cur->club->club) : null,
                 'gender' => $u?->gender === 'Female' ? 'F' : 'M',
                 'dob' => $u?->birthdate ? $u->birthdate->format('j M Y') : '—',
                 'age' => $u?->birthdate ? $u->birthdate->age : '—',
-                'nat' => $a->nationality ?: '—',
-                'natId' => (string) ($a->national_id ?: '—'),
-                'mobile' => $mobile !== '' ? $mobile : '—',
+                'nat' => $a->nationality ?: (\App\Support\Countries::iso3($u?->nationality) ?: '—'),
+                ...$this->nationality($a->nationality ?: $u?->nationality),
+                'natId' => (string) ($a->national_id ?: ($this->cpr($u) ?: '—')),
+                'mobile' => $this->mobile($u),
                 'email' => $u?->email ?: '—',
                 'tk' => $a->takeone_id,
-                'events' => $entries->count(),
+                'eventList' => $events[$a->user_id] ?? [],
+                'events' => count($events[$a->user_id] ?? []),
                 'sports' => $sports,
                 'key' => $a->takeone_id,
                 'photo' => $this->photo($u),
@@ -145,13 +277,18 @@ class FederationDesk
         // Club members: the federation's clubs' own rosters, whether or not
         // they have entered anything. One row per person — an athlete already
         // listed above only gains the "practises" mark.
+        // A sport is practised through the club (an active package with that
+        // activity) OR by competing in an event of that sport.
         $byUser = $rows->keyBy('userId');
-        $out = $rows->map(function (array $r) use ($members) {
+        $out = $rows->map(function (array $r) use ($members, $events, $sports) {
             $m = $members[$r['userId']] ?? null;
-            if ($m && $m['activities'] !== []) {
+            $activities = $m ? $m['activities'] : [];
+            $competed = $this->competedSports($events[$r['userId']] ?? [], $sports);
+            $competed = array_values(array_filter($competed, fn ($sp) => ! collect($r['sports'])->contains(fn ($x) => strcasecmp($x[0], $sp) === 0)));
+            if ($activities !== [] || $competed !== [] || $r['sports'] !== []) {
                 $r['practises'] = true;
-                $r['sports'] = array_merge(array_map(fn ($n) => [$n, 'Enrolled'], $m['activities']), $r['sports']);
             }
+            $r['sports'] = array_merge($this->practiceChips($activities, $competed), $r['sports']);
 
             return $r;
         })->all();
@@ -160,20 +297,28 @@ class FederationDesk
                 continue;
             }
             $u = $m['user'];
-            // Contact details and ID numbers stay with the club: a member who
-            // never entered a federation event did not hand them over.
+            // The federation sees its clubs' members in full (decided
+            // 2026-09-26): CPR from their identity documents, contact details,
+            // and the events they competed in.
             $out[] = [
                 'name' => $u->full_name ?: $u->name,
                 'club' => $m['club'],
+                'clubLogo' => $m['clubLogo'],
+                'clubUrl' => $m['clubUrl'],
                 'gender' => $u->gender === 'Female' ? 'F' : 'M',
-                'dob' => '—',
+                'dob' => $u->birthdate ? $u->birthdate->format('j M Y') : '—',
                 'age' => $u->birthdate ? $u->birthdate->age : '—',
-                'nat' => $u->nationality ?: '—',
-                'natId' => '—', 'mobile' => '—', 'email' => '—',
+                // Profiles store ISO-2 ('BH'); athletes read ISO-3 ('BHR').
+                'nat' => \App\Support\Countries::iso3($u->nationality) ?: ($u->nationality ?: '—'),
+                ...$this->nationality($u->nationality),
+                'natId' => $this->cpr($u) ?: '—',
+                'mobile' => $this->mobile($u),
+                'email' => $u->email ?: '—',
                 'tk' => '',
-                'events' => 0,
-                'sports' => array_map(fn ($n) => [$n, 'Enrolled'], $m['activities']),
-                'practises' => $m['activities'] !== [],
+                'eventList' => $events[$uid] ?? [],
+                'events' => count($events[$uid] ?? []),
+                'sports' => $chips = $this->practiceChips($m['activities'], $this->competedSports($events[$uid] ?? [], $sports)),
+                'practises' => $chips !== [],
                 'member' => true,
                 'key' => 'm-'.$u->uuid,
                 'photo' => $this->photo($u),
@@ -209,6 +354,8 @@ class FederationDesk
     private function clubMembers(Collection $clubs, array $sports): array
     {
         $tenants = $clubs->filter(fn ($c) => $c instanceof FederationClub && $c->club)->mapWithKeys(fn ($c) => [$c->tenant_id => $c->club->club_name]);
+        $logos = $clubs->filter(fn ($c) => $c instanceof FederationClub && $c->club)->mapWithKeys(fn ($c) => [$c->tenant_id => $c->club->logo ? file_url($c->club->logo) : null]);
+        $hrefs = $clubs->filter(fn ($c) => $c instanceof FederationClub && $c->club)->mapWithKeys(fn ($c) => [$c->tenant_id => $this->clubHref($c->club)]);
         if ($tenants->isEmpty()) {
             return [];
         }
@@ -233,7 +380,7 @@ class FederationDesk
         $rows = DB::table('memberships')->whereIn('tenant_id', $tenants->keys())->where('status', 'active')
             ->orderBy('id')->limit(5000)->get(['tenant_id', 'user_id']);
         $users = User::whereIn('id', $rows->pluck('user_id')->unique())
-            ->get(['id', 'uuid', 'name', 'full_name', 'gender', 'birthdate', 'nationality', 'profile_picture', 'profile_picture_is_public'])->keyBy('id');
+            ->get(['id', 'uuid', 'name', 'full_name', 'email', 'mobile', 'documents', 'gender', 'birthdate', 'nationality', 'profile_picture', 'profile_picture_is_public'])->keyBy('id');
 
         $out = [];
         foreach ($rows as $row) {
@@ -241,7 +388,7 @@ class FederationDesk
             if (! $u || isset($out[$u->id])) {
                 continue;
             }
-            $out[$u->id] = ['user' => $u, 'club' => $tenants[$row->tenant_id], 'activities' => array_values(array_unique($enrolled[$u->id] ?? []))];
+            $out[$u->id] = ['user' => $u, 'club' => $tenants[$row->tenant_id], 'clubLogo' => $logos[$row->tenant_id] ?? null, 'clubUrl' => $hrefs[$row->tenant_id] ?? null, 'activities' => array_values(array_unique($enrolled[$u->id] ?? []))];
         }
 
         return $out;

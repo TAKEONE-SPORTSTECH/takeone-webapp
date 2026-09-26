@@ -168,7 +168,7 @@ class FederationAppController extends Controller
 
         return [
             'events' => $this->events->payload($access),
-            'fedstore' => $this->desk->store($access),
+            'fedstore' => $this->desk->store($access, $user),
             'draws' => $this->draws->payload($access),
             'messageClubs' => $this->messages->clubMap($access),
             // The prototype's own storage keys, filled from the server. The

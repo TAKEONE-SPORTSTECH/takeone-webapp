@@ -77,6 +77,27 @@ final class FederationPulse
         }
     }
 
+    /**
+     * A member's account was deleted: every federation that lists them — as
+     * an entered athlete, or as a member of one of its clubs — re-reads, so
+     * they leave its Athletes page at once. Signals only; nothing about the
+     * member travels.
+     */
+    public static function forDeletedMember(User $user): void
+    {
+        if (! config('federations.enabled')) {
+            return;
+        }
+        rescue(function () use ($user) {
+            $athleteIds = \App\Federations\Models\FederationAthlete::where('user_id', $user->id)->pluck('id');
+            $federationIds = \App\Federations\Models\FederationAthleteClub::whereIn('federation_athlete_id', $athleteIds)->pluck('federation_id')
+                ->merge(\App\Federations\Models\FederationClub::whereIn('tenant_id',
+                    \Illuminate\Support\Facades\DB::table('memberships')->where('user_id', $user->id)->pluck('tenant_id'))->pluck('federation_id'))
+                ->unique()->filter();
+            Federation::whereIn('id', $federationIds)->get()->each(fn (Federation $f) => self::federation($f));
+        }, report: true);
+    }
+
     /** The federation a signed-in staff member works in. */
     public static function forUser(?User $user): void
     {
