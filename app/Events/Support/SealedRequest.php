@@ -41,7 +41,7 @@ class SealedRequest
         // installed app that nobody can stop (CLAUDE.md: every redirect chain
         // must terminate). If the failing request IS the event page, the
         // default handling — a real 404 — is the honest answer.
-        if (trim($request->path(), '/') === 'e/'.$uuid) {
+        if (trim($request->path(), '/') === 'me/events/'.$uuid) {
             return null;
         }
 
@@ -55,7 +55,7 @@ class SealedRequest
         // Built by hand rather than with route() — the named route is the right
         // answer, but this runs while an exception is already being rendered and
         // a second failure here would replace a 404 with a 500.
-        return url('/e/'.$uuid);
+        return route('me.events.show', ['event' => $uuid]);
     }
 
     /**
@@ -75,11 +75,11 @@ class SealedRequest
 
         // Already at the sign-in page: let the default answer stand rather than
         // redirect a page to itself.
-        if (trim($request->path(), '/') === 'e/'.$uuid.'/manage') {
+        if (trim($request->path(), '/') === 'me/events/'.$uuid.'/door') {
             return null;
         }
 
-        return url('/e/'.$uuid.'/manage');
+        return route('events.public.manage', ['event' => $uuid]);
     }
 
     /** The event uuid this path is about, or null if it is not a /e/ path. */
@@ -87,11 +87,12 @@ class SealedRequest
     {
         $segments = explode('/', trim($request->path(), '/'));
 
-        if (($segments[0] ?? null) !== 'e') {
+        // /me/events/{uuid}/… since 2026-09-27 — the event's one address.
+        if (($segments[0] ?? null) !== 'me' || ($segments[1] ?? null) !== 'events') {
             return null;
         }
 
-        $uuid = $segments[1] ?? '';
+        $uuid = $segments[2] ?? '';
 
         // The event page is addressed by uuid and only by uuid. Anything else
         // under /e/ is not this surface, and guessing would be worse than

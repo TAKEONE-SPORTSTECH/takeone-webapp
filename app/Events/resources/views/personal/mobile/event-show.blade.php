@@ -320,7 +320,7 @@
            `entry_mode` is `members`, and a tile that lands on a refusal is a
            dead end (Navigation Integrity). */
         $peopleHref = ! empty($publicUrl ?? null)
-            ? route('events.public.section', ['event' => $e['key'], 'section' => 'participants', 'from' => 'me'])
+            ? route('me.events.people', $e['key'])
             : route('me.events.people', $e['key']);
 
         $doors['participants'] = [
@@ -505,11 +505,11 @@
             <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
             <div class="relative flex items-center gap-3">
                 <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                    <i class="bi text-2xl" :class="going ? 'bi-check2-circle' : '{{ $canJoin ? 'bi-person-check' : 'bi-info-circle' }}'"></i>
+                    <i class="bi text-2xl" :class="going ? 'bi-check2-circle' : @js($canJoin ? 'bi-person-check' : 'bi-info-circle')"></i>
                 </div>
                 <div class="min-w-0 flex-1">
                     <h3 class="font-black text-base leading-tight"
-                        x-text="!going ? '{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}' : (feeDue ? '{{ __('personal.event_show_place_held_fee_due') }}' : '{{ __('personal.event_show_youre_participant') }}')">{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}</h3>
+                        x-text="!going ? @js($byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant')) : (feeDue ? @js(__('personal.event_show_place_held_fee_due')) : @js(__('personal.event_show_youre_participant')))">{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}</h3>
                     <p class="text-xs text-white/85 mt-0.5">
                         @if(!($canCompete ?? true)) {{ __('personal.event_show_not_eligible_spectators') }}
                         @elseif($byQual) {{ __('personal.event_show_reserved_finalists') }}
@@ -518,7 +518,7 @@
                     </p>
                 </div>
                 <span class="text-sm font-black flex-shrink-0"
-                      x-text="!going ? '{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}' : (feeDue ? '{{ __('personal.event_show_cta_fee_due') }}' : '{{ __('personal.event_show_cta_joined') }}')">{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}</span>
+                      x-text="!going ? @js($canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why')) : (feeDue ? @js(__('personal.event_show_cta_fee_due')) : @js(__('personal.event_show_cta_joined')))">{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}</span>
                 <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
             </div>
         </button>
@@ -542,11 +542,11 @@
                     </div>
                     <div class="min-w-0 flex-1">
                         <h3 class="font-black text-base leading-tight"
-                            x-text="!watching ? '{{ __('personal.event_show_spectator_ticket') }}' : (feeDue ? '{{ __('personal.event_show_place_held_fee_due') }}' : '{{ __('personal.event_show_ticket_booked') }}')">{{ __('personal.event_show_spectator_ticket') }}</h3>
+                            x-text="!watching ? @js(__('personal.event_show_spectator_ticket')) : (feeDue ? @js(__('personal.event_show_place_held_fee_due')) : @js(__('personal.event_show_ticket_booked')))">{{ __('personal.event_show_spectator_ticket') }}</h3>
                         <p class="text-xs text-white/85 mt-0.5"><span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_watching') }}{{ $ticketPaid ? ' · '.__('personal.event_show_entry_watch_matches') : ' · '.__('personal.event_show_free_to_watch') }}</p>
                     </div>
                     <span class="text-sm font-black flex-shrink-0"
-                          x-text="!watching ? '{{ $e['spectator']['fee'] }}' : (feeDue ? '{{ __('personal.event_show_cta_fee_due') }}' : '{{ __('personal.event_show_cta_booked') }}')">{{ $e['spectator']['fee'] }}</span>
+                          x-text="!watching ? @js($e['spectator']['fee']) : (feeDue ? @js(__('personal.event_show_cta_fee_due')) : @js(__('personal.event_show_cta_booked')))">{{ $e['spectator']['fee'] }}</span>
                     <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
                 </div>
             </button>

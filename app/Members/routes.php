@@ -228,9 +228,13 @@ Route::get('/people/{uuid}', [App\Members\Controllers\PeopleController::class, '
  * EVENT's uuid and every name on the list 404'd. The wrapper types the event, so
  * the scalar that follows is the person's.
  */
-Route::get('/e/{event:uuid}/admin/person/{uuid}', [App\Members\Controllers\PeopleController::class, 'showInEvent'])
+// Moved from /e/{uuid}/admin/person/{uuid} on 2026-09-27, when /e/ went: the
+// event's pages all live under /me/events/{uuid} now, dressed in the event's
+// skin by BrandEventPage rather than the retired seal. Same name, controller
+// and authorization (PeopleController::show asks canViewPublicProfile()).
+Route::get('/me/events/{event:uuid}/person/{uuid}', [App\Members\Controllers\PeopleController::class, 'showInEvent'])
     ->name('sealed.people.show')
-    ->middleware(['web', App\Events\Middleware\SealEventPage::class, 'throttle:60,1'])
+    ->middleware(['web', App\Events\Middleware\BrandEventPage::class, 'throttle:60,1'])
     ->whereUuid('event');
 
 // Public version manifest polled by the installed Android app to detect updates.

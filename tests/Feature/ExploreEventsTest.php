@@ -135,9 +135,12 @@ class ExploreEventsTest extends TestCase
         $user = $this->createUser();
         $club = $this->clubFor($user);
 
-        // Ended earlier today — the end_time has passed, so the day alone is not enough.
+        // Completed earlier today — the organiser closed it, so its results are out.
+        // (An end_time passing on its own is NOT enough: see
+        // test_a_same_day_event_is_not_over_until_the_day_ends_or_every_result_is_in.)
         $this->event($club, [
             'title' => 'Finished earlier',
+            'status' => 'completed',
             'date' => now()->toDateString(),
             'start_time' => now()->subHours(6)->format('H:i:s'),
             'end_time' => now()->subHour()->format('H:i:s'),
@@ -230,5 +233,81 @@ class ExploreEventsTest extends TestCase
         $this->assertArrayNotHasKey('id', $row);
         $this->assertArrayNotHasKey('tenant_id', $row);
         $this->assertStringContainsString($event->uuid, $row['url']);
+    }
+
+    public function test_finished_events_are_listed_separately_newest_first_and_scoped(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-06-15 12:00:00'));
+
+        $user = $this->createUser();
+        $club = $this->clubFor($user);
+        $this->event($club, ['title' => 'Last week', 'date' => '2026-06-08']);
+        $this->event($club, ['title' => 'Yesterday', 'date' => '2026-06-14']);
+        $this->event($club, ['title' => 'Ended this morning', 'date' => '2026-06-15', 'start_time' => '07:00:00', 'end_time' => '09:00:00', 'status' => 'completed']);
+        $this->event($club, ['title' => 'Old but cancelled', 'date' => '2026-06-10', 'status' => 'cancelled']);
+        $this->event($club, ['title' => 'Next week', 'date' => '2026-06-22']);
+
+        // Another club's internal event must never leak into the finished list.
+        $other = $this->createClub($this->createUser(), ['country' => 'BH']);
+        $this->event($other, ['title' => 'Not yours', 'date' => '2026-06-12']);
+
+        $res = $this->actingAs($user)->getJson('/explore/events')->assertOk();
+
+        $this->assertSame(['Next week'], collect($res->json('events'))->pluck('title')->all());
+        $this->assertSame(
+            ['Ended this morning', 'Yesterday', 'Last week'],
+            collect($res->json('finished'))->pluck('title')->all()
+        );
+        $this->assertSame(['ended'], collect($res->json('finished'))->pluck('state')->unique()->values()->all());
+        $this->assertFalse(collect($res->json('finished'))->contains('featured', true));
+    }
+
+    public function test_going_counts_people_and_prices_list_every_option(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-06-15 12:00:00'));
+
+        $user = $this->createUser();
+        $club = $this->clubFor($user);
+        $event = $this->event($club, ['title' => 'Open', 'date' => '2026-06-20', 'participant_fee_amount' => 0]);
+        foreach ([['Gi', 10], ['No-Gi', 10], ['Gi + No-Gi', 15]] as $i => [$label, $amount]) {
+            \App\Events\Models\EventFeeOption::create(['event_id' => $event->id, 'role' => 'participant', 'label' => $label, 'amount' => $amount, 'is_active' => true, 'sort' => $i]);
+        }
+        // One person in two divisions is two entries but ONE competitor.
+        $athlete = $this->createUser();
+        foreach ([1, 2] as $n) {
+            \App\Events\Models\ClubEventRegistration::create(['event_id' => $event->id, 'user_id' => $athlete->id, 'role' => 'participant', 'status' => 'registered']);
+        }
+
+        $card = $this->actingAs($user)->getJson('/explore/events')->assertOk()->json('events.0');
+
+        $this->assertSame(1, $card['going']);
+        $this->assertSame(['Gi', 'No-Gi', 'Gi + No-Gi'], array_column($card['prices'], 'label'));
+        $this->assertTrue($card['price_varies']);
+        $this->assertStringContainsString('10', $card['price_from']);
+    }
+
+    public function test_a_same_day_event_is_not_over_until_the_day_ends_or_every_result_is_in(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-06-15 20:00:00'));
+
+        $user = $this->createUser();
+        $club = $this->clubFor($user);
+        // Planned 09:00–12:00, but the day overran: its end TIME has passed.
+        $event = $this->event($club, ['title' => 'Overran', 'date' => '2026-06-15', 'start_time' => '09:00:00', 'end_time' => '12:00:00']);
+        $a = \App\Events\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'A', 'status' => 'completed']);
+        $b = \App\Events\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'B', 'status' => 'running']);
+        foreach ([$a, $b] as $cat) {
+            \App\Events\Models\ClubEventRegistration::create(['event_id' => $event->id, 'user_id' => $this->createUser()->id, 'role' => 'participant', 'status' => 'registered', 'category_id' => $cat->id]);
+        }
+
+        $res = $this->actingAs($user)->getJson('/explore/events')->assertOk();
+        $this->assertSame(['Overran'], collect($res->json('events'))->pluck('title')->all());
+        $this->assertSame([], $res->json('finished'));
+
+        // The last division's podium is settled → every result is out → over.
+        $b->update(['status' => 'completed']);
+        $res = $this->actingAs($user)->getJson('/explore/events')->assertOk();
+        $this->assertSame([], $res->json('events'));
+        $this->assertSame(['Overran'], collect($res->json('finished'))->pluck('title')->all());
     }
 }

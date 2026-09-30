@@ -42,10 +42,10 @@
                     <div class="min-w-0 flex-1">
                         <h3 class="text-lg font-black leading-tight"
                             x-text="joinMode === 'settle'
-                                ? '{{ __('personal.event_show_join_settle_title') }}'
+                                ? @js(__('personal.event_show_join_settle_title'))
                                 : (joinRole === 'spectator'
-                                    ? '{{ __('personal.event_show_spectator_ticket') }}'
-                                    : '{{ __('personal.event_show_join_participant') }}')"></h3>
+                                    ? @js(__('personal.event_show_spectator_ticket'))
+                                    : @js(__('personal.event_show_join_participant')))"></h3>
                         <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $e['title'] }}</p>
                     </div>
                     <button type="button" @click="closeJoin()" aria-label="{{ __('shared.close') }}"
@@ -181,7 +181,7 @@
                                                 <span class="text-[11px] text-muted-foreground w-24 flex-shrink-0">{{ __('personal.event_show_bank_'.$label) }}</span>
                                                 <span class="text-[12px] font-bold text-foreground truncate flex-1" id="pay-{{ $label }}">{{ $value }}</span>
                                                 {{-- Copy: an IBAN retyped by hand is an IBAN typed wrong. --}}
-                                                <button type="button" @click="copyValue('{{ $label }}')"
+                                                <button type="button" @click="copyValue(@js($label))"
                                                         class="w-7 h-7 rounded-lg grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"
                                                         aria-label="{{ __('personal.event_show_join_copy') }}">
                                                     <i class="bi bi-clipboard text-xs"></i>
@@ -229,7 +229,7 @@
                         class="m-press w-full py-3 rounded-xl bg-primary text-white font-bold text-sm
                                flex items-center justify-center gap-2 active:scale-[.98] transition disabled:opacity-60">
                     <i class="bi bi-upload"></i>
-                    <span x-text="busy ? '{{ __('personal.event_show_join_working') }}' : '{{ __('personal.event_show_join_paid_upload') }}'"></span>
+                    <span x-text="busy ? @js(__('personal.event_show_join_working')) : @js(__('personal.event_show_join_paid_upload'))"></span>
                 </button>
 
                 {{-- Cash: nothing to upload; the fee stays due until the club takes it. --}}
@@ -238,7 +238,7 @@
                         class="m-press w-full py-3 rounded-xl bg-primary text-white font-bold text-sm
                                flex items-center justify-center gap-2 active:scale-[.98] transition disabled:opacity-60">
                     <i class="bi bi-check2"></i>
-                    <span x-text="busy ? '{{ __('personal.event_show_join_working') }}' : '{{ __('personal.event_show_join_cash_confirm') }}'"></span>
+                    <span x-text="busy ? @js(__('personal.event_show_join_working')) : @js(__('personal.event_show_join_cash_confirm'))"></span>
                 </button>
 
                 {{-- Free entry: nothing to pay, so the sheet's only job was the
@@ -248,7 +248,7 @@
                         class="m-press w-full py-3 rounded-xl bg-primary text-white font-bold text-sm
                                flex items-center justify-center gap-2 active:scale-[.98] transition disabled:opacity-60">
                     <i class="bi bi-check2"></i>
-                    <span x-text="busy ? '{{ __('personal.event_show_join_working') }}' : '{{ __('personal.event_show_im_in') }}'"></span>
+                    <span x-text="busy ? @js(__('personal.event_show_join_working')) : @js(__('personal.event_show_im_in'))"></span>
                 </button>
 
                 {{-- Taking a place without deciding how to pay. Not offered when

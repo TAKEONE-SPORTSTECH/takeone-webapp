@@ -223,6 +223,7 @@
             ['route'=>'admin.platform.clubs',      'pattern'=>['admin.platform.clubs*'],     'icon'=>'bi-building',  'label'=>__('nav.layouts_admin_nav_all_clubs')],
             ['route'=>'admin.platform.members',    'pattern'=>['admin.platform.members*'],    'icon'=>'bi-people',    'label'=>__('nav.layouts_admin_nav_all_members')],
             ['route'=>'admin.platform.businesses', 'pattern'=>['admin.platform.businesses*'], 'icon'=>'bi-buildings', 'label'=>__('nav.layouts_admin_nav_businesses')],
+            ['route'=>'admin.platform.featured-events', 'pattern'=>['admin.platform.featured-events*'], 'icon'=>'bi-stars', 'label'=>__('platform.featured_nav')],
         ],
         'System' => [
             ['route'=>'admin.platform.activities',    'pattern'=>['admin.platform.activities*'],'icon'=>'bi-lightning-charge','label'=>'Activities'],

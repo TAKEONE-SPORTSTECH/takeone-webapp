@@ -11,7 +11,7 @@
          section's own frame, because there is something to read around them.
 --}}
 
-@if($e['draw']['published'] ?? false)
+@if($drawStage ?? ($e['draw']['published'] ?? false))
     {{-- ===== THE DRAW, FULL SCREEN, READ-ONLY =====
 
          The same stage the organiser arranges on, with both permissions off —
@@ -43,8 +43,12 @@
         id="public-draw"
         :event="$e['key']"
         :title="$e['title']"
-        :data-url="$e['draw_url']"
+        :data-url="$memberDraw['dataUrl'] ?? $e['draw_url']"
         :color="$e['color'] ?? null"
+        :can-manage="$memberDraw['canManage'] ?? false"
+        :can-arrange="$memberDraw['canArrange'] ?? false"
+        :draw-actions="$memberDraw['drawActions'] ?? []"
+        :my-competitor-ids="$memberDraw['myCompetitorIds'] ?? []"
         :division="(int) request('division') ?: null">
 
         {{-- ===== THE EVENT'S OWN CONTROL ROW, OVER THE BOARD =====
@@ -74,7 +78,7 @@
             @include('events::partials.event-band-controls', [
                 'mode' => 'public',
                 'leading' => 'back',
-                'backHref' => route('events.public', ['event' => $e['key']]),
+                'backHref' => $backUrl ?? (isset($addr) ? $addr->page() : route('me.events.show', ['event' => $e['key']])),
                 'backLabel' => __('personal.event_show_event'),
                 /* What the stage's own white bar says in its title block, and
                    for the same reason: this row is over the BOARD, with the
@@ -82,13 +86,15 @@
                    what the screen is and which event it belongs to. "Draw",
                    not "Manage draw" — this door is read-only for everybody,
                    whoever is signed in. */
-                'rowEyebrow' => __('events::events.public_draw'),
+                'rowEyebrow' => (($memberDraw['canManage'] ?? false) || ($memberDraw['canArrange'] ?? false))
+                    ? __('personal.personal_event_bracket_manage_draw')
+                    : __('events::events.public_draw'),
                 'rowTitle' => $e['title'],
                 'e' => $e,
                 'console' => $console ?? null,
                 'signedIn' => $signedIn ?? auth()->check(),
                 'signedInName' => auth()->user()?->full_name ?? auth()->user()?->name,
-                'signOutUrl' => route('events.public.sign-out', ['event' => $e['key']]),
+                'signOutUrl' => ($posterPublic ?? true) ? route('events.public.sign-out', ['event' => $e['key']]) : null,
             ])
         </x-slot:controls>
     </x-draw-stage>

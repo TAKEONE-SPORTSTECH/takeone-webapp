@@ -32,6 +32,16 @@ interface EventType
     /** Stable package key, e.g. "taekwondo_tournament". */
     public function key(): string;
 
+    /**
+     * How this kind of competition works — who takes part, what groups them,
+     * what a contest is, what is recorded, the formats it runs, how winners are
+     * decided (App\Events\Support\Competition\CompetitionProfile). Screens
+     * ask this instead of naming a sport. `$event` lets an organiser's own
+     * settings (a league's points) show through; without one, the type's
+     * defaults.
+     */
+    public function profile(?\App\Events\Models\ClubEvent $event = null): \App\Events\Support\Competition\CompetitionProfile;
+
     /** Human label for the type picker, e.g. "Taekwondo Tournament". */
     public function label(): string;
 

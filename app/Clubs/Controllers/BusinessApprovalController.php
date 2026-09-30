@@ -44,6 +44,52 @@ class BusinessApprovalController extends Controller
     }
 
     /**
+     * Create a business on behalf of an owner. A super-admin creating it IS the
+     * approval, so it starts approved (which also links the owner's own clubs).
+     */
+    public function store(Request $request): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'owner_user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        // One business per user — same rule as the member's own setup form.
+        if (Business::where('owner_user_id', $validated['owner_user_id'])->exists()) {
+            return $this->fail($request, 'That user already owns a business. A user can own only one chain.');
+        }
+
+        $base = Str::slug($validated['name']) ?: 'business';
+        $slug = $base;
+        for ($i = 2; Business::withTrashed()->where('slug', $slug)->exists(); $i++) {
+            $slug = $base.'-'.$i;
+        }
+
+        $business = Business::create([
+            'owner_user_id' => (int) $validated['owner_user_id'],
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'description' => $validated['description'] ?? null,
+            'status' => Business::STATUS_PENDING,
+        ]);
+        $business->approve(Auth::id());
+
+        $business = $business->fresh()->load(['owner:id,full_name,email'])->loadCount('clubs');
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "“{$business->name}” has been created.",
+                'business' => $this->payload($business),
+                'html' => view('clubs::business.approvals._card', ['business' => $business])->render(),
+            ]);
+        }
+
+        return back()->with('success', "“{$business->name}” has been created.");
+    }
+
+    /**
      * Approve a business — activates the switcher and auto-links the owner's clubs.
      */
     public function approve(Request $request, Business $business): JsonResponse|RedirectResponse

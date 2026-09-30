@@ -16,8 +16,8 @@
                         data-name="{{ $cu->full_name ?? 'Member' }}"
                         data-avatar="{{ $cu && $cu->profile_picture ? file_url($cu->profile_picture) : '' }}"
                         @click="openThread({{ $c->user_id }})">
-                    <span class="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                        @if($cu && $cu->profile_picture)<img src="{{ file_url($cu->profile_picture) }}" alt="" class="w-[30px] h-10 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                    <span class="w-[30px] h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                        @if($cu && $cu->profile_picture)<img src="{{ file_url($cu->profile_picture) }}" alt="" class="w-full h-full object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                     </span>
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-medium text-foreground truncate">{{ $cu->full_name ?? 'Member' }}</p>
@@ -48,8 +48,8 @@
                             data-name="{{ $u->full_name }}"
                             data-avatar="{{ $u->profile_picture ? file_url($u->profile_picture) : '' }}"
                             @click="openThread({{ $u->id }}, $el.dataset.name, $el.dataset.avatar)">
-                        <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                            @if($u->profile_picture)<img src="{{ file_url($u->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                        <span class="w-9 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                            @if($u->profile_picture)<img src="{{ file_url($u->profile_picture) }}" alt="" class="w-full h-full object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                         </span>
                         <div class="min-w-0 flex-1"><p class="text-sm font-medium text-foreground truncate">{{ $u->full_name }}</p><p class="text-xs text-muted-foreground truncate">{{ $u->email }}</p></div>
                         <i class="bi bi-chat-dots text-muted-foreground"></i>
@@ -72,8 +72,8 @@
             <button type="button" class="w-9 h-9 rounded-lg flex items-center justify-center m-press" @click="closeThread()">
                 <i class="bi bi-chevron-left text-xl"></i>
             </button>
-            <span class="w-9 h-9 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                <template x-if="activeUser.avatar"><img :src="activeUser.avatar" class="w-[27px] h-9 object-cover" alt=""></template>
+            <span class="w-9 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                <template x-if="activeUser.avatar"><img :src="activeUser.avatar" class="w-full h-full object-cover" alt=""></template>
                 <template x-if="!activeUser.avatar"><span class="text-sm font-bold text-primary" x-text="activeUser.initial"></span></template>
             </span>
             <div class="min-w-0">

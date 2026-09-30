@@ -416,7 +416,7 @@
         /** The sport's belt ladder, for rebuilding a rank chip client-side.
             `style` is the belt drawing's own colours, worked out server-side so
             the shading and the pale-belt outline are not a second opinion. */
-        beltLadder: @js(collect(\App\Sports\Combat\BeltRank::ladder())->mapWithKeys(function ($b) {
+        beltLadder: @js(collect(app(\App\Events\Support\CategorySystems::class)->ladderFor(\App\Events\Models\ClubEvent::where('uuid', $e['key'] ?? null)->first()))->mapWithKeys(function ($b) {
             $icon = \App\Sports\Combat\BeltIcon::for($b['value']);
             return [$b['value'] => [
                 'label' => $b['label'],

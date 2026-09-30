@@ -40,6 +40,33 @@
      * of the screen above it reads as unanchored.
      */
     $editorAlign = $attributes->get('editorAlign', 'items-end sm:items-center');
+
+    /*
+     * Opt-in crop-shape picker: `shapes="square,circle,landscape,portrait"`
+     * (or an array). Absent — the default — the cropper is exactly as before:
+     * one fixed viewport of `width` x `height`. With it, chips above the
+     * canvas re-frame the same image; the output keeps the configured long
+     * side and takes the chosen proportion (square 1:1, circle 1:1 saved as
+     * PNG so its corners stay transparent, landscape 16:9, portrait 3:4).
+     */
+    $shapesAttr = $attributes->get('shapes');
+    $shapeOptions = array_values(array_intersect(
+        is_array($shapesAttr) ? $shapesAttr : array_map('trim', explode(',', (string) $shapesAttr)),
+        ['square', 'circle', 'landscape', 'portrait']
+    ));
+    $shapeLong = max((int) $width, (int) $height);
+    $shapeDims = [
+        'square'    => [$shapeLong, $shapeLong],
+        'circle'    => [$shapeLong, $shapeLong],
+        'landscape' => [$shapeLong, (int) round($shapeLong * 9 / 16)],
+        'portrait'  => [(int) round($shapeLong * 3 / 4), $shapeLong],
+    ];
+    // The chip that matches how the caller configured it, so the first frame is unchanged.
+    $initialShape = $shape === 'circle' ? 'circle'
+        : ((int) $width === (int) $height ? 'square' : ((int) $width > (int) $height ? 'landscape' : 'portrait'));
+    if ($shapeOptions && ! in_array($initialShape, $shapeOptions, true)) {
+        $initialShape = $shapeOptions[0];
+    }
 @endphp
 
 <x-toast-notification />
@@ -131,6 +158,40 @@ $(function() {
     const currentImage_{{ $id }} = '{{ $currentImage }}';
     const mode_{{ $id }} = '{{ $mode }}';
 
+    // Output frame. Fixed at the configured values unless the shape picker is on.
+    let outW_{{ $id }} = {{ (int) $width }}, outH_{{ $id }} = {{ (int) $height }};
+    let vpType_{{ $id }} = '{{ $shape }}';
+    let prevW_{{ $id }} = {{ (int) $previewWidth }}, prevH_{{ $id }} = {{ (int) $previewHeight }};
+    let lastSrc_{{ $id }} = null;
+@if($shapeOptions)
+    const shapeDims_{{ $id }} = @json($shapeDims);
+    let cropShape_{{ $id }} = @json($initialShape);
+    function setShape_{{ $id }}(key) {
+        if (!shapeDims_{{ $id }}[key]) return;
+        cropShape_{{ $id }} = key;
+        outW_{{ $id }} = shapeDims_{{ $id }}[key][0];
+        outH_{{ $id }} = shapeDims_{{ $id }}[key][1];
+        vpType_{{ $id }} = key === 'circle' ? 'circle' : 'square';
+        // Preview: the chosen proportion, fitted inside the configured preview box.
+        const f = Math.min({{ (int) $previewWidth }} / outW_{{ $id }}, {{ (int) $previewHeight }} / outH_{{ $id }});
+        prevW_{{ $id }} = Math.round(outW_{{ $id }} * f);
+        prevH_{{ $id }} = Math.round(outH_{{ $id }} * f);
+        document.querySelectorAll('[data-crop-shape-for="{{ $id }}"]').forEach(function (b) {
+            const on = b.getAttribute('data-crop-shape') === key;
+            b.setAttribute('aria-checked', on ? 'true' : 'false');
+            b.classList.toggle('border-primary', on);
+            b.classList.toggle('bg-primary/5', on);
+            b.classList.toggle('text-primary', on);
+            b.classList.toggle('border-gray-200', !on);
+            b.classList.toggle('text-gray-600', !on);
+        });
+    }
+    setShape_{{ $id }}(cropShape_{{ $id }});
+@endif
+    function previewRadius_{{ $id }}() {
+        return vpType_{{ $id }} === 'circle' ? '50%' : '8px';
+    }
+
     // ── Transparency preservation ────────────────────────────────────────────────
     // A logo/badge is usually a PNG with an alpha channel. JPEG has no alpha, so
     // re-encoding such an image paints the transparent pixels solid (black/white).
@@ -175,12 +236,12 @@ $(function() {
 
     // Output mime for the cropped/normalized result.
     function outMime_{{ $id }}() {
-        return hasAlpha_{{ $id }} ? 'image/png' : 'image/jpeg';
+        return (hasAlpha_{{ $id }} || vpType_{{ $id }} === 'circle') ? 'image/png' : 'image/jpeg';
     }
 
     // Encode a canvas without flattening transparency. PNG ignores the quality arg.
     function encodeCanvas_{{ $id }}(canvas, quality) {
-        return hasAlpha_{{ $id }}
+        return (hasAlpha_{{ $id }} || vpType_{{ $id }} === 'circle')
             ? canvas.toDataURL('image/png')
             : canvas.toDataURL('image/jpeg', quality);
     }
@@ -236,6 +297,7 @@ $(function() {
         // would leave a stale/null element and the image would never render.
         const box_{{ $id }} = document.getElementById("box_{{ $id }}");
         if (!box_{{ $id }}) return;
+        lastSrc_{{ $id }} = imageUrl;
         detectAlpha_{{ $id }}(imageUrl);
         if (cropper_{{ $id }}) cropper_{{ $id }}.destroy();
 
@@ -243,12 +305,12 @@ $(function() {
         // Fit it (preserving aspect ratio) ONLY when it overflows — small viewports (e.g. the
         // 300x400 profile crop) are left exactly as-is. Output stays {{ $width }}x{{ $height }}
         // (the save handler re-renders the crop at that resolution).
-        let vpW_{{ $id }} = {{ $width }}, vpH_{{ $id }} = {{ $height }};
+        let vpW_{{ $id }} = outW_{{ $id }}, vpH_{{ $id }} = outH_{{ $id }};
         (function () {
             const ch = {{ $canvasHeight }};
-            const cw = box_{{ $id }}.clientWidth || {{ $width }};
+            const cw = box_{{ $id }}.clientWidth || outW_{{ $id }};
             if (vpW_{{ $id }} > cw - 8 || vpH_{{ $id }} > ch - 8) {
-                const ar = {{ $width }} / {{ $height }};
+                const ar = outW_{{ $id }} / outH_{{ $id }};
                 vpH_{{ $id }} = Math.min(vpH_{{ $id }}, ch - 16);
                 vpW_{{ $id }} = vpH_{{ $id }} * ar;
                 if (vpW_{{ $id }} > cw - 16) { vpW_{{ $id }} = cw - 16; vpH_{{ $id }} = vpW_{{ $id }} / ar; }
@@ -262,7 +324,7 @@ $(function() {
             viewport: {
                 width: vpW_{{ $id }},
                 height: vpH_{{ $id }},
-                type: '{{ $shape }}',
+                type: vpType_{{ $id }},
                 border: { enable: true, width: 2, color: '#fff' }
             },
             transformOrigin: 'viewport',
@@ -334,6 +396,14 @@ $(function() {
     // after $(ready). off() first guards against any re-execution stacking duplicates.
     $(document).off('.tk{{ $id }}');
 
+@if($shapeOptions)
+    // Crop-shape chips: re-frame the same image in the chosen proportion.
+    $(document).on('click.tk{{ $id }}', '[data-crop-shape-for="{{ $id }}"]', function() {
+        setShape_{{ $id }}(this.getAttribute('data-crop-shape'));
+        if (lastSrc_{{ $id }}) initCropper_{{ $id }}(lastSrc_{{ $id }});
+    });
+@endif
+
 @if($inline)
     // Leaving the crop editor: the header ✕, the footer Cancel and the backdrop.
     // ⚠️ This MUST be bound after the off() above — it used to sit beside
@@ -395,7 +465,7 @@ $(function() {
             // Crop from the source at full output resolution ({{ $width }}px wide) so quality survives
             // an auto-fit (small) on-screen viewport. No-op for fixed-viewport croppers (profile).
             alphaReady_{{ $id }}.then(() => cropper_{{ $id }}.crop({
-                type: 'base64', width: {{ $width }}, mimetype: outMime_{{ $id }}(), quality: 0.92,
+                type: 'base64', width: outW_{{ $id }}, mimetype: outMime_{{ $id }}(), quality: 0.92,
             })).then(base64 => {
                 // Store in hidden input
                 $('#hiddenInput_{{ $id }}').val(base64);
@@ -412,13 +482,13 @@ $(function() {
 
                 // Update preview
                 const previewContainer = $('#previewContainer_{{ $id }}');
-                const borderRadius = '{{ $shape }}' === 'circle' ? '50%' : '8px';
+                const borderRadius = previewRadius_{{ $id }}();
 
                 previewContainer.html(`
                     <img src="${base64}"
                          id="preview_{{ $id }}"
                          class="cropper-preview-image"
-                         style="width: {{ $previewWidth }}px; height: {{ $previewHeight }}px; border-radius: ${borderRadius};">
+                         style="width: ${prevW_{{ $id }}}px; height: ${prevH_{{ $id }}}px; border-radius: ${borderRadius};">
                     <button type="button" class="cropper-remove-btn" id="removeBtn_{{ $id }}" onclick="removeImage_{{ $id }}()">
                         <i class="bi bi-x"></i>
                     </button>
@@ -442,17 +512,17 @@ $(function() {
             // crop → blurry.) Then normalize to EXACTLY {{ $width }}x{{ $height }} (the auto-fit viewport
             // rounds to whole px, so cropme's derived height can be ±2px) and JPEG-encode.
             alphaReady_{{ $id }}.then(() => cropper_{{ $id }}.crop({
-                type: 'base64', width: {{ $width }}, mimetype: outMime_{{ $id }}(), quality: 0.92,
+                type: 'base64', width: outW_{{ $id }}, mimetype: outMime_{{ $id }}(), quality: 0.92,
             })).then(hiRes => {
                 const img = new Image();
                 img.onload = function () {
                     const canvas = document.createElement('canvas');
-                    canvas.width = {{ $width }};
-                    canvas.height = {{ $height }};
+                    canvas.width = outW_{{ $id }};
+                    canvas.height = outH_{{ $id }};
                     const ctx = canvas.getContext('2d');
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'high';
-                    ctx.drawImage(img, 0, 0, {{ $width }}, {{ $height }});
+                    ctx.drawImage(img, 0, 0, outW_{{ $id }}, outH_{{ $id }});
                     // PNG when the source carries alpha — JPEG would paint it solid.
                     const compressed = encodeCanvas_{{ $id }}(canvas, 0.92);
 
@@ -567,12 +637,12 @@ $(function() {
                     }));
 
                     const previewContainer = $('#previewContainer_{{ $id }}');
-                    const borderRadius = '{{ $shape }}' === 'circle' ? '50%' : '8px';
+                    const borderRadius = previewRadius_{{ $id }}();
                     previewContainer.html(`
                         <img src="${base64}"
                              id="preview_{{ $id }}"
                              class="cropper-preview-image"
-                             style="width: {{ $previewWidth }}px; height: {{ $previewHeight }}px; border-radius: ${borderRadius};">
+                             style="width: ${prevW_{{ $id }}}px; height: ${prevH_{{ $id }}}px; border-radius: ${borderRadius};">
                         <button type="button" class="cropper-remove-btn" id="removeBtn_{{ $id }}" onclick="removeImage_{{ $id }}()">
                             <i class="bi bi-x"></i>
                         </button>
@@ -622,7 +692,7 @@ $(function() {
     // Remove image function for form mode
     window.removeImage_{{ $id }} = function() {
         const previewContainer = $('#previewContainer_{{ $id }}');
-        const borderRadius = '{{ $shape }}' === 'circle' ? '50%' : '8px';
+        const borderRadius = previewRadius_{{ $id }}();
 
         // Clear hidden input
         $('#hiddenInput_{{ $id }}').val('');
@@ -634,7 +704,7 @@ $(function() {
         previewContainer.html(`
             <div id="preview_{{ $id }}"
                  class="cropper-preview-placeholder"
-                 style="width: {{ $previewWidth }}px; height: {{ $previewHeight }}px; border-radius: ${borderRadius};">
+                 style="width: ${prevW_{{ $id }}}px; height: ${prevH_{{ $id }}}px; border-radius: ${borderRadius};">
                 <i class="bi bi-image" style="font-size: 2rem;"></i>
             </div>
         `);

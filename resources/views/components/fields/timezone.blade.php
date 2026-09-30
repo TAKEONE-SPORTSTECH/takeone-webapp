@@ -1,7 +1,11 @@
-@props(['name' => 'timezone', 'id' => 'timezone', 'value' => '', 'required' => false, 'error' => null, 'label' => 'Timezone'])
+@props(['name' => 'timezone', 'id' => 'timezone', 'value' => '', 'required' => false, 'error' => null, 'label' => 'Timezone',
+    // Optional: an Alpine state path in the PARENT scope to bind instead of
+    // (as well as) posting the hidden input — e.g. `timezone` on an AJAX form.
+    'model' => null, 'labelClass' => 'tf-label', 'wrapperClass' => 'mb-4'])
 
-<div class="mb-4" x-data="timezoneDropdown_{{ $id }}()" x-init="init()">
-    <label class="tf-label">
+<div class="{{ $wrapperClass }}" x-data="timezoneDropdown_{{ $id }}()" x-init="init()"
+     @if($model) x-modelable="selectedValue" x-model="{{ $model }}" @endif>
+    <label class="{{ $labelClass }}">
         {{ $label }}@if($required) <span class="text-red-500">*</span>@endif
     </label>
     <div class="relative">
@@ -90,13 +94,9 @@
                     return;
                 }
 
-                if (this.selectedValue) {
-                    const match = this.items.find(c => c.timezone === this.selectedValue);
-                    if (match) {
-                        this.selectedLabel = match.timezone + ' (' + match.name + ')';
-                        this.selectedFlag = match.flag;
-                    }
-                }
+                this.refreshLabel();
+                // A bound value can change from outside (the parent's `model`).
+                this.$watch('selectedValue', () => this.refreshLabel());
 
                 // Listen for country-changed events
                 window.addEventListener('country-changed', (e) => {
@@ -109,6 +109,12 @@
                         this.selectedFlag = match.flag;
                     }
                 });
+            },
+
+            refreshLabel() {
+                const match = this.selectedValue ? this.items.find(c => c.timezone === this.selectedValue) : null;
+                this.selectedLabel = match ? match.timezone + ' (' + match.name + ')' : (this.selectedValue || '');
+                this.selectedFlag = match ? match.flag : '';
             },
 
             toggle() {

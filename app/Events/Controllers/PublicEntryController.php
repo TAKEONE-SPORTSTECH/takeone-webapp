@@ -44,7 +44,7 @@ class PublicEntryController extends Controller
         // page that says so properly rather than showing a form that cannot be
         // submitted (Navigation Integrity).
         if (! $state['open']) {
-            return redirect()->route('events.public', $event->uuid);
+            return redirect()->route('me.events.show', $event->uuid);
         }
 
         $me = \Illuminate\Support\Facades\Auth::user();
@@ -69,7 +69,7 @@ class PublicEntryController extends Controller
 
         return view('events::entry.public.enrol', [
             'e' => $e,
-            'belts' => self::belts(),
+            'belts' => self::belts($event),
             'guessCountry' => $guessCountry,
             'guessDial' => \App\Support\VisitorCountry::dialCode($guessCountry),
             // Who is filling this in, if anybody. The template shows the
@@ -341,6 +341,9 @@ class PublicEntryController extends Controller
                 'success' => false,
                 'message' => $result['message'],
                 'field' => $result['field'] ?? null,
+                // `known`: this phone + name already has a profile — the page
+                // asks for THAT password instead of making a second account.
+                'state' => $result['state'] ?? null,
             ], 422);
         }
 
@@ -357,7 +360,7 @@ class PublicEntryController extends Controller
          * that panel is where the photograph and everything else the door no
          * longer asks for is collected.
          */
-        $landing = route('events.public', ['event' => $event->uuid]);
+        $landing = route('me.events.show', ['event' => $event->uuid]);
 
         if (! empty($result['athlete_id'])) {
             $athlete = \App\Members\Models\User::find($result['athlete_id']);
@@ -380,6 +383,78 @@ class PublicEntryController extends Controller
     }
 
     /**
+     * Sign in as an ATHLETE, on the event's own page.
+     *
+     * The entry form's "Already have an account?" used to open the
+     * organiser's console sign-in, which says only the organiser and officials
+     * may use it — so returning athletes turned back and made a second
+     * account. This is the same sign-in (it posts to the same
+     * PublicEventController@signIn, so the lockout, verification and
+     * two-factor are the platform's own) worded for the athlete, with the
+     * entry desk's code as the way back in when the password is forgotten.
+     *
+     * Behind `events.entry_dedupe`; off, it hands over to the page it replaces.
+     * A page, so it never 404s on anything but a non-public event.
+     */
+    public function signInPage(Request $request, ClubEvent $event, PublicEvent $publisher, PublicEntry $entries)
+    {
+        $e = $publisher->payload($event);
+        abort_if($e === null, 404);
+
+        if (! \App\Events\Support\KnownPerson::enabled()) {
+            return redirect()->route('events.public.manage', $event->uuid);
+        }
+
+        $open = $entries->state($event)['open'];
+        // Where a successful sign-in lands: back to the entry form while it is
+        // open, otherwise the event. Built here, never read from the request.
+        $request->session()->put('url.intended', $open
+            ? route('events.public.enter', $event->uuid)
+            : route('me.events.show', $event->uuid));
+
+        $me = Auth::user();
+
+        return view('events::entry.public.sign-in', [
+            'e' => $e,
+            'open' => $open,
+            'who' => $me?->full_name ?: $me?->name,
+            'guessDial' => \App\Support\VisitorCountry::dialCode(\App\Support\VisitorCountry::guess($request)) ?: '+973',
+        ]);
+    }
+
+    /**
+     * The entry desk's code: the athlete's number + the six digits the desk
+     * read out + a new password → signed in (App\Events\Support\DeskSignInCode).
+     * One answer for every failure.
+     */
+    public function redeemDeskCode(Request $request, ClubEvent $event, PublicEvent $publisher, \App\Events\Support\DeskSignInCode $codes): JsonResponse
+    {
+        abort_if(! $publisher->isPublic($event) || ! \App\Events\Support\KnownPerson::enabled(), 404);
+
+        $data = $request->validate([
+            'mobile' => ['required', 'string', 'max:24'],
+            'mobile_code' => ['required', 'string', 'max:8', 'regex:/^\+[0-9]{1,6}$/'],
+            'code' => ['required', 'string', 'max:12'],
+            'password' => ['required', 'string', 'min:8', 'max:200'],
+        ]);
+
+        $person = $codes->redeem($event, $data['mobile_code'], $data['mobile'], preg_replace('/\D/', '', $data['code']), $data['password']);
+
+        if (! $person) {
+            return response()->json(['success' => false, 'message' => __('events::events.desk_code_wrong'), 'field' => 'code'], 422);
+        }
+
+        Auth::login($person, true);
+        $request->session()->regenerate();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events::events.desk_code_welcome', ['name' => $person->full_name ?: $person->name]),
+            'redirect' => $request->session()->pull('url.intended', route('me.events.show', $event->uuid)),
+        ]);
+    }
+
+    /**
      * The belt vocabulary the form offers.
      *
      * The same list the claim page uses — a competitor picking their own rank
@@ -388,15 +463,17 @@ class PublicEntryController extends Controller
      *
      * @return array<int, array{v: string, label: string, hex: string}>
      */
-    public static function belts(): array
+    public static function belts(?ClubEvent $event = null): array
     {
-        return [
-            ['v' => 'white', 'label' => __('events::events.belt_white'), 'hex' => '#e5e7eb'],
-            ['v' => 'yellow', 'label' => __('events::events.belt_yellow'), 'hex' => '#facc15'],
-            ['v' => 'green', 'label' => __('events::events.belt_green'), 'hex' => '#22c55e'],
-            ['v' => 'blue', 'label' => __('events::events.belt_blue'), 'hex' => '#3b82f6'],
-            ['v' => 'brown', 'label' => __('events::events.belt_brown'), 'hex' => '#92400e'],
-            ['v' => 'black', 'label' => __('events::events.belt_black'), 'hex' => '#111827'],
-        ];
+        /* The event's own ladder (App\Sports\Combat\BeltLadder) in the shape
+           this form has always used. It used to be a six-colour list of its
+           own — a second belt vocabulary beside BeltRank's nine, which is how
+           the public form and the organiser's desk came to offer different
+           belts for the same event. */
+        return array_map(fn ($b) => [
+            'v' => $b['value'],
+            'label' => $b['label'],
+            'hex' => $b['bg'],
+        ], app(\App\Events\Support\CategorySystems::class)->ladderFor($event));
     }
 }

@@ -26,6 +26,15 @@ use Carbon\Carbon;
  */
 abstract class AbstractEventType implements EventType
 {
+    /**
+     * The profile of an event with no package of its own: individuals, a place
+     * typed in by the organiser. A package overrides this to say what it runs.
+     */
+    public function profile(?ClubEvent $event = null): \App\Events\Support\Competition\CompetitionProfile
+    {
+        return \App\Events\Support\Competition\CompetitionProfile::generic($event?->sport);
+    }
+
     public function label(): string
     {
         return config('event_schema.types.'.$this->schemaType().'.label', 'Event');
@@ -64,7 +73,12 @@ abstract class AbstractEventType implements EventType
         return [
             'gps_lat' => ['nullable', 'numeric', 'between:-90,90'],
             'gps_long' => ['nullable', 'numeric', 'between:-180,180'],
-            'location_url' => ['nullable', 'url:http,https', 'max:500'],
+            // Only a real Google Maps link (App\Support\MapLink) — the map pin follows it.
+            'location_url' => ['nullable', 'string', 'max:500', function ($attr, $value, $fail) {
+                if (! \App\Support\MapLink::isGoogle((string) $value)) {
+                    $fail(__('shared.map_link_invalid'));
+                }
+            }],
             'agenda' => ['nullable', 'array', 'max:40'],
             'agenda.*.t' => ['nullable', 'date'],
             'agenda.*.d' => ['nullable', 'string', 'max:200'],
@@ -282,7 +296,7 @@ abstract class AbstractEventType implements EventType
      */
     public function notificationSchedule(ClubEvent $event): array
     {
-        $where = $event->location ?: ($event->tenant?->club_name ?? '');
+        $where = $event->location ?: $event->host()->name;
         $when = $event->start_time ? Carbon::parse($event->start_time)->format('g:i A') : '';
         $leadDays = (int) config('event_notifications.enrolment_closing_lead_days', 1);
 
@@ -291,7 +305,7 @@ abstract class AbstractEventType implements EventType
                 key: 'created',
                 title: __('events::events.notify_created_title', ['title' => $event->title]),
                 body: __('events::events.notify_created_body', [
-                    'club' => $event->tenant?->club_name ?? '',
+                    'club' => $event->host()->name,
                     'date' => $event->date ? Cldr::shortDate($event->date) : '',
                 ]),
                 at: null,                                   // fires on creation
@@ -305,7 +319,7 @@ abstract class AbstractEventType implements EventType
                 key: 'enrolment_opens',
                 title: __('events::events.notify_enrolment_open_title', ['title' => $event->title]),
                 body: __('events::events.notify_enrolment_open_body'),
-                at: $event->enrollment_starts_at->copy()->startOfDay(),
+                at: $event->atLocal($event->enrollment_starts_at, '00:00'),
                 audience: Milestone::AUDIENCE_SCOPE,
                 icon: 'bi-door-open',
             );
@@ -318,7 +332,7 @@ abstract class AbstractEventType implements EventType
                 body: __('events::events.notify_enrolment_closing_body', [
                     'date' => Cldr::shortDate($event->enrollment_ends_at),
                 ]),
-                at: $event->enrollment_ends_at->copy()->subDays($leadDays)->startOfDay(),
+                at: $event->atLocal($event->enrollment_ends_at->copy()->subDays($leadDays), '00:00'),
                 audience: Milestone::AUDIENCE_SCOPE,
                 icon: 'bi-hourglass-split',
             );
@@ -358,7 +372,7 @@ abstract class AbstractEventType implements EventType
             return null;
         }
 
-        $tz = $event->tenant?->timezone ?: config('app.timezone');
+        $tz = $event->zone();
         $hour = (int) config('event_notifications.event_day_reminder_hour', 7);
 
         return Carbon::parse($event->date->toDateString(), $tz)->setTime($hour, 0)->utc();

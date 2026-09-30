@@ -231,4 +231,5 @@ return [
     'deleted_restore' => "استعادة",
     'admin_restored' => "عاد :name.",
     'admin_restore_name_taken' => "يوجد الآن اتحاد آخر باسم :name — غيّر اسمه أولًا ثم استعد هذا.",
+    'f_maps_url_invalid' => 'الصق رابط خرائط Google (maps.google.com أو maps.app.goo.gl).',
 ];

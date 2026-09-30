@@ -32,6 +32,41 @@
                    swipe otherwise leaves the visitor somewhere down the poster
                    the moment they dismiss it. */
                 if (this.open) document.documentElement.style.overflow = 'hidden';
+
+                /* ===== The cover is exactly as tall as what you can SEE =====
+                   `100dvh` is right in a browser, and wrong inside the member
+                   app: Android's WebView measures it once, before the system
+                   bars have settled around the app (the shell goes edge-to-edge
+                   on start), and does not measure again until the phone is
+                   locked and woken — so the language buttons sat half below
+                   the screen until then (reported 2026-09-27). The visible
+                   height in pixels is what JavaScript is told the moment it
+                   changes, so the cover takes that, and keeps taking it: now,
+                   over the first seconds while the bars settle, and on every
+                   resize, rotation, wake and return. CSS stays as the fallback
+                   for a page whose script never runs. */
+                const fit = () => {
+                    /* The viewport guard's measurement where it is loaded
+                       (partials/viewport-guard) — it also knows when the app
+                       is hiding a strip under the bottom bar — else our own. */
+                    const guarded = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-h'));
+                    const h = Math.round(guarded || window.innerHeight || 0);
+                    if (h < 200) return;   // a WebView mid-layout; wait for the next pass
+                    document.querySelectorAll('[data-cover-screen]').forEach((el) => {
+                        el.style.height = h + 'px';
+                    });
+                };
+
+                this.$nextTick(fit);
+                [60, 250, 600, 1200, 2500].forEach((ms) => setTimeout(fit, ms));
+                window.addEventListener('resize', fit, { passive: true });
+                window.addEventListener('viewport-guard:change', fit);
+                window.addEventListener('orientationchange', () => setTimeout(fit, 250));
+                window.addEventListener('pageshow', fit);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') setTimeout(fit, 60);
+                });
+                window.visualViewport?.addEventListener('resize', fit, { passive: true });
             },
 
             dismiss() {
@@ -60,6 +95,9 @@
                shut on the next navigation. */
             reopen() {
                 this.open = true;
+                /* Re-measured on the way back up: the screen may have changed
+                   size since the cover was last open. */
+                this.$nextTick(() => window.dispatchEvent(new Event('resize')));
                 document.documentElement.style.overflow = 'hidden';
                 try { sessionStorage.removeItem(KEY); } catch { /* nothing was remembered anyway */ }
             },

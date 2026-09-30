@@ -78,7 +78,9 @@ class Enrolment
             return null;
         }
 
-        $class = $this->sport->classify($user->gender, Carbon::parse($user->birthdate)->age, $weight);
+        // The event's own rule book (CategorySystems) — the plain plug-in when it chose none.
+        $class = app(\App\Events\Support\CategorySystems::class)->sportFor($this->sport, $event)
+            ->classify($user->gender, Carbon::parse($user->birthdate)->age, $weight);
         if (! $class) {
             return null;
         }

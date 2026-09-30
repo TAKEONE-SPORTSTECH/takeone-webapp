@@ -82,7 +82,10 @@
     // Organiser-supplied, and it lands in a style attribute.
     $bandColor = preg_match('/^#[0-9A-Fa-f]{6}$/', (string) ($e['color'] ?? '')) ? $e['color'] : '#7c6bf5';
 
-    $hasQr = ! $isPublic;
+    /* `$withQr` lets the POSTER, read by somebody who runs the event on the
+       member address (config `events.unified_page`), keep the organiser's QR
+       without becoming the member row. */
+    $hasQr = ! $isPublic || ($withQr ?? false);
     $hasPublic = ! $isPublic && ! empty($publicUrl ?? null);
     $hasSignOut = $isPublic && ($signedIn ?? false) && ! empty($signOutUrl ?? null);
 
@@ -152,7 +155,10 @@
          it only for organisers would tell a stranger who the organisers are. It
          lands on the event's own sign-in, or straight on the console for
          whoever already runs it. --}}
-    @if($isPublic)
+    {{-- `$console === false` is the one way to say "no gear": the member
+         address for an event with no public page, read by somebody who does
+         not run it — the event's own sign-in 404s there. --}}
+    @if($isPublic && ($console ?? null) !== false)
         <a href="{{ $console ?? route('events.public.manage', $e['key']) }}" class="m-press ev-ctl"
            aria-label="{{ __('events::events.public_manage_title') }}" title="{{ __('events::events.public_manage_title') }}">
             <i class="bi bi-gear"></i>

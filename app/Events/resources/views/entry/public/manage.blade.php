@@ -57,7 +57,7 @@
              words (Design Rule #6, 2026-09-04). Where it goes is in its
              aria-label / title — here, the event. --}}
         <div class="relative z-10 flex items-center justify-between gap-3">
-            <a href="{{ route('events.public', $e['key']) }}"
+            <a href="{{ route('me.events.show', $e['key']) }}"
                class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full text-white text-sm font-semibold"
                style="border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.14);"
            aria-label="{{ __('events::events.public_manage_back') }}" title="{{ __('events::events.public_manage_back') }}">

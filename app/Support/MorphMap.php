@@ -64,6 +64,13 @@ class MorphMap
             'club_event' => \App\Events\Models\ClubEvent::class,
             'club_event_registration' => \App\Events\Models\ClubEventRegistration::class,
 
+            // ---- Federations ------------------------------------------------
+            // A federation's event is translatable (App\Translation), whose
+            // documents are filed under this morph — so it needs an alias
+            // before anything is filed. Its older activity_log rows hold the
+            // class name and still resolve: the map is non-enforcing.
+            'federation_event' => \App\Federations\Models\FederationEvent::class,
+
             // ---- Member-owned records -------------------------------------
             'duel' => \App\Challenges\Models\Duel::class,
             'goal' => \App\Members\Models\Goal::class,

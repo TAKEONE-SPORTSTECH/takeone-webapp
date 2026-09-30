@@ -40,4 +40,9 @@ return [
     'score_punch' => 'Punch',
     'corner_hong' => 'HONG',
     'corner_chung' => 'CHUNG',
+
+    // Grades on the sport's own belt ladder (beltLadder()), 2026-09-27.
+    'grade_geup' => '{1} 1st geup|{2} 2nd geup|{3} 3rd geup|[4,*] :nth geup',
+    'grade_poom' => '{1} 1st poom|{2} 2nd poom|{3} 3rd poom|[4,*] :nth poom',
+    'grade_dan' => '{1} 1st dan|{2} 2nd dan|{3} 3rd dan|[4,*] :nth dan',
 ];

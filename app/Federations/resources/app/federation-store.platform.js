@@ -167,7 +167,7 @@
         if (a.status === 'Withdrawn' && !a.chargeable) return;
         var sum = 0, items = [];
         (a.types || []).forEach(function (t) { var f = fee[t]; if (f && f.unit === 'athlete') { sum += f.price; items.push({label: t, amount: f.price}); } });
-        if (a.late) { sum += ev.lateFee || 0; items.push({label: 'Late entry fee', amount: ev.lateFee || 0}); }
+        if (a.late && items.length) { sum += ev.lateFee || 0; items.push({label: 'Late entry fee', amount: ev.lateFee || 0}); }
         if (sum) { perAthlete.push({name: a.name, items: items, total: sum, withdrawn: a.status === 'Withdrawn'}); lines.push({label: a.name, detail: items.map(function (i) { return i.label; }).join(' + '), amount: sum}); }
       });
       var teams = [];
@@ -202,6 +202,79 @@
       return req('POST', urls.clubAdd, {club: key}).then(function (j) {
         if (j.__ok) adoptStaff(j);
         return {ok: !!j.__ok, message: j.message || ''};
+      });
+    },
+
+    // Clubs page → a club's manage sheet (edit / unlink / decide an
+    // application). Only handed to a manager with the feature switched on.
+    canManageClubs: function () { return !!urls.clubManage; },
+    canDeleteClubs: function () { return !!(urls.clubManage && urls.clubManage['delete']); },
+    // Athletes page → "Same person as…": link / merge a registration-link duplicate.
+    canMergeAthletes: function () { return !!(urls.clubManage && urls.clubManage.merge); },
+    previewMerge: function (tk, into) {
+      var m = urls.clubManage; if (!m || !m.mergePreview) return Promise.resolve(null);
+      return req('GET', m.mergePreview + '?athlete=' + encodeURIComponent(tk) + '&into=' + encodeURIComponent(into)).then(function (j) {
+        return j.__ok ? {ok: !!j.ok, message: j.message || '', mode: j.mode || null} : {ok: false, message: j.message || 'Could not check that. Try again.'};
+      });
+    },
+    // Export / import athlete files (.tkathlete) — FederationAthleteArchive.
+    canArchiveAthletes: function () { return !!(urls.clubManage && urls.clubManage.exportAthletes && urls.clubManage.importAthletes); },
+    exportAthletesUrl: function (tks) {
+      var m = urls.clubManage; if (!m || !m.exportAthletes || !tks || !tks.length) return '';
+      return m.exportAthletes + '?' + tks.map(function (t) { return 'athletes[]=' + encodeURIComponent(t); }).join('&');
+    },
+    importAthletes: function (files) {
+      var m = urls.clubManage; if (!m || !m.importAthletes || !files || !files.length) return Promise.resolve({ok: false, message: ''});
+      var fd = new FormData(); Array.prototype.forEach.call(files, function (f) { fd.append('files[]', f); });
+      return fetch(m.importAthletes, {method: 'POST', credentials: 'same-origin', body: fd,
+        headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest'}})
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) {
+          if (r.ok) adoptStaff(j);
+          var msg = j.message || '';
+          if (!r.ok && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+          if (!r.ok && !msg) msg = r.status === 413 ? 'Those files are too large.' : r.status === 429 ? 'Too many uploads — wait a minute.' : 'The import did not go through.';
+          return {ok: r.ok, imported: j.imported || 0, failed: j.failed || 0, results: j.results || [], message: msg};
+        }); })
+        .catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
+    },
+    canDeleteAthletes: function () { return !!(urls.clubManage && urls.clubManage.deleteAthletes); },
+    deleteAthletes: function (tks, confirm) {
+      var m = urls.clubManage; if (!m || !m.deleteAthletes) return Promise.resolve({ok: false, message: ''});
+      return req('POST', m.deleteAthletes, {athletes: tks, confirm: confirm || ''}).then(function (j) {
+        if (j.__ok) adoptStaff(j);
+        var msg = j.message || '';
+        if (!j.__ok && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+        return {ok: !!j.__ok, deleted: j.deleted || 0, failed: j.failed || 0, results: j.results || [], message: msg};
+      });
+    },
+    canIssueIds: function () { return !!(urls.clubManage && urls.clubManage.issueId); },
+    issueTakeoneId: function (memberKey) {
+      var m = urls.clubManage; if (!m || !m.issueId) return Promise.resolve({ok: false, message: ''});
+      return req('POST', m.issueId, {member: memberKey}).then(function (j) {
+        if (j.__ok) adoptStaff(j);
+        return {ok: !!j.__ok, message: j.message || '', takeoneId: j.takeoneId || null};
+      });
+    },
+    mergeAthlete: function (tk, into) {
+      var m = urls.clubManage; if (!m || !m.merge) return Promise.resolve({ok: false, message: ''});
+      return req('POST', m.merge, {athlete: tk, into: into}).then(function (j) {
+        if (j.__ok) adoptStaff(j);
+        var msg = j.message || '';
+        if (!j.__ok && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+        return {ok: !!j.__ok, message: msg};
+      });
+    },
+    clubDetail: function (key) {
+      var m = urls.clubManage; if (!m) return Promise.resolve(null);
+      return req('GET', m.detail + '?club=' + encodeURIComponent(key)).then(function (j) { return j.__ok ? (j.club || null) : null; });
+    },
+    manageClub: function (action, body) {
+      var m = urls.clubManage; if (!m || !m[action]) return Promise.resolve({ok: false, message: ''});
+      return req('POST', m[action], body).then(function (j) {
+        if (j.__ok) adoptStaff(j);
+        var msg = j.message || '';
+        if (!j.__ok && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+        return {ok: !!j.__ok, message: msg};
       });
     },
 
@@ -258,17 +331,52 @@
   T.verifyCode = function (contact, code) {
     if (!urls.verify) return Promise.resolve(null);
     return req('POST', urls.verify, {contact: contact, code: code}).then(function (j) {
+      // One owner, several clubs: the page asks which one (T.chooseClub).
+      if (j.__ok && j.choices && j.choices.length) return {choices: j.choices};
       if (!j.__ok || !j.store) return null;
       adopt(j.store);
       return C.verified;
     }).catch(function () { return null; });
   };
+  T.chooseClub = function (key) {
+    if (!urls.choose) return Promise.resolve(null);
+    return req('POST', urls.choose, {club: key}).then(function (j) {
+      if (!j.__ok || !j.store) return null;
+      adopt(j.store);
+      return C.verified;
+    }).catch(function () { return null; });
+  };
+  // "Find your club": the clubs whose name holds what was typed (name, logo,
+  // and a masked hint of the inbox the code goes to — never the contact).
+  T.searchClubs = function (q) {
+    if (!urls.clubs || String(q || '').trim().length < 2) return Promise.resolve([]);
+    return req('GET', urls.clubs + '?q=' + encodeURIComponent(String(q).trim())).then(function (j) { return j.__ok ? (j.clubs || []) : []; }).catch(function () { return []; });
+  };
+  T.sendClubCode = function (key) { if (urls.code) return req('POST', urls.code, {club: key}).catch(function () {}); return Promise.resolve(); };
+  T.verifyClubCode = function (key, code) {
+    if (!urls.verify) return Promise.resolve(null);
+    return req('POST', urls.verify, {club: key, code: code}).then(function (j) {
+      if (!j.__ok || !j.store) return null;
+      adopt(j.store);
+      return C.verified;
+    }).catch(function () { return null; });
+  };
+  // A "new club" that is already on file: {reason, key, name, logo, hint} or null.
+  T.checkClub = function (c) {
+    if (!urls.checkClub) return Promise.resolve(null);
+    return req('POST', urls.checkClub, {name: c.name || '', email: c.email || '', phone: c.phone || ''}).then(function (j) { return j.__ok ? (j.match || null) : null; }).catch(function () { return null; });
+  };
+  // The platform's one country list, and the country this federation is in.
+  T.dial = function () { return boot.dial || []; };
+  T.fedCountry = function () { return (S.federation && S.federation.country) || ''; };
   T.submitEntry = function (payload) {
     return req('POST', urls.submit, payload).then(function (j) {
-      if (!j.__ok) return {ok: false, message: j.message};
+      if (!j.__ok) return {ok: false, message: j.message, code: j.code || null, match: j.match || null};
       adopt(j.store);
-      return {ok: true, ref: j.ref, balance: +j.balance || 0, clubId: C.verified};
-    }).catch(function () { return {ok: false, message: 'Could not reach the server. Your entry was not sent — try again.'}; });
+      return {ok: true, ref: j.ref, balance: +j.balance || 0, clubId: C.verified, added: j.added, skipped: j.skipped || []};
+    // No answer is not "not saved": the same submission id is sent again, and
+    // the server answers a repeat with the first result instead of saving twice.
+    }).catch(function () { return {ok: false, network: true, message: 'Could not reach the server. Tap Submit again — nothing is sent twice.'}; });
   };
   // The Athletes page's rows (the prototype's `athData` shape).
   T.athleteDirectory = function () { return (S.directory || []).map(function (a) { return Object.assign({}, a, {age: String(a.age)}); }); };

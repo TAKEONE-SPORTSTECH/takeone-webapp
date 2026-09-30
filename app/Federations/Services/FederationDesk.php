@@ -212,7 +212,7 @@ class FederationDesk
         $access = app(\App\Events\Support\EventAccess::class);
         $urls = \App\Events\Models\ClubEvent::whereIn('id', $joined->pluck('id')->unique())->get()
             ->mapWithKeys(fn ($ev) => [$ev->id => $viewer && $access->visible($ev, $viewer) ? route('me.events.show', $ev->uuid)
-                : ($publisher->isPublic($ev) ? route('events.public', $ev->uuid) : null)]);
+                : ($publisher->isPublic($ev) ? route('me.events.show', $ev->uuid) : null)]);
         $joined->each(function ($row) use (&$out, $urls) {
             $out[$row->user_id]['c'.$row->id] = ['name' => (string) $row->title, 'sport' => (string) $row->sport, 'fed' => null, 'url' => $urls[$row->id] ?? null, 'date' => $row->date ? substr((string) $row->date, 0, 10) : ''];
         });
@@ -238,7 +238,7 @@ class FederationDesk
         // A deleted account leaves the Athletes list. Its entries, draws and
         // results are kept (they are the event's history), so only this list
         // drops it — whereHas skips soft-deleted users.
-        $rows = FederationAthlete::with('user')->whereIn('id', $athleteIds)->whereHas('user')->orderBy('takeone_id')->get()->map(function (FederationAthlete $a) use ($ids, $events) {
+        $rows = FederationAthlete::with('user')->whereIn('id', $athleteIds)->whereNull('anonymised_at')->whereHas('user')->orderBy('takeone_id')->get()->map(function (FederationAthlete $a) use ($ids, $events) {
             $u = $a->user;
             $cur = $this->registry->currentClub($a, $ids);
             $club = $cur ? ($cur->club?->club?->club_name ?? $cur->application?->name) : null;
@@ -271,6 +271,7 @@ class FederationDesk
                 'key' => $a->takeone_id,
                 'photo' => $this->photo($u),
                 'userId' => $a->user_id,
+                '_tid' => $cur?->club?->tenant_id,
             ];
         })->values();
 
@@ -282,6 +283,7 @@ class FederationDesk
         $byUser = $rows->keyBy('userId');
         $out = $rows->map(function (array $r) use ($members, $events, $sports) {
             $m = $members[$r['userId']] ?? null;
+            $r['_tid'] = $r['_tid'] ?: ($m['tenantId'] ?? null);
             $activities = $m ? $m['activities'] : [];
             $competed = $this->competedSports($events[$r['userId']] ?? [], $sports);
             $competed = array_values(array_filter($competed, fn ($sp) => ! collect($r['sports'])->contains(fn ($x) => strcasecmp($x[0], $sp) === 0)));
@@ -321,12 +323,24 @@ class FederationDesk
                 'practises' => $chips !== [],
                 'member' => true,
                 'key' => 'm-'.$u->uuid,
+                'userId' => $u->id,
+                '_tid' => $m['tenantId'] ?? null,
                 'photo' => $this->photo($u),
             ];
         }
 
-        return array_map(function (array $r) {
-            unset($r['userId']);
+        $arts = $this->clubArts($out);
+
+        return array_map(function (array $r) use ($arts) {
+            // The martial arts they practise at the club shown on their row.
+            $r['clubArts'] = $arts[($r['userId'] ?? 0).'|'.($r['_tid'] ?? 0)] ?? [];
+            // No package enrolment on file (most clubs have none yet): the martial
+            // arts they have actually competed in, rather than nothing.
+            if ($r['clubArts'] === []) {
+                $r['clubArts'] = collect($r['sports'] ?? [])->map(fn ($c) => trim((string) ($c[0] ?? '')))
+                    ->filter(fn ($n) => $n !== '' && $this->isMartialArt($n))->unique()->values()->all();
+            }
+            unset($r['userId'], $r['_tid']);
             $r['practises'] ??= false;
 
             return $r;
@@ -334,6 +348,60 @@ class FederationDesk
     }
 
     /** The sports this viewer's federation governs (a sport-limited viewer: theirs). */
+    /**
+     * "user|tenant" => the martial arts that person is actively enrolled in at
+     * that club (an active subscription to a package carrying the activity).
+     * A club's other activities (padel, swimming…) are not the federation's
+     * business and are left out.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<string, array<int, string>>
+     */
+    private function clubArts(array $rows): array
+    {
+        $pairs = collect($rows)->filter(fn ($r) => ! empty($r['userId']) && ! empty($r['_tid']));
+        if ($pairs->isEmpty()) {
+            return [];
+        }
+        $out = [];
+        DB::table('club_member_subscriptions as s')
+            ->join('club_package_activities as pa', 'pa.package_id', '=', 's.package_id')
+            ->join('club_activities as a', 'a.id', '=', 'pa.activity_id')
+            ->whereIn('s.user_id', $pairs->pluck('userId')->unique())
+            ->whereIn('s.tenant_id', $pairs->pluck('_tid')->unique())
+            ->where('s.status', 'active')
+            ->where(fn ($w) => $w->whereNull('s.end_date')->orWhereDate('s.end_date', '>=', now()->toDateString()))
+            ->select('s.user_id', 's.tenant_id', 'a.name')->distinct()->get()
+            ->each(function ($row) use (&$out) {
+                $name = trim((string) $row->name);
+                $k = $row->user_id.'|'.$row->tenant_id;
+                if ($name !== '' && $this->isMartialArt($name) && ! in_array($name, $out[$k] ?? [], true)) {
+                    $out[$k][] = $name;
+                }
+            });
+
+        return $out;
+    }
+
+    /** A martial art, by the federation module's own sports list — tolerant of how a club spells it. */
+    private function isMartialArt(string $activity): bool
+    {
+        $flat = preg_replace('/[^a-z]/', '', mb_strtolower(\Illuminate\Support\Str::ascii($activity)));
+        $words = ['bjj', 'kickbox', 'muaythai', 'sambo', 'aikido', 'hapkido', 'kravmaga', 'capoeira', 'kendo', 'selfdefen', 'grappling'];
+        foreach (FederationDirectory::SPORTS as $sport) {
+            foreach (preg_split('#\s*/\s*#', $sport) as $part) {
+                $words[] = preg_replace('/[^a-z]/', '', mb_strtolower($part));
+            }
+        }
+        foreach (array_filter($words) as $w) {
+            if (str_contains($flat, $w)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function sportsOf(array $access): array
     {
         if ($access['sports'] !== []) {
@@ -388,39 +456,72 @@ class FederationDesk
             if (! $u || isset($out[$u->id])) {
                 continue;
             }
-            $out[$u->id] = ['user' => $u, 'club' => $tenants[$row->tenant_id], 'clubLogo' => $logos[$row->tenant_id] ?? null, 'clubUrl' => $hrefs[$row->tenant_id] ?? null, 'activities' => array_values(array_unique($enrolled[$u->id] ?? []))];
+            $out[$u->id] = ['user' => $u, 'tenantId' => (int) $row->tenant_id, 'club' => $tenants[$row->tenant_id], 'clubLogo' => $logos[$row->tenant_id] ?? null, 'clubUrl' => $hrefs[$row->tenant_id] ?? null, 'activities' => array_values(array_unique($enrolled[$u->id] ?? []))];
         }
 
         return $out;
     }
 
     /**
-     * The Officials page (the prototype's `offData` rows): the team managers
-     * and referees clubs named on their entries. Bouts are counted once the
-     * draw is run on the platform; until then there are none.
+     * The Officials page: one row per PERSON a club named on its entries (a
+     * team manager or a referee), drawn the way the Athletes page draws an
+     * athlete — face, role, licence, club, and every event they were named
+     * for. The same name, role kind and club is the same person across events.
+     * A photo is a link to the gated `invite.official` route, never a path, and
+     * only while the club's current slot still names that person.
      */
     private function officials(Collection $entries): array
     {
         $rows = [];
         foreach ($entries as $en) {
+            $club = $en->club ?? $en->application;
+            $ev = $en->event;
+            if (! $club || ! $ev) {
+                continue;
+            }
+            $clubKey = $this->registry->clubKey($club);
+            $clubRow = $this->registry->club($club, false);
+            $current = (array) ($this->registry->officials($club) ?? []);
             foreach (['ref1', 'ref2', 'mgr'] as $slot) {
                 $o = ($en->officials ?? [])[$slot] ?? null;
-                if (! $o || empty($o['name'])) {
+                $name = trim((string) ($o['name'] ?? ''));
+                if ($name === '') {
                     continue;
                 }
-                $key = mb_strtolower($o['name']).'|'.$en->event?->uuid;
+                $kind = $slot === 'mgr' ? 'mgr' : 'ref';
+                $key = substr(md5($clubKey.'|'.$kind.'|'.mb_strtolower($name)), 0, 16);
                 $rows[$key] ??= [
-                    $o['name'],
-                    (string) $en->event?->sport,
-                    $slot === 'mgr' ? 'Team manager' : (($o['license'] ?? '') !== '' ? 'Referee · '.$o['license'] : 'Referee'),
-                    'Assigned',
-                    (string) $en->event?->name,
-                    0,
+                    'key' => $key, 'name' => $name, 'kind' => $kind,
+                    'role' => $kind === 'mgr' ? 'Team manager' : 'Referee',
+                    'license' => '', 'photo' => null,
+                    'club' => (string) $clubRow['name'], 'clubLogo' => $clubRow['logo'] ?? null,
+                    'sports' => [], 'events' => [],
+                ];
+                if (($o['license'] ?? '') !== '') {
+                    $rows[$key]['license'] = (string) $o['license'];
+                }
+                foreach ($current as $cs => $cp) {
+                    if (! $rows[$key]['photo'] && ($cs === 'mgr') === ($kind === 'mgr') && ! empty($cp['photo']) && mb_strtolower(trim((string) ($cp['name'] ?? ''))) === mb_strtolower($name)) {
+                        $rows[$key]['photo'] = $cp['photo'];
+                    }
+                }
+                if ((string) $ev->sport !== '' && ! in_array((string) $ev->sport, $rows[$key]['sports'], true)) {
+                    $rows[$key]['sports'][] = (string) $ev->sport;
+                }
+                $rows[$key]['events'][$ev->uuid] = [
+                    'name' => (string) $ev->name, 'fed' => $ev->uuid,
+                    'sort' => $ev->starts_on ? \Illuminate\Support\Carbon::parse($ev->starts_on)->format('Y-m-d') : '',
                 ];
             }
         }
 
-        return array_values($rows);
+        return array_values(array_map(function (array $r) {
+            $events = array_values($r['events']);
+            usort($events, fn ($a, $b) => strcmp($b['sort'], $a['sort']));
+            $r['events'] = array_map(fn ($e) => ['name' => $e['name'], 'fed' => $e['fed'], 'date' => $e['sort'] !== '' ? \Illuminate\Support\Carbon::parse($e['sort'])->format('j M Y') : 'Date TBC'], $events);
+
+            return $r;
+        }, $rows));
     }
 
     /** `takeone_club_regs`: the registration feed, every event in scope. */

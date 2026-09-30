@@ -35,10 +35,13 @@ use App\Events\Models\EventOfficial;
 use App\Trainers\Models\InstructorReview;
 use App\Clubs\Models\Invoice;
 
-class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
+class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipient, HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\Members\Models\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+
+    /** $user->certificates() — every certificate issued to this person (App\Certificates). */
+    use \Ahl\Certificates\Concerns\HasCertificates;
 
     /**
      * Keep `name` in sync with `full_name` so they are always the same.
@@ -1090,5 +1093,44 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function preferredLocale(): ?string
     {
         return $this->locale ?: null;
+    }
+
+    /* ---------------- Certificates (Ahl\Certificates\Contracts\Recipient) ---------------- */
+
+    /** The name printed on a certificate: the canonical display name. */
+    public function certificateName(): string
+    {
+        return trim((string) ($this->full_name ?: $this->name));
+    }
+
+    /** A certificate is written in the person's own language when it has a template in it. */
+    public function certificateLocale(): ?string
+    {
+        return $this->locale ?: null;
+    }
+
+    /**
+     * Their face, for a template that shows one — ONLY when they have made it
+     * public (users.profile_picture_is_public), because a certificate is made to
+     * be shared. Returned as a data: URI; a missing or unreadable file is no photo.
+     */
+    public function certificatePhoto(): ?string
+    {
+        if (! $this->profile_picture_is_public) {
+            return null;
+        }
+        $path = \App\Members\Support\ProfilePhoto::path($this);
+        if (! $path || str_contains($path, '://')) {
+            return null;
+        }
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        $path = preg_replace('#^(storage/|public/)#', '', ltrim($path, '/'));
+        if (! $disk->exists($path)) {
+            return null;
+        }
+        $bytes = (string) $disk->get($path);
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
+
+        return in_array($mime, ['image/jpeg', 'image/png'], true) ? 'data:'.$mime.';base64,'.base64_encode($bytes) : null;
     }
 }

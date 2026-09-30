@@ -100,6 +100,7 @@
         if (window.__membersListRefresh) {
             window.removeEventListener('member-deleted', window.__membersListRefresh);
             window.removeEventListener('realtime:members', window.__membersListRefresh);
+            window.removeEventListener('members-changed', window.__membersListRefresh);
         }
         window.__membersListRefresh = function (e) {
             if (e.type === 'realtime:members' && (e.detail || {}).action !== 'refresh') return;
@@ -108,6 +109,7 @@
         };
         window.addEventListener('member-deleted', window.__membersListRefresh);
         window.addEventListener('realtime:members', window.__membersListRefresh);
+        window.addEventListener('members-changed', window.__membersListRefresh);   // a merge, or its undo
 
         searchEl.addEventListener('input', function(e) {
             clearTimeout(searchDebounce);

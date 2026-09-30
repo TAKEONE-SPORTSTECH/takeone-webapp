@@ -1,5 +1,6 @@
 @props([
     'event',                // event uuid
+    'sport' => null,        // the event's sport key — decides the belt ladder; looked up from `event` when absent
     'fees' => [],           // $e['fees'] — what this event SELLS (Gi / No-Gi / …)
     /* The clubs this person may be entered FOR — EntryEditor::clubOptions(),
        the same list and the same two key shapes (a tenant slug, or an event
@@ -707,14 +708,19 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('events::events.entry_field_belt') }}</label>
                                     <div class="grid grid-cols-3 gap-2">
-                                        @foreach(\App\Sports\Combat\BeltRank::ladder() as $belt)
+                                        @php $addEvent = $event ? \App\Events\Models\ClubEvent::where('uuid', $event)->first() : null;
+                                             $addLadder = $addEvent ? app(\App\Events\Support\CategorySystems::class)->ladderFor($addEvent) : \App\Sports\Combat\BeltRank::ladder($sport ?? null); @endphp
+                                        @foreach($addLadder as $belt)
                                             <button type="button"
                                                     @click="person.belt_colour = person.belt_colour === @js($belt['value']) ? '' : @js($belt['value'])"
                                                     :aria-pressed="person.belt_colour === @js($belt['value'])"
                                                     :class="person.belt_colour === @js($belt['value']) ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'"
                                                     class="m-press flex items-center gap-1.5 px-2 py-2 rounded-xl border-2 transition-colors min-w-0">
                                                 <x-belt-icon :color="$belt['value']" :title="false" class="w-6 h-6 flex-shrink-0" />
-                                                <span class="text-[11.5px] font-bold text-foreground truncate">{{ $belt['label'] }}</span>
+                                                {{-- Wraps rather than truncates: a two-tone belt's name
+                                                     ("Orange / Black") is longer than a tile, and a name is
+                                                     never cut short. --}}
+                                                <span class="text-[11.5px] font-bold text-foreground leading-tight text-start break-words min-w-0">{{ $belt['label'] }}</span>
                                             </button>
                                         @endforeach
                                     </div>

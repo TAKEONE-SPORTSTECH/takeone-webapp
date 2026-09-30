@@ -231,4 +231,5 @@ return [
     'deleted_restore' => "Restore",
     'admin_restored' => ":name is back.",
     'admin_restore_name_taken' => "Another federation is now called :name — rename that one first, then restore this.",
+    'f_maps_url_invalid' => 'Paste a Google Maps link (maps.google.com or maps.app.goo.gl).',
 ];

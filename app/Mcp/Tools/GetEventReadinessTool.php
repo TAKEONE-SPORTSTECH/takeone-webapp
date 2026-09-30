@@ -60,6 +60,7 @@ class GetEventReadinessTool extends BaseTool
             'started_with_checks_outstanding' => (bool) $event->start_overridden,
             'scheduled_start' => $event->scheduledStart()?->toIso8601String(),
             'overdue_to_start' => $event->isOverdueToStart(),
+            'timezone' => $event->zone(),
             'outstanding' => $items->whereNull('checked_at')->count(),
             'ready_to_start' => $items->whereNull('checked_at')->isEmpty(),
             'checklist' => $items->map(fn (EventChecklistItem $i) => [

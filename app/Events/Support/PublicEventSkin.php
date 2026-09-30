@@ -50,15 +50,16 @@ class PublicEventSkin
 
         return [
             'title' => (string) $event->title,
-            'host' => $event->tenant?->club_name,
-            'host_logo' => $event->tenant?->logo ? file_url($event->tenant->logo) : null,
+            'host' => $event->host()->name ?: null,
+            'host_logo' => $event->host()->logo,
             'color' => app(PublicEvent::class)->color($event),
             'icons' => $brand->iconUrls($event),
 
             // Where "out" goes inside the sealed surface: the event's own page,
             // never a platform home screen.
-            'home' => route('events.public', ['event' => $event->uuid]),
-            'console' => $this->sealed(route('me.events.manage', ['event' => $event->uuid]), $event),
+            'home' => route('me.events.show', ['event' => $event->uuid]),
+            // /e/{uuid}/admin is gone; the console is the member console.
+            'console' => route('me.events.manage', ['event' => $event->uuid]),
         ];
     }
 
@@ -100,7 +101,7 @@ class PublicEventSkin
          * still maps into /admin — those screens have no public counterpart.
          */
         if ($url === $from || str_starts_with($url, $from.'?') || str_starts_with($url, $from.'#')) {
-            return route('events.public', ['event' => $event->uuid]).substr($url, strlen($from));
+            return route('me.events.show', ['event' => $event->uuid]).substr($url, strlen($from));
         }
 
         if (str_starts_with($url, $from.'/')) {
@@ -111,7 +112,7 @@ class PublicEventSkin
         // here; inside the event, "back" is the event.
         $list = url('/me/events');
         if ($url === $list || str_starts_with($url, $list.'?')) {
-            return route('events.public', ['event' => $event->uuid]);
+            return route('me.events.show', ['event' => $event->uuid]);
         }
 
         // A person's public profile, re-served in the skin so tapping a name on
@@ -168,7 +169,7 @@ class PublicEventSkin
     {
         $uuid = $event->uuid;
 
-        $poster = route('events.public', ['event' => $uuid]);
+        $poster = route('me.events.show', ['event' => $uuid]);
 
         $map = [
             /* The event page ITSELF → the poster (see sealed()). Quoted, so it
@@ -185,8 +186,8 @@ class PublicEventSkin
             '/me/events/'.$uuid => '/e/'.$uuid.'/admin',
 
             // The member event list → the event itself.
-            url('/me/events') => route('events.public', ['event' => $uuid]),
-            '"/me/events"' => '"'.route('events.public', ['event' => $uuid]).'"',
+            url('/me/events') => route('me.events.show', ['event' => $uuid]),
+            '"/me/events"' => '"'.route('me.events.show', ['event' => $uuid]).'"',
 
             // Public profiles, re-served in the skin.
             url('/people/') => url('/e/'.$uuid.'/admin/person/'),
@@ -196,15 +197,15 @@ class PublicEventSkin
             // JS string, where the anchor pass cannot see them. Narrow and
             // named — never a blanket "/me/* → here", which would rewrite the
             // endpoints these pages legitimately fetch.
-            url('/me/people') => route('events.public', ['event' => $uuid]),
-            "'".url('/me/people')."'" => "'".route('events.public', ['event' => $uuid])."'",
+            url('/me/people') => route('me.events.show', ['event' => $uuid]),
+            "'".url('/me/people')."'" => "'".route('me.events.show', ['event' => $uuid])."'",
 
             // The one stray platform link on the event form. BOTH shapes: the
             // form renders it absolutely (url('/openmat')), so matching only
             // the quoted relative form missed it entirely and the link merely
             // opened in a new tab.
-            url('/openmat') => route('events.public', ['event' => $uuid]),
-            '"/openmat"' => '"'.route('events.public', ['event' => $uuid]).'"',
+            url('/openmat') => route('me.events.show', ['event' => $uuid]),
+            '"/openmat"' => '"'.route('me.events.show', ['event' => $uuid]).'"',
         ];
 
         /*

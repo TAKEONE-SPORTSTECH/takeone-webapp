@@ -3,6 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    {{-- Every screen is as tall as what can be SEEN, even while the app is
+         hiding a strip under the bottom bar. See the partial. --}}
+    @include('partials.viewport-guard')
 
     {{-- ── This product is LIGHT. Say so, twice. ────────────────────────────
          A browser that is not told what a page's colours are decides for

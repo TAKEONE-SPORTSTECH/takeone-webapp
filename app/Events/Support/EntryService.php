@@ -1044,8 +1044,8 @@ class EntryService
 
         return match ($event->scope ?? 'internal') {
             'inter_club', 'worldwide' => true,
-            'nationwide', 'regional' => (bool) $event->tenant?->country
-                && $athlete->memberClubs()->where('tenants.country', $event->tenant->country)->exists(),
+            'nationwide', 'regional' => (bool) $event->host()->country
+                && $athlete->memberClubs()->where('tenants.country', $event->host()->country)->exists(),
             default => false,
         };
     }
@@ -1242,7 +1242,7 @@ class EntryService
         rescue(fn () => UserNotification::notifyUser($athleteId, 'event', __('events::events.entry_removed_notify_title', [
             'title' => $event->title,
         ]), [
-            'body' => __('events::events.entry_removed_notify_body', ['club' => $event->tenant?->club_name ?? '']),
+            'body' => __('events::events.entry_removed_notify_body', ['club' => $event->host()->name]),
             'icon' => 'bi-person-dash',
             'action_url' => route('me.events.show', $event->uuid),
             'actor_id' => $actor->id,
@@ -1274,8 +1274,8 @@ class EntryService
             'title' => $event->title,
         ]), [
             'body' => $division
-                ? __('events::events.entry_notify_body_division', ['club' => $event->tenant?->club_name ?? '', 'division' => $division])
-                : __('events::events.entry_notify_body', ['club' => $event->tenant?->club_name ?? '']),
+                ? __('events::events.entry_notify_body_division', ['club' => $event->host()->name, 'division' => $division])
+                : __('events::events.entry_notify_body', ['club' => $event->host()->name]),
             'icon' => 'bi-person-check',
             'action_url' => route('me.events.show', $event->uuid),
             'actor_id' => $actor->id,

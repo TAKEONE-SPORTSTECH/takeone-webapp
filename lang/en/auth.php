@@ -130,4 +130,7 @@ return [
     'choose_title' => 'Who\'s signing in?',
     'choose_sub' => 'More than one person uses this number. Tap whoever is signing in.',
     'choose_not_you' => 'Use a different number or email',
+    'auth_register_wizard_cover_tag' => 'Membership registration',
+    'auth_register_wizard_cover_choose' => 'Choose your language',
+    'auth_register_wizard_cover_enter' => 'Continue',
 ];

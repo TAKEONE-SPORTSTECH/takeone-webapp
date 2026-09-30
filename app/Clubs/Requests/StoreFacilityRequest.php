@@ -19,7 +19,12 @@ class StoreFacilityRequest extends FormRequest
             'address' => 'nullable|string|max:500',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'maps_url' => 'nullable|url|starts_with:http://,https://|max:500',
+            // Only a real Google Maps link (App\Support\MapLink) — the map pin follows it.
+            'maps_url' => ['nullable', 'string', 'max:500', function ($attr, $value, $fail) {
+                if (! \App\Support\MapLink::isGoogle((string) $value)) {
+                    $fail(__('shared.map_link_invalid'));
+                }
+            }],
             'is_available' => 'nullable|boolean',
             'translations' => ['nullable', 'array'],
             'translations.*.*' => ['nullable', 'string', 'max:2000'],

@@ -130,11 +130,13 @@ abstract class RunningOrder
         $start = Carbon::parse($event->break_start);
         $end = Carbon::parse($event->break_end);
 
-        $breakStartsAt = now()->copy()->setTime((int) $start->format('H'), (int) $start->format('i'));
-        $callAt = now()->copy()->addMinutes($minutes);
+        // break_start is the hall's wall clock: set it on the hall's today.
+        $now = $event->localNow();
+        $breakStartsAt = $now->copy()->setTime((int) $start->format('H'), (int) $start->format('i'));
+        $callAt = $now->copy()->addMinutes($minutes);
 
         // The wait runs through the break window → add its length.
-        return $callAt->gt($breakStartsAt) && now()->lt($breakStartsAt)
+        return $callAt->gt($breakStartsAt) && $now->lt($breakStartsAt)
             ? (int) $start->diffInMinutes($end)
             : 0;
     }

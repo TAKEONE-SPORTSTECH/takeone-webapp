@@ -201,11 +201,12 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 @forelse($recentMembers as $m)
                     <a href="{{ route('member.show', $m->uuid) }}" class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/60 transition-colors no-underline">
-                        <span class="w-9 h-9 rounded-full overflow-hidden shrink-0">
+                        {{-- Portrait 3:4 (CLAUDE.md: Profile Pictures Are Portrait 3:4) — 36x48, the photo fills it. --}}
+                        <span class="w-9 h-12 rounded-xl overflow-hidden shrink-0">
                             @if($m->profile_picture)
-                                <img src="{{ file_url($m->profile_picture) }}?v={{ $m->updated_at?->timestamp }}" alt="" class="w-[27px] h-9 object-cover">
+                                <img src="{{ file_url($m->profile_picture) }}?v={{ $m->updated_at?->timestamp }}" alt="" class="w-full h-full object-cover">
                             @else
-                                <x-gender-avatar :gender="$m->gender" class="w-9 h-9 rounded-full" />
+                                <x-gender-avatar :gender="$m->gender" class="w-full h-full" />
                             @endif
                         </span>
                         <div class="min-w-0 flex-1">

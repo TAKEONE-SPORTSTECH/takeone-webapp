@@ -108,7 +108,7 @@ class GetBjjScoreboardTool extends BaseTool
             'event' => [
                 'uuid' => $event->uuid,
                 'title' => $event->title,
-                'club' => $event->tenant?->club_name,
+                'club' => $event->host()->name ?: null,
                 'date' => $event->date?->toDateString(),
             ],
             'mats' => $mats,

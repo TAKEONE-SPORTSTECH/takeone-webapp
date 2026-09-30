@@ -75,7 +75,7 @@ class QrController extends Controller
     public static function eventUrl(ClubEvent $event): string
     {
         return app(\App\Events\Support\PublicEvent::class)->isPublic($event)
-            ? route('events.public', ['event' => $event->uuid])
+            ? route('me.events.show', ['event' => $event->uuid])
             : route('me.events.show', ['event' => $event->uuid]);
     }
 
@@ -145,15 +145,15 @@ class QrController extends Controller
     {
         $me = auth()->user();
         abort_unless($me && $this->canViewEvent($me, $event), 403);
-        $club = $event->tenant;
+        $host = $event->host();
 
         return $this->poster([
             'title' => $event->title,
-            'subtitle' => $club?->club_name,
+            'subtitle' => $host->name ?: null,
             'kicker' => 'Event',
             'cta' => 'Scan to take part',
             'hint' => 'Open the event to register and join.',
-            'logo' => $club && $club->logo ? file_url($club->logo) : null,
+            'logo' => $host->logo,
             'logoIcon' => 'bi-calendar-event',
             'url' => self::eventUrl($event),
         ]);
@@ -220,8 +220,8 @@ class QrController extends Controller
         return match ($event->scope ?? 'internal') {
             'inter_club', 'worldwide' => true,
             // regional currently mirrors nationwide until a region taxonomy exists.
-            'nationwide', 'regional' => (bool) ($event->tenant?->country
-                && $me->memberClubs()->where('tenants.country', $event->tenant->country)->exists()),
+            'nationwide', 'regional' => (bool) ($event->host()->country
+                && $me->memberClubs()->where('tenants.country', $event->host()->country)->exists()),
             default => false, // internal
         };
     }

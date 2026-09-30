@@ -72,6 +72,12 @@ class FederationProfiles
             'address' => ['nullable', 'string', 'max:300'],
             'lat' => ['nullable', 'numeric', 'between:-90,90'],
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
+            // The HQ's Google Maps link — only a real Google Maps address (App\Support\MapLink).
+            'maps_url' => ['nullable', 'string', 'max:500', function ($attr, $value, $fail) {
+                if (! \App\Support\MapLink::isGoogle((string) $value)) {
+                    $fail(__('federations::messages.f_maps_url_invalid'));
+                }
+            }],
             'social_links' => ['nullable', 'array', 'max:12'],
             'social_links.*.platform' => ['nullable', 'string', 'max:30'],
             'social_links.*.url' => ['nullable', 'url:http,https', 'max:255'],
@@ -194,6 +200,8 @@ class FederationProfiles
                 'address' => trim((string) ($data['address'] ?? '')) ?: null,
                 'lat' => $data['lat'] ?? null,
                 'lng' => $data['lng'] ?? null,
+                // Absent is not blank: a caller that never sent the link leaves it alone.
+                ...(array_key_exists('maps_url', $data) ? ['maps_url' => trim((string) $data['maps_url']) ?: null] : []),
                 'registration_number' => $data['registration_number'] ?? null,
                 'registration_authority' => $data['registration_authority'] ?? null,
                 'tax_number' => $data['tax_number'] ?? null,

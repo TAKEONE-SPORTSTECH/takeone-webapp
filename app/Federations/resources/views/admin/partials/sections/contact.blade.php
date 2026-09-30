@@ -57,8 +57,10 @@
         {{-- The map component labels its own address field. --}}
         <x-fields.location-map id="fedHqMap{{ $mapSuffix ?? '' }}" addressName="address" latName="lat" lngName="lng"
             :lat="$values['lat']" :lng="$values['lng']" :address="$values['address'] ?? ''"
-            :defaultLat="26.2235" :defaultLng="50.5876" height="18rem" :required="false" />
+            :defaultLat="26.2235" :defaultLng="50.5876" height="18rem" :required="false"
+            mapsUrlName="maps_url" :mapsUrl="$values['maps_url'] ?? ''" />
         <p x-show="hasErr('address')" x-text="err('address')" class="text-xs text-red-600 mt-1"></p>
+        <p x-show="hasErr('maps_url')" x-text="err('maps_url')" class="text-xs text-red-600 mt-1"></p>
     </div>
     <div class="md:col-span-2">
         <label class="{{ $lb }}">{{ __('federations::messages.f_socials') }}</label>

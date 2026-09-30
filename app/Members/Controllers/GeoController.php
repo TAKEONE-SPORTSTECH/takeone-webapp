@@ -33,6 +33,28 @@ class GeoController extends Controller
     /** How long one rounded coordinate's country is remembered. */
     private const TTL = 60 * 60 * 24 * 30;
 
+    /**
+     * Where a pasted Google Maps link points, so the map field's pin can follow
+     * it. Answers coordinates and nothing else; a link that is not Google Maps,
+     * or cannot be followed, is a null answer — the field just leaves the pin.
+     * The following itself is App\Support\MapLink, which never leaves Google.
+     */
+    public function mapLink(Request $request): JsonResponse
+    {
+        $data = $request->validate(['url' => ['required', 'string', 'max:2000']]);
+        $url = trim($data['url']);
+
+        $at = \App\Support\MapLink::isGoogle($url)
+            ? Cache::remember('geo:maplink:'.sha1($url), self::TTL, fn () => \App\Support\MapLink::resolve($url) ?? [])
+            : [];
+
+        return response()->json([
+            'success' => true,
+            'lat' => $at['lat'] ?? null,
+            'lng' => $at['lng'] ?? null,
+        ]);
+    }
+
     public function country(Request $request): JsonResponse
     {
         $data = $request->validate([

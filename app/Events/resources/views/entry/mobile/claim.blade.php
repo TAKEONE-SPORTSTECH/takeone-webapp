@@ -40,6 +40,9 @@
     <style>html { color-scheme: only light; }</style>
 
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    {{-- Every screen is as tall as what can be SEEN, even while the app is
+         hiding a strip under the bottom bar. See the partial. --}}
+    @include('partials.viewport-guard')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- The page's own ground, not the event's accent: this page is dark
          (html, body { background: #0b0b12 }), so tinting the phone's status bar

@@ -12,6 +12,7 @@ use App\Traits\StoresBase64Images;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Federations\Support\FederationTestMode;
 use Illuminate\Support\Str;
 
 /**
@@ -152,7 +153,9 @@ class FederationEvents
             $event->capacity = is_numeric($cap) && (int) $cap > 0 ? min((int) $cap, 100000) : null;
             $event->starts_on = $this->dateish($posted['startDate'] ?? null);
             $event->ends_on = $this->dateish($posted['endDate'] ?? null);
-            $event->details = $this->details($posted);
+            // The rule book is chosen on its own (setRuleBook), never by this form.
+            $event->details = $this->details($posted)
+                + array_filter(array_intersect_key((array) $event->details, array_flip(['categorySystem', 'beltSystem'])), fn ($v) => $v !== null);
             $event->logo_shape = in_array($posted['logoShape'] ?? null, ['circle', 'rect'], true) ? $posted['logoShape'] : 'circle';
             $event->save();
 
@@ -165,12 +168,33 @@ class FederationEvents
             $this->documents($event, is_array($posted['docs'] ?? null) ? $posted['docs'] : [], $user, $access);
         });
 
+        // Its platform event follows (federations.platform_events). A failure
+        // there must never lose the federation's own save.
+        rescue(fn () => app(FederationPlatformEvent::class)->sync($event->fresh('federation')), null, report: true);
+
         return $this->shape($event->fresh(['documents', 'federation']));
     }
 
     private function dateish(mixed $v): ?string
     {
         return is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/', $v) ? $v : null;
+    }
+
+    private function feeRows(array $p, \Closure $str): array
+    {
+        $types = collect(is_array($p['types'] ?? null) ? $p['types'] : [])->map(fn ($t) => $str($t, 60))->filter()->all();
+
+        return collect(is_array($p['fees'] ?? null) ? $p['fees'] : [])->take(50)
+            ->filter(fn ($r) => is_array($r) && $str($r['label'] ?? '') !== '')
+            ->map(function ($r) use ($str, $types) {
+                $row = ['label' => $str($r['label']), 'amount' => $str($r['amount'] ?? '', 20)];
+                $type = $str($r['type'] ?? '', 60);
+                if ($type !== '' && in_array($type, $types, true)) {
+                    $row['type'] = $type;
+                }
+
+                return $row;
+            })->values()->all();
     }
 
     private function details(array $p): array
@@ -200,14 +224,17 @@ class FederationEvents
             'location' => $str($p['location'] ?? '', 300),
             'about' => FederationHtml::clean(is_string($p['about'] ?? null) ? $p['about'] : ''),
             'free' => ($p['free'] ?? true) !== false,
-            'fees' => $rows($p['fees'] ?? []),
+            // A fee line may name the competition type it prices (`type`) —
+            // the invitation joins on that before it tries the label.
+            'fees' => $this->feeRows($p, $str),
             'lateFee' => $str($p['lateFee'] ?? '', 20),
             'lateFrom' => $this->dateish($p['lateFrom'] ?? null) ?? '',
             'specOn' => (bool) ($p['specOn'] ?? false),
             'specs' => $rows($p['specs'] ?? []),
             'lat' => is_numeric($p['lat'] ?? null) ? (string) round((float) $p['lat'], 5) : '',
             'lng' => is_numeric($p['lng'] ?? null) ? (string) round((float) $p['lng'], 5) : '',
-            'mapUrl' => preg_match('#^https://#i', $url) ? $url : '',
+            // Only a real Google Maps link (App\Support\MapLink) — the pin follows it.
+            'mapUrl' => \App\Support\MapLink::isGoogle($url) ? $url : '',
             'types' => collect(is_array($p['types'] ?? null) ? $p['types'] : [])->map(fn ($t) => $str($t, 60))->filter()->unique()->take(20)->values()->all(),
             'reqs' => collect(is_array($p['reqs'] ?? null) ? $p['reqs'] : [])->map(fn ($r) => $str($r, 300))->filter()->take(50)->values()->all(),
         ];
@@ -302,11 +329,175 @@ class FederationEvents
         }
 
         $event->delete();
+        // Its platform event is archived with it — entries and bouts are kept.
+        rescue(fn () => app(FederationPlatformEvent::class)->archive($event), null, report: true);
         activity()->causedBy($user)
             ->withProperties(['event' => $event->uuid, 'name' => $event->name, 'federation' => $event->federation?->uuid])
             ->log('federation.event_deleted');
 
         return true;
+    }
+
+    /** The uuids of the events in scope that are in test mode. */
+    /**
+     * Paid featuring on the members' Events page (App\Events\Support\EventFeaturing),
+     * for every event this viewer can see: uuid → the organiser's state.
+     */
+    public function featureStates(array $access): array
+    {
+        if (! class_exists(\App\Events\Support\EventFeaturing::class)) {
+            return [];
+        }
+
+        return $this->query($access)->with('federation')->get()
+            ->mapWithKeys(fn (FederationEvent $e) => [$e->uuid => \App\Events\Support\EventFeaturing::state($e)])->all();
+    }
+
+    /**
+     * Ask for featuring: the same gate as test mode and deleting (a manager),
+     * then EventFeaturing's own rules — fee set, event still to come, proof by its bytes.
+     *
+     * @return array{ok:bool, message:string, state?:array}
+     */
+    public function requestFeature(User $user, array $access, string $uuid, \Illuminate\Http\UploadedFile $proof): array
+    {
+        if (! ($access['manager'] ?? false) || ! class_exists(\App\Events\Support\EventFeaturing::class)) {
+            return ['ok' => false, 'message' => 'Only a manager can ask for featuring.'];
+        }
+        $event = $this->find($access, $uuid);
+        if (! $event || ! $event->federation) {
+            return ['ok' => false, 'message' => 'This event could not be found.'];
+        }
+
+        $r = \App\Events\Support\EventFeaturing::submit($user, $event, $proof);
+
+        return $r + ['state' => \App\Events\Support\EventFeaturing::state($event)];
+    }
+
+    /**
+     * The rule book each event in scope runs under — its category system (age
+     * groups × weight classes) and belt system — and what it may choose from:
+     * the sport's built-in systems plus the federation's own (made in the
+     * event console's rule book, saved for the federation).
+     *
+     * @return array<string, array{category: ?string, belt: ?string, categories: array, belts: array}>
+     */
+    public function ruleBooks(array $access): array
+    {
+        $systems = app(\App\Events\Support\CategorySystems::class);
+
+        return $this->query($access)->get()->mapWithKeys(function (FederationEvent $e) use ($systems) {
+            $sport = strtolower(trim((string) $e->sport));
+            $d = (array) $e->details;
+            $list = fn (array $all) => array_values(array_map(fn ($x) => ['key' => $x->key, 'label' => $x->label, 'custom' => (bool) $x->custom], $all));
+
+            return [$e->uuid => [
+                'category' => $d['categorySystem'] ?? null,
+                'belt' => $d['beltSystem'] ?? null,
+                'categories' => $sport !== '' ? $list($systems->weights($sport, 'federation', (int) $e->federation_id)) : [],
+                'belts' => $sport !== '' ? $list($systems->belts($sport, 'federation', (int) $e->federation_id)) : [],
+            ]];
+        })->all();
+    }
+
+    /**
+     * Choose an event's rule book (a manager, as for test mode and featuring).
+     * Kept on the event; when it already runs as a platform event the choice
+     * goes through CategorySystems::change — every entrant re-sorted, refused
+     * once a draw is cut — so the dashboard and the console can never differ.
+     *
+     * @return array{ok: bool, message: string, rulebook?: array}
+     */
+    public function setRuleBook(User $user, array $access, string $uuid, ?string $category, ?string $belt): array
+    {
+        if (! ($access['manager'] ?? false)) {
+            return ['ok' => false, 'message' => 'Only a manager can change the rule book.'];
+        }
+        $event = $this->find($access, $uuid);
+        if (! $event) {
+            return ['ok' => false, 'message' => 'This event could not be found.'];
+        }
+        $book = $this->ruleBooks($access)[$event->uuid] ?? null;
+        $category = $category ?: null;
+        $belt = $belt ?: null;
+        if (! $book
+            || ($category !== null && ! in_array($category, array_column($book['categories'], 'key'), true))
+            || ($belt !== null && ! in_array($belt, array_column($book['belts'], 'key'), true))) {
+            return ['ok' => false, 'message' => __('events::events.rulebook_invalid')];
+        }
+
+        $moved = 0;
+        if ($ev = app(FederationPlatformEvent::class)->of($event)) {
+            $r = app(\App\Events\Support\CategorySystems::class)->change($ev, $category, $belt);
+            if (! $r['ok']) {
+                return ['ok' => false, 'message' => $r['message'] ?? __('events::events.rulebook_invalid')];
+            }
+            $moved = (int) ($r['moved'] ?? 0);
+        }
+
+        $d = (array) $event->details;
+        $d['categorySystem'] = $category;
+        $d['beltSystem'] = $belt;
+        $event->details = $d;
+        $event->saveQuietly();
+        activity()->causedBy($user)->withProperties(['event' => $event->uuid, 'category' => $category, 'belt' => $belt])
+            ->log('federation.event_rulebook');
+
+        return ['ok' => true, 'message' => $moved ? __('events::events.rulebook_changed', ['moved' => $moved, 'created' => 0]) : 'Rule book saved.',
+            'rulebook' => ['category' => $category, 'belt' => $belt]];
+    }
+
+    public function testEventIds(array $access): array
+    {
+        return $this->query($access)->whereNotNull('test_mode_at')->pluck('uuid')->all();
+    }
+
+    /**
+     * Test mode on or off (App\Federations\Support\FederationTestMode). The
+     * same gate as deleting an event. Off takes a verified database backup
+     * first (CLAUDE.md RULE #2) and then removes everything the test made.
+     *
+     * @return array{ok:bool, message:string, testMode?:bool, removed?:array}
+     */
+    public function setTestMode(User $user, array $access, string $uuid, bool $on): array
+    {
+        if (! ($access['manager'] ?? false)) {
+            return ['ok' => false, 'message' => 'Only a manager can switch test mode.'];
+        }
+        $event = $this->find($access, $uuid);
+        if (! $event) {
+            return ['ok' => false, 'message' => 'This event could not be found.'];
+        }
+
+        if ($on) {
+            if (! $event->test_mode_at) {
+                $event->forceFill(['test_mode_at' => now()])->save();
+                activity()->causedBy($user)->performedOn($event)->log('federation.test_mode_on');
+            }
+
+            return ['ok' => true, 'testMode' => true, 'message' => 'Test mode is on. Everything entered from now on is test data.'];
+        }
+        if (! $event->test_mode_at) {
+            return ['ok' => true, 'testMode' => false, 'message' => 'Test mode is already off.'];
+        }
+
+        // One sweep at a time, and never without a backup behind it.
+        $lock = \Illuminate\Support\Facades\Cache::lock('fedtest:purge:'.$event->id, 300);
+        if (! $lock->get()) {
+            return ['ok' => false, 'message' => 'Test data is already being removed.'];
+        }
+        try {
+            if (\Illuminate\Support\Facades\Artisan::call('takeone:backup', ['--db-only' => true]) !== 0) {
+                return ['ok' => false, 'message' => 'The backup failed, so nothing was deleted. Test mode is still on.'];
+            }
+            $removed = FederationTestMode::purge($event->fresh());
+        } finally {
+            $lock->release();
+        }
+        activity()->causedBy($user)->performedOn($event)->withProperties($removed)->log('federation.test_mode_off');
+
+        return ['ok' => true, 'testMode' => false, 'removed' => $removed,
+            'message' => 'Test mode is off. '.$removed['created'].' test records removed, '.$removed['restored'].' restored.'];
     }
 
     /** Stage a document picked in an open form. */

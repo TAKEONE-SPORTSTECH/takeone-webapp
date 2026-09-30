@@ -112,7 +112,7 @@ class BoutVideoController extends Controller
             'e' => [
                 'key' => $event->uuid,
                 'title' => $event->title,
-                'club' => $event->tenant?->club_name,
+                'club' => $event->host()->name ?: null,
                 'color' => $event->color ?: '#7c3aed',
                 'date' => $event->date ? \Illuminate\Support\Carbon::parse($event->date)->format('M j, Y') : null,
                 'sport_label' => $this->sports->get($event->sport)?->label(),

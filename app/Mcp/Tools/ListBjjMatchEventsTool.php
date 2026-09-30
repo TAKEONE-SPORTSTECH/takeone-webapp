@@ -86,7 +86,7 @@ class ListBjjMatchEventsTool extends BaseTool
             'event' => [
                 'uuid' => $event->uuid,
                 'title' => $event->title,
-                'club' => $event->tenant?->club_name,
+                'club' => $event->host()->name ?: null,
             ],
             'court' => $mat->court,
             'match_id' => (int) $matchId,

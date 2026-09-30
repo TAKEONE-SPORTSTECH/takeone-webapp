@@ -21,7 +21,7 @@
         'identity'     => filled($club->club_name) && filled($club->description),
         'slogan'       => filled($club->slogan),
         'branding'     => filled($club->logo) && filled($club->cover_image),
-        'contact'      => filled($club->email) && filled($phoneNum),
+        'contact'      => $club->usesOwnerContact() ? filled($club->contactEmail()) && filled($club->contactPhone()) : filled($club->email) && filled($phoneNum),
         'region'       => filled($club->country) && filled($club->currency),
         'web'          => filled($club->slug),
         'location'     => filled($club->address) && filled($club->gps_lat) && filled($club->gps_long),
@@ -336,14 +336,50 @@
 
         {{-- ─────────── Contact ─────────── --}}
         <section x-show="panel === 'contact'" x-cloak class="px-4 py-5 space-y-4 m-panel-in">
-            <div class="m-card p-4 space-y-4">
-                <div>
+            @php
+                $ownerPhone = is_array($club->owner?->mobile) ? trim(($club->owner->mobile['code'] ?? '').' '.($club->owner->mobile['number'] ?? '')) : '';
+            @endphp
+            <div class="m-card p-4 space-y-4" x-data="{ ownerContact: @js((bool) old('use_owner_contact', $club->usesOwnerContact())) }">
+                {{-- Contact source switch — the hidden field carries the value; the club's own details are kept either way --}}
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-foreground">{{ __('admin.club_details_index_use_owner_contact') }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ __('admin.club_details_index_use_owner_contact_help') }}</p>
+                    </div>
+                    <input type="hidden" name="use_owner_contact" :value="ownerContact ? 1 : 0">
+                    <button type="button" role="switch" :aria-checked="ownerContact" @click="ownerContact = !ownerContact"
+                            aria-label="{{ __('admin.club_details_index_use_owner_contact') }}"
+                            class="m-press relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+                            :class="ownerContact ? 'bg-primary' : 'bg-gray-300'">
+                        <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+                              :class="ownerContact ? 'translate-x-6' : 'translate-x-1'"></span>
+                    </button>
+                </div>
+
+                <div x-show="ownerContact" x-cloak x-transition.opacity class="rounded-2xl bg-muted/60 p-3 space-y-1.5">
+                    @if($club->owner)
+                        @if($club->owner->email || $ownerPhone)
+                            @if($club->owner->email)
+                            <p class="text-sm text-foreground flex items-center gap-2"><i class="bi bi-envelope text-muted-foreground"></i><span class="break-all">{{ $club->owner->email }}</span></p>
+                            @endif
+                            @if($ownerPhone)
+                            <p class="text-sm text-foreground flex items-center gap-2" dir="ltr"><i class="bi bi-phone text-muted-foreground"></i>{{ $ownerPhone }}</p>
+                            @endif
+                        @else
+                            <p class="text-xs text-amber-600"><i class="bi bi-exclamation-triangle me-1"></i>{{ __('admin.club_details_index_owner_contact_missing') }}</p>
+                        @endif
+                    @else
+                        <p class="text-xs text-amber-600"><i class="bi bi-exclamation-triangle me-1"></i>{{ __('admin.club_details_index_no_owner_contact') }}</p>
+                    @endif
+                </div>
+
+                <div x-show="!ownerContact">
                     <label class="cs-lb">{{ __('admin.club_details_index_club_email_label') }}</label>
                     <input type="email" name="email" class="cs-in" value="{{ old('email', $club->email) }}"
                            placeholder="{{ __('admin.club_details_index_club_email_placeholder') }}">
                 </div>
 
-                <div>
+                <div x-show="!ownerContact">
                     <label class="cs-lb">{{ __('admin.club_details_index_club_phone_label') }}</label>
                     <x-fields.phone-code name="phone_code" id="csPhoneCode" :value="$phoneCode" :error="$errors->first('phone_code')">
                         <input type="text" class="form-control border-0" name="phone_number" value="{{ $phoneNum }}" placeholder="12345678">
@@ -377,7 +413,10 @@
                     :showLabels="false"
                     :defaultLat="26.2285"
                     :defaultLng="50.5860"
-                    height="220px" />
+                    height="220px"
+                    mapsUrlName="maps_url"
+                    :mapsUrl="old('maps_url', $club->maps_url ?? '')" />
+                @error('maps_url')<p class="text-xs text-red-600 -mt-2">{{ $message }}</p>@enderror
 
                 <p id="csMapFallback" class="hidden text-xs text-muted-foreground">{{ __('admin.cs_map_unavailable') }}</p>
 
@@ -392,18 +431,6 @@
                             class="m-press flex-1 py-2.5 rounded-xl border border-primary text-primary text-xs font-semibold flex items-center justify-center gap-1.5">
                         <i class="bi bi-crosshair"></i>{{ __('admin.club_details_index_use_my_location') }}
                     </button>
-                    @if($club->gps_lat && $club->gps_long)
-                        <a href="https://www.google.com/maps?q={{ $club->gps_lat }},{{ $club->gps_long }}" target="_blank" rel="noopener"
-                           class="m-press flex-1 py-2.5 rounded-xl border border-border text-foreground text-xs font-semibold flex items-center justify-center gap-1.5">
-                            <i class="bi bi-box-arrow-up-right"></i>{{ __('admin.club_details_index_view_on_google_maps') }}
-                        </a>
-                    @endif
-                </div>
-
-                <div>
-                    <label class="cs-lb">{{ __('admin.club_details_index_google_maps_url_label') }}</label>
-                    <input type="url" name="maps_url" class="cs-in" placeholder="https://maps.google.com/..." value="{{ old('maps_url', $club->maps_url) }}">
-                    <span class="cs-hint">{{ __('admin.club_details_index_google_maps_help') }}</span>
                 </div>
             </div>
 

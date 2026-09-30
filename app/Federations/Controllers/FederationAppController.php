@@ -72,6 +72,21 @@ class FederationAppController extends Controller
         return $this->staffPage($request, self::HOME, '/federation/app/'.rawurlencode(self::HOME));
     }
 
+    /**
+     * The Draw tab's board: <x-competition-brackets> in a same-origin frame.
+     * Carries no draw data — the dashboard hands it the division — and saves
+     * nothing; every winner goes back through federations.api.draws.
+     */
+    public function drawBoard(Request $request): Response
+    {
+        $this->ensureEnabled();
+        abort_unless(config('federations.draw_board') && $this->directory->access($request->user()), 404);
+
+        return response()->view('federations::draw.board', ['canRecord' => true])
+            ->header('X-Frame-Options', 'SAMEORIGIN')
+            ->header('Cache-Control', 'no-store, private');
+    }
+
     /** The dashboard's file address (old bookmarks) lands on the clean one. */
     public function dashboardFile(): RedirectResponse
     {
@@ -106,8 +121,21 @@ class FederationAppController extends Controller
             'mode' => 'staff',
             'favicon' => \App\Federations\Support\FederationBrand::favicon($root),
             'federation' => ['uuid' => $root->uuid, 'name' => $root->name],
+            // The platform's one country list — the enroll dialog's nationality
+            // picker is the invitation's, fed the same way (see inviteBoot()).
+            'dial' => $this->countryList(),
             // What the page OFFERS; the endpoint decides (FederationEvents::delete).
             'canDeleteEvents' => (bool) ($access['manager'] ?? false),
+            // Test mode (FederationTestMode): offered to managers; the endpoint decides.
+            'canTestMode' => (bool) ($access['manager'] ?? false),
+            'testEvents' => $this->events->testEventIds($access),
+            // Paid featuring on the members' Events page (takeone-featuring.js): offered to managers.
+            'canFeature' => (bool) ($access['manager'] ?? false),
+            'featureStates' => ($access['manager'] ?? false) ? $this->events->featureStates($access) : [],
+            // The rule book per event (takeone-rulebook.js): offered to managers.
+            'canRuleBook' => (bool) ($access['manager'] ?? false),
+            'ruleBooks' => ($access['manager'] ?? false) ? $this->events->ruleBooks($access) : [],
+            'featureFee' => class_exists(\App\Events\Support\EventFeaturing::class) ? \App\Events\Support\EventFeaturing::fee() : null,
             'user' => [
                 'name' => $user->full_name ?: $user->name,
                 'email' => strtolower((string) $user->email),
@@ -130,6 +158,9 @@ class FederationAppController extends Controller
                 'region' => route('federations.api.region'),
                 'billing' => route('federations.api.billing'),
                 'events' => route('federations.api.events'),
+                'testMode' => \Illuminate\Support\Facades\Route::has('federations.api.events.test-mode') ? route('federations.api.events.test-mode') : null,
+                'ruleBook' => \Illuminate\Support\Facades\Route::has('federations.api.events.rulebook') ? route('federations.api.events.rulebook') : null,
+                'feature' => \Illuminate\Support\Facades\Route::has('federations.api.events.feature') ? route('federations.api.events.feature') : null,
                 'eventDelete' => \Illuminate\Support\Facades\Route::has('federations.api.events.delete') ? route('federations.api.events.delete') : null,
                 'uploads' => route('federations.api.uploads'),
                 'entryConfirm' => route('federations.api.entries.confirm'),
@@ -137,15 +168,39 @@ class FederationAppController extends Controller
                 'transferDecide' => route('federations.api.transfers.decide'),
                 'regsWithdraw' => route('federations.api.regs.withdraw'),
                 'regsApprove' => route('federations.api.regs.approve'),
+                'regsEnrol' => config('federations.manual_enrolment') && \Illuminate\Support\Facades\Route::has('federations.api.regs.enrol') ? route('federations.api.regs.enrol') : null,
+                'regsImport' => config('federations.manual_enrolment') && \Illuminate\Support\Facades\Route::has('federations.api.regs.import') ? [
+                    'template' => route('federations.api.regs.template'),
+                    'preview' => route('federations.api.regs.import.preview'),
+                    'import' => route('federations.api.regs.import'),
+                ] : null,
                 'draws' => route('federations.api.draws'),
+                // Guarded: a stale route cache must never take the dashboard down.
+                'schedule' => \Illuminate\Support\Facades\Route::has('federations.api.schedule') ? route('federations.api.schedule') : null,
                 'strings' => route('federations.api.strings'),
                 'messages' => route('federations.api.messages'),
                 'messagesRead' => route('federations.api.messages.read'),
                 // Guarded: a stale route cache must never take the dashboard down.
                 'statistics' => \Illuminate\Support\Facades\Route::has('federations.api.statistics') ? route('federations.api.statistics') : null,
+                'mapLink' => \Illuminate\Support\Facades\Route::has('federations.api.map-link') ? route('federations.api.map-link') : null,
                 'clubs' => \Illuminate\Support\Facades\Route::has('federations.api.clubs') ? route('federations.api.clubs') : null,
                 'clubSearch' => \Illuminate\Support\Facades\Route::has('federations.api.clubs.search') ? route('federations.api.clubs.search') : null,
                 'clubAdd' => \Illuminate\Support\Facades\Route::has('federations.api.clubs.add') ? route('federations.api.clubs.add') : null,
+                'drawBoard' => config('federations.draw_board') && \Illuminate\Support\Facades\Route::has('federations.draw-board') ? route('federations.draw-board') : null,
+                // Edit / unlink / decide: only for a manager, and only with the feature switched on.
+                'clubManage' => ($access['manager'] ?? false) && config('federations.club_management') && \Illuminate\Support\Facades\Route::has('federations.api.clubs.decide') ? [
+                    'detail' => route('federations.api.clubs.detail'),
+                    'update' => route('federations.api.clubs.update'),
+                    'unlink' => route('federations.api.clubs.unlink'),
+                    'decide' => route('federations.api.clubs.decide'),
+                    'delete' => \Illuminate\Support\Facades\Route::has('federations.api.clubs.delete') ? route('federations.api.clubs.delete') : null,
+                    'mergePreview' => \Illuminate\Support\Facades\Route::has('federations.api.athletes.merge-preview') ? route('federations.api.athletes.merge-preview') : null,
+                    'merge' => \Illuminate\Support\Facades\Route::has('federations.api.athletes.merge') ? route('federations.api.athletes.merge') : null,
+                    'issueId' => \Illuminate\Support\Facades\Route::has('federations.api.athletes.issue-id') ? route('federations.api.athletes.issue-id') : null,
+                    'deleteAthletes' => \Illuminate\Support\Facades\Route::has('federations.api.athletes.delete') ? route('federations.api.athletes.delete') : null,
+                    'exportAthletes' => \Illuminate\Support\Facades\Route::has('federations.api.athletes.export') ? route('federations.api.athletes.export') : null,
+                    'importAthletes' => \Illuminate\Support\Facades\Route::has('federations.api.athletes.import') ? route('federations.api.athletes.import') : null,
+                ] : null,
             ],
         ], $base,
             // Live updates: the platform's own MQTT client, and nothing else of the shell.
@@ -170,6 +225,7 @@ class FederationAppController extends Controller
             'events' => $this->events->payload($access),
             'fedstore' => $this->desk->store($access, $user),
             'draws' => $this->draws->payload($access),
+            'schedules' => app(\App\Federations\Services\FederationSchedule::class)->payload($access),
             'messageClubs' => $this->messages->clubMap($access),
             // The prototype's own storage keys, filled from the server. The
             // bridge writes them before the page reads them.
@@ -208,21 +264,59 @@ class FederationAppController extends Controller
         if ($request->query('club')) {
             $invitation->bindToken($event, (string) $request->query('club'));
         }
+        // A signed-in owner of exactly one of the federation's clubs needs no code.
+        $invitation->bindOwner($event, $request->user());
 
-        return $this->html($this->app->page($file, [
+        // The invitation in the event page's design, when switched on
+        // (federations.invite_v2). It is handed the SAME boot the prototype
+        // gets, so both pages run on one store and one set of doors.
+        // A super-admin may PREVIEW it before it is switched on for everyone:
+        // `?preview=v2` (or `?preview=off`) sets it for their session only.
+        if ($request->user()?->hasRole('super-admin') && in_array($request->query('preview'), ['v2', 'off'], true)) {
+            $request->session()->put('fedinv.preview', $request->query('preview') === 'v2');
+        }
+        if (InvitePageController::enabled($request)) {
+            return app(InvitePageController::class)->show($request, $event, $this->inviteBoot($event));
+        }
+
+        return $this->html($this->app->page($file, $this->inviteBoot($event)));
+    }
+
+    /** What the club invitation boots with — its store, its doors, the country list. */
+    private function inviteBoot(\App\Federations\Models\FederationEvent $event): array
+    {
+        $invitation = app(\App\Federations\Services\FederationInvitation::class);
+
+        return [
             'csrf' => csrf_token(),
             'mode' => 'public',
             'favicon' => \App\Federations\Support\FederationBrand::favicon($event->federation),
             'event' => $event->uuid,
+            // Test mode: the page says so, so a real club never mistakes it for the real thing.
+            'testMode' => $event->test_mode_at !== null,
             'store' => $invitation->store($event),
+            // The platform's one country list (App\Support\Countries), for the phone picker.
+            // Same list, with the alpha-3 code the page keys nationality by.
+            'dial' => $this->countryList(),
             'urls' => [
                 'code' => route('federations.invite.code', $event->uuid),
                 'verify' => route('federations.invite.verify', $event->uuid),
+                'choose' => \Illuminate\Support\Facades\Route::has('federations.invite.choose') ? route('federations.invite.choose', $event->uuid) : null,
                 'lookup' => route('federations.invite.lookup', $event->uuid),
+                'clubs' => route('federations.invite.clubs', $event->uuid),
+                'checkClub' => route('federations.invite.check-club', $event->uuid),
                 'submit' => route('federations.invite.submit', $event->uuid),
                 'withdraw' => route('federations.invite.withdraw', $event->uuid),
             ],
-        ]));
+        ];
+    }
+
+    /** App\Support\Countries as the prototype pages read it: alpha-2, alpha-3, name, dial code. */
+    private function countryList(): array
+    {
+        return collect(\App\Support\Countries::dialCodes())
+            ->map(fn ($c) => ['i2' => strtoupper($c['flag']), 'i3' => \App\Support\Countries::iso3($c['flag']), 'name' => $c['name'], 'code' => $c['code']])
+            ->filter(fn ($c) => $c['i3'] !== 'UNK')->values()->all();
     }
 
     /** Code, fonts and images the pages load. Holds no data. */

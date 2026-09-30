@@ -138,24 +138,25 @@ class PeopleController extends Controller
 
         $sections = ['participants', 'draw', 'officials', 'gallery'];
         $from = (string) $request->query('from', '');
+        $addr = new \App\Events\Support\EventAddress($event);
 
         if (in_array($from, $sections, true)) {
-            return route('events.public.section', ['event' => $uuid, 'section' => $from]);
+            return $addr->section($from);
         }
 
         if ($from === 'poster') {
-            return route('events.public', ['event' => $uuid]);
+            return $addr->page();
         }
 
         if ($from === 'people') {
-            return url('/e/'.$uuid.'/admin/people');
+            return route('me.events.people', ['event' => $uuid]);
         }
 
         $me = Auth::user();
 
         return ($me && app(\App\Events\Support\EventAccess::class)->canManage($event, $me))
-            ? url('/e/'.$uuid.'/admin/people')
-            : route('events.public.section', ['event' => $uuid, 'section' => 'participants']);
+            ? route('me.events.people', ['event' => $uuid])
+            : $addr->section('participants');
     }
 
     /**

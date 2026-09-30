@@ -26,6 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\DetectDevice::class,
             \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\NoStoreAuthenticatedPages::class,
+            // Club mode: a manager who came in through /club stays in their club.
+            // A no-op unless that session engaged the lock.
+            \App\Clubs\Middleware\KeepInClub::class,
         ]);
         // Exiting impersonation is a safe escape hatch — it only restores the
         // original admin from the session. Exempt it from CSRF so a stale token

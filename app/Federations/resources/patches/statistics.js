@@ -21,8 +21,18 @@
   wLabel(div) { const m = String(div || '').match(/([-+]\d+(?:\.\d+)?\s*kg)/i); return m ? m[1].replace(/\s+/, ' ') : String(div || ''); }
   divDisc(div) { return /^kata/i.test(String(div || '')) ? 'Kata' : 'Kumite'; }
   pctChange(cur, prev) { return prev > 0 ? (cur - prev) / prev * 100 : null; }
+  // The figures are for the body picked in the dashboard's switcher — that
+  // body and everything under it. The server honours it only inside the
+  // viewer's own tree; the dashboard's placeholder id is simply ignored.
+  statsUrl() {
+    const base = ((window.__TAKEONE_FED || {}).urls || {}).statistics;
+    if (!base) return null;
+    let id = null;
+    try { id = JSON.parse(localStorage.getItem('fed-org-cur') || 'null'); } catch (e) { id = null; }
+    return typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id) ? base + (base.indexOf('?') >= 0 ? '&' : '?') + 'body=' + encodeURIComponent(id) : base;
+  }
   load(manual) {
-    const url = ((window.__TAKEONE_FED || {}).urls || {}).statistics;
+    const url = this.statsUrl();
     if (!url) { this.setState({loadErr: true, errCleared: false}); return; }
     this.setState({fetching: true});
     fetch(url, {credentials: 'same-origin', headers: {Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest'}})
@@ -35,7 +45,7 @@
   // Live: after a FederationPulse the figures are re-read in the background —
   // no loading state, no toast; the page changes when the new numbers land.
   loadQuiet() {
-    const url = ((window.__TAKEONE_FED || {}).urls || {}).statistics;
+    const url = this.statsUrl();
     if (!url || this.state.fetching) return;
     fetch(url, {credentials: 'same-origin', headers: {Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest'}})
       .then(r => r.ok ? r.json() : null)
@@ -48,11 +58,14 @@
     this._vis = () => { if (document.visibilityState === 'visible') this.loadQuiet(); };
     window.addEventListener('realtime:federation', this._live);
     document.addEventListener('visibilitychange', this._vis);
+    this._org = () => { this._d = null; this.load(); };
+    window.addEventListener('fed-org-changed', this._org);
   }
   liveOff() {
     clearTimeout(this._liveT);
     if (this._live) window.removeEventListener('realtime:federation', this._live);
     if (this._vis) document.removeEventListener('visibilitychange', this._vis);
+    if (this._org) window.removeEventListener('fed-org-changed', this._org);
   }
   data() {
     const S = this.state.stats;
@@ -137,6 +150,12 @@
 //@@ map
   initMap(el) {
     if (!el || el._leaflet_id) return;
+    // Leaflet's panes and controls carry z-indexes of 400-1000. Without a
+    // stacking context of its own the map paints over the dashboard's sticky
+    // top bar (z-index 45) while the page scrolls; this keeps them inside.
+    el.style.position = 'relative';
+    el.style.zIndex = '0';
+    el.style.isolation = 'isolate';
     const go = () => {
       if (typeof L === 'undefined') return setTimeout(go, 250);
       if (el._leaflet_id) return;
@@ -516,6 +535,32 @@
         : 'Circle size = ' + gLab[gm] + (geoRows.some(r => r.lat == null) ? ' · bodies without a club location are not drawn' : ''),
       focus: s.geoSel ? s.geoSel : null, none: geoRows.length === 0
     };
+    // ---------- by sub-federation: each body directly under the one in view,
+    // its own sub-bodies rolled into its row; the body's own records get a row too.
+    {
+      const focus = D.focus, parentOf = {}, nameOf = {};
+      (D.bodies || []).forEach(b => { parentOf[b.id] = b.parent; nameOf[b.id] = b.name; });
+      const kids = (D.bodies || []).filter(b => b.parent === focus);
+      const branch = id => { let cur = id, g = 0; while (cur != null && parentOf[cur] !== focus && cur !== focus && g++ < 10) cur = parentOf[cur]; return cur; };
+      const clubBranch = ci => ci != null && D.clubs[ci] ? branch(D.clubs[ci].body) : null;
+      const keys = [...kids.map(b => b.id), focus];
+      const tally = {}; keys.forEach(k => { tally[k] = {clubs: 0, athletes: 0, comps: 0, entries: 0, medals: 0}; });
+      const add = (k, what) => { if (k != null && tally[k]) tally[k][what]++; };
+      D.clubs.forEach(c => { if (c.affiliated && F.clubOk(c.i)) add(branch(c.body), 'clubs'); });
+      F.registered.forEach(a => add(clubBranch(a.club), 'athletes'));
+      D.events.forEach(e => { if (F.evSet.has(e.i)) add(branch(e.body), 'comps'); });
+      F.entries.forEach(x => add(clubBranch(x.c), 'entries'));
+      F.medals.forEach(m => add(clubBranch(F.ec(m.e, m.a)), 'medals'));
+      const subsOf = id => (D.bodies || []).filter(b => b.parent === id).length;
+      const own = tally[focus], ownAny = Object.values(own).some(n => n > 0);
+      const rows = kids.map(b => ({id: b.id, name: b.name, note: subsOf(b.id) ? subsOf(b.id) + ' sub-bod' + (subsOf(b.id) === 1 ? 'y' : 'ies') + ' included' : '', t: tally[b.id]}));
+      if (ownAny) rows.push({id: focus, name: nameOf[focus] || D.federation, note: 'Its own records', t: own});
+      const max = Math.max(1, ...rows.map(r => r.t.entries));
+      v.sub = {show: kids.length > 0, title: 'By sub-federation',
+        intro: 'Everything under ' + (nameOf[focus] || D.federation) + ', one row per sub-federation — its own sub-bodies are counted in its row. The filters above apply.',
+        rows: rows.map(r => ({name: r.name, note: r.note, hasNote: !!r.note, clubs: fmt(r.t.clubs), athletes: fmt(r.t.athletes), comps: fmt(r.t.comps), entries: fmt(r.t.entries), medals: fmt(r.t.medals),
+          heat: this.css('position:absolute;left:0;top:0;bottom:0;border-radius:10px;background:rgba(216,178,95,' + (.05 + .2 * r.t.entries / max).toFixed(3) + ');width:' + (r.t.entries / max * 100) + '%')}))};
+    }
     // ---------- health
     const alerts = (D.alerts || []).map(a => ({...a, action: ''}));
     const sevC = {Critical: ['#b4483c', '!'], Warning: ['#a8620f', '▲'], Informational: ['#1f7fa0', 'i'], Completed: ['#2f7a4f', '✓']};

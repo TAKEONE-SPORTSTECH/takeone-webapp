@@ -111,8 +111,10 @@ class PersonalEventController extends Controller
 
         return $query
             ->orderBy('club_name')
-            ->get(['id', 'club_name', 'currency'])
-            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->club_name, 'currency' => $c->currency ?: 'BHD'])
+            ->get(['id', 'club_name', 'currency', 'timezone'])
+            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->club_name, 'currency' => $c->currency ?: 'BHD',
+                // The default clock for an event this club hosts (ClubEvent::zone()).
+                'timezone' => ClubEvent::firstValidZone($c->timezone)])
             ->values()->all();
     }
 
@@ -133,12 +135,42 @@ class PersonalEventController extends Controller
         abort_unless($owns || $me->isClubAdmin($tenantId) || $me->isSuperAdmin(), 403);
     }
 
+    /**
+     * The division presets as THIS event's rule book has them: the chosen
+     * category system's table in place of the sport's own. An event that
+     * chose none gets its package's presets untouched.
+     */
+    private function rulebookPresets(ClubEvent $event, array $presets): array
+    {
+        if (! $event->category_system) {
+            return $presets;
+        }
+        $system = app(\App\Events\Support\CategorySystems::class)->forEvent($event);
+        if ($system) {
+            $presets['weight_divisions'] = $system->table();
+        }
+
+        return $presets;
+    }
+
     /** Resolve the package for an event that doesn't exist yet, from its input. */
     private function typeForInput(array $data, ?ClubEvent $event = null): EventType
     {
+        /* An EDIT asks with a copy of the real event (so `exists` and its own
+           settings come along) rather than a blank one: a type that claims only
+           the events it created (App\Events\Championship) must be able to tell
+           an existing event from a new one. The copy is never saved. Every
+           other type reads only the kind and the sport, as before. */
+        if ($event) {
+            return $this->registry->for((clone $event)->forceFill([
+                'event_type' => $data['event_type'] ?? $event->event_type,
+                'sport' => $data['sport'] ?? $event->sport,
+            ]));
+        }
+
         return $this->registry->for(new ClubEvent([
-            'event_type' => $data['event_type'] ?? $event?->event_type,
-            'sport' => $data['sport'] ?? $event?->sport,
+            'event_type' => $data['event_type'] ?? null,
+            'sport' => $data['sport'] ?? null,
         ]));
     }
 
@@ -220,7 +252,27 @@ class PersonalEventController extends Controller
 
         $all = $upcoming->concat($past);
         $myReg = $this->myRegistrations($me->id, $all->pluck('id'));
-        $demo = $all->map(fn ($e) => $this->eventView($e, $me->id, $myReg))->values()->all();
+        // The LIST's idea of "ended" (EventOver): a same-day event stays open
+        // until the day is out or every result is in — not the moment its
+        // planned end time passes. The event page itself keeps hasEnded().
+        $demo = $all->map(fn ($e) => ['ended' => \App\Events\Support\EventOver::isOver($e)] + $this->eventView($e, $me->id, $myReg))->values()->all();
+
+        // Paid featuring (App\Events\Support\EventFeaturing): only an APPROVED
+        // event may take the spotlight card, and only while it has not ended.
+        $featured = \App\Events\Support\EventFeaturing::featuredClubEventIds($upcoming->pluck('id'))->flip();
+        $demo = array_map(fn (array $v) => $v + ['featured' => ! $v['ended'] && isset($featured[$v['id']])], $demo);
+
+        // Federation events the member's clubs are part of — listed until they
+        // end, then gone. Merged into the upcoming run, soonest first; the
+        // finished club events stay after them.
+        if (class_exists(\App\Federations\Support\MemberFederationEvents::class)) {
+            $fed = \App\Federations\Support\MemberFederationEvents::for($me);
+            if ($fed !== []) {
+                $when = fn (array $v) => $v['sort'] ?? (isset($v['date_iso']) ? strtotime($v['date_iso']) : PHP_INT_MAX);
+                $live = collect($demo)->where('ended', false)->concat($fed)->sortBy($when)->values();
+                $demo = $live->concat(collect($demo)->where('ended', true))->values()->all();
+            }
+        }
 
         $isMobile = (bool) $request->attributes->get('is_mobile');
 
@@ -230,11 +282,39 @@ class PersonalEventController extends Controller
     public function show(ClubEvent $event, Request $request): View
     {
         $me = Auth::user();
+
+        /*
+         * One event, one page (config `events.unified_page`, OFF by default).
+         *
+         * ON, this address renders the PUBLIC poster's own page file for every
+         * reader. A visitor — decided by EventPageReader, which only ever says
+         * so for a published event — gets exactly what /e/{uuid} serves. A
+         * member falls through the checks below as always and gets the same
+         * page with their own flow switched on inside it (unifiedPoster()).
+         */
+        $unified = $this->unifiedPage($event);
+
+        // A visitor reaches here only for a published event (EventPageReader),
+        // and gets the poster whatever the type or the member flag: since /e/
+        // went, this IS the public page.
+        if ($request->attributes->get('event_reader') === 'visitor') {
+            $poster = app(\App\Events\Support\PublicEvent::class)->payload($event);
+            abort_if($poster === null, 404);
+
+            return app(PublicEventController::class)->poster($event, $poster);
+        }
+
         // READ-only widening for federation staff (FederationEventView). Every
         // write here keeps assertVisible(), which this does not touch.
         abort_if($event->is_archived, 404);
         abort_unless($this->isEligible($event, $me) || $this->canManage($event, $me)
-            || \App\Federations\Support\FederationEventView::sees($event, $me), 403);
+            || \App\Federations\Support\FederationEventView::sees($event, $me)
+            // A club that enters athletes in a federation's event reads it (EventAccess::visible).
+            || (! $event->tenant_id && ($event->host()->entryDoor($event, $me)['enters'] ?? false))
+            // A published event is readable by anybody at all — a stranger
+            // may open it, so a signed-in member who is not eligible to ENTER
+            // may certainly read it. Only on the unified page.
+            || ($unified && app(\App\Events\Support\PublicEvent::class)->isPublic($event)), 403);
 
         $type = $this->typeFor($event);
 
@@ -303,13 +383,21 @@ class PersonalEventController extends Controller
         $isMobile = (bool) $request->attributes->get('is_mobile');
         $device = $isMobile ? 'mobile' : 'desktop';
 
+        // An event whose host takes its athletes from CLUBS (a federation's
+        // competition): nobody enters themselves, their club does — through
+        // the host's own door (EventHost::entryDoor). Null at a club's event.
+        $hostEntry = $event->host()->entryDoor($event, $me);
+        if ($hostEntry) {
+            $hostEntry['host'] = $event->host()->name;
+        }
+
         $view = $this->packageView($type, 'show', $device, $isMobile ? 'events::personal.mobile.event-show' : 'events::personal.desktop.event-show');
 
         $entries = app(EntryService::class);
         $myClubs = $entries->representableClubs($me);
         $entriesState = $entries->entriesState($event);
 
-        return view($view, [
+        $data = [
             'e' => $e,
             'canManage' => $canManage,
             'banned' => $banned,
@@ -321,10 +409,12 @@ class PersonalEventController extends Controller
              * same doors with the same words on them (partials/event-doors).
              */
             'typePublic' => $type->publicView($event),
-            'canCompete' => ($banned || $excluded) ? false : $gate->allowed,
+            'canCompete' => ($banned || $excluded || $hostEntry) ? false : $gate->allowed,
+            'hostEntry' => $hostEntry,
             'eligReason' => match (true) {
                 $banned => __('events::events.banned_by_organiser'),
                 $excluded !== null => $excluded->sentence(),
+                $hostEntry !== null => __('events::events.host_entry_body', ['host' => $hostEntry['host']]),
                 default => $gate->message,
             },
             // Removed by the deadline rather than by a person — a different
@@ -364,7 +454,7 @@ class PersonalEventController extends Controller
              * address once it exists.
              */
             'publicUrl' => app(\App\Events\Support\PublicEvent::class)->isPublic($event)
-                ? route('events.public', ['event' => $event->uuid])
+                ? route('me.events.show', ['event' => $event->uuid])
                 : null,
             // How to pay, for the join sheet.
             'payment' => $this->paymentInstructions($event),
@@ -372,7 +462,7 @@ class PersonalEventController extends Controller
             // a club, and only while the event is still taking entries.
             // Only while entries are actually open — a card that opens a sheet
             // where every row is refused is a door onto a wall.
-            'canEnterAthletes' => $entriesState['open'] && $entries->administeredClubIds($me) !== [],
+            'canEnterAthletes' => ! $hostEntry && $entriesState['open'] && $entries->administeredClubIds($me) !== [],
             // Whether anyone may still take a place, and the reason when not.
             'entriesOpen' => $entriesState['open'],
             'entriesNote' => $entriesState['note'],
@@ -394,7 +484,157 @@ class PersonalEventController extends Controller
                 ->get()
                 ->map(fn ($d) => app(\App\Events\Controllers\EventDocumentController::class)->present($d, $event))
                 ->all(),
-        ] + $type->viewData($event, $me));
+        ] + $type->viewData($event, $me);
+
+        if ($unified) {
+            return $this->unifiedPoster($event, $data);
+        }
+
+        return view($view, $data);
+    }
+
+    /**
+     * The sections only the public door had — the entry list, the result
+     * sheet, a package's own table — at the event's one address. They exist
+     * only on the unified page; with the flag off there is nothing to serve.
+     */
+    public function participantsPage(Request $request, ClubEvent $event): View
+    {
+        abort_unless($this->servesPoster($event, $request), 404);
+
+        return $this->unifiedSection($request, $event, 'participants');
+    }
+
+    public function resultsPage(Request $request, ClubEvent $event): View
+    {
+        abort_unless($this->servesPoster($event, $request), 404);
+
+        return $this->unifiedSection($request, $event, 'results');
+    }
+
+    public function tablePage(Request $request, ClubEvent $event): View
+    {
+        abort_unless($this->servesPoster($event, $request), 404);
+
+        return $this->unifiedSection($request, $event, 'table');
+    }
+
+    /**
+     * One section of the unified event — the PUBLIC section page, for every
+     * reader (config `events.unified_page`).
+     *
+     * A visitor (EventPageReader says so only for a published event) gets
+     * exactly what /e/{uuid}/{section} serves. A member is authorized as the
+     * event page authorizes them, and gets the same page with their own powers
+     * on it — `$extra` supplies what a section needs beyond the poster payload
+     * (the draw's permissions). `__openDraw` in it lets the people who build
+     * a draw open the section before it has any divisions.
+     */
+    private function unifiedSection(Request $request, ClubEvent $event, string $section, ?\Closure $extra = null): View
+    {
+        $publisher = app(\App\Events\Support\PublicEvent::class);
+        $public = app(PublicEventController::class);
+
+        if ($request->attributes->get('event_reader') === 'visitor') {
+            $poster = $publisher->payload($event);
+            abort_if($poster === null, 404);
+
+            return $public->sectionPage($request, $event, $section, $poster);
+        }
+
+        $me = Auth::user();
+        abort_if($event->is_archived, 404);
+
+        $isPublic = $publisher->isPublic($event);
+
+        // The same rule as show(): who may read the event may read its parts.
+        abort_unless($this->isEligible($event, $me) || $this->canManage($event, $me)
+            || \App\Federations\Support\FederationEventView::sees($event, $me)
+            || $isPublic, 403);
+
+        $poster = $isPublic ? $publisher->payload($event) : $publisher->readerPayload($event);
+        abort_if($poster === null, 404);
+
+        if (! $isPublic) {
+            $poster['manifest'] = null;
+        }
+
+        $data = $extra ? $extra($me) : [];
+        $openDraw = (bool) ($data['__openDraw'] ?? false);
+        unset($data['__openDraw']);
+
+        $access = app(EventAccess::class);
+        $mayRun = $access->canManage($event, $me) || $access->canOfficiate($event, $me);
+
+        return $public->sectionPage($request, $event, $section, $poster, $openDraw)->with($data + [
+            'asMember' => true,
+            'posterPublic' => $isPublic,
+            'console' => $mayRun
+                ? route('me.events.manage', ['event' => $event->uuid])
+                : ($isPublic ? null : false),
+            'noindex' => ! $isPublic,
+        ]);
+    }
+
+    /**
+     * Does this request get the public page files? A visitor always does —
+     * they are the only public pages there are — and a member does wherever
+     * the unified page is on for the event's type.
+     */
+    private function servesPoster(ClubEvent $event, Request $request): bool
+    {
+        return $request->attributes->get('event_reader') === 'visitor' || $this->unifiedPage($event);
+    }
+
+    /** Does this event render the one shared page? See show(). */
+    private function unifiedPage(ClubEvent $event): bool
+    {
+        return (bool) config('events.unified_page', false)
+            && $this->typeFor($event)->brandedSurface();
+    }
+
+    /**
+     * The poster, for a MEMBER — the public page's own file, with the member's
+     * data beside it.
+     *
+     * `$e` stays the poster payload (PublicEvent decides what the page may say,
+     * exactly as on /e/{uuid}); the member's own payload travels as
+     * `$memberEvent` and switches on the parts only a member has — joining,
+     * paying, the reason they may not, their doors into the platform. Every
+     * other key of the member page rides along under its usual name, because
+     * the member partials the page includes read them.
+     */
+    private function unifiedPoster(ClubEvent $event, array $data): View
+    {
+        $publisher = app(\App\Events\Support\PublicEvent::class);
+        $isPublic = $publisher->isPublic($event);
+
+        $poster = $isPublic ? $publisher->payload($event) : $publisher->readerPayload($event);
+        abort_if($poster === null, 404);
+
+        if (! $isPublic) {
+            // Its addresses are the public doors', which 404 with the switch off.
+            $poster['manifest'] = null;
+        }
+
+        $memberEvent = $data['e'];
+        unset($data['e']);
+
+        $mayRun = ($data['canManage'] ?? false) || ($data['canOfficiate'] ?? false);
+
+        return app(PublicEventController::class)->poster($event, $poster)->with($data + [
+            'memberEvent' => $memberEvent,
+            'posterPublic' => $isPublic,
+            // The gear: the console for whoever runs it; the event's own
+            // sign-in for anybody else while there is a public page to sign in
+            // ON; and no gear at all otherwise (false), because that sign-in
+            // 404s with the public switch off.
+            'console' => $mayRun
+                ? route('me.events.manage', ['event' => $event->uuid])
+                : ($isPublic ? null : false),
+            // Nobody's search result while the organiser has not published it.
+            'noindex' => ! $isPublic,
+        ]);
     }
 
     /**
@@ -462,7 +702,7 @@ class PersonalEventController extends Controller
             // Whether this event has a page anybody may open, and the address of
             // it. Organiser only — publishing is not an official's decision.
             'isPublic' => $canManage && ($event->entry_mode ?? 'members') === 'public',
-            'publicUrl' => $canManage ? route('events.public', $event->uuid) : null,
+            'publicUrl' => $canManage ? route('me.events.show', $event->uuid) : null,
             // The picture the public cover opens onto — images[0]. Organiser
             // only: changing the event's face is not an official's decision.
             'coverPhoto' => $canManage ? file_url(($event->images[0] ?? null)) : null,
@@ -694,6 +934,10 @@ class PersonalEventController extends Controller
      */
     public function gallery(Request $request, ClubEvent $event): View
     {
+        if ($this->servesPoster($event, $request)) {
+            return $this->unifiedSection($request, $event, 'gallery');
+        }
+
         $me = Auth::user();
         $this->assertVisible($event, $me);
 
@@ -1650,6 +1894,10 @@ class PersonalEventController extends Controller
      */
     public function officiating(ClubEvent $event, Request $request): View
     {
+        if ($this->servesPoster($event, $request)) {
+            return $this->unifiedSection($request, $event, 'officials');
+        }
+
         $me = Auth::user();
         $this->assertVisible($event, $me);
 
@@ -1759,6 +2007,53 @@ class PersonalEventController extends Controller
      */
     public function manageBracket(Request $request, ClubEvent $event): View|RedirectResponse
     {
+        /* A type that brings its own organiser workspace (ProvidesWorkspace —
+           App\Events\Championship) shows it to the people who run the event;
+           everybody else keeps the shared draw page below. */
+        $workspaceType = $this->typeFor($event);
+        $workspaceViewer = Auth::user();
+
+        if ($workspaceType instanceof \App\Events\Contracts\ProvidesWorkspace
+            && $workspaceViewer && $this->canManage($event, $workspaceViewer)) {
+            return view($workspaceType->workspaceView(), [
+                'e' => ['key' => $event->uuid, 'title' => $event->title, 'color' => app(\App\Events\Support\PublicEvent::class)->color($event)],
+            ] + $workspaceType->workspaceData($event, $workspaceViewer));
+        }
+
+        if ($this->servesPoster($event, $request)) {
+            return $this->unifiedSection($request, $event, 'draw', function (User $me) use ($event, $request) {
+                $type = $this->typeFor($event);
+                $type->onEntrantsChanged($event);
+
+                $canManage = $this->canManage($event, $me);
+                $canArrange = $this->canArrangeDraw($event, $type, $canManage);
+                $sees = $canManage || $canArrange || app(EventAccess::class)->drawVisible($event, $me);
+
+                return [
+                    // The board, with this reader's powers — exactly what the
+                    // member draw page handed the same component.
+                    'memberDraw' => [
+                        'canManage' => $canManage,
+                        'canArrange' => $canArrange,
+                        'drawActions' => $canManage
+                            ? array_values(array_filter(
+                                $type->availableActions($event),
+                                fn (array $a) => str_contains($a['action'] ?? '', 'draw') && ($a['action'] ?? '') !== 'arrange_draw',
+                            ))
+                            : [],
+                        'myCompetitorIds' => ClubEventRegistration::where('event_id', $event->id)
+                            ->where('user_id', $me->id)->pluck('id')->all(),
+                        'dataUrl' => route('me.events.bracket.data', ['event' => $event->uuid]),
+                        'division' => $request->query('division'),
+                    ],
+                    // The stage opens for whoever may see the draw, and for the
+                    // people who build it before there is anything to see.
+                    'drawStage' => $sees && ($canManage || $canArrange || $event->categories()->exists()),
+                    '__openDraw' => $canManage || $canArrange,
+                ];
+            });
+        }
+
         $me = Auth::user();
         $this->assertVisible($event, $me);
 
@@ -3199,7 +3494,7 @@ class PersonalEventController extends Controller
                 'label' => __('personal.event_officials_'.$c),
                 'hint' => __('personal.event_officials_'.$c.'_hint'),
             ])->values(),
-            'currency' => $event->tenant?->currency ?: 'BHD',
+            'currency' => $event->host()->currency ?: 'BHD',
             /*
              * The clubs an official can be named with: the ones already at this
              * event plus the host, in the same two key shapes an ENTRY uses. An
@@ -3709,6 +4004,8 @@ class PersonalEventController extends Controller
             'scope' => ['nullable', Rule::in(array_keys($this->scopes()))],
             'date' => ['required', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:date'],
+            // The competition's clock (ClubEvent::zone()). A real identifier or nothing.
+            'timezone' => ['nullable', 'string', 'timezone:all'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['nullable', 'date_format:H:i'],
             'weigh_in_at' => ['nullable', 'date'],
@@ -3771,6 +4068,7 @@ class PersonalEventController extends Controller
             'event_type' => $data['event_type'],
             'scope' => $data['scope'] ?? 'internal',
             'icon' => $this->typeIcon($data['event_type']),
+            'timezone' => $data['timezone'] ?? null,
             'date' => $data['date'],
             'end_date' => $data['end_date'] ?? null,
             'start_time' => $data['start_time'],
@@ -3798,6 +4096,18 @@ class PersonalEventController extends Controller
 
         $this->syncFeeOptions($event, $data);
         $this->refreshFeeDisplay($event);
+
+        // The rule book the organiser picked — only one this host may use.
+        $systems = app(\App\Events\Support\CategorySystems::class);
+        $ruleBook = $request->validate([
+            'category_system' => ['nullable', 'string', 'max:64'],
+            'belt_system' => ['nullable', 'string', 'max:64'],
+        ]);
+        $pick = fn (?string $k, bool $ok) => $k && $ok ? $k : null;
+        $event->forceFill([
+            'category_system' => $pick($ruleBook['category_system'] ?? null, $systems->validWeights($event, $ruleBook['category_system'] ?? null)),
+            'belt_system' => $pick($ruleBook['belt_system'] ?? null, $systems->validBelts($event, $ruleBook['belt_system'] ?? null)),
+        ])->save();
 
         $type->saveRelatedData($event, $data);
 
@@ -3833,6 +4143,8 @@ class PersonalEventController extends Controller
             'scope' => ['nullable', Rule::in(array_keys($this->scopes()))],
             'date' => ['required', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:date'],
+            // The competition's clock (ClubEvent::zone()). A real identifier or nothing.
+            'timezone' => ['nullable', 'string', 'timezone:all'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['nullable', 'date_format:H:i'],
             'weigh_in_at' => ['nullable', 'date'],
@@ -3890,9 +4202,14 @@ class PersonalEventController extends Controller
          * were quoted in it, and re-labelling an amount because the event moved
          * clubs would change what an entrant was asked to pay.
          */
-        $host = isset($data['tenant_id']) ? (int) $data['tenant_id'] : (int) $event->tenant_id;
+        // An event whose host is NOT a club (a federation's competition) has
+        // no club to move to: its host stays, whatever a club picker posted,
+        // and the power to broadcast it is the host's own managers'. Without
+        // this the empty club id was written back as 0, detaching the event.
+        $hosted = ! $event->tenant_id && $event->host_type;
+        $host = $hosted ? null : (isset($data['tenant_id']) ? (int) $data['tenant_id'] : (int) $event->tenant_id);
 
-        if ($host !== (int) $event->tenant_id) {
+        if (! $hosted && $host !== (int) $event->tenant_id) {
             abort_unless(
                 collect($this->clubsICanCreateFor($me, $event))->contains('id', $host),
                 403,
@@ -3902,7 +4219,32 @@ class PersonalEventController extends Controller
         // Widening the scope on an EDIT is the same broadcast power as setting
         // it at creation — guard it identically, and against the club the event
         // is being moved TO.
-        $this->assertMayBroadcast($me, $host, $data['scope'] ?? $event->scope);
+        if ($hosted) {
+            if (in_array($data['scope'] ?? $event->scope, config('event_notifications.broadcast_scopes', []), true)) {
+                abort_unless($me->isSuperAdmin() || $event->host()->manages($event, $me), 403);
+            }
+        } else {
+            $this->assertMayBroadcast($me, $host, $data['scope'] ?? $event->scope);
+        }
+
+        // The rule book: a change re-sorts everybody entered, and is refused —
+        // before anything else is saved — once a draw has been cut.
+        $ruleBook = $request->validate([
+            'category_system' => ['nullable', 'string', 'max:64'],
+            'belt_system' => ['nullable', 'string', 'max:64'],
+        ]);
+        $ruleBookSent = $request->has('category_system') || $request->has('belt_system');
+        if ($ruleBookSent) {
+            $systems = app(\App\Events\Support\CategorySystems::class);
+            $cat = $request->has('category_system') ? ($ruleBook['category_system'] ?: null) : $event->category_system;
+            $belt = $request->has('belt_system') ? ($ruleBook['belt_system'] ?: null) : $event->belt_system;
+            if (! $systems->validWeights($event, $cat) || ! $systems->validBelts($event, $belt)) {
+                return response()->json(['success' => false, 'message' => __('events::events.rulebook_invalid')], 422);
+            }
+            if ($cat !== $event->category_system && \App\Events\Models\EventMatch::where('event_id', $event->id)->exists()) {
+                return response()->json(['success' => false, 'message' => __('events::events.rulebook_locked')], 422);
+            }
+        }
 
         $type = $this->typeForInput($data, $event);
         $data += $request->validate($type->validationRules($event));
@@ -3924,7 +4266,7 @@ class PersonalEventController extends Controller
          * send is left exactly as it is on the row.
          */
         $optional = [
-            'end_date', 'end_time', 'weigh_in_at', 'entry_deadline_enforced', 'enrollment_starts_at', 'enrollment_ends_at',
+            'timezone', 'end_date', 'end_time', 'weigh_in_at', 'entry_deadline_enforced', 'enrollment_starts_at', 'enrollment_ends_at',
             'location', 'gps_lat', 'gps_long', 'location_url', 'break_start', 'break_end',
             'level', 'description', 'prize', 'max_capacity',
         ];
@@ -3937,8 +4279,7 @@ class PersonalEventController extends Controller
             }
         }
 
-        $event->update($type->columnsFromInput($data, $event) + $columns + [
-            'tenant_id' => $host,
+        $event->update($type->columnsFromInput($data, $event) + $columns + ($hosted ? [] : ['tenant_id' => $host]) + [
             'title' => $data['title'],
             'event_type' => $data['event_type'],
             'scope' => $data['scope'] ?? $event->scope ?? 'internal',
@@ -3953,6 +4294,14 @@ class PersonalEventController extends Controller
         // Divisions, fixtures, re-scheduling — whatever this type keeps outside
         // the event row.
         $type->saveRelatedData($event, $data);
+
+        if ($ruleBookSent) {
+            app(\App\Events\Support\CategorySystems::class)->change($event->fresh(), $cat, $belt);
+        }
+
+        // An event another kind of organiser hosts (a federation's) keeps its
+        // own record there too: bring it into step with what was just saved.
+        \App\Events\Support\EventHost::changed($event->fresh());
 
         return response()->json([
             'success' => true,
@@ -4523,6 +4872,17 @@ class PersonalEventController extends Controller
         // ordinary thing there is.
         $alreadyIn = ClubEventRegistration::where('event_id', $event->id)
             ->where('user_id', $me->id)->where('role', 'participant')->exists();
+
+        // A host that takes its athletes from clubs (a federation): the club
+        // enters them, through the host's door — never the member here.
+        if (! $alreadyIn && ($door = $event->host()->entryDoor($event, $me))) {
+            return response()->json([
+                'success' => false,
+                'code' => 'club_entry',
+                'message' => __('events::events.host_entry_body', ['host' => $event->host()->name]),
+                'url' => $door['url'],
+            ], 422);
+        }
 
         if (($event->hasStarted() || $event->isOverdueToStart()) && ! $alreadyIn) {
             return response()->json([
@@ -5126,6 +5486,14 @@ class PersonalEventController extends Controller
             && ! $me->isSuperAdmin()
             && ! app(EventAccess::class)->canManage($event, $me), 403);
 
+        // A club enters its athletes in a federation's event through the
+        // federation's own invitation; only the people running the event add
+        // anybody here.
+        if ($event->host()->entryDoor($event, $me) && ! app(EventAccess::class)->canManage($event, $me)) {
+            return response()->json(['success' => false, 'code' => 'club_entry',
+                'message' => __('events::events.host_entry_refused')], 403);
+        }
+
         $result = $entries->enterMany(
             $event,
             $me,
@@ -5194,7 +5562,7 @@ class PersonalEventController extends Controller
             'success' => true,
             'message' => $public ? __('events::events.public_turned_on') : __('events::events.public_turned_off'),
             'entry_mode' => $data['entry_mode'],
-            'url' => $public ? route('events.public', $event->uuid) : null,
+            'url' => $public ? route('me.events.show', $event->uuid) : null,
         ]);
     }
 
@@ -5394,7 +5762,7 @@ class PersonalEventController extends Controller
              * never names a sport to fetch a table, and a type with no table
              * simply offers no preset.
              */
-            'presets' => rescue(fn () => $this->typeFor($event)->formCatalog(), [], false) ?: [],
+            'presets' => $this->rulebookPresets($event, rescue(fn () => $this->typeFor($event)->formCatalog(), [], false) ?: []),
             // The parts of the event entered separately — Gi and No-Gi here.
             // Empty on an event that runs one thing, and the sheet then asks
             // nothing about it.
@@ -5810,7 +6178,7 @@ class PersonalEventController extends Controller
             'min_weight' => ['nullable', 'numeric', 'min:10', 'max:300'],
             'max_weight' => ['nullable', 'numeric', 'min:10', 'max:300'],
             'belts' => ['nullable', 'array', 'max:12'],
-            'belts.*' => ['string', Rule::in(array_column(\App\Sports\Combat\BeltRank::ladder(), 'value'))],
+            'belts.*' => ['string', Rule::in(\App\Sports\Combat\BeltRank::accepted($event->sport))],
             // The division being edited, so its own entrants read as "already
             // here" rather than as strangers who happen to fit.
             'division' => ['nullable', 'integer'],
@@ -6574,7 +6942,7 @@ class PersonalEventController extends Controller
              * rather than being another free-text spelling.
              */
             'belts' => ['nullable', 'array', 'max:12'],
-            'belts.*' => ['string', Rule::in(array_column(\App\Sports\Combat\BeltRank::ladder(), 'value'))],
+            'belts.*' => ['string', Rule::in(\App\Sports\Combat\BeltRank::accepted($event->sport))],
             // How many may enter. Null is "no cap", which is the normal case —
             // an organiser caps a division to keep a mat's day finite, not
             // because a bracket needs it.
@@ -6908,7 +7276,7 @@ class PersonalEventController extends Controller
             'gender' => ['nullable', Rule::in(['Male', 'Female'])],
             'birthdate' => ['nullable', 'date', 'before:today'],
             'weight' => ['nullable', 'numeric', 'min:10', 'max:300'],
-            'belt_colour' => ['nullable', 'string', Rule::in(\App\Sports\Combat\BeltRank::colours())],
+            'belt_colour' => ['nullable', 'string', Rule::in(\App\Sports\Combat\BeltRank::accepted($event->sport))],
             // The degree, as the federation writes it — "2", "2nd Dan", "1 دان".
             // Free text on purpose: the ladder is a shortcut, not a constraint,
             // and a federation that grades some other way types it in.
@@ -7533,7 +7901,7 @@ class PersonalEventController extends Controller
         $me = Auth::user();
         $this->assertVisible($event, $me);
 
-        if ($event->enrollment_ends_at && now()->startOfDay()->gt($event->enrollment_ends_at)) {
+        if (\App\Events\Support\EntryWindow::hasClosed($event)) {
             return response()->json([
                 'success' => false,
                 'message' => __('events::events.claim_disown_closed'),
@@ -7595,6 +7963,12 @@ class PersonalEventController extends Controller
             // mass delete would skip them (CLAUDE.md → Delete Files Before
             // Records).
             $reg->delete();
+        }
+
+        // A club-wide blacklist needs a club. An event no club hosts (a
+        // federation's) can only bar the person from THIS event.
+        if ($data['action'] === 'blacklist' && ! $event->tenant_id) {
+            $data['action'] = 'block';
         }
 
         if ($data['action'] === 'block') {
@@ -7764,7 +8138,7 @@ class PersonalEventController extends Controller
         return response()->json([
             'success' => true,
             'people' => $people,
-            'club' => $event->tenant?->club_name,
+            'club' => $event->host()->name ?: null,
         ]);
     }
 
@@ -7912,12 +8286,12 @@ class PersonalEventController extends Controller
             // date chip can jump straight to that row rather than the section.
             'date_iso' => $date->toDateString(),
             'title' => $tr->get('title', $e->title),
-            'club' => $e->tenant?->club_name ?? 'TAKEONE',
+            'club' => $e->host()->name ?: 'TAKEONE',
             'location' => $tr->get('location', $e->location) ?? 'TBA',
             'address' => $tr->get('location', $e->location) ?? '',
             'location_url' => $e->location_url,
-            'lat' => $e->gps_lat ? (float) $e->gps_lat : ($e->tenant?->gps_lat ? (float) $e->tenant->gps_lat : null),
-            'lng' => $e->gps_long ? (float) $e->gps_long : ($e->tenant?->gps_long ? (float) $e->tenant->gps_long : null),
+            'lat' => $e->gps_lat ? (float) $e->gps_lat : $e->host()->lat,
+            'lng' => $e->gps_long ? (float) $e->gps_long : $e->host()->lng,
             'time' => $start ? Cldr::time($start) : __('events::events.tba'),
             'end' => $end ? Cldr::time($end) : '',
             'duration' => $this->duration($start, $end),
@@ -7926,7 +8300,7 @@ class PersonalEventController extends Controller
             'type' => $this->typeLabel($e->event_type),
             'scope' => $e->scope ?? 'internal',
             'scope_label' => $this->scopeLabel($e->scope ?? 'internal'),
-            'host_club' => $e->tenant?->club_name,
+            'host_club' => $e->host()->name ?: null,
             'sections' => $this->typeSections($e->event_type),
             'sport' => $e->sport,
             // Translatable, same as the public poster — see App\Events\Support\SportLabel.
@@ -8058,6 +8432,9 @@ class PersonalEventController extends Controller
             'overdue' => $e->isOverdueToStart(),
             'start_overridden' => (bool) $e->start_overridden,
             'ended' => $e->hasEnded(),
+            // The competition's clock — every date and time on this event is in it.
+            'timezone' => $e->zone(),
+            'timezone_chosen' => $e->timezone,
             /*
              * Enough of the divisions for the Draw tile to say how many people
              * are in them — which it could not: this was a one-element sentinel

@@ -61,7 +61,9 @@ class ExploreCategoryTabsTest extends TestCase
             ->assertSee('data-category="events"', false);
     }
 
-    public function test_a_finished_event_does_not_bring_the_tab_back(): void
+    // Since 2026-09-29 the Events tab also lists FINISHED events (its
+    // "Finished" group), so one past event is enough to show the tab.
+    public function test_a_finished_event_brings_the_tab_for_its_finished_list(): void
     {
         $user = $this->createUser();
         $club = $this->clubFor($user);
@@ -76,7 +78,7 @@ class ExploreCategoryTabsTest extends TestCase
         ]);
 
         $this->actingAs($user->fresh())->get('/explore')->assertOk()
-            ->assertDontSee('data-category="events"', false);
+            ->assertSee('data-category="events"', false);
     }
 
     public function test_the_trainers_tab_appears_only_when_a_trainer_exists(): void

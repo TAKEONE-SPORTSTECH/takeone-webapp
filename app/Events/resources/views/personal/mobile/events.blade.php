@@ -12,8 +12,8 @@
 @php
     // $demo comes from PersonalEventController@index (shared shape with detail page).
     $demoList = array_values($demo);
-    // Featured = the soonest UPCOMING event (never a finished one).
-    $feat = collect($demoList)->firstWhere('ended', false);
+    // Featured = the soonest upcoming event with an APPROVED paid feature (EventFeaturing); none → no spotlight.
+    $feat = collect($demoList)->first(fn ($v) => ! $v['ended'] && ($v['featured'] ?? false));
     $upcomingCount = collect($demoList)->where('ended', false)->count();
     $pastCount = collect($demoList)->where('ended', true)->count();
     $joinedCount = collect($demoList)->where('joined', true)->where('ended', false)->count();
@@ -71,7 +71,7 @@
     {{-- ===== Featured spotlight (soonest upcoming; hidden on Past tab) ===== --}}
     @if($feat)
     <div class="px-4 -mt-7 relative z-10" x-show="seg==='upcoming'" x-transition>
-        <a href="{{ route('me.events.show', $feat['key']) }}" data-shell-link data-route="me.events"
+        <a href="{{ $feat['href'] ?? route('me.events.show', $feat['key']) }}" @unless($feat['external'] ?? false) data-shell-link data-route="me.events" @endunless
            class="block m-press rounded-3xl overflow-hidden shadow-lg border border-gray-100 text-white relative"
            style="background: linear-gradient(135deg, {{ $feat['color'] }}, {{ $feat['color'] }}cc);">
             <div class="absolute -end-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
@@ -128,7 +128,7 @@
     <div class="px-4 mt-4 mobile-stagger space-y-3">
         @foreach($demoList as $e)
             @php $isEnded = $e['ended'] ? 'true' : 'false'; $isJoined = $e['joined'] ? 'true' : 'false'; @endphp
-            <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
+            <a href="{{ $e['href'] ?? route('me.events.show', $e['key']) }}" @unless($e['external'] ?? false) data-shell-link data-route="me.events" @endunless
                x-show="(seg==='upcoming' && !{{ $isEnded }}) || (seg==='joined' && {{ $isJoined }} && !{{ $isEnded }}) || (seg==='past' && {{ $isEnded }})"
                x-transition
                class="block m-card m-press rounded-2xl p-3.5 flex items-start gap-3.5 {{ $e['ended'] ? 'opacity-75' : '' }}">

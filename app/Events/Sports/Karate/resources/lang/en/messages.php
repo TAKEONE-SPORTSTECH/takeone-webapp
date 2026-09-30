@@ -40,4 +40,8 @@ return [
     'score_yuko' => 'Yuko',
     'corner_aka' => 'AKA',
     'corner_ao' => 'AO',
+
+    // Grades on the sport's own belt ladder (beltLadder()), 2026-09-27.
+    'grade_kyu' => '{1} 1st kyu|{2} 2nd kyu|{3} 3rd kyu|[4,*] :nth kyu',
+    'grade_dan' => '{1} 1st dan|{2} 2nd dan|{3} 3rd dan|[4,*] :nth dan',
 ];

@@ -58,7 +58,7 @@ class PublicBrand
      */
     public function of(ClubEvent $event): array
     {
-        $club = $event->tenant;
+        $host = $event->host();
 
         return [
             'name' => $event->title,
@@ -66,8 +66,8 @@ class PublicBrand
             // on iOS. A truncated event title is a better badge than a
             // truncated platform name.
             'short_name' => \Illuminate\Support\Str::limit($event->title, 18, ''),
-            'host' => $club?->club_name,
-            'host_logo' => $club?->logo ? file_url($club->logo) : null,
+            'host' => $host->name ?: null,
+            'host_logo' => $host->logo,
             'color' => $this->color($event),
             'icon' => fn (int $size) => route('events.public.icon', [
                 'event' => $event->uuid,
@@ -130,8 +130,8 @@ class PublicBrand
             'description' => \Illuminate\Support\Str::limit(strip_tags((string) $event->description), 180) ?: $brand['name'],
             // Opens on the event, not on a platform home page it has no
             // business showing.
-            'start_url' => route('events.public', $event->uuid),
-            'scope' => route('events.public', $event->uuid),
+            'start_url' => route('me.events.show', $event->uuid),
+            'scope' => route('me.events.show', $event->uuid),
             'display' => 'standalone',
             'orientation' => 'portrait',
             // The splash the installed app shows while it opens. The same

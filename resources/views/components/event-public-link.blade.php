@@ -1,7 +1,7 @@
 @props([
     'event',                 // event uuid
     'isPublic' => false,     // entry_mode === 'public'
-    'url' => null,           // route('events.public', uuid) — always passed, shown only when on
+    'url' => null,           // route('me.events.show', uuid) — always passed, shown only when on
     'color' => '#7c3aed',
     'title' => '',
     'autoAccept' => false,   // club_events.public_entry_auto_accept

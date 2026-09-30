@@ -41,7 +41,34 @@ class PublicEvent
     /** Built brackets, per event id — see `drawSummary()`. */
     private array $drawn = [];
 
+    /** Set only for the length of readerPayload() — see there. */
+    private bool $forReader = false;
+
     public function __construct(private EventTypeRegistry $registry) {}
+
+    /**
+     * The poster, for a reader the CALLER has already authorized.
+     *
+     * The unified member page (config `events.unified_page`) renders this same
+     * poster for an event whose public switch is OFF, to a member who may open
+     * it on the platform. The payload is still the stranger's narrow one — no
+     * roster contacts, no money, no ids — only the public-switch gate is
+     * lifted, and only because the caller asked EventAccess first.
+     *
+     * The addresses it carries (documents, manifest, draw data) belong to the
+     * public doors and 404 while the switch is off; the member page supplies
+     * its own for those.
+     */
+    public function readerPayload(ClubEvent $event): ?array
+    {
+        $this->forReader = true;
+
+        try {
+            return $this->payload($event);
+        } finally {
+            $this->forReader = false;
+        }
+    }
 
     /** May anybody at all open this event's page? */
     public function isPublic(ClubEvent $event): bool
@@ -57,7 +84,7 @@ class PublicEvent
      */
     public function payload(ClubEvent $event): ?array
     {
-        if (! $this->isPublic($event)) {
+        if (! $this->isPublic($event) && ! $this->forReader) {
             return null;
         }
 
@@ -117,10 +144,10 @@ class PublicEvent
 
             'title' => $tr->get('title', $event->title),
             'about' => $tr->get('about', $event->description ?? ''),
-            'club' => $event->tenant?->club_name ?? '',
-            'host' => $event->tenant?->club_name,
-            'host_logo' => $event->tenant?->logo ? file_url($event->tenant->logo) : null,
-            'country' => $event->tenant?->country,
+            'club' => $event->host()->name,
+            'host' => $event->host()->name ?: null,
+            'host_logo' => $event->host()->logo,
+            'country' => $event->host()->country,
 
             // Organiser-supplied and lands in a `style` attribute, so it is
             // whitelisted rather than trusted. Bare `bi-*` name, like the
@@ -201,8 +228,8 @@ class PublicEvent
             // execution, and Blade's escaping does not help in a URL context —
             // it escapes the characters, not the scheme. http(s) only.
             'location_url' => self::safeUrl($event->location_url),
-            'lat' => $event->gps_lat ? (float) $event->gps_lat : ($event->tenant?->gps_lat ? (float) $event->tenant->gps_lat : null),
-            'lng' => $event->gps_long ? (float) $event->gps_long : ($event->tenant?->gps_long ? (float) $event->tenant->gps_long : null),
+            'lat' => $event->gps_lat ? (float) $event->gps_lat : $event->host()->lat,
+            'lng' => $event->gps_long ? (float) $event->gps_long : $event->host()->lng,
 
             // A count, never the people. "How full is it" is a poster fact; who
             // is entered is not — so `participants` and `results` simply are not
@@ -345,6 +372,8 @@ class PublicEvent
             'enrol' => app(PublicEntry::class)->state($event),
             'started' => $event->hasStarted(),
             'ended' => $event->hasEnded(),
+            // The competition's clock — every date and time on this page is in it.
+            'timezone' => $event->zone(),
         ];
     }
 
@@ -389,7 +418,7 @@ class PublicEvent
      */
     public function draw(ClubEvent $event): array
     {
-        if (! $this->isPublic($event)) {
+        if (! $this->isPublic($event) && ! $this->forReader) {
             return [];
         }
 

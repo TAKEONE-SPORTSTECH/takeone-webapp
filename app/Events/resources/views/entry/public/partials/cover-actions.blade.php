@@ -148,7 +148,7 @@
                              on every device. A poster is a public door, not a
                              settings screen. See App\Translation\EventLocale. --}}
                         <input type="hidden" name="event" value="{{ $e['key'] }}">
-                        <input type="hidden" name="back" value="{{ route('events.public', ['event' => $e['key']], false) }}">
+                        <input type="hidden" name="back" value="{{ route('me.events.show', ['event' => $e['key']], false) }}">
 
                         <button type="submit" @click="markSeen()"
                                 @if($isOn) aria-current="true" @endif

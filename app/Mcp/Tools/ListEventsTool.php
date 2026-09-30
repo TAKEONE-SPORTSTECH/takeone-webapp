@@ -78,7 +78,8 @@ class ListEventsTool extends BaseTool
             ->withCount('participantRegistrations')
             ->with('tenant:id,club_name,country');
 
-        $today = now()->startOfDay()->toDateString();
+        // A day of slack behind UTC: each event's own zone settles it in PHP (hasEnded()).
+        $today = now()->subDay()->toDateString();
 
         // Date-grain narrowing; end_time precision is applied in PHP via hasEnded().
         if (in_array($state, ['open', 'live', 'upcoming'], true)) {
@@ -118,7 +119,14 @@ class ListEventsTool extends BaseTool
             'end_date' => $e->end_date?->toDateString(),
             'start_time' => $e->start_time,
             'end_time' => $e->end_time,
+            // Every date/time above is wall-clock in this zone (ClubEvent::zone()).
+            'timezone' => $e->zone(),
             'club' => $e->tenant?->club_name,
+            // Who the event belongs to: its club, or (a federation's competition) another host.
+            'host' => ['kind' => $e->host()->kind, 'name' => $e->host()->name ?: null],
+            // The rule book: null = the sport's own (App\Events\Support\CategorySystems).
+            'category_system' => $e->category_system,
+            'belt_system' => $e->belt_system,
             'country' => $e->tenant?->country,
             'location' => $e->location,
             'event_type' => $e->event_type,

@@ -119,7 +119,8 @@
     </div>
 
     {{-- ===== Social strip ===== --}}
-    @if($club->socialLinks->isNotEmpty() || $club->phone)
+    @php $contactPhone = $club->contactPhone(); @endphp
+    @if($club->socialLinks->isNotEmpty() || $contactPhone)
         <div class="flex items-center justify-evenly gap-2 px-4 py-3 bg-white border-b border-border">
             @foreach($club->socialLinks as $link)
                 @php
@@ -128,8 +129,8 @@
                 @endphp
                 <a href="{{ $link->url }}" target="_blank" class="m-press w-10 h-10 rounded-full bg-muted text-primary flex items-center justify-center flex-shrink-0"><i class="bi {{ $icon }}"></i></a>
             @endforeach
-            @if($club->phone)
-                <a href="tel:{{ is_array($club->phone) ? (($club->phone['code'] ?? '').($club->phone['number'] ?? '')) : $club->phone }}" class="m-press w-10 h-10 rounded-full bg-muted text-primary flex items-center justify-center flex-shrink-0"><i class="bi bi-telephone"></i></a>
+            @if($contactPhone)
+                <a href="tel:{{ $contactPhone['code'].$contactPhone['number'] }}" class="m-press w-10 h-10 rounded-full bg-muted text-primary flex items-center justify-center flex-shrink-0"><i class="bi bi-telephone"></i></a>
             @endif
         </div>
     @endif
@@ -617,10 +618,10 @@
                                                         class="m-press w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all"
                                                         :class="m.already_collected ? 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed' : 'border-gray-200 hover:border-primary hover:bg-primary/5'">
                                                     <template x-if="m.profile_picture">
-                                                        <img :src="'/file/' + m.profile_picture" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                                                        <img :src="'/file/' + m.profile_picture" class="w-[30px] h-10 rounded-lg object-cover flex-shrink-0">
                                                     </template>
                                                     <template x-if="!m.profile_picture">
-                                                        <span class="w-10 h-10 rounded-full bg-primary text-white font-bold text-sm grid place-items-center flex-shrink-0" x-text="m.name.trim().charAt(0).toUpperCase()"></span>
+                                                        <span class="w-[30px] h-10 rounded-lg overflow-hidden flex-shrink-0" style="background: hsl(250 55% 60%);"><img :src="m.placeholder" alt="" aria-hidden="true" class="w-full h-full object-cover object-top"></span>
                                                     </template>
                                                     <span class="flex-1 min-w-0">
                                                         <span class="block text-[13px] font-semibold text-foreground truncate" x-text="m.name"></span>
@@ -702,30 +703,23 @@
             @endif
         </div>
 
-        {{-- ===== Schedule ===== --}}
-        <div x-show="tab==='schedule'" x-cloak x-transition.opacity class="space-y-3">
-            @forelse($slotsByDay as $day => $daySlots)
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <p class="px-4 py-2.5 bg-muted/50 text-sm font-bold text-foreground border-b border-gray-100">{{ $day }}</p>
-                    <div class="divide-y divide-gray-50">
-                        @foreach($daySlots->sortBy('start') as $s)
-                            <div class="flex items-center gap-3 px-4 py-3">
-                                <span class="text-[13px] font-semibold text-primary w-20 flex-shrink-0">{{ $s['start'] }}</span>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-medium text-foreground truncate">{{ $s['package'] }}</p>
-                                    <p class="text-[11px] text-muted-foreground truncate">@if($s['facility'])<i class="bi bi-geo-alt"></i> {{ $s['facility'] }}@endif @if($s['instructor']) · {{ $s['instructor'] }}@endif</p>
-                                </div>
-                                @if($s['end'])<span class="text-[11px] text-muted-foreground flex-shrink-0">{{ __('clubs::club.till') }} {{ $s['end'] }}</span>@endif
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @empty
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-12 text-center">
-                    <i class="bi bi-calendar-week text-4xl text-gray-300 m-float inline-block"></i>
-                    <p class="text-sm font-semibold text-foreground mt-3">{{ __('clubs::club.no_schedule') }}</p>
-                </div>
-            @endforelse
+        {{-- ===== Schedule =====
+             The same schedule as desktop — one partial, same marking, same
+             animation (clubs::public.partials.schedule). --}}
+        {{-- app.css stacks .class-card into a column under 768px (for the desktop
+             page on a narrow window). The phone page keeps the desktop card —
+             thumbnail beside the details — so the two read the same. Scoped
+             here: nothing else on the platform changes. --}}
+        <style>
+            .club-sched-m .class-card { flex-direction: row; gap: 12px; padding: 14px; }
+            .club-sched-m .class-thumb { width: 84px; height: auto; min-height: 84px; }
+            /* Title and times get the full width; status + instructor ride below as one row. */
+            .club-sched-m .class-card .justify-between { flex-direction: column; gap: 8px; }
+            .club-sched-m .class-card .justify-between > .items-end { flex-direction: row-reverse; align-items: center; justify-content: space-between; width: 100%; }
+            .club-sched-m .class-meta span { white-space: nowrap; }
+        </style>
+        <div x-show="tab==='schedule'" x-cloak x-transition.opacity class="club-sched-m">
+            @include('clubs::public.partials.schedule')
         </div>
 
         {{-- ===== Events ===== --}}
@@ -779,8 +773,8 @@
             @forelse($reviews as $r)
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     <div class="flex items-center gap-2.5">
-                        <span class="w-9 h-9 rounded-full bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
-                            @if($r->user?->profile_picture)<img src="{{ file_url($r->user->profile_picture) }}" alt="" class="w-[27px] h-9 object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
+                        <span class="w-9 h-12 rounded-xl bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
+                            @if($r->user?->profile_picture)<img src="{{ file_url($r->user->profile_picture) }}" alt="" class="w-full h-full object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
                         </span>
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-semibold text-foreground truncate">{{ $r->user?->full_name ?? __('clubs::club.member') }}</p>

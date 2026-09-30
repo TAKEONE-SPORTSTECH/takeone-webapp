@@ -4,6 +4,7 @@ namespace App\Federations\Services;
 
 use App\Clubs\Models\Tenant;
 use App\Federations\Models\FederationClub;
+use App\Federations\Models\FederationClubApplication;
 use App\Federations\Models\FederationStaff;
 use App\Members\Models\User;
 use App\Members\Models\UserNotification;
@@ -75,6 +76,92 @@ class FederationClubPicker
         ])->values()->all();
     }
 
+    /**
+     * Platform clubs that look like the one a pending application describes —
+     * same email, same phone, or a similar name — so the federation can link
+     * the application to the club that already exists instead of creating a
+     * duplicate. Each row says WHY it was suggested; contacts stay masked.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function matches(array $access, FederationClubApplication $app): array
+    {
+        $why = [];
+        $add = function (iterable $ids, string $reason) use (&$why) {
+            foreach ($ids as $id) {
+                if (! in_array($reason, $why[$id] ?? [], true)) {
+                    $why[$id][] = $reason;
+                }
+            }
+        };
+
+        $email = mb_strtolower(trim((string) $app->email));
+        if ($email !== '' && str_contains($email, '@')) {
+            $owners = User::where('email', $email)->limit(5)->pluck('id');
+            $add(Tenant::where(fn ($w) => $w->where('email', $email)->orWhere('owner_email', $email)->orWhereIn('owner_user_id', $owners))
+                ->limit(10)->pluck('id'), 'Same email');
+        }
+
+        $digits = preg_replace('/\D/', '', (string) $app->phone);
+        if (strlen($digits) >= 7) {
+            $tail = substr($digits, -8);
+            $owners = MemberLookup::search($tail, 10)->pluck('id');
+            $add(Tenant::where(fn ($w) => $w->whereIn('owner_user_id', $owners)->orWhere('phone', 'like', '%'.$tail.'%'))
+                ->limit(10)->pluck('id'), 'Same phone');
+        }
+
+        $norm = fn ($s) => trim(preg_replace('/\s+/u', ' ', preg_replace('/[^\p{L}\p{N} ]+/u', ' ', mb_strtolower((string) $s))));
+        $name = $norm($app->name);
+        if ($name !== '') {
+            $stop = ['club', 'clubs', 'academy', 'center', 'centre', 'sports', 'sport', 'team', 'the', 'and', 'school', 'gym',
+                'fitness', 'martial', 'arts', 'karate', 'taekwondo', 'judo', 'jiu', 'jitsu', 'bjj', 'boxing',
+                'نادي', 'اكاديمية', 'أكاديمية', 'مركز', 'فريق'];
+            $words = array_values(array_filter(explode(' ', $name), fn ($w) => mb_strlen($w) >= 3 && ! in_array($w, $stop, true)));
+            $words = $words ?: [$name];
+            $cands = Tenant::where(function ($w) use ($words) {
+                foreach (array_slice($words, 0, 4) as $x) {
+                    $w->orWhere('club_name', 'like', '%'.str_replace(['%', '_'], '', $x).'%');
+                }
+            })->limit(40)->get(['id', 'club_name']);
+            foreach ($cands as $t) {
+                $other = $norm($t->getRawOriginal('club_name'));
+                similar_text($name, $other, $pct);
+                if ($other === $name || $pct >= 60) {
+                    $add([$t->id], $other === $name ? 'Same name' : 'Similar name');
+                }
+            }
+        }
+
+        if ($why === []) {
+            return [];
+        }
+
+        $clubs = Tenant::with('owner:id,full_name,name,email,mobile')->whereIn('id', array_keys($why))
+            ->get(['id', 'owner_user_id', 'club_name', 'slug', 'logo', 'country', 'owner_name', 'owner_email']);
+        $linked = FederationClub::whereIn('federation_id', $this->ids($access))
+            ->where('status', FederationClub::STATUS_APPROVED)
+            ->whereIn('tenant_id', $clubs->pluck('id'))->pluck('tenant_id')->flip();
+
+        return $clubs->map(fn (Tenant $t) => $this->row($t, isset($linked[$t->id])) + ['reasons' => $why[$t->id]])
+            ->sortByDesc(fn ($r) => count($r['reasons']) * 10 + (in_array('Same email', $r['reasons'], true) ? 5 : 0))
+            ->take(8)->values()->all();
+    }
+
+    /** One club as a pick-list row: enough to recognise it, contacts masked. */
+    private function row(Tenant $t, bool $linked): array
+    {
+        return [
+            'key' => $t->slug,
+            'name' => $t->club_name,
+            'logo' => $t->logo ? file_url($t->logo) : null,
+            'country' => $t->country ? strtoupper((string) $t->country) : null,
+            'owner' => $t->owner_name ?: ($t->owner?->full_name ?: $t->owner?->name),
+            'ownerEmail' => $this->maskEmail($t->owner_email ?: $t->owner?->email),
+            'ownerPhone' => $this->maskPhone($t->owner?->mobile),
+            'linked' => $linked,
+        ];
+    }
+
     /** Affiliate the club; idempotent. False when the club is not found or the viewer may not. */
     public function add(User $by, array $access, string $slug): bool
     {
@@ -126,6 +213,12 @@ class FederationClubPicker
     private function ids(array $access): Collection
     {
         return collect($this->directory->subtree($access['root']))->pluck('id');
+    }
+
+    /** For the club manager's writes: the same `clubs` refresh signal an add sends. */
+    public function signal(array $access, int $except): void
+    {
+        $this->signalStaff($access, $except);
     }
 
     /** Refresh signal only — each dashboard re-fetches what its viewer may see. */

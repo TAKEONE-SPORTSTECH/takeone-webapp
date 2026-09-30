@@ -506,6 +506,7 @@ return [
     'event_verify_belt_on_file' => 'On file',
     'event_verify_belt_grade_hint' => 'Grade — e.g. 2nd Dan, 1st Kyu',
     'belt_white' => 'White',
+    'belt_grey' => 'Grey',
     'belt_yellow' => 'Yellow',
     'belt_orange' => 'Orange',
     'belt_green' => 'Green',

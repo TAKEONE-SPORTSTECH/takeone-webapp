@@ -73,7 +73,7 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         // amount itself is authoritative and is never overwritten.
         static::saving(function (self $event) {
             if (! $event->fee_currency) {
-                $event->fee_currency = $event->tenant?->currency ?: 'BHD';
+                $event->fee_currency = $event->host()->currency ?: 'BHD';
             }
 
             foreach (['participant_fee', 'spectator_fee'] as $column) {
@@ -129,6 +129,11 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
     public const DRAW_REVEALS = [self::DRAW_ALWAYS, self::DRAW_START_DAY, self::DRAW_HIDDEN];
 
     protected $fillable = [
+        // The competition's own clock (see zone()). NULL = the host's.
+        'timezone',
+        // The generic competition engine's settings — and its MARKER: only an
+        // event carrying one is run by App\Events\Championship (2026-09-27).
+        'competition',
         'tenant_id',
         'title',
         'description',
@@ -247,6 +252,7 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         'agenda' => 'array',
         'results' => 'array',
         'league' => 'array',
+        'competition' => 'array',
         'started_at' => 'datetime',
         'start_overridden' => 'boolean',
         'public_entry_auto_accept' => 'boolean',
@@ -262,11 +268,11 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
     public function hasEnded(): bool
     {
         if ($this->end_date) {
-            return $this->end_date->copy()->endOfDay()->isPast();
+            return $this->atLocal($this->end_date, '23:59:59')->isPast();
         }
 
         if ($this->end_time) {
-            return $this->date->copy()->setTimeFromTimeString($this->end_time)->isPast();
+            return $this->atLocal($this->date, $this->end_time)->isPast();
         }
 
         // No explicit end info — never auto-archive
@@ -318,7 +324,7 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
             self::DRAW_HIDDEN => false,
             self::DRAW_START_DAY => $this->hasStarted()
                 || $this->hasEnded()
-                || ($this->date && ! $this->date->copy()->startOfDay()->isFuture()),
+                || ($this->date && ! $this->atLocal($this->date, '00:00')->isFuture()),
             // `always`, and anything unrecognised: the draw is readable. An
             // unknown value must fail OPEN here — every event that predates
             // this column has no value at all, and they all published a draw.
@@ -333,7 +339,73 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
             return null;
         }
 
-        return $this->date->copy()->setTimeFromTimeString($this->start_time ?: '00:00');
+        return $this->atLocal($this->date, $this->start_time ?: '00:00');
+    }
+
+    /* ---------------- The competition's clock ---------------- */
+
+    /**
+     * The timezone this competition runs in — STRICTLY, for every date and time
+     * on it. Its own choice, else its host's (club or federation), else the
+     * platform's home (`events.entry_timezone`). Invalid values are skipped,
+     * never trusted.
+     *
+     * ⚠️ Every date/time COLUMN on an event (date, end_date, start_time,
+     * end_time, break_*, weigh_in_at, enrollment_*, late_fee_from) holds the
+     * hall's WALL CLOCK, as the organiser typed it. The app runs in UTC, so a
+     * bare `->isPast()` on one of them reads 10:00 Manama as 10:00 UTC — three
+     * hours late. Compare through atLocal() / inZone() instead. `started_at`
+     * is the exception: a real instant (now() when Start was pressed).
+     */
+    public function zone(): string
+    {
+        return self::firstValidZone($this->timezone, rescue(fn () => $this->host()->timezone, null, report: false));
+    }
+
+    /**
+     * The first real timezone among the candidates, else the platform's home
+     * (`events.entry_timezone`), else the app's. Also what a new session reads
+     * when it is stamped from a club's clock (Sparring / Open Mat).
+     */
+    public static function firstValidZone(?string ...$candidates): string
+    {
+        $candidates[] = config('events.entry_timezone', 'Asia/Bahrain');
+        foreach ($candidates as $tz) {
+            if (is_string($tz) && $tz !== '' && in_array($tz, \DateTimeZone::listIdentifiers(), true)) {
+                return $tz;
+            }
+        }
+
+        return (string) config('app.timezone', 'UTC');
+    }
+
+    /** "Now" on a club's own clock — for a session stamped before it has an event. */
+    public static function clubNow(\App\Clubs\Models\Tenant $club): \Illuminate\Support\Carbon
+    {
+        return \Illuminate\Support\Carbon::now(self::firstValidZone($club->timezone));
+    }
+
+    /** "Now" on the hall's clock. */
+    public function localNow(): \Illuminate\Support\Carbon
+    {
+        return \Illuminate\Support\Carbon::now($this->zone());
+    }
+
+    /** A day (Carbon or Y-m-d) plus a wall-clock time, as a real moment in this event's zone. */
+    public function atLocal($day, ?string $time = null): \Illuminate\Support\Carbon
+    {
+        $d = $day instanceof \DateTimeInterface ? $day->format('Y-m-d') : (string) $day;
+
+        return \Illuminate\Support\Carbon::parse($d.' '.($time ?: '00:00'), $this->zone());
+    }
+
+    /**
+     * A stored wall-clock DATETIME (weigh_in_at, late_fee_from) as a real moment:
+     * the same wall time, re-labelled with this event's zone rather than UTC.
+     */
+    public function inZone(?\DateTimeInterface $wall): ?\Illuminate\Support\Carbon
+    {
+        return $wall ? \Illuminate\Support\Carbon::parse($wall->format('Y-m-d H:i:s'), $this->zone()) : null;
     }
 
     /** Its scheduled start has passed and nobody has started it. */
@@ -353,6 +425,17 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * Who this event belongs to — its club, or (host_type/host_id) the
+     * organiser that is not a club, such as a federation. Read the host's
+     * name, mark, country, currency, time zone and pin from here rather than
+     * from `tenant`, which is null for an event no club hosts.
+     */
+    public function host(): \App\Events\Support\EventHost
+    {
+        return \App\Events\Support\EventHost::of($this);
     }
 
     public function categories(): HasMany
@@ -562,13 +645,13 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
 
         $summary = trim(implode(' ', array_filter([
             'The public page of a'.($sport ? ' '.$sport : '').' competition',
-            $this->tenant?->club_name ? 'hosted by '.$this->tenant->club_name : null,
-            $this->tenant?->country ? 'in '.$this->tenant->country : null,
+            $this->host()->name !== '' ? 'hosted by '.$this->host()->name : null,
+            $this->host()->country ? 'in '.$this->host()->country : null,
             '— read by athletes, coaches and their families deciding whether to enter.',
         ])));
 
         $keep = array_filter([
-            $this->tenant?->club_name,
+            $this->host()->name ?: null,
             // Source, for the same __get re-entrancy reason as above.
             $this->translationSource('location'),
             $this->fee_currency,

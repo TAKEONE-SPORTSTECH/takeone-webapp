@@ -287,7 +287,7 @@ class Withdrawal
             ]), [
                 'body' => __('events::events.withdraw_notify_body', ['title' => $event->title]),
                 'icon' => 'bi-box-arrow-left',
-                'action_url' => route('events.public', $event->uuid),
+                'action_url' => route('me.events.show', $event->uuid),
                 'subject_type' => (new ClubEvent)->getMorphClass(),
                 'subject_id' => $event->id,
                 'tenant_id' => $event->tenant_id,
@@ -310,7 +310,7 @@ class Withdrawal
                 // The event's OWN page, never the platform member shell — a
                 // deep link that breaks the seal throws the athlete out of the
                 // app the link belongs to.
-                'action_url' => route('events.public', $event->uuid),
+                'action_url' => route('me.events.show', $event->uuid),
                 'subject_type' => (new ClubEvent)->getMorphClass(),
                 'subject_id' => $event->id,
                 'tenant_id' => $event->tenant_id,

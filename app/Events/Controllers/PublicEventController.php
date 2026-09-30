@@ -45,6 +45,19 @@ class PublicEventController extends Controller
 
         abort_if($e === null, 404);
 
+        return $this->poster($event, $e);
+    }
+
+    /**
+     * The poster, for a payload somebody has already built and gated.
+     *
+     * Split out of show() unchanged so the member address can render the SAME
+     * page (config `events.unified_page`): one event, one page, whichever door
+     * was used. The caller owns the gate — show() asks PublicEvent::payload(),
+     * the member door asks its own authorization first.
+     */
+    public function poster(ClubEvent $event, array $e)
+    {
         // The page renders for EVERYONE, signed in or not.
         //
         // It used to bounce a signed-in viewer to the member page, which was
@@ -129,6 +142,7 @@ class PublicEventController extends Controller
         }
 
         return view('events::entry.public.mobile', ['e' => $e, 'console' => $console, 'mine' => $mine,
+            'addr' => new \App\Events\Support\EventAddress($event),
             'visitors' => $visitors, 'visitorsCanDrill' => $canManage,
             /*
              * Whether a DIVISION CHIP on the detail card is a door.
@@ -218,6 +232,18 @@ class PublicEventController extends Controller
 
         abort_if($e === null, 404);
 
+        return $this->sectionPage($request, $event, $section, $e);
+    }
+
+    /**
+     * One section, for a payload somebody has already built and gated — split
+     * out of section() unchanged so the member address can render the SAME
+     * page (config `events.unified_page`). `$openDraw` lets a reader who runs
+     * the draw open it before it has any divisions, which is when they need
+     * it most; nobody else gets past the empty-draw 404.
+     */
+    public function sectionPage(Request $request, ClubEvent $event, string $section, array $e, bool $openDraw = false)
+    {
         $meta = [
             'draw' => ['bi-diagram-3-fill bracket-icon', __('personal.event_show_tile_draw')],
             'officials' => ['bi-person-badge-fill', __('personal.event_show_tile_officials')],
@@ -233,7 +259,7 @@ class PublicEventController extends Controller
 
         // An event that runs no draw has no draw page either — the poster shows
         // no door to one, and the address must agree with the door.
-        abort_if($section === 'draw' && $e['divisions'] === [] && ! $e['draw']['published'], 404);
+        abort_if($section === 'draw' && ! $openDraw && $e['divisions'] === [] && ! $e['draw']['published'], 404);
 
         // ...and no result sheet before anybody has won anything.
         abort_if($section === 'results' && ($e['results']['count'] ?? 0) === 0, 404);
@@ -284,6 +310,8 @@ class PublicEventController extends Controller
         $fromPlatform = $request->query('from') === 'me'
             && $me !== null
             && app(EventAccess::class)->visible($event, $me);
+
+        $addr = new \App\Events\Support\EventAddress($event);
 
         return view('events::entry.public.section-mobile', [
             'canManage' => $me !== null && app(EventAccess::class)->canManage($event, $me),
@@ -413,8 +441,49 @@ class PublicEventController extends Controller
                console's back control already has on its two addresses. */
             'backUrl' => $fromPlatform
                 ? route('me.events.show', ['event' => $event->uuid])
-                : route('events.public', ['event' => $event->uuid]),
+                : $this->backToEvent($request, $event, $addr),
+            'addr' => $addr,
         ]);
+    }
+
+    /**
+     * Back from a section goes to the event page the reader actually came
+     * from — /e/{uuid} or /me/events/{uuid} — so the page they return to is
+     * the one whose scroll position was remembered (entry/partials/
+     * scroll-memory). Only ever one of those two addresses of THIS event:
+     * the Referer only chooses between them, it is never followed.
+     */
+    private function backToEvent(Request $request, ClubEvent $event, \App\Events\Support\EventAddress $addr): string
+    {
+        $ref = (string) $request->headers->get('referer');
+        $came = parse_url($ref, PHP_URL_PATH);
+        $host = parse_url($ref, PHP_URL_HOST);
+
+        /*
+         * Any page of THIS event the reader came from — the poster at either
+         * address, or another section (a division chip on the entry list opens
+         * the draw, and back belongs on the list). Same host, one of this
+         * event's two path prefixes, and never the page itself; anything else
+         * is the event page. The Referer only picks among addresses this
+         * method builds itself, so it can never send a reader off the event.
+         */
+        $prefixes = ['/me/events/'.$event->uuid];
+        $ours = is_string($came) && preg_match('#^[A-Za-z0-9/_-]+$#', $came) === 1
+            && $host === $request->getHost()
+            && $came !== $request->getPathInfo()
+            && ! str_contains($came, '/admin')
+            && collect($prefixes)->contains(fn ($p) => $came === $p || str_starts_with($came, $p.'/'));
+
+        if (! $ours) {
+            return $addr->page();
+        }
+
+        // Only the query keys the event's own pages read, rebuilt — never the
+        // Referer's raw string.
+        parse_str((string) parse_url($ref, PHP_URL_QUERY), $q);
+        $keep = array_filter(array_intersect_key($q, array_flip(['division', 'from'])), 'is_scalar');
+
+        return url($came).($keep ? '?'.http_build_query($keep) : '');
     }
 
     /**
@@ -687,7 +756,7 @@ class PublicEventController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('events.public', ['event' => $event->uuid])
+        return redirect()->route('me.events.show', ['event' => $event->uuid])
             ->with('status', __('events::events.public_signed_out'));
     }
 

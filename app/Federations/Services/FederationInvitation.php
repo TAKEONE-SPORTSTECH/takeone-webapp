@@ -15,6 +15,7 @@ use App\Federations\Models\FederationStaff;
 use App\Federations\Models\FederationTransfer;
 use App\Members\Models\User;
 use App\Members\Models\UserNotification;
+use App\Federations\Support\FederationTestMode;
 use App\Members\Support\ProfilePhoto;
 use App\Support\Countries;
 use App\Traits\StoresBase64Images;
@@ -130,7 +131,8 @@ class FederationInvitation
                 'name' => $d->title, 'file' => $d->filename, 'size' => $d->size < 1048576 ? max(1, (int) round($d->size / 1024)).' KB' : number_format($d->size / 1048576, 1).' MB',
                 'data' => route('federations.event-doc', $d->uuid),
             ])->all(),
-            'federation' => ['name' => $e->federation->name] + $this->bankDetails($e->federation),
+            // The country the phone picker opens on: the federation's own.
+            'federation' => ['name' => $e->federation->name, 'country' => strtolower((string) (Countries::iso2((string) $e->federation->country) ?: $e->federation->country))] + $this->bankDetails($e->federation),
             'texts' => $this->registry->inviteTexts($e),
             'cover' => $this->registry->coverArt($e),
             'verifiedClub' => null,
@@ -190,28 +192,71 @@ class FederationInvitation
         return str_contains($c, '@') ? $c : preg_replace('/\D/', '', $c);
     }
 
-    private function findByContact(FederationEvent $e, string $contact): FederationClub|FederationClubApplication|null
+    /**
+     * The club a contact belongs to, and the address its code goes to.
+     *
+     * A club is found by ITS OWN email or phone, or — for a club on the platform
+     * — by its owner's account email or mobile: a club with nothing on the club
+     * record itself (it happens) is still reachable by the person who runs it.
+     *
+     * ⚠️ The code only ever goes to an address ON FILE for that club: the email
+     * typed when it matches one, otherwise the first one the club has (club,
+     * then owner). A phone number never chooses where mail goes.
+     *
+     * Several clubs can answer to one contact (one owner, several clubs): all of
+     * them come back, limited to those the chosen address belongs to — owning
+     * that inbox is what proves the right to each of them.
+     *
+     * @return array{0: array<int, FederationClub|FederationClubApplication>, 1: string}|null
+     */
+    private function findByContact(FederationEvent $e, string $contact): ?array
     {
         $norm = $this->normalise($contact);
         if ($norm === '' || (! str_contains($norm, '@') && strlen($norm) < 7)) {
             return null;
         }
 
+        $hits = [];
         foreach ($this->registry->clubsOf($this->federationIds($e)) as $c) {
-            $row = $this->registry->club($c);
+            [$emails, $phones] = $this->contactsOf($c);
             if (str_contains($norm, '@')) {
-                if (strtolower((string) $row['email']) === $norm) {
-                    return $c;
+                if (in_array($norm, $emails, true)) {
+                    $hits[] = [$c, $emails];
                 }
             } else {
-                $digits = preg_replace('/\D/', '', (string) $row['phone']);
-                if (strlen($digits) >= 7 && ($digits === $norm || str_ends_with($digits, $norm) || str_ends_with($norm, $digits))) {
-                    return $c;
+                foreach ($phones as $digits) {
+                    if (strlen($digits) >= 7 && ($digits === $norm || str_ends_with($digits, $norm) || str_ends_with($norm, $digits))) {
+                        $hits[] = [$c, $emails];
+                        break;
+                    }
                 }
             }
         }
 
-        return null;
+        $sendTo = str_contains($norm, '@') ? $norm : collect($hits)->map(fn ($h) => $h[1][0] ?? null)->filter()->first();
+        if (! $sendTo) {
+            return null;
+        }
+        $clubs = collect($hits)->filter(fn ($h) => in_array($sendTo, $h[1], true))->map(fn ($h) => $h[0])->values()->all();
+
+        return $clubs === [] ? null : [$clubs, $sendTo];
+    }
+
+    /** @return array{0: array<int, string>, 1: array<int, string>} valid emails (club first, then owner) and phone digits */
+    private function contactsOf(FederationClub|FederationClubApplication $c): array
+    {
+        $row = $this->registry->club($c);
+        $emails = [$row['email'] ?? null];
+        $phones = [$row['phone'] ?? null];
+        if ($c instanceof FederationClub && ($owner = $c->club?->owner)) {
+            $emails[] = $owner->email;
+            $m = is_array($owner->mobile) ? $owner->mobile : (json_decode((string) $owner->mobile, true) ?: ['number' => (string) $owner->mobile]);
+            $phones[] = ($m['code'] ?? '').($m['number'] ?? '');
+        }
+        $emails = array_values(array_unique(array_filter(array_map(fn ($x) => strtolower(trim((string) $x)), $emails), fn ($x) => filter_var($x, FILTER_VALIDATE_EMAIL))));
+        $phones = array_values(array_unique(array_filter(array_map(fn ($x) => preg_replace('/\D/', '', (string) $x), $phones))));
+
+        return [$emails, $phones];
     }
 
     private function codeKey(FederationEvent $e, string $contact): string
@@ -222,14 +267,13 @@ class FederationInvitation
     /** Always "sent" to the caller. A code goes out only if the club exists. */
     public function sendCode(FederationEvent $e, string $contact): void
     {
-        $club = $this->findByContact($e, $contact);
-        if (! $club) {
+        $found = $this->findByContact($e, $contact);
+        if (! $found) {
             return;
         }
+        [$clubs, $sendTo] = $found;
+        $club = $clubs[0];
         $row = $this->registry->club($club);
-        if (! filter_var($row['email'], FILTER_VALIDATE_EMAIL)) {
-            return;
-        }
 
         // At most three codes per club per quarter hour, whoever asks — so
         // nobody can fill a club's inbox by pressing Resend.
@@ -242,40 +286,184 @@ class FederationInvitation
         $code = (string) random_int(100000, 999999);
         Cache::put($this->codeKey($e, $contact), [
             'club' => $this->registry->clubKey($club),
+            'clubs' => array_map(fn ($c) => $this->registry->clubKey($c), $clubs),
             'code' => hash('sha256', $code.config('app.key')),
             'attempts' => 0,
         ], self::CODE_TTL);
 
-        rescue(fn () => Mail::to($row['email'])->queue(new ClubVerificationCode($code, $row['name'], $e->name)), report: true);
+        // One club: its name in the mail. Several: the mail says so rather than naming one.
+        $label = count($clubs) === 1 ? $row['name'] : count($clubs).' clubs';
+        rescue(fn () => Mail::to($sendTo)->queue(new ClubVerificationCode($code, $label, FederationTestMode::label().$e->name)), report: true);
     }
 
-    public function verify(FederationEvent $e, string $contact, string $code): bool
+    /**
+     * "Find your club": the federation's clubs whose name holds what was typed.
+     * Name, logo and a masked hint of the inbox the code goes to — never the
+     * contact itself. A club's name is not a secret; its roster is, and that
+     * still needs the code.
+     *
+     * @return list<array{key: string, name: string, logo: ?string, hint: ?string}>
+     */
+    public function searchClubs(FederationEvent $e, string $q): array
     {
-        $key = $this->codeKey($e, $contact);
+        $q = $this->personKey($q);
+        if (mb_strlen($q) < 2) {
+            return [];
+        }
+
+        return $this->registry->clubsOf($this->federationIds($e))
+            ->filter(fn ($c) => str_contains($this->personKey((string) ($this->registry->club($c, false)['name'] ?? '')), $q))
+            ->sortBy(fn ($c) => mb_strtolower((string) $this->registry->club($c, false)['name']))
+            ->take(8)->map(fn ($c) => $this->clubCard($c))->values()->all();
+    }
+
+    /**
+     * Before a "new club" form goes any further: is this club already on file?
+     * The page asks at the club step so a coach learns it there, not at Submit.
+     */
+    public function checkNewClub(FederationEvent $e, array $c): ?array
+    {
+        return $this->sessionClub($e) ? null : $this->existingClubFor($e, $c);
+    }
+
+    /**
+     * A code (and a one-tap link) to the inbox a picked club has on file. The
+     * same silent answer whatever happens, like sendCode().
+     */
+    public function sendCodeToClub(FederationEvent $e, string $clubKey): void
+    {
+        $club = $this->registry->clubFromKey($clubKey, $this->federationIds($e));
+        if (! $club) {
+            return;
+        }
+        [$emails] = $this->contactsOf($club);
+        if (! $emails) {
+            return;
+        }
+        $burst = 'fedinv:burst:'.$clubKey;
+        if ((int) Cache::get($burst, 0) >= 3) {
+            return;
+        }
+        Cache::put($burst, (int) Cache::get($burst, 0) + 1, 900);
+
+        $code = (string) random_int(100000, 999999);
+        Cache::put($this->clubCodeKey($e, $clubKey), [
+            'club' => $clubKey, 'clubs' => [$clubKey],
+            'code' => hash('sha256', $code.config('app.key')),
+            'attempts' => 0,
+        ], self::CODE_TTL);
+
+        rescue(fn () => Mail::to($emails[0])->queue(new ClubVerificationCode($code, $this->registry->club($club)['name'], FederationTestMode::label().$e->name, $this->magicLink($e, $clubKey))), report: true);
+    }
+
+    private function clubCodeKey(FederationEvent $e, string $clubKey): string
+    {
+        return 'fedinv:code:club:'.hash('sha256', $e->uuid.'|'.$clubKey);
+    }
+
+    /** One tap from the email instead of typing the code: single use, as short-lived as the code. */
+    private function magicLink(FederationEvent $e, string $clubKey): string
+    {
+        $token = Str::random(48);
+        Cache::put('fedinv:magic:'.hash('sha256', $token), ['event' => $e->uuid, 'club' => $clubKey], self::CODE_TTL);
+
+        return route('federations.invite.magic', ['event' => $e->uuid, 'token' => $token]);
+    }
+
+    /** The link was opened: bind this browser to the club, once. False for anything stale. */
+    public function useMagicLink(FederationEvent $e, string $token): bool
+    {
+        $row = Cache::pull('fedinv:magic:'.hash('sha256', $token));
+        if (! is_array($row) || ($row['event'] ?? null) !== $e->uuid) {
+            return false;
+        }
+        $club = $this->registry->clubFromKey($row['club'] ?? null, $this->federationIds($e));
+        if (! $club) {
+            return false;
+        }
+        $this->bind($e, $club);
+        Cache::forget($this->clubCodeKey($e, $row['club']));   // the code it came with is spent too
+
+        return true;
+    }
+
+    /**
+     * A signed-in platform member who owns exactly one of this federation's
+     * clubs is that club already — no code to ask for.
+     */
+    public function bindOwner(FederationEvent $e, ?User $user): void
+    {
+        if (! $user || $this->sessionClub($e)) {
+            return;
+        }
+        $mine = FederationClub::with('club')->whereIn('federation_id', $this->federationIds($e))
+            ->where('status', FederationClub::STATUS_APPROVED)->get()
+            ->filter(fn ($c) => $c->club && (int) $c->club->owner_user_id === (int) $user->id)->values();
+        if ($mine->count() === 1) {
+            $this->bind($e, $mine[0]);
+        }
+    }
+
+    /**
+     * @return array{ok: bool, choices?: array<int, array{key: string, name: string, logo: ?string}>}
+     *         `choices` when the code covers several clubs — the owner picks one (choose()).
+     */
+    public function verify(FederationEvent $e, string $contact, string $code, bool $byClub = false): array
+    {
+        $key = $byClub ? $this->clubCodeKey($e, $contact) : $this->codeKey($e, $contact);
         $row = Cache::get($key);
         if (! is_array($row)) {
-            return false;
+            return ['ok' => false];
         }
         if ($row['attempts'] >= self::CODE_ATTEMPTS) {
             Cache::forget($key);
 
-            return false;
+            return ['ok' => false];
         }
         if (! hash_equals($row['code'], hash('sha256', preg_replace('/\D/', '', $code).config('app.key')))) {
             $row['attempts']++;
             Cache::put($key, $row, self::CODE_TTL);
 
-            return false;
+            return ['ok' => false];
         }
 
         Cache::forget($key);
-        $club = $this->registry->clubFromKey($row['club'], $this->federationIds($e));
+        $ids = $this->federationIds($e);
+        $clubs = collect($row['clubs'] ?? [$row['club']])->map(fn ($k) => $this->registry->clubFromKey($k, $ids))->filter()->values();
+        if ($clubs->isEmpty()) {
+            return ['ok' => false];
+        }
+        if ($clubs->count() === 1) {
+            $this->bind($e, $clubs[0]);
+
+            return ['ok' => true];
+        }
+
+        // Several: remember WHICH clubs this code proved, for ten minutes, in this session only.
+        session()->put($this->choiceKey($e), ['clubs' => $clubs->map(fn ($c) => $this->registry->clubKey($c))->all(), 'until' => now()->addMinutes(10)->timestamp]);
+
+        return ['ok' => true, 'choices' => $clubs->map(fn ($c) => ['key' => $this->registry->clubKey($c)] + array_intersect_key($this->registry->club($c, false), array_flip(['name', 'logo'])))->all()];
+    }
+
+    /** The owner picks one of the clubs their code proved. False for anything else. */
+    public function choose(FederationEvent $e, string $clubKey): bool
+    {
+        $held = session()->pull($this->choiceKey($e));
+        if (! is_array($held) || ($held['until'] ?? 0) < now()->timestamp || ! in_array($clubKey, (array) ($held['clubs'] ?? []), true)) {
+            return false;
+        }
+        $club = $this->registry->clubFromKey($clubKey, $this->federationIds($e));
         if (! $club) {
             return false;
         }
         $this->bind($e, $club);
 
         return true;
+    }
+
+    private function choiceKey(FederationEvent $e): string
+    {
+        return 'fedinv-choice.'.$e->uuid;
     }
 
     // --------------------------------------------------------------- lookup
@@ -293,8 +481,11 @@ class FederationInvitation
         }
         $ids = $this->federationIds($e);
 
-        $a = FederationAthlete::with('user')->where('takeone_id', strtoupper($q))->first()
-            ?? (($h = FederationAthlete::hashNationalId($q)) ? FederationAthlete::with('user')->where('national_id_hash', $h)->first() : null);
+        // Only athletes this federation has ever had: a lookup is for asking a
+        // transfer inside the tree, not for finding people across the platform.
+        $inTree = fn ($query) => $query->whereHas('clubs', fn ($c) => $c->whereIn('federation_id', $ids));
+        $a = $inTree(FederationAthlete::with('user')->where('takeone_id', strtoupper($q)))->first()
+            ?? (($h = FederationAthlete::hashNationalId($q)) ? $inTree(FederationAthlete::with('user')->where('national_id_hash', $h))->first() : null);
         if (! $a) {
             return ['athletes' => [], 'clubs' => []];
         }
@@ -325,14 +516,53 @@ class FederationInvitation
             return ['ok' => false, 'message' => 'The draw has been made — entries are closed.'];
         }
 
+        // The same submission twice — a retry after a lost answer, a second
+        // tap — is answered with the first one's result, never saved again.
+        $sid = is_string($p['submissionId'] ?? null) && Str::isUuid($p['submissionId']) ? strtolower($p['submissionId']) : null;
+        $doneKey = $sid ? 'fedinv:done:'.hash('sha256', $e->uuid.'|'.$sid) : null;
+        if ($doneKey && ($replay = $this->replay($e, $doneKey))) {
+            return $replay;
+        }
+
         $club = $this->sessionClub($e);
-        $mode = ($p['clubMode'] ?? '') === 'new' ? 'new' : 'existing';
+        // A session that has proved a club IS that club: it never makes another.
+        $mode = ! $club && ($p['clubMode'] ?? '') === 'new' ? 'new' : 'existing';
         if ($mode === 'existing' && ! $club) {
             return ['ok' => false, 'message' => 'Verify your club again to continue.'];
+        }
+        if ($mode === 'new') {
+            $c = (array) ($p['club'] ?? []);
+            $match = $this->existingClubFor($e, $c);
+            // Same email or phone is the same club, full stop. A name alone may be a namesake.
+            if ($match && ($match['reason'] !== 'name' || empty($c['distinct']))) {
+                return ['ok' => false, 'code' => 'club_exists', 'match' => $match, 'message' => $match['name'].' is already registered with the federation. Verify it is yours to continue.'];
+            }
         }
 
         $ev = $this->registry->eventForInvite($e);
         $types = collect($ev['fees'])->pluck('type')->all();
+
+        // One submission per club at a time: two coaches of one club, or a
+        // double tap, queue here instead of racing for the same entry.
+        $lockKey = 'fedinv:submit:'.$e->id.':'.($club ? $this->registry->clubKey($club) : 'new:'.hash('sha256', $this->normalise((string) (($p['club'] ?? [])['email'] ?? ''))));
+        $lock = Cache::lock($lockKey, 30);
+        try {
+            $lock->block(15);
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException) {
+            return ['ok' => false, 'message' => 'Another entry for your club is being saved. Try again in a moment.'];
+        }
+        // Checked again under the lock: the request queued behind this one's twin
+        // must see what the twin saved.
+        if ($doneKey && ($replay = $this->replay($e, $doneKey))) {
+            $lock->release();
+
+            return $replay;
+        }
+        if ($mode === 'new' && ($match = $this->existingClubFor($e, (array) ($p['club'] ?? []))) && ($match['reason'] !== 'name' || empty(($p['club'] ?? [])['distinct']))) {
+            $lock->release();
+
+            return ['ok' => false, 'code' => 'club_exists', 'match' => $match, 'message' => $match['name'].' is already registered with the federation. Verify it is yours to continue.'];
+        }
 
         try {
             $result = DB::transaction(function () use ($e, $p, $mode, $club, $ids, $ev, $types, $phase) {
@@ -362,8 +592,13 @@ class FederationInvitation
                 $isNewEntry = $entry->wasRecentlyCreated;
                 $log = $entry->log ?: [];
 
-                // 3. Athletes: from the roster, or new people.
+                // 3. Athletes: from the roster, or new people. Each person once:
+                // a new name that is already on the roster IS that athlete, and
+                // the same person twice in one list is entered once.
                 $rows = array_slice(is_array($p['entries'] ?? null) ? $p['entries'] : [], 0, 300);
+                $seen = [];
+                $added = 0;
+                $skipped = [];
                 foreach ($rows as $row) {
                     if (! is_array($row)) {
                         continue;
@@ -374,24 +609,36 @@ class FederationInvitation
                         if (! in_array($tid, $rosterIds, true)) {
                             throw new RuntimeException('An athlete on this entry is not registered with your club.');
                         }
-                        $athlete = FederationAthlete::where('takeone_id', $tid)->first();
+                        $athlete = FederationAthlete::with('user')->where('takeone_id', $tid)->first();
                     } else {
-                        $athlete = $this->newAthlete($row, $club, $clubFederationId, $ym);
+                        $athlete = $this->rosterMatch($row, $club) ?? $this->newAthlete($row, $club, $clubFederationId, $ym, $ids);
                     }
-                    if (! $athlete) {
+                    if (! $athlete || isset($seen[$athlete->id])) {
                         continue;
+                    }
+                    $seen[$athlete->id] = true;
+                    $label = $athlete->user?->full_name ?: $athlete->takeone_id;
+
+                    $existing = $entry->athletes()->where('federation_athlete_id', $athlete->id)->first();
+                    if ($existing && $existing->status === 'Active') {
+                        $skipped[] = $label;   // already on this entry
+                        continue;
+                    }
+                    // One entry per athlete per event, whichever club it is under.
+                    $elsewhere = FederationEntryAthlete::where('federation_athlete_id', $athlete->id)->where('status', 'Active')
+                        ->where('federation_entry_id', '!=', $entry->id)
+                        ->whereHas('entry', fn ($q) => $q->where('federation_event_id', $e->id))->exists();
+                    if ($elsewhere) {
+                        throw new RuntimeException($label.' is already entered in this event by another club.');
                     }
 
                     $weight = is_numeric($row['weight'] ?? null) ? max(10, min(250, round((float) $row['weight'], 1))) : null;
                     $picked = array_values(array_intersect($types, is_array($row['types'] ?? null) ? $row['types'] : []));
-                    $existing = $entry->athletes()->where('federation_athlete_id', $athlete->id)->first();
-                    if ($existing && $existing->status === 'Active') {
-                        continue;   // already on the entry
-                    }
                     $entry->athletes()->updateOrCreate(['federation_athlete_id' => $athlete->id], [
                         'weight' => $weight, 'types' => $picked, 'status' => 'Active', 'approval' => 'Pending',
                         'late' => $phase === 'late', 'chargeable' => false, 'withdrawn_at' => null,
                     ]);
+                    $added++;
                     if (! $isNewEntry) {
                         $log[] = ['ts' => $now->getTimestampMs(), 'key' => 'logAdded', 'n' => $athlete->user?->full_name];
                     }
@@ -429,10 +676,16 @@ class FederationInvitation
                     $entry->save();
                 }
 
-                return ['club' => $club, 'entry' => $entry, 'balance' => $inv['balance']];
+                return ['club' => $club, 'entry' => $entry, 'balance' => $inv['balance'], 'added' => $added, 'skipped' => $skipped];
             });
         } catch (RuntimeException $ex) {
             return ['ok' => false, 'message' => $ex->getMessage()];
+        } catch (\Illuminate\Database\QueryException $ex) {
+            report($ex);
+
+            return ['ok' => false, 'message' => 'This entry could not be saved. Nothing was changed — try again.'];
+        } finally {
+            $lock->release();
         }
 
         if ($mode === 'new') {
@@ -440,7 +693,221 @@ class FederationInvitation
         }
         $this->notifyStaff($e, $result['club']);
 
-        return ['ok' => true, 'ref' => $result['entry']->ref, 'balance' => $result['balance'], 'store' => $this->store($e)];
+        $out = ['ref' => $result['entry']->ref, 'balance' => $result['balance'], 'added' => $result['added'], 'skipped' => $result['skipped']];
+        if ($doneKey) {
+            Cache::put($doneKey, $out + ['club' => $this->registry->clubKey($result['club'])], 3600);
+        }
+
+        return ['ok' => true] + $out + ['store' => $this->store($e)];
+    }
+
+    /**
+     * A submission already saved: the first answer again. The session that
+     * lost that answer is bound to the club it made — the submission id is a
+     * random secret only that browser ever held.
+     */
+    private function replay(FederationEvent $e, string $doneKey): ?array
+    {
+        $done = Cache::get($doneKey);
+        if (! is_array($done)) {
+            return null;
+        }
+        $club = $this->registry->clubFromKey($done['club'] ?? null, $this->federationIds($e));
+        if (! $club) {
+            return null;
+        }
+        $bound = $this->sessionClub($e);
+        if (! $bound) {
+            $this->bind($e, $club);
+        } elseif ($this->registry->clubKey($bound) !== $done['club']) {
+            return ['ok' => false, 'message' => 'This entry was sent from another club\'s session.'];
+        }
+        unset($done['club']);
+
+        return ['ok' => true] + $done + ['store' => $this->store($e)];
+    }
+
+    // ------------------------------------------------------- duplicates
+
+    /** A club name reduced to what tells clubs apart: "Riffa Karate Club" → "riffa". */
+    private function nameKey(string $name): string
+    {
+        $stop = ['club', 'clubs', 'academy', 'karate', 'sport', 'sports', 'team', 'center', 'centre', 'the', 'of', 'and', 'al', 'dojo', 'school', 'fc', 'bh', 'bahrain', 'نادي', 'أكاديمية', 'اكاديمية', 'مركز', 'فريق', 'كاراتيه'];
+        $words = array_filter(preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($name)) ?: [], fn ($w) => $w !== '' && ! in_array($w, $stop, true));
+        sort($words);
+
+        return implode(' ', $words);
+    }
+
+    /** "office@club.com" → "o•••••@club.com": enough to know which inbox to open. */
+    private function maskEmail(?string $email): ?string
+    {
+        if (! $email || ! str_contains($email, '@')) {
+            return null;
+        }
+        [$local, $domain] = explode('@', $email, 2);
+
+        return mb_substr($local, 0, 1).str_repeat('•', max(3, min(6, mb_strlen($local) - 1))).'@'.$domain;
+    }
+
+    /** What the page may show about a club it is pointing somebody at: never the contact itself. */
+    private function clubCard(FederationClub|FederationClubApplication $c): array
+    {
+        [$emails] = $this->contactsOf($c);
+        $row = $this->registry->club($c, false);
+
+        return ['key' => $this->registry->clubKey($c), 'name' => $row['name'], 'logo' => $row['logo'] ?? null, 'hint' => $this->maskEmail($emails[0] ?? null)];
+    }
+
+    /**
+     * A club already on file that a "new club" form describes: the same email,
+     * the same phone, or the same name once the words every club shares are
+     * dropped. @return array{reason: string, key: string, name: string, logo: ?string, hint: ?string}|null
+     */
+    private function existingClubFor(FederationEvent $e, array $c): ?array
+    {
+        $email = $this->normalise((string) ($c['email'] ?? ''));
+        $phone = preg_replace('/\D/', '', (string) ($c['phone'] ?? ''));
+        $name = $this->nameKey((string) ($c['name'] ?? ''));
+        $byName = null;
+
+        foreach ($this->registry->clubsOf($this->federationIds($e)) as $club) {
+            [$emails, $phones] = $this->contactsOf($club);
+            if ($email !== '' && in_array($email, $emails, true)) {
+                return ['reason' => 'email'] + $this->clubCard($club);
+            }
+            foreach ($phones as $digits) {
+                if (strlen($phone) >= 7 && strlen($digits) >= 7 && ($digits === $phone || str_ends_with($digits, substr($phone, -8)) || str_ends_with($phone, substr($digits, -8)))) {
+                    return ['reason' => 'phone'] + $this->clubCard($club);
+                }
+            }
+            if (! $byName && $name !== '' && $this->nameKey($this->registry->club($club, false)['name'] ?? '') === $name) {
+                $byName = ['reason' => 'name'] + $this->clubCard($club);
+            }
+        }
+
+        return $byName;
+    }
+
+    /** "+973 3333-4444" → "+973 33334444": the dial code, one space, the digits. */
+    private function phoneShape(string $raw): string
+    {
+        $raw = trim(preg_replace('/[^\d+\s]/', ' ', $raw));
+        if (preg_match('/^(\+\d{1,4})\s+(.*)$/', $raw, $m)) {
+            return mb_substr($m[1].' '.preg_replace('/\D/', '', $m[2]), 0, 40);
+        }
+
+        return mb_substr(preg_replace('/[^\d+]/', '', $raw), 0, 40);
+    }
+
+    /** A person's name as it is compared: case, spacing and punctuation dropped. */
+    private function personKey(string $name): string
+    {
+        return trim(preg_replace('/\s+/u', ' ', preg_replace('/[^\p{L}\p{N} ]+/u', '', mb_strtolower($name))));
+    }
+
+    /**
+     * A "new" athlete who is already on this club's roster: the same national
+     * ID, or the same name (and birthdate, when both are known). A name alone
+     * matches only when it matches exactly one athlete.
+     */
+    private function rosterMatch(array $row, FederationClub|FederationClubApplication $club): ?FederationAthlete
+    {
+        $roster = $this->registry->roster($club);
+        $hash = FederationAthlete::hashNationalId(mb_substr(trim((string) ($row['natId'] ?? '')), 0, 40));
+        if ($hash && ($hit = $roster->firstWhere('national_id_hash', $hash))) {
+            return $hit;
+        }
+        $key = $this->personKey((string) ($row['name'] ?? ''));
+        if ($key === '') {
+            return null;
+        }
+        $dob = is_string($row['dob'] ?? null) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $row['dob']) ? $row['dob'] : null;
+        $same = $roster->filter(fn ($a) => $this->personKey((string) $a->user?->full_name) === $key);
+        if ($dob) {
+            $dated = $same->filter(fn ($a) => ! $a->user?->birthdate || $a->user->birthdate->format('Y-m-d') === $dob);
+
+            return $dated->count() === 1 ? $dated->first() : null;
+        }
+
+        return $same->count() === 1 ? $same->first() : null;
+    }
+
+    /**
+     * Federation staff enrol one athlete by hand — the Registrations tab's
+     * "Enroll athlete". Same doors as a club's own submission: a new person is
+     * made by newAthlete(), the club's entry for this event is found or opened
+     * with its reference, and what is owed becomes an "Awaiting transfer" line.
+     * Differences, because the federation itself is entering them: the row is
+     * APPROVED at once, and the athlete must already stand at this club (or be
+     * new to it) — moving someone between clubs stays a transfer.
+     *
+     * @param  array|null  $new  ['name','gender','dob','nat','natId'] when the person is new
+     * @return array{ok:bool, message:string, takeoneId?:string}
+     */
+    public function enterByStaff(FederationEvent $e, FederationClub|FederationClubApplication $club, ?FederationAthlete $athlete, ?array $new, ?float $weight, array $types, User $by, bool $categoryOptional = false): array
+    {
+        $ids = $this->federationIds($e);
+        $phase = $this->registry->phase($e);
+        $ev = $this->registry->eventForInvite($e);
+        $allowed = collect($ev['fees'])->where('unit', 'athlete')->pluck('type')->all();
+        $picked = array_values(array_intersect($allowed, $types));
+        // A bulk import may leave the category to be completed later ($categoryOptional).
+        if ($allowed !== [] && $picked === [] && ! $categoryOptional) {
+            return ['ok' => false, 'message' => 'Pick at least one category.'];
+        }
+
+        try {
+            $result = DB::transaction(function () use ($e, $club, $athlete, $new, $weight, $picked, $phase, $ev, $ids, $by) {
+                $now = now();
+                if (! $athlete) {
+                    $athlete = $this->newAthlete((array) $new, $club, (int) $club->federation_id, $now->format('Y-m'));
+                    if (! $athlete) {
+                        throw new RuntimeException('Enter the athlete\'s full name.');
+                    }
+                }
+
+                // One entry per athlete per event, whichever club it is under.
+                $already = FederationEntryAthlete::with('entry')->where('federation_athlete_id', $athlete->id)->where('status', 'Active')
+                    ->whereHas('entry', fn ($q) => $q->where('federation_event_id', $e->id))->first();
+                if ($already) {
+                    throw new RuntimeException(($athlete->user?->full_name ?: $athlete->takeone_id).' is already entered in this event.');
+                }
+
+                $entry = $this->entryOf($e, $club) ?? FederationEntry::create([
+                    'federation_event_id' => $e->id,
+                    'federation_club_id' => $club instanceof FederationClub ? $club->id : null,
+                    'club_application_id' => $club instanceof FederationClubApplication ? $club->id : null,
+                    'ref' => $this->nextRef($e, $ev, $club),
+                    'teams' => [], 'payments' => [], 'log' => [['ts' => $now->getTimestampMs(), 'key' => 'logCreated']],
+                    'officials' => $club->officials,
+                ]);
+                $entry->athletes()->updateOrCreate(['federation_athlete_id' => $athlete->id], [
+                    'weight' => $weight, 'types' => $picked, 'status' => 'Active', 'approval' => 'Approved',
+                    'late' => $phase !== 'open', 'chargeable' => false, 'withdrawn_at' => null,
+                ]);
+                $entry->log = array_merge($entry->log ?: [], [['ts' => $now->getTimestampMs(), 'key' => 'logAdded', 'n' => $athlete->user?->full_name, 'by' => 'federation']]);
+                $entry->save();
+
+                // What the club owes now that the athlete is on its entry.
+                $inv = $this->registry->invoice($this->registry->entry($entry->fresh(), $ids), $ev);
+                if ($inv['balance'] > 0.0005) {
+                    $entry->payments = array_merge($entry->payments ?: [], [[
+                        'amount' => $inv['balance'], 'method' => 'Bank transfer', 'status' => 'Awaiting transfer', 'ts' => $now->getTimestampMs(),
+                    ]]);
+                    $entry->save();
+                }
+
+                return $athlete;
+            });
+        } catch (RuntimeException $ex) {
+            return ['ok' => false, 'message' => $ex->getMessage()];
+        }
+
+        activity()->causedBy($by)->performedOn($e)
+            ->withProperties(['takeone_id' => $result->takeone_id, 'club' => $this->registry->clubKey($club)])->log('federation.athlete_enrolled');
+
+        return ['ok' => true, 'message' => ($result->user?->full_name ?: $result->takeone_id).' is enrolled.', 'takeoneId' => $result->takeone_id];
     }
 
     private function newApplication(FederationEvent $e, array $c): FederationClubApplication
@@ -458,7 +925,8 @@ class FederationInvitation
             'name' => $name,
             'coach' => $s($c['coach'] ?? ''),
             'email' => $email,
-            'phone' => $s($c['phone'] ?? '', 40),
+            // "+973 3333 4444" → "+973 33334444": one shape, so the next search finds it.
+            'phone' => $this->phoneShape((string) ($c['phone'] ?? '')),
             'address' => $s($c['address'] ?? '', 300),
             'logo_shape' => in_array($c['logoShape'] ?? null, ['circle', 'rect'], true) ? $c['logoShape'] : 'circle',
             'invite_token' => Str::random(48),
@@ -487,9 +955,14 @@ class FederationInvitation
         $out = [];
         foreach (['mgr', 'ref1', 'ref2'] as $slot) {
             $p = (array) ($staff[$slot] ?? []);
+            // Optional until the draw: a blank slot keeps what is on file.
             $name = mb_substr(trim(strip_tags((string) ($p['name'] ?? ''))), 0, 150);
             if ($name === '') {
-                throw new RuntimeException('Name the team manager and both referees.');
+                if (! empty($prev[$slot])) {
+                    $out[$slot] = $prev[$slot];
+                }
+
+                continue;
             }
             $photo = $prev[$slot]['photo'] ?? null;
             $raw = $p['photo'] ?? null;
@@ -501,7 +974,7 @@ class FederationInvitation
             }
             $out[$slot] = array_filter([
                 'name' => $name,
-                'license' => $slot === 'mgr' ? null : mb_substr(trim(strip_tags((string) ($p['license'] ?? ''))), 0, 60),
+                'license' => $slot === 'mgr' ? null : mb_substr(trim(strip_tags((string) ($p['license'] ?? $prev[$slot]['license'] ?? ''))), 0, 60),
                 'photo' => $photo,
             ], fn ($v) => $v !== null);
         }
@@ -509,7 +982,7 @@ class FederationInvitation
         return $out;
     }
 
-    private function newAthlete(array $row, FederationClub|FederationClubApplication $club, int $federationId, string $ym): ?FederationAthlete
+    private function newAthlete(array $row, FederationClub|FederationClubApplication $club, int $federationId, string $ym, ?Collection $federationIds = null): ?FederationAthlete
     {
         $name = mb_substr(trim(strip_tags((string) ($row['name'] ?? ''))), 0, 150);
         if ($name === '') {
@@ -523,6 +996,21 @@ class FederationInvitation
         }
         $dob = is_string($row['dob'] ?? null) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $row['dob']) && $row['dob'] < now()->toDateString() ? $row['dob'] : null;
 
+        // The same name and birthdate already standing at another club of this
+        // federation is the same person: they move by transfer, not by a second record.
+        if ($dob && $federationIds) {
+            $key = $this->personKey($name);
+            $twin = FederationAthlete::with('user')
+                ->whereHas('user', fn ($q) => $q->whereDate('birthdate', $dob))
+                ->whereHas('clubs', fn ($q) => $q->whereIn('federation_id', $federationIds)->whereNull('to_ym'))
+                ->get()->first(fn ($a) => $this->personKey((string) $a->user?->full_name) === $key);
+            if ($twin) {
+                $cur = $this->registry->currentClub($twin, $federationIds);
+                $from = $cur ? ($cur->club ?? $cur->application) : null;
+                throw new RuntimeException($name.' (born '.$dob.') is already registered'.($from ? ' with '.$this->registry->club($from, false)['name'] : '').'. Look them up by Takeone ID or national ID and request a transfer instead.');
+            }
+        }
+
         $user = User::create([
             'full_name' => $name,
             'name' => $name,
@@ -530,7 +1018,7 @@ class FederationInvitation
             'password' => null,
             'is_unclaimed' => true,
             'is_discoverable' => false,
-            'gender' => ($row['gender'] ?? '') === 'Female' ? 'Female' : 'Male',
+            'gender' => match ($row['gender'] ?? null) { 'Female' => 'Female', 'Male' => 'Male', null, '' => null, default => 'Male' },
             'birthdate' => $dob,
             'nationality' => $natIso3 !== 'UNK' ? strtoupper((string) Countries::iso2($natIso3)) : null,
         ]);
@@ -540,7 +1028,7 @@ class FederationInvitation
 
         $athlete = FederationAthlete::create([
             'user_id' => $user->id,
-            'takeone_id' => $this->nextTakeoneId($natIso3 === 'UNK' ? 'XXX' : $natIso3),
+            'takeone_id' => $this->nextTakeoneId($natIso3 === 'UNK' ? 'XXX' : $natIso3, $name),
             'national_id' => $natId !== '' ? $natId : null,
             'national_id_hash' => $hash,
             'nationality' => $natIso3 === 'UNK' ? null : $natIso3,
@@ -557,21 +1045,31 @@ class FederationInvitation
     }
 
     /** ISO3 + a running number unique across every nationality, e.g. BHR-00021. */
-    private function nextTakeoneId(string $iso3): string
+    /**
+     * A TakeOne ID: nationality ISO-3, the athlete's initials, and a random
+     * six-digit number — BHR-FA739215. Random, never sequential: a running
+     * number told anybody how many athletes there are and let them walk the
+     * list (CLAUDE.md -> Unpredictable Resource Identifiers). Not date-based
+     * either, which would say when the athlete joined. Fits the 16-char column.
+     */
+    private function nextTakeoneId(string $iso3, string $name = ''): string
     {
-        $max = FederationAthlete::lockForUpdate()->pluck('takeone_id')
-            ->map(fn ($id) => (int) substr((string) strrchr($id, '-'), 1))->max() ?? 0;
-
-        return $iso3.'-'.str_pad((string) ($max + 1), 5, '0', STR_PAD_LEFT);
+        return FederationAthlete::issueTakeoneId($iso3, $name);
     }
 
     private function nextRef(FederationEvent $e, array $ev, FederationClub|FederationClubApplication $club): string
     {
         $row = $this->registry->club($club);
         $abbr = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', (string) $row['name']), 0, 3)) ?: 'CLB';
-        $n = FederationEntry::where('federation_event_id', $e->id)->count() + 1;
+        // A random tail, not a running count: 001, 002… told every club how
+        // many had entered before it. No 0/O/1/I, so it reads back over a phone.
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         do {
-            $ref = $ev['code'].'-'.$abbr.'-'.str_pad((string) $n++, 3, '0', STR_PAD_LEFT);
+            $tail = '';
+            for ($i = 0; $i < 6; $i++) {
+                $tail .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            }
+            $ref = $ev['code'].'-'.$abbr.'-'.$tail;
         } while (FederationEntry::where('ref', $ref)->exists());
 
         return $ref;
@@ -582,6 +1080,10 @@ class FederationInvitation
         $a = FederationAthlete::where('takeone_id', $tid)->first();
         if (! $a) {
             return;
+        }
+        // Test mode never moves a real athlete between real clubs.
+        if (FederationTestMode::isActive()) {
+            throw new RuntimeException('Transfers are switched off while this event is in test mode.');
         }
         $cur = $this->registry->currentClub($a, $ids);
         $toCol = $to instanceof FederationClub ? 'to_club_id' : 'to_application_id';
@@ -635,7 +1137,7 @@ class FederationInvitation
         $name = $this->registry->club($club)['name'];
 
         foreach ($userIds as $id) {
-            UserNotification::notifyUser((int) $id, 'federation_entry', 'New club submission', [
+            UserNotification::notifyUser((int) $id, 'federation_entry', FederationTestMode::label().'New club submission', [
                 'body' => $name.' · '.$e->name,
                 'icon' => 'bi-people-fill',
                 'action_url' => route('federations.home'),

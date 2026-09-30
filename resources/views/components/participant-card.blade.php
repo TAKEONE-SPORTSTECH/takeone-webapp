@@ -595,6 +595,18 @@
             ],
         ];
 
+        /* A way back in for an athlete who forgot their password: six digits the
+           desk reads out (App\Events\Support\DeskSignInCode). Only with
+           one-athlete-one-profile on; the endpoint decides who may, for whom. */
+        if (\App\Events\Support\KnownPerson::enabled()) {
+            $cardActions[] = [
+                'icon' => 'bi-key-fill',
+                'label' => __('events::events.desk_code_action'),
+                'hint' => __('events::events.desk_code_action_hint'),
+                'onclick' => 'onSignInCode()',
+            ];
+        }
+
         /* Taking them off the list: last, and in red, because it is the one row
            here that cannot be undone by tapping again. */
         if ($canRemove) {
@@ -632,6 +644,23 @@
              styling: they are a CHECKLIST built in JS, not navigation, and
              dressing them as action rows would say they lead somewhere. --}}
         <x-slot:pages>
+            @if(\App\Events\Support\KnownPerson::enabled())
+            {{-- ===== The desk's sign-in code ===== --}}
+            <div data-sheet-page="signin" class="px-4 pt-3">
+                <p id="signin-state" class="text-[12px] text-muted-foreground" style="padding:8px 0"></p>
+                <div id="signin-card" style="display:none; text-align:center; padding:6px 0 4px">
+                    <p class="text-[12px] text-muted-foreground">{{ __('events::events.desk_code_read_out') }}</p>
+                    <div id="signin-code" class="font-black tabular-nums" style="font-size:42px; letter-spacing:.18em; line-height:1.2; margin:6px 0; color: {{ $sheetColor }};"></div>
+                    <p id="signin-phone" class="text-[13px] font-bold text-foreground"></p>
+                    <p id="signin-hint" class="text-[11.5px] text-muted-foreground" style="margin-top:4px"></p>
+                </div>
+                <div class="pt-3" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+                    <button type="button" onclick="closeSheet()"
+                            class="m-press w-full h-11 rounded-xl text-white text-xs font-black"
+                            style="background: {{ $sheetColor }};">{{ __('events::events.desk_code_done') }}</button>
+                </div>
+            </div>
+            @endif
             {{-- No Back control: removed on 2026-09-18 at the owner's request.
                  Cancel in the footer leaves, and the band's ✕ closes — a third
                  way out of a two-button sheet was one too many.
@@ -820,6 +849,7 @@
        and it is a KEY rather than a URL because a destination taken from the
        query string is an open redirect with extra steps. */
     var PROFILE_URL = @js($event ? route('sealed.people.show', ['event' => $event, 'uuid' => '__UUID__']).'?from=participants' : '');
+    var SIGN_IN_CODE = @js($event && \App\Events\Support\KnownPerson::enabled() && \Illuminate\Support\Facades\Route::has('me.events.entries.sign-in-code') ? route('me.events.entries.sign-in-code', ['event' => $event, 'entry' => 0]) : '');
 
     var csrf = function () { return document.querySelector('meta[name=csrf-token]')?.content || ''; };
 
@@ -924,6 +954,35 @@
                 name: currentCard.querySelector('.name').textContent.trim(),
             },
         }));
+    };
+
+    /* THE DESK'S SIGN-IN CODE. Issued by the server (DeskSignInCode, which
+       decides who may, for whom) and shown once, here, to be read out. */
+    window.onSignInCode = function () {
+        var entry = currentCard && currentCard.dataset.entry;
+        var st = document.getElementById('signin-state'), card = document.getElementById('signin-card');
+        if (! entry || ! st) {
+            window.showToast && window.showToast('error', @js(__('personal.event_card_verify_missing')));
+            return;
+        }
+        card.style.display = 'none';
+        st.style.display = '';
+        st.textContent = @js(__('events::events.desk_code_making'));
+        window.ActionSheet.page(SHEET, 'signin');
+        fetch(SIGN_IN_CODE.replace('/0/sign-in-code', '/' + Number(entry) + '/sign-in-code'), {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
+            body: '{}',
+        })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) {
+            if (! r.ok || ! d.success) throw new Error(d.message || @js(__('events::events.desk_code_failed')));
+            document.getElementById('signin-code').textContent = String(d.code).replace(/(\d{3})(\d{3})/, '$1 $2');
+            document.getElementById('signin-phone').textContent = d.phone || '';
+            document.getElementById('signin-hint').textContent = @js(__('events::events.desk_code_hint', ['minutes' => \App\Events\Support\DeskSignInCode::TTL_MINUTES]));
+            st.style.display = 'none';
+            card.style.display = '';
+        }); })
+        .catch(function (e) { st.textContent = e.message; });
     };
 
     window.onProfile = function () {

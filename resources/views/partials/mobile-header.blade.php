@@ -33,7 +33,10 @@
         </button>
 
         <div class="flex-1 min-w-0">
+            {{-- Club mode (App\Clubs\Support\ClubLock): no Personal/Business switcher. --}}
+            @unless(\App\Clubs\Support\ClubLock::active())
             @include('partials.mobile-switcher', ['current' => $switcherCurrent ?? 'personal'])
+            @endunless
             <p id="shell-title" class="text-base font-bold text-primary leading-tight truncate">{{ $shellTitle ?? '' }}</p>
         </div>
 
@@ -65,8 +68,8 @@
                         <button type="button" @click="openItem(item, $event)"
                                 class="w-full text-left px-4 py-3 flex items-center gap-2.5 hover:bg-muted transition-colors border-b border-gray-50"
                                 :class="item.read ? 'opacity-70' : ''">
-                            <span class="shrink-0 w-9 h-9 rounded-full bg-accent text-primary flex items-center justify-center overflow-hidden">
-                                <template x-if="item.avatar"><img :src="item.avatar" alt="" class="w-[27px] h-9 object-cover"></template>
+                            <span class="shrink-0 w-9 h-12 rounded-xl bg-accent text-primary flex items-center justify-center overflow-hidden">
+                                <template x-if="item.avatar"><img :src="item.avatar" alt="" class="w-full h-full object-cover"></template>
                                 <template x-if="!item.avatar"><i class="bi" :class="item.icon || 'bi-bell-fill'"></i></template>
                             </span>
                             <span class="flex-1 min-w-0">
@@ -172,6 +175,7 @@
                 };
             };
         </script>
+        @unless(\App\Clubs\Support\ClubLock::active())
         @php
             $chatUnread = \Illuminate\Support\Facades\DB::table('messages as m')
                 ->join('conversation_user as cu', 'cu.conversation_id', '=', 'm.conversation_id')
@@ -186,10 +190,13 @@
                 <span class="notification-badge chat-badge">{{ $chatUnread > 99 ? '99+' : $chatUnread }}</span>
             @endif
         </button>
+        @endunless
         <button type="button" onclick="window.dispatchEvent(new CustomEvent('qr-scan:open', { detail: { manual: true, manualLength: 6, manualLabel: @js(__('header.scan_or_type')), manualPlaceholder: @js(__('header.scan_code_placeholder')) } }))" class="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0" aria-label="{{ __('header.scan_qr') }}"><i class="bi bi-qr-code-scan"></i></button>
     </div>
 </header>
 
 @include('partials.qr-scanner')
 
+@unless(\App\Clubs\Support\ClubLock::active())
 @include('partials.mobile-chat')
+@endunless

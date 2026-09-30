@@ -52,9 +52,13 @@ class FederationDirectory
      */
     public function access(User $user): ?array
     {
+        // Someone who owns a body AND one beneath it lands on the higher one —
+        // it already shows everything below. Same depth: the oldest, as before.
         $owned = Federation::approved()->whereNull('suspended_at')
             ->where('owner_user_id', $user->id)->oldest('id')->get()
-            ->first(fn (Federation $f) => $this->usable($f));
+            ->filter(fn (Federation $f) => $this->usable($f))
+            ->sortBy(fn (Federation $f) => count($this->lineage($f)))
+            ->first();
         if ($owned) {
             return ['root' => $owned, 'manager' => true, 'sports' => [], 'role' => 'Federation Manager'];
         }

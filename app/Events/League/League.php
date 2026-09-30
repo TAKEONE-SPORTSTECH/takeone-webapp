@@ -600,6 +600,15 @@ class League extends AbstractEventType
     /* ---------------- The package's own helpers ---------------- */
 
     /** @return array{points: array{win: int, draw: int, loss: int}, rounds: int} */
+    /** A league of teams; the points are the organiser's, where an event is given. */
+    public function profile(?ClubEvent $event = null): \App\Events\Support\Competition\CompetitionProfile
+    {
+        return \App\Events\Support\Competition\CompetitionProfile::teamLeague(
+            $event?->sport,
+            $event ? $this->settings($event)['points'] : Table::DEFAULT_POINTS,
+        );
+    }
+
     public function settings(ClubEvent $event): array
     {
         $stored = is_array($event->league) ? $event->league : [];

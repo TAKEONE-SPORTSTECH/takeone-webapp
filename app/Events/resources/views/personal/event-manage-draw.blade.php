@@ -337,4 +337,11 @@
 </script>
 
 @include('events::partials.event-action-runner')
+
+{{-- Anybody in this competition twice? A warning over the board while any
+     likely pair is unsettled — this is where the draw is built. Organiser
+     only; renders nothing when there are none (EventDuplicates). --}}
+@if($canManage)
+    <x-event-duplicate-check :event="$e['key']" :color="$e['color'] ?? '#7c3aed'" :title="$e['title']" variant="chip" />
+@endif
 @endsection

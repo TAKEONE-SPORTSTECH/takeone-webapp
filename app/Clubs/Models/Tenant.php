@@ -246,6 +246,39 @@ class Tenant extends Model
     }
 
     /**
+     * Whether the club shows its OWNER's email and phone instead of its own —
+     * true only when the switch on its details page is ON
+     * (`settings.contact_source = 'owner'`). Off, or never set, the club
+     * shows its own contact.
+     */
+    public function usesOwnerContact(): bool
+    {
+        return ($this->settings['contact_source'] ?? null) === 'owner';
+    }
+
+    /** The email the club is reached on — its own, or its owner's. */
+    public function contactEmail(): ?string
+    {
+        $email = $this->usesOwnerContact() ? $this->owner?->email : $this->email;
+
+        return filled($email) ? $email : null;
+    }
+
+    /**
+     * The phone the club is reached on — its own, or its owner's — as
+     * ['code' => …, 'number' => …], or null when there is none.
+     */
+    public function contactPhone(): ?array
+    {
+        $phone = $this->usesOwnerContact() ? $this->owner?->mobile : $this->phone;
+        if (! is_array($phone)) {
+            return filled($phone) ? ['code' => '', 'number' => (string) $phone] : null;
+        }
+
+        return filled($phone['number'] ?? null) ? ['code' => $phone['code'] ?? '', 'number' => $phone['number']] : null;
+    }
+
+    /**
      * Get the owner user that owns the tenant.
      */
     public function owner(): BelongsTo

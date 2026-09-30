@@ -11,6 +11,7 @@ use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventPublicEntry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 /**
@@ -174,6 +175,15 @@ class PublicEntry
         $email = trim((string) ($data['email'] ?? ''));
         $email = $email === '' ? null : mb_strtolower($email);
 
+        // Somebody we already have — the same phone and a name that is
+        // recognisably theirs. They are entered AS THEMSELVES, or told they
+        // already have a profile; a second account is never made for them.
+        // Behind `events.entry_dedupe` (KnownPerson): off, this door behaves
+        // exactly as it shipped.
+        if (KnownPerson::enabled() && ($known = $this->recognise($event, $fullName, $data, $ip)) !== null) {
+            return $known;
+        }
+
         // An address already in use is not something to reason about out loud.
         // One sentence, and it is the same sentence for a member of ten years
         // and for somebody who mistyped: sign in. No account is touched, and
@@ -312,6 +322,100 @@ class PublicEntry
             'message' => __('events::events.public_enrol_received'),
             'athlete_id' => (int) $entry->user_id,
         ];
+    }
+
+    /**
+     * The public form, filled in by somebody we already have.
+     *
+     * Only ever consulted for a phone + name KnownPerson recognises; anything
+     * else (a new person, or a family member on a shared phone) returns null
+     * and the door carries on making a new account as it always has.
+     *
+     *   · Their own password → entered as themselves (or told they already
+     *     are). The caller signs them in, so the next visit needs nothing.
+     *   · A record a coach or the desk typed and nobody has claimed (no
+     *     password, no email) → it becomes theirs, with the password they just
+     *     chose. That is the claim link's job done without the link, and the
+     *     link is closed so it cannot later overwrite the password.
+     *   · Anything else → "you already have a profile", and NO account.
+     *
+     * This checks a password, so it is a sign-in door and is limited like one:
+     * five wrong passwords per phone number in fifteen minutes, after which it
+     * stops checking and only says "sign in". What it tells a stranger is only
+     * that a profile with this name exists on this number — something they had
+     * to type both halves of to learn.
+     */
+    private function recognise(ClubEvent $event, string $fullName, array $data, ?string $ip): ?array
+    {
+        $people = app(KnownPerson::class)->matches($data['mobile_code'] ?? null, $data['mobile'] ?? null, $fullName);
+
+        if ($people->isEmpty()) {
+            return null;
+        }
+
+        $key = 'entry-known:'.$people->first()->phone_key;
+        $known = ['ok' => false, 'state' => 'known', 'field' => 'password',
+                  'message' => __('events::events.public_enrol_known')];
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            return $known;
+        }
+
+        foreach ($people as $person) {
+            $hash = $person->getRawOriginal('password');
+            if (filled($hash) && Hash::check((string) $data['password'], $hash)) {
+                RateLimiter::clear($key);
+
+                // This door signs its entrant in. An account with two-factor,
+                // or one that runs clubs or events, must go through the real
+                // sign-in, which asks for the second factor — never past it.
+                if ($person->hasTwoFactorEnabled() || $person->entersPeopleOnBehalfOfOthers()) {
+                    return ['ok' => false, 'state' => 'known', 'field' => 'password',
+                            'message' => __('events::events.public_enrol_known_sign_in')];
+                }
+
+                return $this->enterAs($event, $person, $data, $ip);
+            }
+        }
+
+        $stub = $people->first(fn (User $u) => $u->is_unclaimed
+            && blank($u->getRawOriginal('password')) && blank($u->getRawOriginal('email')));
+
+        if ($stub) {
+            DB::transaction(function () use ($stub, $data) {
+                $stub->forceFill(['password' => Hash::make((string) $data['password']), 'is_unclaimed' => false])->save();
+                // Their link, if a coach sent one, is spent: completing it later
+                // would overwrite the password they just chose.
+                \App\Events\Models\EventEntryClaim::where('user_id', $stub->id)->whereNull('claimed_at')
+                    ->update(['claimed_at' => now()]);
+                \App\Events\Models\ClubEventRegistration::where('user_id', $stub->id)->where('entry_state', 'incomplete')
+                    ->update(['entry_state' => 'complete']);
+            });
+            activity()->performedOn($stub)->withProperties(['event' => $event->uuid, 'door' => 'public-entry'])->log('events.person_claimed_at_entry');
+
+            return $this->enterAs($event, $stub->fresh(), $data, $ip);
+        }
+
+        RateLimiter::hit($key, 900);
+
+        return $known;
+    }
+
+    /** Enter somebody we have, and say who — "already entered" is a success here. */
+    private function enterAs(ClubEvent $event, User $person, array $data, ?string $ip): array
+    {
+        $result = $this->enrolExisting($event, $person, $data, $ip);
+
+        if (! $result['ok'] && ($result['state'] ?? null) === 'already') {
+            $result = ['ok' => true, 'state' => 'already', 'division' => null,
+                       'message' => __('events::events.public_enrol_already_in')];
+        }
+
+        if ($result['ok']) {
+            $result['athlete_id'] = (int) $person->id;
+        }
+
+        return $result;
     }
 
     /**
@@ -662,6 +766,9 @@ class PublicEntry
          */
         $result = $this->settle($entry, $actor, is_array($entry->fee_options) ? $entry->fee_options : []);
 
+        // A host that keeps its own record of entries (a federation) hears the decision.
+        \App\Events\Support\EventHost::entryDecided($event, $entry->fresh());
+
         return [
             'ok' => true,
             'message' => __('events::events.public_review_accepted', ['name' => $entry->athlete?->full_name ?? '']),
@@ -693,6 +800,8 @@ class PublicEntry
             'decided_by' => $actor->id,
             'decided_at' => now(),
         ]);
+
+        \App\Events\Support\EventHost::entryDecided($entry->event, $entry->fresh());
 
         $this->notifyAthlete($entry, false, null);
 
@@ -883,12 +992,12 @@ class PublicEntry
 
         $body = $accepted
             ? __('events::events.public_entry_accepted_body', ['division' => $division ?: __('events::events.claim_at_weigh_in')])
-            : __('events::events.public_entry_declined_body', ['club' => $event->tenant?->club_name ?? '']);
+            : __('events::events.public_entry_declined_body', ['club' => $event->host()->name]);
 
         rescue(fn () => UserNotification::notifyUser($athleteId, 'event', $title, [
             'body' => $body,
             'icon' => $accepted ? 'bi-check-circle-fill' : 'bi-x-circle',
-            'action_url' => $accepted ? route('me.events.show', $event->uuid) : route('events.public', $event->uuid),
+            'action_url' => $accepted ? route('me.events.show', $event->uuid) : route('me.events.show', $event->uuid),
             'subject_type' => (new ClubEvent)->getMorphClass(),
             'subject_id' => $event->id,
             'tenant_id' => $event->tenant_id,

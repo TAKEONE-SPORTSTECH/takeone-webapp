@@ -49,13 +49,9 @@ class EntryWindow
     /** The timezone an event's named days are read in. */
     public static function timezone(ClubEvent $event): string
     {
-        $zone = (string) config('events.entry_timezone', 'Asia/Bahrain');
-
-        // A misconfigured zone must not take entries down. Fall back to the
-        // app's own, which is what every one of these comparisons used before.
-        return in_array($zone, timezone_identifiers_list(), true)
-            ? $zone
-            : (string) config('app.timezone', 'UTC');
+        // The competition's own clock (2026-09-29): its chosen zone, else its
+        // host's, else `events.entry_timezone` — ClubEvent::zone(), one rule.
+        return $event->zone();
     }
 
     /**

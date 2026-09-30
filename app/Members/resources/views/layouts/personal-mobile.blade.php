@@ -68,6 +68,11 @@
 
 <div x-data="{ drawer:false, switcher:false }" @shell:navigated.window="drawer=false; switcher=false">
 
+    {{-- Club mode (App\Clubs\Support\ClubLock): a page opened from the club panel
+         gets the club header only — no drawer, no tabs, no way out of the club. --}}
+    @if(\App\Clubs\Support\ClubLock::active())
+        @include('clubs::lock.mobile-bar')
+    @else
     {{-- ===== Header (shared, identical to Club view) ===== --}}
     @include('partials.mobile-header', ['switcherCurrent' => 'personal', 'shellTitle' => $activeLabel])
 
@@ -111,10 +116,11 @@
                 // overlap). `shell` items swap in place (AJAX, keep their active
                 // highlight); the rest are full-page links.
                 $menu = [
-                    __('nav.group_you') => [
+                    __('nav.group_you') => array_values(array_filter([
                         ['url' => route('me.affiliations'),  'icon' => 'bi-diagram-3',     'label' => __('nav.affiliations')],
                         ['shell' => 'me.progress', 'icon' => 'bi-graph-up-arrow',  'label' => __('nav.my_progress')],
-                    ],
+                        config('certificates.enabled') ? ['url' => route('me.certificates.index'), 'icon' => 'bi-patch-check', 'label' => __('cert::messages.mine_title')] : null,
+                    ])),
                     __('nav.group_family') => [
                         ['url' => route('members.index'),  'icon' => 'bi-people',  'label' => __('nav.family')],
                         ['shell' => 'me.packages', 'icon' => 'bi-box',            'label' => __('nav.my_packages')],
@@ -204,11 +210,13 @@
         </aside>
     </div>
 
+    @endif
     {{-- ===== Content ===== --}}
     <main id="shell-content" data-shell-id="personal" data-route="{{ $currentRoute }}" data-title="{{ $activeLabel }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
         @yield('personal-content')
     </main>
 
+    @unless(\App\Clubs\Support\ClubLock::active())
     {{-- ===== Bottom tab bar ===== --}}
     <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border lg:hidden">
         <div class="grid grid-cols-5 items-end">
@@ -239,6 +247,7 @@
             @endforeach
         </div>
     </nav>
+    @endunless
 
 </div>
 

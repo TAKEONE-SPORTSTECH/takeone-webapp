@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware('throttle:translate')->group(function () {
-    Route::post('e/{event:uuid}/language', [PublicTranslationController::class, 'prepare'])
+    Route::post('me/events/{event:uuid}/language', [PublicTranslationController::class, 'prepare'])
         ->name('events.public.language.prepare');
 });
 
@@ -35,6 +35,6 @@ Route::middleware('throttle:translate')->group(function () {
  * rate-limited out of ever seeing it finish.
  */
 Route::middleware('throttle:public-event')->group(function () {
-    Route::get('e/{event:uuid}/language/{locale}', [PublicTranslationController::class, 'status'])
+    Route::get('me/events/{event:uuid}/language/{locale}', [PublicTranslationController::class, 'status'])
         ->name('events.public.language.status');
 });

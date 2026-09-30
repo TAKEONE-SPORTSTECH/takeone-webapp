@@ -110,6 +110,31 @@ class AchievementVerificationService
         return $model;
     }
 
+    /**
+     * A record an ADMIN entered for the member (e.g. "Add to a club" on the
+     * platform Members page) — true by the admin's own word, so it is verified
+     * on creation. Quietly: no "your submission was verified" notice and no feed
+     * announcement, because the member submitted nothing.
+     */
+    public function recordByAdmin(Model $model, User $admin): Model
+    {
+        $tenant = $model->attestingTenant();
+        if (! $tenant || ! $this->canAdminTenant($admin, (int) $tenant->id)) {
+            throw new AuthorizationException('Not authorized to verify this record.');
+        }
+        $model->forceFill([
+            'verification_status' => $model::STATUS_VERIFIED,
+            'verification_method' => 'admin_entry',
+            'verified_by_tenant_id' => $tenant->id,
+            'verified_by_user_id' => $admin->id,
+            'verified_at' => now(),
+            'verification_note' => null,
+        ])->save();
+        $this->audit('recorded_by_admin', $model, $admin);
+
+        return $model;
+    }
+
     /** A club admin rejects a record naming their club (with a reason). */
     public function clubReject(Model $model, User $admin, ?string $note = null): Model
     {

@@ -7,6 +7,7 @@ use App\Federations\Controllers\FederationAppController;
 use App\Federations\Controllers\FederationInviteController;
 use App\Federations\Controllers\FederationLoginController;
 use App\Federations\Middleware\PulseFederation;
+use App\Federations\Middleware\RecordFederationTest;
 use App\Federations\Middleware\SealFederation;
 use Illuminate\Support\Facades\Route;
 
@@ -69,6 +70,7 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
         Route::get('/app/Karate Statistics.dc.html', [FederationAppController::class, 'staffPage'])
             ->defaults('file', 'Karate Statistics.dc.html')
             ->name('app.statistics');
+        Route::get('/draw-board', [FederationAppController::class, 'drawBoard'])->name('draw-board');
     });
 
     // Public: the invitation a club opens from a link, and the static files
@@ -99,16 +101,31 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
             Route::post('/billing', [FederationApiController::class, 'billing'])->name('billing');
             Route::post('/events', [FederationApiController::class, 'event'])->name('events');
             Route::post('/events/delete', [FederationApiController::class, 'eventDelete'])->name('events.delete');
+            Route::post('/events/test-mode', [FederationApiController::class, 'eventTestMode'])->name('events.test-mode');
+            Route::post('/events/rulebook', [FederationApiController::class, 'eventRuleBook'])->name('events.rulebook');
+            Route::post('/events/feature', [FederationApiController::class, 'eventFeature'])->middleware('throttle:uploads')->name('events.feature');
             Route::post('/uploads', [FederationApiController::class, 'upload'])->middleware('throttle:uploads')->name('uploads');
-            Route::post('/entries/confirm', [FederationApiController::class, 'entryConfirm'])->name('entries.confirm');
-            Route::post('/transfers/reply', [FederationApiController::class, 'transferReply'])->name('transfers.reply');
-            Route::post('/transfers/decide', [FederationApiController::class, 'transferDecide'])->name('transfers.decide');
-            Route::post('/regs/withdraw', [FederationApiController::class, 'regsWithdraw'])->name('regs.withdraw');
-            Route::post('/regs/approve', [FederationApiController::class, 'regsApprove'])->name('regs.approve');
-            Route::post('/draws', [FederationApiController::class, 'draw'])->name('draws');
+            Route::post('/entries/confirm', [FederationApiController::class, 'entryConfirm'])->middleware(RecordFederationTest::class)->name('entries.confirm');
+            Route::post('/transfers/reply', [FederationApiController::class, 'transferReply'])->middleware(RecordFederationTest::class)->name('transfers.reply');
+            Route::post('/transfers/decide', [FederationApiController::class, 'transferDecide'])->middleware(RecordFederationTest::class)->name('transfers.decide');
+            Route::post('/regs/withdraw', [FederationApiController::class, 'regsWithdraw'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.withdraw');
+            Route::post('/regs/approve', [FederationApiController::class, 'regsApprove'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.approve');
+            Route::post('/regs/enrol', [FederationApiController::class, 'regsEnrol'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.enrol');
+            Route::post('/regs/import', [FederationApiController::class, 'regsImport'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.import');
+            Route::post('/regs/import/preview', [FederationApiController::class, 'regsImportPreview'])->middleware('throttle:uploads')->name('regs.import.preview');
+            Route::post('/draws', [FederationApiController::class, 'draw'])->middleware(RecordFederationTest::class)->name('draws');
+            Route::post('/schedule', [FederationApiController::class, 'schedule'])->name('schedule');
             Route::post('/strings', [FederationApiController::class, 'strings'])->name('strings');
             Route::post('/messages', [FederationApiController::class, 'messages'])->name('messages');
             Route::post('/clubs', [FederationApiController::class, 'clubAdd'])->name('clubs.add');
+            Route::post('/clubs/update', [FederationApiController::class, 'clubUpdate'])->middleware(RecordFederationTest::class)->name('clubs.update');
+            Route::post('/clubs/unlink', [FederationApiController::class, 'clubUnlink'])->name('clubs.unlink');
+            Route::post('/clubs/decide', [FederationApiController::class, 'clubDecide'])->middleware(RecordFederationTest::class)->name('clubs.decide');
+            Route::post('/clubs/delete', [FederationApiController::class, 'clubDelete'])->middleware(RecordFederationTest::class)->name('clubs.delete');
+            Route::post('/athletes/merge', [FederationApiController::class, 'athleteMerge'])->middleware(RecordFederationTest::class)->name('athletes.merge');
+            Route::post('/athletes/takeone-id', [FederationApiController::class, 'athleteIssueId'])->middleware(RecordFederationTest::class)->name('athletes.issue-id');
+            Route::post('/athletes/delete', [FederationApiController::class, 'athletesDelete'])->middleware(RecordFederationTest::class)->name('athletes.delete');
+            Route::post('/athletes/import', [FederationApiController::class, 'athletesImport'])->middleware('throttle:uploads')->name('athletes.import');
         });
 
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-page'])
@@ -117,10 +134,21 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
         ->get('/api/state', [FederationAppController::class, 'state'])->name('api.state');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-read'])
         ->get('/api/statistics', [FederationApiController::class, 'statistics'])->name('api.statistics');
+    // The event editor's Google Maps link → the pin. Tight: an uncached short link is an outside request.
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:20,1'])
+        ->get('/api/map-link', [FederationApiController::class, 'mapLink'])->name('api.map-link');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-read'])
         ->get('/api/clubs', [FederationApiController::class, 'clubList'])->name('api.clubs');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
         ->get('/api/clubs/search', [FederationApiController::class, 'clubSearch'])->name('api.clubs.search');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
+        ->get('/api/clubs/detail', [FederationApiController::class, 'clubDetail'])->name('api.clubs.detail');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
+        ->get('/api/regs/template', [FederationApiController::class, 'regsTemplate'])->name('api.regs.template');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
+        ->get('/api/athletes/export', [FederationApiController::class, 'athletesExport'])->name('api.athletes.export');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
+        ->get('/api/athletes/merge-preview', [FederationApiController::class, 'athleteMergePreview'])->name('api.athletes.merge-preview');
 
     Route::middleware(['throttle:federation-read'])->group(function () {
         Route::get('/logo/{federation:uuid}', [FederationApiController::class, 'logo'])->name('logo');
@@ -133,12 +161,29 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
     });
 
     // The club invitation's doors — public, session-bound, throttled hard.
-    Route::prefix('invite/{event}')->whereUuid('event')->name('invite.')->group(function () {
+    Route::prefix('invite/{event}')->whereUuid('event')->name('invite.')->middleware(RecordFederationTest::class)->group(function () {
         Route::post('/code', [FederationInviteController::class, 'code'])->middleware('throttle:federation-code')->name('code');
         Route::post('/verify', [FederationInviteController::class, 'verify'])->middleware('throttle:federation-verify')->name('verify');
+        Route::post('/choose', [FederationInviteController::class, 'choose'])->middleware('throttle:federation-verify')->name('choose');
         Route::get('/lookup', [FederationInviteController::class, 'lookup'])->middleware('throttle:federation-lookup')->name('lookup');
-        Route::post('/submit', [FederationInviteController::class, 'submit'])->middleware(['throttle:federation-submit', PulseFederation::class])->name('submit');
-        Route::post('/withdraw', [FederationInviteController::class, 'withdraw'])->middleware(['throttle:federation-withdraw', PulseFederation::class])->name('withdraw');
+        Route::get('/clubs', [FederationInviteController::class, 'clubs'])->middleware('throttle:federation-lookup')->name('clubs');
+        Route::post('/check-club', [FederationInviteController::class, 'checkClub'])->middleware('throttle:federation-lookup')->name('check-club');
+        Route::get('/magic/{token}', [FederationInviteController::class, 'magic'])->middleware('throttle:federation-verify')->name('magic');
+        Route::post('/submit', [FederationInviteController::class, 'submit'])->middleware(['throttle:federation-submit', PulseFederation::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('submit');
+        Route::post('/withdraw', [FederationInviteController::class, 'withdraw'])->middleware(['throttle:federation-withdraw', PulseFederation::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('withdraw');
+    });
+    // The invitation in the event page's design (federations.invite_v2): the
+    // reader's language, its translation, and the organiser's gear page. Every
+    // door re-checks the switch and the invitation's own gate (InvitePageController::event).
+    Route::prefix('invite/{event}')->whereUuid('event')->name('invite.')->group(function () {
+        Route::put('/locale', [\App\Federations\Controllers\InvitePageController::class, 'locale'])->middleware('throttle:120,1')->name('locale');
+        Route::post('/language', [\App\Federations\Controllers\InvitePageController::class, 'prepare'])->middleware('throttle:translate')->name('language.prepare');
+        Route::get('/language/{locale}', [\App\Federations\Controllers\InvitePageController::class, 'status'])
+            ->where('locale', '[A-Za-z_-]{2,12}')->middleware('throttle:public-event')->name('language.status');
+        Route::get('/settings', [\App\Federations\Controllers\InvitePageController::class, 'settings'])->middleware('throttle:federation-page')->name('settings');
+        Route::post('/settings/sign-in', [\App\Federations\Controllers\InvitePageController::class, 'signIn'])->middleware('throttle:login')->name('settings.sign-in');
+        Route::put('/settings', [\App\Federations\Controllers\InvitePageController::class, 'updateSettings'])
+            ->middleware(['auth', 'verified', 'two-factor', 'throttle:admin-write'])->name('settings.update');
     });
     Route::middleware('throttle:federation-read')->group(function () {
         Route::get('/invite-club-logo/{application}', [FederationInviteController::class, 'clubLogo'])->whereUuid('application')->name('invite.club-logo');

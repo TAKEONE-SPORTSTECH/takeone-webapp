@@ -335,4 +335,27 @@ return [
     'join_club_modal_you_badge' => 'You',
     'join_club_modal_your_family' => 'Your Family',
     'join_club_modal_yrs' => 'yrs',
+
+    // /club — the manager's front door
+    'entry_none' => 'You don\'t manage a club yet.',
+    'entry_eyebrow' => 'Club management',
+    'entry_title' => 'Your clubs',
+    'entry_subtitle' => 'Pick the club you want to manage.',
+    'entry_count' => ':count clubs',
+    'entry_members' => ':count members',
+    'entry_role_owner' => 'Owner',
+    'entry_role_admin' => 'Admin',
+    'entry_role_chain' => 'Chain',
+    'entry_pending' => 'Pending',
+    'entry_open' => 'Manage',
+    'entry_all_clubs' => 'All platform clubs',
+    'entry_all_clubs_hint' => 'Every club on TakeOne, as super-admin',
+    'entry_empty_title' => 'No clubs of your own',
+    'entry_empty_desc' => 'You can still open any club from the platform list.',
+    'entry_back_home' => 'Home',
+
+    // Club mode (App\Clubs\Support\ClubLock) — the bar that replaces the platform navigation
+    'lock_mode' => 'Club mode',
+    'lock_switch' => 'Switch club',
+    'lock_back' => 'Back to club',
 ];

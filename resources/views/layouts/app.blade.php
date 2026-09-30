@@ -5,6 +5,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    {{-- Every screen is as tall as what can be SEEN, even while the app is
+         hiding a strip under the bottom bar. See the partial. --}}
+    @include('partials.viewport-guard')
 
     {{-- ── This product is LIGHT. Say so, twice. ────────────────────────────
          A browser that is not told what a page's colours are decides for
@@ -295,7 +298,13 @@
          else: no top bar, no nav. Signed-in members keep the full chrome, so this
          can only ever affect visitors who could not reach these pages before. --}}
     @php $__publicGuest = auth()->guest() && request()->routeIs('clubs.show', 'people.show', 'live.watch'); @endphp
-    @if(!$__publicGuest && !request()->routeIs('clubs.show.public') && !(session('club.context') && request()->routeIs('register', 'verification.notice')) && !$__env->hasSection('hide-navbar'))
+    {{-- Club mode (App\Clubs\Support\ClubLock): a manager who came in through
+         /club gets the club bar instead of the platform navigation below. --}}
+    @php $__clubLock = \App\Clubs\Support\ClubLock::active(); @endphp
+    @if($__clubLock && !$__env->hasSection('hide-navbar'))
+        @include('clubs::lock.bar')
+    @endif
+    @if(!$__clubLock && !$__publicGuest && !request()->routeIs('clubs.show.public') && !(session('club.context') && request()->routeIs('register', 'verification.notice')) && !$__env->hasSection('hide-navbar'))
     <div x-data="{ mobileMenuOpen: false }" @keydown.escape.window="mobileMenuOpen = false">
     <nav class="to-bar">
         <div class="container mx-auto px-4">
@@ -656,6 +665,11 @@
                                     <a class="profile-dropdown-item" href="{{ route('me.packages') }}">
                                         <i class="bi bi-box me-2"></i>{{ __('nav.my_packages') }}
                                     </a>
+                                    @if(config('certificates.enabled'))
+                                    <a class="profile-dropdown-item" href="{{ route('me.certificates.index') }}">
+                                        <i class="bi bi-patch-check me-2"></i>{{ __('cert::messages.mine_title') }}
+                                    </a>
+                                    @endif
                                     <a class="profile-dropdown-item" href="{{ route('bills.index') }}">
                                         <i class="bi bi-receipt me-2"></i>{{ __('nav.layouts_app_payments_subscriptions') }}
                                     </a>

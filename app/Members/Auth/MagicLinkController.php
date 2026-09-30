@@ -51,7 +51,7 @@ class MagicLinkController extends Controller
         Auth::login($user, true); // remember = true → session persists until logout
         $request->session()->regenerate();
 
-        return redirect()->to($this->safeIntended($request->query('intended')) ?: route('clubs.explore'));
+        return redirect()->to($this->safeIntended($request->query('intended')) ?: \App\Support\Landing::url($request));
     }
 
     /**

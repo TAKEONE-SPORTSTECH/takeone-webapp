@@ -53,4 +53,7 @@ return [
     'sport_label' => 'الجوجيتسو البرازيلي',
     'weigh_in' => 'الوزن الرسمي',
 
+    // Grades on the sport's own belt ladder (beltLadder()), 2026-09-27.
+    'grade_stripes' => '{0} بدون خطوط|{1} خط واحد|{2} خطان|[3,*] :n خطوط',
+    'grade_degree' => 'الدرجة :n',
 ];

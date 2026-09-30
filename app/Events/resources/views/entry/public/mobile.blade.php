@@ -83,6 +83,40 @@
         return strlen($c) === 2 ? 'fi fi-'.$c : null;
     };
 
+    /* ===== A MEMBER reading this page =====
+       `$memberEvent` is set only on /me/events/{uuid} with
+       `events.unified_page` on (PersonalEventController::unifiedPoster). On
+       /e/{uuid} it is never set, so every block gated on `$asMember` below is
+       simply absent there and this page is what it always was.
+
+       It is the member page's own payload, and it feeds only the parts a
+       member has and a stranger does not: joining, paying, the reason they
+       may not, and their doors into the platform. `$e` stays the poster. */
+    $asMember = isset($memberEvent);
+    $posterPublic = $posterPublic ?? true;
+
+    if ($asMember) {
+        $mFee = strtolower($memberEvent['participant_fee'] ?? '');
+        $mByQual = str_contains($mFee, 'qualified');
+        $mPaid = (! str_contains($mFee, 'free') && ! $mByQual) || ! empty($memberEvent['fees']['options']);
+        $mHasTicket = ! empty($memberEvent['spectator']);
+        $mTicketPaid = ($mHasTicket && ! str_contains(strtolower($memberEvent['spectator']['fee']), 'free'))
+            || ! empty($memberEvent['fees']['spectator_options']);
+        $mWhyNot = (($banned ?? false) || ($excludedAt ?? null))
+            ? ($eligReason ?? __('personal.event_show_removed_default'))
+            : (($memberEvent['ended'] ?? false)
+                ? __('personal.event_show_ended_msg')
+                : ($mByQual
+                    ? __('personal.event_show_entry_by_qualification')
+                    : ($eligReason ?? __('personal.event_show_not_eligible_default'))));
+        $mLocked = ($banned ?? false) || ($excludedAt ?? null) !== null || ($memberEvent['ended'] ?? false);
+        $mCanJoin = ! $mLocked && ($canCompete ?? true) && ! $mByQual;
+
+        // What the member partials expect under their usual names.
+        $memberScope = ['e' => $memberEvent, 'pPaid' => $mPaid, 'byQual' => $mByQual,
+            'hasTicket' => $mHasTicket, 'ticketPaid' => $mTicketPaid, 'whyNot' => $mWhyNot];
+    }
+
     /* Seconds as a clock, for a gallery tile's corner. */
     $clock = function ($seconds) {
         $s = max(0, (int) $seconds);
@@ -107,6 +141,10 @@
 @include('events::entry.public.partials.language-sheet')
 
 <div x-data="publicEvent()" class="-mx-4 -mt-4 pb-4">
+{{-- The member's own state (joining, paying, the results sheet), nested
+     INSIDE the poster's scope: the poster's share() and notice() still answer,
+     and the member's jump() and sheets sit on top. --}}
+@if($asMember)<div @include('events::partials.event-show-script', $memberScope)>@endif
 
     {{-- ===== The band =====
          `<x-event-poster-band>` — one copy, shared with the member event page
@@ -127,11 +165,21 @@
              chosen — and on the poster there is nothing else to go "back" to,
              so it never belonged in the control cluster opposite. --}}
         <x-slot:lead>
+            @if($asMember)
+                {{-- A MEMBER came here from the platform: the leading edge is
+                     the way back to it, exactly as the member page it replaced
+                     had it (Design Rule #6 — back leads, actions trail). --}}
+                <a href="{{ route('me.events') }}" class="m-press ev-ctl flex-none"
+                   aria-label="{{ __('personal.event_show_events') }}" title="{{ __('personal.event_show_events') }}">
+                    <i class="bi bi-chevron-left rtl:rotate-180"></i>
+                </a>
+            @else
             <button type="button" @click="window.dispatchEvent(new CustomEvent('reopen-cover'))"
                     class="m-press ev-ctl flex-none"
                     aria-label="{{ __('events::events.band_home') }}" title="{{ __('events::events.band_home') }}">
                 <i class="bi bi-house-door-fill"></i>
             </button>
+            @endif
         </x-slot:lead>
 
         <x-slot:controls>
@@ -155,96 +203,38 @@
                 'console' => $console ?? null,
                 'signedIn' => auth()->check(),
                 'signedInName' => auth()->user()?->full_name ?? auth()->user()?->name,
-                'signOutUrl' => route('events.public.sign-out', ['event' => $e['key']]),
+                // Signing out lands on /e/{uuid}, which 404s while the
+                // organiser has not published the page.
+                'signOutUrl' => $posterPublic ? route('events.public.sign-out', ['event' => $e['key']]) : null,
+                // The organiser's QR and printable poster, for whoever runs it.
+                'withQr' => $asMember && (($canManage ?? false) || ($canOfficiate ?? false)),
+                'shareUrl' => $shareUrl ?? null,
             ])
         </x-slot:controls>
+
+        @if($asMember && ($memberEvent['cancelled'] ?? false))
+            <x-slot:banner>
+                <div class="relative z-10 mt-4 -mb-2 rounded-xl bg-white/20 backdrop-blur px-3 py-2 text-xs font-bold flex items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill"></i> {{ __('personal.event_show_cancelled_banner') }}
+                </div>
+            </x-slot:banner>
+        @endif
     </x-event-poster-band>
 
-    {{-- ===== The three facts, riding up over the band =====
-         The design file's card, kept verbatim: a white panel with a hairline of
-         the event's colour along its top edge, three columns divided by rules,
-         and — when the organiser set a capacity — how full it is. No icon
-         tiles: the design puts the bare glyph in the event's colour, which
-         keeps the row about the VALUES.
-
-         Each fact is still a door to its fuller answer further down: when → the
-         run-of-show, how much → the way in, where → the map. --}}
-    <div class="relative" style="padding:0 18px; margin-top:-46px;">
-        {{-- ⚠️ NO `m-in` here — removed 2026-09-08, the same reason
-             `mobile-stagger` came off entry/layout on the same day.
-
-             `m-in` starts the card at opacity 0 and rises it in over half a
-             second, so the band and everything under it paint first and this
-             card arrives separately a beat later. On a first arrival that runs
-             behind the cover and nobody sees it; on the RELOAD that follows
-             choosing a language on the cover it plays in full view, and the
-             page reads as loading a second time. Reported exactly that way.
-
-             The member page's copy of this card has never animated. The card
-             simply arrives; the entrance the visitor sees is the cover lifting. --}}
-        <div style="background:#fff; border-radius:18px; border-top:3px solid {{ $ev }};
-                    box-shadow:0 22px 60px rgba(30,44,79,.13), 0 2px 6px rgba(30,44,79,.06);
-                    padding:18px 16px 16px;">
-
-            <div class="grid text-center" style="grid-template-columns:1fr 1fr 1fr;">
-                {{-- ⚠️ The two dividing rules belong to the MIDDLE column, on
-                     both of its sides — never one physical `border-right` per
-                     column.
-
-                     `border-right` is a PHYSICAL side, and this page is read in
-                     Arabic as often as in English. In RTL the columns flow
-                     right-to-left, so a right border on the first column landed
-                     on the card's outer edge, the second column's landed in the
-                     right-hand gap, and the left-hand gap had no rule at all —
-                     three columns with the separators in two wrong places.
-                     Hanging both rules off the middle cell is direction-proof:
-                     the middle column is the middle column either way, and its
-                     two sides ARE the two internal gaps. (The member card next
-                     door has always done it this way with `border-x`.) --}}
-                <button type="button" @click="jump(['run-start','how-it-runs'])"
-                        class="m-press" style="padding:2px 6px;"
-                        aria-label="{{ __('personal.event_show_how_it_runs') }}">
-                    <i class="bi bi-calendar3" style="font-size:17px; color:{{ $ev }};"></i>
-                    <p style="margin:7px 0 0; font-size:12.5px; font-weight:700; color:#1e2c4f;">{{ $e['wday'] }} {{ $e['day'] }} {{ $e['mon'] }}</p>
-                    <p style="margin:2px 0 0; font-size:10.5px; color:#6b7689;">{{ $e['time'] }}</p>
-                </button>
-
-                <button type="button" @click="jump(['fees','enter'])"
-                        class="m-press"
-                        style="border-left:1px solid #eef1f6; border-right:1px solid #eef1f6; padding:2px 6px;"
-                        aria-label="{{ __('personal.event_show_to_join') }}">
-                    <i class="bi bi-cash-coin" style="font-size:17px; color:{{ $ev }};"></i>
-                    <p style="margin:7px 0 0; font-size:12.5px; font-weight:700; color:#1e2c4f;">{{ $e['participant_fee'] }}</p>
-                    <p style="margin:2px 0 0; font-size:10.5px; color:#6b7689;">{{ __('personal.event_show_to_join') }}</p>
-                </button>
-
-                <button type="button" @click="jump('where')"
-                        class="m-press min-w-0" style="padding:2px 6px;"
-                        aria-label="{{ __('personal.event_show_location') }}">
-                    <i class="bi bi-geo-alt" style="font-size:17px; color:{{ $ev }};"></i>
-                    <p class="truncate" style="margin:7px 0 0; font-size:12.5px; font-weight:700; color:#1e2c4f;" title="{{ $e['location'] }}">{{ $e['location'] }}</p>
-                    <p style="margin:2px 0 0; font-size:10.5px; color:#6b7689;">{{ __('personal.event_show_venue') }}</p>
-                </button>
-            </div>
-
-            @if($e['capped'] ?? false)
-                <div style="margin-top:16px;">
-                    <div class="flex justify-between" style="font-size:11px; margin-bottom:6px;">
-                        <span style="font-weight:600; color:#1e2c4f;">{{ $e['going'] }} {{ __('personal.event_show_going') }}</span>
-                        <span style="color:#6b7689;">{{ max(0, $e['cap'] - $e['going']) }} {{ __('personal.event_show_spots_left') }}</span>
-                    </div>
-                    <div style="height:6px; border-radius:999px; background:#eef1f6; overflow:hidden;">
-                        <div class="m-bar-fill" style="height:100%; border-radius:999px; background:{{ $ev }}; width:{{ min(100, round($e['going'] / max(1, $e['cap']) * 100)) }}%;"></div>
-                    </div>
-                </div>
-            @endif
-        </div>
-    </div>
+    @include('events::entry.public.partials.quick-facts')
 
     {{-- ===== The event, in one card — the SAME partial the member page uses.
          No `sectionVariant`, so it draws the product's dark full-bleed section
          bands exactly as `/me/events/{uuid}` does. ===== --}}
-    @include('events::partials.event-detail-card-mobile', [
+    @include('events::partials.event-detail-card-mobile', $asMember ? [
+        // A member downloads through the member door, which works whether or
+        // not the organiser published a public page. `?division=` opens the
+        // member draw on that group, which says WHEN when it is not out yet.
+        'documents' => $documents ?? [],
+        'divisionLink' => $addr->section('draw').'?division=',
+        'divisionNote' => null,
+        'noteTap' => null,
+    ] : [
         // The organiser published the page, so the files they attached travel
         // with it. `PublicEvent` supplies download URLs on the public route —
         // the member route's auth stack is untouched.
@@ -259,7 +249,7 @@
            setting and all; without it the chips stay plain labels rather than
            becoming doors onto a padlock. */
         'divisionLink' => ($drawOpen ?? false)
-            ? route('events.public.section', ['event' => $e['key'], 'section' => 'draw']).'?division='
+            ? $addr->section('draw').'?division='
             : null,
 
         /* And when there is no door: the chip still answers. `$drawNote` is the
@@ -286,7 +276,9 @@
          event that runs none, no table unless the owning package publishes one,
          no winners until somebody has won. --}}
     @php
-        $section = fn (string $s) => route('events.public.section', ['event' => $e['key'], 'section' => $s]);
+        /* Through the address helper: with the unified page on, a section
+           lives under the event's one address; otherwise under /e/{uuid}. */
+        $section = fn (string $s) => $addr->section($s);
         $doors = [];
 
         if (! empty($e['divisions']) || ($e['draw']['published'] ?? false)) {
@@ -360,66 +352,17 @@
 
     {{-- ===== The way in ===== --}}
     <span id="enter" class="block"></span>
-    <div class="px-4 mt-4">
-        @if(($mine ?? null))
-            {{-- Already in — so the one action here is the way back to what you
-                 entered, not another way to enter. The event's own colour, not
-                 the maroon of the entry door: this is a place you have been,
-                 not a door you have yet to open.
-
-                 It is read for the VIEWER only, so it says nothing about
-                 anybody else on a page open to the world. --}}
-            <a href="{{ route('events.public.my-entry', ['event' => $e['key']]) }}"
-               class="m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5 no-underline"
-               style="background: {{ \App\Support\Palette::eventBand($e['color']) }};">
-                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
-
-                <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                    <i class="bi {{ $mine === 'pending' ? 'bi-hourglass-split' : 'bi-person-check-fill' }} text-2xl"></i>
-                </div>
-                <div class="relative min-w-0 flex-1">
-                    <h3 class="font-black text-base leading-tight">{{ __('events::events.my_entry_cta') }}</h3>
-                    <p class="text-xs text-white/85 mt-0.5">
-                        {{ $mine === 'pending' ? __('events::events.my_entry_pending_hint') : __('events::events.my_entry_cta_hint') }}
-                    </p>
-                </div>
-                <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0"></i>
-            </a>
-        @elseif($e['enrol']['open'])
-            {{-- The same card as the doors above it — icon tile, title, sub-line,
-                 chevron — so the way IN reads as one of the places you can go
-                 rather than a button bolted underneath them. Maroon rather than
-                 the event's own colour: it is the one action on this page, and
-                 it should not be mistaken for another door. The hint that used
-                 to sit under the button is now its sub-line, where a sub-line
-                 already goes. --}}
-            <a href="{{ route('events.public.enter', ['event' => $e['key']]) }}"
-               class="m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5 no-underline"
-               style="background: linear-gradient(135deg, #7f1d1d, #1f2937);">
-                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
-
-                <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                    <i class="bi bi-person-plus-fill text-2xl"></i>
-                </div>
-                <div class="relative min-w-0 flex-1">
-                    <h3 class="font-black text-base leading-tight">{{ __('events::events.public_enrol_cta') }}</h3>
-                    <p class="text-xs text-white/85 mt-0.5">{{ __('events::events.public_enrol_cta_hint') }}</p>
-                </div>
-                <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0"></i>
-            </a>
-        @else
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
-                <i class="bi bi-lock-fill text-xl" style="color: {{ $e['color'] }}"></i>
-                <p class="text-sm font-bold text-foreground mt-2">{{ __('events::events.public_entries_closed') }}</p>
-                <p class="text-[12px] text-muted-foreground mt-1 leading-relaxed">{{ $e['enrol']['note'] ?: __('events::events.public_how_to_enter_body', ['club' => $e['host']]) }}</p>
-            </div>
-        @endif
-    </div>
+    @if($asMember)
+        @include('events::entry.public.partials.member-way-in')
+    @else
+        @include('events::entry.public.partials.way-in')
+    @endif
 
     {{-- The share ROW was removed 2026-09-04: the header already carries a
          share control, and offering the same action twice on one screen makes
          the second one read as something else. `share()` stays on the Alpine
          scope — the header button is what calls it. --}}
+@if($asMember)</div>@endif
 </div>
 @endsection
 

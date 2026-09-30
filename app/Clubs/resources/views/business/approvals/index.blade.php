@@ -16,6 +16,10 @@
                   class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-300 text-amber-900 {{ $pendingCount > 0 ? '' : 'hidden' }}">
                 <i class="bi bi-hourglass-split me-1"></i>{{ __('platform.platform_businesses_index_pending_count', ['count' => $pendingCount]) }}
             </span>
+            <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-business-create'))"
+                class="bg-white text-primary px-4 py-2 rounded-lg font-medium hover:bg-white/90 transition-colors inline-flex items-center gap-2">
+                <i class="bi bi-plus-lg"></i> {{ __('platform.business_create_button') }}
+            </button>
         </x-slot:actions>
     </x-admin-hero>
 
@@ -129,6 +133,7 @@
 <script>window.__bizData = @json((object) $bizData->toArray());</script>
 
 <x-business-edit-modal />
+<x-business-create-modal />
 <x-user-picker-modal :title="__('platform.platform_businesses_index_owner_modal_title')" :subtitle="__('platform.platform_businesses_index_owner_modal_subtitle')" />
 
 @include('clubs::business.approvals._scripts')

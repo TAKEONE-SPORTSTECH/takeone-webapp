@@ -54,6 +54,36 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | One event page — /me/events/{uuid} renders the public poster
+     |--------------------------------------------------------------------------
+     | OFF by default (RULE #1). When ON, the member address renders the SAME
+     | page file as /e/{uuid} (entry/public/mobile), for every reader: a
+     | stranger may open it without signing in while the organiser's public
+     | switch is on, and a member gets the same page with their own flow —
+     | join, pay, why-not — switched on inside it. Only for event types that
+     | opted into the branded surface; the others keep their page.
+     */
+    'unified_page' => (bool) env('EVENT_UNIFIED_PAGE', false),
+
+    /*
+     | Karate on the shared championship base (App\Events\Support\Tournament),
+     | the one BJJ already runs on. OFF by default: the karate package keeps its
+     | own copies until this has been verified on real events. See
+     | app/Events/Sports/Karate/Tournament/SharedBase.
+     */
+    'karate_shared_base' => (bool) env('EVENT_KARATE_SHARED_BASE', false),
+    'taekwondo_shared_base' => (bool) env('EVENT_TAEKWONDO_SHARED_BASE', false),
+
+    /*
+     | Sport championships — App\Events\Championship runs a tournament or a
+     | championship in any sport with a recipe (padel, football, swimming,
+     | chess…). OFF by default. It only ever claims events it created itself
+     | (club_events.competition), so turning it on changes no existing event.
+     */
+    'sport_championships' => (bool) env('EVENT_SPORT_CHAMPIONSHIPS', false),
+
+    /*
+     |--------------------------------------------------------------------------
      | Which midnight an organiser means
      |--------------------------------------------------------------------------
      |
@@ -66,5 +96,28 @@ return [
      | changing it, and never conflate it with `app.timezone`.
      */
     'entry_timezone' => env('EVENT_ENTRY_TIMEZONE', 'Asia/Bahrain'),
+
+    /*
+     |--------------------------------------------------------------------------
+     | One athlete, one profile
+     |--------------------------------------------------------------------------
+     |
+     | Every entry door used to make a new person on every submit, so the same
+     | athlete entering twice — another day, another phone, or entered by a
+     | coach after entering themselves — became several profiles and several
+     | places in the draw. With this ON (App\Events\Support\KnownPerson):
+     |
+     |   · the public form recognises a phone + name it already has: the right
+     |     password enters them as themselves, a wrong one is told they already
+     |     have a profile (never a second account), a coach's unclaimed record
+     |     becomes theirs;
+     |   · athletes get their own sign-in page on the event, and a one-time code
+     |     from the entry desk when the password is forgotten;
+     |   · the coach's desk finds the athlete across the platform first.
+     |
+     | OFF by default (RULE #1): every door behaves exactly as it shipped.
+     | Set EVENT_ENTRY_DEDUPE=true in .env, then `php artisan config:cache`.
+     */
+    'entry_dedupe' => (bool) env('EVENT_ENTRY_DEDUPE', false),
 
 ];

@@ -983,7 +983,7 @@ class EntryEditor
                 'logo' => $writtenDown->logo ? file_url($writtenDown->logo) : null,
                 'country' => $writtenDown->country,
             ] : null),
-            'belts' => BeltRank::ladder(),
+            'belts' => app(\App\Events\Support\CategorySystems::class)->ladderFor($event),
             'clubs' => $this->clubChoices($event, $registration, $athlete),
         ] + $this->contactFor($event, $athlete, $viewer);
     }

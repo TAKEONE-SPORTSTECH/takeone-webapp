@@ -4,7 +4,7 @@
 
 @php
     $demoList = array_values($demo);
-    $feat = collect($demoList)->firstWhere('ended', false);
+    $feat = collect($demoList)->first(fn ($v) => ! $v['ended'] && ($v['featured'] ?? false));
     $upcomingCount = collect($demoList)->where('ended', false)->count();
     $pastCount = collect($demoList)->where('ended', true)->count();
     $joinedCount = collect($demoList)->where('joined', true)->where('ended', false)->count();
@@ -49,7 +49,7 @@
     {{-- ===== Featured spotlight ===== --}}
     @if($feat)
     <div x-show="seg==='upcoming'" x-transition class="mb-6">
-        <a href="{{ route('me.events.show', $feat['key']) }}"
+        <a href="{{ $feat['href'] ?? route('me.events.show', $feat['key']) }}"
            class="block rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow border border-gray-100 text-white relative">
             <div class="relative p-6 flex items-center justify-between gap-6 flex-wrap"
                  style="background: linear-gradient(135deg, {{ $feat['color'] }}, {{ $feat['color'] }}cc);">
@@ -104,7 +104,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         @foreach($demoList as $e)
             @php $isEnded = $e['ended'] ? 'true' : 'false'; $isJoined = $e['joined'] ? 'true' : 'false'; @endphp
-            <a href="{{ route('me.events.show', $e['key']) }}"
+            <a href="{{ $e['href'] ?? route('me.events.show', $e['key']) }}"
                x-show="(seg==='upcoming' && !{{ $isEnded }}) || (seg==='joined' && {{ $isJoined }} && !{{ $isEnded }}) || (seg==='past' && {{ $isEnded }})"
                x-transition
                class="block bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all p-4 flex items-start gap-3.5 {{ $e['ended'] ? 'opacity-75' : '' }}">

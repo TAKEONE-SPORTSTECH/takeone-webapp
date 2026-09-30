@@ -117,12 +117,13 @@ class FederationRegistry
     {
         if ($c instanceof FederationClub) {
             $t = $c->club;
-            $phone = is_array($t->phone) ? $t->phone : (json_decode((string) $t->phone, true) ?: []);
+            // Whichever contact the club chose on its details page — its own, or its owner's.
+            $phone = $t->contactPhone() ?? [];
             $row = [
                 'id' => $this->clubKey($c),
                 'name' => $t->club_name,
                 'coach' => $t->owner_name ?: optional($t->owner)->full_name,
-                'email' => $t->email ?: $t->owner_email,
+                'email' => $t->contactEmail() ?: $t->owner_email,
                 'phone' => trim(($phone['code'] ?? '').' '.($phone['number'] ?? '')),
                 'address' => $t->address,
                 'logo' => $t->logo ? file_url($t->logo) : null,
@@ -232,14 +233,19 @@ class FederationRegistry
     public function eventForInvite(FederationEvent $e): array
     {
         $d = (array) $e->details;
-        $free = ($d['free'] ?? true) !== false;
-        $lines = collect($d['fees'] ?? [])->mapWithKeys(fn ($f) => [mb_strtolower(trim($f['label'] ?? '')) => (float) preg_replace('/[^0-9.]/', '', (string) ($f['amount'] ?? '0'))]);
+        $lines = collect(is_array($d['fees'] ?? null) ? $d['fees'] : [])->filter(fn ($f) => is_array($f));
+        // An event is free only when it SAYS so. A missing flag used to read as
+        // free, which priced a paid event at nothing.
+        $free = array_key_exists('free', $d)
+            ? $d['free'] !== false
+            : ! $lines->contains(fn ($f) => self::amount($f['amount'] ?? 0) > 0);
         $teamSize = ['team kata' => 3, 'team kumite' => 5];
+        $types = collect($d['types'] ?? [])->filter(fn ($t) => is_string($t) && $t !== '')->values();
 
-        $fees = collect($d['types'] ?? [])->map(function ($type) use ($free, $lines, $teamSize) {
+        $fees = $types->map(function ($type) use ($free, $lines, $teamSize, $types) {
             $key = mb_strtolower($type);
             $team = str_starts_with($key, 'team ');
-            $fee = ['type' => $type, 'price' => $free ? 0 : (float) ($lines[$key] ?? 0), 'unit' => $team ? 'team' : 'athlete'];
+            $fee = ['type' => $type, 'price' => $free ? 0 : self::priceFor($type, $lines, $types), 'unit' => $team ? 'team' : 'athlete'];
             if ($team) {
                 $fee['teamSize'] = $teamSize[$key] ?? 3;
             }
@@ -261,9 +267,68 @@ class FederationRegistry
             'currency' => $e->federation?->currency ?: 'BHD',
             'deadline' => $deadline,
             'drawAt' => $drawAt,
-            'lateFee' => $free ? 0 : (float) preg_replace('/[^0-9.]/', '', (string) ($d['lateFee'] ?? '0')),
+            'lateFee' => $free ? 0 : self::amount($d['lateFee'] ?? 0),
             'fees' => $fees,
         ];
+    }
+
+    private static function amount(mixed $v): float
+    {
+        return (float) preg_replace('/[^0-9.]/', '', (string) $v);
+    }
+
+    /**
+     * What one competition type costs, from the organiser's fee lines.
+     *
+     * The lines are free text ("Kumite", "Registration", "KUMITE COMPETITION")
+     * and the types come from a fixed list ("Individual Kumite"), so an exact
+     * label match alone priced almost every event at nothing. In order:
+     *  1. a line that names this type (`type`, set in the event editor);
+     *  2. a line whose label IS the type;
+     *  3. a line whose label's words all appear in the type, or the type's in
+     *     the label — the most specific such line wins;
+     *  4. one single unlinked line: it is the price of everything.
+     * Nothing matched is 0 — the event editor warns about that before it saves.
+     */
+    private static function priceFor(string $type, Collection $lines, Collection $types): float
+    {
+        $words = fn (string $x) => array_values(array_filter(preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($x)) ?: [], fn ($w) => $w !== '' && ! in_array($w, ['entry', 'fee', 'fees', 'competition', 'the', 'and', 'per', 'athlete'], true)));
+        $key = mb_strtolower(trim($type));
+
+        $linked = $lines->first(fn ($f) => is_string($f['type'] ?? null) && mb_strtolower(trim($f['type'])) === $key);
+        if ($linked) {
+            return self::amount($linked['amount'] ?? 0);
+        }
+        $unlinked = $lines->filter(fn ($f) => ! is_string($f['type'] ?? null) || ! $types->contains($f['type']));
+
+        $exact = $unlinked->first(fn ($f) => mb_strtolower(trim((string) ($f['label'] ?? ''))) === $key);
+        if ($exact) {
+            return self::amount($exact['amount'] ?? 0);
+        }
+
+        $tw = $words($type);
+        $best = null;
+        $bestScore = 0;
+        foreach ($unlinked as $f) {
+            $lw = $words((string) ($f['label'] ?? ''));
+            if ($lw === [] || $tw === []) {
+                continue;
+            }
+            $inType = array_diff($lw, $tw) === [];     // "kumite" ⊂ "individual kumite"
+            $inLabel = array_diff($tw, $lw) === [];    // "individual kumite" ⊂ "individual kumite entry"
+            if (! $inType && ! $inLabel) {
+                continue;
+            }
+            $score = count(array_intersect($lw, $tw));
+            if ($score > $bestScore) {
+                [$best, $bestScore] = [$f, $score];
+            }
+        }
+        if ($best) {
+            return self::amount($best['amount'] ?? 0);
+        }
+
+        return $unlinked->count() === 1 && $lines->count() === 1 ? self::amount($unlinked->first()['amount'] ?? 0) : 0.0;
     }
 
     /**
@@ -313,10 +378,77 @@ class FederationRegistry
                 'compSub' => $startTime ? ($lang === 'ar' ? 'تبدأ '.$startTime.' يومياً' : 'Starts '.$startTime.' daily') : '',
                 'brkVal' => ! empty($d['breakOn']) && ($d['breakFrom'] ?? '') ? $d['breakFrom'].' – '.($d['breakTo'] ?? '').($lang === 'ar' ? ' يومياً' : ' daily') : '—',
                 'rulesDocMeta' => $e->name.' · '.$e->sport,
+                // The rules panel is the ORGANISER'S words — the event's About and
+                // its requirements — never the prototype's sample text. It lands
+                // in innerHTML: About was sanitised on save and is cleaned again,
+                // requirements are escaped.
+                'rulesHtml' => $this->rulesHtml($d, $lang),
+                // The opening screen's sections — the organiser's own words and places.
+                'orgName' => (string) ($e->federation?->name ?? ''),
+                'venueLine' => $where,
+                'locationLine' => trim((string) ($d['location'] ?? '')),
+                'mapUrl' => $this->mapUrl($d),
+                // The pin the organiser dropped, for the Location card's map ('' = none).
+                'mapLat' => ($pin = $this->pin($d)) ? (string) $pin[0] : '',
+                'mapLng' => $pin ? (string) $pin[1] : '',
+                'aboutHtml' => trim(html_entity_decode(strip_tags($about = FederationHtml::clean(is_string($d['about'] ?? null) ? $d['about'] : '')))) !== '' ? $about : '',
+                'reqList' => array_values(array_filter(array_map(fn ($r) => is_string($r) ? mb_substr(trim($r), 0, 300) : '', (array) ($d['reqs'] ?? [])), fn ($r) => $r !== '')),
             ];
         }
 
         return $out;
+    }
+
+    /** The organiser's dropped pin as [lat, lng], or null when there is none (0,0 is "none"). */
+    private function pin(array $d): ?array
+    {
+        $lat = $d['lat'] ?? null;
+        $lng = $d['lng'] ?? null;
+        if (is_numeric($lat) && is_numeric($lng) && abs((float) $lat) <= 90 && abs((float) $lng) <= 180 && ((float) $lat != 0.0 || (float) $lng != 0.0)) {
+            return [round((float) $lat, 6), round((float) $lng, 6)];
+        }
+        // No pin dropped — find the place from the organiser's Google Maps link.
+        $url = trim((string) ($d['mapUrl'] ?? ''));
+
+        return $url !== '' ? app(GoogleMapsPin::class)->resolve($url) : null;
+    }
+
+    /** A map link for the venue: the organiser's own link when it is http(s), else the pin they dropped. */
+    private function mapUrl(array $d): string
+    {
+        $u = trim((string) ($d['mapUrl'] ?? ''));
+        if ($u !== '' && preg_match('#^https?://#i', $u) && filter_var($u, FILTER_VALIDATE_URL)) {
+            return $u;
+        }
+        $lat = $d['lat'] ?? null;
+        $lng = $d['lng'] ?? null;
+        if (is_numeric($lat) && is_numeric($lng) && abs((float) $lat) <= 90 && abs((float) $lng) <= 180 && ((float) $lat != 0.0 || (float) $lng != 0.0)) {
+            return 'https://www.openstreetmap.org/?mlat='.round((float) $lat, 6).'&mlon='.round((float) $lng, 6).'#map=16/'.round((float) $lat, 6).'/'.round((float) $lng, 6);
+        }
+
+        return '';
+    }
+
+    private function rulesHtml(array $d, string $lang): string
+    {
+        $ar = $lang === 'ar';
+        $h = fn (string $t) => '<div style="font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8a6d20;margin:0 0 8px">'.e($t).'</div>';
+        $out = '';
+
+        $about = FederationHtml::clean(is_string($d['about'] ?? null) ? $d['about'] : '');
+        if (trim(html_entity_decode(strip_tags($about))) !== '') {
+            $out .= $h($ar ? 'عن البطولة' : 'About this competition').'<div style="margin:0 0 18px">'.$about.'</div>';
+        }
+
+        $reqs = array_values(array_filter(array_map(fn ($r) => is_string($r) ? trim($r) : '', (array) ($d['reqs'] ?? [])), fn ($r) => $r !== ''));
+        if ($reqs !== []) {
+            $out .= $h($ar ? 'المتطلبات' : 'Requirements').'<ol style="margin:0;padding-inline-start:20px">'
+                .implode('', array_map(fn ($r) => '<li style="margin:0 0 6px">'.e($r).'</li>', $reqs)).'</ol>';
+        }
+
+        return $out !== '' ? $out : '<p style="margin:0;color:#6b7689">'.e($ar
+            ? 'لم ينشر المنظم شروطاً لهذه البطولة بعد. راجع المستندات المرفقة إن وُجدت، أو تواصل مع الاتحاد.'
+            : 'The organiser has not published competition rules for this event yet. Check the attached documents if there are any, or contact the federation.').'</p>';
     }
 
     /** The invitation's cover: the portrait artwork, else the landscape one. */
@@ -395,7 +527,8 @@ class FederationRegistry
                     $items[] = ['label' => $t, 'amount' => $f['price']];
                 }
             }
-            if (! empty($a['late'])) {
+            // The late fee rides on an entry into something, as the page shows it.
+            if (! empty($a['late']) && $items !== []) {
                 $sum += $event['lateFee'];
                 $items[] = ['label' => 'Late entry fee', 'amount' => $event['lateFee']];
             }

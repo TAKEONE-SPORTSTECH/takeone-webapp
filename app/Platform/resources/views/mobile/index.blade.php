@@ -72,6 +72,9 @@
                     ['admin.platform.members',   'bi-people',       __('platform.section_members_title'),    __('platform.section_members_desc'), null],
                     ['admin.platform.activities','bi-lightning-charge', __('platform.section_activities_title'), __('platform.section_activities_desc'), null],
                     ['admin.platform.businesses','bi-buildings',    __('platform.section_businesses_title'), __('platform.section_businesses_desc'), $stats['businessesPending'] ?: null],
+                    // Paid featuring on /me/events — the badge is what is waiting for a decision.
+                    ['admin.platform.featured-events', 'bi-stars', __('platform.section_featured_title'), __('platform.section_featured_desc'),
+                        \App\Events\Models\EventFeatureRequest::where('status', 'pending')->count() ?: null],
                 ];
                 // Federations (app/Federations) — only while that module is installed and switched on.
                 if (config('federations.enabled') && \Illuminate\Support\Facades\Route::has('admin.federations.index')) {

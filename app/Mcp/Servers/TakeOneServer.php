@@ -3,6 +3,21 @@
 namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\AddCertificationTool;
+use App\Mcp\Tools\SetEventRulebookTool;
+use App\Mcp\Tools\DecideEventFeatureRequestTool;
+use App\Mcp\Tools\GetSportRuleBookTool;
+use App\Mcp\Tools\ListActivityRanksTool;
+use App\Mcp\Tools\SetMemberRankTool;
+use App\Mcp\Tools\ListCornerSidesTool;
+use App\Mcp\Tools\SetCornerSideTool;
+use App\Mcp\Tools\GetEventFeaturingTool;
+use App\Mcp\Tools\ListEventCertificatesTool;
+use App\Mcp\Tools\SetEventCertificateSettingsTool;
+use App\Mcp\Tools\GenerateEventCertificatesTool;
+use App\Mcp\Tools\ApproveEventCertificatesTool;
+use App\Mcp\Tools\RevokeCertificateTool;
+use App\Mcp\Tools\ListMyCertificatesTool;
+use App\Mcp\Tools\ListEventFeatureRequestsTool;
 use App\Mcp\Tools\AddWorkHistoryTool;
 use App\Mcp\Tools\ArrangeEventBracketTool;
 use App\Mcp\Tools\ClubFinancialsTool;
@@ -107,6 +122,21 @@ class TakeOneServer extends Server
         AddCertificationTool::class,
         AddWorkHistoryTool::class,
         ManageMemberPhotoTool::class,
+        GetEventFeaturingTool::class,
+        ListEventFeatureRequestsTool::class,
+        DecideEventFeatureRequestTool::class,
+        GetSportRuleBookTool::class,
+        ListActivityRanksTool::class,
+        SetMemberRankTool::class,
+        ListCornerSidesTool::class,
+        SetCornerSideTool::class,
+        SetEventRulebookTool::class,
+        ListEventCertificatesTool::class,
+        SetEventCertificateSettingsTool::class,
+        GenerateEventCertificatesTool::class,
+        ApproveEventCertificatesTool::class,
+        RevokeCertificateTool::class,
+        ListMyCertificatesTool::class,
     ];
 
     protected array $resources = [

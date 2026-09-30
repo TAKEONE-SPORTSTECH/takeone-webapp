@@ -95,7 +95,7 @@
     $islandProps = [
         'eventUuid'  => $event->uuid,
         'eventTitle' => $e['title'],
-        'backUrl'    => route('events.public', ['event' => $e['key']]),
+        'backUrl'    => route('me.events.show', ['event' => $e['key']]),
         'urls' => [
             'state'      => route('events.public.my-entry.state', ['event' => $event->uuid]),
             'update'     => route('events.public.my-entry.update', ['event' => $event->uuid]),
@@ -604,7 +604,7 @@ function myEntryPhoto() {
         <div class="absolute rounded-full" style="right:-56px; top:-56px; width:190px; height:190px; background:rgba(255,255,255,.07);"></div>
 
         <div class="flex items-center justify-between gap-3 relative z-10">
-            <a href="{{ route('events.public', ['event' => $e['key']]) }}"
+            <a href="{{ route('me.events.show', ['event' => $e['key']]) }}"
                class="m-press ev-ico inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
                aria-label="{{ __('events::events.public_enrol_back_event') }}" title="{{ __('events::events.public_enrol_back_event') }}">
                 <i class="bi bi-chevron-left"></i>

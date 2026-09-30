@@ -131,10 +131,46 @@
                             <i class="bi bi-telephone text-primary me-2"></i>{{ __('admin.club_details_index_contact_information') }}
                         </h5>
                     </div>
-                    <div class="card-body space-y-4">
+                    @php
+                        $ownerPhone = is_array($club->owner?->mobile) ? trim(($club->owner->mobile['code'] ?? '').' '.($club->owner->mobile['number'] ?? '')) : '';
+                    @endphp
+                    <div class="card-body space-y-4" x-data="{ ownerContact: @js((bool) old('use_owner_contact', $club->usesOwnerContact())) }">
                         <h6 class="text-muted text-uppercase small font-semibold border-bottom pb-2">{{ __('admin.club_details_index_club_contact') }}</h6>
 
-                        <div>
+                        {{-- Contact source switch — the hidden field carries the value; the club's own details are kept either way --}}
+                        <div class="flex items-start justify-between gap-4 p-3 rounded-xl border border-gray-100 bg-muted/40">
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-foreground mb-0">{{ __('admin.club_details_index_use_owner_contact') }}</p>
+                                <p class="text-xs text-muted-foreground mt-0.5 mb-0">{{ __('admin.club_details_index_use_owner_contact_help') }}</p>
+                            </div>
+                            <input type="hidden" name="use_owner_contact" :value="ownerContact ? 1 : 0">
+                            <button type="button" role="switch" :aria-checked="ownerContact" @click="ownerContact = !ownerContact"
+                                    aria-label="{{ __('admin.club_details_index_use_owner_contact') }}"
+                                    class="relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                    :class="ownerContact ? 'bg-primary' : 'bg-gray-300'">
+                                <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+                                      :class="ownerContact ? 'translate-x-6' : 'translate-x-1'"></span>
+                            </button>
+                        </div>
+
+                        <div x-show="ownerContact" x-cloak class="rounded-xl border border-gray-100 p-3 space-y-1.5">
+                            @if($club->owner)
+                                @if($club->owner->email || $ownerPhone)
+                                    @if($club->owner->email)
+                                    <p class="text-sm text-foreground mb-0 flex items-center gap-2"><i class="bi bi-envelope text-muted-foreground"></i><span class="break-all">{{ $club->owner->email }}</span></p>
+                                    @endif
+                                    @if($ownerPhone)
+                                    <p class="text-sm text-foreground mb-0 flex items-center gap-2" dir="ltr"><i class="bi bi-phone text-muted-foreground"></i>{{ $ownerPhone }}</p>
+                                    @endif
+                                @else
+                                    <p class="text-xs text-amber-600 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>{{ __('admin.club_details_index_owner_contact_missing') }}</p>
+                                @endif
+                            @else
+                                <p class="text-xs text-amber-600 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>{{ __('admin.club_details_index_no_owner_contact') }}</p>
+                            @endif
+                        </div>
+
+                        <div x-show="!ownerContact">
                             <label class="form-label">{{ __('admin.club_details_index_club_email_label') }}</label>
                             <input type="email" name="email" class="form-control" value="{{ old('email', $club->email) }}" placeholder="{{ __('admin.club_details_index_club_email_placeholder') }}">
                         </div>
@@ -143,7 +179,7 @@
                             id="countrySelect"
                             :value="old('country', $club->country)"
                             :label="__('admin.club_details_index_country_label')" />
-                        <div>
+                        <div x-show="!ownerContact">
                             <label class="form-label">{{ __('admin.club_details_index_club_phone_label') }}</label>
                             <x-fields.phone-code
                                 name="phone_code"
@@ -273,7 +309,10 @@
                         :defaultLat="26.2285"
                         :defaultLng="50.5860"
                         height="400px"
+                        mapsUrlName="maps_url"
+                        :mapsUrl="old('maps_url', $club->maps_url ?? '')"
                     />
+                    @error('maps_url')<p class="text-xs text-red-600 -mt-2">{{ $message }}</p>@enderror
                     <div x-show="lang==='ar'" x-cloak>
                         <label class="form-label">العنوان بالعربية</label>
                         <input type="text" name="translations[address][ar]" dir="rtl" class="form-control" placeholder="عنوان النادي بالعربية" value="{{ old('translations.address.ar', data_get($club ?? null, 'translations.address.ar')) }}">
@@ -282,26 +321,6 @@
                         <button type="button" class="btn btn-outline-primary btn-sm" id="useMyLocationBtn">
                             <i class="bi bi-crosshair me-1"></i>{{ __('admin.club_details_index_use_my_location') }}
                         </button>
-                        @if($club->gps_lat && $club->gps_long)
-                        <a href="https://www.google.com/maps?q={{ $club->gps_lat }},{{ $club->gps_long }}" target="_blank" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-box-arrow-up-right me-1"></i>{{ __('admin.club_details_index_view_on_google_maps') }}
-                        </a>
-                        @endif
-                    </div>
-
-                    <div>
-                        <label class="form-label">{{ __('admin.club_details_index_google_maps_url_label') }}</label>
-                        <div class="flex gap-2">
-                            <input type="url" name="maps_url" class="form-control"
-                                   placeholder="https://maps.google.com/..."
-                                   value="{{ old('maps_url', $club->maps_url) }}">
-                            @if($club->maps_url)
-                            <a href="{{ $club->maps_url }}" target="_blank" class="btn btn-outline-secondary flex-shrink-0">
-                                <i class="bi bi-box-arrow-up-right"></i>
-                            </a>
-                            @endif
-                        </div>
-                        <p class="text-xs text-muted-foreground mt-1">{{ __('admin.club_details_index_google_maps_help') }}</p>
                     </div>
                 </div>
             </div>
@@ -322,6 +341,7 @@
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_logo_recommendation') }}</small>
                         <x-takeone-cropper
                             id="clubDetailLogo"
+                            shapes="square,circle,landscape,portrait"
                             :width="200"
                             :height="200"
                             shape="square"
@@ -348,6 +368,7 @@
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_favicon_recommendation') }}</small>
                         <x-takeone-cropper
                             id="clubDetailFavicon"
+                            shapes="square,circle"
                             :width="64"
                             :height="64"
                             shape="square"
@@ -374,6 +395,7 @@
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_cover_recommendation') }}</small>
                         <x-takeone-cropper
                             id="clubDetailCover"
+                            shapes="square,circle,landscape,portrait"
                             :width="640"
                             :height="360"
                             shape="square"

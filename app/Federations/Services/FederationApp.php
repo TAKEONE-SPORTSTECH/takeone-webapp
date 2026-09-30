@@ -72,7 +72,7 @@ class FederationApp
      */
     public function assetPath(string $file): ?string
     {
-        if (! preg_match('#^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+){0,2}$#', $file) || str_contains($file, '..')) {
+        if (! preg_match('#^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+){0,3}$#', $file) || str_contains($file, '..')) {
             return null;
         }
 
@@ -138,7 +138,12 @@ class FederationApp
             .'<script>window.__TAKEONE_FED = '.$json.';</script>'."\n"
             // Versioned: served with a cache lifetime, so a changed bridge
             // must arrive under a new address or browsers keep the old one.
-            .'<script src="./takeone-bridge.js?v='.$this->version('takeone-bridge.js').'"></script>'."\n".$head;
+            .'<script src="./takeone-bridge.js?v='.$this->version('takeone-bridge.js').'"></script>'."\n"
+            .'<script src="./takeone-test-mode.js?v='.$this->version('takeone-test-mode.js').'" defer></script>'."\n"
+            .'<script src="./takeone-featuring.js?v='.$this->version('takeone-featuring.js').'" defer></script>'."\n"
+            .'<script src="./takeone-rulebook.js?v='.$this->version('takeone-rulebook.js').'" defer></script>'."\n"
+            // The shared karate weight-class library, table embedded (public/libraries/karate-shotukan-weightclasses).
+            .\App\Support\KarateShotukanWeightclasses::tags()."\n".$head;
 
         return $this->apply($html, [
             'bootstrap' => ['<script src="./support.js"></script>', $inject.'<script src="./support.js"></script>', 1],
@@ -226,6 +231,26 @@ class FederationApp
             'stats-actions' => ['<div style="display:flex;gap:10px;flex-wrap:wrap">'."\n".'      <button onClick="{{ doRefresh }}"', '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-left:auto">'."\n".'      <button onClick="{{ doRefresh }}"', 1],
             'stats-error' => ['The results service did not respond. You are viewing cached figures from 08:42 today.', '{{ errMsg }}', 1],
             'stats-empty' => ['No statistics match these filters</h2>', '{{ emptyTitle }}</h2>', 1],
+
+            // PLATFORM: a federation with bodies under it sees one row per sub-federation
+            // (its own sub-bodies rolled in), counted from the same filtered records.
+            'stats-bodies' => ["<div style=\"display:flex;flex-wrap:wrap;gap:18px;margin-top:18px\">\n  <section id=\"growth\"",
+                '<sc-if value="{{ sub.show }}" hint-placeholder-val="{{ false }}"><section aria-labelledby="h-sub" style="margin-top:18px;background:#fff;border:1px solid rgba(30,44,79,0.081);border-radius:18px;padding:clamp(16px,2vw,22px);box-sizing:border-box;box-shadow:0 14px 40px rgba(30,44,79,.08)">'
+                .'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="width:22px;height:2px;border-radius:2px;background:#d8b25f"></span><span style="font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Federation structure</span></div>'
+                .'<h2 id="h-sub" style="margin:0 0 4px;font-size:1.02rem;font-weight:600">{{ sub.title }}</h2>'
+                .'<div style="font-size:.7rem;color:#6b7689;margin-bottom:12px">{{ sub.intro }}</div>'
+                .'<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:minmax(160px,1.6fr) 56px 70px 88px 64px 58px;gap:8px;padding:0 10px 8px;min-width:520px;font-size:.6rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b7689;border-bottom:1px solid rgba(30,44,79,0.081)">'
+                .'<span>Federation</span><span style="text-align:right">Clubs</span><span style="text-align:right">Athletes</span><span style="text-align:right">Competitions</span><span style="text-align:right">Entries</span><span style="text-align:right">Medals</span></div>'
+                .'<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;min-width:520px"><sc-for list="{{ sub.rows }}" as="r" hint-placeholder-count="2">'
+                .'<div style="position:relative;display:grid;grid-template-columns:minmax(160px,1.6fr) 56px 70px 88px 64px 58px;gap:8px;align-items:center;padding:10px;border-radius:10px"><span style="{{ r.heat }}"></span>'
+                .'<span style="position:relative;min-width:0"><span style="display:block;font-size:.8rem;font-weight:600;overflow-wrap:anywhere">{{ r.name }}</span><sc-if value="{{ r.hasNote }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:.66rem;color:#6b7689;margin-top:2px">{{ r.note }}</span></sc-if></span>'
+                .'<span style="position:relative;text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums">{{ r.clubs }}</span>'
+                .'<span style="position:relative;text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums">{{ r.athletes }}</span>'
+                .'<span style="position:relative;text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums">{{ r.comps }}</span>'
+                .'<span style="position:relative;text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums">{{ r.entries }}</span>'
+                .'<span style="position:relative;text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums">{{ r.medals }}</span>'
+                .'</div></sc-for></div></div></section></sc-if>'
+                ."\n\n<div style=\"display:flex;flex-wrap:wrap;gap:18px;margin-top:18px\">\n  <section id=\"growth\"", 1],
 
             // What each KPI counts, as it is counted.
             'tip-ath' => ['Athletes with a valid license and at least one training or competition record this season. {{ k.registered }} athlete profiles are registered in total.', 'Athletes entered in at least one competition this season. {{ k.registered }} athlete profiles are registered with the federation in total.', 1],
@@ -376,6 +401,29 @@ class FederationApp
     }
 
     /**
+     * PLATFORM: the Schedule tab reads the event's own days and sessions
+     * (FederationSchedule) instead of the prototype's fixed demo programme,
+     * and staff edit it in place. Logic: resources/patches/schedule.js;
+     * markup: resources/patches/schedule.html (the prototype's visual
+     * language — gold-topped day cards, time / what / where rows).
+     */
+    private function scheduleRewrites(): array
+    {
+        $dir = dirname(__DIR__).'/resources/patches';
+        $methods = (string) file_get_contents($dir.'/schedule.js');
+        $markup = rtrim((string) file_get_contents($dir.'/schedule.html'));
+        $blank = '{days: [], empty: false, has: false, can: false}';
+
+        return [
+            'sch-data' => [["    const schedule = [\n      {day: 'Day 1 — Eliminations'", "{time: '19:00', what: 'Closing gala', where: 'Grand ballroom'}]}\n    ];"],
+                "    const schedule = [];\n    const sch = s.tab === 'schedule' ? this.schVals(sel) : {$blank};", 1],
+            'sch-vals' => ["tabSchedule: s.tab === 'schedule',", "tabSchedule: s.tab === 'schedule', sch,", 1],
+            'sch-methods' => ['  cssToObj(css) {', $methods.'  cssToObj(css) {', 1],
+            'sch-markup' => [['      <sc-if value="{{ tabSchedule }}" hint-placeholder-val="{{ false }}">', "          </sc-for>\n        </div>\n      </sc-if>"], $markup, 1],
+        ];
+    }
+
+    /**
      * PLATFORM: layout repairs on the Statistics page, measured on a real
      * desktop render. Markup only — the values they bind are computed in
      * resources/patches/statistics.js.
@@ -423,7 +471,13 @@ class FederationApp
         $flags = ['flags' => ['https://flagcdn.com/w40/', '/federation/app/flags/', null]];
 
         return match ($file) {
-            'Events Dashboard.dc.html' => $flags + $this->eventStatisticsRewrites() + [
+            'Events Dashboard.dc.html' => $flags + $this->eventStatisticsRewrites() + $this->scheduleRewrites() + [
+                // PLATFORM: an entry fee is settled with the organiser however they
+                // direct, and the organiser marks it received here — so the invoice
+                // list speaks of a payment, not a bank transfer. (Display only: the
+                // stored status is still 'Awaiting transfer'.)
+                'entry-pay-pill' => ["['Awaiting transfer', '#a8620f', '#fdf1e0']", "['Awaiting payment', '#a8620f', '#fdf1e0']", 1],
+                'entry-pay-confirm' => ['title="Mark the bank transfer as received"', 'title="Mark this club’s payment as received"', 1],
                 'font' => ['https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap', './vendor/fonts/poppins.css', 1],
                 'leaflet-css' => ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', './vendor/leaflet/leaflet.css', 1],
                 'leaflet-js' => ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', './vendor/leaflet/leaflet.js', 1],
@@ -509,7 +563,13 @@ class FederationApp
                     .'<div style="min-width:0;flex:1"><div style="font-size:.7rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20;margin-bottom:4px">QR code</div>'
                     .'<div style="font-size:.74rem;line-height:1.5;color:#6b7689;margin-bottom:10px">Clubs scan it to open the same invitation. Put it on a poster or send it with a message.</div>'
                     .'<div style="display:flex;gap:8px;flex-wrap:wrap"><a href="{{ inviteQrPng }}" style="display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:9px;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;font-size:.74rem;font-weight:600;text-decoration:none">Download PNG</a>'
-                    .'<a href="{{ inviteQrSvg }}" style="display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:9px;border:1px solid #d5dae3;background:#fff;color:#1e2c4f;font-size:.74rem;font-weight:600;text-decoration:none">SVG</a></div></div></div></sc-if>', 1],
+                    .'<a href="{{ inviteQrSvg }}" style="display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:9px;border:1px solid #d5dae3;background:#fff;color:#1e2c4f;font-size:.74rem;font-weight:600;text-decoration:none">SVG</a></div></div></div></sc-if>'
+                    // Test mode for this event — drawn by takeone-test-mode.js (managers only).
+                    .'<div data-fed-test data-event="{{ sel.id }}"></div>'
+                    // Paid featuring on the members' Events page — drawn by takeone-featuring.js (managers only).
+                    .'<div data-fed-feature data-event="{{ sel.id }}"></div>'
+                    // The rule book — category + belt system — drawn by takeone-rulebook.js (managers only).
+                    .'<div data-fed-rulebook data-event="{{ sel.id }}"></div>', 1],
                 // The page lives at /federation; its siblings sit beside the file, not the address.
                 'invite-origin' => ["const origin = (() => { try { return new URL('Club Invitation.dc.html', location.href).href;", "const origin = (() => { try { return new URL('Club Invitation.dc.html', document.baseURI).href;", 1],
                 'club-link-href' => ["href: origin + '?club=' + encodeURIComponent(c.id), copyLabel", "href: window.TakeOneFed.clubLink(origin, c.id), copyLabel", 1],
@@ -551,10 +611,19 @@ class FederationApp
                 // no tile (CLAUDE.md Design Rule #5).
                 'ath-club-logo' => ['<div style="font-size:.8rem;color:#6b7689">{{ athSel.club }}</div>',
                     '<sc-if value="{{ athSel.clubGo }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ athSel.onClub }}" title="{{ athSel.club }}" style="display:inline-flex;align-items:center;gap:6px;margin:2px 0 0 -6px;padding:3px 8px 3px 6px;border:1px solid transparent;border-radius:999px;background:none;font-family:inherit;font-size:.8rem;font-weight:600;color:#8a6d20;cursor:pointer;text-align:start;transition:background .15s ease,border-color .15s ease" style-hover="background:#fdf8ec;border-color:#e7cf94"><sc-if value="{{ athSel.hasClubLogo }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="{{ athSel.club }}" style="{{ athSel.clubLogoStyle }}"></span></sc-if><span>{{ athSel.club }}</span><span aria-hidden="true" style="font-size:.72rem;opacity:.7">{{ athSel.clubGoIcon }}</span></button></sc-if><sc-if value="{{ athSel.clubNoGo }}" hint-placeholder-val="{{ false }}"><div style="font-size:.8rem;color:#6b7689;display:flex;align-items:center;gap:6px;margin-top:2px"><sc-if value="{{ athSel.hasClubLogo }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="{{ athSel.club }}" style="{{ athSel.clubLogoStyle }}"></span></sc-if><span>{{ athSel.club }}</span></div></sc-if>', 1],
-                'athletes-data' => [["    const athData = [\n      {name:'Yusuf Al Doseri'", "\n    ];\n    const q = s.athQuery"], "    const athData = window.TakeOneFed.athleteDirectory();\n    const q = s.athQuery", 1],
+                // The athlete row's sub-line in full words — "Male · 14 years" — and
+                // the club as its logo and name (Design Rule #5: bare logo).
+                // The athlete row's sub-lines: gender in its colour (blue / pink),
+                // age in black, nationality with its flag; then the club (bare
+                // logo, Design Rule #5) and the martial arts practised there.
+                'ath-row-meta' => ["meta: a.gender + ' · ' + a.age + ' · ' + a.club,",
+                    "meta: '', metaGender: /^f/i.test(a.gender || '') ? 'Female' : (/^m/i.test(a.gender || '') ? 'Male' : ''), metaGenderStyle: this.cssToObj('font-weight:600;color:' + (/^f/i.test(a.gender || '') ? '#db2777' : '#2563eb')), hasMetaGender: /^[fm]/i.test(a.gender || ''), metaAge: (a.age !== '' && a.age != null && a.age !== '\\u2014') ? (a.age + (+a.age === 1 ? ' year' : ' years')) : '', hasMetaAge: (a.age !== '' && a.age != null && a.age !== '\\u2014'), metaNat: a.natName && a.natName !== '\\u2014' ? a.natName : '', hasMetaNat: !!(a.natName && a.natName !== '\\u2014'), hasMetaFlag: !!a.natFlag, metaFlagStyle: a.natFlag ? Object.assign(this.cssToObj('width:16px;height:12px;flex:none;border-radius:2px;box-shadow:0 0 0 1px #d5dae3;background-size:cover;background-position:center'), {backgroundImage: 'url(\"' + a.natFlag + '\")'}) : {}, metaClub: a.club && a.club !== '\\u2014' ? a.club : '', hasMetaClub: !!(a.club && a.club !== '\\u2014'), hasRowClubLogo: !!a.clubLogo, rowClubLogoStyle: a.clubLogo ? Object.assign(this.cssToObj('width:16px;height:16px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center'), {backgroundImage: 'url(\"' + a.clubLogo + '\")'}) : {}, metaArts: (a.clubArts || []).join(' · '), hasMetaArts: !!(a.clubArts && a.clubArts.length),", 1],
+                'ath-row-meta-tile' => ['<div style="font-size:.72rem;color:#6b7689">{{ a.meta }}</div>',
+                    '<div style="font-size:.72rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:1px"><sc-if value="{{ a.hasMetaGender }}" hint-placeholder-val="{{ false }}"><span style="{{ a.metaGenderStyle }}">{{ a.metaGender }}</span></sc-if><sc-if value="{{ a.hasMetaAge }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="color:#97a1b4">·</span><span style="color:#111827">{{ a.metaAge }}</span></sc-if><sc-if value="{{ a.hasMetaNat }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="color:#97a1b4">·</span><span style="display:inline-flex;align-items:center;gap:5px;color:#1e2c4f"><span>{{ a.metaNat }}</span><sc-if value="{{ a.hasMetaFlag }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="{{ a.metaNat }}" style="{{ a.metaFlagStyle }}"></span></sc-if></span></sc-if></div><sc-if value="{{ a.hasMetaClub }}" hint-placeholder-val="{{ false }}"><div style="font-size:.72rem;color:#6b7689;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px"><sc-if value="{{ a.hasRowClubLogo }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="{{ a.metaClub }}" style="{{ a.rowClubLogoStyle }}"></span></sc-if><span style="font-weight:600;color:#1e2c4f">{{ a.metaClub }}</span><sc-if value="{{ a.hasMetaArts }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="color:#97a1b4">·</span><span style="color:#8a6d20;font-weight:600">{{ a.metaArts }}</span></sc-if></div></sc-if>', 1],
+                'athletes-data' => [["    const athData = [\n      {name:'Yusuf Al Doseri'", "\n    ];\n    const q = s.athQuery"], "    // The Athletes list is the people the FEDERATION brought in (a TakeOne ID) —\n    // not every member of a club that does karate (asked for 2026-09-26). Club\n    // members stay findable where the federation brings someone in: Enroll\n    // athlete and \"Same person as\u2026\" read the whole directory (athDataAll).\n    const athDataAll = window.TakeOneFed.athleteDirectory();\n    const athData = athDataAll.filter(a => a.tk);\n    const q = s.athQuery", 1],
                 'athletes-dedupe' => ["    (s.regs || []).filter(r => String(r.id).indexOf('ext-') === 0).forEach(r => {\n      athData.push({", "    (s.regs || []).filter(r => String(r.id).indexOf('ext-') === 0).forEach(r => {\n      if (!athData.some(x => x.tk === r.takeoneId)) athData.push({", 1],
                 // PLATFORM: the officials clubs actually named, not the sample list.
-                'officials-data' => [["const offData = [\n      ['Hassan Al Khalifa'", "\n    ];\n    const officials = offData.map("], "const offData = window.TakeOneFed.officials();\n    const officials = offData.map(", 1],
+                'officials-data' => [["const offData = [\n      ['Hassan Al Khalifa'", "\n    ];\n    // Officials, drawn"], "const offData = window.TakeOneFed.officials();\n    // Officials, drawn", 1],
                 // PLATFORM: no figure without a record behind it (PLATFORM_SPEC §9).
                 'fin-payouts' => ['<span style="color:#6b7689">Outstanding payouts</span><span style="font-weight:700">BD 14,200</span>', '<span style="color:#6b7689">Outstanding payouts</span><span style="font-weight:700">—</span>', 1],
                 'fin-refunds' => ['<span style="color:#6b7689">Pending refunds</span><span style="font-weight:700">BD 1,050</span>', '<span style="color:#6b7689">Pending refunds</span><span style="font-weight:700">—</span>', 1],
@@ -594,18 +663,14 @@ class FederationApp
                 // PLATFORM: the store is the server's (same function names).
                 'store' => ['<script src="./federation-store.js"></script>', '<script src="./federation-store.platform.js?v='.$this->version('federation-store.platform.js').'"></script>', 1],
                 // PLATFORM: a real code goes by email; nothing on screen gives it away,
-                // and whether a contact belongs to a club is never revealed.
-                'code-demo-box' => ['<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#fdf6e6;border:1px dashed #caa14f;font-size:.74rem;color:#7a5a12">{{ demoCodeMsg }}</div>', '', 1],
-                'code-demo-hint' => ['<div style="margin-top:14px;padding:10px 12px;border-radius:10px;background:#f4f6fa;font-size:.72rem;color:#5d6880;line-height:1.5">{{ t.idDemoHint }}</div>', '', 1],
+                // and whether a contact belongs to a club is never revealed. (The
+                // club step itself — find by name, send, verify — and the one-shot
+                // submit are now written into the page, not rewritten into it.)
                 'code-sent-en' => ["idSentTo: 'Code sent to {c}.'", "idSentTo: 'If a club is registered with {c}, a code is on its way to the club’s email.'", 1],
                 'code-sent-ar' => ["idSentTo: 'تم إرسال الرمز إلى {c}.'", "idSentTo: 'إذا كان هناك نادٍ مسجّل بـ {c} فقد أُرسل الرمز إلى بريد النادي.'", 1],
-                'code-send' => ["sendCode: () => { const c = st && st.findClub(s.idContact); if (!c) return this.setState({error: t.eNoClub, codeSent: false});\n        const code = String(Math.floor(100000 + Math.random() * 900000)); this._pendingClub = c.id; this.setState({codeSent: true, demoCode: code, codeInput: '', error: ''}); },", "sendCode: () => { if (!(s.idContact || '').trim()) return this.setState({error: t.eNoClub, codeSent: false});\n        window.TakeOneFed.sendCode(s.idContact); this.setState({codeSent: true, demoCode: '', codeInput: '', error: ''}); },", 1],
-                'code-verify' => ["verifyCode: () => { if (s.codeInput !== s.demoCode) return this.setState({error: t.eCode}); const c = st && st.club(this._pendingClub); if (c) { this.loadClub(c, false); if (st.entry(c.id)) setTimeout(() => this.go(6), 0); } },", "verifyCode: () => { window.TakeOneFed.verifyCode(s.idContact, s.codeInput).then(id => { if (!id) return this.setState({error: t.eCode}); const c = st && st.club(id); if (c) { this.loadClub(c, false); if (st.entry(c.id)) setTimeout(() => this.go(6), 0); } }); },", 1],
                 // PLATFORM: a personal link was proved by the server; so was a
                 // session the coach already opened — both come back signed in.
                 'club-link' => ['const c = id && window.FedStore.club(id); if (c) this.loadClub(c, true);', 'const vk = window.FedStore.verifiedClub(); const c = vk && window.FedStore.club(vk); if (c) this.loadClub(c, !!id);', 1],
-                // PLATFORM: one server call does the whole submission.
-                'submit' => [["  submit() {\n", "\n  renderVals() {"], "  submit() {\n    const s = this.state, t = this.T();\n    if (this._submitting) return; this._submitting = true;\n    const dialC0 = this.countries().find(c => c.i3 === s.clubDial) || {};\n    const clubRec = {name: s.clubName.trim(), coach: s.coachName.trim(), email: s.clubEmail.trim(), phone: (dialC0.code || '') + ' ' + s.clubPhone.trim(), address: s.clubAddress.trim(), logo: s.clubLogo || null, logoShape: s.clubLogoShape || 'circle'};\n    const entries = this.entries();\n    window.TakeOneFed.submitEntry({clubMode: s.clubMode, club: clubRec, staff: s.staffData, coachName: s.coachName.trim(), entries, transferReq: s.transferReq, teams: this.teamsState()}).then(r => {\n      this._submitting = false;\n      if (!r.ok) return this.setState({error: r.message || t.eNone});\n      const payMsg = r.balance > 0 ? t.transferMsg.replace('{a}', this.money(r.balance)) : t.nothingDue;\n      this.setState({clubMode: 'existing', verified: true, clubId: r.clubId || s.clubId, doneInfo: {ref: r.ref, payMsg}, picks: {}, pickTypes: {}, athletes: [], transferReq: [], teams: null, amend: false, cNum: '', cCvc: '', cExp: '', confirm: false, draft: null, submitted: true, step: 5, subClub: s.clubName.trim(), subCount: entries.length});\n      try { window.scrollTo({top: 0}); } catch (e) {}\n    });\n  }\n  renderVals() {", 1],
                 // PLATFORM: no gateway — entry fees are paid by bank transfer,
                 // to the federation that runs the event.
                 'club-pay-default' => ["payMethod: 'card'", "payMethod: 'bank'", 1],
@@ -614,11 +679,87 @@ class FederationApp
                 'event-texts' => ["    return this.state.lang === 'ar' ? ar : en;\n  }", "    const __tx = window.TakeOneFed && window.TakeOneFed.eventTexts && window.TakeOneFed.eventTexts(); if (__tx) { Object.assign(en, __tx.en); Object.assign(ar, __tx.ar); }\n    return this.state.lang === 'ar' ? ar : en;\n  }", 1],
                 'cover-art' => ['<image-slot id="invite-cover-art" shape="rect" placeholder="Drop the competition artwork here"', '<image-slot id="invite-cover-art" shape="rect" placeholder=" " src="{{ coverSrc }}"', 1],
                 'cover-art-side' => ['<image-slot id="invite-cover-art" shape="rect" placeholder="Competition artwork"', '<image-slot id="invite-cover-art" shape="rect" placeholder=" " src="{{ coverSrc }}"', 1],
-                'club-beneficiary' => ['<b>Bahrain Karate Federation</b>', '<b>{{ fedBeneficiary }}</b>', 1],
-                'club-beneficiary-val' => ["v.payCard = s.payMethod === 'card'; v.payBank = s.payMethod === 'bank';", "v.payCard = s.payMethod === 'card'; v.payBank = s.payMethod === 'bank'; v.fedBeneficiary = window.TakeOneFed.beneficiary(); v.coverSrc = window.TakeOneFed.coverArt(); const __bk = window.TakeOneFed.bank(); v.fedHasBank = !!__bk; v.fedNoBank = !__bk; v.fedBankName = (__bk && __bk.bank) || ''; v.fedHasBankName = !!(__bk && __bk.bank); v.fedIban = (__bk && __bk.iban) || ''; v.fedSwift = (__bk && __bk.swift) || ''; v.fedHasSwift = !!(__bk && __bk.swift);", 1],
-                // PLATFORM: the real account, from the federation's record — or,
-                // until it is filled in, an honest line instead of a fake IBAN.
-                'club-iban' => ['<span style="color:#6b7689">IBAN</span><b style="overflow-wrap:anywhere">BH00 XXXX 0000 0000 0000 00</b>', '<sc-if value="{{ fedHasBankName }}" hint-placeholder-val="{{ false }}"><span style="color:#6b7689">Bank</span><b>{{ fedBankName }}</b></sc-if><span style="color:#6b7689">IBAN</span><sc-if value="{{ fedHasBank }}" hint-placeholder-val="{{ true }}"><b style="overflow-wrap:anywhere;font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em">{{ fedIban }}</b></sc-if><sc-if value="{{ fedNoBank }}" hint-placeholder-val="{{ false }}"><b style="color:#a8620f">Not provided yet — ask the federation for its bank details</b></sc-if><sc-if value="{{ fedHasSwift }}" hint-placeholder-val="{{ false }}"><span style="color:#6b7689">SWIFT</span><b>{{ fedSwift }}</b></sc-if>', 1],
+                // PLATFORM: no gateway and no account on screen — the organiser
+                // confirms each club's payment themselves (FederationDesk::
+                // confirmEntryPayment). The club sees what it owes, the reference
+                // the organiser will match it against, and who confirms it.
+                'club-pay-panel' => [['<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">', '{{ t.bankNote }}</div>'."\n".'              </sc-if>'], '<div style="display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:12px;background:#fdf6e6;border:1px solid #f0dfb4;margin-bottom:12px"><span style="width:36px;height:36px;flex:0 0 auto;border-radius:10px;background:#1e2c4f;color:#fff;display:grid;place-items:center;font-size:1rem;font-weight:700">✓</span><div style="min-width:0"><div style="font-size:.84rem;font-weight:700;color:#1e2c4f">{{ t.payBankL }}</div><div style="font-size:.74rem;color:#5d6880;margin-top:2px;line-height:1.5">{{ t.bankNote }}</div></div></div><div style="padding:14px;border-radius:12px;background:#f7f8fb;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.8rem"><span style="color:#6b7689">{{ t.reference }}</span><b dir="ltr" style="color:#8a6d20;text-align:start">{{ invRef }}</b><span style="color:#6b7689">{{ t.dueNow }}</span><b dir="ltr" style="text-align:start">{{ dueAmount }}</b></div>', null],
+                // PLATFORM: the reference is issued by the server on submit
+                // (FederationInvitation::nextRef). Before that there is no number,
+                // so say so rather than show a truncated one a club might pay against.
+                // PLATFORM: the confirmation sits on the page itself, not in a
+                // floating card — no white panel, shadow or gold top edge.
+                // PLATFORM: the Location card draws a map on the organiser's pin —
+                // Leaflet served from here, OSM tiles as on the dashboard, sending
+                // only the origin as Referer. No pin, no map (the link stays).
+                'club-leaflet' => ['<script src="./image-slot.js"></script>', '<script src="./image-slot.js"></script>'."\n".'<link rel="stylesheet" href="./vendor/leaflet/leaflet.css">'."\n".'<script src="./vendor/leaflet/leaflet.js"></script>', 1],
+                'club-map-el' => ['{{ t.secWhere }}</span></div>', '{{ t.secWhere }}</span></div><sc-if value="{{ hasPin }}" hint-placeholder-val="{{ false }}"><div ref="{{ pinMapRef }}" role="img" aria-label="{{ whereTitle }}" style="height:260px;background:#eef1f6;position:relative;z-index:0"></div></sc-if>', 1],
+                // PLATFORM: with a map, the venue's name and the Open-in-maps button
+                // ride on the map's lower edge instead of sitting under it.
+                'club-where-section' => ['<section id="inv-where" style="background:#fff;border-radius:18px;border:1px solid #e3e7ee;box-shadow:0 10px 30px rgba(30,44,79,.06);overflow:hidden;margin-bottom:14px">', '<section id="inv-where" style="background:#fff;border-radius:18px;border:1px solid #e3e7ee;box-shadow:0 10px 30px rgba(30,44,79,.06);overflow:hidden;margin-bottom:14px;position:relative">', 1],
+                'club-where-row' => ['<div style="padding:14px 18px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">', '<div style="{{ whereRowStyle }}">', 1],
+                'club-where-title' => ['<span style="flex:1;min-width:180px"><span style="display:block;font-size:.9rem;font-weight:700;color:#1e2c4f">{{ whereTitle }}</span>', '<span style="{{ whereNameStyle }}"><span style="{{ whereTitleStyle }}">{{ whereTitle }}</span>', 1],
+                'club-where-sub' => ['<span style="display:block;font-size:.76rem;color:#6b7689;margin-top:2px">{{ whereSub }}</span>', '<span style="{{ whereSubStyle }}">{{ whereSub }}</span>', 1],
+                'club-where-btn' => ['<a href="{{ mapHref }}" target="_blank" rel="noopener" style="display:inline-flex;', '<a href="{{ mapHref }}" target="_blank" rel="noopener" style="pointer-events:auto;display:inline-flex;', 1],
+                'club-map-vals' => ["v.hasMap = /^https?:\\/\\//i.test(t.mapUrl || ''); v.mapHref = v.hasMap ? t.mapUrl : '#';", "v.hasMap = /^https?:\\/\\//i.test(t.mapUrl || ''); v.mapHref = v.hasMap ? t.mapUrl : '#'; const __pl = parseFloat(t.mapLat), __pg = parseFloat(t.mapLng); v.hasPin = isFinite(__pl) && isFinite(__pg) && Math.abs(__pl) <= 90 && Math.abs(__pg) <= 180; v.whereRowStyle = css(v.hasPin ? 'position:absolute;left:0;right:0;bottom:0;z-index:500;padding:56px 16px 14px;display:flex;align-items:center;gap:12px;background:linear-gradient(to top,rgba(11,19,43,.92),rgba(11,19,43,.55) 55%,rgba(11,19,43,0));pointer-events:none' : 'padding:14px 18px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap'); v.whereNameStyle = css(v.hasPin ? 'flex:1;min-width:0;overflow-wrap:anywhere' : 'flex:1;min-width:180px'); v.whereTitleStyle = css('display:block;font-size:.9rem;font-weight:700;color:' + (v.hasPin ? '#fff;text-shadow:0 1px 3px rgba(0,0,0,.35)' : '#1e2c4f')); v.whereSubStyle = css('display:block;font-size:.76rem;margin-top:2px;color:' + (v.hasPin ? 'rgba(255,255,255,.8)' : '#6b7689')); v.pinMapRef = el => { if (!el || el._leaflet_id || !v.hasPin) return; const init = n => { if (typeof L === 'undefined') { if (n < 40) setTimeout(() => init(n + 1), 150); return; } if (el._leaflet_id || !el.isConnected) return; L.Icon.Default.imagePath = new URL('./vendor/leaflet/images/', location.href).href; const m = L.map(el, {scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false, zoomControl: false, attributionControl: false}).setView([__pl, __pg], 15); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '&copy; <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener\">OpenStreetMap</a> contributors', referrerPolicy: 'strict-origin-when-cross-origin', maxZoom: 19}).addTo(m); L.marker([__pl, __pg], {keyboard: false}).addTo(m); setTimeout(() => m.invalidateSize(), 250); }; init(0); };", 1],
+                // PLATFORM: on a phone the page body rides 22px up over the cover,
+                // which swallowed the gap under the date line — keep it clear.
+                'club-cover-gap' => ['<div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,4vw,40px);color:#fff;pointer-events:none">', '<div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,4vw,40px);padding-bottom:max(clamp(20px,4vw,40px),46px);color:#fff;pointer-events:none">', 1],
+                // PLATFORM: the opening page doesn't list the requirements — they
+                // are read (and accepted) on the Rules step, which still shows them.
+                'club-no-landing-reqs' => ["v.hasReqs = (t.reqList || []).length > 0;", "v.hasReqs = false;", 1],
+                // PLATFORM: the club's own entries page. What is still to settle is
+                // one figure (not "0.000 · to settle 30.000"), a zero is not green,
+                // and the history no longer says "Paid" when fees were only raised:
+                // the server logs both as logPaid, told apart by their method.
+                'club-manage-stats' => ['      v.mgStats = [[t.stAthletes, String(act.length), \'#1e2c4f\'], [t.stTotal, this.money(inv0.total), \'#1e2c4f\'], [t.stPaid, this.money(inv0.paid), \'#2f7a4f\'],
+        [inv0.balance < 0 ? t.credit : t.stBalance, this.money(Math.abs(inv0.balance - 0)) + (inv0.pending ? \' · \' + t.awaiting + \' \' + this.money(inv0.pending) : \'\'), inv0.balance > 0 ? \'#b4483c\' : \'#2f7a4f\']].map(([label, value, c]) => ({label, value, style: statStyle(c)}));', '      const __owe = Math.max(0, inv0.balance) + (inv0.pending || 0);
+      v.mgStats = [[t.stAthletes, String(act.length), \'#1e2c4f\'], [t.stTotal, this.money(inv0.total), \'#1e2c4f\'], [t.stPaid, this.money(inv0.paid), inv0.paid > 0 ? \'#2f7a4f\' : \'#1e2c4f\'],
+        inv0.balance < -0.0005 ? [t.credit, this.money(-inv0.balance), \'#2f7a4f\'] : __owe > 0.0005 ? [t.awaiting, this.money(__owe), \'#a8620f\'] : [t.stBalance, this.money(0), \'#2f7a4f\']].map(([label, value, c]) => ({label, value, style: statStyle(c)}));', 1],
+                'club-manage-log' => ['text: (t[g.key] || g.key).replace(\'{n}\', g.n || \'\')', 'text: (t[g.key === \'logPaid\' ? (g.m === \'Bank transfer\' ? \'logDue\' : \'logReceived\') : g.key] || g.key).replace(\'{n}\', g.n || \'\')', 1],
+                'club-log-en' => ["logPaid: 'Paid {a} ({m})'", "logPaid: 'Paid {a} ({m})', logDue: 'Fees of {a} to settle with the organiser', logReceived: 'Organiser recorded payment of {a}'", 1],
+                'club-log-ar' => ["logPaid: 'دفع {a} ({m})'", "logPaid: 'دفع {a} ({m})', logDue: 'رسوم بقيمة {a} تُسدَّد للمنظّم', logReceived: 'سجّل المنظّم استلام {a}'", 1],
+                // PLATFORM: the entries page on a phone — the reference on a line of
+                // its own (never broken mid-code), no "Male" twice, Withdraw beside the athlete.
+                'club-manage-row' => ['<div style="flex:1;min-width:180px"><div style="font-size:.88rem;font-weight:600">{{ a.name }}', '<div style="flex:1;min-width:0"><div style="font-size:.88rem;font-weight:600">{{ a.name }}', 1],
+                'club-manage-meta' => ['meta: (a.gender === \'Female\' ? t.female : t.male) + \' · \' + a.weight + \' kg · \' + (this.classify(a) || \'\'),', 'meta: (this.classify(a) ? a.weight + \' kg · \' + this.classify(a) : (a.gender === \'Female\' ? t.female : t.male) + \' · \' + a.weight + \' kg\'),', 1],
+                'club-manage-tk' => ['<span style="font-size:.7rem;color:#6b7689;font-weight:500" dir="ltr">{{ a.tk }}</span>', '<span style="font-size:.7rem;color:#6b7689;font-weight:500;white-space:nowrap;display:inline-block" dir="ltr">{{ a.tk }}</span>', 1],
+                // PLATFORM: the entries page opens with the SAME bar every step has —
+                // back, eyebrow, title, language — sticky on a phone, not a new header.
+                'club-manage-head' => [['<sc-if value="{{ isManage }}" hint-placeholder-val="{{ false }}">', '      <div style="{{ phaseStyle }}">{{ phaseMsg }}</div>'], '<sc-if value="{{ isManage }}" hint-placeholder-val="{{ false }}">
+  <div style="min-height:100vh;box-sizing:border-box;display:flex;flex-direction:column;align-items:center">
+    <div style="{{ mgTopBar }}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onClick="{{ mgBack }}" aria-label="{{ t.back }}" style="width:40px;height:40px;flex:none;border-radius:12px;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer;display:grid;place-items:center;font-size:1rem">{{ backArrow }}</button>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.66rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20">{{ t.yourEntries }}</div>
+          <div style="font-size:1.08rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ clubName }}</div>
+        </div>
+        <div style="display:flex;gap:2px;padding:3px;border-radius:999px;background:#eef1f6;box-shadow:none;pointer-events:auto">
+          <sc-for list="{{ langs }}" as="l" hint-placeholder-count="2"><button onClick="{{ l.onClick }}" aria-pressed="{{ l.on }}" style="{{ l.style }}">{{ l.label }}</button></sc-for>
+        </div>
+      </div>
+    </div>
+    <div style="{{ mgBody }}">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="{{ logoSmallStyle }}"></div>
+        <div style="flex:1;min-width:0"><div style="font-size:.84rem;font-weight:600;color:#1e2c4f">{{ t.eventName }}</div><div style="font-size:.74rem;color:#8a6d20;font-weight:600;margin-top:2px;white-space:nowrap" dir="ltr">{{ invRef }}</div></div>
+      </div>
+      <div style="{{ phaseStyle }}">{{ phaseMsg }}</div>', null],
+                'club-manage-back-val' => ['      v.invRef = baseEntry.ref;
+      v.startAdd = ', '      v.invRef = baseEntry.ref;
+      v.mgBack = () => this.go(0); v.mgTopBar = css(D ? \'width:100%;max-width:820px;padding:40px 40px 0;box-sizing:border-box\' : \'width:100%;box-sizing:border-box;position:sticky;top:0;z-index:30;background:rgba(238,241,246,.96);backdrop-filter:blur(10px);padding:12px 16px;border-bottom:1px solid #e3e7ee\'); v.mgBody = css(\'width:100%;max-width:820px;box-sizing:border-box;padding:\' + (D ? \'22px 40px 40px\' : \'18px 16px 40px\'));
+      v.startAdd = ', 1],
+                'club-done-flat' => ['<div style="width:100%;max-width:520px;background:#fff;border-radius:22px;border-top:4px solid #d8b25f;padding:clamp(26px,5vw,44px);box-shadow:0 22px 60px rgba(30,44,79,.13);text-align:center;animation:rise .4s cubic-bezier(.22,.68,.35,1) both">', '<div style="width:100%;max-width:520px;padding:clamp(8px,3vw,24px) 0;text-align:center;animation:rise .4s cubic-bezier(.22,.68,.35,1) both">', 1],
+                'club-ref-pending' => ["v.invRef = (baseEntry && baseEntry.ref) || (EV.code ? EV.code + '-…' : '');", "v.invRef = (baseEntry && baseEntry.ref) || (rtl ? 'يصدر عند الإرسال' : 'Issued when you submit');", 1],
+                'club-pay-label-en' => ["payBankL: 'Bank transfer', payBankS: 'Before the deadline'", "payBankL: 'Confirmed by the organiser', payBankS: ''", 1],
+                'club-pay-label-ar' => ["payBankL: 'تحويل بنكي', payBankS: 'قبل الموعد النهائي'", "payBankL: 'يؤكّده المنظّم', payBankS: ''", 1],
+                'club-pay-note-en' => ["bankNote: 'Entries are confirmed once the transfer arrives. Use the reference exactly as shown.'", "bankNote: 'Settle the fees with the organiser as they direct. The organiser records the payment on their side — there is nothing more to do here.'", 1],
+                'club-pay-note-ar' => ["bankNote: 'تُعتمد التسجيلات عند وصول التحويل. استخدم الرقم المرجعي كما هو.'", "bankNote: 'سدّد الرسوم للمنظّم بالطريقة التي يحدّدها. يسجّل المنظّم الدفعة من جهته — لا شيء آخر مطلوب منك هنا.'", 1],
+                'club-pay-done-en' => ["transferMsg: 'Awaiting bank transfer of {a}.'", "transferMsg: '{a} to settle with the organiser.'", 1],
+                'club-pay-done-ar' => ["transferMsg: 'بانتظار تحويل بنكي بقيمة {a}.'", "transferMsg: 'يُسدَّد {a} للمنظّم.'", 1],
+                'club-pay-awaiting-en' => ["awaiting: 'Awaiting transfer'", "awaiting: 'To settle with the organiser'", 1],
+                'club-pay-awaiting-ar' => ["awaiting: 'بانتظار التحويل'", "awaiting: 'يُسدَّد للمنظّم'", 1],
                 'font' => ['https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap', './vendor/fonts/poppins-tajawal.css', 1],
             ],
             default => [],

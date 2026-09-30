@@ -122,7 +122,10 @@
            one cluster belonging to this header and started looking like loose
            buttons" (components/event-poster-band.blade.php). The row is a SPAN
            because the band's control slot is phrasing content. */
-        .ev-ctl-row { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; }
+        /* `min-width: 0` so a long title truncates instead of pushing the
+           controls off a phone — the draw stage adds the organiser's lock and
+           menu beside this row, and without it they were clipped. */
+        .ev-ctl-row { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; }
         .ev-ctl-spacer { flex: 1 1 auto; }
 
         /* WHAT THIS SCREEN IS, beside the back arrow.

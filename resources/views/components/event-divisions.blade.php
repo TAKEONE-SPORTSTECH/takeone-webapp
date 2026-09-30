@@ -6,6 +6,8 @@
     'divisions' => [],
 
     'event' => null,            // event uuid — REQUIRED when server mode
+    'sport' => null,            // the event's sport key — decides the belt ladder; looked up from `event` when absent
+    'sportModel' => null,       // local mode: Alpine path in the PARENT scope holding the sport being chosen (the create form's `sport`) — the belts follow it live
     'server' => false,          // true → save over AJAX; false → edit a host Alpine array
     'model' => null,            // local mode: Alpine path in the PARENT scope holding the array
     'phases' => [],             // [['key' => 'finals', 'label' => 'Finals'], …]
@@ -173,9 +175,50 @@
     }
     }
 
+    /* The event's OWN belts — BJJ's IBJJF ladder, Karate's kyu/dan,
+       Taekwondo's geup/poom/dan (App\Sports\Combat\BeltLadder). Looked up
+       from the event when the host does not pass the sport. */
+    $beltSport = $sport ?? ($event ? \App\Events\Models\ClubEvent::where('uuid', $event)->value('sport') : null);
+
+    /* The event's own belt system when it has one (CategorySystems), else
+       the sport's ladder — unchanged for every event that chose none. */
+    $beltEvent = $event ? \App\Events\Models\ClubEvent::where('uuid', $event)->first() : null;
     $beltLadder = array_map(fn ($b) => [
         'value' => $b['value'], 'label' => $b['label'], 'bg' => $b['bg'], 'fg' => $b['fg'],
-    ], \App\Sports\Combat\BeltRank::ladder());
+    ], $beltEvent && $beltEvent->belt_system
+        ? app(\App\Events\Support\CategorySystems::class)->ladderFor($beltEvent)
+        : \App\Sports\Combat\BeltRank::ladder($beltSport));
+
+    /* Where the sport is still being CHOSEN (the create form), every sport's
+       ladder travels with the page and the list follows the choice live —
+       there is no event yet to look the sport up from. */
+    /* The sports whose competitions divide by weight / by rank, from the
+       profiles every event type gives of itself — so a new sport package that
+       weighs its athletes is asked about weight without this file changing. */
+    $criteriaSports = ['weight' => [], 'rank' => []];
+    foreach (app(\App\Events\EventTypeRegistry::class)->all() as $profiledType) {
+        $profile = $profiledType->profile();
+        if (! $profile->sport) {
+            continue;
+        }
+        if ($profile->uses(\App\Events\Support\Competition\Criterion::Weight)) {
+            $criteriaSports['weight'][] = $profile->sport;
+        }
+        if ($profile->uses(\App\Events\Support\Competition\Criterion::Rank)) {
+            $criteriaSports['rank'][] = $profile->sport;
+        }
+    }
+
+    $beltsBySport = [];
+    if ($sportModel) {
+        foreach (array_keys(config('combat.sports', [])) as $sportKey) {
+            if ($own = \App\Sports\Combat\BeltLadder::forSport($sportKey)) {
+                $beltsBySport[$sportKey] = array_map(fn ($b) => [
+                    'value' => $b['value'], 'label' => $b['label'], 'bg' => $b['bg'], 'fg' => $b['fg'],
+                ], $own);
+            }
+        }
+    }
 
     $words = [
         'entrants' => __('events::events.divisions_entrants'),
@@ -224,7 +267,7 @@
         'age_youth' => __('events::events.divisions_age_youth'),
         'age_adult' => __('events::events.divisions_age_adult'),
         'age_master' => __('events::events.divisions_age_master'),
-        'belt_labels' => collect($beltLadder)->pluck('label', 'value')->all(),
+        'belt_labels' => collect($beltLadder)->merge(collect($beltsBySport)->flatten(1))->pluck('label', 'value')->all(),
         'presets' => __('events::events.divisions_add_preset'),
         'preset_title' => __('events::events.divisions_preset_title'),
         'preset_hint' => __('events::events.divisions_preset_hint'),
@@ -278,6 +321,12 @@
         canManage: {{ Illuminate\Support\Js::from((bool) $canManage) }},
         words: {{ Illuminate\Support\Js::from($words) }},
         belts: {{ Illuminate\Support\Js::from($beltLadder) }},
+        beltsBySport: {{ Illuminate\Support\Js::from((object) $beltsBySport) }},
+        {{-- Which sports divide by weight and by rank — asked of each event type's
+             competition profile (EventType::profile()), not listed by name. --}}
+        weightSports: {{ Illuminate\Support\Js::from($criteriaSports['weight']) }},
+        rankSports: {{ Illuminate\Support\Js::from($criteriaSports['rank']) }},
+        fixedSport: {{ Illuminate\Support\Js::from($beltSport) }},
         presets: {{ Illuminate\Support\Js::from($presetTable) }},
         avatars: {{ Illuminate\Support\Js::from($avatars) }},
         streams: {{ Illuminate\Support\Js::from(array_values(array_filter((array) $streams, fn ($r) => is_array($r) && ($r['key'] ?? '') !== ''))) }},
@@ -288,6 +337,9 @@
              The x-data expression is evaluated in the parent Alpine scope, so
              this reference stays live and reactive. --}}
         read: () => {{ $model }},
+        @endif
+        @if($sportModel)
+        sportRead: () => {{ $sportModel }},
         @endif
      })"
      class="space-y-2.5">
@@ -663,7 +715,8 @@
                             </div>
                             <p x-show="errors.max_age" x-cloak class="mb-2 text-xs text-red-500" x-text="errors.max_age"></p>
 
-                            {{-- Weight --}}
+                            {{-- Weight — only where the sport's profile divides by it --}}
+                            <div x-show="asksWeight">
                             <label class="block text-[11px] font-semibold text-gray-500 mb-1 mt-2">{{ __('events::events.divisions_weight') }}</label>
                             <div class="grid grid-cols-2 gap-2 mb-1">
                                 <input x-model="form.min_weight" @input="settingsChanged()" type="number" min="10" max="300" step="0.1" inputmode="decimal"
@@ -674,6 +727,7 @@
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                             </div>
                             <p x-show="errors.max_weight" x-cloak class="text-xs text-red-500" x-text="errors.max_weight"></p>
+                            </div>
                         </section>
                         {{-- ===== Which part of the event =====
                              Only where there IS more than one. An event that
@@ -711,7 +765,7 @@
                             <p class="mt-1 text-[11px] text-muted-foreground leading-snug" x-text="words.stream_hint"></p>
                         </section>
 
-                        <section>
+                        <section x-show="asksRank" x-cloak>
                             <div class="flex items-center gap-2 mb-2.5">
                                 <i class="bi bi-award text-[13px] text-muted-foreground"></i>
                                 <h4 class="text-[12.5px] font-bold text-foreground">{{ __('events::events.divisions_section_belts') }}</h4>
@@ -1377,7 +1431,33 @@
         days: Math.max(1, parseInt(cfg.days, 10) || 1),
         canManage: cfg.canManage !== false,
         words: cfg.words || {},
-        beltLadder: Array.isArray(cfg.belts) ? cfg.belts : [],
+        beltsDefault: Array.isArray(cfg.belts) ? cfg.belts : [],
+        beltsBySport: cfg.beltsBySport || {},
+        sportRead: typeof cfg.sportRead === 'function' ? cfg.sportRead : null,
+        /* The ladder of the sport this division is for: the event's own, or —
+           while the create form is still choosing — whichever sport is picked
+           right now. A sport with no ladder of its own gets the generic one. */
+        get beltLadder() {
+            const s = this.sportRead ? this.sportRead() : null;
+            return (s && this.beltsBySport[s]) || this.beltsDefault;
+        },
+        weightSports: Array.isArray(cfg.weightSports) ? cfg.weightSports : [],
+        rankSports: Array.isArray(cfg.rankSports) ? cfg.rankSports : [],
+        fixedSport: cfg.fixedSport || null,
+        get currentSport() { return this.sportRead ? (this.sportRead() || null) : this.fixedSport; },
+        /* Weight limits and belts are asked only where the sport's competition
+           profile divides by them (weightSports / rankSports, above). A sport
+           whose profile does not (padel, tennis, football) is not asked; no
+           sport at all keeps both, exactly as it always has. The server keeps
+           whatever it is sent either way — this only decides what is asked. */
+        get asksWeight() {
+            const s = this.currentSport;
+            return ! s || this.weightSports.indexOf(s) >= 0;
+        },
+        get asksRank() {
+            const s = this.currentSport;
+            return ! s || this.rankSports.indexOf(s) >= 0;
+        },
         presetTable: Array.isArray(cfg.presets) ? cfg.presets : [],
         avatars: cfg.avatars || {},
         /* The parts of the event entered separately. Fewer than two is nothing

@@ -243,6 +243,17 @@
                             <i class="bi bi-shield-lock text-primary w-4"></i> {{ __('admin.partials_member_popup_manage_permissions') }}
                         </button>
                         @endisset
+                        @unless(isset($club))
+                        {{-- Platform Members page only: a member of a club with no package --}}
+                        <button id="mpAddClubBtn" type="button" onclick="mpHideActions(); window.dispatchEvent(new CustomEvent('open-club-membership', {detail: {id: window._mpCurrentUserId, name: (window._mpData || {}).name || ''}}))"
+                                class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted transition-colors">
+                            <i class="bi bi-building-add text-primary w-4"></i> {{ __('Add to a club (no package)') }}
+                        </button>
+                        <button id="mpMergeBtn" type="button" onclick="mpHideActions(); window.dispatchEvent(new CustomEvent('open-member-merge', {detail: {id: window._mpCurrentUserId, name: (window._mpData || {}).name || ''}}))"
+                                class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted transition-colors">
+                            <i class="bi bi-union text-primary w-4"></i> {{ __('Merge with another account') }}
+                        </button>
+                        @endunless
                         <button id="mpImpersonateBtn" type="button" onclick="mpHideActions(); impersonateMember()"
                                 class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted transition-colors">
                             <i class="bi bi-incognito text-amber-500 w-4"></i> {{ __('admin.partials_member_popup_login_as_member') }}
@@ -453,6 +464,13 @@
         </div>
     </div>
 </div>
+
+@unless(isset($club))
+    @if(auth()->user()?->isSuperAdmin() && \Illuminate\Support\Facades\Route::has('admin.platform.members.club-membership'))
+        <x-club-membership-sheet :action="route('admin.platform.members.club-membership', ['id' => '__ID__'])" />
+        <x-member-merge-sheet />
+    @endif
+@endunless
 
 @once
 @push('scripts')
@@ -1278,6 +1296,18 @@
             window.showToast('error', '{{ __("admin.partials_member_popup_request_failed") }}');
         }
     };
+
+    // ── Merged away (super-admin): the removed account leaves every list at once ──
+    if (window.__mpMerged) window.removeEventListener('member-merged', window.__mpMerged);
+    window.__mpMerged = function (e) {
+        const goneId = String((e.detail || {}).merged);
+        if (String(window._mpCurrentUserId) === goneId) closeMemberPopup();
+        document.querySelectorAll('[data-member-id]').forEach(card => {
+            if (card.getAttribute('data-member-id') !== goneId) return;
+            (card.closest('.member-item') || card.closest('.member-card-wrapper') || card).remove();
+        });
+    };
+    window.addEventListener('member-merged', window.__mpMerged);
 
     // ── End Member Popup ─────────────────────────────────────────────
 })();

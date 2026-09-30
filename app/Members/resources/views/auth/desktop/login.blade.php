@@ -108,6 +108,9 @@
 
                 <form method="POST" action="{{ route('login.magic') }}">
                     @csrf
+                    {{-- Carry the page that sent them to sign in, so the emailed link lands there (it is
+                         often opened in another browser, where this session's url.intended does not exist). --}}
+                    @if(session('url.intended'))<input type="hidden" name="intended" value="{{ session('url.intended') }}">@endif
                     <p class="text-center text-sm text-gray-500 mb-3">{{ __('auth.auth_desktop_login_magic_hint') }}</p>
                     <div class="mb-3">
                         <input type="email" name="email" value="{{ old('email') }}"

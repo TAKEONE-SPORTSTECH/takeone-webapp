@@ -94,6 +94,11 @@ class AudienceResolver
                 ->pluck('user_roles.user_id')->map('intval')->all());
         }
 
+        // An event no club hosts: its host's own people (a federation's managers).
+        if ($tenantId === 0) {
+            $ids = array_merge($ids, $event->host()->managerIds($event));
+        }
+
         // Appointed to THIS event as the person running it.
         $ids = array_merge($ids, $event->officials()
             ->where('role', 'organiser')

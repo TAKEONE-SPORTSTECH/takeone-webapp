@@ -241,7 +241,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
         if ($event->hasStarted()) {
             return 'running';
         }
-        if ($event->weigh_in_at && now()->gte($event->weigh_in_at)) {
+        if ($event->weigh_in_at && now()->gte($event->inZone($event->weigh_in_at))) {
             return 'weigh_in';
         }
         if ($event->categories()->where('draw_state', 'final')->exists()) {
@@ -313,7 +313,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
 
         // The queue behind this bout just moved up: tell whoever the result
         // concerned, then call anyone who has come within range on this mat.
-        $calls = app(CallNotifier::class);
+        $calls = $this->onSharedBase() ? app(SharedBase\CallNotifier::class) : app(CallNotifier::class);
         if ($match->winner) {
             $calls->pushResult($event, $match->refresh());
         }
@@ -781,9 +781,9 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
                 title: __('event-taekwondo_tournament::messages.notify_weigh_in_title', ['title' => $event->title]),
                 body: __('event-taekwondo_tournament::messages.notify_weigh_in_body', [
                     'time' => $event->weigh_in_at->format('g:i A'),
-                    'place' => $event->location ?: ($event->tenant?->club_name ?? ''),
+                    'place' => $event->location ?: $event->host()->name,
                 ]),
-                at: $event->weigh_in_at->copy()->subDay()->setTime(
+                at: $event->inZone($event->weigh_in_at)->subDay()->setTime(
                     (int) config('event_notifications.event_day_reminder_hour', 7), 0,
                 ),
                 audience: Milestone::AUDIENCE_PARTICIPANTS,
@@ -1069,14 +1069,23 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
 
     /* ---------------- Collaborators ---------------- */
 
+    /**
+     * Taekwondo on the shared championship base (config
+     * `events.taekwondo_shared_base`, OFF by default) — see SharedBase/.
+     */
+    private function onSharedBase(): bool
+    {
+        return (bool) config('events.taekwondo_shared_base', false);
+    }
+
     private function runningOrder(): RunningOrder
     {
         return app(RunningOrder::class);
     }
 
-    private function enrolment(): Enrolment
+    private function enrolment(): Enrolment|SharedBase\Enrolment
     {
-        return new Enrolment($this->sport());
+        return $this->onSharedBase() ? new SharedBase\Enrolment($this->sport()) : new Enrolment($this->sport());
     }
 
     /**
@@ -1091,14 +1100,20 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
         return $this->advancement()->awardIfComplete($category);
     }
 
-    private function advancement(): Advancement
+    private function advancement(): Advancement|SharedBase\Advancement
     {
-        return new Advancement($this->sport());
+        return $this->onSharedBase() ? new SharedBase\Advancement($this->sport()) : new Advancement($this->sport());
     }
 
-    private function arrangement(): Arrangement
+    private function arrangement(): Arrangement|SharedBase\Arrangement
     {
-        return new Arrangement($this->advancement());
+        return $this->onSharedBase() ? new SharedBase\Arrangement($this->advancement()) : new Arrangement($this->advancement());
+    }
+
+    /** A bracketed, medal-awarding combat championship — see CompetitionProfile. */
+    public function profile(?ClubEvent $event = null): \App\Events\Support\Competition\CompetitionProfile
+    {
+        return \App\Events\Support\Competition\CompetitionProfile::combatChampionship($this->sport());
     }
 
     private function sport(): \App\Sports\Combat\CombatSport

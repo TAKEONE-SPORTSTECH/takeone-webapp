@@ -25,6 +25,9 @@ return [
         \App\Events\Sports\Taekwondo\Tournament\Tournament::class,
         \App\Events\Sports\Karate\Tournament\Tournament::class,
         \App\Events\Sports\BrazilianJiuJitsu\Tournament\Tournament::class,
+        // Any other sport with a recipe (app/Events/Sports/<Sport>/recipe.php).
+        // After the combat packages, so a sport with its own package keeps it.
+        \App\Events\Championship\Championship::class,
 
         // The club's own scoreboard for training: sparring, a friendly, an
         // exhibition. No draw, no medal, opened in one tap on a Tuesday — but

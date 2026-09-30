@@ -169,7 +169,7 @@
                    hardcode /admin/people and drop everybody there. */
                 $backHref = $sealedBack
                     ?? (($sealed ?? false)
-                        ? url('/e/'.request()->route('event')?->uuid.'/admin/people')
+                        ? route('me.events.people', ['event' => request()->route('event')?->uuid])
                         /* The page they actually came from, validated same-origin
                            by the controller, falling back to Find People when the
                            browser sent nothing. */

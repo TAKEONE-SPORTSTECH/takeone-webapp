@@ -16,6 +16,9 @@
     <style>html { color-scheme: only light; }</style>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    {{-- Every screen is as tall as what can be SEEN, even while the app is
+         hiding a strip under the bottom bar. See the partial. --}}
+    @include('partials.viewport-guard')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ session('club.context.name', 'Register') }} — TAKEONE</title>
     {{-- Use the club's logo as the browser tab favicon --}}
@@ -205,6 +208,8 @@
 <div id="wiz-root"
      x-data="wizard()"
      x-init="init()"
+     @cover-pick-language.window="lang = ($event.detail.code === 'ar' ? 'ar' : 'en'); document.getElementById('wiz-html').setAttribute('lang', lang); goTo(1)"
+     @cover-dismiss.window="lang = @js(in_array(app()->getLocale(), ['en', 'ar'], true) ? app()->getLocale() : 'en'); document.getElementById('wiz-html').setAttribute('lang', lang); goTo(1)"
      x-bind:dir="lang === 'ar' ? 'rtl' : 'ltr'"
      x-bind:lang="lang">
 
@@ -248,27 +253,88 @@
                 </div>
             </template>
 
-            {{-- Club name --}}
-            <div class="splash-club-name" x-text="clubName || 'TAKEONE'"></div>
-            <div class="splash-tagline">Choose your language / اختر لغتك</div>
+            {{-- The language picker is the SAME carousel the event cover uses
+                 (events::entry.public.partials.cover-carousel — one runtime, not a
+                 copy): flick the flags and the whole screen re-labels itself in
+                 the centred language; Continue confirms it. Only the languages
+                 this wizard is fully written in are offered. --}}
+            @php
+                $wizLocales = app(\App\Translation\Services\ContentLocales::class);
+                $wizMeta = $wizLocales->all();
+                $wizServing = in_array(app()->getLocale(), ['en', 'ar'], true) ? app()->getLocale() : 'en';
+                $wizLangs = [];
+                foreach (['en', 'ar'] as $code) {
+                    $wizLangs[] = [
+                        'code' => $code,
+                        'flag' => $wizLocales->flag($code),
+                        'native' => $wizMeta[$code]['native'] ?? strtoupper($code),
+                        'title' => $wizMeta[$code]['name'] ?? strtoupper($code),
+                        'dir' => $wizMeta[$code]['dir'] ?? ($code === 'ar' ? 'rtl' : 'ltr'),
+                        'tag' => trans('auth.auth_register_wizard_cover_tag', [], $code),
+                        'ev_title' => (string) session('club.context.name', 'TAKEONE'),
+                        'ev_date' => trans('auth.auth_register_wizard_cover_choose', [], $code),
+                        'label_language' => trans('events::events.cover_language', [], $code),
+                        'label_search' => trans('events::events.cover_search', [], $code),
+                        'label_enter' => trans('auth.auth_register_wizard_cover_enter', [], $code),
+                    ];
+                }
+            @endphp
+            <div style="width:100%; max-width:520px; margin:0 auto; color:#fff;">
+                <div style="display:flex; align-items:center; justify-content:center; gap:12px; animation:rise .5s ease both;">
+                    <span style="height:4px; width:38px; border-radius:9999px; background:#7c6bf5; flex:none;"></span>
+                    <span data-cover-tag style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:rgba(255,255,255,.9); text-align:center;"></span>
+                    <span style="height:4px; width:38px; border-radius:9999px; background:#7c6bf5; flex:none;"></span>
+                </div>
+                <h1 data-cover-title style="font-size:26px; line-height:31px; font-weight:800; margin:18px 16px 0; text-align:center; animation:rise .5s .06s ease both;"></h1>
+                <p data-cover-date style="font-size:15px; color:rgba(255,255,255,.7); margin:11px 0 0; text-align:center; animation:rise .5s .12s ease both;"></p>
 
-            {{-- Language buttons --}}
-            <div class="splash-lang-grid">
-                <button class="splash-lang-btn"
-                        @click="lang = 'en'; goTo(1)">
-                    <span class="fi fi-gb"></span>
-                    <span class="lang-name">English</span>
-                    <span class="lang-sub">English Language</span>
-                    <span class="lang-arrow"><i class="bi bi-chevron-right"></i></span>
-                </button>
-                <button class="splash-lang-btn"
-                        @click="lang = 'ar'; document.getElementById('wiz-html').setAttribute('lang','ar'); goTo(1)">
-                    <span class="fi fi-bh"></span>
-                    <span class="lang-name">العربية</span>
-                    <span class="lang-sub">اللغة العربية</span>
-                    <span class="lang-arrow"><i class="bi bi-chevron-left"></i></span>
-                </button>
+                <div style="margin-top:24px; animation:rise .5s .18s ease both;">
+                    <p data-cover-langlabel style="font-size:13px; line-height:18px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.7); margin:0; text-align:center;"></p>
+                    {{-- The strip and its arrows never mirror (see the cover): they
+                         point at the ends of a physical strip pinned ltr. --}}
+                    <div style="position:relative;" dir="ltr">
+                        <button type="button" dir="ltr" data-cover-prev aria-label="{{ __('events::events.cover_language') }}"
+                                style="position:absolute; left:8px; top:50%; transform:translateY(-50%); z-index:2; width:30px; height:30px; border-radius:9999px; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); cursor:pointer;">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <button type="button" dir="ltr" data-cover-next aria-label="{{ __('events::events.cover_language') }}"
+                                style="position:absolute; right:8px; top:50%; transform:translateY(-50%); z-index:2; width:30px; height:30px; border-radius:9999px; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); cursor:pointer;">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                        <div class="ps-strip" data-cover-strip tabindex="0"
+                             style="display:flex; align-items:center; gap:14px; direction:ltr; overflow-x:auto; scroll-snap-type:x mandatory; padding:26px calc(50% - 52px) 26px; outline:none; -webkit-mask-image:linear-gradient(to right, transparent, #000 30px, #000 calc(100% - 30px), transparent); mask-image:linear-gradient(to right, transparent, #000 30px, #000 calc(100% - 30px), transparent);">
+                            @foreach($wizLangs as $i => $lang)
+                                <button type="button" class="ps-card" data-index="{{ $i }}" title="{{ $lang['title'] }}"
+                                        style="scroll-snap-align:center; flex:none; width:104px; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; padding:10px; border-radius:20px; background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.2); color:#fff; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); transition:background-color .28s ease, border-color .28s ease, box-shadow .28s ease, color .28s ease; will-change:transform;">
+                                    @if($lang['flag'])
+                                        <span class="fi fi-{{ $lang['flag'] }}" style="width:44px; height:33px; border-radius:8px; background-size:cover; flex:none; box-shadow:0 6px 18px rgba(0,0,0,.45); outline:1px solid rgba(255,255,255,.35); outline-offset:-1px;"></span>
+                                    @else
+                                        <span style="width:44px; height:33px; border-radius:8px; flex:none; display:grid; place-items:center; font-size:12px; font-weight:800; background:rgba(255,255,255,.16); outline:1px solid rgba(255,255,255,.35); outline-offset:-1px;">{{ strtoupper($lang['code']) }}</span>
+                                    @endif
+                                    <span dir="{{ $lang['dir'] }}" style="font-size:12px; font-weight:800; line-height:1.15; letter-spacing:-.01em; max-width:94px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ $lang['native'] }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div style="text-align:center; height:18px; margin-top:-5px;">
+                        <span data-cover-seltitle style="font-size:13px; line-height:18px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.7); display:inline-block;"></span>
+                    </div>
+                </div>
+
+                {{-- Continue confirms the centred language. Pinned ltr, like the cover's. --}}
+                <div dir="ltr" style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:20px; padding:0 20px; animation:rise .5s .24s ease both;">
+                    <button type="button" data-cover-enter
+                            style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:190px; height:54px; padding:0; border:0; border-radius:9999px; font-size:16px; font-weight:800; color:#fff; cursor:pointer; background:#7c6bf5; box-shadow:0 10px 26px rgba(0,0,0,.35);">
+                        <span data-cover-enterlabel></span>
+                        <i class="bi bi-arrow-right" style="font-size:12px;"></i>
+                    </button>
+                </div>
             </div>
+            @include('events::entry.public.partials.cover-carousel', [
+                'coverLangs' => $wizLangs,
+                'coverActive' => $wizServing,
+                'coverServing' => $wizServing,
+            ])
         </div>
     </div>
 
@@ -1788,5 +1854,7 @@ function wizard() {
     };
 }
 </script>
+@stack('styles')
+@stack('scripts')
 </body>
 </html>

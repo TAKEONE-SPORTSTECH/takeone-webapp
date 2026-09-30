@@ -281,10 +281,17 @@ html, body { overflow: hidden !important; height: 100% !important; }
 
         <!-- Action buttons -->
         <div class="emp-actions emp-collapse-hide">
-            @if(Auth::user()->isSuperAdmin())
+            @if(\App\Clubs\Support\ClubLock::active())
+                {{-- Club mode: no way out of the club — only to another locked club. --}}
+                @if(count(\App\Clubs\Support\ClubLock::clubs()) > 1)
+                    <a href="{{ route('club.entry') }}" class="emp-sb-btn" title="{{ __('clubs::club.lock_switch') }}"><i class="bi bi-arrow-left-right"></i></a>
+                @endif
+            @elseif(Auth::user()->isSuperAdmin())
                 <a href="{{ route('admin.platform.clubs') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_back_to_clubs') }}"><i class="bi bi-chevron-left"></i></a>
                 <a href="{{ route('admin.platform.index') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_admin_dashboard') }}"><i class="bi bi-sliders2"></i></a>
                 <a href="{{ route('me.home') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_my_home') }}"><i class="bi bi-house"></i></a>
+            @elseif(Auth::user()->hasApprovedBusiness())
+                <a href="{{ route('business.home') }}" class="emp-sb-btn" title="{{ __('admin.back_to_business') }}" aria-label="{{ __('admin.back_to_business') }}"><i class="bi bi-chevron-left rtl:rotate-180"></i></a>
             @else
                 <a href="{{ route('clubs.explore') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_back_to_explore') }}"><i class="bi bi-chevron-left"></i></a>
             @endif

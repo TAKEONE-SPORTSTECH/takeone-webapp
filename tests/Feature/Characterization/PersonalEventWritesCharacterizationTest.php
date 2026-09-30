@@ -112,7 +112,7 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
         $clubs = $this->asDesktop($organiser)->get(route('me.events.create'))->viewData('clubs');
 
         $this->assertSame([$club->id], array_column($clubs, 'id'));
-        $this->assertSame(['id', 'name', 'currency'], array_keys($clubs[0]));
+        $this->assertSame(['id', 'name', 'currency', 'timezone'], array_keys($clubs[0]));
     }
 
     public function test_store_creates_an_event_owned_by_its_creator_and_redirects_to_it(): void

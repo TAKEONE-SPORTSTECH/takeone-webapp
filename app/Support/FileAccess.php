@@ -94,7 +94,7 @@ class FileAccess
         $uuid = $segments[1] ?? '';
         $purpose = $segments[2] ?? '';
 
-        $owner = User::where('uuid', $uuid)->first();
+        $owner = User::where('uuid', $uuid)->first() ?? self::mergedInto($uuid);
         if ($owner === null) {
             return false;
         }
@@ -136,6 +136,36 @@ class FileAccess
         // documents, payments, achievements, certifications, affiliations, chat —
         // never anyone else's business.
         return false;
+    }
+
+    /**
+     * The account a merged-away account's files now belong to.
+     *
+     * A merge (App\Members\Support\AccountMerger) carries the removed
+     * account's photo, documents and gallery onto the account that stays,
+     * but the files stay in the removed account's folder. So its folder is
+     * read as the STAYING account's — same rules, same people — never as
+     * nobody's. Only while the merge stands (an undone one gives it back),
+     * followed through a chain of merges.
+     */
+    private static function mergedInto(string $uuid): ?User
+    {
+        if ($uuid === '' || ! \Illuminate\Support\Facades\Schema::hasTable('account_merges')) {
+            return null;
+        }
+        $id = User::onlyTrashed()->where('uuid', $uuid)->value('id');
+        for ($hop = 0; $id && $hop < 5; $hop++) {
+            $kept = \App\Members\Models\AccountMerge::where('merged_user_id', $id)->whereNull('undone_at')->latest('id')->value('kept_user_id');
+            if (! $kept) {
+                return null;
+            }
+            if ($user = User::find($kept)) {
+                return $user;
+            }
+            $id = $kept;
+        }
+
+        return null;
     }
 
     /**

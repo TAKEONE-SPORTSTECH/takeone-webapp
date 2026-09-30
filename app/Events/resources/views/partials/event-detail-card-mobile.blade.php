@@ -87,12 +87,18 @@
                                       :title="__('personal.event_show_how_it_runs')"
                                   :variant="$sectionVariant ?? 'band'" />
                 <div class="p-5">
+                    @if(!empty($e['timezone']))
+                        {{-- Whose clock these times are on — the competition's, not the reader's. --}}
+                        <p class="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">
+                            <i class="bi bi-globe2" style="color: {{ $e['color'] }};"></i>{{ __('events::events.times_in_zone', ['zone' => \App\Events\Support\EventClock::label($e['timezone'])]) }}
+                        </p>
+                    @endif
                     <div>
                         @foreach($e['phases'] as $ph)
                             @php
                                 // Status is derived from the date — past = done, today = now, future = upcoming.
                                 $pdate  = !empty($ph['date']) ? rescue(fn () => \Carbon\Carbon::parse($ph['date']), null, false) : null;
-                                $today  = \Carbon\Carbon::today();
+                                $today  = \Carbon\Carbon::parse(\Carbon\Carbon::now(\App\Events\Models\ClubEvent::firstValidZone($e['timezone'] ?? null))->toDateString()); // the hall's today
                                 $done   = $pdate && $pdate->lt($today);
                                 $active = $pdate && $pdate->isSameDay($today);
                                 // The phase on the event's own day — where the date

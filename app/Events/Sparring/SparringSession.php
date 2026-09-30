@@ -56,9 +56,12 @@ class SparringSession
      */
     public function todaysFor(Tenant $club): ?ClubEvent
     {
+        // "Today" is the club's, not the server's (UTC).
+        $now = ClubEvent::clubNow($club);
+
         return ClubEvent::where('tenant_id', $club->id)
             ->where('event_type', Sparring::TYPE)
-            ->whereDate('date', now()->toDateString())
+            ->whereDate('date', $now->toDateString())
             ->where('is_archived', false)
             ->where('status', '!=', 'cancelled')
             ->latest('id')
@@ -81,11 +84,12 @@ class SparringSession
 
         $mats = max(1, min(self::MAX_MATS, $mats));
 
+        $now = ClubEvent::clubNow($club);
         $event = new ClubEvent([
             'tenant_id' => $club->id,
-            'title' => __('event-sparring::messages.session_title', ['date' => now()->isoFormat('D MMM')]),
-            'date' => now()->toDateString(),
-            'start_time' => now()->format('H:i'),
+            'title' => __('event-sparring::messages.session_title', ['date' => $now->isoFormat('D MMM')]),
+            'date' => $now->toDateString(),
+            'start_time' => $now->format('H:i'),
             'event_type' => Sparring::TYPE,
             'sport' => $sport,
             // Internal, always. A training session is for the people in the
@@ -401,7 +405,7 @@ class SparringSession
     {
         $event->is_archived = true;
         $event->status = 'completed';
-        $event->end_time = now()->format('H:i');
+        $event->end_time = $event->localNow()->format('H:i');
         $event->save();
     }
 }

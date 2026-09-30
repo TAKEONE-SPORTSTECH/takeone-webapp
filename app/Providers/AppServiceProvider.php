@@ -92,10 +92,9 @@ class AppServiceProvider extends ServiceProvider
          * browser's requests. The `Routing` event has no such ambiguity: by the
          * time it fires, every route file has been loaded.
          */
-        Event::listen(
-            \Illuminate\Routing\Events\Routing::class,
-            fn () => \App\Events\Support\SealedEventRoutes::register(),
-        );
+        // RETIRED 2026-09-27 with /e/ itself: the sealed mirror of the member
+        // event screens (/e/{uuid}/admin/…) is no longer registered. Every
+        // event page lives at /me/events/{uuid}, dressed by BrandEventPage.
 
         /*
          * Keep the profile's Affiliations and Tournaments tabs in step with what
@@ -117,6 +116,19 @@ class AppServiceProvider extends ServiceProvider
         // A deleted member leaves every open federation dashboard at once,
         // whichever path deleted them (admin, self-service, a guardian).
         \App\Members\Models\User::deleted(fn ($user) => \App\Federations\Support\FederationPulse::forDeletedMember($user));
+
+        // A club's directory card on a federation's Clubs page follows the club:
+        // its contact (own or owner's, per the details-page switch), name, logo.
+        \App\Clubs\Models\Tenant::updated(function ($club) {
+            if ($club->wasChanged(['email', 'phone', 'settings', 'owner_user_id', 'owner_name', 'owner_email', 'club_name', 'address', 'logo'])) {
+                \App\Federations\Support\FederationPulse::forClub($club);
+            }
+        });
+        \App\Members\Models\User::updated(function ($user) {
+            if ($user->wasChanged(['email', 'mobile'])) {
+                \App\Federations\Support\FederationPulse::forClubOwner($user);
+            }
+        });
 
         // Horizon dashboard — super-admin only
         Horizon::auth(function (Request $request) {
@@ -488,6 +500,13 @@ class AppServiceProvider extends ServiceProvider
         // 60 per minute per user — generous for normal admin use, blocks abuse.
         RateLimiter::for('admin-write', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // The duplicate scan reads every account: its own bucket, so the
+        // members page's other requests never use it up (a plain
+        // `throttle:N,1` shares one counter per user across routes).
+        RateLimiter::for('member-scan', function (Request $request) {
+            return Limit::perMinute(10)->by('scan:'.($request->user()?->id ?: $request->ip()));
         });
 
         // Copilot ("Coach") chat + confirm: bursty conversational use gets its own

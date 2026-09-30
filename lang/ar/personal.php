@@ -49,6 +49,7 @@ return [
     'belt_purple' => 'بنفسجي',
     'belt_red' => 'أحمر',
     'belt_white' => 'أبيض',
+    'belt_grey' => 'رمادي',
     'belt_yellow' => 'أصفر',
     'block' => 'حظر',
     'block_confirm' => 'لن يتمكّن من رؤية صفحتك أو التفاعل معك، ولن ترى منشوراته.',

@@ -29,7 +29,7 @@
              -out visitor is a narrow rule: discoverable, and not a minor — so
              the rows that are not links are the ones with nowhere to go. --}}
         <x-event-podium-list :results="$e['results']['divisions']"
-                             :profile-url="url('/e/'.$e['key'].'/admin/person/__UUID__')" />
+                             :profile-url="route('sealed.people.show', ['event' => $e['key'], 'uuid' => '__UUID__'])" />
     @else
         @include('events::entry.public.partials.empty', [
             'ev' => $ev, 'icon' => 'bi-trophy',

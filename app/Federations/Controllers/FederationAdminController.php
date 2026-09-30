@@ -162,7 +162,7 @@ class FederationAdminController extends Controller
                 'owner_email' => $f?->owner?->email, 'owner_name' => $f?->owner?->full_name ?: $f?->owner?->name,
                 'email' => $p->email, 'phone_code' => $code, 'phone_number' => $number, 'office_hours' => $p->office_hours,
                 'website' => $p->website, 'founded_year' => $p->founded_year, 'languages' => (array) ($p->languages ?? ['en', 'ar']),
-                'address' => $p->address, 'lat' => $p->lat, 'lng' => $p->lng, 'social_links' => (array) ($p->socials ?? []),
+                'address' => $p->address, 'lat' => $p->lat, 'lng' => $p->lng, 'maps_url' => $p->maps_url, 'social_links' => (array) ($p->socials ?? []),
                 'registration_number' => $p->registration_number, 'registration_authority' => $p->registration_authority ?: ($f ? null : 'General Sports Authority'),
                 'tax_number' => $p->tax_number, 'invoice_name' => $p->invoice_name, 'invoice_address' => $p->invoice_address,
                 'bank_account_name' => $p->bank_account_name, 'bank_name' => $p->bank_name, 'iban' => $p->iban, 'swift' => $p->swift,

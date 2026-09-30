@@ -103,6 +103,12 @@ Route::get('/geo/country', [App\Members\Controllers\GeoController::class, 'count
     ->middleware('throttle:mat-read')
     ->name('geo.country');
 
+// Where a pasted Google Maps link points — so the map field's pin can follow it.
+// Tighter than geo.country: an uncached short link costs an outside request.
+Route::get('/geo/map-link', [App\Members\Controllers\GeoController::class, 'mapLink'])
+    ->middleware('throttle:20,1')
+    ->name('geo.map-link');
+
 // People discovery — search directory (public profile lives at /people/{uuid}).
 Route::get('/people', [App\Members\Controllers\PeopleController::class, 'index'])->name('people');
 Route::get('/people/search', [App\Members\Controllers\PeopleController::class, 'search'])->name('people.search');

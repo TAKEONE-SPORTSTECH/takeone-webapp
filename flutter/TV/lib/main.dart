@@ -40,6 +40,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Config.restore();
 
+  // The member app gives the system bars back BEFORE the first frame, so the
+  // WebView is laid out once, at its final size. Doing it in AppShell's
+  // initState (as it did) meant the WebView was first laid out full-screen and
+  // shrunk between the bars a moment later — and Android did not tell the page
+  // until the phone was locked and woken, leaving the bottom of every screen
+  // cut off (2026-09-27). The page also repairs this itself
+  // (resources/views/partials/viewport-guard); this removes the cause.
+  if (Device.isApp) {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
+
   runApp(const TakeOneScreen());
 }
 

@@ -55,7 +55,7 @@ class EventEntryEmail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        $club = trim((string) ($this->event->tenant?->club_name ?? ''));
+        $club = trim($this->event->host()->name);
 
         $subject = match ($this->state) {
             self::ENTERED => __('events::events.entry_mail_subject_entered', ['title' => $this->event->title]),

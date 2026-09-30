@@ -12,7 +12,7 @@ class FederationProfile extends Model
 
     protected $fillable = [
         'federation_id', 'email', 'phone', 'office_hours', 'website', 'socials', 'founded_year', 'languages',
-        'address', 'lat', 'lng', 'registration_number', 'registration_authority', 'tax_number', 'invoice_name',
+        'address', 'lat', 'lng', 'maps_url', 'registration_number', 'registration_authority', 'tax_number', 'invoice_name',
         'invoice_address', 'bank_account_name', 'bank_name', 'iban', 'swift', 'officers', 'board',
         'international_federation', 'olympic_recognised', 'updated_by',
     ];

@@ -159,7 +159,7 @@ class EntryGates
             ->orderByDesc('is_primary')->orderBy('id')->first();
 
         return [
-            'club' => $event->tenant?->club_name,
+            'club' => $event->host()->name ?: null,
             'bank' => $bank ? array_filter([
                 'bank_name' => $bank->bank_name,
                 'account_name' => $bank->account_name,

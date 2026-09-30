@@ -246,6 +246,24 @@
 
     window.addEventListener('business-saved', (e) => patchCard(e.detail));
 
+    // A super-admin created a business: add its server-rendered card to the top.
+    if (window.__bizCreatedHandler) window.removeEventListener('business-created', window.__bizCreatedHandler);
+    window.__bizCreatedHandler = (e) => {
+        const d = e.detail || {};
+        if (!d.business || !d.html) return;
+        window.__bizData[d.business.id] = d.business;
+        const tpl = document.createElement('template');
+        tpl.innerHTML = d.html.trim();
+        const card = tpl.content.firstElementChild;
+        if (!card) return;
+        grid.prepend(card);
+        grid.classList.remove('hidden');
+        document.getElementById('bizEmpty').classList.add('hidden');
+        refreshCounts();
+        applyFilters();
+    };
+    window.addEventListener('business-created', window.__bizCreatedHandler);
+
     refreshCounts();
 })();
 </script>

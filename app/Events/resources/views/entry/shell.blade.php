@@ -87,4 +87,7 @@
     </div>
 
     @include('events::entry.partials.footer')
+
+    {{-- Every event page comes back to where the reader left it. --}}
+    @include('events::entry.partials.scroll-memory')
 @endsection

@@ -48,7 +48,9 @@ Outside this folder, because they are not views:
   list (`country`, `phone-code`, `currency`, `timezone`).
 - `App\Support\Flag` + `public/images/flags/` via `<x-flag>` — flags in
   `phone-code` / `country`.
-- Routes: `me.geo.country` (`country` guesses the visitor's country) and
+- Routes: `me.geo.country` (`country` guesses the visitor's country),
+  `me.geo.map-link` (`location-map`'s opt-in Google Maps link box follows a
+  short link to its pin, via `App\Support\MapLink`) and
   `/ai/compose` (the `rich-text` magic wand).
 - Alpine.js, loaded by the base layouts.
 - ⚠️ `location-map` still loads Leaflet from `unpkg.com` — against the

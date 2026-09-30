@@ -101,9 +101,9 @@
                             <i class="bi bi-check-lg text-xs"></i>
                         </span>
                     </template>
-                    <span class="w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <span class="w-[33px] h-11 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                         @if($u->profile_picture)
-                            <img src="{{ file_url($u->profile_picture) }}?v={{ optional($u->updated_at)->timestamp }}" alt="" class="w-[33px] h-11 object-cover">
+                            <img src="{{ file_url($u->profile_picture) }}?v={{ optional($u->updated_at)->timestamp }}" alt="" class="w-full h-full object-cover">
                         @else
                             <i class="bi bi-person text-muted-foreground text-lg"></i>
                         @endif

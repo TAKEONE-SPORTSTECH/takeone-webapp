@@ -18,11 +18,24 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SealFederation
 {
+    /**
+     * A redirect the federation's OWN code sends out of /federation on
+     * purpose — a manager's gear on a club invitation opening the event's
+     * console (InvitePageController::settings). Set by us, stripped here; a
+     * redirect without it is re-aimed exactly as before.
+     */
+    public const LEAVE = 'X-Federation-Leave';
+
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
 
         if (! $response instanceof RedirectResponse || $request->expectsJson()) {
+            return $response;
+        }
+        if ($response->headers->has(self::LEAVE)) {
+            $response->headers->remove(self::LEAVE);
+
             return $response;
         }
         $target = $response->getTargetUrl();

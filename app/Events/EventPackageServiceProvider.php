@@ -32,6 +32,11 @@ class EventPackageServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        // Certificates are earned when a podium is stored or the event completes
+        // (App\Events\Observers\EventCertificateObserver — dispatches only).
+        \App\Events\Models\EventCategory::updated(fn ($c) => app(\App\Events\Observers\EventCertificateObserver::class)->categoryUpdated($c));
+        \App\Events\Models\ClubEvent::updated(fn ($e) => app(\App\Events\Observers\EventCertificateObserver::class)->eventUpdated($e));
+
         $registry = $this->app->make(EventTypeRegistry::class);
 
         $packages = $registry->all();

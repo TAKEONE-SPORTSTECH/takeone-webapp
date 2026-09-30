@@ -76,7 +76,7 @@ class EventFee
     /** What this event bills in. Falls back to the host club's currency. */
     public static function currency(ClubEvent $event): string
     {
-        return $event->fee_currency ?: ($event->tenant?->currency ?: 'BHD');
+        return $event->fee_currency ?: ($event->host()->currency ?: 'BHD');
     }
 
     /**
@@ -213,7 +213,8 @@ class EventFee
             return false;
         }
 
-        return ($at ?? Carbon::now())->greaterThanOrEqualTo($event->late_fee_from);
+        // late_fee_from is the hall's wall clock — read it in the event's zone.
+        return ($at ?? Carbon::now())->greaterThanOrEqualTo($event->inZone($event->late_fee_from));
     }
 
     /* ===================== What an entry costs ===================== */

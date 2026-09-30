@@ -1,0 +1,562 @@
+<?php
+
+namespace Ahl\Certificates;
+
+use Ahl\Certificates\Contracts\BrandsCertificates;
+use Ahl\Certificates\Contracts\CertificateNotifier;
+use Ahl\Certificates\Contracts\FileStore;
+use Ahl\Certificates\Contracts\ImageRenderer;
+use Ahl\Certificates\Contracts\OwnsTemplates;
+use Ahl\Certificates\Contracts\PdfRenderer;
+use Ahl\Certificates\Contracts\Recipient;
+use Ahl\Certificates\Enums\CertificateStatus;
+use Ahl\Certificates\Events\CertificateApproved;
+use Ahl\Certificates\Events\CertificateDrafted;
+use Ahl\Certificates\Events\CertificateRevoked;
+use Ahl\Certificates\Models\Certificate;
+use Ahl\Certificates\Models\CertificateTemplate;
+use Ahl\Certificates\Support\Backgrounds;
+use Ahl\Certificates\Support\Contrast;
+use Ahl\Certificates\Support\Layout;
+use Ahl\Certificates\Support\Fonts;
+use Ahl\Certificates\Support\Medal;
+use Ahl\Certificates\Support\TextShaper;
+use BackedEnum;
+use BaconQrCode\Renderer\GDLibRenderer;
+use BaconQrCode\Writer;
+use Carbon\CarbonInterface;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * The certificate workflow: drafts from any source, approval (stores the final PDF and notifies the
+ * recipient), revocation, signed download links, rendering and template previews.
+ */
+class CertificateService
+{
+    public const PDF_SLOT = 'pdf';
+
+    /** The download is what is stored and shared; print honours a blank-paper template. */
+    public const PURPOSE_DOWNLOAD = 'download';
+
+    public const PURPOSE_PRINT = 'print';
+
+    public function __construct(
+        private FileStore $files,
+        private PdfRenderer $pdf,
+        private CertificateNotifier $notifier,
+    ) {}
+
+    /**
+     * Create a draft. Approved straight away when require_approval is off.
+     *
+     * @param  array{achievement?:string|null, grade?:string|BackedEnum|null, title?:string|null, context?:Model|null, source?:string|BackedEnum|null, source_id?:int|null, details?:array|null, issued_on?:string|null}  $data
+     */
+    public function createDraft(Model $recipient, string|BackedEnum $type, array $data = [], ?Authenticatable $by = null): Certificate
+    {
+        $type = Certificates::value($type);
+        if (! Certificates::has('types', $type)) {
+            throw ValidationException::withMessages(['type' => __('certificates::certificates.errors.unknown_type')]);
+        }
+        $context = $data['context'] ?? null;
+        $template = $this->templateFor($type, $context);
+        $locale = $this->localeOf($recipient);
+
+        // Two drafts made at the same moment can both read the same "next" serial; the
+        // unique index refuses the second, and it simply takes the next one.
+        $certificate = retry(5, fn () => Certificates::model()::create([
+            'recipient_type' => $recipient->getMorphClass(),
+            'recipient_id' => $recipient->getKey(),
+            'context_type' => $context?->getMorphClass(),
+            'context_id' => $context?->getKey(),
+            'type' => $type,
+            'template_id' => $template->id,
+            'title' => ($data['title'] ?? null) ?: $template->title($locale),
+            'achievement' => $data['achievement'] ?? null,
+            'grade' => Certificates::value($data['grade'] ?? null),
+            'source' => Certificates::value($data['source'] ?? null) ?? 'manual',
+            'source_id' => $data['source_id'] ?? null,
+            'details' => $data['details'] ?? null,
+            'issued_on' => $data['issued_on'] ?? today()->toDateString(),
+            'issued_by' => $by?->getAuthIdentifier(),
+            'status' => CertificateStatus::Draft,
+        ]), 0, fn ($e) => $e instanceof UniqueConstraintViolationException && str_contains($e->getMessage(), 'certificate_no'));
+        $certificate->setRelation('recipient', $recipient);
+
+        CertificateDrafted::dispatch($certificate, $by);
+
+        if (! Certificates::setting('require_approval', true)) {
+            $this->approve($certificate, $by);
+        }
+
+        return $certificate;
+    }
+
+    /** True when the recipient already has a certificate from this source (revoked ones included). */
+    public function exists(Model $recipient, string|BackedEnum $source, int|string $sourceId): bool
+    {
+        return Certificates::model()::query()->forRecipient($recipient)->fromSource(Certificates::value($source), $sourceId)->exists();
+    }
+
+    /**
+     * The template a certificate of this type uses in this context: the host's owner
+     * chain when it has one (Contracts\OwnsTemplates), otherwise the application-wide one.
+     */
+    public function templateFor(string|BackedEnum $type, ?Model $context = null): CertificateTemplate
+    {
+        $type = Certificates::value($type);
+        $host = Certificates::host();
+
+        return $host instanceof OwnsTemplates
+            ? Certificates::templateModel()::resolve($type, $host->templateOwners($context))
+            : Certificates::templateModel()::forType($type);
+    }
+
+    /** Edit a draft: achievement, title, grade, context, issued_on. */
+    public function update(Certificate $certificate, array $data): Certificate
+    {
+        $this->assertDraft($certificate);
+        $certificate->fill(array_intersect_key($data, array_flip(['achievement', 'grade', 'issued_on'])));
+        if (array_key_exists('context', $data)) {
+            $certificate->context_type = $data['context']?->getMorphClass();
+            $certificate->context_id = $data['context']?->getKey();
+        }
+        if (! empty($data['title'])) {
+            $certificate->title = $data['title'];
+        }
+        $certificate->save();
+
+        return $certificate;
+    }
+
+    public function delete(Certificate $certificate): void
+    {
+        $this->assertDraft($certificate);
+        DB::transaction(function () use ($certificate) {
+            $this->files->delete($certificate, self::PDF_SLOT);
+            $certificate->delete();
+        });
+    }
+
+    /** Approve a draft: issue date = today, final PDF stored, recipient notified (notify_on_approve). */
+    public function approve(Certificate $certificate, ?Authenticatable $by = null): Certificate
+    {
+        $this->assertDraft($certificate);
+
+        $certificate->forceFill([
+            'status' => CertificateStatus::Approved,
+            'approved_by' => $by?->getAuthIdentifier(),
+            'approved_at' => now(),
+            'issued_on' => today()->toDateString(),
+        ])->save();
+
+        $this->render($certificate);
+        CertificateApproved::dispatch($certificate, $by);
+
+        if (Certificates::setting('notify_on_approve', true) && $this->notifier->enabled()) {
+            $this->send($certificate);
+        }
+
+        return $certificate;
+    }
+
+    public function revoke(Certificate $certificate, Authenticatable $by, string $reason): Certificate
+    {
+        if (! $certificate->isApproved()) {
+            throw ValidationException::withMessages(['status' => __('certificates::certificates.errors.not_approved')]);
+        }
+
+        DB::transaction(function () use ($certificate, $by, $reason) {
+            $certificate->forceFill([
+                'status' => CertificateStatus::Revoked,
+                'revoked_by' => $by->getAuthIdentifier(),
+                'revoked_at' => now(),
+                'revoke_reason' => $reason,
+            ])->save();
+            // The stored PDF would still look valid; later downloads are rendered fresh with a stamp.
+            $this->files->delete($certificate, self::PDF_SLOT);
+        });
+        CertificateRevoked::dispatch($certificate, $by);
+
+        return $certificate;
+    }
+
+    /** Notify the recipient again (the host's notifier). */
+    public function send(Certificate $certificate): int
+    {
+        if (! $certificate->isApproved()) {
+            throw ValidationException::withMessages(['status' => __('certificates::certificates.errors.not_approved')]);
+        }
+        $sent = $this->notifier->send($certificate, $this->verifyUrl($certificate));
+        if ($sent) {
+            $certificate->forceFill(['sent_at' => now()])->save();
+        }
+
+        return $sent;
+    }
+
+    public function canSend(): bool
+    {
+        return $this->notifier->enabled();
+    }
+
+    public function verifyUrl(Certificate $certificate): string
+    {
+        return Certificates::host()->verifyUrl($certificate);
+    }
+
+    /** Signed, short-lived download link (no login needed while it lasts). */
+    public function downloadUrl(Certificate $certificate, bool $print = false, bool $view = false): string
+    {
+        return URL::temporarySignedRoute('certificates.download', now()->addMinutes((int) Certificates::setting('link_minutes', 30)),
+            ['certificate' => $certificate->getKey()] + ($print ? ['print' => 1] : []) + ($view ? ['view' => 1] : []));
+    }
+
+    /** Stored PDF for approved certificates; drafts and revoked ones are rendered on demand with a stamp. */
+    public function pdfContents(Certificate $certificate): string
+    {
+        if ($certificate->isApproved() && ($file = $this->files->get($certificate, self::PDF_SLOT))) {
+            return $file['contents'];
+        }
+
+        return $this->render($certificate);
+    }
+
+    /** The certificate as a PNG, for a screen that cannot show a PDF inline. Never stored here. */
+    public function imageContents(Certificate $certificate, int $dpi = 96): string
+    {
+        return $this->render($certificate, self::PURPOSE_DOWNLOAD, $dpi);
+    }
+
+    /** For the paper it will be printed on: a blank-paper template prints text only. Never stored. */
+    public function printContents(Certificate $certificate): string
+    {
+        return $this->render($certificate, self::PURPOSE_PRINT);
+    }
+
+    /**
+     * Render the PDF. The approved DOWNLOAD is stored in the FileStore; a print copy is
+     * rendered each time. A draft always follows the template as it is now, so an
+     * organiser editing the design sees every draft change with it.
+     */
+    public function render(Certificate $certificate, string $purpose = self::PURPOSE_DOWNLOAD, ?int $imageDpi = null): string
+    {
+        $certificate->loadMissing('recipient', 'context', 'template');
+        $template = $certificate->isDraft() || ! $certificate->template
+            ? $this->templateFor($certificate->type, $certificate->context_id ? $certificate->context : null)
+            : $certificate->template;
+        $recipient = $certificate->recipient;
+        $locale = $this->localeOf($recipient);
+        $details = (array) ($certificate->details ?? []);
+
+        $bytes = $this->renderView($template, $locale, [
+            'name' => $recipient instanceof Recipient ? $recipient->certificateName() : (string) ($recipient?->getAttribute('name') ?? ''),
+            'title' => $certificate->title ?: $template->title($locale),
+            'body' => $this->fill($template->body($locale), $certificate, $locale),
+            'grade' => $certificate->gradeLabel($locale),
+            'date' => $certificate->issued_on ?? today(),
+            'certificate_no' => $certificate->certificate_no,
+            'qr' => $certificate->isApproved() ? $this->qrDataUri($this->verifyUrl($certificate)) : null,
+            'stamp' => match ($certificate->status) {
+                CertificateStatus::Draft => __('certificates::certificates.draft_mark', [], $locale),
+                CertificateStatus::Revoked => __('certificates::certificates.revoked_mark', [], $locale),
+                default => null,
+            },
+            'photo' => $template->show_photo && $recipient instanceof Recipient ? $recipient->certificatePhoto() : null,
+            'place' => isset($details['place']) ? (int) $details['place'] : null,
+        ], $certificate, $purpose, $certificate->context_id ? $certificate->context : null, $imageDpi);
+
+        if ($imageDpi === null && $certificate->isApproved() && $purpose === self::PURPOSE_DOWNLOAD) {
+            $this->files->put($certificate, self::PDF_SLOT, $bytes, 'application/pdf', $certificate->certificate_no.'.pdf');
+        }
+
+        return $bytes;
+    }
+
+    /**
+     * A sample PDF of a template in one language, for the template editor. With a
+     * context, the sample is filled from it (and from Host::previewDetails) the way a
+     * real certificate there would be.
+     */
+    public function preview(CertificateTemplate $template, string $locale, ?Model $context = null, string $purpose = self::PURPOSE_DOWNLOAD, ?int $imageDpi = null): string
+    {
+        $locale = Certificates::locale($locale);
+        $grade = Certificates::keys('grades')[0] ?? null;
+        $host = Certificates::host();
+        $details = $host instanceof BrandsCertificates ? $host->previewDetails($template->type, $context) : [];
+        $sample = Certificates::model()::make(['type' => $template->type, 'achievement' => __('certificates::certificates.sample_achievement', [], $locale), 'grade' => $grade, 'issued_on' => today(), 'verify_token' => 'sample', 'details' => $details]);
+        if ($context) {
+            $sample->context_type = $context->getMorphClass();
+            $sample->context_id = $context->getKey();
+            $sample->setRelation('context', $context);
+        }
+
+        return $this->renderView($template, $locale, [
+            'name' => __('certificates::certificates.sample_name', [], $locale),
+            'title' => $template->title($locale),
+            'body' => $this->fill($template->body($locale), $sample, $locale, __('certificates::certificates.sample_name', [], $locale)),
+            'grade' => Certificates::label('grades', $grade, $locale),
+            'date' => today(),
+            'certificate_no' => config('certificates.number.prefix', 'C').now()->format('y').str_repeat('0', (int) config('certificates.number.digits', 5)),
+            'qr' => $this->qrDataUri($this->verifyUrl($sample)),
+            'stamp' => null,
+            'photo' => null,
+            'place' => isset($details['place']) ? (int) $details['place'] : null,
+        ], null, $purpose, $context, $imageDpi);
+    }
+
+    public function qrDataUri(string $text): string
+    {
+        return 'data:image/png;base64,'.base64_encode((new Writer(new GDLibRenderer(220, 1)))->writeString($text));
+    }
+
+    /** Placeholder tokens a template body may use. */
+    public function placeholderKeys(): array
+    {
+        return array_values(array_unique([...['name', 'achievement', 'grade', 'context', 'date'], ...Certificates::host()->placeholderKeys()]));
+    }
+
+    /** Replace {name}, {achievement}, {grade}, {context}, {date} and the host's extra placeholders. */
+    public function fill(string $text, Certificate $certificate, string $locale, ?string $name = null): string
+    {
+        $recipient = $certificate->relationLoaded('recipient') || $certificate->recipient_id ? $certificate->recipient : null;
+        $context = $certificate->context_id ? $certificate->context : null;
+        $values = [
+            'name' => $name ?? ($recipient instanceof Recipient ? $recipient->certificateName() : ''),
+            'achievement' => (string) $certificate->achievement,
+            'grade' => (string) $certificate->gradeLabel($locale),
+            'context' => $context ? (string) (Certificates::host()->presentContext($context)['name'] ?? '') : '',
+            'date' => (string) $certificate->issued_on?->toDateString(),
+        ];
+        foreach (Certificates::host()->placeholders($certificate, $locale) as $key => $value) {
+            $values[$key] = (string) $value;
+        }
+
+        return trim(preg_replace('/\s{2,}/u', ' ', strtr($text, collect($values)->mapWithKeys(fn ($v, $k) => ['{'.$k.'}' => $v])->all())));
+    }
+
+    public function localeOf(?Model $recipient): string
+    {
+        return Certificates::locale($recipient instanceof Recipient ? $recipient->certificateLocale() : null);
+    }
+
+    /** Signature image as a data: URI, or null. */
+    public function signatureDataUri(CertificateTemplate $template, int $slot): ?string
+    {
+        $file = $this->files->get($template, "signature_{$slot}");
+
+        return $file ? 'data:'.$file['mime'].';base64,'.base64_encode($file['contents']) : null;
+    }
+
+    private function renderView(CertificateTemplate $template, string $locale, array $cert, ?Certificate $certificate, string $purpose = self::PURPOSE_DOWNLOAD, ?Model $context = null, ?int $imageDpi = null): string
+    {
+        /** @var CarbonInterface $date */
+        $date = $cert['date'];
+        $host = Certificates::host();
+        \Ahl\Certificates\Support\Drawn::reset();
+        $brand = $host instanceof BrandsCertificates ? $host->brand($certificate, $template, $context, $locale) : [];
+        $accent = $this->hex($template->accent) ?? $this->hex($brand['accent'] ?? null) ?? '#1f4e79';
+        $background = $template->backgroundFor($purpose);
+        $place = $cert['place'] ?? null;
+        $rtl = in_array($locale, ['ar', 'fa', 'he', 'ur'], true);
+        $metal = $place ? (Medal::METAL[$place] ?? null) : null;
+        $bg = $this->backgroundBytes($template, $background, $accent, $brand['watermark'] ?? null);
+        if ($imageDpi !== null && $bg) {
+            $bg = $this->forScreen($bg, $imageDpi);   // a preview never needs print resolution
+        }
+        if ($background === 'artwork' && ($bg['mime'] ?? '') === 'image/png' && ! $this->files->exists($template, CertificateTemplate::BACKGROUND_SLOT)) {
+            $background = 'plain';   // artwork chosen, none uploaded yet: the classic sheet, frame and all
+        }
+        $layout = $this->inked(Layout::resolve((array) ($template->layout ?? []), $place !== null, $rtl), $bg, $accent, $metal, $background);
+
+        $data = $host->viewData([
+            'locale' => $locale,
+            'rtl' => $rtl,
+            'ornament' => in_array($template->ornament_level, CertificateTemplate::ORNAMENTS, true) ? $template->ornament_level : 'full',
+            'issuer' => $host->issuer($locale),
+            'date' => $date->copy()->locale($locale)->translatedFormat('j F Y'),
+            'date_secondary' => $host->secondaryDate($date, $locale),
+            'signatures' => collect(CertificateTemplate::SIGNATURE_SLOTS)->map(fn ($slot) => [
+                'name' => $template->{"signature{$slot}_name"},
+                'title' => $template->{"signature{$slot}_title"},
+                'image' => $this->signatureDataUri($template, $slot),
+            ])->filter(fn ($s) => $s['name'] || $s['title'] || $s['image'])->values()->all(),
+            'cert' => $cert,
+            'accent' => $accent,
+            'metal' => $metal,
+            'background' => $background,
+            'background_image' => $bg ? 'data:'.$bg['mime'].';base64,'.base64_encode($bg['contents']) : null,
+            'layout' => $layout,
+            // Blank paper brings its own frame, logos and seal; artwork keeps ours (each can be hidden).
+            'decorated' => $background !== 'blank',
+            'offset' => $background === 'blank'
+                ? ['x' => max(-30, min(30, (int) $template->print_offset_x)), 'y' => max(-30, min(30, (int) $template->print_offset_y))]
+                : ['x' => 0, 'y' => 0],
+            'logos' => array_values(array_slice(array_filter((array) ($brand['logos'] ?? [])), 0, 2)),
+            'seal' => $brand['seal'] ?? null,
+            'medal' => $place ? (new Medal(Fonts::path('Inter-Bold.ttf')))->dataUri($place, $accent) : null,
+            'ribbon' => $place && $place <= 3 ? __("certificates::certificates.places.{$place}", [], $locale) : null,
+            'fonts' => Fonts::css(),
+            'shaper' => app(TextShaper::class),
+            // What the certificate belongs to (or, for a preview, would belong to), for Host::viewData.
+            'context' => $context,
+        ], $certificate, $locale);
+
+        $view = config('certificates.pdf.view', 'certificates::pdf.certificate');
+        $orientation = config('certificates.pdf.orientation', 'landscape');
+        $paper = config('certificates.pdf.paper', 'a4');
+
+        if ($imageDpi !== null) {
+            if (! $this->pdf instanceof ImageRenderer) {
+                throw new \LogicException('The configured PDF renderer cannot draw images.');
+            }
+
+            return $this->pdf->renderImage($view, $data, $orientation, $paper, $imageDpi);
+        }
+
+        return $this->pdf->render($view, $data, $orientation, $paper);
+    }
+
+    /**
+     * Where each element's ink landed on the page just drawn (Support\Drawn), for an
+     * editor that wants its handles to hug the words rather than their whole box.
+     *
+     * @return array<string, array{x:float,y:float,w:float,h:float}>
+     */
+    public function drawn(): array
+    {
+        return \Ahl\Certificates\Support\Drawn::all();
+    }
+
+    /** True when the renderer can draw PNG previews. */
+    public function canPreviewImages(): bool
+    {
+        return $this->pdf instanceof ImageRenderer;
+    }
+
+    /** @return array{contents:string, mime:string}|null the page behind the certificate; null for blank paper */
+    private function backgroundBytes(CertificateTemplate $template, string $mode, string $accent, ?string $watermark): ?array
+    {
+        if ($mode === 'blank') {
+            return null;
+        }
+        if ($mode === 'artwork') {
+            $file = $this->files->get($template, CertificateTemplate::BACKGROUND_SLOT);
+            if ($file) {
+                return $file;
+            }
+            $mode = 'plain';   // artwork chosen but not uploaded yet
+        }
+
+        return ['contents' => (new Backgrounds(config('certificates.backgrounds_cache')))->png($mode, $accent, $watermark), 'mime' => 'image/png'];
+    }
+
+    /**
+     * The background at the size a screen preview actually shows (a 3508 px artwork is
+     * decoded and embedded on every redraw otherwise, which is most of a preview's time).
+     * Cached on disk by content, so a page being arranged pays for it once.
+     *
+     * @param  array{contents:string, mime:string}  $bg
+     * @return array{contents:string, mime:string}
+     */
+    private function forScreen(array $bg, int $dpi): array
+    {
+        $width = (int) ceil(297 / 25.4 * $dpi * 1.25);
+        $dir = config('certificates.backgrounds_cache');
+        $file = $dir ? rtrim($dir, '/').'/screen-'.sha1($bg['contents']).'-'.$width.'.jpg' : null;
+        if ($file && is_file($file) && ($hit = @file_get_contents($file)) !== false) {
+            return ['contents' => $hit, 'mime' => 'image/jpeg'];
+        }
+        $im = @imagecreatefromstring($bg['contents']);
+        if (! $im instanceof \GdImage || imagesx($im) <= $width) {
+            return $bg;
+        }
+        $small = imagescale($im, $width, -1, IMG_BICUBIC);
+        imagedestroy($im);
+        if (! $small instanceof \GdImage) {
+            return $bg;
+        }
+        ob_start();
+        imagejpeg($small, null, 82);
+        $bytes = (string) ob_get_clean();
+        imagedestroy($small);
+        if ($file) {
+            @is_dir(dirname($file)) || @mkdir(dirname($file), 0775, true);
+            @file_put_contents($file, $bytes, LOCK_EX);
+        }
+
+        return ['contents' => $bytes, 'mime' => 'image/jpeg'];
+    }
+
+    /**
+     * Give every element the colour it prints in: the organiser's own choice when they
+     * made one, otherwise its intended colour — switched to dark or light ink when that
+     * would not read against what is actually behind it (Support\Contrast).
+     */
+    private function inked(array $layout, ?array $bg, string $accent, ?string $metal, string $background): array
+    {
+        $intended = [
+            'headline' => $metal ?? $accent, 'title' => '#1f1a2e', 'ribbon' => $metal ?? $accent, 'lead' => '#6b6478',
+            'name' => $metal ? '#1f1a2e' : $accent, 'divider' => $metal ?? '#c9a86a', 'body' => '#3b3548',
+            'signatures' => '#1f1a2e', 'seal' => $metal ?? $accent, 'meta' => '#6b6478', 'panel' => '#fbf8f2',
+        ];
+        $large = ['title', 'name'];
+        $sampler = new Contrast($bg['contents'] ?? null, $background === 'blank' ? '#ffffff' : '#fbf8f2');
+        $panel = $layout['panel'] ?? null;
+        $inPanel = fn (array $b) => $panel && ! $panel['hidden'] && ($panel['opacity'] ?? 0) >= 0.6
+            && $b['x'] + $b['w'] / 2 >= $panel['x'] && $b['x'] + $b['w'] / 2 <= $panel['x'] + $panel['w']
+            && $b['y'] + $b['h'] / 2 >= $panel['y'] && $b['y'] + $b['h'] / 2 <= $panel['y'] + $panel['h'];
+
+        $votes = [];
+        foreach ($layout as $key => $box) {
+            $want = $intended[$key] ?? '#1f1a2e';
+            $layout[$key]['backing'] = null;
+            if ($box['color']) {
+                $layout[$key]['ink'] = $box['color'];
+            } elseif (in_array($key, ['ribbon', 'divider', 'panel'], true)) {
+                $layout[$key]['ink'] = $want;   // fills, not type: they are the ground, not on it
+            } elseif ($inPanel($box)) {
+                $layout[$key]['ink'] = Contrast::ink($want, $intended['panel'], in_array($key, $large, true));
+            } else {
+                $isLarge = in_array($key, $large, true);
+                $need = $isLarge ? 3.0 : 4.5;
+                $cells = $sampler->cells($box['x'], $box['y'], $box['w'], $box['h']);
+                $ink = Contrast::ink($want, $sampler->behind($box['x'], $box['y'], $box['w'], $box['h']), $isLarge);
+                // Busy ground (a photograph): if no single ink reads everywhere under the
+                // box, the words get a soft band. Which kind is decided once for the page below.
+                if (Contrast::worst($ink, $cells) < $need && ! in_array($key, ['seal', 'logo_start', 'logo_end', 'photo', 'medal', 'qr'], true)) {
+                    $votes[$key] = Contrast::worst(Contrast::LIGHT, $cells) >= Contrast::worst(Contrast::DARK, $cells) ? 'dark' : 'light';
+                }
+                $layout[$key]['ink'] = $ink;
+            }
+        }
+
+        // One style of band for the whole page, so the sheet reads as one design: the
+        // style most elements need (dark band + white ink on a photograph, as a rule).
+        if ($votes) {
+            $dark = count(array_filter($votes, fn ($v) => $v === 'dark')) >= count($votes) / 2;
+            foreach (array_keys($votes) as $key) {
+                $layout[$key]['ink'] = $dark ? Contrast::LIGHT : Contrast::DARK;
+                $layout[$key]['backing'] = $dark ? 'rgba(15, 12, 30, 0.55)' : 'rgba(251, 248, 242, 0.85)';
+            }
+        }
+
+        return $layout;
+    }
+
+    private function hex(?string $value): ?string
+    {
+        return is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value) ? strtolower($value) : null;
+    }
+
+    private function assertDraft(Certificate $certificate): void
+    {
+        if (! $certificate->isDraft()) {
+            throw ValidationException::withMessages(['status' => __('certificates::certificates.errors.not_draft')]);
+        }
+    }
+}

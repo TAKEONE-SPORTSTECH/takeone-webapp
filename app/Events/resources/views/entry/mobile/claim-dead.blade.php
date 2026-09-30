@@ -25,6 +25,9 @@
     <style>html { color-scheme: only light; }</style>
 
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    {{-- Every screen is as tall as what can be SEEN, even while the app is
+         hiding a strip under the bottom bar. See the partial. --}}
+    @include('partials.viewport-guard')
     <title>{{ __('events::events.claim_dead_title') }}</title>
     <meta name="robots" content="noindex, nofollow">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">

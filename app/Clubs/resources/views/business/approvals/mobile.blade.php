@@ -19,6 +19,10 @@
             <span id="bizPendingBadge" class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 {{ $pendingCount > 0 ? '' : 'hidden' }}">
                 <i class="bi bi-hourglass-split mr-1"></i>{{ $pendingCount }}
             </span>
+            <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-business-create'))"
+                    class="m-press w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center" aria-label="{{ __('platform.business_create_button') }}" title="{{ __('platform.business_create_button') }}">
+                <i class="bi bi-plus-lg text-lg"></i>
+            </button>
         </div>
     </header>
 
@@ -80,6 +84,7 @@
 <script>window.__bizData = @json((object) $bizData->toArray());</script>
 
 <x-business-edit-modal />
+<x-business-create-modal />
 <x-user-picker-modal :title="__('platform.select_business_owner')" :subtitle="__('platform.select_business_owner_desc')" />
 
 @include('clubs::business.approvals._scripts')

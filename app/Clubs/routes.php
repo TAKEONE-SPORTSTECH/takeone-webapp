@@ -112,6 +112,16 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/switch-view', [\App\Clubs\Controllers\BusinessController::class, 'switchView'])->name('view.switch');
 });
 
+// The common misspelling of /business, so a typed address still lands.
+Route::redirect('/busniess', '/business');
+
+// /business — the chain owner's front door (/club stays the single-club door).
+// Outside the `business` guard because it is also where that guard sends a
+// super-admin who has not picked a business yet.
+Route::middleware(['auth', 'verified', 'two-factor'])
+    ->get('/business', [\App\Clubs\Controllers\BusinessDashboardController::class, 'home'])
+    ->name('business.home');
+
 // Business (Chain) dashboard — requires an APPROVED business
 Route::middleware(['auth', 'verified', 'two-factor', 'business'])->prefix('business')->name('business.')->group(function () {
     Route::get('/dashboard', [\App\Clubs\Controllers\BusinessDashboardController::class, 'index'])->name('dashboard');
@@ -121,6 +131,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'business'])->prefix('busin
 Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
     // Business (Chain) approvals
     Route::get('/businesses', [\App\Clubs\Controllers\BusinessApprovalController::class, 'index'])->name('platform.businesses');
+    Route::post('/businesses', [\App\Clubs\Controllers\BusinessApprovalController::class, 'store'])->name('platform.businesses.store')->middleware('throttle:admin-write');
     Route::post('/businesses/{business}/approve', [\App\Clubs\Controllers\BusinessApprovalController::class, 'approve'])->name('platform.businesses.approve')->middleware('throttle:admin-write');
     Route::post('/businesses/{business}/reject', [\App\Clubs\Controllers\BusinessApprovalController::class, 'reject'])->name('platform.businesses.reject')->middleware('throttle:admin-write');
     Route::put('/businesses/{business}', [\App\Clubs\Controllers\BusinessApprovalController::class, 'update'])->name('platform.businesses.update')->middleware('throttle:admin-write');
@@ -131,3 +142,14 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::post('/businesses/{business}/transfer-owner', [\App\Clubs\Controllers\BusinessApprovalController::class, 'transferOwner'])->name('platform.businesses.transfer-owner')->middleware('throttle:admin-write');
     Route::delete('/businesses/{business}', [\App\Clubs\Controllers\BusinessApprovalController::class, 'destroy'])->name('platform.businesses.destroy')->middleware('throttle:admin-write');
 });
+
+/*
+|--------------------------------------------------------------------------
+| /club — the manager's front door. One managed club → its dashboard,
+| several → a picker, none → home. Access to each club is still decided by
+| the admin panel itself on every request.
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified', 'two-factor'])
+    ->get('/club', [\App\Clubs\Controllers\ClubEntryController::class, 'index'])
+    ->name('club.entry');

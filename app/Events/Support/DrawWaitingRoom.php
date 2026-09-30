@@ -140,7 +140,7 @@ class DrawWaitingRoom
      */
     private function countdown(ClubEvent $event): array
     {
-        $weighIn = $event->weigh_in_at;
+        $weighIn = $event->inZone($event->weigh_in_at);
         $starts = $this->startsAt($event);
 
         if ($weighIn && $weighIn->isFuture()) {
@@ -161,13 +161,9 @@ class DrawWaitingRoom
             return null;
         }
 
-        $at = $event->date->copy()->startOfDay();
-
-        if ($event->start_time && preg_match('/^(\d{1,2}):(\d{2})/', (string) $event->start_time, $m)) {
-            $at->setTime((int) $m[1], (int) $m[2]);
-        }
-
-        return $at;
+        // On the hall's clock, so the countdown's ISO string carries its offset.
+        return $event->atLocal($event->date, $event->start_time && preg_match('/^(\d{1,2}):(\d{2})/', (string) $event->start_time, $m)
+            ? sprintf('%02d:%02d', $m[1], $m[2]) : '00:00');
     }
 
     /**

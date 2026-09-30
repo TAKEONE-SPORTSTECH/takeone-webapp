@@ -27,7 +27,7 @@
         <div class="absolute rounded-full" style="right:-56px; top:-56px; width:190px; height:190px; background:rgba(255,255,255,.07);"></div>
 
         <div class="flex items-center justify-between gap-3 relative z-10">
-            <a href="{{ route('events.public', ['event' => $e['key']]) }}"
+            <a href="{{ route('me.events.show', ['event' => $e['key']]) }}"
                class="m-press inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
            aria-label="{{ __('events::events.public_enrol_back_event') }}" title="{{ __('events::events.public_enrol_back_event') }}">
                 <i class="bi bi-chevron-left"></i>
@@ -93,13 +93,13 @@
                      filled button it has always had, so the pending state looks
                      exactly as it did before this link was added. --}}
                 @if($alreadyIn)
-                    <a href="{{ route('events.public', ['event' => $e['key']]) }}"
+                    <a href="{{ route('me.events.show', ['event' => $e['key']]) }}"
                        class="m-press mt-3 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-2xl font-bold text-[14px] no-underline border"
                        style="color: {{ $ev }}; border-color: {{ \App\Support\Palette::alpha($ev, .35) }};">
                         {{ __('events::events.public_enrol_back_to_event') }}<i class="bi bi-arrow-right"></i>
                     </a>
                 @else
-                    <a href="{{ route('events.public', ['event' => $e['key']]) }}"
+                    <a href="{{ route('me.events.show', ['event' => $e['key']]) }}"
                        class="m-press mt-6 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-2xl font-black text-[14px] text-white no-underline"
                        style="background: {{ $ev }}; box-shadow: 0 18px 40px -18px {{ $ev }};">
                         {{ __('events::events.public_enrol_back_to_event') }}<i class="bi bi-arrow-right"></i>
@@ -412,13 +412,13 @@
                      filled button it has always had, so the pending state looks
                      exactly as it did before this link was added. --}}
                 @if($alreadyIn)
-                    <a href="{{ route('events.public', ['event' => $e['key']]) }}"
+                    <a href="{{ route('me.events.show', ['event' => $e['key']]) }}"
                        class="m-press mt-3 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-2xl font-bold text-[14px] no-underline border"
                        style="color: {{ $ev }}; border-color: {{ \App\Support\Palette::alpha($ev, .35) }};">
                         {{ __('events::events.public_enrol_back_to_event') }}<i class="bi bi-arrow-right"></i>
                     </a>
                 @else
-                    <a href="{{ route('events.public', ['event' => $e['key']]) }}"
+                    <a href="{{ route('me.events.show', ['event' => $e['key']]) }}"
                        class="m-press mt-6 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-2xl font-black text-[14px] text-white no-underline"
                        style="background: {{ $ev }}; box-shadow: 0 18px 40px -18px {{ $ev }};">
                         {{ __('events::events.public_enrol_back_to_event') }}<i class="bi bi-arrow-right"></i>

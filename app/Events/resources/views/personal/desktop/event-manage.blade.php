@@ -336,6 +336,11 @@
                 <x-event-entry-review :event="$e['key']" :entries="$publicEntries ?? []"
                                       :color="$mgColor ?? $e['color']" :title="$e['title']" />
 
+                {{-- Anybody in this competition twice? Every likely pair among the
+                     entrants, to settle before the draw is built. Renders nothing
+                     when there are none (EventDuplicates). --}}
+                <x-event-duplicate-check :event="$e['key']" :color="$mgColor ?? $e['color']" :title="$e['title']" />
+
                 {{-- Who is barred, and why — the moderation list, which had no
                      screen at all between 2026-09-03 and 2026-09-15: the desk
                      that carried it was removed and its tab went with it, so
@@ -365,6 +370,12 @@
                     </div>
                 </a>
 
+                {{-- The rule book: category system + belt system (CategorySystems). --}}
+                @php $rbEvent = \App\Events\Models\ClubEvent::where('uuid', $e['key'])->first(); @endphp
+                @if($rbEvent && app(\App\Sports\Combat\SportRegistry::class)->has($rbEvent->sport))
+                    <x-event-rule-book :event="$rbEvent" :color="$mgColor ?? $e['color']" />
+                @endif
+
                 {{-- When the draw stops being the organiser's working copy and
                      becomes the sheet on the wall. Only for a type that draws
                      one — an event with no divisions has nothing to reveal. --}}
@@ -373,6 +384,19 @@
                                              :date="$drawRevealDate ?? null"
                                              :color="$mgColor ?? $e['color']" :title="$e['title']" />
                 @endif
+
+                {{-- Certificates for the people who competed: participation and
+                     podium, drafted from the finished draw, approved here
+                     (App\Certificates). Only for a type with divisions, and only
+                     while the feature is switched on. --}}
+                @if(config('certificates.enabled') && ! empty($e['categories']))
+                    <x-certificates-console context="club_event" :subject="$e['key']" :color="$mgColor ?? $e['color']" :title="$e['title']" />
+                @endif
+
+                {{-- Paid featuring: the spotlight card on everyone's /me/events
+                     (App\Events\Support\EventFeaturing). The component reads its
+                     own state; the endpoint decides who may ask. --}}
+                <x-event-featuring :event="$e['key']" :color="$mgColor ?? $e['color']" :title="$e['title']" />
 
                 {{-- Every language this event is read in, and the organiser's
                      power to correct any of it. It appears here rather than in

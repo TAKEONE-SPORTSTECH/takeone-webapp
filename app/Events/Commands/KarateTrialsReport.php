@@ -44,7 +44,7 @@ class KarateTrialsReport extends Command
         }
 
         $this->info($event->title);
-        $this->line($event->date->toDateString().' · '.$event->start_time.' · '.($event->tenant?->club_name ?? '—'));
+        $this->line($event->date->toDateString().' · '.$event->start_time.' · '.($event->host()->name ?: '—'));
 
         $groups = EventCategory::where('event_id', $event->id)->orderBy('sort_order')->get();
         $standings = [];

@@ -690,6 +690,14 @@ function exploreApp() {
             .then(response => response.json())
             .then(data => {
                 document.getElementById('loadingSpinner').style.display = 'none';
+
+                // The user may have moved to the Events tab while this was in flight:
+                // keep the clubs for when they come back, but never paint over events.
+                if (this.currentCategory === 'events') {
+                    if (data.success) this.allClubs = data.clubs;
+                    return;
+                }
+
                 document.getElementById('clubsGrid').style.display = 'flex';
 
                 if (data.success) {
@@ -727,6 +735,14 @@ function exploreApp() {
             .then(response => response.json())
             .then(data => {
                 document.getElementById('loadingSpinner').style.display = 'none';
+
+                // The user may have moved to the Events tab while this was in flight:
+                // keep the clubs for when they come back, but never paint over events.
+                if (this.currentCategory === 'events') {
+                    if (data.success) this.allClubs = data.clubs;
+                    return;
+                }
+
                 document.getElementById('clubsGrid').style.display = 'flex';
 
                 if (data.success) {
@@ -983,6 +999,8 @@ function exploreApp() {
             const grid = document.getElementById('clubsGrid');
             const none = document.getElementById('noResultsContainer');
             const pane = document.getElementById('eventsSection');
+            const spin = document.getElementById('loadingSpinner');   // a club load may still be spinning
+            if (spin) spin.style.display = 'none';
             if (grid) grid.style.display = 'none';
             if (none) none.style.display = 'none';
             if (pane) pane.style.display = 'block';
@@ -1015,7 +1033,7 @@ function exploreApp() {
                     this.showAlertMessage('{{ __("clubs::explore.ev_failed") }}', 'danger');
                     return;
                 }
-                this.allEvents = data.events || [];
+                this.allEvents = (data.events || []).concat(data.finished || []);
                 this.eventsLoaded = true;
                 if (this.currentCategory === 'events') {
                     this.displayEvents(this.filteredEvents());
@@ -1041,27 +1059,25 @@ function exploreApp() {
         },
 
         displayEvents(events) {
-            const liveGroup = document.getElementById('eventsLiveGroup');
-            const upGroup = document.getElementById('eventsUpcomingGroup');
-            const liveBox = document.getElementById('eventsLiveContainer');
-            const upBox = document.getElementById('eventsUpcomingContainer');
+            const groups = {
+                Featured: events.filter(e => e.featured),
+                Live: events.filter(e => e.state === 'live' && !e.featured),
+                Upcoming: events.filter(e => e.state === 'upcoming' && !e.featured),
+                Finished: events.filter(e => e.state === 'ended'),
+            };
+
+            // Every group is optional chrome — the mobile view renders none of them.
+            Object.entries(groups).forEach(([name, list]) => {
+                const box = document.getElementById(`events${name}Container`);
+                const group = document.getElementById(`events${name}Group`);
+                const count = document.getElementById(`events${name}Count`);
+                if (box) box.innerHTML = list.map(e => this.eventCardHtml(e)).join('');
+                if (count) count.textContent = list.length;
+                if (group) group.style.display = list.length ? 'block' : 'none';
+            });
+
             const empty = document.getElementById('eventsEmpty');
-
-            const live = events.filter(e => e.state === 'live');
-            const upcoming = events.filter(e => e.state !== 'live');
-
-            liveBox.innerHTML = live.map(e => this.eventCardHtml(e)).join('');
-            upBox.innerHTML = upcoming.map(e => this.eventCardHtml(e)).join('');
-
-            // Count badges are optional chrome — a group may render without one.
-            const liveCount = document.getElementById('eventsLiveCount');
-            const upCount = document.getElementById('eventsUpcomingCount');
-            if (liveCount) liveCount.textContent = live.length;
-            if (upCount) upCount.textContent = upcoming.length;
-
-            liveGroup.style.display = live.length ? 'block' : 'none';
-            upGroup.style.display = upcoming.length ? 'block' : 'none';
-            empty.style.display = events.length ? 'none' : 'flex';
+            if (empty) empty.style.display = events.length ? 'none' : 'flex';
         },
 
         /** Escape untrusted text before it reaches innerHTML. */
@@ -1075,113 +1091,118 @@ function exploreApp() {
             const esc = (v) => this.esc(v);
             // Colour and icon reach a style attribute / class name — whitelist them
             // rather than trusting whatever an organiser typed into the event form.
-            const color = /^#[0-9a-fA-F]{3,8}$/.test(ev.color || '') ? ev.color : '#7c3aed';
+            const color = /^#[0-9a-fA-F]{6}$/.test(ev.color || '') ? ev.color
+                : (/^#[0-9a-fA-F]{3}$/.test(ev.color || '') ? ev.color.replace(/^#(.)(.)(.)$/, '#$1$1$2$2$3$3') : '#7c3aed');
             const icon = /^bi-[a-z0-9-]+$/i.test(ev.icon || '') ? ev.icon : 'bi-calendar-event';
             const live = ev.state === 'live';
+            const ended = ev.state === 'ended';
 
             const media = ev.image
-                ? `<img src="/file/${encodeURI(ev.image)}" alt="" loading="lazy"
-                        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]">`
-                : `<div class="w-full h-full" style="background: radial-gradient(120% 120% at 15% 0%, ${color} 0%, ${color}cc 40%, #14121f 100%);">
-                       <div class="absolute inset-0 flex items-center justify-center">
-                           <i class="bi ${icon} text-white/15" style="font-size: 5.5rem;"></i>
-                       </div>
+                ? `<img src="/file/${encodeURI(ev.image)}" alt="" loading="lazy" class="xev-img">`
+                : `<div class="xev-img" style="background: radial-gradient(120% 120% at 15% 0%, ${color} 0%, ${color}cc 40%, #14121f 100%);">
+                       <i class="bi ${icon} xev-ghost"></i>
                    </div>`;
 
-            const statePill = live
-                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg">
-                       <span class="relative flex h-1.5 w-1.5">
-                           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                           <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
-                       </span>{{ __('clubs::explore.ev_live') }}
-                   </span>`
-                : (ev.starts_in
-                    ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-sm text-white text-[10px] font-semibold tracking-wide">
-                           <i class="bi bi-hourglass-split"></i>${esc(ev.starts_in)}
-                       </span>`
-                    : '');
-
-            // Tear-off calendar chip — the anchor the eye lands on first.
-            const dateChip = `
-                <div class="absolute top-3 start-3 w-12 rounded-xl overflow-hidden bg-white/95 backdrop-blur-sm shadow-lg text-center">
-                    <div class="text-[9px] font-bold uppercase tracking-[0.12em] text-white py-0.5" style="background: ${color};">${esc(ev.mon)}</div>
-                    <div class="text-lg font-bold leading-tight text-foreground pt-0.5">${esc(ev.day)}</div>
-                    <div class="text-[9px] text-muted-foreground pb-1 uppercase">${esc(ev.wday)}</div>
-                </div>`;
+            const pills = [];
+            if (ev.featured) pills.push(`<span class="xev-pill xev-pill--gold"><i class="bi bi-stars"></i>{{ __('clubs::explore.ev_featured') }}</span>`);
+            if (live) pills.push(`<span class="xev-pill xev-pill--live"><span class="xev-dot"></span>{{ __('clubs::explore.ev_live') }}</span>`);
+            else if (ended) pills.push(`<span class="xev-pill xev-pill--ended"><i class="bi bi-flag-fill"></i>{{ __('clubs::explore.ev_ended') }}</span>`);
+            else if (ev.starts_in) pills.push(`<span class="xev-pill xev-pill--soon"><i class="bi bi-hourglass-split"></i>${esc(ev.starts_in)}</span>`);
 
             const metaRow = (iconName, text) => text
-                ? `<div class="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
-                       <i class="bi ${iconName} shrink-0" style="color: ${color};"></i>
-                       <span class="truncate">${esc(text)}</span>
-                   </div>`
+                ? `<div class="xev-meta"><i class="bi ${iconName}"></i><span>${esc(text)}</span></div>`
                 : '';
+            const when = ev.time ? (ev.end_time ? `${ev.time} – ${ev.end_time}` : ev.time) : '{{ __('clubs::explore.ev_tba') }}';
+            const dates = ev.end_date_label ? `${ev.date_label} → ${ev.end_date_label}` : ev.date_label;
 
-            const when = ev.time
-                ? (ev.end_time ? `${ev.time} – ${ev.end_time}` : ev.time)
-                : '{{ __('clubs::explore.ev_tba') }}';
-            const dates = ev.end_date_label
-                ? `${ev.date_label} → ${ev.end_date_label}`
-                : ev.date_label;
-
-            // Capacity: a filled bar when the organiser set a cap, a plain count otherwise.
-            let capacity = '';
-            if (ev.capacity) {
-                const pct = Math.min(100, Math.round((ev.going / ev.capacity) * 100));
-                const full = ev.spots_left === 0;
-                capacity = `
-                    <div class="mt-3">
-                        <div class="flex items-center justify-between text-[11px] mb-1">
-                            <span class="text-muted-foreground"><strong class="text-foreground">${ev.going}</strong> / ${ev.capacity} {{ __('clubs::explore.ev_going') }}</span>
-                            <span class="font-semibold ${full ? 'text-red-600' : 'text-green-600'}">
-                                ${full ? '{{ __('clubs::explore.ev_full') }}' : `${ev.spots_left} {{ __('clubs::explore.ev_spots_left') }}`}
-                            </span>
-                        </div>
-                        <div class="h-1.5 rounded-full bg-muted overflow-hidden">
-                            <div class="h-full rounded-full transition-[width] duration-700" style="width: ${pct}%; background: ${full ? '#dc2626' : color};"></div>
-                        </div>
-                    </div>`;
-            } else if (ev.going) {
-                capacity = `<div class="mt-3 text-[11px] text-muted-foreground"><i class="bi bi-people me-1"></i><strong class="text-foreground">${ev.going}</strong> {{ __('clubs::explore.ev_going') }}</div>`;
+            // Who is in — people, not entries (one person may enter several divisions).
+            let crowd = '';
+            if (ev.going || ev.capacity) {
+                const label = ended ? '{{ __('clubs::explore.ev_took_part') }}' : '{{ __('clubs::explore.ev_going') }}';
+                const bar = (!ended && ev.capacity)
+                    ? `<div class="xev-bar"><span style="width:${Math.min(100, Math.round((ev.going / ev.capacity) * 100))}%"></span></div>`
+                    : '';
+                const tail = (!ended && ev.capacity)
+                    ? (ev.spots_left === 0
+                        ? `<b class="xev-full">{{ __('clubs::explore.ev_full') }}</b>`
+                        : `<span>${ev.spots_left} {{ __('clubs::explore.ev_spots_left') }}</span>`)
+                    : '';
+                crowd = `<div class="xev-crowd">
+                             <div class="xev-crowd-row"><span><i class="bi bi-people-fill"></i><b>${ev.going}</b>${ev.capacity && !ended ? ` / ${ev.capacity}` : ''} ${label}</span>${tail}</div>
+                             ${bar}
+                         </div>`;
             }
 
-            const fee = ev.fee
-                ? `<span class="px-2 py-0.5 rounded-full bg-muted text-[10px] font-semibold text-foreground">${esc(ev.fee)}</span>`
-                : `<span class="px-2 py-0.5 rounded-full bg-green-500/10 text-[10px] font-semibold text-green-600">{{ __('clubs::explore.ev_free') }}</span>`;
+            // The stub: every package the organiser sells, one receipt line each.
+            const prices = Array.isArray(ev.prices) ? ev.prices : [];
+            const lineHtml = (list) => list.map(p => `
+                    <li class="xev-line">
+                        <span class="xev-line-label">${esc(p.label)}</span>
+                        <span class="xev-leader"></span>
+                        <span class="xev-line-price">${p.extra ? '+' : ''}${esc(p.price)}</span>
+                    </li>`).join('');
+            let stub;
+            if (ended) {
+                // What it cost stays readable after the day, quietly.
+                stub = `<div class="xev-stub-head">
+                            <span class="xev-eyebrow">{{ __('clubs::explore.ev_finished') }}</span>
+                            ${ev.going ? `<span class="xev-final"><i class="bi bi-trophy-fill"></i>{{ __('clubs::explore.ev_final') }}</span>` : ''}
+                        </div>
+                        ${prices.length ? `<ul class="xev-lines is-muted">${lineHtml(prices.slice(0, 3))}</ul>` : ''}
+                        ${prices.length > 3 ? `<div class="xev-more">{{ __('clubs::explore.ev_more_options', ['count' => '__N__']) }}`.replace('__N__', prices.length - 3) + `</div>` : ''}`;
+            } else if (!prices.length) {
+                stub = `<div class="xev-stub-head">
+                            <span class="xev-eyebrow">{{ __('clubs::explore.ev_entry') }}</span>
+                            <span class="xev-free"><i class="bi bi-check2-circle"></i>{{ __('clubs::explore.ev_free_entry') }}</span>
+                        </div>`;
+            } else {
+                const shown = prices.slice(0, 3);
+                const more = prices.length - shown.length;
+                const rows = lineHtml(shown);
+                const late = ev.late
+                    ? `<div class="xev-late ${ev.late.active ? 'is-on' : ''}"><i class="bi bi-alarm"></i>${ev.late.active
+                        ? esc(@js(__('clubs::explore.ev_late_now', ['price' => '__P__'])).replace('__P__', ev.late.price))
+                        : esc(@js(__('clubs::explore.ev_late_after', ['price' => '__P__', 'date' => '__D__'])).replace('__P__', ev.late.price).replace('__D__', ev.late.from))}</div>`
+                    : '';
+                stub = `<div class="xev-stub-head">
+                            <span class="xev-eyebrow">{{ __('clubs::explore.ev_entry') }}</span>
+                            <span class="xev-from">${ev.price_varies ? `<small>{{ __('clubs::explore.ev_from') }}</small>` : ''}${esc(ev.price_from || prices[0].price)}</span>
+                        </div>
+                        ${prices.length > 1 ? `<ul class="xev-lines">${rows}</ul>` : ''}
+                        ${more > 0 ? `<div class="xev-more">{{ __('clubs::explore.ev_more_options', ['count' => '__N__']) }}`.replace('__N__', more) + `</div>` : ''}
+                        ${late}`;
+            }
 
             return `
-                <div class="group card border border-gray-100 shadow-sm overflow-hidden rounded-2xl h-full flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                     onclick="window.location.href='${esc(ev.url)}'">
-                    <div class="relative overflow-hidden bg-gray-50" style="aspect-ratio: 16 / 9;">
-                        ${media}
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none"></div>
-                        ${dateChip}
-                        <div class="absolute top-3 end-3">${statePill}</div>
-                        <div class="absolute inset-x-0 bottom-0 p-3">
-                            <h3 class="font-bold text-[15px] text-white leading-tight drop-shadow-sm"
-                                style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(ev.title)}</h3>
-                            ${ev.club ? `<div class="flex items-center gap-1 mt-1 text-xs text-white/85">
-                                <i class="bi bi-shield-check"></i><span class="truncate">${esc(ev.club)}</span>
-                            </div>` : ''}
+                <a href="${esc(ev.url)}" class="xev ${ended ? 'is-ended' : ''}" style="--c:${color};">
+                    <div class="xev-top">
+                        <div class="xev-media">
+                            ${media}
+                            <div class="xev-shade"></div>
+                            <div class="xev-date">
+                                <span class="xev-date-mon">${esc(ev.mon)}</span>
+                                <span class="xev-date-day">${esc(ev.day)}</span>
+                                <span class="xev-date-wd">${esc(ev.wday)}</span>
+                            </div>
+                            <div class="xev-pills">${pills.join('')}</div>
+                            <div class="xev-heading">
+                                <h3>${esc(ev.title)}</h3>
+                                ${ev.club ? `<p><i class="bi bi-shield-check"></i><span>${esc(ev.club)}</span></p>` : ''}
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="p-4 bg-white flex-1 flex flex-col">
-                        <div class="space-y-1.5">
+                        <div class="xev-body">
                             ${metaRow('bi-calendar3', dates)}
                             ${metaRow('bi-clock', when)}
                             ${metaRow('bi-geo-alt', ev.location)}
-                        </div>
-
-                        ${capacity}
-
-                        <div class="flex items-center gap-2 mt-auto pt-4">
-                            <a href="${esc(ev.url)}" class="btn btn-primary flex-1 font-semibold text-sm text-center" onclick="event.stopPropagation()">
-                                <i class="bi bi-box-arrow-in-right me-1"></i>{{ __('clubs::explore.ev_view_event') }}
-                            </a>
-                            ${fee}
+                            ${crowd}
                         </div>
                     </div>
-                </div>`;
+                    <div class="xev-perf" aria-hidden="true"></div>
+                    <div class="xev-stub">
+                        ${stub}
+                        <span class="xev-cta">{{ __('clubs::explore.ev_view_event') }}<i class="bi bi-arrow-right-short rtl:rotate-180"></i></span>
+                    </div>
+                </a>`;
         },
 
         filterClubs() {

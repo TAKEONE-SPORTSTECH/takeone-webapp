@@ -144,7 +144,7 @@
                 /* Where a division chip goes, or null when the draw is not out
                    and the chip should say so instead. */
                 $pDrawUrl = $drawOpen
-                    ? route('events.public.section', ['event' => $e['key'], 'section' => 'draw'])
+                    ? $addr->section('draw')
                     : null;
             @endphp
 

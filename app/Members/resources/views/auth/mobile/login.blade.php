@@ -275,6 +275,9 @@
 
             <form method="POST" action="{{ route('login.magic') }}">
                 @csrf
+                {{-- Carry the page that sent them to sign in, so the emailed link lands there (it is
+                     often opened in another browser, where this session's url.intended does not exist). --}}
+                @if(session('url.intended'))<input type="hidden" name="intended" value="{{ session('url.intended') }}">@endif
                 <p style="text-align:center; font-size:13px; color:#6b6480; margin-bottom:16px">{{ __('auth.magic_prompt') }}</p>
                 <div class="ml-field">
                     <input id="magic_email" type="email" name="email" value="{{ old('email') }}" placeholder=" " required autocomplete="email">

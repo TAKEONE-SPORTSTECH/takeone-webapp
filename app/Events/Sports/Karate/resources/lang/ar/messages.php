@@ -46,4 +46,7 @@ return [
     'sport_label' => 'الكاراتيه',
     'weigh_in' => 'الوزن الرسمي',
 
+    // Grades on the sport's own belt ladder (beltLadder()), 2026-09-27.
+    'grade_kyu' => 'كيو :n',
+    'grade_dan' => 'دان :n',
 ];

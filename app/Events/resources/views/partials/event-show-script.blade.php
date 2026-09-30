@@ -38,7 +38,7 @@ x-data="{
         pickProof(e) {
             const f = e.target.files && e.target.files[0];
             if (!f) return;
-            if (!f.type.startsWith('image/')) { window.showToast('error', '{{ __("personal.event_show_proof_pick_image") }}'); e.target.value = ''; return; }
+            if (!f.type.startsWith('image/')) { window.showToast('error', @js(__("personal.event_show_proof_pick_image"))); e.target.value = ''; return; }
             const r = new FileReader();
             r.onload = () => { this.proofData = r.result; this.proofPreview = r.result; };
             r.readAsDataURL(f);
@@ -50,14 +50,14 @@ x-data="{
             this.proofSubmitting = true;
             let res = null, d = {};
             try {
-                res = await fetch('{{ route('me.events.register', $e['key']) }}', {
+                res = await fetch(@js(route('me.events.register', $e['key'])), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
                     credentials: 'same-origin',
                     body: JSON.stringify({ payment_proof: this.proofData }),
                 });
                 d = await res.json().catch(() => ({}));
-                if (!res.ok || !d.success) throw new Error(d.message || '{{ __("personal.event_show_action_failed") }}');
+                if (!res.ok || !d.success) throw new Error(d.message || @js(__("personal.event_show_action_failed")));
             } catch (e) { this.proofSubmitting = false; window.showToast('error', e.message); return; }
             this.proofSubmitting = false;
             this.going = true;
@@ -81,7 +81,7 @@ x-data="{
                     body: body ? JSON.stringify(body) : undefined,
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.message || '{{ __("personal.event_show_action_failed") }}');
+                if (!res.ok || !data.success) throw new Error(data.message || @js(__("personal.event_show_action_failed")));
                 return data;
             } catch (e) { window.showToast('error', e.message); return null; }
             finally { this.busy = false; }
@@ -149,21 +149,21 @@ x-data="{
             const parts = [];
             const base = spectator ? (this.fees.spectator_base || 0) : (this.fees.base || 0);
 
-            if (base > 0) parts.push('{{ __('events::events.fee_base_entry') }} ' + this.feeMoney(base));
+            if (base > 0) parts.push(@js((__('events::events.fee_base_entry')).' ') + this.feeMoney(base));
 
             for (const opt of this.feeOptions()) {
                 if (this.chosenOptions.includes(opt.key)) parts.push(opt.label + ' ' + opt.display);
             }
 
             if (! spectator && this.fees.late_active && this.fees.late_amount > 0) {
-                parts.push('{{ __('events::events.fee_line_late') }} ' + this.feeMoney(this.fees.late_amount));
+                parts.push(@js((__('events::events.fee_line_late')).' ') + this.feeMoney(this.fees.late_amount));
             }
 
             return parts.length > 1 ? parts.join(' + ') : '';
         },
 
         lateFeeNote() {
-            return '{{ __('events::events.fee_line_late') }} · ' + this.feeMoney(this.fees.late_amount);
+            return @js((__('events::events.fee_line_late')).' · ') + this.feeMoney(this.fees.late_amount);
         },
 
         representingDisowned: {{ ($representing['disowned'] ?? false) ? 'true' : 'false' }},
@@ -176,10 +176,10 @@ x-data="{
             // and a change that silently did not save would be the worst kind.
             if (! this.going) return;
 
-            const d = await this.req('{{ route('me.events.register', $e['key']) }}', 'POST', { representing_tenant_id: id });
+            const d = await this.req(@js(route('me.events.register', $e['key'])), 'POST', { representing_tenant_id: id });
             if (! d) { this.representing = previous; return; }
             this.representingDisowned = false;
-            window.showToast('success', '{{ __('personal.event_show_representing_saved') }}');
+            window.showToast('success', @js(__('personal.event_show_representing_saved')));
         },
 
         /* ---------------- Entering a squad (club channel) ----------------
@@ -249,7 +249,7 @@ x-data="{
 
         applyDivisionsToAll() {
             this.picked.forEach(id => { this.divSel[id] = this.divTemplate.slice(); });
-            window.showToast('success', '{{ __('events::events.entry_activities_applied_all') }}');
+            window.showToast('success', @js(__('events::events.entry_activities_applied_all')));
         },
 
         /* Only athletes who were actually given activities — an empty map means
@@ -295,11 +295,11 @@ x-data="{
         async loadSquad(searchOnly = false) {
             this.squadLoading = true;
             try {
-                const url = '{{ route('me.events.entry-roster', $e['key']) }}'
+                const url = @js(route('me.events.entry-roster', $e['key']))
                     + (this.squadQuery ? ('?q=' + encodeURIComponent(this.squadQuery)) : '');
                 const requests = [fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(r => r.json())];
                 if (! searchOnly) {
-                    requests.push(fetch('{{ route('me.events.claims', $e['key']) }}', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(r => r.json()));
+                    requests.push(fetch(@js(route('me.events.claims', $e['key'])), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(r => r.json()));
                 }
                 const [roster, claims] = await Promise.all(requests);
                 this.athletes = roster.athletes || [];
@@ -308,7 +308,7 @@ x-data="{
                 this.squadShown = roster.shown || 0;
                 if (claims) this.claims = claims.claims || [];
             } catch (e) {
-                window.showToast('error', '{{ __('personal.event_show_action_failed') }}');
+                window.showToast('error', @js(__('personal.event_show_action_failed')));
             } finally { this.squadLoading = false; }
         },
         togglePick(id) {
@@ -332,14 +332,14 @@ x-data="{
             this.squadSaving = true;
             let d = null;
             try {
-                const res = await fetch('{{ route('me.events.entries', $e['key']) }}', {
+                const res = await fetch(@js(route('me.events.entries', $e['key'])), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
                     credentials: 'same-origin',
                     body: JSON.stringify({ user_ids: this.picked, divisions: this.divisionsPayload() }),
                 });
                 d = await res.json().catch(() => ({}));
-                if (! res.ok || ! d.success) throw new Error(d.message || '{{ __('personal.event_show_action_failed') }}');
+                if (! res.ok || ! d.success) throw new Error(d.message || @js(__('personal.event_show_action_failed')));
             } catch (e) { this.squadSaving = false; window.showToast('error', e.message); return; }
             this.squadSaving = false;
 
@@ -402,7 +402,7 @@ x-data="{
 
         async loadClaimLinks() {
             try {
-                const res = await fetch('{{ route('me.events.entry-links', $e['key']) }}',
+                const res = await fetch(@js(route('me.events.entry-links', $e['key'])),
                     { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
                 const d = await res.json();
                 this.pendingClaims = d.pending || [];
@@ -415,7 +415,7 @@ x-data="{
             if (! name || this.claimSaving) return;
             this.claimSaving = true;
 
-            const d = await this.req('{{ route('me.events.entries.unnamed', $e['key']) }}', 'POST', {
+            const d = await this.req(@js(route('me.events.entries.unnamed', $e['key'])), 'POST', {
                 full_name: name,
                 contact_email: this.byName.contact_email || null,
                 contact_phone: this.byName.contact_phone || null,
@@ -453,7 +453,7 @@ x-data="{
         },
 
         async relinkClaim(c) {
-            const d = await this.req('{{ url('me/events/'.$e['key'].'/entry-links') }}/' + c.uuid + '/relink', 'POST');
+            const d = await this.req(@js((url('me/events/'.$e['key'].'/entry-links')).'/') + c.uuid + '/relink', 'POST');
             if (! d) return;
             this.freshClaim = d.claim;
             const i = this.pendingClaims.findIndex(x => x.uuid === c.uuid);
@@ -470,7 +470,7 @@ x-data="{
             });
             if (! ok) return;
 
-            const d = await this.req('{{ url('me/events/'.$e['key'].'/entry-links') }}/' + c.uuid, 'DELETE');
+            const d = await this.req(@js((url('me/events/'.$e['key'].'/entry-links')).'/') + c.uuid, 'DELETE');
             if (! d) return;
             this.pendingClaims = this.pendingClaims.filter(x => x.uuid !== c.uuid);
             if (this.freshClaim?.uuid === c.uuid) this.freshClaim = null;
@@ -488,7 +488,7 @@ x-data="{
                 confirmText: @js(__('personal.event_show_disown_btn')),
             });
             if (! ok) return;
-            const d = await this.req('{{ url('me/events/'.$e['key'].'/claims') }}/' + userId + '/disown', 'POST');
+            const d = await this.req(@js((url('me/events/'.$e['key'].'/claims')).'/') + userId + '/disown', 'POST');
             if (! d) return;
             const c = this.claims.find(x => x.user_id === userId);
             if (c) c.disowned = true;
@@ -545,7 +545,7 @@ x-data="{
             if (this.registered) return;
 
             if (role === 'participant' && this.byQual) {
-                window.showToast('info', '{{ __("personal.event_show_entry_by_qualification") }}');
+                window.showToast('info', @js(__("personal.event_show_entry_by_qualification")));
                 return;
             }
 
@@ -614,7 +614,7 @@ x-data="{
             if (payNow) {
                 this.openProof();
             } else if (this.payMethod === 'cash') {
-                window.showToast('info', '{{ __("personal.event_show_join_cash_noted") }}');
+                window.showToast('info', @js(__("personal.event_show_join_cash_noted")));
             }
         },
 
@@ -624,9 +624,9 @@ x-data="{
             if (! el) return;
             try {
                 await navigator.clipboard.writeText(el.textContent.trim());
-                window.showToast('success', '{{ __("personal.event_show_join_copied") }}');
+                window.showToast('success', @js(__("personal.event_show_join_copied")));
             } catch (e) {
-                window.showToast('error', '{{ __("personal.event_show_join_copy_failed") }}');
+                window.showToast('error', @js(__("personal.event_show_join_copy_failed")));
             }
         },
 
@@ -651,11 +651,11 @@ x-data="{
         // skipConfirm is passed by the join sheet, which has already shown the
         // fee and the payment steps — asking again would be asking twice.
         async toggleGoing(skipConfirm = false) {
-            if (this.byQual) { window.showToast('info','{{ __("personal.event_show_entry_by_qualification") }}'); return; }
+            if (this.byQual) { window.showToast('info',@js(__("personal.event_show_entry_by_qualification"))); return; }
             if (this.registered || this.busy) return;
             if (skipConfirm !== true) {
                 const ok = await window.confirmAction({
-                    title: '{{ __("personal.event_show_confirm_spot_title") }}',
+                    title: @js(__("personal.event_show_confirm_spot_title")),
                     message: @js($pPaid ? __('personal.event_show_confirm_spot_paid', ['fee' => $e['participant_fee']]) : __('personal.event_show_confirm_spot_free')),
                     type: 'primary', confirmText: @js($pPaid ? __('personal.event_show_join_owe_fee') : __('personal.event_show_im_in')),
                 });
@@ -665,7 +665,7 @@ x-data="{
             this.busy = true;
             let res = null, d = {};
             try {
-                res = await fetch('{{ route('me.events.register', $e['key']) }}', {
+                res = await fetch(@js(route('me.events.register', $e['key'])), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '', 'Accept': 'application/json' },
                     credentials: 'same-origin',
@@ -684,14 +684,14 @@ x-data="{
                 // Not in a competing weight category → offer the spectator ticket.
                 if (d.code === 'no_division' && d.spectator) {
                     const watch = await window.confirmAction({
-                        title: '{{ __("personal.event_show_no_division_title") }}',
-                        message: (d.message || '') + '{{ __("personal.event_show_get_ticket_prompt") }}',
-                        type: 'primary', confirmText: '{{ __("personal.event_show_get_spectator_ticket") }}',
+                        title: @js(__("personal.event_show_no_division_title")),
+                        message: (d.message || '') + @js(__("personal.event_show_get_ticket_prompt")),
+                        type: 'primary', confirmText: @js(__("personal.event_show_get_spectator_ticket")),
                     });
                     if (watch) this.toggleWatch(true);
                     return;
                 }
-                window.showToast('error', d.message || '{{ __("personal.event_show_couldnt_join") }}');
+                window.showToast('error', d.message || @js(__("personal.event_show_couldnt_join")));
                 return;
             }
 
@@ -707,13 +707,13 @@ x-data="{
             if (this.registered) return;
             if (skipConfirm !== true) {
                 const ok = await window.confirmAction({
-                    title: '{{ __("personal.event_show_get_ticket_title") }}',
+                    title: @js(__("personal.event_show_get_ticket_title")),
                     message: @js($ticketPaid ? __('personal.event_show_ticket_final_fee', ['fee' => $e['spectator']['fee']]) : __('personal.event_show_ticket_guest_list')),
                     type: 'primary', confirmText: @js($ticketPaid ? __('personal.event_show_book_ticket') : __('personal.event_show_get_pass')),
                 });
                 if (!ok) return;
             }
-            const d = await this.req('{{ route('me.events.ticket', $e['key']) }}', 'POST');
+            const d = await this.req(@js(route('me.events.ticket', $e['key'])), 'POST');
             if (!d) return;
             this.watching = true;
             this.feeDue = {{ $ticketPaid ? 'true' : 'false' }};
@@ -724,14 +724,14 @@ x-data="{
         async moderate(id, name, action) {
             if (this.busy) return;
             const copy = {
-                remove:    { t: '{{ __("personal.event_show_remove_confirm") }}'.replace(':name', name), m: '{{ __("personal.event_show_remove_msg") }}', c: '{{ __("personal.event_show_remove_btn") }}', ty: 'danger' },
-                block:     { t: '{{ __("personal.event_show_block_confirm") }}'.replace(':name', name), m: '{{ __("personal.event_show_block_msg") }}', c: '{{ __("personal.event_show_block_btn") }}', ty: 'danger' },
-                blacklist: { t: '{{ __("personal.event_show_blacklist_confirm") }}'.replace(':name', name), m: '{{ __("personal.event_show_blacklist_msg") }}', c: '{{ __("personal.event_show_blacklist_btn") }}', ty: 'danger' },
+                remove:    { t: @js(__("personal.event_show_remove_confirm")).replace(':name', name), m: @js(__("personal.event_show_remove_msg")), c: @js(__("personal.event_show_remove_btn")), ty: 'danger' },
+                block:     { t: @js(__("personal.event_show_block_confirm")).replace(':name', name), m: @js(__("personal.event_show_block_msg")), c: @js(__("personal.event_show_block_btn")), ty: 'danger' },
+                blacklist: { t: @js(__("personal.event_show_blacklist_confirm")).replace(':name', name), m: @js(__("personal.event_show_blacklist_msg")), c: @js(__("personal.event_show_blacklist_btn")), ty: 'danger' },
             }[action];
             if (!copy) return;
             const ok = await window.confirmAction({ title: copy.t, message: copy.m, type: copy.ty, confirmText: copy.c });
             if (!ok) return;
-            const d = await this.req('{{ url('me/events/'.$e['key'].'/participants') }}/' + id + '/moderate', 'POST', { action });
+            const d = await this.req(@js((url('me/events/'.$e['key'].'/participants')).'/') + id + '/moderate', 'POST', { action });
             if (!d) return;
             document.getElementById('prow-' + id)?.remove();
             document.getElementById('srow-' + id)?.remove();
@@ -747,7 +747,7 @@ x-data="{
             const empty = document.getElementById('blocked-empty');
             if (empty) empty.style.display = 'none';
             const initials = (u.name || '?').trim().split(/\s+/).map(s => s[0]).slice(0, 2).join('');
-            const scope = u.scope === 'club' ? '{{ __("personal.event_show_blacklisted_scope") }}' : '{{ __("personal.event_show_blocked_scope") }}';
+            const scope = u.scope === 'club' ? @js(__("personal.event_show_blacklisted_scope")) : @js(__("personal.event_show_blocked_scope"));
             // Build with DOM APIs only — no quoted HTML strings (they would break the x-data attribute).
             const make = (tag, cls, text) => { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; };
             const row = make('div', 'flex items-center gap-3');
@@ -766,9 +766,9 @@ x-data="{
             list.appendChild(row);
         },
         async unblock(id) {
-            const ok = await window.confirmAction({ title: '{{ __("personal.event_show_unblock_title") }}', message: '{{ __("personal.event_show_unblock_msg") }}', type: 'primary', confirmText: '{{ __("personal.event_show_unblock") }}' });
+            const ok = await window.confirmAction({ title: @js(__("personal.event_show_unblock_title")), message: @js(__("personal.event_show_unblock_msg")), type: 'primary', confirmText: @js(__("personal.event_show_unblock")) });
             if (!ok) return;
-            const d = await this.req('{{ url('me/events/'.$e['key'].'/bans') }}/' + id, 'DELETE');
+            const d = await this.req(@js((url('me/events/'.$e['key'].'/bans')).'/') + id, 'DELETE');
             if (!d) return;
             document.getElementById('brow-' + id)?.remove();
             this.blockedCount = Math.max(0, this.blockedCount - 1);
@@ -783,7 +783,7 @@ x-data="{
         cancelled: {{ ($e['cancelled'] ?? false) ? 'true' : 'false' }},
         goEdit() {
             this.manageOpen = false;
-            window.location.href = '{{ route('me.events.edit', $e['key']) }}';
+            window.location.href = @js(route('me.events.edit', $e['key']));
         },
         /* ===== The dress rehearsal =====
 
@@ -797,7 +797,7 @@ x-data="{
             if (this.rehearsalBusy) return;
             this.rehearsalBusy = true;
             try {
-                const d = await this.req('{{ route('me.events.rehearsal.begin', $e['key']) }}', 'POST');
+                const d = await this.req(@js(route('me.events.rehearsal.begin', $e['key'])), 'POST');
                 if (! d) return;
                 this.rehearsing = true;
                 window.showToast('success', d.message);
@@ -807,7 +807,7 @@ x-data="{
             if (this.rehearsalBusy) return;
             this.rehearsalBusy = true;
             try {
-                const d = await this.req('{{ route('me.events.rehearsal.end', $e['key']) }}', 'DELETE');
+                const d = await this.req(@js(route('me.events.rehearsal.end', $e['key'])), 'DELETE');
                 if (! d) return;
                 this.rehearsing = false;
                 window.showToast('success', d.message);
@@ -846,7 +846,7 @@ x-data="{
             this.danger = { action, code: null };
             this.dangerTyped = '';
 
-            const d = await this.req('{{ route('me.events.danger-code', $e['key']) }}', 'POST', { action });
+            const d = await this.req(@js(route('me.events.danger-code', $e['key'])), 'POST', { action });
 
             if (! d || ! d.code) { this.danger = null; return; }
             /* Still the same sheet? A second tap while this was in flight has
@@ -862,7 +862,7 @@ x-data="{
 
             try {
                 if (action === 'cancel') {
-                    const d = await this.req('{{ route('me.events.cancel-event', $e['key']) }}', 'PATCH', { code });
+                    const d = await this.req(@js(route('me.events.cancel-event', $e['key'])), 'PATCH', { code });
                     if (! d) return;
                     this.cancelled = true;
                     this.closeDanger();
@@ -875,11 +875,11 @@ x-data="{
                      the sealed app, and the poster answers GET only — so the
                      DELETE has to name the mirrored admin root itself. See the
                      note in personal/event-create.blade.php. --}}
-                const d = await this.req('{{ ($sealed ?? false) ? url('/e/'.$e['key'].'/admin') : route('me.events.destroy', $e['key']) }}', 'DELETE', { code });
+                const d = await this.req(@js(($sealed ?? false) ? url('/e/'.$e['key'].'/admin') : route('me.events.destroy', $e['key'])), 'DELETE', { code });
                 if (! d) return;
                 this.closeDanger();
                 window.showToast('success', d.message);
-                setTimeout(() => { window.location.href = d.redirect || '{{ route('me.events') }}'; }, 500);
+                setTimeout(() => { window.location.href = d.redirect || @js(route('me.events')); }, 500);
             } finally {
                 this.dangerBusy = false;
             }
@@ -899,13 +899,13 @@ x-data="{
         async addExpense() {
             const amt = parseFloat(this.newExpAmount);
             if (!(this.newExpLabel || '').trim() || !amt || amt <= 0) return;
-            const d = await this.req('{{ route('me.events.expenses.add', $e['key']) }}', 'POST', { label: this.newExpLabel.trim(), amount: amt });
+            const d = await this.req(@js(route('me.events.expenses.add', $e['key'])), 'POST', { label: this.newExpLabel.trim(), amount: amt });
             if (d && d.expense) { this.fin.expenses.unshift(d.expense); this.newExpLabel = ''; this.newExpAmount = ''; }
         },
         async removeExpense(id) {
-            const ok = await window.confirmAction({ title: '{{ __("personal.event_show_remove_expense_title") }}', message: '{{ __("personal.event_show_remove_expense_msg") }}', type: 'danger', confirmText: '{{ __("personal.event_show_remove_btn") }}' });
+            const ok = await window.confirmAction({ title: @js(__("personal.event_show_remove_expense_title")), message: @js(__("personal.event_show_remove_expense_msg")), type: 'danger', confirmText: @js(__("personal.event_show_remove_btn")) });
             if (!ok) return;
-            const d = await this.req('{{ url('me/events/'.$e['key'].'/expenses') }}/' + id, 'DELETE');
+            const d = await this.req(@js((url('me/events/'.$e['key'].'/expenses')).'/') + id, 'DELETE');
             if (d) this.fin.expenses = this.fin.expenses.filter(x => x.id !== id);
         },
         winners: [],
@@ -931,20 +931,20 @@ x-data="{
                 const payload = { results: this.winners
                     .filter(w => (w.name || '').trim())
                     .map((w, i) => ({ place: parseInt(w.place, 10) || (i + 1), name: (w.name || '').trim(), prize: (w.prize || '').trim() })) };
-                const res = await fetch('{{ route('me.events.results', $e['key']) }}', {
+                const res = await fetch(@js(route('me.events.results', $e['key'])), {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
                     credentials: 'same-origin', body: JSON.stringify(payload),
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.message || '{{ __("personal.event_show_save_winners_failed") }}');
+                if (!res.ok || !data.success) throw new Error(data.message || @js(__("personal.event_show_save_winners_failed")));
                 this.results = data.results || payload.results;
                 this.resultsOpen = false;
                 window.showToast('success', data.message);
             } catch (e) { window.showToast('error', e.message); }
             finally { this.busy = false; }
         },
-        medal(place) { return ({1:'#f59e0b',2:'#9ca3af',3:'#b45309'})[place] || '{{ $e['color'] }}'; },
+        medal(place) { return ({1:'#f59e0b',2:'#9ca3af',3:'#b45309'})[place] || @js($e['color']); },
         get pct() { return Math.round(this.goingCount / this.cap * 100); },
 
         /*

@@ -44,10 +44,10 @@ class EntryClaimController extends Controller
                 'athlete' => $row->athlete?->full_name ?? '—',
                 'coach' => $row->issuer?->full_name ?? __('events::events.claim_your_coach'),
                 'club' => $registration?->representingTenant?->club_name
-                    ?? $event->tenant?->club_name ?? '',
+                    ?? ($event->host()->name ?: ''),
                 'expires' => $row->expires_at->diffForHumans(null, true),
             ],
-            'belts' => $this->belts(),
+            'belts' => $this->belts($event),
         ]);
     }
 
@@ -118,10 +118,10 @@ class EntryClaimController extends Controller
 
         return [
             'title' => $event->title,
-            'club' => $event->tenant?->club_name ?? '',
+            'club' => $event->host()->name,
             // The mark this page wears. A claim link is white-labelled like
             // every other page a stranger sees — see entry/layout.blade.php.
-            'club_logo' => $event->tenant?->logo ? file_url($event->tenant->logo) : null,
+            'club_logo' => $event->host()->logo,
             'sport' => $event->sport ? ucfirst($event->sport) : '',
             'type' => __('events::events.claim_competition'),
             'color' => $color,
@@ -134,16 +134,14 @@ class EntryClaimController extends Controller
         ];
     }
 
-    /** @return array<int, array{v: string, label: string, hex: string}> */
-    private function belts(): array
+    /**
+     * The event's own belts, from the one sport-aware source — this page had
+     * its own six-colour copy (the third one on the platform).
+     *
+     * @return array<int, array{v: string, label: string, hex: string}>
+     */
+    private function belts(?\App\Events\Models\ClubEvent $event = null): array
     {
-        return [
-            ['v' => 'white', 'label' => __('events::events.belt_white'), 'hex' => '#e5e7eb'],
-            ['v' => 'yellow', 'label' => __('events::events.belt_yellow'), 'hex' => '#facc15'],
-            ['v' => 'green', 'label' => __('events::events.belt_green'), 'hex' => '#22c55e'],
-            ['v' => 'blue', 'label' => __('events::events.belt_blue'), 'hex' => '#3b82f6'],
-            ['v' => 'brown', 'label' => __('events::events.belt_brown'), 'hex' => '#92400e'],
-            ['v' => 'black', 'label' => __('events::events.belt_black'), 'hex' => '#111827'],
-        ];
+        return PublicEntryController::belts($event);
     }
 }

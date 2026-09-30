@@ -58,6 +58,25 @@
             </p>
             @endif
 
+@if(! empty($shapeOptions))
+            {{-- Crop-shape picker (opt-in via the `shapes` prop). The glyph is drawn to the real proportion. --}}
+            <div class="flex flex-wrap items-center gap-1.5 mb-3" role="radiogroup" aria-label="{{ __('shared.crop_shape') }}">
+                @foreach($shapeOptions as $shapeKey)
+                @php
+                    $glyph = ['square' => [14, 14], 'circle' => [14, 14], 'landscape' => [18, 11], 'portrait' => [11, 15]][$shapeKey];
+                    $on = $shapeKey === $initialShape;
+                @endphp
+                <button type="button" role="radio" aria-checked="{{ $on ? 'true' : 'false' }}"
+                        data-crop-shape-for="{{ $id }}" data-crop-shape="{{ $shapeKey }}"
+                        class="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border text-xs font-semibold transition-colors hover:border-primary/50 {{ $on ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-gray-600' }}">
+                    <span aria-hidden="true" class="inline-block border-2 border-current flex-shrink-0"
+                          style="width: {{ $glyph[0] }}px; height: {{ $glyph[1] }}px; border-radius: {{ $shapeKey === 'circle' ? '50%' : '3px' }};"></span>
+                    {{ __('shared.crop_shape_'.$shapeKey) }}
+                </button>
+                @endforeach
+            </div>
+            @endif
+
             <div id="box_{{ $id }}" class="takeone-canvas" style="height: {{ $canvasHeight }}px;"></div>
 
             @if($showControls ?? true)
@@ -102,6 +121,25 @@
     <p class="text-xs text-muted-foreground mb-2">
         <i class="bi bi-info-circle mr-1"></i>Drag to reposition, then use the zoom &amp; rotation sliders.
     </p>
+
+@if(! empty($shapeOptions))
+    {{-- Crop-shape picker (opt-in via the `shapes` prop). The glyph is drawn to the real proportion. --}}
+    <div class="flex flex-wrap items-center gap-1.5 mb-3" role="radiogroup" aria-label="{{ __('shared.crop_shape') }}">
+        @foreach($shapeOptions as $shapeKey)
+        @php
+            $glyph = ['square' => [14, 14], 'circle' => [14, 14], 'landscape' => [18, 11], 'portrait' => [11, 15]][$shapeKey];
+            $on = $shapeKey === $initialShape;
+        @endphp
+        <button type="button" role="radio" aria-checked="{{ $on ? 'true' : 'false' }}"
+                data-crop-shape-for="{{ $id }}" data-crop-shape="{{ $shapeKey }}"
+                class="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border text-xs font-semibold transition-colors hover:border-primary/50 {{ $on ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-gray-600' }}">
+            <span aria-hidden="true" class="inline-block border-2 border-current flex-shrink-0"
+                  style="width: {{ $glyph[0] }}px; height: {{ $glyph[1] }}px; border-radius: {{ $shapeKey === 'circle' ? '50%' : '3px' }};"></span>
+            {{ __('shared.crop_shape_'.$shapeKey) }}
+        </button>
+        @endforeach
+    </div>
+    @endif
 
     <div id="box_{{ $id }}" class="takeone-canvas" style="height: {{ $canvasHeight }}px;"></div>
 

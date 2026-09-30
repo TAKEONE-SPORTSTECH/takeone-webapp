@@ -88,6 +88,11 @@
             </button>
         </div>
 
+        <button type="button" class="btn btn-outline-primary shrink-0" @click="window.dispatchEvent(new CustomEvent('open-member-scan'))"
+                title="Find accounts that look like the same person">
+            <i class="bi bi-people mr-2"></i>Scan
+        </button>
+
         <button class="btn btn-primary shrink-0" @click="$dispatch('open-member-create-modal')">
             <i class="bi bi-plus-circle mr-2"></i>Add Member
         </button>
@@ -111,6 +116,7 @@
 
 {{-- Member quick-view popup --}}
 @include('clubs::admin.club.members.partials.member-popup')
+<x-member-duplicate-scan />
 
 @include('platform::members._scripts')
 @endsection

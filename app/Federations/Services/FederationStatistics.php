@@ -206,7 +206,10 @@ class FederationStatistics
             'federation' => $access['root']->name,
             // Where the map opens before any club has a location on it.
             'country' => strtoupper((string) (\App\Support\Countries::iso2($access['root']->country) ?? '')),
-            'bodies' => $bodies->map(fn ($b) => ['id' => $b->id, 'name' => $b->name])->values()->all(),
+            // `parent` places each body in the tree, so the page can roll a sub-federation's
+            // own sub-bodies into its row; `focus` is the body these figures are for.
+            'focus' => $access['root']->id,
+            'bodies' => $bodies->map(fn ($b) => ['id' => $b->id, 'name' => $b->name, 'parent' => $b->parent_id])->values()->all(),
             'clubs' => $clubRows,
             'athletes' => $athleteRows,
             'events' => $eventRows,

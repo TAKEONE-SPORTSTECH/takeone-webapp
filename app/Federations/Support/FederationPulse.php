@@ -98,6 +98,37 @@ final class FederationPulse
         }, report: true);
     }
 
+    /**
+     * A club's details changed (its contact, name, logo…), or its owner's
+     * did while the club shows the owner's contact: every federation the club
+     * is affiliated with re-reads its Clubs page. Signals only.
+     */
+    public static function forClub(?\App\Clubs\Models\Tenant $club): void
+    {
+        if (! $club || ! config('federations.enabled')) {
+            return;
+        }
+        rescue(function () use ($club) {
+            $ids = \App\Federations\Models\FederationClub::where('tenant_id', $club->id)
+                ->where('status', \App\Federations\Models\FederationClub::STATUS_APPROVED)
+                ->pluck('federation_id')->unique()->filter();
+            Federation::whereIn('id', $ids)->get()->each(fn (Federation $f) => self::federation($f));
+        }, report: true);
+    }
+
+    /** The owner's email or mobile changed: the clubs showing the owner's contact re-read. */
+    public static function forClubOwner(User $owner): void
+    {
+        if (! config('federations.enabled')) {
+            return;
+        }
+        rescue(function () use ($owner) {
+            \App\Clubs\Models\Tenant::where('owner_user_id', $owner->id)->get()
+                ->filter(fn ($club) => $club->usesOwnerContact())
+                ->each(fn ($club) => self::forClub($club));
+        }, report: true);
+    }
+
     /** The federation a signed-in staff member works in. */
     public static function forUser(?User $user): void
     {

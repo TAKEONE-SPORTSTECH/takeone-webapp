@@ -19,7 +19,12 @@ class UpdateFacilityRequest extends FormRequest
             'address' => 'nullable|string',
             'gps_lat' => 'nullable|numeric',
             'gps_long' => 'nullable|numeric',
-            'maps_url' => 'nullable|url|starts_with:http://,https://|max:500',
+            // Only a real Google Maps link (App\Support\MapLink) — the map pin follows it.
+            'maps_url' => ['nullable', 'string', 'max:500', function ($attr, $value, $fail) {
+                if (! \App\Support\MapLink::isGoogle((string) $value)) {
+                    $fail(__('shared.map_link_invalid'));
+                }
+            }],
             'is_available' => 'nullable|boolean',
             'facility_images' => 'nullable|array',
             'facility_images.*' => 'image|max:4096',

@@ -1,0 +1,144 @@
+      <sc-if value="{{ tabSchedule }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+          <div style="min-width:0">
+            <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Competition schedule</div>
+            <sc-if value="{{ sch.has }}" hint-placeholder-val="{{ false }}"><div style="font-size:.78rem;color:#6b7689;margin-top:3px">{{ sch.summary }}</div></sc-if>
+          </div>
+          <sc-if value="{{ sch.can }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ sch.has }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ sch.onAddDay }}" style="margin-left:auto;height:40px;padding:0 18px;font-family:inherit;font-size:.8rem;font-weight:600;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;border-radius:11px;cursor:pointer;box-shadow:0 6px 18px rgba(202,161,79,.35);transition:transform .16s ease" style-hover="transform:translateY(-1px)">{{ sch.addDayLabel }}</button>
+            </sc-if>
+          </sc-if>
+        </div>
+        <sc-if value="{{ sch.hasTopErr }}" hint-placeholder-val="{{ false }}">
+          <div role="alert" style="margin-bottom:14px;padding:10px 14px;border-radius:12px;background:#fcefed;border:1px solid #f0c9c3;font-size:.78rem;color:#b4483c">{{ sch.topErr }}</div>
+        </sc-if>
+
+        <sc-if value="{{ sch.empty }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border-radius:18px;border:1px dashed rgba(30,44,79,.18);padding:clamp(28px,5vw,48px) 22px;text-align:center;box-shadow:0 14px 40px rgba(30,44,79,.06)">
+            <div aria-hidden="true" style="width:56px;height:56px;margin:0 auto 14px;border-radius:16px;background:linear-gradient(140deg,#fbeecb,#f3dca0);display:grid;place-items:center;color:#8a6d20"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2"/></svg></div>
+            <div style="font-size:1rem;font-weight:600;color:#1e2c4f">No schedule yet</div>
+            <div style="font-size:.8rem;color:#6b7689;margin:6px auto 0;max-width:420px;line-height:1.55">Plan the competition day by day: weigh-in, eliminations, finals, ceremonies. Clubs and officials work to what you put here.</div>
+            <sc-if value="{{ sch.can }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ sch.onAddDay }}" style="margin-top:18px;height:44px;padding:0 24px;font-family:inherit;font-size:.84rem;font-weight:600;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;border-radius:12px;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.32);transition:transform .16s ease" style-hover="transform:translateY(-1px)">Add the first day</button>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;align-items:start">
+          <sc-for list="{{ sch.days }}" as="d" hint-placeholder-count="0">
+            <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:20px 22px 18px;box-shadow:0 14px 40px rgba(30,44,79,.1);min-width:0">
+
+              <sc-if value="{{ d.viewing }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">{{ d.num }}<sc-if value="{{ d.hasDate }}" hint-placeholder-val="{{ false }}"><span style="color:#b9a36a"> · {{ d.date }}</span></sc-if></div>
+                    <sc-if value="{{ d.hasTitle }}" hint-placeholder-val="{{ false }}"><div style="font-size:.98rem;font-weight:600;color:#1e2c4f;margin-top:4px;overflow-wrap:anywhere">{{ d.title }}</div></sc-if>
+                    <sc-if value="{{ d.noTitle }}" hint-placeholder-val="{{ false }}"><button onClick="{{ d.onEdit }}" style="margin-top:4px;padding:0;border:0;background:transparent;font-family:inherit;font-size:.78rem;color:#97a1b4;cursor:pointer" style-hover="color:#8a6d20">+ Name this day</button></sc-if>
+                    <div style="font-size:.7rem;color:#6b7689;margin-top:3px">{{ d.count }}</div>
+                  </div>
+                  <sc-if value="{{ d.can }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:4px;flex:none">
+                      <sc-if value="{{ d.canUp }}" hint-placeholder-val="{{ false }}"><button onClick="{{ d.onUp }}" aria-label="Move this day earlier" title="Move earlier" style="width:30px;height:30px;border-radius:8px;border:1px solid #e3e7ee;background:#fff;color:#6b7689;font-size:.62rem;cursor:pointer" style-hover="border-color:#caa14f;color:#8a6d20">&#9650;</button></sc-if>
+                      <sc-if value="{{ d.canDown }}" hint-placeholder-val="{{ false }}"><button onClick="{{ d.onDown }}" aria-label="Move this day later" title="Move later" style="width:30px;height:30px;border-radius:8px;border:1px solid #e3e7ee;background:#fff;color:#6b7689;font-size:.62rem;cursor:pointer" style-hover="border-color:#caa14f;color:#8a6d20">&#9660;</button></sc-if>
+                      <button onClick="{{ d.onEdit }}" aria-label="Rename this day" title="Rename" style="width:30px;height:30px;border-radius:8px;border:1px solid #e3e7ee;background:#fff;color:#6b7689;font-size:.82rem;cursor:pointer" style-hover="border-color:#caa14f;color:#8a6d20">&#9998;</button>
+                      <button onClick="{{ d.onDel }}" aria-label="Delete this day" title="Delete day" style="width:30px;height:30px;border-radius:8px;border:1px solid #e3e7ee;background:#fff;color:#6b7689;font-size:.74rem;cursor:pointer" style-hover="border-color:#e0a79f;color:#b4483c">&#10005;</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ d.editing }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20;margin-bottom:8px">{{ d.num }} · name</div>
+                <input value="{{ d.eTitle }}" onChange="{{ d.onETitle }}" onKeyDown="{{ d.onTitleKey }}" autofocus maxlength="120" placeholder="e.g. Eliminations" style="width:100%;height:40px;border:1px solid #d5dae3;border-radius:10px;padding:0 12px;font-family:inherit;font-size:.84rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                <sc-if value="{{ d.hasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;font-size:.74rem;color:#b4483c">{{ d.err }}</div></sc-if>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+                  <button onClick="{{ d.onCancel }}" style="height:34px;padding:0 14px;border-radius:9px;border:1px solid #d5dae3;background:#fff;font-family:inherit;font-size:.74rem;font-weight:600;color:#5d6880;cursor:pointer">Cancel</button>
+                  <button onClick="{{ d.onSaveDay }}" style="height:34px;padding:0 16px;border-radius:9px;border:0;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.74rem;font-weight:600;color:#1e2c4f;cursor:pointer">{{ d.saveLabel }}</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ d.delAsk }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:12px;padding:12px 14px;border-radius:12px;background:#fcefed;border:1px solid #f0c9c3">
+                  <div style="font-size:.78rem;color:#7d2f25;line-height:1.5">{{ d.delText }}</div>
+                  <sc-if value="{{ d.hasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:6px;font-size:.74rem;color:#b4483c">{{ d.err }}</div></sc-if>
+                  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+                    <button onClick="{{ d.onDelNo }}" style="height:32px;padding:0 14px;border-radius:9px;border:1px solid #d5dae3;background:#fff;font-family:inherit;font-size:.72rem;font-weight:600;color:#5d6880;cursor:pointer">Keep</button>
+                    <button onClick="{{ d.onDelYes }}" style="height:32px;padding:0 14px;border-radius:9px;border:0;background:#b4483c;font-family:inherit;font-size:.72rem;font-weight:600;color:#fff;cursor:pointer">{{ d.delLabel }}</button>
+                  </div>
+                </div>
+              </sc-if>
+
+              <div style="margin-top:12px">
+                <sc-for list="{{ d.slots }}" as="sl" hint-placeholder-count="0">
+                  <div style="border-bottom:1px solid #eef1f6">
+                    <sc-if value="{{ sl.viewing }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex;gap:12px;align-items:flex-start;padding:9px 0">
+                        <div style="font-size:.74rem;font-weight:600;color:#8a6d20;width:86px;flex:none;font-variant-numeric:tabular-nums;line-height:1.35">{{ sl.range }}</div>
+                        <div style="min-width:0;flex:1">
+                          <div style="font-size:.8rem;font-weight:500;color:#1e2c4f;overflow-wrap:anywhere">{{ sl.what }}</div>
+                          <sc-if value="{{ sl.hasWhere }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#6b7689;overflow-wrap:anywhere">{{ sl.where }}</div></sc-if>
+                        </div>
+                        <sc-if value="{{ sl.can }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;gap:4px;flex:none">
+                            <button onClick="{{ sl.onEdit }}" aria-label="Edit this session" title="Edit" style="width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:transparent;color:#97a1b4;font-size:.76rem;cursor:pointer" style-hover="border-color:#e3e7ee;color:#8a6d20">&#9998;</button>
+                            <button onClick="{{ sl.onDel }}" aria-label="Delete this session" title="Delete" style="width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:transparent;color:#97a1b4;font-size:.68rem;cursor:pointer" style-hover="border-color:#f0c9c3;color:#b4483c">&#10005;</button>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ sl.delAsk }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin:0 0 10px;padding:10px 12px;border-radius:10px;background:#fcefed;border:1px solid #f0c9c3;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <div style="font-size:.76rem;color:#7d2f25;flex:1;min-width:140px">Delete this session?</div>
+                        <sc-if value="{{ sl.hasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="width:100%;font-size:.72rem;color:#b4483c">{{ sl.err }}</div></sc-if>
+                        <button onClick="{{ sl.onDelNo }}" style="height:30px;padding:0 12px;border-radius:8px;border:1px solid #d5dae3;background:#fff;font-family:inherit;font-size:.7rem;font-weight:600;color:#5d6880;cursor:pointer">Keep</button>
+                        <button onClick="{{ sl.onDelYes }}" style="height:30px;padding:0 12px;border-radius:8px;border:0;background:#b4483c;font-family:inherit;font-size:.7rem;font-weight:600;color:#fff;cursor:pointer">{{ sl.delLabel }}</button>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ sl.editing }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:12px;margin:6px 0 10px;border-radius:12px;background:#fbf8f0;border:1px solid #efe2bf">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                          <input value="{{ sl.eTime }}" onChange="{{ sl.onETime }}" onKeyDown="{{ sl.onKey }}" inputmode="numeric" maxlength="5" aria-label="Start time" placeholder="Start 09:00" style="width:100%;height:38px;border:1px solid #d5dae3;border-radius:10px;padding:0 11px;font-family:inherit;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                          <input value="{{ sl.eEnd }}" onChange="{{ sl.onEEnd }}" onKeyDown="{{ sl.onKey }}" inputmode="numeric" maxlength="5" aria-label="End time (optional)" placeholder="End (optional)" style="width:100%;height:38px;border:1px solid #d5dae3;border-radius:10px;padding:0 11px;font-family:inherit;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                          <input value="{{ sl.eWhat }}" onChange="{{ sl.onEWhat }}" onKeyDown="{{ sl.onKey }}" autofocus maxlength="160" aria-label="What happens" placeholder="What happens — e.g. Kumite eliminations" style="grid-column:1/-1;width:100%;height:38px;border:1px solid #d5dae3;border-radius:10px;padding:0 11px;font-family:inherit;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                          <input value="{{ sl.eWhere }}" onChange="{{ sl.onEWhere }}" onKeyDown="{{ sl.onKey }}" maxlength="160" aria-label="Where (optional)" placeholder="Where — e.g. Tatami 1–4 (optional)" style="grid-column:1/-1;width:100%;height:38px;border:1px solid #d5dae3;border-radius:10px;padding:0 11px;font-family:inherit;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                        </div>
+                        <sc-if value="{{ sl.hasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;font-size:.74rem;color:#b4483c">{{ sl.err }}</div></sc-if>
+                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+                          <button onClick="{{ sl.onCancel }}" style="height:34px;padding:0 14px;border-radius:9px;border:1px solid #d5dae3;background:#fff;font-family:inherit;font-size:.74rem;font-weight:600;color:#5d6880;cursor:pointer">Cancel</button>
+                          <button onClick="{{ sl.onSave }}" style="height:34px;padding:0 16px;border-radius:9px;border:0;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.74rem;font-weight:600;color:#1e2c4f;cursor:pointer">{{ sl.saveLabel }}</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+
+              <sc-if value="{{ d.noSlots }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:.76rem;color:#97a1b4;padding:10px 0 2px">Nothing planned on this day yet.</div>
+              </sc-if>
+
+              <sc-if value="{{ d.adding }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:12px;margin-top:12px;border-radius:12px;background:#fbf8f0;border:1px solid #efe2bf">
+                  <div style="font-size:.64rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20;margin-bottom:8px">New session</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <input value="{{ d.nTime }}" onChange="{{ d.onNTime }}" onKeyDown="{{ d.onNKey }}" autofocus inputmode="numeric" maxlength="5" aria-label="Start time" placeholder="Start 09:00" style="width:100%;height:38px;border:1px solid #d5dae3;border-radius:10px;padding:0 11px;font-family:inherit;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <input value="{{ d.nEnd }}" onChange="{{ d.onNEnd }}" onKeyDown="{{ d.onNKey }}" inputmode="numeric" maxlength="5" aria-label="End time (optional)" placeholder="End (optional)" style="width:100%;height:38px;border:1px solid #d5dae3;border-radius:10px;padding:0 11px;font-family:inherit;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <input value="{{ d.nWhat }}" onChange="{{ d.onNWhat }}" onKeyDown="{{ d.onNKey }}" maxlength="160" aria-label="What happens" placeholder="What happens — e.g. Weigh-in &amp; accreditation" style="grid-column:1/-1;width:100%;height:38px;border:1px solid #d5dae3;border-radius:10px;padding:0 11px;font-family:inherit;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <input value="{{ d.nWhere }}" onChange="{{ d.onNWhere }}" onKeyDown="{{ d.onNKey }}" maxlength="160" aria-label="Where (optional)" placeholder="Where — e.g. Hall B foyer (optional)" style="grid-column:1/-1;width:100%;height:38px;border:1px solid #d5dae3;border-radius:10px;padding:0 11px;font-family:inherit;font-size:.8rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                  </div>
+                  <sc-if value="{{ d.nHasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;font-size:.74rem;color:#b4483c">{{ d.nErr }}</div></sc-if>
+                  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+                    <button onClick="{{ d.onCancel }}" style="height:34px;padding:0 14px;border-radius:9px;border:1px solid #d5dae3;background:#fff;font-family:inherit;font-size:.74rem;font-weight:600;color:#5d6880;cursor:pointer">Cancel</button>
+                    <button onClick="{{ d.onNSave }}" style="height:34px;padding:0 16px;border-radius:9px;border:0;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.74rem;font-weight:600;color:#1e2c4f;cursor:pointer">{{ d.addLabel }}</button>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ d.showAdd }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ d.onAdd }}" style="margin-top:12px;width:100%;height:38px;border-radius:10px;border:1px dashed rgba(202,161,79,.6);background:transparent;font-family:inherit;font-size:.76rem;font-weight:600;color:#8a6d20;cursor:pointer;transition:background .16s ease" style-hover="background:rgba(216,178,95,.1)">+ Add session</button>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>

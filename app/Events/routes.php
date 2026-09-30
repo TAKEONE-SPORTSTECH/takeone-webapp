@@ -24,12 +24,9 @@ use Illuminate\Support\Facades\Route;
 | that was not deliberately made public 404s exactly as an unknown uuid does,
 | so the address cannot be used to discover which events exist.
 */
-Route::get('/e/{event:uuid}', [App\Events\Controllers\PublicEventController::class, 'show'])
-    ->name('events.public')
-    // Counts the PEOPLE who open it — machines recognised and left out. Runs
-    // after the response and cannot delay or break the page; see the class.
-    ->middleware(['throttle:public-event', App\Events\Middleware\RecordEventVisit::class])
-    ->whereUuid('event');
+// ⚠️ `/e/{uuid}` is GONE (owner's decision, 2026-09-27): the event's one
+// address is `/me/events/{uuid}` (`me.events.show`, further down), for every
+// reader. Old /e/ links answer "not found" — deliberately, not by accident.
 
 /*
 | Who came. ORGANISER ONLY — the count and the detail both. A public page that
@@ -37,7 +34,7 @@ Route::get('/e/{event:uuid}', [App\Events\Controllers\PublicEventController::cla
 | tells a competitor how an event is selling. Re-checked inside the controller,
 | never inferred from the fact that the poster is public.
 */
-Route::get('/e/{event:uuid}/visitors', [App\Events\Controllers\PublicEventController::class, 'visitors'])
+Route::get('/me/events/{event:uuid}/visitors', [App\Events\Controllers\PublicEventController::class, 'visitors'])
     ->name('events.public.visitors')->middleware('throttle:60,1')->whereUuid('event');
 
 /*
@@ -51,16 +48,16 @@ Route::get('/e/{event:uuid}/visitors', [App\Events\Controllers\PublicEventContro
 // competition that lands on somebody's home screen is that competition's app.
 // App\Events\Support\PublicBrand decides what it is branded as; both doors
 // 404 for an event nobody published, like every other public surface.
-Route::get('/e/{event:uuid}/app.webmanifest', [App\Events\Controllers\PublicEventController::class, 'manifest'])
+Route::get('/me/events/{event:uuid}/app.webmanifest', [App\Events\Controllers\PublicEventController::class, 'manifest'])
     ->name('events.public.manifest')->middleware('throttle:public-event')->whereUuid('event');
-Route::get('/e/{event:uuid}/icon-{size}.png', [App\Events\Controllers\PublicEventController::class, 'icon'])
+Route::get('/me/events/{event:uuid}/icon-{size}.png', [App\Events\Controllers\PublicEventController::class, 'icon'])
     ->name('events.public.icon')->middleware('throttle:public-event')->whereUuid('event')->whereNumber('size');
 
 // The event's attached files — rulebook, entry form, schedule. Open only while
 // the organiser has the public page ON, and throttled: a download is cheap to
 // ask for and expensive to serve. A separate door from the member route, which
 // keeps its auth stack untouched.
-Route::get('/e/{event:uuid}/documents/{document:uuid}', [App\Events\Controllers\PublicEventController::class, 'document'])
+Route::get('/me/events/{event:uuid}/downloads/{document:uuid}', [App\Events\Controllers\PublicEventController::class, 'document'])
     ->name('events.public.document')->middleware('throttle:30,1')->whereUuid('event')->whereUuid('document');
 
 // The draw, as the hall wall shows it: read-only, no entrants bench, no faces
@@ -68,7 +65,7 @@ Route::get('/e/{event:uuid}/documents/{document:uuid}', [App\Events\Controllers\
 // what survives. A separate door from `me.events.bracket.data`, which keeps its
 // auth stack and its organiser's view untouched. Throttled a little above the
 // page itself because the board re-fetches when a division is switched.
-Route::get('/e/{event:uuid}/draw/data', [App\Events\Controllers\PublicEventController::class, 'drawData'])
+Route::get('/me/events/{event:uuid}/draw/data', [App\Events\Controllers\PublicEventController::class, 'drawData'])
     ->name('events.public.draw.data')->middleware('throttle:public-event')->whereUuid('event');
 
 // The four doors out of the public event page — the draw, the officiating
@@ -77,9 +74,7 @@ Route::get('/e/{event:uuid}/draw/data', [App\Events\Controllers\PublicEventContr
 // than four: the four differ only in which body they render, and a `where`
 // allowlist means an unknown section 404s at the router instead of reaching a
 // view name built from user input.
-Route::get('/e/{event:uuid}/{section}', [App\Events\Controllers\PublicEventController::class, 'section'])
-    ->name('events.public.section')->middleware('throttle:public-event')->whereUuid('event')
-    ->whereIn('section', ['draw', 'officials', 'gallery', 'participants', 'results', 'table']);
+// The sections live under /me/events/{uuid} too — see EventAddress.
 
 /*
 | The organiser's door, on the event's own page.
@@ -91,20 +86,20 @@ Route::get('/e/{event:uuid}/{section}', [App\Events\Controllers\PublicEventContr
 | success lands. Same `throttle:login` limiter as /login itself, because it IS
 | /login with a different skin.
 */
-Route::get('/e/{event:uuid}/manage', [App\Events\Controllers\PublicEventController::class, 'manage'])
+Route::get('/me/events/{event:uuid}/door', [App\Events\Controllers\PublicEventController::class, 'manage'])
     ->name('events.public.manage')->middleware('throttle:30,1')->whereUuid('event');
-Route::post('/e/{event:uuid}/manage', [App\Events\Controllers\PublicEventController::class, 'signIn'])
+Route::post('/me/events/{event:uuid}/door', [App\Events\Controllers\PublicEventController::class, 'signIn'])
     ->name('events.public.manage.signin')->middleware('throttle:login')->whereUuid('event');
 
 // Signing OUT, without leaving the event. The platform's /logout lands on `/`,
 // which for somebody using this as an installed app means being thrown out of
 // the app entirely; this one lands on the poster.
-Route::post('/e/{event:uuid}/sign-out', [App\Events\Controllers\PublicEventController::class, 'signOut'])
+Route::post('/me/events/{event:uuid}/sign-out', [App\Events\Controllers\PublicEventController::class, 'signOut'])
     ->name('events.public.sign-out')->middleware('throttle:30,1')->whereUuid('event');
 
-Route::get('/e/{event:uuid}/enter', [App\Events\Controllers\PublicEntryController::class, 'show'])
+Route::get('/me/events/{event:uuid}/enter', [App\Events\Controllers\PublicEntryController::class, 'show'])
     ->name('events.public.enter')->middleware('throttle:public-entry')->whereUuid('event');
-Route::post('/e/{event:uuid}/enter', [App\Events\Controllers\PublicEntryController::class, 'store'])
+Route::post('/me/events/{event:uuid}/enter', [App\Events\Controllers\PublicEntryController::class, 'store'])
     ->name('events.public.enter.store')->middleware('throttle:public-entry-write')->whereUuid('event');
 
 // The same door for somebody who already has an account: they signed in
@@ -112,8 +107,17 @@ Route::post('/e/{event:uuid}/enter', [App\Events\Controllers\PublicEntryControll
 // and no password — only what they compete at. Throttled like the other one,
 // and it 404s for a signed-out caller rather than redirecting an XHR to a
 // login form.
-Route::post('/e/{event:uuid}/enter/mine', [App\Events\Controllers\PublicEntryController::class, 'storeMine'])
+Route::post('/me/events/{event:uuid}/enter/mine', [App\Events\Controllers\PublicEntryController::class, 'storeMine'])
     ->name('events.public.enter.mine')->middleware('throttle:public-entry-write')->whereUuid('event');
+
+// Signing in as an ATHLETE on the event (the entry form's "Already have an
+// account?"), and the entry desk's one-time code for a forgotten password.
+// Both behind `events.entry_dedupe`. The code door is throttled like /login
+// on top of the code's own five-try limit.
+Route::get('/me/events/{event:uuid}/sign-in', [App\Events\Controllers\PublicEntryController::class, 'signInPage'])
+    ->name('events.public.sign-in')->middleware('throttle:30,1')->whereUuid('event');
+Route::post('/me/events/{event:uuid}/sign-in/code', [App\Events\Controllers\PublicEntryController::class, 'redeemDeskCode'])
+    ->name('events.public.sign-in.code')->middleware('throttle:login')->whereUuid('event');
 
 /*
 |--------------------------------------------------------------------------
@@ -133,15 +137,15 @@ Route::post('/e/{event:uuid}/enter/mine', [App\Events\Controllers\PublicEntryCon
 | re-checked inside App\Events\Support\EntryEditor on every write.
 */
 Route::middleware('auth')->group(function () {
-    Route::get('/e/{event:uuid}/my-entry', [App\Events\Controllers\EntryPanelController::class, 'show'])
+    Route::get('/me/events/{event:uuid}/my-entry', [App\Events\Controllers\EntryPanelController::class, 'show'])
         ->name('events.public.my-entry')->middleware('throttle:60,1')->whereUuid('event');
 
     // What a live update re-fetches. Its own (looser) limit because a realtime
     // nudge can arrive several times in a busy minute at a weigh-in desk.
-    Route::get('/e/{event:uuid}/my-entry/state', [App\Events\Controllers\EntryPanelController::class, 'state'])
+    Route::get('/me/events/{event:uuid}/my-entry/state', [App\Events\Controllers\EntryPanelController::class, 'state'])
         ->name('events.public.my-entry.state')->middleware('throttle:120,1')->whereUuid('event');
 
-    Route::put('/e/{event:uuid}/my-entry', [App\Events\Controllers\EntryPanelController::class, 'update'])
+    Route::put('/me/events/{event:uuid}/my-entry', [App\Events\Controllers\EntryPanelController::class, 'update'])
         ->name('events.public.my-entry.update')->middleware('throttle:20,1')->whereUuid('event');
 
     /*
@@ -157,13 +161,13 @@ Route::middleware('auth')->group(function () {
      | the platform's other image endpoints are limited as one class rather than
      | each inventing its own number.
     */
-    Route::post('/e/{event:uuid}/my-entry/payment-proof', [App\Events\Controllers\EntryPanelController::class, 'paymentProof'])
+    Route::post('/me/events/{event:uuid}/my-entry/payment-proof', [App\Events\Controllers\EntryPanelController::class, 'paymentProof'])
         ->name('events.public.my-entry.payment-proof')->middleware('throttle:uploads')->whereUuid('event');
 
-    Route::post('/e/{event:uuid}/my-entry/withdraw', [App\Events\Controllers\EntryPanelController::class, 'withdraw'])
+    Route::post('/me/events/{event:uuid}/my-entry/withdraw', [App\Events\Controllers\EntryPanelController::class, 'withdraw'])
         ->name('events.public.my-entry.withdraw')->middleware('throttle:10,1')->whereUuid('event');
 
-    Route::delete('/e/{event:uuid}/my-entry/withdraw', [App\Events\Controllers\EntryPanelController::class, 'withdrawCancel'])
+    Route::delete('/me/events/{event:uuid}/my-entry/withdraw', [App\Events\Controllers\EntryPanelController::class, 'withdrawCancel'])
         ->name('events.public.my-entry.withdraw.cancel')->middleware('throttle:10,1')->whereUuid('event');
 });
 
@@ -171,7 +175,7 @@ Route::middleware('auth')->group(function () {
 // already public on /explore — what keeps it from being a scraping door is its
 // shape: two characters minimum, ten results, throttled, four fields, and a
 // SLUG rather than an id.
-Route::get('/e/{event:uuid}/enter/clubs', [App\Events\Controllers\PublicEntryController::class, 'clubs'])
+Route::get('/me/events/{event:uuid}/enter/clubs', [App\Events\Controllers\PublicEntryController::class, 'clubs'])
     ->name('events.public.enter.clubs')->middleware('throttle:public-entry')->whereUuid('event');
 
 /*
@@ -369,6 +373,49 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
         ->name('openmat.sport')->whereIn('sport', \App\Events\OpenMat\OpenMat::sports());
 });
 
+/*
+|--------------------------------------------------------------------------
+| The one event address — /me/events/{uuid}
+|--------------------------------------------------------------------------
+| Lifted out of the member group below so it can also answer a stranger, but
+| ONLY through EventPageReader: with `events.unified_page` off (the default)
+| that middleware runs exactly the stack this route had inside the group —
+| auth, verified, two-factor — so nothing changes. With it on, a published
+| event's page opens for anybody, as /e/{uuid} always has.
+|
+| `whereUuid` because it is now registered BEFORE `/me/events/create`, and
+| without it "create" would be read as an event.
+*/
+// `throttle:public-event` (300/min per person or connection) because a stranger
+// can reach these now, exactly as on /e/{uuid}.
+Route::middleware(['throttle:public-event', \App\Events\Middleware\EventPageReader::class, \App\Events\Middleware\BrandEventPage::class])
+    ->prefix('me')->name('me.')->group(function () {
+        Route::get('/events/{event:uuid}', [App\Events\Controllers\PersonalEventController::class, 'show'])
+            ->name('events.show')->whereUuid('event')
+            // Counts the PEOPLE who open the event — what /e/{uuid} counted
+            // before it went. After the response; it cannot break the page.
+            ->middleware(App\Events\Middleware\RecordEventVisit::class);
+
+        // The event's SECTIONS, on the same terms: member-only exactly as
+        // before while the flag is off; with it on, a published event's
+        // sections open for anybody and render the public section pages.
+        Route::get('/events/{event:uuid}/brackets/manage', [App\Events\Controllers\PersonalEventController::class, 'manageBracket'])
+            ->name('events.bracket.manage')->whereUuid('event');
+        Route::get('/events/{event:uuid}/officiating', [App\Events\Controllers\PersonalEventController::class, 'officiating'])
+            ->name('events.officiating')->whereUuid('event');
+        Route::get('/events/{event:uuid}/gallery', [App\Events\Controllers\PersonalEventController::class, 'gallery'])
+            ->name('events.gallery')->whereUuid('event');
+
+        // Sections that only the public door had until now. They 404 with the
+        // flag off, so nothing links to them until it is on.
+        Route::get('/events/{event:uuid}/participants', [App\Events\Controllers\PersonalEventController::class, 'participantsPage'])
+            ->name('events.participants')->whereUuid('event');
+        Route::get('/events/{event:uuid}/results', [App\Events\Controllers\PersonalEventController::class, 'resultsPage'])
+            ->name('events.results.page')->whereUuid('event');
+        Route::get('/events/{event:uuid}/table', [App\Events\Controllers\PersonalEventController::class, 'tablePage'])
+            ->name('events.table')->whereUuid('event');
+    });
+
 Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\BrandEventPage::class])
     ->prefix('me')->name('me.')->group(function () {
 // The /me member surfaces (home, feed, schedule, family tree, profile,
@@ -393,7 +440,8 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     Route::get('/events', [App\Events\Controllers\PersonalEventController::class, 'index'])->name('events');
     Route::get('/events/create', [App\Events\Controllers\PersonalEventController::class, 'create'])->name('events.create')->middleware('source-text');
     Route::post('/events', [App\Events\Controllers\PersonalEventController::class, 'store'])->name('events.store')->middleware(['throttle:member-write', 'source-text']);
-    Route::get('/events/{event:uuid}', [App\Events\Controllers\PersonalEventController::class, 'show'])->name('events.show');
+    // `me.events.show` is registered ABOVE this group — see "The one event
+    // address". Same URI, same name, same controller action.
     // The organiser's console. `show` is what a visitor came to read; this is
     // what the people running the event came to do. Organiser or an appointed
     // official only — the action refuses everyone else.
@@ -479,7 +527,8 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
         ->whereNumber('matchNo')->name('events.bout.comments.like')->middleware('throttle:social');
 
     // The event's own gallery: every filmed bout, grouped by division.
-    Route::get('/events/{event:uuid}/gallery', [App\Events\Controllers\PersonalEventController::class, 'gallery'])->name('events.gallery');
+    // `/events/{uuid}/gallery` is registered ABOVE this group, beside
+    // `me.events.show` — see "The one event address". Same URI, name, action.
     Route::get('/events/{event:uuid}/gallery/data', [App\Events\Controllers\PersonalEventController::class, 'galleryData'])
         ->name('events.gallery.data')->middleware('throttle:media-read');
     // Organiser corrections to one bout: corners, scores, winner, the names on
@@ -493,7 +542,8 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
         ->whereNumber('matchNo')->name('events.bout.update')->middleware('throttle:member-write');
     // The same board, full screen and free of chrome, for organisers arranging a
     // draw. Redirects back to the bracket for anyone who may not arrange.
-    Route::get('/events/{event:uuid}/brackets/manage', [App\Events\Controllers\PersonalEventController::class, 'manageBracket'])->name('events.bracket.manage');
+    // `/events/{uuid}/brackets/manage` is registered ABOVE this group, beside
+    // `me.events.show` — see "The one event address". Same URI, name, action.
 
     // Who's joined — the roster that used to render inline on the event screen.
     Route::get('/events/{event:uuid}/people', [App\Events\Controllers\PersonalEventController::class, 'people'])->name('events.people');
@@ -502,7 +552,8 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // to anyone the event is visible to; appointing lives on the edit screen and
     // the appointment paperwork (email, phone, fee) stays on events.officials,
     // which is organiser-guarded.
-    Route::get('/events/{event:uuid}/officiating', [App\Events\Controllers\PersonalEventController::class, 'officiating'])->name('events.officiating');
+    // `/events/{uuid}/officiating` is registered ABOVE this group, beside
+    // `me.events.show` — see "The one event address". Same URI, name, action.
 
     // Documents attached to an event (rulebook, entry form, schedule).
     // Upload/delete are organiser-only; download is anyone the event reaches —
@@ -747,6 +798,13 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // only — it never changes who may ARRANGE a draw, and the organiser and
     // their officials read it at every setting.
     Route::post('/events/{event:uuid}/draw-reveal', [App\Events\Controllers\PersonalEventController::class, 'setDrawReveal'])->name('events.draw-reveal')->middleware('throttle:admin-write');
+    // The rule book an event runs under: category and belt systems (App\Events\Support\CategorySystems).
+    Route::get('/category-systems', [App\Events\Controllers\CategorySystemController::class, 'index'])->name('category-systems')->middleware('throttle:60,1');
+    Route::post('/category-systems', [App\Events\Controllers\CategorySystemController::class, 'store'])->name('category-systems.store')->middleware('throttle:admin-write');
+    Route::put('/events/{event:uuid}/rulebook', [App\Events\Controllers\CategorySystemController::class, 'update'])->name('events.rulebook')->middleware('throttle:admin-write');
+    // Paid featuring on /me/events — the organiser's side (App\Events\Support\EventFeaturing).
+    Route::get('/events/{event:uuid}/feature', [App\Events\Controllers\EventFeatureController::class, 'show'])->name('events.feature')->middleware('throttle:60,1');
+    Route::post('/events/{event:uuid}/feature', [App\Events\Controllers\EventFeatureController::class, 'store'])->name('events.feature.store')->middleware('throttle:uploads');
 
     /*
      * ⚠️ These live under /day-order, NOT /running-order, and must stay there.
@@ -787,6 +845,11 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // single-use link lets the athlete supply what the coach could only have
     // guessed at (Documentation/EVENTS-PUBLIC-ENTRY.md, Door B).
     Route::post('/events/{event:uuid}/entries/unnamed', [App\Events\Controllers\PersonalEventController::class, 'storeUnnamedEntry'])->name('events.entries.unnamed')->middleware('throttle:admin-write');
+    // The pre-draw duplicate check: likely pairs among the entrants, and settling one (EventDuplicates).
+    Route::get('/events/{event:uuid}/duplicates', [App\Events\Controllers\EventDuplicatesController::class, 'index'])->name('events.duplicates')->middleware('throttle:60,1');
+    Route::post('/events/{event:uuid}/duplicates', [App\Events\Controllers\EventDuplicatesController::class, 'resolve'])->name('events.duplicates.resolve')->middleware('throttle:admin-write');
+    // The entry desk issues a one-time sign-in code for an athlete who forgot their password (DeskSignInCode).
+    Route::post('/events/{event:uuid}/entries/{entry}/sign-in-code', [App\Events\Controllers\EntrySignInCodeController::class, 'store'])->name('events.entries.sign-in-code')->whereNumber('entry')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/entry-links', [App\Events\Controllers\PersonalEventController::class, 'entryClaimLinks'])->name('events.entry-links')->middleware('throttle:60,1');
     Route::delete('/events/{event:uuid}/entry-links/{claim}', [App\Events\Controllers\PersonalEventController::class, 'revokeEntryClaim'])->name('events.entry-links.revoke')->whereUuid('claim')->middleware('throttle:admin-write');
     Route::post('/events/{event:uuid}/entry-links/{claim}/relink', [App\Events\Controllers\PersonalEventController::class, 'regenerateEntryClaim'])->name('events.entry-links.relink')->whereUuid('claim')->middleware('throttle:admin-write');
@@ -822,6 +885,21 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
      * auth stack says WHO is signed in, never which events are theirs.
      */
     // The screen itself, and the same list as JSON for the panel's own updates.
+    // Pairs and teams (EventSides) — organiser only, JSON, re-authorised in the
+    // controller. Sides are addressed by uuid inside their event.
+    Route::get('/events/{event:uuid}/sides', [App\Events\Controllers\EventSidesController::class, 'index'])
+        ->name('events.sides')->middleware('throttle:60,1')->whereUuid('event');
+    Route::post('/events/{event:uuid}/sides', [App\Events\Controllers\EventSidesController::class, 'store'])
+        ->name('events.sides.store')->middleware('throttle:admin-write')->whereUuid('event');
+    Route::patch('/events/{event:uuid}/sides/{side}', [App\Events\Controllers\EventSidesController::class, 'update'])
+        ->name('events.sides.update')->middleware('throttle:admin-write')->whereUuid('event')->whereUuid('side');
+    Route::delete('/events/{event:uuid}/sides/{side}', [App\Events\Controllers\EventSidesController::class, 'destroy'])
+        ->name('events.sides.destroy')->middleware('throttle:admin-write')->whereUuid('event')->whereUuid('side');
+    Route::post('/events/{event:uuid}/sides/{side}/members', [App\Events\Controllers\EventSidesController::class, 'addMember'])
+        ->name('events.sides.members.add')->middleware('throttle:admin-write')->whereUuid('event')->whereUuid('side');
+    Route::delete('/events/{event:uuid}/sides/{side}/members/{member}', [App\Events\Controllers\EventSidesController::class, 'removeMember'])
+        ->name('events.sides.members.remove')->middleware('throttle:admin-write')->whereUuid('event')->whereUuid('side')->whereNumber('member');
+
     Route::get('/events/{event:uuid}/clubs', [App\Events\Controllers\EventClubsController::class, 'page'])
         ->name('events.clubs')->middleware('throttle:60,1')->whereUuid('event');
 

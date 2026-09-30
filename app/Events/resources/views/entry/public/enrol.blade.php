@@ -117,7 +117,7 @@
              nothing behind it, so this names the event page itself
              (reference_back_is_an_address). --}}
         <div class="flex items-center justify-between gap-3 relative z-10">
-            <a href="{{ route('events.public', ['event' => $e['uuid']]) }}"
+            <a href="{{ route('me.events.show', ['event' => $e['uuid']]) }}"
                class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold no-underline"
                aria-label="{{ __('events::events.public_enrol_back_event') }}" title="{{ __('events::events.public_enrol_back_event') }}">
                 <i class="bi bi-chevron-left"></i>
@@ -165,9 +165,26 @@
                      must not be handed to a product they have never heard of. --}}
                 <p class="text-[12px] text-muted-foreground">
                     {{ __('events::events.public_enrol_have_account') }}
-                    <a href="{{ route('events.public.manage', ['event' => $e['uuid']]) }}"
+                    {{-- With one-athlete-one-profile on, the ATHLETE's sign-in —
+                         not the organiser's console, whose wording sent
+                         returning athletes back here to make a second account. --}}
+                    <a href="{{ \App\Events\Support\KnownPerson::enabled() ? route('events.public.sign-in', ['event' => $e['uuid']]) : route('events.public.manage', ['event' => $e['uuid']]) }}"
                        class="font-black no-underline" style="color: {{ $ev }};">{{ __('events::events.public_enrol_sign_in_link') }}</a>
                 </p>
+
+                {{-- This phone + name already has a profile (KnownPerson). No
+                     second account is made: they type THAT password, or get a
+                     code from the entry desk. --}}
+                <div x-show="known" x-cloak class="rounded-2xl p-3.5 mt-3 flex items-start gap-3"
+                     style="background: {{ $ev }}12; border:1px solid {{ $ev }}40;">
+                    <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 text-white" style="background: {{ $ev }};"><i class="bi bi-person-check-fill"></i></span>
+                    <div class="min-w-0">
+                        <p class="text-[13.5px] font-black text-foreground">{{ __('events::events.public_enrol_known_title') }}</p>
+                        <p class="text-[12px] text-muted-foreground leading-snug mt-0.5" x-text="knownMsg"></p>
+                        <a href="{{ route('events.public.sign-in', ['event' => $e['uuid']]) }}#code"
+                           class="inline-block text-[12px] font-black no-underline mt-1.5" style="color: {{ $ev }};">{{ __('events::events.public_enrol_known_forgot') }}</a>
+                    </div>
+                </div>
 
                 <h2 class="text-[22px] font-black leading-tight text-foreground mt-3">{{ __('events::events.public_enrol_one_title') }}</h2>
                 <p class="text-[13px] text-muted-foreground mt-1">{{ __('events::events.public_enrol_one_hint') }}</p>
@@ -322,7 +339,7 @@
                          text, leaving dark type on the event's own fill. --}}
                     :class="[(canContinue && !saving) ? '' : 'opacity-40', canContinue ? 'text-white' : 'text-muted-foreground']"
                     :style="canContinue ? `background: {{ $e['color'] }}; box-shadow: 0 18px 40px -18px {{ $e['color'] }}` : 'background: var(--color-muted, #eceef2)'">
-                <span x-text="saving ? '…' : @js(__('events::events.public_enrol_cta'))"></span>
+                <span x-text="saving ? '…' : (known ? @js(__('events::events.public_enrol_known_cta')) : @js(__('events::events.public_enrol_cta')))"></span>
                 <i class="bi bi-arrow-right" x-show="!saving"></i>
             </button>
         </div>
@@ -438,6 +455,11 @@ function enrolFlow() {
            notice at the bottom of the screen. Cleared on every submit. */
         fieldErrors: {},
 
+        /* The server recognised this phone + name: they already have a
+           profile, and the button now means "sign in and enter". */
+        known: false,
+        knownMsg: '',
+
         /* Exactly the server's own rules, no stricter: a name of two
            characters, a non-empty number with a well-formed dial code, and
            eight characters of password. Nothing else may block the button — a
@@ -505,6 +527,15 @@ function enrolFlow() {
                         }
                     }
                     if (d.field && d.message) this.fieldErrors[d.field] = d.message;
+                    if (d.state === 'known') {
+                        this.known = true;
+                        this.knownMsg = d.message || '';
+                        delete this.fieldErrors.password;
+                        this.form.password = '';
+                        this.saving = false;
+                        this.$nextTick(() => document.getElementById('entrantPassword')?.focus());
+                        return;
+                    }
 
                     throw new Error(d.message || @js(__('events::events.public_enrol_closed')));
                 }
@@ -514,7 +545,7 @@ function enrolFlow() {
                    else this door no longer asks for is collected. The address
                    comes from the SERVER, never from anything typed here. */
                 this.sent = true;
-                window.location.href = d.redirect || @js(route('events.public', ['event' => $e['uuid']]));
+                window.location.href = d.redirect || @js(route('me.events.show', ['event' => $e['uuid']]));
             } catch (e) {
                 this.saving = false;
                 notice(e.message);

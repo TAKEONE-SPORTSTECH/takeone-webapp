@@ -9,6 +9,7 @@ use App\Federations\Services\FederationInvitation;
 use App\Federations\Services\FederationRegistry;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,8 +35,16 @@ class FederationInviteController extends Controller
     public function code(Request $request, string $event): JsonResponse
     {
         $e = $this->event($event);
-        $data = $request->validate(['contact' => ['required', 'string', 'max:191']]);
-        $this->invitation->sendCode($e, $data['contact']);
+        // Either a contact typed by hand, or a club picked from "Find your club".
+        $data = $request->validate([
+            'contact' => ['required_without:club', 'nullable', 'string', 'max:191'],
+            'club' => ['required_without:contact', 'nullable', 'string', 'regex:/^(fc|fa)-[0-9a-f-]{36}$/'],
+        ]);
+        if (! empty($data['club'])) {
+            $this->invitation->sendCodeToClub($e, $data['club']);
+        } else {
+            $this->invitation->sendCode($e, $data['contact']);
+        }
 
         // The same answer whether or not the contact belongs to a club.
         return response()->json(['success' => true]);
@@ -44,11 +53,72 @@ class FederationInviteController extends Controller
     public function verify(Request $request, string $event): JsonResponse
     {
         $e = $this->event($event);
-        $data = $request->validate(['contact' => ['required', 'string', 'max:191'], 'code' => ['required', 'string', 'max:12']]);
+        $data = $request->validate([
+            'contact' => ['required_without:club', 'nullable', 'string', 'max:191'],
+            'club' => ['required_without:contact', 'nullable', 'string', 'regex:/^(fc|fa)-[0-9a-f-]{36}$/'],
+            'code' => ['required', 'string', 'max:12'],
+        ]);
 
-        return $this->invitation->verify($e, $data['contact'], $data['code'])
+        $r = ! empty($data['club'])
+            ? $this->invitation->verify($e, $data['club'], $data['code'], true)
+            : $this->invitation->verify($e, $data['contact'], $data['code']);
+        if (! $r['ok']) {
+            return response()->json(['success' => false], 422);
+        }
+        // One owner, several clubs: they choose (choose()) before anything is shown.
+        if (! empty($r['choices'])) {
+            return response()->json(['success' => true, 'choices' => $r['choices']]);
+        }
+
+        return response()->json(['success' => true, 'store' => $this->invitation->store($e)]);
+    }
+
+    /** After a code that covered several clubs: the one the owner picked. */
+    public function choose(Request $request, string $event): JsonResponse
+    {
+        $e = $this->event($event);
+        $data = $request->validate(['club' => ['required', 'string', 'regex:/^(fc|fa)-[0-9a-f-]{36}$/']]);
+
+        return $this->invitation->choose($e, $data['club'])
             ? response()->json(['success' => true, 'store' => $this->invitation->store($e)])
             : response()->json(['success' => false], 422);
+    }
+
+    /** "Find your club" as the coach types a name. */
+    public function clubs(Request $request, string $event): JsonResponse
+    {
+        $e = $this->event($event);
+        $q = (string) $request->query('q', '');
+        abort_if(mb_strlen($q) > 80, 422);
+
+        return response()->json(['success' => true, 'clubs' => $this->invitation->searchClubs($e, $q)]);
+    }
+
+    /** A "new club" that may already be registered: the match, or nothing. */
+    public function checkClub(Request $request, string $event): JsonResponse
+    {
+        $e = $this->event($event);
+        $data = $request->validate([
+            'name' => ['nullable', 'string', 'max:150'],
+            'email' => ['nullable', 'string', 'max:191'],
+            'phone' => ['nullable', 'string', 'max:40'],
+        ]);
+
+        return response()->json(['success' => true, 'match' => $this->invitation->checkNewClub($e, $data)]);
+    }
+
+    /**
+     * The one-tap link from the code email. Always lands on the invitation —
+     * signed in when the link was good, at the start when it was not.
+     */
+    public function magic(string $event, string $token): RedirectResponse
+    {
+        $e = $this->event($event);
+        if (preg_match('/^[A-Za-z0-9]{48}$/', $token)) {
+            $this->invitation->useMagicLink($e, $token);
+        }
+
+        return redirect()->to(route('federations.app.invitation').'?event='.urlencode($e->uuid));
     }
 
     public function lookup(Request $request, string $event): JsonResponse
@@ -71,8 +141,8 @@ class FederationInviteController extends Controller
         $r = $this->invitation->submit($e, $request->all());
 
         return $r['ok']
-            ? response()->json(['success' => true, 'ref' => $r['ref'], 'balance' => $r['balance'], 'store' => $r['store']])
-            : response()->json(['success' => false, 'message' => $r['message'] ?? 'This entry could not be saved.'], 422);
+            ? response()->json(['success' => true, 'ref' => $r['ref'], 'balance' => $r['balance'], 'added' => $r['added'] ?? null, 'skipped' => $r['skipped'] ?? [], 'store' => $r['store']])
+            : response()->json(array_filter(['success' => false, 'message' => $r['message'] ?? 'This entry could not be saved.', 'code' => $r['code'] ?? null, 'match' => $r['match'] ?? null], fn ($v) => $v !== null), ($r['code'] ?? null) === 'club_exists' ? 409 : 422);
     }
 
     public function withdraw(Request $request, string $event): JsonResponse

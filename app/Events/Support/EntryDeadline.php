@@ -55,10 +55,14 @@ class EntryDeadline
         return ClubEvent::query()
             ->where('entry_deadline_enforced', true)
             ->whereNotNull('weigh_in_at')
-            ->where('weigh_in_at', '<=', now())
+            // Stored as the hall's wall clock, so the SQL cut is widened by a
+            // day either side of UTC and the exact moment is settled in the
+            // event's own zone below.
+            ->where('weigh_in_at', '<=', now()->addDay()->format('Y-m-d H:i:s'))
             ->where('status', '!=', 'cancelled')
             ->whereNull('started_at')      // once it is running the draw is final
             ->get()
+            ->filter(fn (ClubEvent $event) => now()->gte($event->inZone($event->weigh_in_at)))
             ->reject(fn (ClubEvent $event) => $event->hasEnded())
             ->values();
     }

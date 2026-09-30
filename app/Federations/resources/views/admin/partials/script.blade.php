@@ -14,7 +14,7 @@ window.fedAdminForm = window.fedAdminForm || function (cfg) {
     const SECTION_OF = {
         name: 'identity', short_name: 'identity', country: 'identity', sports: 'identity', timezone: 'identity', currency: 'identity', founded_year: 'identity', languages: 'identity',
         owner_email: 'owner', owner: 'owner',
-        email: 'contact', phone_code: 'contact', phone_number: 'contact', phone: 'contact', office_hours: 'contact', website: 'contact', address: 'contact', lat: 'contact', lng: 'contact', social_links: 'contact',
+        email: 'contact', phone_code: 'contact', phone_number: 'contact', phone: 'contact', office_hours: 'contact', website: 'contact', address: 'contact', lat: 'contact', lng: 'contact', maps_url: 'contact', social_links: 'contact',
         registration_number: 'legal', registration_authority: 'legal', registration_certificate: 'legal',
         tax_number: 'tax', invoice_name: 'tax', invoice_address: 'tax',
         bank_account_name: 'bank', bank_name: 'bank', iban: 'bank', swift: 'bank',

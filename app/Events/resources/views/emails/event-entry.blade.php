@@ -16,7 +16,7 @@
     use App\Support\Palette;
 
     $ev = Palette::safe($event->color ?? null);
-    $club = trim((string) ($event->tenant?->club_name ?? ''));
+    $club = trim($event->host()->name);
 
     $when = $event->date ? \App\Support\Cldr::fullDate($event->date) : null;
     $time = $event->start_time ? \Carbon\Carbon::parse($event->start_time)->format('g:i A') : null;

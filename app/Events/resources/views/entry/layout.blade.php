@@ -49,6 +49,9 @@
     {{-- viewport-fit=cover is load-bearing: without it every env(safe-area-inset-*)
          in the page resolves to 0 and the safe-area padding silently does nothing. --}}
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    {{-- Every screen is as tall as what can be SEEN, even while the app is
+         hiding a strip under the bottom bar. See the partial. --}}
+    @include('partials.viewport-guard')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- The phone tints its status/address bar with this. It used to be the
          EVENT's colour, which painted the whole top of the handset blue on
@@ -73,7 +76,9 @@
 
     {{-- Installable as its own app: its own name, its own icon, its own start
          page, and no browser chrome once it is on a home screen. --}}
-    <link rel="manifest" href="{{ $e['manifest'] }}">
+    {{-- Absent only on the member address for an event nobody published —
+         there is no installable app of a page that is not public. --}}
+    @if(! empty($e['manifest']))<link rel="manifest" href="{{ $e['manifest'] }}">@endif
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -179,6 +184,9 @@
          platform. --}}
     @include('partials.toast-host')
     <x-confirm-dialog />
+
+    {{-- Every event page comes back to where the reader left it. --}}
+    @include('events::entry.partials.scroll-memory')
 
     @stack('scripts')
 

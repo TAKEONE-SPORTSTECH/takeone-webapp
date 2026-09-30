@@ -87,7 +87,7 @@ class ClubPromotion
 
         $last = $event->end_date ?: $event->date;
 
-        return $last !== null && $last->copy()->endOfDay()->isPast();
+        return $last !== null && $event->atLocal($last, '23:59:59')->isPast();
     }
 
     /**

@@ -275,7 +275,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
         if ($event->hasStarted()) {
             return 'running';
         }
-        if ($event->weigh_in_at && now()->gte($event->weigh_in_at)) {
+        if ($event->weigh_in_at && now()->gte($event->inZone($event->weigh_in_at))) {
             return 'weigh_in';
         }
         if ($event->categories()->where('draw_state', 'final')->exists()) {
@@ -940,9 +940,9 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
                 title: __('event-bjj_tournament::messages.notify_weigh_in_title', ['title' => $event->title]),
                 body: __('event-bjj_tournament::messages.notify_weigh_in_body', [
                     'time' => $event->weigh_in_at->format('g:i A'),
-                    'place' => $event->location ?: ($event->tenant?->club_name ?? ''),
+                    'place' => $event->location ?: $event->host()->name,
                 ]),
-                at: $event->weigh_in_at->copy()->subDay()->setTime(
+                at: $event->inZone($event->weigh_in_at)->subDay()->setTime(
                     (int) config('event_notifications.event_day_reminder_hour', 7), 0,
                 ),
                 audience: Milestone::AUDIENCE_PARTICIPANTS,
@@ -1276,6 +1276,12 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
     private function lateEntry(): \App\Events\Support\Tournament\LateEntry
     {
         return new \App\Events\Support\Tournament\LateEntry($this->advancement());
+    }
+
+    /** A bracketed, medal-awarding combat championship — see CompetitionProfile. */
+    public function profile(?ClubEvent $event = null): \App\Events\Support\Competition\CompetitionProfile
+    {
+        return \App\Events\Support\Competition\CompetitionProfile::combatChampionship($this->sport());
     }
 
     private function sport(): \App\Sports\Combat\CombatSport

@@ -134,8 +134,9 @@ class PublicClubController extends Controller
                 'key' => 'events',
                 'icon' => 'bi-calendar-event',
                 'label' => __('clubs::explore.cat_events'),
-                // Same query the Events tab runs, so the tab can never open empty.
-                'count' => $this->openEventsFor($user)->count(),
+                // Same queries the Events tab runs (open + finished), so the tab can never open empty.
+                'count' => $this->openEventsFor($user)->count() + $this->finishedEventsFor($user)->count()
+                    + count($this->federationEventsFor($user)),
             ],
         ])->filter(fn ($c) => $c['count'] > 0)->values();
 
@@ -688,9 +689,57 @@ class PublicClubController extends Controller
      */
     private function openEventsFor(\App\Members\Models\User $me): \Illuminate\Support\Collection
     {
+        // A day of slack either side of UTC: each event's own zone decides (EventOver).
+        $today = now()->subDay()->toDateString();
+
+        return $this->visibleEventsQuery($me)
+            // Date-grain prefilter so the DB never hands back the whole archive.
+            // The exact end moment (which needs end_time) is settled in PHP via
+            // the model's own hasEnded() — one rule, one place.
+            ->where(function ($q) use ($today) {
+                $q->where(fn ($w) => $w->whereNotNull('end_date')->whereDate('end_date', '>=', $today))
+                    ->orWhere(fn ($w) => $w->whereNull('end_date')->whereDate('date', '>=', $today));
+            })
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->limit(120)
+            ->get()
+            ->reject(fn (ClubEvent $e) => \App\Events\Support\EventOver::isOver($e))
+            ->values();
+    }
+
+    /**
+     * Finished events this user may see — the most recent 40, newest first.
+     *
+     * The exact complement of openEventsFor(): a day already behind us, or
+     * today's event whose end has passed (hasEnded()).
+     */
+    private function finishedEventsFor(\App\Members\Models\User $me): \Illuminate\Support\Collection
+    {
+        $today = now()->addDay()->toDateString();
+
+        return $this->visibleEventsQuery($me)
+            ->where(function ($q) use ($today) {
+                $q->where(fn ($w) => $w->whereNotNull('end_date')->whereDate('end_date', '<=', $today))
+                    ->orWhere(fn ($w) => $w->whereNull('end_date')->whereDate('date', '<=', $today));
+            })
+            ->orderByDesc('date')
+            ->orderByDesc('start_time')
+            ->limit(60)
+            ->get()
+            ->filter(fn (ClubEvent $e) => \App\Events\Support\EventOver::isOver($e))
+            ->take(40)
+            ->values();
+    }
+
+    /**
+     * Every event this user may see, before any date rule. Visibility mirrors
+     * App\Events\Support\EventAccess::eligible() (see openEventsFor()).
+     */
+    private function visibleEventsQuery(\App\Members\Models\User $me): \Illuminate\Database\Eloquent\Builder
+    {
         $clubIds = $me->memberClubs()->pluck('tenants.id');
         $myCountries = $me->memberClubs()->pluck('tenants.country')->filter()->unique()->values();
-        $today = now()->startOfDay()->toDateString();
 
         return ClubEvent::query()
             ->where('is_archived', false)
@@ -702,42 +751,79 @@ class PublicClubController extends Controller
                         ->whereHas('tenant', fn ($t) => $t->whereIn('country', $myCountries)))
                     ->orWhere('created_by', $me->id);
             })
-            // Date-grain prefilter so the DB never hands back the whole archive.
-            // The exact end moment (which needs end_time) is settled in PHP via
-            // the model's own hasEnded() — one rule, one place.
-            ->where(function ($q) use ($today) {
-                $q->where(fn ($w) => $w->whereNotNull('end_date')->whereDate('end_date', '>=', $today))
-                    ->orWhere(fn ($w) => $w->whereNull('end_date')->whereDate('date', '>=', $today));
-            })
             ->withCount('participantRegistrations')
-            ->with('tenant:id,club_name,country,logo')
-            ->orderBy('date')
-            ->orderBy('start_time')
-            ->limit(120)
-            ->get()
-            ->reject(fn (ClubEvent $e) => $e->hasEnded())
-            ->values();
+            // People, not entries: one person entered in Gi AND No-Gi is two
+            // registrations but one competitor.
+            ->withCount(['participantRegistrations as participant_people_count' => fn ($q) => $q->select(DB::raw('count(distinct user_id)'))])
+            ->with([
+                'tenant:id,club_name,country,logo,currency',
+                'feeOptions' => fn ($q) => $q->where('role', 'participant')->where('is_active', true),
+            ]);
+    }
+
+    /**
+     * What an event charges to enter, as the card draws it: the base fee (if
+     * any), then every option the organiser sells — "Gi", "No-Gi",
+     * "Gi + No-Gi" — each its own row, plus the late penalty. Prices come
+     * from EventFee, never from the free-text display line.
+     */
+    private function eventPricing(ClubEvent $e): array
+    {
+        $fee = \App\Events\Support\EventFee::class;
+        $currency = $fee::currency($e);
+        $base = (float) ($fee::amount($e) ?? 0);
+        $options = $e->feeOptions->filter(fn ($o) => (float) $o->amount > 0)->values();
+
+        $rows = [];
+        if ($base > 0) {
+            $rows[] = ['label' => __('clubs::explore.ev_entry_fee'), 'price' => $fee::display($base, $currency), 'extra' => false];
+        }
+        foreach ($options as $o) {
+            $rows[] = ['label' => (string) $o->label, 'price' => $fee::display((float) $o->amount, $currency), 'extra' => $base > 0];
+        }
+
+        $from = $base > 0 ? $base : ($options->min(fn ($o) => (float) $o->amount) ?? 0);
+        $late = (float) ($e->late_fee_amount ?? 0) > 0 && $e->late_fee_from
+            ? [
+                'price' => $fee::display((float) $e->late_fee_amount, $currency),
+                'from' => $e->late_fee_from->isoFormat('D MMM'),
+                'active' => $fee::lateFeeApplies($e),
+            ]
+            : null;
+
+        return [
+            'prices' => $rows,
+            'price_from' => $from > 0 ? $fee::display($from, $currency) : null,
+            'price_varies' => count($rows) > 1,
+            'late' => $late,
+        ];
     }
 
     public function events(Request $request)
     {
         $events = $this->openEventsFor(Auth::user());
+        $finished = $this->finishedEventsFor(Auth::user());
 
-        $payload = $events->map(function (ClubEvent $e) {
+        // Paid featuring: only an APPROVED request, and only while the event
+        // is still open (EventFeaturing — the same rule /me/events uses).
+        $featured = \App\Events\Support\EventFeaturing::featuredClubEventIds($events->pluck('id'))->flip();
+
+        $card = function (ClubEvent $e, bool $ended = false) use ($featured) {
             $date = $e->date;
             $start = $e->start_time ? Carbon::parse($e->start_time) : null;
             $end = $e->end_time ? Carbon::parse($e->end_time) : null;
-            $startsAt = $date->copy()->setTimeFromTimeString($e->start_time ?: '00:00');
-            $live = $e->isOngoing();
-            $going = (int) ($e->participant_registrations_count ?? 0);
+            $startsAt = $e->scheduledStart(); // on the hall's clock
+            $live = ! $ended && $e->hasStarted();
+            $going = (int) ($e->participant_people_count ?? $e->participant_registrations_count ?? 0);
             $cap = (int) ($e->max_capacity ?: 0);
 
-            return [
+            return $this->eventPricing($e) + [
                 // Public key is the uuid — never the auto-increment id.
                 'key' => $e->uuid,
                 'url' => route('me.events.show', $e->uuid),
                 'title' => $e->title,
-                'state' => $live ? 'live' : 'upcoming',
+                'state' => $ended ? 'ended' : ($live ? 'live' : 'upcoming'),
+                'featured' => ! $ended && isset($featured[$e->id]),
                 'day' => $date->format('d'),
                 'mon' => $date->format('M'),
                 'wday' => $date->format('D'),
@@ -747,7 +833,9 @@ class PublicClubController extends Controller
                     : null,
                 'time' => $start ? $start->format('g:i A') : null,
                 'end_time' => $end ? $end->format('g:i A') : null,
-                'starts_in' => $live ? null : $startsAt->diffForHumans(['parts' => 2, 'short' => true]),
+                'starts_in' => ($live || $ended) ? null
+                    // Planned start already behind us but nobody started it: it is on today, not "2h ago".
+                    : ($startsAt->isPast() ? __('clubs::explore.ev_today') : $startsAt->diffForHumans(['parts' => 2, 'short' => true])),
                 'club' => $e->tenant?->club_name,
                 'location' => $e->location,
                 'type' => $e->event_type,
@@ -761,15 +849,84 @@ class PublicClubController extends Controller
                 'spots_left' => $cap ? max(0, $cap - $going) : null,
                 'fee' => $e->participant_fee ?: null,
             ];
-        });
+        };
+
+        $payload = $events->map(fn (ClubEvent $e) => $card($e) + [
+            'sort' => $e->date->copy()->setTimeFromTimeString($e->start_time ?: '00:00')->timestamp,
+        ]);
+        $past = $finished->map(fn (ClubEvent $e) => $card($e, true));
+
+        // Federation events (their own tables) — the same list /me/events
+        // merges in, listed until they end. A federation event already
+        // running as a platform event is the SAME uuid, so it is not doubled.
+        $seen = $payload->pluck('key')->flip();
+        $fed = collect($this->federationEventsFor(Auth::user()))
+            ->reject(fn (array $f) => isset($seen[$f['key']]))
+            ->map(fn (array $f) => $this->federationCard($f));
+        $payload = $payload->concat($fed)->sortBy('sort')->values()
+            ->map(fn (array $v) => \Illuminate\Support\Arr::except($v, 'sort'));
 
         return response()->json([
             'success' => true,
             'events' => $payload,
+            'finished' => $past,
             'live' => $payload->where('state', 'live')->count(),
             'upcoming' => $payload->where('state', 'upcoming')->count(),
+            'featured' => $payload->where('featured', true)->count(),
             'total' => $payload->count(),
         ]);
+    }
+
+    /** Federation events this member should see (fails closed to an empty list). */
+    private function federationEventsFor(\App\Members\Models\User $me): array
+    {
+        return class_exists(\App\Federations\Support\MemberFederationEvents::class)
+            ? \App\Federations\Support\MemberFederationEvents::for($me)
+            : [];
+    }
+
+    /** A MemberFederationEvents row, reshaped into this tab's card payload. */
+    private function federationCard(array $f): array
+    {
+        $date = ! empty($f['date_iso']) ? Carbon::parse($f['date_iso']) : null;
+        $tba = __('events::events.tba');
+        $going = (int) ($f['going'] ?? 0);
+        $cap = ! empty($f['capped']) ? (int) $f['cap'] : 0;
+
+        return [
+            'key' => $f['key'],
+            'url' => $f['href'],
+            'title' => $f['title'],
+            'state' => ! empty($f['started']) ? 'live' : 'upcoming',
+            'featured' => (bool) ($f['featured'] ?? false),
+            'day' => $f['day'] ?? '—',
+            'mon' => $f['mon'] ?? '',
+            'wday' => $f['wday'] ?? '',
+            'date_label' => $date?->isoFormat('ddd, D MMM YYYY') ?? $tba,
+            'end_date_label' => null,
+            'time' => ($f['time'] ?? $tba) !== $tba ? $f['time'] : null,
+            'end_time' => ($f['end'] ?? '') ?: null,
+            'starts_in' => $date && empty($f['started']) ? $date->diffForHumans(['parts' => 2, 'short' => true]) : null,
+            'club' => $f['club'] ?? null,
+            'location' => ($f['location'] ?? $tba) !== $tba ? $f['location'] : null,
+            'type' => 'federation',
+            'sport' => $f['sport'] ?? null,
+            'level' => $f['level'] ?? null,
+            'icon' => 'bi-bank',
+            'color' => $f['color'] ?? '#1e2c4f',
+            'image' => null,
+            'going' => $going,
+            'capacity' => $cap ?: null,
+            'spots_left' => $cap ? max(0, $cap - $going) : null,
+            'fee' => ($f['participant_fee'] ?? null) === __('events::events.fee_free') ? null : ($f['participant_fee'] ?? null),
+            'prices' => ($paid = ($f['participant_fee'] ?? null) && $f['participant_fee'] !== __('events::events.fee_free'))
+                ? [['label' => __('clubs::explore.ev_entry_fee'), 'price' => $f['participant_fee'], 'extra' => false]]
+                : [],
+            'price_from' => $paid ? $f['participant_fee'] : null,
+            'price_varies' => false,
+            'late' => null,
+            'sort' => $f['sort'] ?? PHP_INT_MAX,
+        ];
     }
 
     /**
@@ -1013,7 +1170,7 @@ class PublicClubController extends Controller
 
         // Multiple eligible members and no selection yet — return picker data
         if ($forUserId === null && count($canCollectFor) > 1) {
-            $members = \App\Members\Models\User::whereIn('id', $canCollectFor)->get(['id', 'full_name', 'name', 'profile_picture']);
+            $members = \App\Members\Models\User::whereIn('id', $canCollectFor)->get(['id', 'full_name', 'name', 'profile_picture', 'gender']);
             $collected = PerkCollection::where('perk_id', $perk->id)
                 ->whereIn('collected_for_user_id', $canCollectFor)
                 ->pluck('collected_at', 'collected_for_user_id')
@@ -1023,6 +1180,9 @@ class PublicClubController extends Controller
                 'id' => $m->id,
                 'name' => $m->full_name ?? $m->name,
                 'profile_picture' => $m->profile_picture,
+                // No picture → the platform silhouette (never initials). The URL
+                // is the artwork itself; the gender behind it is not sent.
+                'placeholder' => \App\Members\Support\Avatar::placeholder($m->gender),
                 'already_collected' => isset($collected[$m->id]),
             ])->values()->toArray();
 

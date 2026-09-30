@@ -15,6 +15,9 @@ class FederationClub extends Model
 
     public const STATUS_REJECTED = 'rejected';
 
+    /** Was affiliated; the federation unlinked it. Adding the club again restores this row. */
+    public const STATUS_REMOVED = 'removed';
+
     protected $fillable = ['federation_id', 'tenant_id', 'status', 'decided_at', 'decided_by', 'invite_token', 'officials'];
 
     protected $casts = [

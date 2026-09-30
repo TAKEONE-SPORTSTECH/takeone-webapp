@@ -15,6 +15,9 @@ class EventMatch extends Model
         'a_name', 'a_competitor_id', 'a_country', 'a_seed', 'a_score', 'a_provisional',
         'b_name', 'b_competitor_id', 'b_country', 'b_seed', 'b_score', 'b_provisional',
         'winner', 'court', 'day', 'scheduled_time', 'status',
+        // The generic competition engine (App\Events\Championship, 2026-09-27):
+        // a contest between two pairs/teams, its set-by-set detail, its group.
+        'a_side_id', 'b_side_id', 'detail', 'group_no',
         /*
          * ⚠️ `won_by_bye` MUST BE HERE.
          *
@@ -38,6 +41,8 @@ class EventMatch extends Model
         'b_provisional' => 'boolean',
         'won_by_bye' => 'boolean',
         'day' => 'integer',
+        'detail' => 'array',
+        'group_no' => 'integer',
     ];
 
     /**

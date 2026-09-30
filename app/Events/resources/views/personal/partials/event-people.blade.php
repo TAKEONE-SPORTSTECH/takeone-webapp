@@ -329,7 +329,7 @@
                      same list the athlete's own doors offer. It used to be a
                      Title-Case copy of it, so this desk wrote 'White' into a
                      column every other door writes 'white' into. --}}
-                beltColours: @js(\App\Sports\Combat\BeltRank::ladder()),
+                beltColours: @js(app(\App\Events\Support\CategorySystems::class)->ladderFor(\App\Events\Models\ClubEvent::where('uuid', $e['key'] ?? null)->first())),
 
                 async weigh(uid) {
                     const g = this.gates[uid];

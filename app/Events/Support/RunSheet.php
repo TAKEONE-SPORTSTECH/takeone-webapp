@@ -170,8 +170,16 @@ class RunSheet
      */
     private function withStatus(ClubEvent $event, array $rows, int $day, ?Carbon $now): array
     {
-        $now ??= Carbon::now();
-        $date = $event->date ? $event->date->copy()->addDays($day - 1)->startOfDay() : null;
+        /*
+         * ⚠️ The sheet's times are the HALL's wall clock (10:00 means 10:00 in
+         * Manama), so "now" must be read on that clock too. The app runs in
+         * UTC; comparing a UTC reading against local minutes put the "now"
+         * marker three hours behind the hall on 18 Sep 2026 — competitors were
+         * told their division was on when it was not.
+         */
+        $tz = self::timezone($event);
+        $now = ($now ?? Carbon::now())->copy()->setTimezone($tz);
+        $date = $event->date ? Carbon::parse($event->date->toDateString(), $tz)->addDays($day - 1)->startOfDay() : null;
 
         $state = 'upcoming';
         if ($date) {
@@ -203,6 +211,12 @@ class RunSheet
         }
 
         return $rows;
+    }
+
+    /** The timezone the event's clock times are written in: its host's, else the app's. */
+    public static function timezone(ClubEvent $event): string
+    {
+        return $event->zone();
     }
 
     private function dayStartMinutes(ClubEvent $event): int

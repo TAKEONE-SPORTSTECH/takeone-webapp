@@ -324,4 +324,26 @@ return [
     'you' => 'أنت',
     'yrs' => 'سنة',
 
+    // /club — the manager's front door
+    'entry_none' => 'أنت لا تدير أي نادٍ بعد.',
+    'entry_eyebrow' => 'إدارة الأندية',
+    'entry_title' => 'أنديتك',
+    'entry_subtitle' => 'اختر النادي الذي تريد إدارته.',
+    'entry_count' => ':count أندية',
+    'entry_members' => ':count عضو',
+    'entry_role_owner' => 'مالك',
+    'entry_role_admin' => 'مشرف',
+    'entry_role_chain' => 'سلسلة',
+    'entry_pending' => 'قيد المراجعة',
+    'entry_open' => 'إدارة',
+    'entry_all_clubs' => 'كل أندية المنصة',
+    'entry_all_clubs_hint' => 'جميع الأندية على TakeOne بصفتك مشرفًا عامًا',
+    'entry_empty_title' => 'لا توجد أندية خاصة بك',
+    'entry_empty_desc' => 'لا يزال بإمكانك فتح أي نادٍ من قائمة المنصة.',
+    'entry_back_home' => 'الرئيسية',
+
+    // Club mode (App\Clubs\Support\ClubLock) — the bar that replaces the platform navigation
+    'lock_mode' => 'وضع النادي',
+    'lock_switch' => 'تبديل النادي',
+    'lock_back' => 'العودة إلى النادي',
 ];

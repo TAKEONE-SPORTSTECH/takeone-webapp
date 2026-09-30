@@ -65,7 +65,7 @@ class EntryMail
              */
             $url = $state === EventEntryEmail::ENTERED
                 ? route('events.public.my-entry', ['event' => $event->uuid])
-                : route('events.public', ['event' => $event->uuid]);
+                : route('me.events.show', ['event' => $event->uuid]);
 
             /*
              * WHAT IS OWED — the figure, and deliberately not the bank details.

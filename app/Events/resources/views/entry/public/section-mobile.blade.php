@@ -65,7 +65,7 @@
      * So the page skips its own chrome for that one case and lets the section
      * be the screen. Every other section, and an undrawn draw, is unchanged.
      */
-    $ownScreen = $section === 'draw' && ($e['draw']['published'] ?? false);
+    $ownScreen = $section === 'draw' && ($drawStage ?? ($e['draw']['published'] ?? false));
 @endphp
 
 <div x-data="publicEvent()" class="{{ $ownScreen ? '' : '-mx-4 -mt-4 pb-4' }}">
@@ -92,18 +92,26 @@
              Only the leading control differs from the poster now, which is
              exactly what `leading` is for: there IS somewhere to go back to
              from here. --}}
-        <div class="relative z-50">
+        <div class="relative z-50 flex items-center" style="gap:12px;">
             @include('events::partials.event-band-controls', [
                 'mode' => 'public',
                 'leading' => 'back',
-                'backHref' => $backUrl ?? route('events.public', ['event' => $e['key']]),
+                'backHref' => $backUrl ?? route('me.events.show', ['event' => $e['key']]),
                 'backLabel' => __('personal.event_show_event'),
                 'e' => $e,
                 'console' => $console ?? null,
                 'signedIn' => $signedIn ?? auth()->check(),
                 'signedInName' => auth()->user()?->full_name ?? auth()->user()?->name,
-                'signOutUrl' => route('events.public.sign-out', ['event' => $e['key']]),
+                // Lands on /e/{uuid}, which 404s while the page is not public.
+                'signOutUrl' => ($posterPublic ?? true) ? route('events.public.sign-out', ['event' => $e['key']]) : null,
             ])
+
+            {{-- Appointing officials, for whoever runs the event — the same
+                 component, in the same trailing spot, as the member officials
+                 page this replaced. It renders nothing for anybody else. --}}
+            @if($section === 'officials' && ($asMember ?? false) && ($canManage ?? false))
+                <x-event-officials :event="$e['key']" :can-manage="true" :sport-label="$e['sport_label'] ?? ''" :color="$e['color']" />
+            @endif
         </div>
 
         {{-- Identity: the section's own chip, then the event, then whose it is. --}}

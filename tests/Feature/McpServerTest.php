@@ -10,6 +10,10 @@ use App\Mcp\Tools\EnrollMembersTool;
 use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
+use App\Mcp\Tools\ListActivityRanksTool;
+use App\Mcp\Tools\SetMemberRankTool;
+use App\Mcp\Tools\ListCornerSidesTool;
+use App\Mcp\Tools\SetCornerSideTool;
 use App\Mcp\Tools\ManageMemberPhotoTool;
 use App\Mcp\Tools\RecordTransactionTool;
 use App\Mcp\Tools\SearchPeopleTool;
@@ -1207,5 +1211,47 @@ class McpServerTest extends TestCase
         // The READ tool still works — the kill-switch is about writes.
         $read = $this->callTool(\App\Mcp\Tools\GetEventTranslationTool::class, ['event' => $event->uuid]);
         $this->assertSame('en', $read['source_locale']);
+    }
+
+    public function test_corner_sides_can_be_read_and_set_by_a_super_admin_only(): void
+    {
+        $admin = $this->createUser();
+        $this->makeSuperAdmin($admin);
+        $this->actingAs($admin);
+
+        $karate = collect($this->callTool(ListCornerSidesTool::class)['sports'])->firstWhere('sport', 'karate');
+        $this->assertSame('right', $karate['default']);
+
+        $set = $this->callTool(SetCornerSideTool::class, ['sport' => 'karate', 'side' => 'left']);
+        $this->assertSame('left', $set['corner']['side']);
+        $this->assertSame('left', $set['corner']['override']);
+
+        $this->actingAs($this->createUser());
+        $this->assertArrayHasKey('error', $this->callTool(SetCornerSideTool::class, ['sport' => 'karate', 'side' => 'right']));
+        $this->assertArrayHasKey('error', $this->callTool(ListCornerSidesTool::class));
+    }
+
+    public function test_ranks_tools_are_scoped_to_the_club(): void
+    {
+        config(['ranks.enabled' => true]);
+        $owner = $this->createUser();
+        $club = $this->createClub($owner, ['slug' => 'dojo-'.uniqid()]);
+        $activity = \App\Clubs\Models\ClubActivity::create(['tenant_id' => $club->id, 'name' => 'Taekwondo']);
+        app(\App\Ranks\Support\ActivityPackages::class)->autoLink($activity);
+        $package = ClubPackage::create(['tenant_id' => $club->id, 'name' => 'Kids', 'price' => 20, 'duration_months' => 1, 'is_active' => true]);
+        \Illuminate\Support\Facades\DB::table('club_package_activities')->insert(['package_id' => $package->id, 'activity_id' => $activity->id, 'created_at' => now(), 'updated_at' => now()]);
+        $member = $this->createUser();
+        \Illuminate\Support\Facades\DB::table('club_member_subscriptions')->insert(['tenant_id' => $club->id, 'user_id' => $member->id, 'package_id' => $package->id, 'status' => 'active',
+            'start_date' => now()->toDateString(), 'end_date' => now()->addMonth()->toDateString(), 'payment_status' => 'paid', 'created_at' => now(), 'updated_at' => now()]);
+
+        $this->actingAs($owner);
+        $list = $this->callTool(ListActivityRanksTool::class, ['club' => $club->slug]);
+        $uuid = $list['activities'][0]['activity'];
+        $set = $this->callTool(SetMemberRankTool::class, ['activity' => $uuid, 'member' => $member->uuid, 'belt' => 'yellow']);
+        $this->assertSame('yellow', $set['member']['rank']['belt']);
+
+        $this->actingAs($this->createUser());
+        $this->assertArrayHasKey('error', $this->callTool(SetMemberRankTool::class, ['activity' => $uuid, 'member' => $member->uuid, 'belt' => 'blue']));
+        $this->assertArrayHasKey('error', $this->callTool(ListActivityRanksTool::class, ['club' => $club->slug]));
     }
 }

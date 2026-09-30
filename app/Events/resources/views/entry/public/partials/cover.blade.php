@@ -66,8 +66,15 @@
     /* Every language the carousel offers, already rendered into every language
        — see App\Events\Support\CoverLanguages for why the whole set has to
        arrive with the page rather than be fetched per scroll. */
-    $coverEvent = \App\Events\Models\ClubEvent::where('uuid', $e['uuid'] ?? $e['key'])->first();
-    $coverLangs = $coverEvent ? CoverLanguages::for($coverEvent, $e) : [];
+    /* A caller whose record is not a club event hands its own rows in
+       (`$coverLanguages`, from CoverLanguages::forRecord) — the federation's
+       club invitation. Absent, this is exactly what it always was. */
+    if (isset($coverLanguages) && is_array($coverLanguages)) {
+        $coverLangs = $coverLanguages;
+    } else {
+        $coverEvent = \App\Events\Models\ClubEvent::where('uuid', $e['uuid'] ?? $e['key'])->first();
+        $coverLangs = $coverEvent ? CoverLanguages::for($coverEvent, $e) : [];
+    }
 
     /* ===== Where the strip starts =====
 
@@ -118,6 +125,7 @@
                   exactly the visible area, re-measured as the bar shows and
                   hides. `100vh` first, so a browser too old for dvh still gets
                   a full screen. --}}
+             data-cover-screen
              style="background:#070b14; height:100vh; height:100dvh;">
 
             {{-- ===== The frame, exactly as the draft measures it =====

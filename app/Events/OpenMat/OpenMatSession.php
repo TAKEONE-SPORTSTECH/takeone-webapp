@@ -79,11 +79,14 @@ class OpenMatSession
      */
     public function todaysFor(User $opener, Tenant $club, string $sport): ?ClubEvent
     {
+        // "Today" is the club's, not the server's (UTC).
+        $now = ClubEvent::clubNow($club);
+
         return ClubEvent::where('tenant_id', $club->id)
             ->where('event_type', OpenMat::TYPE)
             ->where('sport', $sport)
             ->where('created_by', $opener->id)
-            ->whereDate('date', now()->toDateString())
+            ->whereDate('date', $now->toDateString())
             ->where('is_archived', false)
             ->where('status', '!=', 'cancelled')
             ->latest('id')
@@ -103,11 +106,12 @@ class OpenMatSession
             return $existing;
         }
 
+        $now = ClubEvent::clubNow($club);
         $event = new ClubEvent([
             'tenant_id' => $club->id,
-            'title' => __('event-open_mat::messages.session_title', ['date' => now()->isoFormat('D MMM')]),
-            'date' => now()->toDateString(),
-            'start_time' => now()->format('H:i'),
+            'title' => __('event-open_mat::messages.session_title', ['date' => $now->isoFormat('D MMM')]),
+            'date' => $now->toDateString(),
+            'start_time' => $now->format('H:i'),
             'event_type' => OpenMat::TYPE,
             'sport' => $sport,
             // Internal, always. An open mat is for the people in the room; it
@@ -152,7 +156,7 @@ class OpenMatSession
     {
         $event->is_archived = true;
         $event->status = 'completed';
-        $event->end_time = now()->format('H:i');
+        $event->end_time = $event->localNow()->format('H:i');
         $event->save();
 
         // Shutting the mat retires its codes: they are printed on things and

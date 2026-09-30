@@ -140,6 +140,35 @@ class EntryClaim
             return $this->alsoEnter($event, $actor, $fullName, $entered, $target, $optionKeys);
         }
 
+        /*
+         * Somebody the PLATFORM already has — the same phone and a name that is
+         * recognisably theirs (KnownPerson). The entry goes on their profile
+         * instead of a new person record, which used to become a second
+         * account the moment they opened the link. Behind `events.entry_dedupe`.
+         */
+        $existing = KnownPerson::enabled() ? app(KnownPerson::class)->matchesTyped($phone, $fullName)->first() : null;
+
+        if ($existing) {
+            $theirs = ClubEventRegistration::where('event_id', $event->id)->where('user_id', $existing->id)->get();
+
+            if ($theirs->isNotEmpty()) {
+                if (! $target) {
+                    return ['ok' => false, 'message' => __('events::events.claim_duplicate_name', ['name' => $existing->full_name ?: $fullName])];
+                }
+
+                return $this->alsoEnter($event, $actor, $existing->full_name ?: $fullName, $theirs, $target, $optionKeys);
+            }
+        }
+
+        // An account of their own already: nothing to claim, so no link.
+        $claimed = $existing !== null && ! $existing->is_unclaimed;
+
+        // A new record keeps the phone the desk typed, so the next door (the
+        // public form, another coach) recognises this person.
+        if (! $existing && KnownPerson::enabled() && ($m = KnownPerson::mobileFromTyped($phone))) {
+            $details += ['phone' => $m['number'], 'phone_code' => $m['code']];
+        }
+
         $tenantId = $this->issuingClub($actor, $clubIds, $event);
 
         // What the person at the desk happens to know. NONE of it is required —
@@ -150,8 +179,8 @@ class EntryClaim
         // chase the same athlete twice.
         $tenantId = $this->representedClub($details, $clubIds, $tenantId);
 
-        $result = DB::transaction(function () use ($event, $actor, $fullName, $email, $phone, $tenantId, $details, $optionKeys, $target) {
-            $athlete = $this->makeUnclaimedPerson($fullName, $details);
+        $result = DB::transaction(function () use ($event, $actor, $fullName, $email, $phone, $tenantId, $details, $optionKeys, $target, $existing, $claimed) {
+            $athlete = $existing ?? $this->makeUnclaimedPerson($fullName, $details);
 
             $registration = ClubEventRegistration::create([
                 'event_id' => $event->id,
@@ -169,7 +198,7 @@ class EntryClaim
                 // 'incomplete' is about who OWNS the account, not how much is
                 // filled in: nobody has claimed this person yet. An organiser
                 // supplying a weight does not make the entry claimed.
-                'entry_state' => 'incomplete',
+                'entry_state' => $claimed ? 'complete' : 'incomplete',
                 'weight' => $details['weight'] ?? null,
                 'belt_colour' => $details['belt_colour'] ?? null,
                 // The degree beside the colour — "2nd Dan", "1 دان". Recorded
@@ -192,7 +221,7 @@ class EntryClaim
             // charge record with no entry are both worse than neither.
             EventFee::commit($registration, EventFee::quote($event, 'participant', $optionKeys));
 
-            return [$athlete, $registration, $this->mint($event, $registration, $athlete, $actor, $email, $phone)];
+            return [$athlete, $registration, $claimed ? null : $this->mint($event, $registration, $athlete, $actor, $email, $phone)];
         });
 
         [$athlete, $registration, $minted] = $result;
@@ -200,6 +229,19 @@ class EntryClaim
         // An incomplete entry has no division, so it cannot be drawn — but the
         // entrant COUNT changed, and the package owns what that means.
         $this->registry->for($event)->onEntrantsChanged($event);
+
+        if ($minted === null) {
+            return [
+                'ok' => true,
+                'message' => __('events::events.claim_known_entered', ['name' => $athlete->full_name ?: $fullName]),
+                'claim' => [
+                    'competitor_id' => $registration->id,
+                    'name' => $athlete->full_name ?: $fullName,
+                    'division' => $target?->name,
+                    'url' => null,
+                ],
+            ];
+        }
 
         return [
             'ok' => true,
@@ -498,7 +540,7 @@ class EntryClaim
         // The entry deadline, read where the COMPETITION is (EntryWindow) so a
         // link cannot outlive the door it leads to — nor die three hours before
         // it, which is what `endOfDay()` in UTC did for a Bahrain event.
-        foreach ([EntryWindow::closesAt($event), $event->date?->copy()->endOfDay()] as $limit) {
+        foreach ([EntryWindow::closesAt($event), $event->date ? $event->atLocal($event->date, '23:59:59') : null] as $limit) {
             if ($limit && $limit->lt($window)) {
                 $window = $limit->copy();
             }

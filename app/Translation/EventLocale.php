@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
  * to every other device they own, which is what writing `users.locale` did.
  *
  * So an event's language lives in the SESSION, keyed by the event's uuid, and
- * is applied only while the reader is inside `/e/{uuid}`. Nothing here ever
+ * is applied only while the reader is inside `/me/events/{uuid}`. Nothing here ever
  * touches `session('locale')` or `users.locale`; the platform preference is set
  * in one place, the member's own settings, and this cannot reach it.
  *
@@ -46,12 +46,14 @@ class EventLocale
     {
         $segments = $request->segments();
 
-        if (($segments[0] ?? null) !== 'e' || ! isset($segments[1])) {
+        // /me/events/{uuid}/… — the event's one address since /e/ went
+        // (2026-09-27). `me/events/create` and the list are not an event.
+        if (($segments[0] ?? null) !== 'me' || ($segments[1] ?? null) !== 'events' || ! isset($segments[2])) {
             return null;
         }
 
-        return preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $segments[1])
-            ? strtolower($segments[1])
+        return preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $segments[2])
+            ? strtolower($segments[2])
             : null;
     }
 

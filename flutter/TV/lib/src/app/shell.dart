@@ -52,7 +52,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   InAppWebViewController? _controller;
   bool _offline = false;
 
@@ -60,8 +60,39 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
 
-    // An ordinary app, not a kiosk: give the system bars back.
+    // An ordinary app, not a kiosk: give the system bars back. Already done in
+    // main() before the first frame; repeated here so a hot restart keeps it.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// The window changed shape — system bars settled, rotation, split screen —
+  /// or the app came back to the front. Tell the page to measure itself again
+  /// NOW rather than whenever Android gets round to it: the viewport guard
+  /// (resources/views/partials/viewport-guard) re-sizes every screen from it.
+  void _remeasure() {
+    unawaited(_controller?.evaluateJavascript(
+          source: "window.dispatchEvent(new Event('resize'));"
+              "window.ViewportGuard && window.ViewportGuard.measure();",
+        ) ??
+        Future.value());
+  }
+
+  @override
+  void didChangeMetrics() {
+    // After this frame, when the new insets have reached the WebView's layout.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _remeasure());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _remeasure();
   }
 
   /// How the page is rendered, and the settings that decide whether it feels

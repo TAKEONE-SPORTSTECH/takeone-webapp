@@ -131,4 +131,7 @@ return [
     'tab_password' => 'كلمة المرور',
     'welcome_back' => 'مرحباً بعودتك',
 
+    'auth_register_wizard_cover_tag' => 'التسجيل في النادي',
+    'auth_register_wizard_cover_choose' => 'اختر لغتك',
+    'auth_register_wizard_cover_enter' => 'متابعة',
 ];

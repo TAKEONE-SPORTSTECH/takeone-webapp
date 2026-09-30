@@ -58,6 +58,15 @@ class Sparring extends AbstractEventType
 
     public function __construct(private SparringSession $session) {}
 
+    /** Practice on a mat: head-to-head and scored, no divisions, no medals. */
+    public function profile(?ClubEvent $event = null): \App\Events\Support\Competition\CompetitionProfile
+    {
+        return \App\Events\Support\Competition\CompetitionProfile::combatPractice(
+            app(\App\Sports\Combat\SportRegistry::class)->get($event?->sport),
+            $event?->sport,
+        );
+    }
+
     public function key(): string
     {
         return self::TYPE;

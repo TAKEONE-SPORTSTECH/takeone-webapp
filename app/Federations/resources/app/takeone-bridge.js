@@ -160,6 +160,52 @@
     });
   };
 
+  // Registrations → "Enroll athlete": one person entered by the federation.
+  window.TakeOneFed.canEnrol = function () { return !!urls.regsEnrol; };
+  window.TakeOneFed.enrolAthlete = function (payload) {
+    if (!urls.regsEnrol) return Promise.resolve({ok: false, message: ''});
+    return jsonPost(urls.regsEnrol, payload).then(function (j) {
+      if (j.__status === 401 || j.__status === 419) { window.location.reload(); return {ok: false, message: ''}; }
+      if (j.regs) {
+        put('takeone_club_regs', j.regs); lastRegs = JSON.stringify(j.regs);
+        try { window.dispatchEvent(new StorageEvent('storage', {key: 'takeone_club_regs'})); } catch (e) {}
+      }
+      var msg = j.message || '';
+      if (!j.success && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+      return {ok: !!j.success, message: msg, takeoneId: j.takeoneId || null};
+    }).catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
+  };
+
+  // Registrations → "Import from Excel": the template, a checked preview, then the import.
+  window.TakeOneFed.importUrls = function () { return urls.regsImport || null; };
+  window.TakeOneFed.importPreview = function (file) {
+    var u = urls.regsImport; if (!u || !file) return Promise.resolve({ok: false, message: ''});
+    var fd = new FormData(); fd.append('event', window.TakeOneFed.currentEvent || ''); fd.append('file', file);
+    return fetch(u.preview, {method: 'POST', credentials: 'same-origin', body: fd,
+      headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.status === 401 || r.status === 419) { window.location.reload(); return {ok: false, message: ''}; }
+        var msg = j.message || '';
+        if (!r.ok && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+        if (!r.ok && !msg) msg = r.status === 429 ? 'Too many uploads — wait a minute and try again.' : 'That file could not be checked.';
+        return {ok: r.ok && !!j.success, message: msg, rows: j.rows || []};
+      }); })
+      .catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
+  };
+  window.TakeOneFed.importRows = function (rows) {
+    var u = urls.regsImport; if (!u) return Promise.resolve({ok: false});
+    return jsonPost(u.import, {event: window.TakeOneFed.currentEvent || '', rows: rows}).then(function (j) {
+      if (j.__status === 401 || j.__status === 419) { window.location.reload(); return {ok: false}; }
+      if (j.regs) {
+        put('takeone_club_regs', j.regs); lastRegs = JSON.stringify(j.regs);
+        try { window.dispatchEvent(new StorageEvent('storage', {key: 'takeone_club_regs'})); } catch (e) {}
+      }
+      var msg = j.message || '';
+      if (!j.__ok && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+      return {ok: !!j.__ok, imported: j.imported || 0, failed: j.failed || 0, newClubs: j.newClubs || 0, results: j.results || [], message: msg};
+    }).catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
+  };
+
   // Registrations for one event (filled from the entries clubs submit).
   window.TakeOneFed.clubRegs = function (eventId) {
     window.TakeOneFed.currentEvent = eventId || null;
@@ -228,6 +274,25 @@
       if (j.division) ev[pk.divKey] = j.division; else delete ev[pk.divKey];
       redraw();
     }).catch(function () { window.location.reload(); });
+  };
+
+  // ------------------------------------------------------------ schedule
+  // The Schedule tab's days and sessions, per event (FederationSchedule).
+  // Every change goes to the server, whose answer is that event's whole
+  // schedule; a FederationPulse re-read brings other staff members' edits.
+  var schedules = boot.schedules || {};
+  window.TakeOneFed.schedule = function (evId) { return (evId && schedules[evId]) || []; };
+  window.TakeOneFed.canEditSchedule = function () { return !!urls.schedule; };
+  window.TakeOneFed.scheduleOp = function (op, body) {
+    if (!urls.schedule) return Promise.resolve({ok: false, message: 'The schedule cannot be edited right now.'});
+    return jsonPost(urls.schedule, Object.assign({op: op}, body || {})).then(function (j) {
+      if (j.__status === 401 || j.__status === 419) { window.location.reload(); return {ok: false, message: ''}; }
+      if (j.__ok && j.event) schedules[j.event] = j.days || [];
+      var msg = j.message || '';
+      if (!j.__ok && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+      if (!j.__ok && !msg) msg = j.__status === 429 ? 'Too many changes at once — wait a moment.' : 'That change did not save. Try again.';
+      return {ok: !!j.__ok, message: msg};
+    }).catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
   };
 
   // ------------------------------------------------------------ messages
@@ -500,6 +565,10 @@
     if (j.draws && !same(j.draws, draws)) {
       Object.keys(draws).forEach(function (k) { delete draws[k]; });
       Object.keys(j.draws).forEach(function (k) { draws[k] = j.draws[k]; });
+    }
+    if (j.schedules && !same(j.schedules, schedules)) {
+      Object.keys(schedules).forEach(function (k) { delete schedules[k]; });
+      Object.keys(j.schedules).forEach(function (k) { schedules[k] = j.schedules[k]; });
     }
     if (j.messageClubs) msgClubs = j.messageClubs;
     if (j.fedstore && window.TakeOneFed.adoptStaffStore) window.TakeOneFed.adoptStaffStore(j.fedstore);

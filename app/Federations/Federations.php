@@ -12,6 +12,7 @@ use App\Support\Modules\Surfaces\SealsItsSurface;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Support\Modules\Surfaces\ContributesMessengerThreads;
+use App\Support\Modules\Surfaces\HostsEvents;
 
 /**
  * Federations — the governing bodies clubs affiliate with.
@@ -34,7 +35,7 @@ use App\Support\Modules\Surfaces\ContributesMessengerThreads;
  * are reached through the ContributesMessengerThreads surface; with the
  * module gone they are orphaned `type = 'federation'` conversations.)
  */
-class Federations extends AbstractModule implements ContributesMessengerThreads, ContributesCopilotSkills, SealsItsSurface
+class Federations extends AbstractModule implements ContributesMessengerThreads, ContributesCopilotSkills, SealsItsSurface, HostsEvents
 {
     public function key(): string
     {
@@ -62,6 +63,104 @@ class Federations extends AbstractModule implements ContributesMessengerThreads,
     public function messengerMessage(Conversation $conversation, Message $message, string $action): void
     {
         app(FederationMessages::class)->posted($conversation, $message);
+    }
+
+    // A federation HOSTS its own competitions — it is their organiser, not a
+    // club (App\Events\Support\EventHost). Nothing here grants power over a
+    // club; it answers only for events whose host IS this federation.
+
+    public function eventHostTypes(): array
+    {
+        return ['federation'];
+    }
+
+    public function eventHost(string $type, int $id): ?array
+    {
+        $f = $type === 'federation' ? \App\Federations\Models\Federation::find($id) : null;
+        if (! $f) {
+            return null;
+        }
+
+        return [
+            'name' => (string) $f->name,
+            'logo' => $f->logo && $f->isApproved() ? route('federations.logo', $f->uuid).'?v='.substr(md5((string) $f->logo), 0, 8) : null,
+            'country' => $f->country ? strtoupper((string) $f->country) : null,
+            'currency' => $f->currency ?: null,
+            'timezone' => $f->timezone ?: null,
+            'lat' => null,
+            'lng' => null,
+            'color' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $f->color) ? $f->color : null,
+            'uuid' => $f->uuid,
+        ];
+    }
+
+    /** A manager of this federation, or of a federation above it. */
+    public function managesEventsOf(string $type, int $id, \App\Members\Models\User $user): bool
+    {
+        if ($type !== 'federation' || ! config('federations.enabled')) {
+            return false;
+        }
+        $f = \App\Federations\Models\Federation::find($id);
+        $directory = app(\App\Federations\Services\FederationDirectory::class);
+        $access = $f ? $directory->access($user) : null;
+        if (! $access || ! ($access['manager'] ?? false) || $f->isSuspended()) {
+            return false;
+        }
+
+        return collect($directory->subtree($access['root']))->contains(fn ($b) => (int) $b->id === (int) $f->id);
+    }
+
+    /** The owners and full-rights staff of this federation and of every body above it. */
+    public function eventHostManagers(string $type, int $id): array
+    {
+        $f = $type === 'federation' ? \App\Federations\Models\Federation::find($id) : null;
+        $ids = [];
+        for ($depth = 0; $f && $depth <= \App\Federations\Models\Federation::MAX_DEPTH; $depth++) {
+            $ids[] = (int) $f->owner_user_id;
+            $staff = \App\Federations\Models\FederationStaff::where('federation_id', $f->id)->get(['user_id', 'sports']);
+            foreach ($staff as $row) {
+                if (array_filter((array) $row->sports) === []) {
+                    $ids[] = (int) $row->user_id;
+                }
+            }
+            $f = $f->parent_id ? \App\Federations\Models\Federation::find($f->parent_id) : null;
+        }
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /** The console edited a federation's event: its dashboard record follows (FederationPlatformEvent::pullBack). */
+    public function hostedEventChanged(\App\Events\Models\ClubEvent $event): void
+    {
+        if ($event->host_type === 'federation') {
+            app(\App\Federations\Services\FederationPlatformEvent::class)->pullBack($event);
+        }
+    }
+
+    /** The console decided a club's athlete: the dashboard records it (FederationPlatformEntries::decided). */
+    public function hostedEntryDecided(\App\Events\Models\ClubEvent $event, \App\Events\Models\EventPublicEntry $entry): void
+    {
+        app(\App\Federations\Services\FederationPlatformEntries::class)->decided($entry);
+    }
+
+    /**
+     * A federation takes its athletes from its CLUBS: the door is the event's
+     * club invitation, and whoever runs a club may use it.
+     */
+    public function hostedEntryDoor(\App\Events\Models\ClubEvent $event, \App\Members\Models\User $user): ?array
+    {
+        if ($event->host_type !== 'federation' || ! config('federations.enabled')) {
+            return null;
+        }
+        $fe = \App\Federations\Models\FederationEvent::where('club_event_id', $event->id)->first(['uuid']);
+        if (! $fe) {
+            return null;
+        }
+        $runsClub = \Illuminate\Support\Facades\DB::table('tenants')->where('owner_user_id', $user->id)->exists()
+            || \Illuminate\Support\Facades\DB::table('user_roles')->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                ->where('user_roles.user_id', $user->id)->where('roles.slug', 'club-admin')->whereNotNull('user_roles.tenant_id')->exists();
+
+        return ['url' => route('federations.app.invitation').'?event='.rawurlencode($fe->uuid), 'enters' => $runsClub];
     }
 
     /** Coach can create one of these — see App\Support\Copilot\CopilotSkill. */

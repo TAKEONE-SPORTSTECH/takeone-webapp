@@ -96,7 +96,17 @@
                         <i class="bi bi-send text-lg w-5 text-center"></i>{{ __('admin.send_notification') }}
                     </button>
 
-                    {{-- Links that leave this club's workspace --}}
+                    {{-- Links that leave this club's workspace — none in club mode
+                         (App\Clubs\Support\ClubLock), only a switch between locked clubs. --}}
+                    @if(\App\Clubs\Support\ClubLock::active())
+                        @if(count(\App\Clubs\Support\ClubLock::clubs()) > 1)
+                            <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('admin.nav_group_go_to') }}</p>
+                            <a href="{{ route('club.entry') }}"
+                               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
+                                <i class="bi bi-arrow-left-right text-lg w-5 text-center"></i>{{ __('clubs::club.lock_switch') }}
+                            </a>
+                        @endif
+                    @else
                     <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('admin.nav_group_go_to') }}</p>
                     @if(Auth::user()->isSuperAdmin())
                         <a href="{{ route('admin.platform.index') }}"
@@ -112,10 +122,11 @@
                             <i class="bi bi-house text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_my_home') }}
                         </a>
                     @else
-                        <a href="{{ $hasBusiness ? route('business.dashboard') : route('clubs.explore') }}"
+                        <a href="{{ $hasBusiness ? route('business.home') : route('clubs.explore') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
-                            <i class="bi bi-chevron-left text-lg w-5 text-center"></i>{{ $hasBusiness ? __('admin.back_to_chain') : __('admin.back_to_explore') }}
+                            <i class="bi bi-chevron-left text-lg w-5 text-center"></i>{{ $hasBusiness ? __('admin.back_to_business') : __('admin.back_to_explore') }}
                         </a>
+                    @endif
                     @endif
 
                     {{-- Personal account --}}

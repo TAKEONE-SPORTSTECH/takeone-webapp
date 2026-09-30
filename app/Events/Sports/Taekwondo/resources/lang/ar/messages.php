@@ -48,4 +48,8 @@ return [
     'sport_label' => 'التايكوندو',
     'weigh_in' => 'الوزن الرسمي',
 
+    // Grades on the sport's own belt ladder (beltLadder()), 2026-09-27.
+    'grade_geup' => 'جوب :n',
+    'grade_poom' => 'بوم :n',
+    'grade_dan' => 'دان :n',
 ];

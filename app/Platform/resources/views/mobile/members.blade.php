@@ -14,6 +14,10 @@
                 <i class="bi bi-chevron-left text-xl"></i>
             </button>
             <p class="flex-1 min-w-0 text-base font-bold text-primary truncate">{{ __('platform.all_members') }}</p>
+            <button type="button" @click="window.dispatchEvent(new CustomEvent('open-member-scan'))"
+                    class="m-press h-10 px-3 rounded-xl flex items-center gap-1.5 text-primary text-sm font-semibold" aria-label="Scan for duplicates">
+                <i class="bi bi-people text-lg"></i><span>Scan</span>
+            </button>
             <button type="button" @click="$dispatch('open-member-create-modal')"
                     class="m-press w-10 h-10 rounded-xl flex items-center justify-center text-primary" aria-label="{{ __('platform.add_member') }}">
                 <i class="bi bi-person-plus text-xl"></i>
@@ -58,6 +62,7 @@
 
 {{-- Member quick-view popup --}}
 @include('clubs::admin.club.members.partials.member-popup')
+<x-member-duplicate-scan />
 
 @include('platform::members._scripts')
 @endsection

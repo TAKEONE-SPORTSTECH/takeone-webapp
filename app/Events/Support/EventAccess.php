@@ -25,6 +25,10 @@ class EventAccess
         }
 
         return $this->eligible($event, $user) || $this->canManage($event, $user)
+            // An event whose host takes its athletes from CLUBS (a federation's):
+            // whoever runs a club that may enter reads it — they are the ones
+            // who enter (EventHost::entryDoor). Reading only; entering is the host's door.
+            || (! $event->tenant_id && ($event->host()->entryDoor($event, $user)['enters'] ?? false))
             // Federation staff READ events their own athletes competed in —
             // viewing only, never canManage (App\Federations\Support\FederationEventView).
             || (class_exists(\App\Federations\Support\FederationEventView::class)
@@ -87,6 +91,12 @@ class EventAccess
             if ($owns || $user->isClubAdmin($tenantId)) {
                 return true;
             }
+        }
+
+        // An event whose host is not a club (a federation's competition): its
+        // host's own people run it, as that host decides (EventHost).
+        if ($tenantId === 0 && $event->host()->manages($event, $user)) {
+            return true;
         }
 
         // Appointed to THIS event, by name, as the person running it.
@@ -284,7 +294,7 @@ class EventAccess
 
     public function eligible(ClubEvent $event, User $user): bool
     {
-        if ($user->memberClubs()->whereKey($event->tenant_id)->exists()) {
+        if ($event->tenant_id && $user->memberClubs()->whereKey($event->tenant_id)->exists()) {
             return true;
         }
 
@@ -299,7 +309,7 @@ class EventAccess
     /** True when the member belongs to a club in the host club's country. */
     private function shareCountry(ClubEvent $event, User $user): bool
     {
-        $hostCountry = $event->tenant?->country ?? $event->tenant()->value('country');
+        $hostCountry = $event->host()->country;
 
         return $hostCountry
             && $user->memberClubs()->where('tenants.country', $hostCountry)->exists();

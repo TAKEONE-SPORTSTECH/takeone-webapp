@@ -108,7 +108,16 @@
         type: @js($ev?->event_type ?? 'class'),
         scope: @js($ev?->scope ?? 'internal'),
         sport: @js($ev?->sport ?? ''),
+        // The rule book (App\Events\Support\CategorySystems): null = the sport's own.
+        category_system: @js($ev?->category_system),
+        belt_system: @js($ev?->belt_system),
+        ruleTable: null,
         title: @js($ev?->title ?? ''),
+        // The competition's clock. Every date and time below is read in it.
+        // Prefilled with the host club's zone; follows the club picker until
+        // the organiser chooses one themselves.
+        timezone: @js($ev ? $ev->zone() : ''),
+        tzTouched: {{ $ev?->timezone ? 'true' : 'false' }},
         date: @js($ev?->date?->format('Y-m-d') ?? ''),
         end_date: @js($ev?->end_date?->format('Y-m-d') ?? ''),
         start_time: @js($initStart),
@@ -136,7 +145,6 @@
         location_url: @js($ev?->location_url ?? ''),
         gps_lat: @js($ev?->gps_lat ? (string) $ev->gps_lat : ''),
         gps_long: @js($ev?->gps_long ? (string) $ev->gps_long : ''),
-        locMode: @js($ev?->location_url ? 'url' : 'map'),
         break_enabled: {{ ($ev && ($ev->break_start || $ev->break_end)) ? 'true' : 'false' }},
         break_start: @js($ev?->break_start ? \Carbon\Carbon::parse($ev->break_start)->format('H:i') : ''),
         break_end: @js($ev?->break_end ? \Carbon\Carbon::parse($ev->break_end)->format('H:i') : ''),
@@ -165,6 +173,12 @@
         league: @js($initLeague),
         beltFrom: @js($beltFrom),
         beltTo: @js($beltTo),
+        /* How a sport championship runs (App/Events/Championship): per sport,
+           the formats and entrant kinds its recipe accepts. Empty while the
+           switch is off. An edit shows it only for an event that engine made. */
+        competitionCatalog: @js(($catalogs['sport_championship']['competition'] ?? []) ?: new \stdClass),
+        competitionOn: @js(! $ev || is_array($ev->competition)),
+        competition: @js(array_merge(['format' => null, 'entrant' => null, 'group_size' => 4, 'advance' => 2, 'swiss_rounds' => 5, 'finalists' => 8], is_array($ev?->competition) ? $ev->competition : [])),
 
         get typeMeta() { return this.schema.types[this.type] || {}; },
         /* The TYPE decides the sections — except that a martial art run as a
@@ -185,7 +199,23 @@
             const meta = this.typeMeta;
             const byFamily = meta.sections_by_family || {};
 
-            return byFamily[(this.sportMeta.family || '')] || meta.sections || [];
+            const base = byFamily[(this.sportMeta.family || '')] || meta.sections || [];
+
+            return this.competitionRecipe ? ['competition', ...base] : base;
+        },
+        get competitionRecipe() {
+            if (!this.competitionOn || !this.isChampionship) return null;
+            return this.competitionCatalog[this.sport] || null;
+        },
+        get competitionFormat() {
+            const r = this.competitionRecipe;
+            if (!r) return null;
+            return r.formats.includes(this.competition.format) ? this.competition.format : r.formats[0];
+        },
+        get competitionEntrant() {
+            const r = this.competitionRecipe;
+            if (!r) return null;
+            return r.entrants.includes(this.competition.entrant) ? this.competition.entrant : r.entrants[0];
         },
         has(s) { return this.sections.includes(s); },
         get sportMeta() { return this.schema.sports[this.sport] || {}; },
@@ -315,7 +345,7 @@
             if (! this.sport) return null;
             return Object.keys(this.catalogs).find(k => k.startsWith(this.sport + '_')) || null;
         },
-        get tkdConfig() { return this.presetKey ? (this.catalogs[this.presetKey] || {}) : {}; },
+        get tkdConfig() { return this.ruleTable || (this.presetKey ? (this.catalogs[this.presetKey] || {}) : {}); },
         get hasPresets() { return Object.keys(this.tkdConfig).length > 0; },
         get presetGroups() { return Object.keys(this.tkdConfig); },
         /* A group from a DIFFERENT sport cannot survive a sport change -- BJJ has
@@ -343,7 +373,7 @@
         removeDivision(i) { this.divisions.splice(i, 1); },
         suggestDivisions() {
             const s = this.sportMeta.sample || [];
-            if (!s.length) { window.showToast('info', '{{ __("personal.personal_event_create_no_suggestions") }}'); return; }
+            if (!s.length) { window.showToast('info', @js(__("personal.personal_event_create_no_suggestions"))); return; }
             this.divisions = s.map(n => ({ name: n, capacity: 8, schedule: this.newSchedule() }));
         },
         addTeam() { this.league.teams.push(''); },
@@ -355,17 +385,17 @@
         // just sitting there dimmed.
         missing() {
             const m = [];
-            if (!this.tenant_id) m.push('{{ __("personal.personal_event_create_club") }}');
-            if (this.title.trim().length < 2) m.push('{{ __("personal.personal_event_create_title_label") }}');
-            if (!this.date) m.push('{{ __("personal.personal_event_create_start_date") }}');
-            if (!this.start_time) m.push('{{ __("personal.personal_event_create_start_time") }}');
+            if (!this.tenant_id) m.push(@js(__("personal.personal_event_create_club")));
+            if (this.title.trim().length < 2) m.push(@js(__("personal.personal_event_create_title_label")));
+            if (!this.date) m.push(@js(__("personal.personal_event_create_start_date")));
+            if (!this.start_time) m.push(@js(__("personal.personal_event_create_start_time")));
             return m;
         },
         canSave() { return this.missing().length === 0; },
         async save() {
             const missing = this.missing();
             if (missing.length) {
-                window.showToast('warning', '{{ __("personal.personal_event_create_still_needed") }} ' + missing.join(', '));
+                window.showToast('warning', @js((__("personal.personal_event_create_still_needed")).' ') + missing.join(', '));
                 return;
             }
             if (this.sending) return;
@@ -373,13 +403,16 @@
             try {
                 let level = this.level || null;
                 if (this.has('belt_levels') && this.beltFrom && this.beltTo) level = this.beltFrom + ' → ' + this.beltTo;
-                // Location: map mode reads the picker's address + coords; URL mode uses the link.
-                // Title is the explicit text box; in map mode fall back to the picker's resolved address.
+                // Location: the pin's coords and the Google Maps link are both kept.
+                // Title is the explicit text box, falling back to the picker's resolved address.
                 const mapAddr = document.getElementById('eventLocMapAddress');
-                const locName = (this.location || '').trim() || (this.locMode === 'map' && mapAddr ? mapAddr.value : '') || null;
+                const locName = (this.location || '').trim() || (mapAddr ? mapAddr.value : '') || null;
                 const breakOn = this.isChampionship && this.break_enabled;
                 const payload = {
                     tenant_id: this.tenant_id, title: this.title.trim(), event_type: this.type, scope: this.scope, sport: this.sport || null,
+                    category_system: this.isCombat ? (this.category_system || null) : null,
+                    belt_system: this.isCombat ? (this.belt_system || null) : null,
+                    timezone: this.timezone || null,
                     date: this.date, end_date: this.end_date || null,
                     start_time: this.start_time, end_time: this.end_time || null,
                     weigh_in_at: (this.isCombat && this.weigh_in_at) ? this.weigh_in_at : null,
@@ -388,9 +421,9 @@
                     enrollment_starts_at: this.enrollment_starts || null,
                     enrollment_ends_at: this.enrollment_ends || null,
                     location: locName,
-                    location_url: this.locMode === 'url' ? (this.location_url || null) : null,
-                    gps_lat: this.locMode === 'map' && this.gps_lat ? parseFloat(this.gps_lat) : null,
-                    gps_long: this.locMode === 'map' && this.gps_long ? parseFloat(this.gps_long) : null,
+                    location_url: this.location_url || null,
+                    gps_lat: this.gps_lat ? parseFloat(this.gps_lat) : null,
+                    gps_long: this.gps_long ? parseFloat(this.gps_long) : null,
                     break_start: breakOn ? (this.break_start || null) : null,
                     break_end: breakOn ? (this.break_end || null) : null,
                     courts: (this.isChampionship && this.courts) ? parseInt(this.courts, 10) : null,
@@ -445,25 +478,36 @@
                     tags: this.tagsText.split(',').map(s => s.trim().replace(/^#/, '')).filter(Boolean),
                     phases: (this.has('phases') && !this.isCombat) ? this.phases.filter(p => (p.label||'').trim()).map(p => ({ label: p.label.trim(), date: p.date || null, note: (p.note||'').trim() })) : [],
                     divisions: this.has('divisions') ? this.divisions.filter(d => (d.name||'').trim()).map(d => ({ name: d.name, capacity: (d.capacity === '' || d.capacity == null) ? null : parseInt(d.capacity, 10), schedule: d.schedule, format: d.format || null, is_heading: !!d.is_heading })) : [],
+                    competition: this.has('competition') ? {
+                        format: this.competitionFormat,
+                        entrant: this.competitionEntrant,
+                        group_size: parseInt(this.competition.group_size, 10) || null,
+                        advance: parseInt(this.competition.advance, 10) || null,
+                        swiss_rounds: parseInt(this.competition.swiss_rounds, 10) || null,
+                        finalists: parseInt(this.competition.finalists, 10) || null,
+                    } : null,
                     league: this.has('league') ? {
                         teams: this.league.teams.map(t => (t||'').trim()).filter(Boolean),
                         fixtures: this.league.fixtures.filter(f => (f.home||'').trim() && (f.away||'').trim()),
                     } : null,
                 };
-                const res = await fetch('{{ $submitUrl }}', {
-                    method: '{{ $submitMethod }}',
+                const res = await fetch(@js($submitUrl), {
+                    method: @js($submitMethod),
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
                     credentials: 'same-origin', body: JSON.stringify(payload),
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.message || (data.errors ? Object.values(data.errors)[0][0] : '{{ __("personal.personal_event_create_could_not_save") }}'));
-                window.showToast('success', data.message || (this.isEdit ? '{{ __("personal.personal_event_create_event_updated") }}' : '{{ __("personal.personal_event_create_event_created") }}'));
-                setTimeout(() => { window.location.href = data.redirect || '{{ route('me.events') }}'; }, 600);
+                if (!res.ok || !data.success) throw new Error(data.message || (data.errors ? Object.values(data.errors)[0][0] : @js(__("personal.personal_event_create_could_not_save"))));
+                window.showToast('success', data.message || (this.isEdit ? @js(__("personal.personal_event_create_event_updated")) : @js(__("personal.personal_event_create_event_created"))));
+                setTimeout(() => { window.location.href = data.redirect || @js(route('me.events')); }, 600);
             } catch (e) { window.showToast('error', e.message); }
             finally { this.sending = false; }
         }
      }"
-     x-init="normalizeDivisions()"
+     x-init="normalizeDivisions();
+             if (!timezone) timezone = (clubs.find(c => c.id == tenant_id) || {}).timezone || @js(\App\Events\Models\ClubEvent::firstValidZone());
+             $watch('tenant_id', v => { if (!tzTouched) timezone = (clubs.find(c => c.id == v) || {}).timezone || timezone; });
+             $watch('timezone', (v, old) => { if (old && v !== (clubs.find(c => c.id == tenant_id) || {}).timezone) tzTouched = true; })"
      class="-mx-4 -mt-4 pb-6">
 
     {{-- ===== Header ===== --}}
@@ -662,6 +706,16 @@
                 </button>
             </div>
 
+            {{-- The competition's timezone — every date and time on this event is read in it. --}}
+            <div>
+                <x-fields.timezone id="eventTimezone" name="timezone" model="timezone" wrapper-class=""
+                                   label-class="block text-xs font-medium text-gray-600 mb-1"
+                                   :label="__('events::events.event_timezone')" />
+                <p class="text-[11px] text-muted-foreground mt-1 flex items-start gap-1.5">
+                    <i class="bi bi-globe2 mt-px"></i><span>{{ __('events::events.event_timezone_hint') }}</span>
+                </p>
+            </div>
+
             {{-- Start / end date --}}
             <div class="grid grid-cols-2 gap-3">
                 <div>
@@ -718,25 +772,20 @@
                 </div>
             </div>
 
-            {{-- Location — pin on map or paste a Maps link --}}
+            {{-- Location — the place name, then ONE map: paste a Google Maps link and
+                 the pin follows it, or drop the pin by hand. Both are kept. The link
+                 box is the map field's own (not x-model bound), so its value is read
+                 back into state as it changes. --}}
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_location') }}</label>
-                <div class="flex gap-2 mb-2">
-                    <button type="button" @click="locMode='map'"
-                            class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='map' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-geo-alt"></i> {{ __('personal.personal_event_create_pin_map') }}</button>
-                    <button type="button" @click="locMode='url'"
-                            class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='url' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-link-45deg"></i> {{ __('personal.personal_event_create_maps_link') }}</button>
-                </div>
-                <div x-show="locMode==='map'" x-cloak class="space-y-2" @location-changed="gps_lat = $event.detail.lat; gps_long = $event.detail.lng">
+                <div class="space-y-2"
+                     @location-changed="gps_lat = $event.detail.lat; gps_long = $event.detail.lng"
+                     @input="if ($event.target.hasAttribute('data-map-link-for')) location_url = $event.target.value.trim()"
+                     @change="if ($event.target.hasAttribute('data-map-link-for')) location_url = $event.target.value.trim()">
                     <input x-model="location" type="text" placeholder="{{ __('personal.personal_event_create_loc_title_ph') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                    <x-fields.location-map id="eventLocMap" :lat="$ev?->gps_lat" :lng="$ev?->gps_long" :address="$ev?->location" height="10rem" :zoom="13" :show-labels="false" />
-                </div>
-                <div x-show="locMode==='url'" x-cloak class="space-y-2">
-                    <input x-model="location_url" type="url" placeholder="{{ __('personal.personal_event_create_maps_url_ph') }}"
-                           class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                    <input x-model="location" type="text" placeholder="{{ __('personal.personal_event_create_place_name_ph') }}"
-                           class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <x-fields.location-map id="eventLocMap" :lat="$ev?->gps_lat" :lng="$ev?->gps_long" :address="$ev?->location" height="10rem" :zoom="13" :show-labels="false"
+                        mapsUrlName="location_url" :mapsUrl="$ev?->location_url ?? ''" />
                 </div>
             </div>
 
@@ -816,6 +865,73 @@
             </div>
         </div>
 
+        {{-- ===== How it runs (sport championships) =====
+             The format and who enters, offered from the sport's own recipe, so
+             padel offers pairs and groups-then-knockout, chess offers Swiss,
+             swimming offers heats. The server re-checks every choice against
+             the same recipe. --}}
+        @php $cm = 'event-sport_championship::messages.'; @endphp
+        <div class="m-card rounded-2xl p-4 space-y-4" x-show="has('competition')" x-cloak>
+            <div>
+                <p class="text-sm font-bold text-foreground"><i class="bi bi-trophy text-primary"></i> {{ __($cm.'competition_title') }}</p>
+                <p class="text-[11px] text-muted-foreground mt-0.5">{{ __($cm.'competition_sub') }}</p>
+            </div>
+
+            <div class="space-y-2">
+                <template x-for="f in (competitionRecipe ? competitionRecipe.formats : [])" :key="f">
+                    <button type="button" @click="competition.format = f"
+                            class="m-press w-full rounded-xl border px-3.5 py-3 text-start flex items-center gap-3 transition-colors"
+                            :class="competitionFormat === f ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'">
+                        <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0"
+                              :class="competitionFormat === f ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
+                            <i class="bi" :class="({knockout: 'bi-diagram-3 bracket-icon', round_robin: 'bi-arrow-repeat', groups_knockout: 'bi-grid-3x2-gap', league: 'bi-table', swiss: 'bi-shuffle', heats: 'bi-stopwatch', open: 'bi-list-ol'})[f]"></i>
+                        </span>
+                        <span class="flex-1 text-sm font-semibold" :class="competitionFormat === f ? 'text-primary' : 'text-foreground'"
+                              x-text="({knockout: @js(__($cm.'format_knockout')), round_robin: @js(__($cm.'format_round_robin')), groups_knockout: @js(__($cm.'format_groups_knockout')), league: @js(__($cm.'format_league')), swiss: @js(__($cm.'format_swiss')), heats: @js(__($cm.'format_heats')), open: @js(__($cm.'format_open'))})[f] || f"></span>
+                        <i class="bi" :class="competitionFormat === f ? 'bi-check-circle-fill text-primary' : 'bi-circle text-gray-300'"></i>
+                    </button>
+                </template>
+            </div>
+
+            <template x-if="competitionRecipe && competitionRecipe.entrants.length > 1">
+                <div class="flex gap-2">
+                    <template x-for="en in competitionRecipe.entrants" :key="en">
+                        <button type="button" @click="competition.entrant = en"
+                                class="m-press flex-1 rounded-xl border py-2.5 text-sm font-bold transition-colors"
+                                :class="competitionEntrant === en ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 bg-white text-muted-foreground'"
+                                x-text="({individual: @js(__($cm.'entrant_individual')), pair: @js(__($cm.'entrant_pair')), team: @js(__($cm.'entrant_team'))})[en]"></button>
+                    </template>
+                </div>
+            </template>
+
+            <div class="grid grid-cols-2 gap-3" x-show="['groups_knockout', 'swiss', 'heats'].includes(competitionFormat)">
+                <template x-if="competitionFormat === 'groups_knockout'">
+                    <label class="block">
+                        <span class="block text-xs font-medium text-gray-700 mb-1">{{ __($cm.'group_size') }}</span>
+                        <input type="number" min="2" max="16" x-model="competition.group_size" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </label>
+                </template>
+                <template x-if="competitionFormat === 'groups_knockout'">
+                    <label class="block">
+                        <span class="block text-xs font-medium text-gray-700 mb-1">{{ __($cm.'advance') }}</span>
+                        <input type="number" min="1" max="4" x-model="competition.advance" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </label>
+                </template>
+                <template x-if="competitionFormat === 'swiss'">
+                    <label class="block">
+                        <span class="block text-xs font-medium text-gray-700 mb-1">{{ __($cm.'swiss_rounds') }}</span>
+                        <input type="number" min="1" max="15" x-model="competition.swiss_rounds" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </label>
+                </template>
+                <template x-if="competitionFormat === 'heats'">
+                    <label class="block">
+                        <span class="block text-xs font-medium text-gray-700 mb-1">{{ __($cm.'finalists') }}</span>
+                        <input type="number" min="2" max="16" x-model="competition.finalists" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </label>
+                </template>
+            </div>
+        </div>
+
         {{-- Divisions / categories (non-combat: free text) --}}
         <div class="m-card rounded-2xl p-4" x-show="has('divisions') && !isCombat" x-cloak>
             <div class="flex items-center justify-between mb-1">
@@ -851,6 +967,14 @@
              The same component in SERVER mode is the console's Divisions
              section, so the two cannot drift — and it carries the bracket /
              round-robin choice with it. --}}
+        {{-- The rule book: which category system and belt system this event
+             runs under. The division presets below follow the chosen table. --}}
+        <div x-show="isCombat" x-cloak>
+            @php $rbHost = $ev && ! $ev->tenant_id && $ev->host_type ? "'".$ev->host_type.':'.$ev->host_id."'" : "(tenant_id ? 'club:' + tenant_id : '')"; @endphp
+            <x-event-rule-book model-category="category_system" model-belt="belt_system" sport-model="sport"
+                               :host-expr="$rbHost" table-model="ruleTable" />
+        </div>
+
         <div class="m-card rounded-2xl p-4" x-show="isCombat && has('divisions')" x-cloak>
             <div class="flex items-center justify-between mb-1">
                 <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 bracket-icon text-primary"></i> {{ __('personal.personal_event_create_weight_categories') }}</p>
@@ -899,7 +1023,7 @@
             {{-- The list, and the sheet that edits one. `model` binds the very
                  array this form already submits, so the payload is unchanged. --}}
             <div class="mt-3">
-                <x-event-divisions model="divisions" :server="false"
+                <x-event-divisions model="divisions" sport-model="sport" :server="false"
                     :phases="[
                         ['key' => 'preliminary', 'label' => __('personal.event_phase_prelim')],
                         ['key' => 'quarterfinals', 'label' => __('personal.event_phase_quarters')],
@@ -913,7 +1037,7 @@
                                 @click="presetsOpen ? presetsOpen = false : openPresets()"
                                 class="m-press flex-1 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground flex items-center justify-center gap-2 transition-colors hover:bg-muted/60">
                             <i class="bi" :class="presetsOpen ? 'bi-chevron-up' : 'bi-lightning-charge'"></i>
-                            <span x-text="presetsOpen ? '{{ __('personal.personal_event_create_close') }}' : '{{ __('events::events.divisions_add_preset') }}'"></span>
+                            <span x-text="presetsOpen ? @js(__('personal.personal_event_create_close')) : @js(__('events::events.divisions_add_preset'))"></span>
                         </button>
                     </x-slot:actions>
                 </x-event-divisions>

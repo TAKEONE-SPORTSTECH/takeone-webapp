@@ -38,19 +38,73 @@
     </div>
     <div style="{{ coverBody }}">
       <div style="width:100%;max-width:520px">
-        <p style="margin:0 0 20px;font-size:.92rem;line-height:1.65;color:#5d6880;text-wrap:pretty">{{ t.intro }}</p>
-        <div style="{{ datesGridStyle }}">
-          <sc-for list="{{ keyDates }}" as="d" hint-placeholder-count="6">
-            <div style="{{ d.style }}">
-              <div style="font-size:.62rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#6b7689;margin-bottom:3px">{{ d.label }}</div>
-              <div style="font-size:.86rem;font-weight:600;color:#1e2c4f">{{ d.value }}</div>
-              <sc-if value="{{ d.hasSub }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#6b7689;margin-top:1px">{{ d.sub }}</div></sc-if>
-            </div>
-          </sc-for>
+        <div style="{{ qfCardStyle }}">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px">
+            <button type="button" onClick="{{ jumpDates }}" aria-label="{{ t.qfWhen }}" style="min-width:0;padding:4px 2px;border:0;background:none;font-family:inherit;cursor:pointer;text-align:center;">
+              <span style="width:40px;height:40px;margin:0 auto;border-radius:12px;background:#fdf6e6;border:1px solid #e7cf94;color:#8a6d20;display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+              <span style="display:block;font-size:.8rem;font-weight:700;color:#1e2c4f;margin-top:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ qfWhenVal }}</span>
+              <span style="display:block;font-size:.66rem;color:#6b7689;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ qfWhenSub }}</span>
+            </button>
+            <button type="button" onClick="{{ jumpFees }}" aria-label="{{ t.qfEntry }}" style="min-width:0;padding:4px 2px;border:0;background:none;font-family:inherit;cursor:pointer;text-align:center;border-inline:1px solid #eef1f6;">
+              <span style="width:40px;height:40px;margin:0 auto;border-radius:12px;background:#fdf6e6;border:1px solid #e7cf94;color:#8a6d20;display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span>
+              <span style="display:block;font-size:.8rem;font-weight:700;color:#1e2c4f;margin-top:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ qfEntryVal }}</span>
+              <span style="display:block;font-size:.66rem;color:#6b7689;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ qfEntrySub }}</span>
+            </button>
+            <button type="button" onClick="{{ jumpWhere }}" aria-label="{{ t.qfWhere }}" style="min-width:0;padding:4px 2px;border:0;background:none;font-family:inherit;cursor:pointer;text-align:center;">
+              <span style="width:40px;height:40px;margin:0 auto;border-radius:12px;background:#fdf6e6;border:1px solid #e7cf94;color:#8a6d20;display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+              <span style="display:block;font-size:.8rem;font-weight:700;color:#1e2c4f;margin-top:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ qfWhereVal }}</span>
+              <span style="display:block;font-size:.66rem;color:#6b7689;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ qfWhereSub }}</span>
+            </button>
+          </div>
         </div>
+        <sc-if value="{{ hasAbout }}" hint-placeholder-val="{{ false }}">
+          <section style="background:#fff;border-radius:18px;border:1px solid #e3e7ee;box-shadow:0 10px 30px rgba(30,44,79,.06);overflow:hidden;margin-bottom:14px"><div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(135deg,#1e2c4f,#0b132b);color:#fff"><span style="width:30px;height:30px;flex:none;border-radius:9px;background:rgba(216,178,95,.16);border:1px solid rgba(216,178,95,.4);display:grid;place-items:center;color:#edcd85"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></span><span style="font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase">{{ t.secAbout }}</span></div><div ref="{{ aboutRef }}" style="padding:16px 18px;font-size:.88rem;line-height:1.7;color:#2c3a5e;overflow-wrap:anywhere"></div></section>
+        </sc-if>
+        <section id="inv-fees" style="background:#fff;border-radius:18px;border:1px solid #e3e7ee;box-shadow:0 10px 30px rgba(30,44,79,.06);overflow:hidden;margin-bottom:14px"><div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(135deg,#1e2c4f,#0b132b);color:#fff"><span style="width:30px;height:30px;flex:none;border-radius:9px;background:rgba(216,178,95,.16);border:1px solid rgba(216,178,95,.4);display:grid;place-items:center;color:#edcd85"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span><span style="font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase">{{ t.secFees }}</span></div>
+          <div style="padding:6px 18px 14px">
+            <sc-for list="{{ feeRows }}" as="f" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #eef1f6">
+                <span style="flex:1;min-width:0"><span style="display:block;font-size:.86rem;font-weight:600;color:#1e2c4f">{{ f.label }}</span><span style="display:block;font-size:.7rem;color:#6b7689;margin-top:1px">{{ f.unit }}</span></span>
+                <span style="{{ f.priceStyle }}">{{ f.price }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noFees }}" hint-placeholder-val="{{ false }}"><div style="padding:12px 0 2px;font-size:.82rem;color:#6b7689">{{ t.feesNone }}</div></sc-if>
+            <sc-if value="{{ hasLateNote }}" hint-placeholder-val="{{ false }}"><div style="margin-top:10px;padding:9px 12px;border-radius:10px;background:#fdf1e0;color:#7a4a0c;font-size:.74rem;line-height:1.5">{{ lateNote }}</div></sc-if>
+          </div>
+        </section>
+        <section id="inv-dates" style="background:#fff;border-radius:18px;border:1px solid #e3e7ee;box-shadow:0 10px 30px rgba(30,44,79,.06);overflow:hidden;margin-bottom:14px"><div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(135deg,#1e2c4f,#0b132b);color:#fff"><span style="width:30px;height:30px;flex:none;border-radius:9px;background:rgba(216,178,95,.16);border:1px solid rgba(216,178,95,.4);display:grid;place-items:center;color:#edcd85"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><span style="font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase">{{ t.secDates }}</span></div>
+          <div style="padding:14px 18px 6px">
+            <sc-for list="{{ dateRows }}" as="d" hint-placeholder-count="5">
+              <div style="position:relative;display:flex;gap:14px;padding-bottom:14px">
+                <span style="{{ d.dot }}"></span>
+                <span style="flex:1;min-width:0;padding-top:1px">
+                  <span style="display:block;font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b7689">{{ d.label }}</span>
+                  <span style="{{ d.valueStyle }}">{{ d.value }}</span>
+                  <sc-if value="{{ d.hasSub }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:.72rem;color:#6b7689;margin-top:1px">{{ d.sub }}</span></sc-if>
+                </span>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+        <sc-if value="{{ hasReqs }}" hint-placeholder-val="{{ false }}">
+          <section style="background:#fff;border-radius:18px;border:1px solid #e3e7ee;box-shadow:0 10px 30px rgba(30,44,79,.06);overflow:hidden;margin-bottom:14px"><div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(135deg,#1e2c4f,#0b132b);color:#fff"><span style="width:30px;height:30px;flex:none;border-radius:9px;background:rgba(216,178,95,.16);border:1px solid rgba(216,178,95,.4);display:grid;place-items:center;color:#edcd85"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></span><span style="font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase">{{ t.secReqs }}</span></div>
+            <div style="padding:8px 18px 12px">
+              <sc-for list="{{ reqRows }}" as="r" hint-placeholder-count="2">
+                <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #eef1f6"><span style="width:24px;height:24px;flex:none;border-radius:50%;background:#1e2c4f;color:#edcd85;font-size:.7rem;font-weight:700;display:grid;place-items:center">{{ r.n }}</span><span style="flex:1;font-size:.84rem;line-height:1.5;color:#1e2c4f;overflow-wrap:anywhere">{{ r.text }}</span></div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
+        <section id="inv-where" style="background:#fff;border-radius:18px;border:1px solid #e3e7ee;box-shadow:0 10px 30px rgba(30,44,79,.06);overflow:hidden;margin-bottom:14px"><div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(135deg,#1e2c4f,#0b132b);color:#fff"><span style="width:30px;height:30px;flex:none;border-radius:9px;background:rgba(216,178,95,.16);border:1px solid rgba(216,178,95,.4);display:grid;place-items:center;color:#edcd85"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span style="font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase">{{ t.secWhere }}</span></div>
+          <div style="padding:14px 18px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="flex:1;min-width:180px"><span style="display:block;font-size:.9rem;font-weight:700;color:#1e2c4f">{{ whereTitle }}</span><sc-if value="{{ hasWhereSub }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:.76rem;color:#6b7689;margin-top:2px">{{ whereSub }}</span></sc-if></span>
+            <sc-if value="{{ hasMap }}" hint-placeholder-val="{{ false }}"><a href="{{ mapHref }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:11px;border:1px solid #caa14f;background:#fdf6e6;color:#8a6d20;font-size:.8rem;font-weight:700;text-decoration:none">{{ t.openMap }} &#8599;</a></sc-if>
+          </div>
+        </section>
         <div style="{{ coverCta }}">
-          <button onClick="{{ goRules }}" style="width:100%;height:54px;border-radius:14px;font-size:.98rem;letter-spacing:.02em;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;color:#1e2c4f;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.3)" style-hover="transform:translateY(-1px)">{{ t.start }} {{ arrow }}</button>
-          <div style="text-align:center;font-size:.72rem;color:#6b7689;margin-top:8px">{{ t.takesMinutes }}</div>
+          <sc-if value="{{ coverPhaseShown }}" hint-placeholder-val="{{ false }}"><div role="status" style="{{ coverPhaseStyle }}">{{ coverPhaseMsg }}</div></sc-if>
+          <button onClick="{{ goStart }}" aria-disabled="{{ ctaDisabled }}" style="{{ ctaStyle }}" style-hover="transform:translateY(-1px)">{{ ctaLabel }}</button>
+          <div style="text-align:center;font-size:.72rem;color:#6b7689;margin-top:8px">{{ ctaSub }}</div>
         </div>
       </div>
     </div>
@@ -145,42 +199,71 @@
         </sc-if>
 
         <sc-if value="{{ isClub }}" hint-placeholder-val="{{ false }}">
-          <sc-if value="{{ idChoose }}" hint-placeholder-val="{{ true }}">
-            <p style="margin:0 0 14px;font-size:.88rem;line-height:1.6;color:#5d6880">{{ t.idQuestion }}</p>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
-              <div onClick="{{ chooseExisting }}" role="button" tabindex="0" style="padding:20px;border-radius:18px;background:#fff;border:1px solid #e3e7ee;cursor:pointer;display:flex;gap:14px;align-items:flex-start" style-hover="border-color:#caa14f;box-shadow:0 10px 28px rgba(202,161,79,.16)">
-                <span style="width:44px;height:44px;flex:none;border-radius:14px;background:#fdf6e6;border:1px solid #e7cf94;display:grid;place-items:center;color:#8a6d20"><svg width="22" height="22" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
-                <span><span style="display:block;font-size:.95rem;font-weight:700;margin-bottom:4px">{{ t.idExisting }}</span><span style="display:block;font-size:.78rem;line-height:1.5;color:#6b7689">{{ t.idExistingSub }}</span></span>
-              </div>
-              <div onClick="{{ chooseNew }}" role="button" tabindex="0" style="padding:20px;border-radius:18px;background:#fff;border:1px solid #e3e7ee;cursor:pointer;display:flex;gap:14px;align-items:flex-start" style-hover="border-color:#caa14f;box-shadow:0 10px 28px rgba(202,161,79,.16)">
-                <span style="width:44px;height:44px;flex:none;border-radius:14px;background:#eef1f6;display:grid;place-items:center;color:#1e2c4f"><svg width="22" height="22" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M12 10v6M9 13h6"></path></svg></span>
-                <span><span style="display:block;font-size:.95rem;font-weight:700;margin-bottom:4px">{{ t.idNew }}</span><span style="display:block;font-size:.78rem;line-height:1.5;color:#6b7689">{{ t.idNewSub }}</span></span>
-              </div>
-            </div>
-          </sc-if>
-
-          <sc-if value="{{ idVerify }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ idFindShown }}" hint-placeholder-val="{{ true }}">
             <div style="padding:20px;border-radius:18px;background:#fff;border:1px solid #e3e7ee">
-              <div style="font-size:.95rem;font-weight:700;margin-bottom:4px">{{ t.idFind }}</div>
-              <div style="font-size:.8rem;color:#6b7689;margin-bottom:14px">{{ t.idFindSub }}</div>
-              <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.idContact }}</label>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <input value="{{ idContact }}" onChange="{{ onIdContact }}" onKeyDown="{{ onIdKey }}" dir="ltr" placeholder="office@club.com / +973 …" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff;flex:1 1 220px;min-width:0" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
-                <button onClick="{{ sendCode }}" style="height:48px;padding:0 18px;border-radius:12px;font-size:.84rem;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;color:#1e2c4f;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.3)">{{ sendLabel }}</button>
+              <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">
+                <span style="width:44px;height:44px;flex:none;border-radius:14px;background:#fdf6e6;border:1px solid #e7cf94;display:grid;place-items:center;color:#8a6d20"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font-size:.95rem;font-weight:700">{{ t.idFind }}</span><span style="display:block;font-size:.78rem;line-height:1.5;color:#6b7689;margin-top:2px">{{ t.idFindSub }}</span></span>
               </div>
+              <sc-if value="{{ findNoPick }}" hint-placeholder-val="{{ true }}">
+                <input value="{{ findQ }}" onChange="{{ onFindQ }}" onKeyDown="{{ onFindKey }}" placeholder="{{ t.idFindPh }}" autocomplete="off" aria-label="{{ t.idFind }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                <sc-if value="{{ findIsContact }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ sendCode }}" style="height:48px;padding:0 20px;border-radius:12px;font-size:.84rem;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;color:#1e2c4f;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.3);width:100%;margin-top:10px">{{ sendLabel }}</button>
+                </sc-if>
+                <sc-if value="{{ findHasRows }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;animation:rise .2s ease both">
+                    <sc-for list="{{ findRows }}" as="k" hint-placeholder-count="3">
+                      <button onClick="{{ k.onPick }}" style="{{ k.style }}">
+                        <sc-if value="{{ k.hasLogo }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="{{ k.name }}" style="{{ k.logoStyle }}"></span></sc-if>
+                        <sc-if value="{{ k.noLogo }}" hint-placeholder-val="{{ true }}"><span style="width:38px;height:38px;flex:none;border-radius:50%;background:#fdf6e6;border:1px solid #e7cf94;display:grid;place-items:center;font-size:.72rem;font-weight:700;color:#8a6d20">{{ k.initials }}</span></sc-if>
+                        <span style="flex:1;min-width:0;text-align:start"><span style="display:block;font-size:.9rem;font-weight:700;color:#1e2c4f;overflow-wrap:anywhere">{{ k.name }}</span><span style="display:block;font-size:.72rem;color:#6b7689;margin-top:2px">{{ k.sub }}</span></span>
+                        <span style="flex:none;font-size:1.2rem;font-weight:700;color:#8a6d20">{{ k.go }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ findNone }}" hint-placeholder-val="{{ false }}"><div style="margin-top:12px;padding:12px 14px;border-radius:12px;background:#f7f8fb;font-size:.8rem;color:#5d6880;line-height:1.5">{{ findNoneMsg }}</div></sc-if>
+              </sc-if>
+              <sc-if value="{{ findPicked }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:2px solid #caa14f;background:#fdf6e6;animation:rise .2s ease both">
+                  <sc-if value="{{ fp.hasLogo }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="{{ fp.name }}" style="{{ fp.logoStyle }}"></span></sc-if>
+                  <sc-if value="{{ fp.noLogo }}" hint-placeholder-val="{{ true }}"><span style="width:38px;height:38px;flex:none;border-radius:50%;background:#fdf6e6;border:1px solid #e7cf94;display:grid;place-items:center;font-size:.72rem;font-weight:700;color:#8a6d20">{{ fp.initials }}</span></sc-if>
+                  <span style="flex:1;min-width:0"><span style="display:block;font-size:.92rem;font-weight:700;color:#1e2c4f;overflow-wrap:anywhere">{{ fp.name }}</span><span style="display:block;font-size:.72rem;color:#6b7689;margin-top:2px">{{ fp.sub }}</span></span>
+                  <button onClick="{{ findUnpick }}" style="height:32px;padding:0 12px;border-radius:9px;font-size:.72rem;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer;flex:none">{{ t.idChange }}</button>
+                </div>
+                <sc-if value="{{ fpNoEmail }}" hint-placeholder-val="{{ false }}"><div style="margin-top:12px;padding:12px 14px;border-radius:12px;background:#fdf1e0;border:1px solid #f0cf9c;font-size:.8rem;line-height:1.5;color:#7a4a0c">{{ t.idNoEmail }}</div></sc-if>
+                <sc-if value="{{ fpCanSend }}" hint-placeholder-val="{{ true }}"><button onClick="{{ sendClubCode }}" style="height:48px;padding:0 20px;border-radius:12px;font-size:.84rem;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;color:#1e2c4f;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.3);width:100%;margin-top:12px">{{ sendLabel }}</button></sc-if>
+              </sc-if>
               <sc-if value="{{ codeSent }}" hint-placeholder-val="{{ false }}">
-                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #eef1f6">
-                  <div style="font-size:.8rem;color:#5d6880;margin-bottom:10px">{{ codeSentMsg }}</div>
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #eef1f6;animation:rise .2s ease both">
+                  <div style="font-size:.8rem;color:#5d6880;margin-bottom:10px;line-height:1.5">{{ codeSentMsg }}</div>
                   <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.idCode }}</label>
                   <div style="display:flex;gap:8px;flex-wrap:wrap">
-                    <input value="{{ codeInput }}" onChange="{{ onCodeInput }}" onKeyDown="{{ onCodeKey }}" inputmode="numeric" maxlength="6" dir="ltr" placeholder="000000" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff;flex:1 1 160px;min-width:0;font-size:1.2rem;letter-spacing:.4em;text-align:center;font-family:ui-monospace,Menlo,monospace" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
-                    <button onClick="{{ verifyCode }}" style="height:48px;padding:0 20px;border-radius:12px;font-size:.84rem;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;color:#1e2c4f;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.3)">{{ t.idVerifyBtn }}</button>
+                    <input value="{{ codeInput }}" onChange="{{ onCodeInput }}" onKeyDown="{{ onCodeKey }}" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" placeholder="000000" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff;flex:1 1 160px;min-width:0;font-size:1.2rem;letter-spacing:.4em;text-align:center;font-family:ui-monospace,Menlo,monospace" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <button onClick="{{ verifyCode }}" style="height:48px;padding:0 20px;border-radius:12px;font-size:.84rem;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;color:#1e2c4f;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.3)">{{ verifyLabel }}</button>
                   </div>
-                  <div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#fdf6e6;border:1px dashed #caa14f;font-size:.74rem;color:#7a5a12">{{ demoCodeMsg }}</div>
+                  <sc-if value="{{ hasClubChoices }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:16px;padding:14px;border-radius:14px;background:#fdf8ec;border:1px solid #efdcae;animation:rise .25s ease both">
+                      <div style="font-size:.86rem;font-weight:700;color:#1e2c4f">{{ t.idChoose }}</div>
+                      <div style="font-size:.74rem;color:#6b7689;margin:3px 0 10px">{{ t.idChooseSub }}</div>
+                      <div style="display:flex;flex-direction:column;gap:8px">
+                        <sc-for list="{{ clubChoices }}" as="k" hint-placeholder-count="2">
+                          <button onClick="{{ k.onPick }}" style="{{ k.style }}">
+                            <sc-if value="{{ k.hasLogo }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="{{ k.name }}" style="{{ k.logoStyle }}"></span></sc-if>
+                            <sc-if value="{{ k.noLogo }}" hint-placeholder-val="{{ true }}"><span style="width:38px;height:38px;flex:none;border-radius:50%;background:#fdf6e6;border:1px solid #e7cf94;display:grid;place-items:center;font-size:.72rem;font-weight:700;color:#8a6d20">{{ k.initials }}</span></sc-if>
+                            <span style="flex:1;min-width:0;text-align:start;font-size:.9rem;font-weight:700;color:#1e2c4f;overflow-wrap:anywhere">{{ k.name }}</span>
+                            <span style="{{ k.goStyle }}">{{ k.go }}</span>
+                          </button>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-if>
                 </div>
               </sc-if>
-              <div style="margin-top:14px;padding:10px 12px;border-radius:10px;background:#f4f6fa;font-size:.72rem;color:#5d6880;line-height:1.5">{{ t.idDemoHint }}</div>
-              <div style="margin-top:12px"><a href="#" onClick="{{ backToChoice }}" style="font-size:.8rem;font-weight:500">{{ t.idBack }}</a></div>
+              <div style="margin-top:18px;padding-top:14px;border-top:1px solid #eef1f6;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <span style="flex:1;min-width:180px;font-size:.78rem;line-height:1.5;color:#6b7689">{{ t.idNotListed }}</span>
+                <button onClick="{{ chooseNew }}" style="height:40px;padding:0 16px;border-radius:11px;font-size:.8rem;background:#fff;border:1px solid #caa14f;color:#8a6d20;font-weight:600;cursor:pointer">{{ t.idNew }}</button>
+              </div>
             </div>
           </sc-if>
 
@@ -206,6 +289,16 @@
           </sc-if>
 
           <sc-if value="{{ clubFormShown }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ hasClubMatch }}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="padding:16px;border-radius:16px;background:#fdf1e0;border:1px solid #f0cf9c;margin-bottom:16px;animation:rise .25s ease both">
+              <div style="font-size:.9rem;font-weight:700;color:#7a4a0c">{{ clubMatchTitle }}</div>
+              <div style="font-size:.78rem;line-height:1.5;color:#7a4a0c;margin-top:4px">{{ clubMatchSub }}</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                <button onClick="{{ matchItsUs }}" style="height:42px;padding:0 16px;border-radius:11px;font-size:.8rem;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;color:#1e2c4f;font-weight:600;cursor:pointer">{{ t.matchItsUs }}</button>
+                <sc-if value="{{ matchCanDiffer }}" hint-placeholder-val="{{ false }}"><button onClick="{{ matchDifferent }}" style="height:42px;padding:0 16px;border-radius:11px;font-size:.8rem;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer">{{ t.matchDifferent }}</button></sc-if>
+              </div>
+            </div>
+          </sc-if>
           <div style="display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;background:#fff;border:1px solid #e3e7ee;margin-bottom:16px;flex-wrap:wrap">
             <div style="{{ logoPreviewStyle }}"><sc-if value="{{ noLogo }}" hint-placeholder-val="{{ true }}"><span style="font-size:.62rem;color:#97a1b4;text-align:center;line-height:1.3">{{ t.logo }}</span></sc-if></div>
             <div style="flex:1;min-width:160px">
@@ -248,7 +341,7 @@
           </sc-if>
           <sc-if value="{{ staffShown }}" hint-placeholder-val="{{ false }}">
             <div style="margin-top:18px;padding:18px;border-radius:18px;background:#fff;border:1px solid #e3e7ee">
-              <div style="font-size:.95rem;font-weight:700">{{ t.staffTitle }}</div>
+              <div style="font-size:.95rem;font-weight:700">{{ t.staffTitle }} <span style="font-weight:400;color:#6b7689;font-size:.76rem">({{ t.optional }})</span></div>
               <div style="font-size:.76rem;color:#6b7689;margin-bottom:14px;line-height:1.5">{{ t.staffSub }}</div>
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
                 <sc-for list="{{ staff }}" as="p" hint-placeholder-count="3">
@@ -298,6 +391,7 @@
                         <div style="width:140px"><label style="display:block;font-size:.7rem;font-weight:500;color:#6b7689;margin-bottom:4px">{{ t.todayWeight }}</label><input type="number" inputmode="decimal" min="15" max="200" value="{{ r.weight }}" onChange="{{ r.onWeight }}" placeholder="kg" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff;height:40px" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)"></div>
                         <sc-if value="{{ r.hasCat }}" hint-placeholder-val="{{ false }}"><span style="padding:4px 10px;border-radius:999px;font-size:.66rem;font-weight:600;color:#8a6d20;background:rgba(216,178,95,.18);margin-bottom:10px">{{ r.cat }}</span></sc-if>
                         <div style="width:100%"><div style="font-size:.7rem;font-weight:500;color:#6b7689">{{ t.enterIn }}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><sc-for list="{{ r.types }}" as="ty" hint-placeholder-count="2"><button onClick="{{ ty.toggle }}" style="{{ ty.style }}">{{ ty.tick }}{{ ty.label }} <span style="opacity:.75;font-weight:500">· {{ ty.price }}</span></button></sc-for></div></div>
+                        <div style="width:100%;display:flex;justify-content:flex-end;font-size:.76rem;color:#6b7689">{{ t.feeFor }}&nbsp;<b style="color:#8a6d20">{{ r.feeTxt }}</b></div>
                       </div>
                     </sc-if>
                   </div>
@@ -306,36 +400,6 @@
               </div>
             </div>
           </sc-if>
-
-          <div style="padding:16px;border-radius:18px;background:#fff;border:1px solid #e3e7ee;margin-bottom:14px">
-            <div style="font-size:.9rem;font-weight:700">{{ t.lookupTitle }}</div>
-            <div style="font-size:.74rem;color:#6b7689;margin-bottom:10px">{{ t.lookupSub }}</div>
-            <input value="{{ lookupQ }}" onChange="{{ onLookupQ }}" dir="ltr" placeholder="{{ t.lookupPh }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff;height:44px" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
-            <sc-for list="{{ lookupRows }}" as="l" hint-placeholder-count="1">
-              <div style="display:flex;align-items:center;gap:12px;margin-top:10px;padding:12px;border-radius:14px;background:#f7f8fb;border:1px solid #e3e7ee;flex-wrap:wrap">
-                <div style="flex:1;min-width:180px">
-                  <div style="font-size:.86rem;font-weight:600">{{ l.name }} <span dir="ltr" style="font-size:.7rem;color:#6b7689;font-weight:500">{{ l.tk }}</span></div>
-                  <div style="font-size:.74rem;color:#6b7689;margin-top:2px">{{ l.status }}</div>
-                </div>
-                <sc-if value="{{ l.canTransfer }}" hint-placeholder-val="{{ false }}"><button onClick="{{ l.onTransfer }}" style="height:38px;padding:0 14px;border-radius:10px;font-size:.78rem;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;color:#1e2c4f;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.3)">{{ t.requestTransfer }}</button></sc-if>
-                <sc-if value="{{ l.isPending }}" hint-placeholder-val="{{ false }}"><span style="font-size:.72rem;font-weight:600;color:#a8620f;background:#fdf1e0;border-radius:999px;padding:5px 10px">{{ t.transferPending }}</span></sc-if>
-                <sc-if value="{{ l.isOwn }}" hint-placeholder-val="{{ false }}"><button onClick="{{ l.onPick }}" style="height:38px;padding:0 14px;border-radius:10px;font-size:.78rem;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer">{{ t.selectInRoster }}</button></sc-if>
-              </div>
-            </sc-for>
-            <sc-if value="{{ lookupNone }}" hint-placeholder-val="{{ false }}"><div style="margin-top:10px;font-size:.76rem;color:#6b7689">{{ t.lookupNone }}</div></sc-if>
-            <sc-if value="{{ hasTransfers }}" hint-placeholder-val="{{ false }}">
-              <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
-                <sc-for list="{{ transferRows }}" as="x" hint-placeholder-count="1">
-                  <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:#fdf1e0;border:1px solid #f0cf9c;font-size:.78rem">
-                    <span style="flex:1"><b>{{ x.name }}</b> · {{ x.from }} &#8594; {{ clubName }}</span>
-                    <span style="font-weight:600;color:#a8620f">{{ t.transferPending }}</span>
-                    <button onClick="{{ x.onRemove }}" aria-label="{{ t.remove }}" style="width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:#a8620f;cursor:pointer">&#10005;</button>
-                  </div>
-                </sc-for>
-                <div style="font-size:.7rem;color:#6b7689;line-height:1.5">{{ t.transferNote }}</div>
-              </div>
-            </sc-if>
-          </div>
 
           <div style="font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8a6d20;margin:4px 0 10px">{{ t.newAthletesTitle }}</div>
           <sc-if value="{{ hasAthletes }}" hint-placeholder-val="{{ false }}">
@@ -347,7 +411,7 @@
                     <div style="font-size:.9rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.num }}. {{ a.name }}</div>
                     <div style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:#6b7689;margin-top:2px"><div style="width:22px;height:15px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);flex:none;width:18px;height:12px;background-image:{{ a.flagBg }}"></div><span>{{ a.meta }}</span></div>
                     <sc-if value="{{ a.hasCategory }}" hint-placeholder-val="{{ false }}"><span style="display:inline-block;margin-top:6px;padding:3px 9px;border-radius:999px;font-size:.64rem;font-weight:600;color:#8a6d20;background:rgba(216,178,95,.18)">{{ a.category }}</span></sc-if>
-                    <div style="font-size:.7rem;color:#1e2c4f;margin-top:4px">{{ a.typesTxt }}</div>
+                    <div style="font-size:.7rem;color:#1e2c4f;margin-top:4px">{{ a.typesTxt }} <b style="color:#8a6d20">· {{ a.feeTxt }}</b></div>
                   </div>
                   <div style="display:flex;flex-direction:column;gap:6px;flex:none">
                     <button onClick="{{ a.onEdit }}" style="height:32px;padding:0 12px;border-radius:9px;font-size:.72rem;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer" style-hover="border-color:#caa14f">{{ t.edit }}</button>
@@ -358,61 +422,23 @@
             </div>
           </sc-if>
 
-          <sc-if value="{{ formOpen }}" hint-placeholder-val="{{ true }}">
-            <div style="padding:18px;border-radius:18px;background:#fff;border:1px solid #caa14f;box-shadow:0 12px 34px rgba(202,161,79,.14);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-                <div style="font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8a6d20">{{ formTitle }}</div>
-                <sc-if value="{{ draftHasCat }}" hint-placeholder-val="{{ false }}"><span style="padding:3px 10px;border-radius:999px;font-size:.66rem;font-weight:600;color:#8a6d20;background:rgba(216,178,95,.18)">{{ draftCat }}</span></sc-if>
-              </div>
-              <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-                <div style="flex:none;display:flex;flex-direction:column;align-items:center;gap:6px">
-                  <div style="{{ draftPhotoStyle }}"><sc-if value="{{ draftNoPhoto }}" hint-placeholder-val="{{ true }}"><span style="font-size:.62rem;color:#97a1b4;text-align:center;line-height:1.3;padding:4px">{{ t.photo }}<br>3:4</span></sc-if></div>
-                  <div style="display:flex;gap:4px">
-                    <button onClick="{{ onDraftCam }}" style="height:30px;padding:0 10px;border-radius:8px;font-size:.66rem;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer">{{ t.camera }}</button>
-                    <button onClick="{{ onDraftFile }}" style="height:30px;padding:0 10px;border-radius:8px;font-size:.66rem;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer">{{ t.file }}</button>
+          <sc-if value="{{ addBtnShown }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ openAdd }}" style="width:100%;height:56px;border-radius:16px;border:2px dashed #caa14f;background:#fdf6e6;font-size:.9rem;font-weight:600;color:#8a6d20;cursor:pointer" style-hover="background:#fbeecb">+ {{ t.addAthlete }}</button>
+          </sc-if>
+          <sc-if value="{{ hasTransfers }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:14px 16px;border-radius:18px;background:#fff;border:1px solid #f0cf9c;margin-top:14px">
+              <div style="font-size:.86rem;font-weight:700;margin-bottom:6px">{{ t.transfersTitle }}</div>
+              <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{ transferRows }}" as="x" hint-placeholder-count="1">
+                  <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:#fdf1e0;border:1px solid #f0cf9c;font-size:.78rem">
+                    <span style="flex:1"><b>{{ x.name }}</b> · {{ x.from }} &#8594; {{ clubName }}</span>
+                    <span style="font-weight:600;color:#a8620f">{{ t.transferPending }}</span>
+                    <button onClick="{{ x.onRemove }}" aria-label="{{ t.remove }}" style="width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:#a8620f;cursor:pointer">&#10005;</button>
                   </div>
-                  <span style="font-size:.64rem;color:#6b7689">{{ t.optional }}</span>
-                </div>
-                <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:12px">
-                  <div><label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.fullName }}</label><input value="{{ draft.name }}" onChange="{{ onDName }}" placeholder="{{ t.fullNamePh }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)"></div>
-                  <div><label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.natId }}</label><input value="{{ draft.natId }}" onChange="{{ onDNatId }}" dir="ltr" placeholder="{{ t.natIdPh }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)"></div>
-                  <div>
-                    <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.gender }}</label>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                      <sc-for list="{{ genderOpts }}" as="g" hint-placeholder-count="2"><button onClick="{{ g.onClick }}" style="{{ g.style }}">{{ g.label }}</button></sc-for>
-                    </div>
-                  </div>
-                  <div style="position:relative">
-                    <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.nationality }}</label>
-                    <button onClick="{{ onNatToggle }}" style="width:100%;height:48px;display:flex;align-items:center;gap:10px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-size:.86rem;color:#1e2c4f;background:#fff;cursor:pointer;box-sizing:border-box" style-hover="border-color:#caa14f">
-                      <div style="width:22px;height:15px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);flex:none;background-image:{{ natFlagBg }}"></div><span style="font-weight:700;color:#8a6d20;font-size:.76rem">{{ natIso }}</span><span style="flex:1;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ natName }}</span><span style="font-size:.7rem;color:#8a6d20">&#9662;</span>
-                    </button>
-                    <sc-if value="{{ natOpen }}" hint-placeholder-val="{{ false }}">
-                      <div onClick="{{ stopEvt }}" style="position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:40;background:#fff;border:1px solid #e3e7ee;border-top:3px solid #d8b25f;border-radius:14px;box-shadow:0 18px 50px rgba(30,44,79,.18);padding:8px">
-                        <input value="{{ natQuery }}" onChange="{{ onNatQuery }}" placeholder="{{ t.searchCountry }}" style="width:100%;height:40px;border:1px solid #d5dae3;border-radius:10px;padding:0 12px;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box;margin-bottom:6px" style-focus="border-color:#caa14f">
-                        <div style="max-height:220px;overflow:auto">
-                          <sc-for list="{{ natOptions }}" as="c" hint-placeholder-count="6">
-                            <div onClick="{{ c.onPick }}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;font-size:.82rem;cursor:pointer" style-hover="background:#eef1f6"><div style="width:22px;height:15px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);flex:none;background-image:{{ c.flagBg }}"></div><span style="font-weight:700;color:#8a6d20;font-size:.72rem;min-width:34px">{{ c.i3 }}</span><span>{{ c.name }}</span></div>
-                          </sc-for>
-                        </div>
-                      </div>
-                    </sc-if>
-                  </div>
-                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
-                    <div><label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.dob }}</label><input type="date" value="{{ draft.dob }}" onChange="{{ onDDob }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)"></div>
-                    <div><label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.weight }}</label><input type="number" inputmode="decimal" min="15" max="200" value="{{ draft.weight }}" onChange="{{ onDWeight }}" placeholder="e.g. 57" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)"></div>
-                  </div>
-                  <div><div style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.enterIn }}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><sc-for list="{{ draftTypes }}" as="ty" hint-placeholder-count="2"><button onClick="{{ ty.toggle }}" style="{{ ty.style }}">{{ ty.tick }}{{ ty.label }} <span style="opacity:.75;font-weight:500">· {{ ty.price }}</span></button></sc-for></div></div>
-                </div>
-              </div>
-              <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
-                <sc-if value="{{ canCancelDraft }}" hint-placeholder-val="{{ false }}"><button onClick="{{ cancelDraft }}" style="height:46px;padding:0 18px;border-radius:12px;font-size:.84rem;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer">{{ t.cancel }}</button></sc-if>
-                <button onClick="{{ saveDraft }}" style="height:46px;padding:0 22px;border-radius:12px;font-size:.86rem;background:linear-gradient(100deg,#edcd85,#d0a854);border:0;color:#1e2c4f;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.3)">{{ saveDraftLabel }}</button>
+                </sc-for>
+                <div style="font-size:.7rem;color:#6b7689;line-height:1.5">{{ t.transferNote }}</div>
               </div>
             </div>
-          </sc-if>
-          <sc-if value="{{ formClosed }}" hint-placeholder-val="{{ false }}">
-            <button onClick="{{ openDraft }}" style="width:100%;height:56px;border-radius:16px;border:2px dashed #caa14f;background:#fdf6e6;font-size:.9rem;font-weight:600;color:#8a6d20;cursor:pointer" style-hover="background:#fbeecb">+ {{ t.addAthlete }}</button>
           </sc-if>
           <div style="padding:18px;border-radius:18px;background:#fff;border:1px solid #e3e7ee;margin-bottom:14px;margin-top:14px">
             <div style="font-size:.9rem;font-weight:700">{{ t.teamsTitle }}</div>
@@ -575,6 +601,127 @@
 <input type="file" accept="image/*" ref="{{ fileRef }}" onChange="{{ onPhotoFile }}" style="display:none">
 <input type="file" accept="image/*" capture="user" ref="{{ camRef }}" onChange="{{ onPhotoFile }}" style="display:none">
 
+<sc-if value="{{ addShown }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeAdd }}" style="position:fixed;inset:0;background:rgba(11,19,43,.55);z-index:70;display:flex;align-items:flex-end;justify-content:center;padding:0">
+    <div onClick="{{ stopEvt }}" role="dialog" aria-modal="true" aria-label="{{ t.addTitle }}" style="background:#fff;border-radius:22px 22px 0 0;border-top:4px solid #d8b25f;max-width:680px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -20px 60px rgba(30,44,79,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both;box-sizing:border-box">
+      <div style="flex:none;padding:10px 20px 14px;border-bottom:1px solid #eef1f6">
+        <div style="margin:0 auto 10px;width:40px;height:4px;border-radius:2px;background:#e3e7ee"></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:1.1rem;font-weight:700">{{ addTitle }}</div>
+          <button onClick="{{ closeAdd }}" aria-label="{{ t.close }}" style="margin-inline-start:auto;width:36px;height:36px;border:1px solid #d5dae3;border-radius:10px;background:#fff;font-size:.9rem;color:#6b7689;cursor:pointer;flex:none">&#10005;</button>
+        </div>
+        <sc-if value="{{ addTabsShown }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:4px;margin-top:12px;padding:3px;border-radius:12px;background:#f1f3f7;border:1px solid #e3e7ee">
+            <sc-for list="{{ addTabs }}" as="m" hint-placeholder-count="2"><button onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button></sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px 20px">
+        <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+          <div role="alert" style="margin-bottom:12px;padding:10px 12px;border-radius:12px;background:#fdecea;color:#8f2f25;font-size:.8rem;line-height:1.5">{{ errorMsg }}</div>
+        </sc-if>
+        <sc-if value="{{ isAddLookup }}" hint-placeholder-val="{{ true }}">
+          <sc-if value="{{ alNoPick }}" hint-placeholder-val="{{ true }}">
+            <input value="{{ alQ }}" onChange="{{ onAlQ }}" autofocus placeholder="{{ t.alPh }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+            <div style="font-size:.72rem;color:#6b7689;margin:10px 2px 8px;line-height:1.5">{{ alHint }}</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ alRows }}" as="r" hint-placeholder-count="3">
+                <button onClick="{{ r.onPick }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:14px;border:1px solid #e3e7ee;background:#fbfcfe;font-family:inherit;cursor:pointer;text-align:start;box-sizing:border-box">
+                  <span style="{{ r.photoStyle }}"><sc-if value="{{ r.noPhoto }}" hint-placeholder-val="{{ true }}"><span style="font-size:.7rem;font-weight:700;color:#8a6d20">{{ r.initials }}</span></sc-if></span>
+                  <span style="flex:1;min-width:0">
+                    <span style="display:block;font-size:.88rem;font-weight:700;color:#1e2c4f;overflow-wrap:anywhere">{{ r.name }}</span>
+                    <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.72rem;margin-top:2px"><span style="{{ r.genderStyle }}">{{ r.gender }}</span><sc-if value="{{ r.hasAge }}" hint-placeholder-val="{{ false }}"><span style="color:#97a1b4">·</span><span style="color:#111827">{{ r.age }}</span></sc-if><span style="color:#97a1b4">·</span><span style="width:18px;height:13px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);background-image:{{ r.flagBg }}"></span><span style="color:#1e2c4f">{{ r.nat }}</span></span>
+                    <span style="display:block;font-size:.72rem;color:#6b7689;margin-top:2px">{{ r.clubLine }}</span>
+                  </span>
+                  <span style="{{ r.tagStyle }}">{{ r.tag }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ alHasPick }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;border:2px solid #caa14f;background:#fdf6e6">
+              <span style="{{ alPick.photoStyle }}"><sc-if value="{{ alPick.noPhoto }}" hint-placeholder-val="{{ true }}"><span style="font-size:.7rem;font-weight:700;color:#8a6d20">{{ alPick.initials }}</span></sc-if></span>
+              <span style="flex:1;min-width:0"><span style="display:block;font-size:.9rem;font-weight:700">{{ alPick.name }}</span><span style="display:block;font-size:.72rem;color:#6b7689;margin-top:2px">{{ alPick.clubLine }}</span></span>
+              <span style="{{ alPick.tagStyle }}">{{ alPick.tag }}</span>
+            </div>
+            <button onClick="{{ alUnpick }}" style="border:0;background:none;padding:8px 0;font-family:inherit;font-size:.76rem;font-weight:600;color:#8a6d20;cursor:pointer">{{ t.alBack }}</button>
+            <sc-if value="{{ alOwn }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+                <div style="max-width:220px"><label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.weight }}</label><input type="number" inputmode="decimal" min="15" max="200" value="{{ alWeight }}" onChange="{{ onAlWeight }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)"></div>
+                <sc-if value="{{ alHasCat }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start;padding:4px 10px;border-radius:999px;font-size:.68rem;font-weight:600;color:#8a6d20;background:rgba(216,178,95,.18)">{{ alCat }}</span></sc-if>
+                <div><div style="font-size:.8rem;font-weight:500;color:#1e2c4f">{{ t.enterIn }}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><sc-for list="{{ alTypes }}" as="ty" hint-placeholder-count="2"><button onClick="{{ ty.toggle }}" style="{{ ty.style }}">{{ ty.tick }}{{ ty.label }} <span style="opacity:.75;font-weight:500">· {{ ty.price }}</span></button></sc-for></div></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ alOther }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:6px;padding:12px 14px;border-radius:12px;background:#fdf1e0;border:1px solid #f0cf9c;font-size:.78rem;line-height:1.5;color:#7a4a0c">{{ alOtherMsg }}</div>
+            </sc-if>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{ isAddNew }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ draftHasCat }}" hint-placeholder-val="{{ false }}"><span style="display:inline-block;margin-bottom:10px;padding:3px 10px;border-radius:999px;font-size:.66rem;font-weight:600;color:#8a6d20;background:rgba(216,178,95,.18)">{{ draftCat }}</span></sc-if>
+              <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+                <div style="flex:none;display:flex;flex-direction:column;align-items:center;gap:6px">
+                  <div style="{{ draftPhotoStyle }}"><sc-if value="{{ draftNoPhoto }}" hint-placeholder-val="{{ true }}"><span style="font-size:.62rem;color:#97a1b4;text-align:center;line-height:1.3;padding:4px">{{ t.photo }}<br>3:4</span></sc-if></div>
+                  <div style="display:flex;gap:4px">
+                    <button onClick="{{ onDraftCam }}" style="height:30px;padding:0 10px;border-radius:8px;font-size:.66rem;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer">{{ t.camera }}</button>
+                    <button onClick="{{ onDraftFile }}" style="height:30px;padding:0 10px;border-radius:8px;font-size:.66rem;background:#fff;border:1px solid #d5dae3;color:#1e2c4f;font-weight:600;cursor:pointer">{{ t.file }}</button>
+                  </div>
+                  <span style="font-size:.64rem;color:#6b7689">{{ t.optional }}</span>
+                </div>
+                <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:12px">
+                  <div><label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.fullName }}</label><input value="{{ draft.name }}" onChange="{{ onDName }}" placeholder="{{ t.fullNamePh }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)"></div>
+                  <div><label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.natId }}</label><input value="{{ draft.natId }}" onChange="{{ onDNatId }}" dir="ltr" placeholder="{{ t.natIdPh }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)"></div>
+                  <div>
+                    <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.gender }}</label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                      <sc-for list="{{ genderOpts }}" as="g" hint-placeholder-count="2"><button onClick="{{ g.onClick }}" style="{{ g.style }}">{{ g.label }}</button></sc-for>
+                    </div>
+                  </div>
+                  <div style="position:relative">
+                    <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.nationality }}</label>
+                    <button onClick="{{ onNatToggle }}" style="width:100%;height:48px;display:flex;align-items:center;gap:10px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-size:.86rem;color:#1e2c4f;background:#fff;cursor:pointer;box-sizing:border-box" style-hover="border-color:#caa14f">
+                      <div style="width:22px;height:15px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);flex:none;background-image:{{ natFlagBg }}"></div><span style="font-weight:700;color:#8a6d20;font-size:.76rem">{{ natIso }}</span><span style="flex:1;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ natName }}</span><span style="font-size:.7rem;color:#8a6d20">&#9662;</span>
+                    </button>
+                    <sc-if value="{{ natOpen }}" hint-placeholder-val="{{ false }}">
+                      <div onClick="{{ stopEvt }}" style="position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:40;background:#fff;border:1px solid #e3e7ee;border-top:3px solid #d8b25f;border-radius:14px;box-shadow:0 18px 50px rgba(30,44,79,.18);padding:8px">
+                        <input value="{{ natQuery }}" onChange="{{ onNatQuery }}" placeholder="{{ t.searchCountry }}" style="width:100%;height:40px;border:1px solid #d5dae3;border-radius:10px;padding:0 12px;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box;margin-bottom:6px" style-focus="border-color:#caa14f">
+                        <div style="max-height:220px;overflow:auto">
+                          <sc-for list="{{ natOptions }}" as="c" hint-placeholder-count="6">
+                            <div onClick="{{ c.onPick }}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;font-size:.82rem;cursor:pointer" style-hover="background:#eef1f6"><div style="width:22px;height:15px;border-radius:2px;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(30,44,79,.12);flex:none;background-image:{{ c.flagBg }}"></div><span style="font-weight:700;color:#8a6d20;font-size:.72rem;min-width:34px">{{ c.i3 }}</span><span>{{ c.name }}</span></div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.dob }} <span style="font-weight:400;color:#6b7689;font-size:.74rem">({{ t.dobWhy }})</span></label>
+                    <div dir="ltr" style="display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:8px">
+                      <input value="{{ dobD }}" onChange="{{ onDobD }}" inputmode="numeric" maxlength="2" placeholder="{{ t.dd }}" aria-label="{{ t.dd }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 10px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff;text-align:center" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                      <input value="{{ dobM }}" onChange="{{ onDobM }}" inputmode="numeric" maxlength="2" placeholder="{{ t.mm }}" aria-label="{{ t.mm }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 10px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff;text-align:center" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                      <input value="{{ dobY }}" onChange="{{ onDobY }}" inputmode="numeric" maxlength="4" placeholder="{{ t.yyyy }}" aria-label="{{ t.yyyy }}" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 10px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff;text-align:center" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    </div>
+                    <sc-if value="{{ dobHasAge }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#2f7a4f;margin-top:5px;font-weight:600">{{ dobAge }}</div></sc-if>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+                    <div><label style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.weight }}</label><input type="number" inputmode="decimal" min="15" max="200" value="{{ draft.weight }}" onChange="{{ onDWeight }}" placeholder="e.g. 57" style="width:100%;height:48px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.9rem;color:#1e2c4f;outline:none;box-sizing:border-box;background:#fff" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)"></div>
+                  </div>
+                  <div><div style="display:block;font-size:.8rem;font-weight:500;margin-bottom:6px;color:#1e2c4f">{{ t.enterIn }}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><sc-for list="{{ draftTypes }}" as="ty" hint-placeholder-count="2"><button onClick="{{ ty.toggle }}" style="{{ ty.style }}">{{ ty.tick }}{{ ty.label }} <span style="opacity:.75;font-weight:500">· {{ ty.price }}</span></button></sc-for></div></div>
+                </div>
+              </div>
+        </sc-if>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 20px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #eef1f6;background:#fbfcfe">
+        <div style="min-width:0">
+          <div style="font-size:.64rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a6d20">{{ t.feeFor }}</div>
+          <div style="font-size:1.05rem;font-weight:700;color:#1e2c4f">{{ addFee }}</div>
+          <div style="font-size:.68rem;color:#6b7689">{{ addFeeSub }}</div>
+        </div>
+        <button onClick="{{ onAddConfirm }}" aria-disabled="{{ addAria }}" style="{{ addBtnStyle }}">{{ addBtnLabel }}</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
 <sc-if value="{{ cropOpen }}" hint-placeholder-val="{{ false }}">
   <div style="position:fixed;inset:0;background:rgba(11,19,43,.7);z-index:80;display:grid;place-items:center;padding:16px">
     <div dir="ltr" style="background:#fff;border-radius:20px;border-top:4px solid #d8b25f;max-width:420px;width:100%;max-height:92vh;overflow:auto;padding:22px;box-shadow:0 30px 80px rgba(30,44,79,.45);box-sizing:border-box">
@@ -610,6 +757,7 @@ class Component extends DCLogic {
     dialOpen: false, dialQuery: '', isDesktop: false,
     clubMode: null, clubId: null, verified: false, viaLink: false, idContact: '', codeSent: false, demoCode: '', codeInput: '', editClub: false,
     rosterQ: '', picks: {}, lookupQ: '', transferReq: [], storeTick: 0,
+    findQ: '', findRows: null, findPick: null, clubMatch: null, distinct: false, submitting: false, subSkipped: 0,
     pickTypes: {}, teams: null, staffData: {mgr: {name: '', photo: null}, ref1: {name: '', photo: null, license: ''}, ref2: {name: '', photo: null, license: ''}}, payMethod: 'card', cName: '', cNum: '', cExp: '', cCvc: '', breakdownOpen: true, amend: false, copiedBd: false, doneInfo: null
   };
   T() {
@@ -668,7 +816,7 @@ class Component extends DCLogic {
       idVerifiedAs: 'Verified: {c}', idLink: 'Opened from {c}’s personal invitation link', updateDetails: 'Update details',
       eNoClub: 'No registered club matches that email or phone. Check it, or register as a new club.', eCode: 'That code is not correct.', eVerify: 'Verify your club to continue, or register as a new club.', eChoose: 'Choose an option to continue.',
       rosterTitle: 'Your club’s athletes', rosterSub: 'Tick who is entering this competition and confirm today’s weight.', rosterSearch: 'Search by name, national ID or Takeone ID', rosterNone: 'No athletes match your search.',
-      picked: '{n} selected', todayWeight: 'Weight today (kg)', lookupTitle: 'Athlete from another club?', lookupSub: 'Athletes who moved to your club: search by national ID or Takeone ID and request a transfer.',
+      picked: '{n} selected', todayWeight: 'Weight today (kg)', qfWhen: 'When', qfEntry: 'Entry', qfWhere: 'Where', secAbout: 'About this competition', secFees: 'Entry fees', secDates: 'Key dates', secReqs: 'Requirements', secWhere: 'Location', openMap: 'Open in maps', perAthleteU: 'per athlete', perTeamU: 'per team of {n}', freeEntry: 'Free', freeEntrySub: 'no entry fee', feeFrom: 'From {p}', feesNone: 'The organiser has not listed entry fees.', lateNoteT: 'Late entries add {f} per athlete.', whereTbc: 'Venue to be confirmed', idChoose: 'Which club are you registering?', idChooseSub: 'This email or phone belongs to more than one club. Pick the one this entry is for.', addTitle: 'Add an athlete', tabLookup: 'Look up', tabNew: 'Create new', close: 'Close', alPh: 'Name, national ID or Takeone ID', alHint: 'Your club\u2019s athletes appear as you type a name. A full national ID or Takeone ID also finds athletes registered with another club.', alNone: 'No athlete found. Check the ID, or create the athlete as new.', alHintNew: 'Look-up works once your club is verified \u2014 until then, create each athlete as new.', alBack: '\u2190 Choose someone else', tagOwn: 'Your club', tagOther: 'Other club', tagAdded: 'Added', tagEntered: 'Entered', alOtherMsg: 'Registered with {c}. They can compete for your club once the transfer is approved \u2014 request it here. The previous club is notified and the federation decides.', reqTransfer: 'Request transfer', transferRequested: 'Transfer requested', transfersTitle: 'Transfer requests', feeFor: 'Registration fee', feePick: 'Choose what the athlete enters in to add them.', feeLate: 'Includes the late-entry fee of {f}', feeNone: 'No fee for these categories', addBtn: 'Add athlete', updateBtn: 'Update athlete', eTypes: 'Choose what the athlete enters in.', eWeight: 'Enter the athlete\u2019s weight today.', lookupTitle: 'Athlete from another club?', lookupSub: 'Athletes who moved to your club: search by national ID or Takeone ID and request a transfer.',
       lookupPh: 'National ID or Takeone ID', lookupNone: 'No athlete found. Add them below as a new athlete.', requestTransfer: 'Request transfer', transferPending: 'Transfer pending', selectInRoster: 'Select in your list',
       registeredWith: 'Registered with {c}', inYourClub: 'Already in your club', transferNote: 'The previous club is notified and the federation approves the transfer. The athlete can compete for your club once approved.',
       newAthletesTitle: 'New athletes (not yet registered)', natId: 'National ID / passport no.', natIdPh: 'e.g. 060514227',
@@ -684,7 +832,7 @@ class Component extends DCLogic {
       idVerifiedAs: 'تم التحقق: {c}', idLink: 'تم الفتح من رابط الدعوة الخاص بـ {c}', updateDetails: 'تحديث البيانات',
       eNoClub: 'لا يوجد نادٍ مسجّل بهذا البريد أو الهاتف. تحقّق منه أو سجّل نادياً جديداً.', eCode: 'الرمز غير صحيح.', eVerify: 'تحقّق من ناديك للمتابعة، أو سجّل نادياً جديداً.', eChoose: 'اختر خياراً للمتابعة.',
       rosterTitle: 'لاعبو ناديك', rosterSub: 'حدّد المشاركين في هذه البطولة وأكّد وزن اليوم.', rosterSearch: 'ابحث بالاسم أو الرقم الشخصي أو رقم Takeone', rosterNone: 'لا يوجد لاعبون مطابقون.',
-      picked: '{n} محدد', todayWeight: 'الوزن اليوم (كغ)', lookupTitle: 'لاعب من نادٍ آخر؟', lookupSub: 'للاعبين المنتقلين إلى ناديك: ابحث بالرقم الشخصي أو رقم Takeone واطلب الانتقال.',
+      picked: '{n} محدد', todayWeight: 'الوزن اليوم (كغ)', qfWhen: 'متى', qfEntry: 'الرسوم', qfWhere: 'أين', secAbout: 'عن البطولة', secFees: 'رسوم المشاركة', secDates: 'المواعيد', secReqs: 'المتطلبات', secWhere: 'الموقع', openMap: 'افتح الخريطة', perAthleteU: 'لكل لاعب', perTeamU: 'لكل فريق من {n}', freeEntry: 'مجاناً', freeEntrySub: 'بدون رسوم', feeFrom: 'من {p}', feesNone: 'لم يحدد المنظم رسوم المشاركة.', lateNoteT: 'التسجيل المتأخر يضيف {f} لكل لاعب.', whereTbc: 'المكان يُحدد لاحقاً', idChoose: 'أي نادٍ تقوم بتسجيله؟', idChooseSub: 'هذا البريد أو الهاتف مسجّل لأكثر من نادٍ. اختر النادي الخاص بهذا التسجيل.', addTitle: 'إضافة لاعب', tabLookup: 'بحث', tabNew: 'لاعب جديد', close: 'إغلاق', alPh: 'الاسم أو الرقم الوطني أو رقم تيك ون', alHint: 'يظهر لاعبو ناديك عند كتابة الاسم. الرقم الوطني الكامل أو رقم تيك ون يجد أيضاً اللاعبين المسجلين في نادٍ آخر.', alNone: 'لم يُعثر على لاعب. تحقق من الرقم أو أنشئ اللاعب كجديد.', alHintNew: 'يعمل البحث بعد التحقق من ناديك \u2014 حتى ذلك الحين أنشئ كل لاعب كجديد.', alBack: '\u2192 اختر لاعباً آخر', tagOwn: 'ناديك', tagOther: 'نادٍ آخر', tagAdded: 'مضاف', tagEntered: 'مسجّل', alOtherMsg: 'مسجّل في {c}. يمكنه المشاركة لناديك بعد اعتماد الانتقال \u2014 اطلبه من هنا. يُبلَّغ النادي السابق ويقرر الاتحاد.', reqTransfer: 'طلب انتقال', transferRequested: 'تم طلب الانتقال', transfersTitle: 'طلبات الانتقال', feeFor: 'رسوم التسجيل', feePick: 'اختر ما سيشارك فيه اللاعب لإضافته.', feeLate: 'تشمل رسوم التسجيل المتأخر {f}', feeNone: 'لا رسوم لهذه الفئات', addBtn: 'إضافة اللاعب', updateBtn: 'تحديث اللاعب', eTypes: 'اختر ما سيشارك فيه اللاعب.', eWeight: 'أدخل وزن اللاعب اليوم.', lookupTitle: 'لاعب من نادٍ آخر؟', lookupSub: 'للاعبين المنتقلين إلى ناديك: ابحث بالرقم الشخصي أو رقم Takeone واطلب الانتقال.',
       lookupPh: 'الرقم الشخصي أو رقم Takeone', lookupNone: 'لم يُعثر على لاعب. أضفه أدناه كلاعب جديد.', requestTransfer: 'طلب انتقال', transferPending: 'انتقال قيد المراجعة', selectInRoster: 'حدّده من قائمتك',
       registeredWith: 'مسجّل في {c}', inYourClub: 'موجود في ناديك', transferNote: 'يُبلَّغ النادي السابق ويعتمد الاتحاد الانتقال. يمكن للاعب المشاركة لناديك بعد الموافقة.',
       newAthletesTitle: 'لاعبون جدد (غير مسجلين)', natId: 'الرقم الشخصي / رقم الجواز', natIdPh: 'مثال: 060514227',
@@ -717,8 +865,8 @@ class Component extends DCLogic {
       stAthletes: 'اللاعبون', stTotal: 'إجمالي الرسوم', stPaid: 'المدفوع', stBalance: 'الرصيد', active: 'مسجّل', withdrawn: 'منسحب', confirmWithdraw: 'سحب {n} من البطولة؟',
       logCreated: 'تم إرسال التسجيل', logAdded: 'إضافة {n}', logWithdrawn: 'سحب {n}', logPaid: 'دفع {a} ({m})', logTeams: 'تحديث منافسات الفرق'
     });
-    Object.assign(en, {rulesDocTitle: 'Competition rules & conditions', rulesDocMeta: 'Gulf Karate Open 2026 · WKF rules · version 1.2', rulesHtml: "<p style=\"margin:0 0 10px\">The <strong style=\"color:#1e2c4f\">Gulf Karate Open 2026</strong> is sanctioned by the Bahrain Karate Federation and is held under the current <span style=\"color:#8a6d20;font-weight:700\">WKF Competition Rules</span>. By registering, the club agrees to the conditions below for every athlete and official it enters.</p><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>📋 Eligibility</h3><ul style=\"margin:0 0 12px;padding-inline-start:20px\"><li style=\"margin:4px 0\">Every athlete must hold a <strong style=\"color:#1e2c4f\">valid federation license</strong> for the 2026 season.</li><li style=\"margin:4px 0\">Age is calculated on the <strong style=\"color:#1e2c4f\">first day of competition</strong> (14 Nov 2026).</li><li style=\"margin:4px 0\">Athletes compete only in the age and weight category they are registered in.</li></ul><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>⚖️ Weigh-in</h3><p style=\"margin:0 0 10px\">The official weigh-in takes place on <strong style=\"color:#1e2c4f\">13 Nov 2026, 16:00–20:00</strong> at Khalifa Sports City Hall — Hall B. Athletes must bring a <strong style=\"color:#1e2c4f\">passport or national ID card</strong>.</p><div style=\"display:flex;gap:12px;margin:14px 0;padding:14px 16px;border-radius:14px;background:#fdecea;border:1px solid #f3c6c0\"><span style=\"font-size:1.1rem;line-height:1.4\">⚠️</span><div><div style=\"font-weight:700;color:#8f2f25;margin-bottom:2px\">No re-weigh</div><div style=\"font-size:.84rem;color:#8f2f25\">An athlete who is over the weight limit of the entered category is disqualified from that category.</div></div></div><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>🥋 Equipment</h3><p style=\"margin:0 0 10px\">All protective equipment must be <strong style=\"color:#1e2c4f\">WKF-approved</strong> and is brought by the athlete: mitts, shin and instep guards, body protector, and mouth guard. Female athletes may also wear a chest guard.</p><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>👔 Coaches & officials</h3><ul style=\"margin:0 0 12px;padding-inline-start:20px\"><li style=\"margin:4px 0\">Coaches must be <strong style=\"color:#1e2c4f\">accredited</strong> and wear their accreditation at all times on the competition floor.</li><li style=\"margin:4px 0\">Each club provides <strong style=\"color:#1e2c4f\">one team manager and two referees</strong>, named in the club information step.</li><li style=\"margin:4px 0\">Decisions of the <strong style=\"color:#1e2c4f\">referee commission are final</strong>. Protests follow the WKF protest procedure.</li></ul><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>💳 Entries & fees</h3><ul style=\"margin:0 0 12px;padding-inline-start:20px\"><li style=\"margin:4px 0\">Fees are paid by the club in <strong style=\"color:#1e2c4f\">one payment</strong> at the end of registration.</li><li style=\"margin:4px 0\">Entries can be changed until the <span style=\"color:#8a6d20;font-weight:700\">registration deadline: 2 Nov 2026, 23:59</span>. Late entries carry a late fee.</li><li style=\"margin:4px 0\">Withdrawals after the deadline are <strong style=\"color:#1e2c4f\">not refunded</strong>.</li></ul><div style=\"display:flex;gap:12px;margin:14px 0;padding:14px 16px;border-radius:14px;background:#fdf6e6;border:1px solid #e7cf94\"><span style=\"font-size:1.1rem;line-height:1.4\">📸</span><div><div style=\"font-weight:700;color:#7a5a12;margin-bottom:2px\">Media</div><div style=\"font-size:.84rem;color:#5d4a14\">The organizer may use photos and video of the event for media and promotion.</div></div></div>"});
-    Object.assign(ar, {rulesDocTitle: 'شروط وأحكام البطولة', rulesDocMeta: 'بطولة الخليج المفتوحة للكاراتيه 2026 · قوانين WKF · الإصدار 1.2', rulesHtml: "<p style=\"margin:0 0 10px\">تُقام <strong style=\"color:#1e2c4f\">بطولة الخليج المفتوحة للكاراتيه 2026</strong> بإشراف الاتحاد البحريني للكاراتيه ووفق <span style=\"color:#8a6d20;font-weight:700\">قوانين الاتحاد الدولي للكاراتيه (WKF)</span> المعمول بها. بالتسجيل، يوافق النادي على الشروط التالية لكل لاعب ومسؤول يسجّله.</p><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>📋 الأهلية</h3><ul style=\"margin:0 0 12px;padding-inline-start:20px\"><li style=\"margin:4px 0\">يجب أن يحمل كل لاعب <strong style=\"color:#1e2c4f\">رخصة سارية من الاتحاد</strong> لموسم 2026.</li><li style=\"margin:4px 0\">يُحسب العمر في <strong style=\"color:#1e2c4f\">أول يوم من المنافسات</strong> (14 نوفمبر 2026).</li><li style=\"margin:4px 0\">يشارك اللاعب فقط في فئة العمر والوزن المسجل فيها.</li></ul><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>⚖️ الوزن</h3><p style=\"margin:0 0 10px\">يُقام الوزن الرسمي يوم <strong style=\"color:#1e2c4f\">13 نوفمبر 2026، 16:00–20:00</strong> في صالة مدينة خليفة الرياضية — القاعة B. يجب إحضار <strong style=\"color:#1e2c4f\">جواز السفر أو البطاقة الشخصية</strong>.</p><div style=\"display:flex;gap:12px;margin:14px 0;padding:14px 16px;border-radius:14px;background:#fdecea;border:1px solid #f3c6c0\"><span style=\"font-size:1.1rem;line-height:1.4\">⚠️</span><div><div style=\"font-weight:700;color:#8f2f25;margin-bottom:2px\">لا إعادة للوزن</div><div style=\"font-size:.84rem;color:#8f2f25\">اللاعب الذي يتجاوز حد وزن الفئة المسجل فيها يُستبعد من تلك الفئة.</div></div></div><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>🥋 أدوات الحماية</h3><p style=\"margin:0 0 10px\">يجب أن تكون جميع أدوات الحماية <strong style=\"color:#1e2c4f\">معتمدة من WKF</strong> ويحضرها اللاعب: القفازات، واقيات الساق والقدم، واقي الجسم، وواقي الفم. ويجوز للاعبات ارتداء واقي الصدر.</p><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>👔 المدربون والمسؤولون</h3><ul style=\"margin:0 0 12px;padding-inline-start:20px\"><li style=\"margin:4px 0\">يجب أن يكون المدربون <strong style=\"color:#1e2c4f\">معتمدين</strong> وأن يرتدوا بطاقة الاعتماد طوال الوقت في ساحة المنافسة.</li><li style=\"margin:4px 0\">يوفر كل نادٍ <strong style=\"color:#1e2c4f\">مدير فريق وحكمين</strong> تُذكر أسماؤهم في خطوة بيانات النادي.</li><li style=\"margin:4px 0\">قرارات <strong style=\"color:#1e2c4f\">لجنة الحكام نهائية</strong>، وتُقدَّم الاعتراضات وفق إجراءات WKF.</li></ul><h3 style=\"display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:.98rem;font-weight:700;color:#1e2c4f\"><span style=\"width:22px;height:3px;border-radius:2px;background:#d8b25f;flex:none\"></span>💳 التسجيل والرسوم</h3><ul style=\"margin:0 0 12px;padding-inline-start:20px\"><li style=\"margin:4px 0\">يدفع النادي الرسوم <strong style=\"color:#1e2c4f\">دفعة واحدة</strong> في نهاية التسجيل.</li><li style=\"margin:4px 0\">يمكن تعديل التسجيلات حتى <span style=\"color:#8a6d20;font-weight:700\">الموعد النهائي: 2 نوفمبر 2026، 23:59</span>. التسجيل المتأخر يخضع لرسوم إضافية.</li><li style=\"margin:4px 0\">لا تُسترد رسوم الانسحاب <strong style=\"color:#1e2c4f\">بعد الموعد النهائي</strong>.</li></ul><div style=\"display:flex;gap:12px;margin:14px 0;padding:14px 16px;border-radius:14px;background:#fdf6e6;border:1px solid #e7cf94\"><span style=\"font-size:1.1rem;line-height:1.4\">📸</span><div><div style=\"font-weight:700;color:#7a5a12;margin-bottom:2px\">الإعلام</div><div style=\"font-size:.84rem;color:#5d4a14\">يحق للجهة المنظمة استخدام صور وفيديو البطولة لأغراض إعلامية وترويجية.</div></div></div>"});
+    Object.assign(en, {rulesDocTitle: 'Competition rules & conditions', rulesDocMeta: '', rulesHtml: "<p style=\"margin:0;color:#6b7689\">The organiser has not published competition rules for this event yet.</p>"});
+    Object.assign(ar, {rulesDocTitle: 'شروط وأحكام البطولة', rulesDocMeta: '', rulesHtml: "<p style=\"margin:0;color:#6b7689\">لم ينشر المنظم شروطاً لهذه البطولة بعد.</p>"});
     Object.assign(en, {docsTitle: 'Documents from the organizer', docsSub: 'Download and read these before accepting the rules.', docUnavailable: 'Preview unavailable in this prototype'});
     Object.assign(ar, {docsTitle: 'مستندات الجهة المنظمة', docsSub: 'حمّلوا هذه المستندات واقرؤوها قبل الموافقة على الشروط.', docUnavailable: 'المعاينة غير متاحة في هذا النموذج'});
     Object.assign(en, {staffTitle: 'Team officials', staffSub: 'The team manager and two referees the club provides for this competition. Photos are used on accreditation badges.',
@@ -727,10 +875,47 @@ class Component extends DCLogic {
     Object.assign(ar, {staffTitle: 'مسؤولو الفريق', staffSub: 'مدير الفريق وحكمان يوفرهما النادي لهذه البطولة. تُستخدم الصور في بطاقات الاعتماد.',
       manager: 'مدير الفريق', referee1: 'الحكم 1', referee2: 'الحكم 2', staffNamePh: 'الاسم الكامل', refLicensePh: 'رقم رخصة التحكيم (اختياري)',
       eStaffName: 'أدخل اسم {r}.', eStaffPhoto: 'أضف صورة {r}.'});
+    // The one-box "Find your club", optional officials and birthdate, phase up front.
+    Object.assign(en, {idFind: 'Find your club', idFindSub: 'Type your club\u2019s name. A registered club signs in with a code sent to the email the federation has on file.',
+      idFindPh: 'Club name \u2014 or its email or phone', idChange: 'Change', idCodeTo: 'Code goes to {h}', idNoEmailShort: 'No email on file',
+      idNoEmail: 'The federation has no email on file for this club, so no code can be sent. Ask the federation to add one, or to send you the club\u2019s personal invitation link.',
+      idNotListed: 'Not registered with the federation yet?', idNew: 'Register a new club', idSendTo: 'Send code to {h}', idSend: 'Send code', idResend: 'Resend code',
+      idSentClub: 'A 6-digit code and a one-tap sign-in link are on their way to {h}. Both expire in 10 minutes.', findNoneT: 'No registered club matches \u201c{q}\u201d. Check the spelling, or register a new club.',
+      idChecking: 'Checking\u2026', idVerifyBtn: 'Verify', eVerify: 'Find and verify your club to continue, or register a new club.',
+      matchTitle: '{c} is already registered', matchSubContact: 'That email or phone belongs to {c}. Sign in as the club instead of registering it a second time.',
+      matchSubName: 'A club with this name is already registered with the federation. If it is yours, sign in instead of registering it a second time.',
+      matchItsUs: 'It\u2019s our club \u2014 sign in', matchDifferent: 'No, we are a different club',
+      staffSub: 'Optional \u2014 add or change them any time before the draw. Photos are used on accreditation badges.',
+      dobWhy: 'for the age category', dd: 'DD', mm: 'MM', yyyy: 'YYYY', ageIs: 'Age {n}', eDob: 'Check the date of birth \u2014 day, month and a four-digit year.',
+      eDraft: 'Every athlete needs a name, gender and weight.', eDupList: '{n} is already on your list.',
+      submitting: 'Submitting\u2026', skippedN: '{n} already entered, not added again',
+      phaseClosedCover: 'Entries are closed \u2014 the draw has been made. Contact the federation for changes.', phaseLateCover: 'The registration deadline has passed. Late entries add {f} per athlete.',
+      viewEntries: 'View your entries', closedCta: 'Entries are closed', ctaSubClosed: 'This competition no longer takes entries.'});
+    Object.assign(ar, {idFind: 'ابحث عن ناديك', idFindSub: 'اكتب اسم ناديك. يدخل النادي المسجّل برمز يُرسل إلى البريد المسجّل لدى الاتحاد.',
+      idFindPh: 'اسم النادي \u2014 أو بريده أو هاتفه', idChange: 'تغيير', idCodeTo: 'يُرسل الرمز إلى {h}', idNoEmailShort: 'لا يوجد بريد مسجّل',
+      idNoEmail: 'لا يوجد لدى الاتحاد بريد مسجّل لهذا النادي، لذا لا يمكن إرسال رمز. اطلب من الاتحاد إضافته أو إرسال رابط الدعوة الخاص بناديك.',
+      idNotListed: 'ناديك غير مسجّل لدى الاتحاد بعد؟', idNew: 'سجّل نادياً جديداً', idSendTo: 'أرسل الرمز إلى {h}', idSend: 'إرسال الرمز', idResend: 'إعادة إرسال الرمز',
+      idSentClub: 'أُرسل رمز من 6 أرقام ورابط دخول بلمسة واحدة إلى {h}. تنتهي صلاحيتهما خلال 10 دقائق.', findNoneT: 'لا يوجد نادٍ مسجّل يطابق «{q}». تحقّق من الكتابة أو سجّل نادياً جديداً.',
+      idChecking: 'جارٍ التحقق\u2026', idVerifyBtn: 'تحقّق', eVerify: 'ابحث عن ناديك وتحقّق منه للمتابعة، أو سجّل نادياً جديداً.',
+      matchTitle: '{c} مسجّل مسبقاً', matchSubContact: 'هذا البريد أو الهاتف يخص {c}. سجّل الدخول باسم النادي بدلاً من تسجيله مرة ثانية.',
+      matchSubName: 'يوجد نادٍ مسجّل بهذا الاسم لدى الاتحاد. إن كان ناديك فسجّل الدخول بدلاً من تسجيله مرة ثانية.',
+      matchItsUs: 'إنه نادينا \u2014 تسجيل الدخول', matchDifferent: 'لا، نحن نادٍ مختلف',
+      staffSub: 'اختياري \u2014 يمكن إضافتهم أو تعديلهم في أي وقت قبل القرعة. تُستخدم الصور في بطاقات الاعتماد.',
+      dobWhy: 'لتحديد الفئة العمرية', dd: 'يوم', mm: 'شهر', yyyy: 'سنة', ageIs: 'العمر {n}', eDob: 'تحقّق من تاريخ الميلاد \u2014 اليوم والشهر وسنة من أربعة أرقام.',
+      eDraft: 'يجب إدخال الاسم والجنس والوزن لكل لاعب.', eDupList: '{n} موجود في قائمتك مسبقاً.',
+      submitting: 'جارٍ الإرسال\u2026', skippedN: '{n} مسجّلون مسبقاً ولم تتم إضافتهم مرة أخرى',
+      phaseClosedCover: 'التسجيل مغلق \u2014 تمت القرعة. تواصلوا مع الاتحاد لأي تعديل.', phaseLateCover: 'انتهى الموعد النهائي للتسجيل. التسجيل المتأخر يضيف {f} لكل لاعب.',
+      viewEntries: 'عرض تسجيلاتكم', closedCta: 'التسجيل مغلق', ctaSubClosed: 'لم تعد هذه البطولة تقبل التسجيلات.'});
     return this.state.lang === 'ar' ? ar : en;
   }
   countries() {
     if (this._countries) return this._countries;
+    // The platform's one country list (App\Support\Countries), handed over with the page.
+    const pl = (window.__TAKEONE_FED && window.__TAKEONE_FED.dial) || [];
+    if (pl.length) {
+      this._countries = pl.map(c => { const flag = 'https://flagcdn.com/w40/' + String(c.i2).toLowerCase() + '.png'; return {i2: c.i2, i3: c.i3, name: c.name, code: c.code, flag, flagBg: 'url("' + flag + '")'}; });
+      return this._countries;
+    }
     const raw = 'AF:AFG:Afghanistan|AL:ALB:Albania|DZ:DZA:Algeria|AO:AGO:Angola|AR:ARG:Argentina|AM:ARM:Armenia|AU:AUS:Australia|AT:AUT:Austria|AZ:AZE:Azerbaijan|BH:BHR:Bahrain|BD:BGD:Bangladesh|BY:BLR:Belarus|BE:BEL:Belgium|BJ:BEN:Benin|BO:BOL:Bolivia|BA:BIH:Bosnia and Herzegovina|BW:BWA:Botswana|BR:BRA:Brazil|BG:BGR:Bulgaria|BF:BFA:Burkina Faso|KH:KHM:Cambodia|CM:CMR:Cameroon|CA:CAN:Canada|CL:CHL:Chile|CN:CHN:China|CO:COL:Colombia|CD:COD:DR Congo|CR:CRI:Costa Rica|CI:CIV:Côte d\u2019Ivoire|HR:HRV:Croatia|CU:CUB:Cuba|CY:CYP:Cyprus|CZ:CZE:Czechia|DK:DNK:Denmark|DO:DOM:Dominican Republic|EC:ECU:Ecuador|EG:EGY:Egypt|SV:SLV:El Salvador|EE:EST:Estonia|ET:ETH:Ethiopia|FI:FIN:Finland|FR:FRA:France|GA:GAB:Gabon|GE:GEO:Georgia|DE:DEU:Germany|GH:GHA:Ghana|GR:GRC:Greece|GT:GTM:Guatemala|GN:GIN:Guinea|HT:HTI:Haiti|HN:HND:Honduras|HU:HUN:Hungary|IS:ISL:Iceland|IN:IND:India|ID:IDN:Indonesia|IR:IRN:Iran|IQ:IRQ:Iraq|IE:IRL:Ireland|IT:ITA:Italy|JM:JAM:Jamaica|JP:JPN:Japan|JO:JOR:Jordan|KZ:KAZ:Kazakhstan|KE:KEN:Kenya|KW:KWT:Kuwait|KG:KGZ:Kyrgyzstan|LA:LAO:Laos|LV:LVA:Latvia|LB:LBN:Lebanon|LY:LBY:Libya|LT:LTU:Lithuania|LU:LUX:Luxembourg|MG:MDG:Madagascar|MW:MWI:Malawi|MY:MYS:Malaysia|ML:MLI:Mali|MT:MLT:Malta|MR:MRT:Mauritania|MU:MUS:Mauritius|MX:MEX:Mexico|MD:MDA:Moldova|MN:MNG:Mongolia|ME:MNE:Montenegro|MA:MAR:Morocco|MZ:MOZ:Mozambique|MM:MMR:Myanmar|NA:NAM:Namibia|NP:NPL:Nepal|NL:NLD:Netherlands|NZ:NZL:New Zealand|NI:NIC:Nicaragua|NE:NER:Niger|NG:NGA:Nigeria|MK:MKD:North Macedonia|NO:NOR:Norway|OM:OMN:Oman|PK:PAK:Pakistan|PS:PSE:Palestine|PA:PAN:Panama|PY:PRY:Paraguay|PE:PER:Peru|PH:PHL:Philippines|PL:POL:Poland|PT:PRT:Portugal|QA:QAT:Qatar|RO:ROU:Romania|RU:RUS:Russia|RW:RWA:Rwanda|SA:SAU:Saudi Arabia|SN:SEN:Senegal|RS:SRB:Serbia|SG:SGP:Singapore|SK:SVK:Slovakia|SI:SVN:Slovenia|SO:SOM:Somalia|ZA:ZAF:South Africa|KR:KOR:South Korea|ES:ESP:Spain|LK:LKA:Sri Lanka|SD:SDN:Sudan|SE:SWE:Sweden|CH:CHE:Switzerland|SY:SYR:Syria|TW:TWN:Taiwan|TJ:TJK:Tajikistan|TZ:TZA:Tanzania|TH:THA:Thailand|TG:TGO:Togo|TN:TUN:Tunisia|TR:TUR:T\u00fcrkiye|TM:TKM:Turkmenistan|UG:UGA:Uganda|UA:UKR:Ukraine|AE:ARE:United Arab Emirates|GB:GBR:United Kingdom|US:USA:United States|UY:URY:Uruguay|UZ:UZB:Uzbekistan|VE:VEN:Venezuela|VN:VNM:Vietnam|YE:YEM:Yemen|ZM:ZMB:Zambia|ZW:ZWE:Zimbabwe';
     const dial = 'AF93 AL355 DZ213 AO244 AR54 AM374 AU61 AT43 AZ994 BH973 BD880 BY375 BE32 BJ229 BO591 BA387 BW267 BR55 BG359 BF226 KH855 CM237 CA1 CL56 CN86 CO57 CD243 CR506 CI225 HR385 CU53 CY357 CZ420 DK45 DO1 EC593 EG20 SV503 EE372 ET251 FI358 FR33 GA241 GE995 DE49 GH233 GR30 GT502 GN224 HT509 HN504 HU36 IS354 IN91 ID62 IR98 IQ964 IE353 IT39 JM1 JP81 JO962 KZ7 KE254 KW965 KG996 LA856 LV371 LB961 LY218 LT370 LU352 MG261 MW265 MY60 ML223 MT356 MR222 MU230 MX52 MD373 MN976 ME382 MA212 MZ258 MM95 NA264 NP977 NL31 NZ64 NI505 NE227 NG234 MK389 NO47 OM968 PK92 PS970 PA507 PY595 PE51 PH63 PL48 PT351 QA974 RO40 RU7 RW250 SA966 SN221 RS381 SG65 SK421 SI386 SO252 ZA27 KR82 ES34 LK94 SD249 SE46 CH41 SY963 TW886 TJ992 TZ255 TH66 TG228 TN216 TR90 TM993 UG256 UA380 AE971 GB44 US1 UY598 UZ998 VE58 VN84 YE967 ZM260 ZW263';
     const dm = {};
@@ -743,15 +928,18 @@ class Component extends DCLogic {
     return this._countries;
   }
   detectNat() {
+    // The federation's own country first: a Bahraini federation's clubs are in
+    // Bahrain whatever language their phone is set to (en-US used to give +1).
     let i2 = '';
     try {
-      const m = (navigator.language || '').match(/-([A-Za-z]{2})\b/);
-      if (m) i2 = m[1].toUpperCase();
+      const b = window.__TAKEONE_FED || {};
+      i2 = String((b.store && b.store.federation && b.store.federation.country) || '').toUpperCase();
       if (!i2) {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
         const map = {'Asia/Bahrain':'BH','Asia/Dubai':'AE','Asia/Qatar':'QA','Asia/Riyadh':'SA','Asia/Kuwait':'KW','Asia/Muscat':'OM','Africa/Cairo':'EG','Europe/Paris':'FR','Europe/London':'GB','America/New_York':'US'};
         i2 = map[tz] || '';
       }
+      if (!i2) { const m = (navigator.language || '').match(/-([A-Za-z]{2})\b/); if (m) i2 = m[1].toUpperCase(); }
     } catch (e) {}
     const c = this.countries().find(c => c.i2 === i2);
     return c ? c.i3 : 'BHR';
@@ -826,40 +1014,11 @@ class Component extends DCLogic {
     if (this.eventSport() !== 'Karate') return null;
     return this.classifyKarate(a);
   }
+  // The category line, from the shared library karate-shotukan-weightclasses
+  // (public/libraries/karate-shotukan-weightclasses) — the same table as the dashboard.
   classifyKarate(a) {
-    if (!a.gender || !a.dob || !a.weight) return null;
-    const d = new Date(a.dob), n = new Date();
-    let age = n.getFullYear() - d.getFullYear();
-    if (n.getMonth() < d.getMonth() || (n.getMonth() === d.getMonth() && n.getDate() < d.getDate())) age--;
-    if (!(age > 3)) return null;
-    const ag = age <= 5 ? 'Mini poussins' : age <= 7 ? 'Poussins' : age <= 9 ? 'Pupilles'
-      : age <= 11 ? 'Benjamins' : age <= 13 ? 'Minimes' : age <= 15 ? 'Cadets' : age <= 17 ? 'Juniors'
-      : age <= 34 ? 'Séniors' : age <= 45 ? 'Vétérans 1' : age <= 55 ? 'Vétérans 2'
-      : age <= 65 ? 'Vétérans 3' : age <= 74 ? 'Vétérans 4' : 'Vétérans 5';
-    const vm = ['-67','-75','-84','+84'], vf = ['-55','-61','-68','+68'];
-    const weights = {
-      M: {'Mini poussins': ['-25','-35','+35'], 'Poussins': ['-25','-35','+35'],
-        'Pupilles': ['-25','-30','-35','-40','-45','-50','+50'],
-        'Benjamins': ['-30','-35','-40','-45','-50','-55','+55'],
-        'Minimes': ['-35','-40','-45','-50','-55','-60','-65','+65'],
-        'Cadets': ['-52','-57','-63','-70','+70'], 'Juniors': ['-55','-61','-68','-76','+76'],
-        'Séniors': ['-60','-67','-75','-84','+84'],
-        'Vétérans 1': vm, 'Vétérans 2': vm, 'Vétérans 3': vm, 'Vétérans 4': vm, 'Vétérans 5': vm},
-      F: {'Mini poussins': ['-25','-35','+35'], 'Poussins': ['-25','-35','+35'],
-        'Pupilles': ['-25','-30','-35','-40','-45','+45'],
-        'Benjamins': ['-30','-35','-40','-45','-50','+50'],
-        'Minimes': ['-35','-40','-45','-50','-55','+55'],
-        'Cadets': ['-47','-54','-61','+61'], 'Juniors': ['-48','-53','-59','-66','+66'],
-        'Séniors': ['-50','-55','-61','-68','+68'],
-        'Vétérans 1': vf, 'Vétérans 2': vf, 'Vétérans 3': vf, 'Vétérans 4': vf, 'Vétérans 5': vf}
-    };
-    const g = a.gender === 'Female' ? 'F' : 'M';
-    const kg = parseFloat(a.weight);
-    if (!kg) return null;
-    const list = weights[g][ag];
-    let wc = 'Kumite ' + list[list.length - 1] + ' kg';
-    for (const w of list) if (w[0] === '-' && kg <= parseFloat(w.slice(1))) { wc = 'Kumite ' + w + ' kg'; break; }
-    return 'Karate \u00b7 ' + a.gender + ' \u00b7 ' + ag + ' \u00b7 ' + wc;
+    const r = window.KarateShotukanWeightclasses && window.KarateShotukanWeightclasses.classify({gender: a.gender, dob: a.dob, weight: a.weight});
+    return r ? 'Karate \u00b7 ' + a.gender + ' \u00b7 ' + r.ageGroup + ' \u00b7 ' + r.label : null;
   }
 
   componentDidMount() {
@@ -870,6 +1029,11 @@ class Component extends DCLogic {
     this._rs = () => this.setState({isDesktop: window.innerWidth >= 900});
     this._rs(); window.addEventListener('resize', this._rs);
     this._sc = () => this.setState(st => ({storeTick: st.storeTick + 1})); window.addEventListener('fedstore-change', this._sc); window.addEventListener('storage', this._sc);
+    // The phone's back button walks the steps instead of leaving the page.
+    try { history.replaceState(Object.assign({}, history.state || {}, {fedStep: this.state.step}), ''); } catch (e) {}
+    this._pop = e => { const n = e.state && typeof e.state.fedStep === 'number' ? e.state.fedStep : 0; this.go(n, true); };
+    window.addEventListener('popstate', this._pop);
+    this.restoreDraft();
     const tryLink = (n) => { if (!window.FedStore) { if (n < 40) setTimeout(() => tryLink(n + 1), 150); return; }
       let id = ''; try { id = new URLSearchParams(location.search).get('club') || ''; } catch (e) {}
       const c = id && window.FedStore.club(id); if (c) this.loadClub(c, true); this.setState(st => ({storeTick: st.storeTick + 1})); };
@@ -883,7 +1047,29 @@ class Component extends DCLogic {
       staffData: c.staff ? JSON.parse(JSON.stringify(c.staff)) : this.state.staffData});
   }
   store() { return window.FedStore || null; }
-  componentWillUnmount() { document.removeEventListener('click', this._onDocClick); window.removeEventListener('resize', this._rs); }
+  componentWillUnmount() { document.removeEventListener('click', this._onDocClick); window.removeEventListener('resize', this._rs); window.removeEventListener('popstate', this._pop); }
+  // What the coach has typed survives a refresh, a lost signal or the back
+  // button: kept in this tab only (sessionStorage), dropped once submitted.
+  draftKey() { const b = window.__TAKEONE_FED || {}; return 'fedinv-draft:' + (b.event || ''); }
+  draftFields() { return ['step', 'lang', 'accepted', 'clubMode', 'clubName', 'coachName', 'clubPhone', 'clubDial', 'clubAddress', 'clubEmail', 'clubLogo', 'clubLogoShape', 'athletes', 'picks', 'pickTypes', 'transferReq', 'teams', 'staffData', 'distinct']; }
+  saveDraftStore() {
+    clearTimeout(this._dsT);
+    this._dsT = setTimeout(() => {
+      const s = this.state; if (s.submitted || s.step < 1 || s.step > 4) return;
+      const o = {}; this.draftFields().forEach(k => { o[k] = s[k]; }); if (o.clubMode !== 'new') o.clubMode = null;
+      try { sessionStorage.setItem(this.draftKey(), JSON.stringify(o)); }
+      catch (e) { try { o.clubLogo = null; o.athletes = (o.athletes || []).map(a => ({...a, photo: null})); o.staffData = null; sessionStorage.setItem(this.draftKey(), JSON.stringify(o)); } catch (e2) {} }
+    }, 400);
+  }
+  restoreDraft() {
+    let o = null; try { o = JSON.parse(sessionStorage.getItem(this.draftKey()) || 'null'); } catch (e) {}
+    if (!o || typeof o !== 'object') return;
+    const next = {}; this.draftFields().forEach(k => { if (o[k] !== undefined && o[k] !== null) next[k] = o[k]; });
+    // A proved club comes back from the server session, not from here.
+    if (next.clubMode !== 'new') { delete next.clubMode; next.step = Math.min(next.step || 0, 2); }
+    this.setState(next);
+  }
+  clearDraftStore() { clearTimeout(this._dsT); try { sessionStorage.removeItem(this.draftKey()); } catch (e) {} }
   saveCrop() {
     const c = this.state.cropper; if (!c) return;
     const box = this.cropBox(c);
@@ -904,11 +1090,11 @@ class Component extends DCLogic {
     };
     img.src = c.src;
   }
-  blankDraft() { return {name: '', gender: '', dob: '', weight: '', nat: this.detectNat(), natId: '', photo: null, types: []}; }
+  blankDraft() { return {name: '', gender: '', dob: '', dobD: '', dobM: '', dobY: '', weight: '', nat: this.detectNat(), natId: '', photo: null, types: []}; }
   validate(step) {
     const s = this.state, t = this.T();
     if (step === 1 && !(s.accepted[0] && s.accepted[1])) return t.eAccept;
-    if (step === 2 && !s.clubMode) return t.eChoose;
+    if (step === 2 && !s.clubMode && !s.verified) return t.eVerify;
     if (step === 2 && s.clubMode === 'existing' && !s.verified) return t.eVerify;
     if (step === 2 && (s.clubMode === 'new' || s.editClub)) {
       if (!s.clubName.trim()) return t.eClub;
@@ -917,13 +1103,8 @@ class Component extends DCLogic {
       if (!/.+@.+\..+/.test(s.clubEmail.trim())) return t.eEmail;
       if (!s.clubAddress.trim()) return t.eAddress;
     }
-    if (step === 2 && (s.clubMode === 'new' || s.verified)) {
-      for (const [k, r] of [['mgr', t.manager], ['ref1', t.referee1], ['ref2', t.referee2]]) {
-        if (!s.staffData[k].name.trim()) return t.eStaffName.replace('{r}', r);
-        if (!s.staffData[k].photo) return t.eStaffPhoto.replace('{r}', r);
-      }
-    }
-    if (step === 3) { const dr = s.draft; const blank = dr && !dr.name.trim() && !(dr.natId || '').trim() && !dr.dob && !dr.weight && !dr.photo;
+    // Team officials are optional until the draw (FederationInvitation::officials keeps what is on file).
+    if (step === 3) { const dr = s.draft; const blank = dr && !dr.name.trim() && !(dr.natId || '').trim() && !dr.dob && !dr.dobD && !dr.dobM && !dr.dobY && !dr.weight && !dr.photo;
       if (dr && blank && (s.athletes.length || Object.keys(s.picks).length || s.amend)) { this.setState({draft: null, editIdx: null}); } else if (dr) return t.eOpen; const pk = Object.keys(s.picks); if (pk.some(id => !(parseFloat(s.picks[id]) > 0))) return t.eWeights;
       const teamsN = Object.values(this.teamsState()).reduce((a, b) => a + (+b || 0), 0);
       if (!s.athletes.length && !pk.length && !teamsN) return s.amend ? (this.previewInvoice().balance > 0 ? '' : t.eNothing) : t.eNone;
@@ -934,7 +1115,13 @@ class Component extends DCLogic {
       if (!s.cName.trim() || dg.length < 13 || sum % 10 || !/^(0[1-9]|1[0-2])\/\d{2}$/.test(s.cExp) || s.cCvc.length < 3) return t.eCard; }
     return '';
   }
-  go(step) { this.setState({step, error: '', natOpen: false, dialOpen: false}); try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) {} }
+  go(step, fromHistory) {
+    // Done and "your entries" replace the entry instead of adding one: Back from
+    // "received" must not reopen a review whose athletes were just sent.
+    if (!fromHistory && step !== this.state.step) { try { history[step >= 5 ? 'replaceState' : 'pushState'](Object.assign({}, history.state || {}, {fedStep: step}), ''); } catch (e) {} }
+    this.setState({step, error: '', natOpen: false, dialOpen: false});
+    try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) {}
+  }
   entries() {
     const s = this.state, st = this.store();
     const picked = st ? Object.keys(s.picks).map(id => { const a = st.athlete(id); return a ? {name: a.name, gender: a.gender, dob: a.dob, weight: s.picks[id], nat: a.nat, natId: a.natId, photo: a.photo || null, athleteId: a.id, takeoneId: a.id, types: s.pickTypes[id] || []} : null; }).filter(Boolean) : [];
@@ -950,48 +1137,30 @@ class Component extends DCLogic {
   }
   previewInvoice() { const st = this.store(); if (!st) return {lines: [], perAthlete: [], total: 0, paid: 0, pending: 0, balance: 0}; return st.invoice(this.previewEntry()); }
   submit() {
-    const s = this.state, st = this.store(), t = this.T();
-    let clubId = s.clubId;
+    const s = this.state, t = this.T();
+    if (this._submitting) return; this._submitting = true;
+    // One id per submission, kept until it is answered: a retry after a lost
+    // answer carries the SAME id, and the server replies with the first result
+    // instead of saving the club and its athletes a second time.
+    if (!this._subId) this._subId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+    this.setState({submitting: true, error: ''});
     const dialC0 = this.countries().find(c => c.i3 === s.clubDial) || {};
-    const clubRec = {staff: s.staffData, name: s.clubName.trim(), coach: s.coachName.trim(), email: s.clubEmail.trim(), phone: (dialC0.code || '') + ' ' + s.clubPhone.trim(), address: s.clubAddress.trim(), logo: s.clubLogo || null, logoShape: s.clubLogoShape || 'circle'};
+    const clubRec = {name: s.clubName.trim(), coach: s.coachName.trim(), email: s.clubEmail.trim(), phone: ((dialC0.code || '') + ' ' + s.clubPhone.replace(/\D/g, '')).trim(), address: s.clubAddress.trim(), logo: s.clubLogo || null, logoShape: s.clubLogoShape || 'circle', distinct: !!s.distinct};
     const entries = this.entries();
-    if (st) {
-      if (s.clubMode === 'new') clubId = st.saveClub(Object.assign({status: 'Pending'}, clubRec));
-      else if (clubId) st.saveClub(Object.assign({id: clubId}, s.editClub ? clubRec : {staff: s.staffData}));
-      entries.forEach(e => { if (!e.athleteId) { const id = st.saveAthlete({name: e.name, gender: e.gender, dob: e.dob, nat: e.nat, natId: e.natId || '', photo: e.photo || null, clubId}); e.athleteId = id; e.takeoneId = id; } });
-      s.transferReq.forEach(id => st.requestTransfer(id, clubId, s.coachName.trim()));
-      const base = st.entry(clubId);
-      const late = st.phase() === 'late', now = Date.now();
-      const entry = base ? {...base} : {clubId, athletes: [], teams: {}, payments: [], log: [], createdAt: now};
-      entry.clubId = clubId;
-      entries.forEach(e => entry.athletes.push({athleteId: e.athleteId, name: e.name, gender: e.gender, dob: e.dob, weight: e.weight, nat: e.nat, natId: e.natId || '', photo: e.photo || null, types: e.types || [], status: 'Active', late, addedAt: now}));
-      const oldTeams = JSON.stringify(entry.teams || {}); entry.teams = this.teamsState();
-      entry.log = (entry.log || []).concat(base ? entries.map(e => ({ts: now, key: 'logAdded', n: e.name})) : [{ts: now, key: 'logCreated'}]);
-      if (base && oldTeams !== JSON.stringify(entry.teams)) entry.log.push({ts: now, key: 'logTeams'});
-      entry.updatedAt = now;
-      st.saveEntry(entry);
-      const inv = st.invoice(entry);
-      let payMsg = t.nothingDue;
-      if (inv.balance > 0) {
-        const card = s.payMethod === 'card';
-        entry.payments = (entry.payments || []).concat([{amount: inv.balance, method: card ? 'Card' : 'Bank transfer', status: card ? 'Paid' : 'Awaiting transfer', ts: now}]);
-        entry.log.push({ts: now, key: 'logPaid', a: this.money(inv.balance), m: card ? t.payCardL : t.payBankL});
-        st.saveEntry(entry);
-        payMsg = (card ? t.paidMsg : t.transferMsg).replace('{a}', this.money(inv.balance));
+    window.TakeOneFed.submitEntry({submissionId: this._subId, clubMode: s.clubMode, club: clubRec, staff: s.staffData, coachName: s.coachName.trim(), entries, transferReq: s.transferReq, teams: this.teamsState()}).then(r => {
+      this._submitting = false;
+      if (!r.ok) {
+        if (!r.network) this._subId = null;   // refused, not lost: a corrected entry is a new submission
+        if (r.code === 'club_exists' && r.match) { this.setState({submitting: false, clubMatch: r.match, distinct: false}); return this.go(2); }
+        return this.setState({submitting: false, error: r.message || t.eNone});
       }
-      this.setState({doneInfo: {ref: entry.ref, payMsg}, picks: {}, pickTypes: {}, athletes: [], teams: null, amend: false, cNum: '', cCvc: '', cExp: '', confirm: false, draft: null});
-    }
-    if (st) { this.setState({submitted: true, step: 5, subClub: s.clubName.trim(), subCount: entries.length}); try { window.scrollTo({top: 0}); } catch (e) {} return; }
-    try {
-      const key = 'takeone_club_regs';
-      const cur = JSON.parse(localStorage.getItem(key) || '[]');
-      const dialC = this.countries().find(c => c.i3 === s.clubDial) || {};
-      cur.push({logo: s.clubLogo || null, logoShape: s.clubLogoShape || 'circle', club: s.clubName.trim(), coach: s.coachName.trim(),
-        phone: (dialC.code || '') + ' ' + s.clubPhone.trim(), email: s.clubEmail.trim(), address: s.clubAddress.trim(), lang: s.lang, ts: Date.now(), clubId, athletes: entries, transfers: s.transferReq.length});
-      localStorage.setItem(key, JSON.stringify(cur));
-    } catch (e) {}
-    this.setState({submitted: true, step: 5, subClub: s.clubName.trim(), subCount: entries.length});
-    try { window.scrollTo({top: 0}); } catch (e) {}
+      this._subId = null; this.clearDraftStore();
+      const payMsg = r.balance > 0 ? t.transferMsg.replace('{a}', this.money(r.balance)) : t.nothingDue;
+      const added = typeof r.added === 'number' ? r.added : entries.length;
+      this.setState({submitting: false, clubMode: 'existing', verified: true, clubId: r.clubId || s.clubId, doneInfo: {ref: r.ref, payMsg}, picks: {}, pickTypes: {}, athletes: [], transferReq: [], teams: null, amend: false, cNum: '', cCvc: '', cExp: '', confirm: false, draft: null, clubMatch: null, distinct: false, submitted: true, subClub: s.clubName.trim(), subCount: added, subSkipped: (r.skipped || []).length});
+      this.go(5);
+    });
   }
   renderVals() {
     const s = this.state, t = this.T(), D = s.isDesktop, rtl = s.lang === 'ar';
@@ -1009,9 +1178,9 @@ class Component extends DCLogic {
       isCover: step === 0, isWizard: step >= 1 && step <= 4, isDone: step === 5, isManage: step === 6,
       isRules: step === 1, isClub: step === 2, isAthletes: step === 3, isReview: step === 4,
       coverWrap: css(D ? 'display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);min-height:100vh' : 'display:flex;flex-direction:column;min-height:100vh'),
-      coverArt: css('position:relative;background:#0b132b;overflow:hidden;' + (D ? 'min-height:100vh' : 'height:58vh;min-height:360px')),
+      coverArt: css('background:#0b132b;overflow:hidden;' + (D ? 'position:sticky;top:0;height:100vh' : 'position:relative;height:58vh;min-height:360px')),
       langPos: css('position:absolute;top:16px;' + (rtl ? 'left' : 'right') + ':16px;z-index:5;pointer-events:none'),
-      coverBody: css(D ? 'display:flex;align-items:center;justify-content:center;padding:48px' : 'position:relative;margin-top:-22px;background:#eef1f6;border-radius:22px 22px 0 0;padding:24px 18px 120px;display:flex;justify-content:center'),
+      coverBody: css(D ? 'display:flex;align-items:flex-start;justify-content:center;padding:40px 48px 48px' : 'position:relative;margin-top:-22px;background:#eef1f6;border-radius:22px 22px 0 0;padding:24px 18px 120px;display:flex;justify-content:center'),
       coverCta: css(D ? 'margin-top:26px' : 'position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:rgba(238,241,246,.96);backdrop-filter:blur(10px);border-top:1px solid #e3e7ee;z-index:20'),
       datesGridStyle: css('display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px'),
       keyDates: [[t.opens, t.opensVal, ''], [t.deadline, t.deadlineVal, '', true], [t.weighin, t.weighinVal, t.weighinWhere], [t.draw, t.drawVal, ''], [t.comp, t.compVal, t.compSub], [t.brk, t.brkVal, '']]
@@ -1033,19 +1202,35 @@ class Component extends DCLogic {
           sideDot: css('width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:.72rem;font-weight:700;' + (done ? 'background:#2f7a4f;color:#fff' : cur ? 'background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f' : 'border:1px solid rgba(255,255,255,.2);color:#97a1b4'))}; }),
       goBack: () => { if (s.amend && s.step === 3) { this.setState({amend: false, picks: {}, pickTypes: {}, athletes: [], draft: null, teams: null}); return this.go(6); } if (s.step <= 1) this.go(0); else this.go(s.step - 1); },
       nextLabel: step === 4 ? t.submit : t.next,
-      nextStyle: css('flex:1;max-width:' + (D ? '320px' : 'none') + ';height:52px;padding:0 22px;border-radius:14px;font-size:.92rem;border:0;font-weight:600;cursor:pointer;' + ((step === 1 && !(s.accepted[0] && s.accepted[1])) || (step === 4 && !s.confirm) ? 'background:#dfe3ea;color:#6b7689' : 'background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;box-shadow:0 8px 20px rgba(202,161,79,.3)')),
-      goNext: () => { const err = this.validate(step); if (err) return this.setState({error: err}); if (step === 4) return this.submit(); const stx = this.store(); if (step === 2 && s.clubId && stx && stx.entry(s.clubId) && !s.amend) return this.go(6); this.go(step + 1); },
+      nextStyle: css('flex:1;max-width:' + (D ? '320px' : 'none') + ';height:52px;padding:0 22px;border-radius:14px;font-size:.92rem;border:0;font-weight:600;cursor:' + (s.submitting || s.checkingClub ? 'wait;' : 'pointer;') + ((step === 1 && !(s.accepted[0] && s.accepted[1])) || (step === 4 && !s.confirm) || s.submitting || s.checkingClub ? 'background:#dfe3ea;color:#6b7689' : 'background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;box-shadow:0 8px 20px rgba(202,161,79,.3)')),
+      goNext: () => {
+        if (s.submitting || s.checkingClub) return;
+        const err = this.validate(step); if (err) return this.setState({error: err});
+        if (step === 4) return this.submit();
+        const stx = this.store(); if (step === 2 && s.clubId && stx && stx.entry(s.clubId) && !s.amend) return this.go(6);
+        // A "new" club that is already on file is caught HERE, not at Submit.
+        if (step === 2 && s.clubMode === 'new' && !s.distinct && window.TakeOneFed && window.TakeOneFed.checkClub) {
+          const dc = this.countries().find(c => c.i3 === s.clubDial) || {};
+          this.setState({checkingClub: true});
+          return window.TakeOneFed.checkClub({name: s.clubName, email: s.clubEmail, phone: (dc.code || '') + s.clubPhone.replace(/\D/g, '')}).then(m => {
+            this.setState({checkingClub: false});
+            if (m) { this.setState({clubMatch: m}); try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) {} return; }
+            this.go(3);
+          });
+        }
+        this.go(step + 1);
+      },
       goClub: () => this.go(2), goAthletes: () => this.go(3),
       hasError: !!s.error, errorMsg: s.error,
       rules: t.rules.map((r, i) => ({n: String(i + 1), text: r})),
       accepts: [t.accept1, t.accept2].map((txt, i) => ({text: txt, aria: s.accepted[i] ? 'true' : 'false', tick: s.accepted[i] ? '\u2713' : '', box: tick(s.accepted[i]), card: chkCard(s.accepted[i]),
         toggle: () => this.setState(st => { const a = st.accepted.slice(); a[i] = !a[i]; return {accepted: a, error: ''}; })})),
       formGrid: css('display:grid;grid-template-columns:repeat(auto-fit,minmax(' + (D ? '260px' : '100%') + ',1fr));gap:14px'),
-      clubName: s.clubName, onClubName: e => this.setState({clubName: e.target.value, error: ''}),
+      clubName: s.clubName, onClubName: e => this.setState({clubName: e.target.value, error: '', clubMatch: null, distinct: false}),
       coachName: s.coachName, onCoachName: e => this.setState({coachName: e.target.value, error: ''}),
-      clubPhone: s.clubPhone, onClubPhone: e => this.setState({clubPhone: e.target.value, error: ''}),
+      clubPhone: s.clubPhone, onClubPhone: e => this.setState({clubPhone: e.target.value, error: '', clubMatch: null}),
       clubAddress: s.clubAddress, onClubAddress: e => this.setState({clubAddress: e.target.value, error: ''}),
-      clubEmail: s.clubEmail, onClubEmail: e => this.setState({clubEmail: e.target.value, error: ''}),
+      clubEmail: s.clubEmail, onClubEmail: e => this.setState({clubEmail: e.target.value, error: '', clubMatch: null}),
       fileRef: el => { this._fileEl = el; }, camRef: el => { this._camEl = el; }, onPhotoFile: e => this.onPhotoFile(e),
       logoPreviewStyle: Object.assign(css('width:72px;height:72px;flex:none;border:1px dashed #c3cad6;background:#f7f8fb;background-size:cover;background-position:center;display:grid;place-items:center;' + ((s.clubLogoShape || 'circle') === 'circle' ? 'border-radius:50%' : 'border-radius:14px')), s.clubLogo ? {backgroundImage: 'url("' + s.clubLogo + '")', borderStyle: 'solid'} : {}),
       logoSmallStyle: Object.assign(css('width:48px;height:48px;flex:none;border:1px solid #e3e7ee;background:#fdf6e6;background-size:cover;background-position:center;' + ((s.clubLogoShape || 'circle') === 'circle' ? 'border-radius:50%' : 'border-radius:10px')), s.clubLogo ? {backgroundImage: 'url("' + s.clubLogo + '")'} : {}),
@@ -1057,7 +1242,7 @@ class Component extends DCLogic {
       dialDdOpen: s.dialOpen, toggleDialDd: e => { e.stopPropagation(); this.setState({dialOpen: !s.dialOpen, natOpen: false, dialQuery: ''}); },
       dialQuery: s.dialQuery, onDialQuery: e => this.setState({dialQuery: e.target.value}),
       dialOptions: this.countries().filter(c => { const q = s.dialQuery.trim().toLowerCase(); return !q || c.name.toLowerCase().includes(q) || c.i3.toLowerCase().includes(q) || c.code.includes(q); })
-        .map(c => ({...c, onPick: e => { e.stopPropagation(); this.setState({clubDial: c.i3, dialOpen: false, dialQuery: ''}); }})),
+        .map(c => ({...c, onPick: e => { e.stopPropagation(); this.setState({clubDial: c.i3, dialOpen: false, dialQuery: '', clubMatch: null}); }})),
       stopEvt: e => e.stopPropagation()
     };
     // athletes
@@ -1067,13 +1252,20 @@ class Component extends DCLogic {
       return {num: String(i + 1), name: a.name, initials: a.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
         meta: (a.gender === 'Female' ? t.female : t.male) + ' · ' + (nc.i3 || '') + ' · ' + a.weight + ' kg', flagBg: 'url("' + (nc.flag || 'https://flagcdn.com/w40/un.png') + '")',
         category: cat || '', hasCategory: !!cat, noPhoto: !a.photo, photoStyle: photoBox(a.photo, 48, 64),
-        onEdit: () => this.setState({draft: {...a}, editIdx: i, error: ''}),
+        onEdit: () => { const p = (a.dob || '').split('-'); this.setState({draft: {...a, dobY: a.dobY || p[0] || '', dobM: a.dobM || p[1] || '', dobD: a.dobD || p[2] || ''}, editIdx: i, error: ''}); },
         onRemove: () => this.setState({athletes: s.athletes.filter((_, j) => j !== i), draft: s.athletes.length === 1 ? this.blankDraft() : s.draft})}; });
-    const autoDraft = !s.athletes.length && !s.clubId;
+    const autoDraft = false;   // the athlete form lives in the Add sheet now, opened on purpose
     const draft = s.draft || (autoDraft ? this.blankDraft() : null);
     if (!s.draft && autoDraft && step === 3) setTimeout(() => { if (!this.state.draft && !this.state.athletes.length && !this.state.clubId) this.setState({draft: this.blankDraft()}); }, 0);
     const d = draft || this.blankDraft();
     const setD = (k, val) => this.setState(st => ({draft: {...(st.draft || this.blankDraft()), [k]: val}, error: ''}));
+    const isoDob = (dd, mm, yy) => { const D0 = +dd, M0 = +mm, Y0 = +yy; if (!(Y0 >= 1900 && M0 >= 1 && M0 <= 12 && D0 >= 1 && D0 <= 31) || String(yy).length !== 4) return '';
+      const x = new Date(Date.UTC(Y0, M0 - 1, D0)); if (x.getUTCMonth() !== M0 - 1 || x > new Date()) return '';
+      return Y0 + '-' + String(M0).padStart(2, '0') + '-' + String(D0).padStart(2, '0'); };
+    const setDob = (k, raw, n) => this.setState(st => { const dr = {...(st.draft || this.blankDraft()), [k]: String(raw).replace(/\D/g, '').slice(0, n)};
+      dr.dob = isoDob(dr.dobD, dr.dobM, dr.dobY); return {draft: dr, error: ''}; });
+    const fill0 = (x, o) => Object.keys(o).reduce((a, k) => a.replace('{' + k + '}', o[k]), x);
+    const ageOf0 = dob => { const dd = new Date(dob), n = new Date(); let a = n.getFullYear() - dd.getFullYear(); if (n < new Date(n.getFullYear(), dd.getMonth(), dd.getDate())) a--; return a; };
     const dnc = this.countries().find(c => c.i3 === d.nat);
     const dcat = this.classify(d);
     Object.assign(v, {
@@ -1083,6 +1275,11 @@ class Component extends DCLogic {
       draftCat: dcat || '', draftHasCat: !!dcat, draftNoPhoto: !d.photo, draftPhotoStyle: photoBox(d.photo, 90, 120),
       onDraftCam: () => this.openPhoto('draft', true), onDraftFile: () => this.openPhoto('draft', false),
       onDName: e => setD('name', e.target.value), onDDob: e => setD('dob', e.target.value), onDWeight: e => setD('weight', e.target.value),
+      // Day / month / year typed into three boxes (no OS date popup); the ISO
+      // date exists only once all three make a real, past date.
+      dobD: d.dobD || '', dobM: d.dobM || '', dobY: d.dobY || '',
+      onDobD: e => setDob('dobD', e.target.value, 2), onDobM: e => setDob('dobM', e.target.value, 2), onDobY: e => setDob('dobY', e.target.value, 4),
+      dobHasAge: !!d.dob, dobAge: d.dob ? fill0(t.ageIs, {n: String(ageOf0(d.dob))}) : '',
       genderOpts: [['Male', t.male], ['Female', t.female]].map(([k, l]) => ({label: l, onClick: () => setD('gender', k),
         style: css('height:48px;border-radius:12px;font-size:.86rem;cursor:pointer;' + (d.gender === k ? 'font-weight:600;background:#1e2c4f;color:#fff;border:1px solid #1e2c4f' : 'font-weight:500;background:#fff;color:#1e2c4f;border:1px solid #d5dae3'))})),
       natFlagBg: 'url("' + (dnc ? dnc.flag : 'https://flagcdn.com/w40/un.png') + '")', natIso: dnc ? dnc.i3 : '\u2014', natName: dnc ? dnc.name : '',
@@ -1090,7 +1287,13 @@ class Component extends DCLogic {
       natQuery: s.natQuery, onNatQuery: e => this.setState({natQuery: e.target.value}),
       natOptions: this.countries().filter(c => { const q = s.natQuery.trim().toLowerCase(); return !q || c.name.toLowerCase().includes(q) || c.i3.toLowerCase().includes(q); })
         .map(c => ({...c, onPick: e => { e.stopPropagation(); setD('nat', c.i3); this.setState({natOpen: false, natQuery: ''}); }})),
-      saveDraft: () => { if (!d.name.trim() || !d.gender || !d.dob || !d.weight) return this.setState({error: t.eDraft});
+      saveDraft: () => { if (!d.name.trim() || !d.gender || !d.weight) return this.setState({error: t.eDraft});
+        if (!d.dob && (d.dobD || d.dobM || d.dobY)) return this.setState({error: t.eDob});
+        if (!(d.types || []).length) return this.setState({error: t.eTypes});
+        // The same person twice on one list is one athlete.
+        const nk = x => String(x || '').toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, '').replace(/\s+/g, ' ').trim();
+        const twin = s.athletes.find((a, j) => j !== s.editIdx && nk(a.name) === nk(d.name) && (!a.dob || !d.dob || a.dob === d.dob));
+        if (twin) return this.setState({error: t.eDupList.replace('{n}', twin.name)});
         const list = s.athletes.slice(); if (s.editIdx != null) list[s.editIdx] = {...d, name: d.name.trim()}; else list.push({...d, name: d.name.trim()});
         this.setState({athletes: list, draft: null, editIdx: null, error: ''}); },
       cancelDraft: () => this.setState({draft: null, editIdx: null, error: ''}),
@@ -1099,24 +1302,86 @@ class Component extends DCLogic {
     // club identification
     const st = this.store(), fill = (x, o) => Object.keys(o).reduce((a, k) => a.replace('{' + k + '}', o[k]), x);
     const clubObj = s.clubId && st ? st.club(s.clubId) : null;
+    const isContact = q => { q = String(q || '').trim(); return /@/.test(q) || (/^[\d\s+()-]+$/.test(q) && q.replace(/\D/g, '').length >= 7); };
+    const clubCard = k => ({name: k.name, initials: String(k.name || '?').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase(),
+      hasLogo: !!k.logo, noLogo: !k.logo, sub: k.hint ? fill(t.idCodeTo, {h: k.hint}) : t.idNoEmailShort, go: s.lang === 'ar' ? '\u2039' : '\u203a',
+      logoStyle: k.logo ? Object.assign(css('width:38px;height:38px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center'), {backgroundImage: 'url("' + String(k.logo).replace(/["\\]/g, '') + '")'}) : {},
+      style: css('display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-radius:14px;border:1px solid #e3e7ee;background:#fbfcfe;font-family:inherit;cursor:pointer;box-sizing:border-box;text-align:start')});
     Object.assign(v, {
-      idChoose: step === 2 && !s.clubMode, idVerify: s.clubMode === 'existing' && !s.verified, idVerified: s.clubMode === 'existing' && s.verified,
+      // "Find your club": ONE box. A name lists the federation's clubs; an
+      // email or phone goes straight to "send code". A picked club gets a
+      // code (and a one-tap link) at the inbox the federation has on file.
+      idFindShown: step === 2 && !s.verified && s.clubMode !== 'new', idVerified: s.clubMode === 'existing' && s.verified,
       clubSummary: !s.editClub, clubFormShown: s.clubMode === 'new' || (s.clubMode === 'existing' && s.verified && s.editClub), idChangeLink: s.clubMode === 'new',
-      chooseExisting: () => this.setState({clubMode: 'existing', verified: false, error: ''}),
-      chooseNew: () => this.setState({clubMode: 'new', clubId: null, verified: false, editClub: false, picks: {}, transferReq: [], error: ''}),
-      backToChoice: e => { e.preventDefault(); this.setState({clubMode: null, codeSent: false, codeInput: '', error: ''}); },
+      chooseExisting: () => this.setState({clubMode: null, verified: false, error: ''}),
+      // What was typed carries over only when it found nothing — a name that
+      // matched a club was a search, not this club's name.
+      chooseNew: () => { const q0 = (s.findQ || '').trim(), contact = isContact(q0), q = contact || (s.findRows && !s.findRows.length) ? q0 : '';
+        this.setState({clubMode: 'new', clubId: null, verified: false, editClub: false, picks: {}, transferReq: [], error: '', findPick: null, codeSent: false, codeInput: '', clubChoices: null,
+          clubName: s.clubName || (contact ? '' : q), clubEmail: s.clubEmail || (/@/.test(q) ? q : ''), clubPhone: s.clubPhone || (contact && !/@/.test(q) ? q.replace(/^\+\d{1,4}\s*/, '') : '')}); },
+      backToChoice: e => { e.preventDefault(); this.setState({clubMode: null, codeSent: false, codeInput: '', error: '', clubMatch: null}); },
+      findQ: s.findQ || '', findNoPick: !s.findPick, findPicked: !!s.findPick, findIsContact: !s.findPick && isContact(s.findQ),
+      onFindQ: e => { const q = e.target.value; this.setState({findQ: q, error: '', codeSent: false, codeInput: '', clubChoices: null});
+        clearTimeout(this._findT); const qq = q.trim();
+        if (qq.length < 2 || isContact(qq)) return this.setState({findRows: null});
+        this._findT = setTimeout(() => { window.TakeOneFed.searchClubs(qq).then(rows => { if ((this.state.findQ || '').trim() === qq) this.setState({findRows: rows || []}); }); }, 250); },
+      onFindKey: e => { if (e.key === 'Enter' && isContact(s.findQ)) v.sendCode(); },
+      findHasRows: !s.findPick && !isContact(s.findQ) && !!(s.findRows && s.findRows.length),
+      findRows: (s.findRows || []).map(k => ({...clubCard(k), onPick: () => this.setState({findPick: k, findRows: null, codeSent: false, codeInput: '', error: ''})})),
+      findNone: !s.findPick && !isContact(s.findQ) && !!s.findRows && !s.findRows.length && (s.findQ || '').trim().length >= 2,
+      findNoneMsg: fill(t.findNoneT, {q: (s.findQ || '').trim()}),
+      fp: s.findPick ? clubCard(s.findPick) : {}, fpNoEmail: !!(s.findPick && !s.findPick.hint), fpCanSend: !!(s.findPick && s.findPick.hint),
+      findUnpick: () => this.setState({findPick: null, codeSent: false, codeInput: '', error: ''}),
+      sendLabel: s.codeSent ? t.idResend : (s.findPick && s.findPick.hint ? fill(t.idSendTo, {h: s.findPick.hint}) : t.idSend),
+      sendClubCode: () => { if (!s.findPick || !s.findPick.hint) return; window.TakeOneFed.sendClubCode(s.findPick.key); this.setState({codeSent: true, codeInput: '', error: ''}); },
+      sendCode: () => { const q = (s.findQ || '').trim(); if (!q) return this.setState({error: t.eNoClub, codeSent: false});
+        window.TakeOneFed.sendCode(q); this.setState({idContact: q, codeSent: true, codeInput: '', error: ''}); },
       idContact: s.idContact, onIdContact: e => this.setState({idContact: e.target.value, error: ''}),
-      sendLabel: s.codeSent ? t.idResend : t.idSend,
-      sendCode: () => { const c = st && st.findClub(s.idContact); if (!c) return this.setState({error: t.eNoClub, codeSent: false});
-        const code = String(Math.floor(100000 + Math.random() * 900000)); this._pendingClub = c.id; this.setState({codeSent: true, demoCode: code, codeInput: '', error: ''}); },
-      onIdKey: e => { if (e.key === 'Enter') v.sendCode(); },
-      codeSent: s.codeSent, codeSentMsg: fill(t.idSentTo, {c: s.idContact}), demoCodeMsg: fill(t.idDemo, {code: s.demoCode}),
+      codeSent: s.codeSent, codeSentMsg: s.findPick ? fill(t.idSentClub, {h: s.findPick.hint || ''}) : fill(t.idSentTo, {c: s.idContact}),
       codeInput: s.codeInput, onCodeInput: e => this.setState({codeInput: e.target.value.replace(/\D/g, '').slice(0, 6), error: ''}),
-      verifyCode: () => { if (s.codeInput !== s.demoCode) return this.setState({error: t.eCode}); const c = st && st.club(this._pendingClub); if (c) { this.loadClub(c, false); if (st.entry(c.id)) setTimeout(() => this.go(6), 0); } },
+      verifyLabel: s.verifying ? t.idChecking : t.idVerifyBtn,
+      verifyCode: () => {
+        if (s.verifying) return; if ((s.codeInput || '').length !== 6) return this.setState({error: t.eCode});
+        this.setState({verifying: true, error: ''});
+        const p0 = s.findPick ? window.TakeOneFed.verifyClubCode(s.findPick.key, s.codeInput) : window.TakeOneFed.verifyCode(s.idContact, s.codeInput);
+        p0.then(id => { this.setState({verifying: false});
+          if (id && id.choices) return this.setState({clubChoices: id.choices, error: ''});
+          if (!id) return this.setState({error: t.eCode});
+          const c = st && st.club(id); if (c) { this.setState({findPick: null, findQ: '', findRows: null, clubMatch: null}); this.loadClub(c, false); if (st.entry(c.id)) setTimeout(() => this.go(6), 0); } }); },
       onCodeKey: e => { if (e.key === 'Enter') v.verifyCode(); },
       verifiedMsg: s.viaLink ? fill(t.idLink, {c: s.clubName}) : fill(t.idVerifiedAs, {c: s.clubName}),
+      // A "new" club the federation already has: sign in as it, or (a name
+      // match only) say it is a different club.
+      hasClubMatch: s.clubMode === 'new' && !!s.clubMatch,
+      clubMatchTitle: s.clubMatch ? fill(t.matchTitle, {c: s.clubMatch.name}) : '',
+      clubMatchSub: s.clubMatch ? fill(s.clubMatch.reason === 'name' ? t.matchSubName : t.matchSubContact, {c: s.clubMatch.name}) : '',
+      matchCanDiffer: !!(s.clubMatch && s.clubMatch.reason === 'name'),
+      matchItsUs: () => { const m = s.clubMatch; if (!m) return;
+        this.setState({clubMode: null, clubMatch: null, distinct: false, findPick: m, findQ: m.name, findRows: null, codeSent: !!m.hint, codeInput: '', error: ''});
+        if (m.hint) window.TakeOneFed.sendClubCode(m.key);
+        try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) {} },
+      matchDifferent: () => this.setState({clubMatch: null, distinct: true, error: ''}),
       editClubOn: () => this.setState({editClub: true})
     });
+    // A code that proved several clubs (one owner): pick one — the server checks it was among them.
+    v.hasClubChoices = !!(s.clubChoices && s.clubChoices.length);
+    v.clubChoices = (s.clubChoices || []).map(k => ({
+      name: k.name, initials: String(k.name || '?').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase(),
+      hasLogo: !!k.logo, noLogo: !k.logo,
+      logoStyle: k.logo ? Object.assign(css('width:38px;height:38px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center'), {backgroundImage: 'url("' + String(k.logo).replace(/["\\]/g, '') + '")'}) : {},
+      go: s.clubPicking === k.key ? '\u2026' : (s.lang === 'ar' ? '\u2039' : '\u203a'),
+      goStyle: css('flex:none;font-size:1.2rem;font-weight:700;color:#8a6d20'),
+      style: css('display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-radius:14px;border:1px solid #e7cf94;background:#fff;font-family:inherit;cursor:pointer;box-sizing:border-box;box-shadow:0 4px 12px rgba(202,161,79,.12)' + (s.clubPicking ? ';opacity:.7;cursor:wait' : '')),
+      onPick: () => {
+        if (this.state.clubPicking) return;
+        this.setState({clubPicking: k.key, error: ''});
+        window.TakeOneFed.chooseClub(k.key).then(id => {
+          if (!id) return this.setState({clubPicking: null, clubChoices: null, codeSent: false, error: t.eCode});
+          this.setState({clubPicking: null, clubChoices: null, findPick: null, findQ: '', findRows: null});
+          const c = st && st.club(id); if (c) { this.loadClub(c, false); if (st.entry(c.id)) setTimeout(() => this.go(6), 0); }
+        });
+      }
+    }));
     // roster + lookup
     const roster = clubObj && st ? st.roster(clubObj.id) : [];
     const rq = s.rosterQ.trim().toLowerCase(), nq = rq.replace(/[^0-9a-z]/g, '');
@@ -1150,7 +1415,11 @@ class Component extends DCLogic {
     v.transferCountLabel = fill(t.transfersN, {n: s.transferReq.length});
     v.onDNatId = e => setD('natId', e.target.value);
     const saveDraft0 = v.saveDraft;
-    v.saveDraft = () => { const dd = d; if (st && dd.natId && dd.natId.trim()) { const ex = st.byNatId(dd.natId);
+    v.saveDraft = () => { const dd = d;
+      const nk = x => String(x || '').toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, '').replace(/\s+/g, ' ').trim();
+      const onRoster = dd.dob && roster.find(a => nk(a.name) === nk(dd.name) && a.dob === dd.dob);
+      if (onRoster) return this.setState({error: fill(t.eDupOwn, {n: onRoster.name})});
+      if (st && dd.natId && dd.natId.trim()) { const ex = st.byNatId(dd.natId);
         if (ex && (s.editIdx == null || (s.athletes[s.editIdx] || {}).natId !== dd.natId)) { const cl = st.club(ex.clubId);
           if (clubObj && ex.clubId === clubObj.id) return this.setState({error: fill(t.eDupOwn, {n: ex.name})});
           return this.setState({error: fill(t.eDupOther, {n: ex.name, c: cl ? cl.name : '—'}), lookupQ: dd.natId}); } }
@@ -1187,11 +1456,115 @@ class Component extends DCLogic {
     v.draftTypes = indiv(d.dob).map(f => { const on = dTypes.includes(f.type); return {label: f.type, price: this.money(f.price), tick: on ? '\u2713 ' : '', style: chip(on),
       toggle: () => setD('types', on ? dTypes.filter(x => x !== f.type) : [...dTypes, f.type])}; });
     v.athCards = v.athCards.map((c, i) => ({...c, typesTxt: (s.athletes[i].types || []).join(' · ')}));
+    // ── "Add an athlete" sheet: look one up, or create them; the fee as you go.
+    const isLate = !!(st && st.phase && st.phase() === 'late');
+    const feeOf = (dob, types) => indiv(dob).filter(f => (types || []).includes(f.type)).reduce((n, f) => n + (+f.price || 0), 0) + ((types || []).length && isLate ? (+EV.lateFee || 0) : 0);
+    const gStyle = g => css('font-weight:600;color:' + (g === 'Female' ? '#db2777' : '#2563eb'));
+    const enteredNow = new Set([...enteredIds]);
+    const alView = a => {
+      const own = !!(clubObj && a.clubId === clubObj.id), nc = this.countries().find(c => c.i3 === a.nat) || {}, from = st && st.club(a.clubId);
+      const pend = s.transferReq.includes(a.id) || pendingStore.some(x => x.athleteId === a.id && x.toClubId === s.clubId);
+      const added = a.id in s.picks, entered = enteredNow.has(a.id);
+      const tag = own ? (entered ? t.tagEntered : added ? t.tagAdded : t.tagOwn) : (pend ? t.transferPending : t.tagOther);
+      const col = own ? (entered || added ? 'color:#2f7a4f;background:#e8f5ee' : 'color:#8a6d20;background:rgba(216,178,95,.18)') : 'color:#a8620f;background:#fdf1e0';
+      return {name: a.name, initials: a.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(), noPhoto: !a.photo, photoStyle: photoBox(a.photo, 36, 48),
+        gender: a.gender === 'Female' ? t.female : t.male, genderStyle: gStyle(a.gender), hasAge: !!a.dob, age: a.dob ? String(age(a.dob)) : '',
+        nat: nc.name || a.nat || '', flagBg: 'url("' + (nc.flag || 'https://flagcdn.com/w40/un.png') + '")',
+        clubLine: (from ? from.name : '') + (a.id ? '  ·  ' + a.id : ''), tag, tagStyle: css('flex:none;font-size:.62rem;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap;' + col),
+        own, pend, entered};
+    };
+    const alQ = (s.alQ || '').trim(), alq = alQ.toLowerCase(), alnq = alq.replace(/[^0-9a-z]/g, '');
+    const ownHits = alq.length >= 2 ? roster.filter(a => a.name.toLowerCase().includes(alq) || (alnq.length >= 3 && ((a.natId || '').replace(/[^0-9a-z]/gi, '').toLowerCase().includes(alnq) || a.id.replace(/[^0-9a-z]/gi, '').toLowerCase().includes(alnq)))) : [];
+    const farHits = st && alQ.length >= 4 ? st.lookup(alQ).filter(a => !ownHits.some(o => o.id === a.id)) : [];
+    const alList = ownHits.slice(0, 20).concat(farHits);
+    const pickA = s.alPick && st ? st.athlete(s.alPick) : null, pv = pickA ? alView(pickA) : null;
+    const alTypesSel = s.alTypesSel || [];
+    const wOk = w => { const n = parseFloat(w); return n >= 15 && n <= 200; };
+    const isNew = !!s.draft, editing = s.editIdx != null;
+    const closeAdd = () => this.setState({addOpen: false, draft: null, editIdx: null, alPick: null, error: ''});
+    const newFee = feeOf(d.dob, d.types), alFee = pickA ? feeOf(pickA.dob, alTypesSel) : 0;
+    let ready, fee, label;
+    if (isNew) { ready = !!(d.name.trim() && d.gender && wOk(d.weight) && (d.types || []).length); fee = newFee; label = editing ? t.updateBtn : t.addBtn; }
+    else if (pv && pv.own) { ready = !pv.entered && wOk(s.alWeight) && alTypesSel.length > 0; fee = alFee; label = (pickA.id in s.picks) ? t.updateBtn : t.addBtn; }
+    else if (pv) { ready = !pv.pend; fee = 0; label = pv.pend ? t.transferRequested : t.reqTransfer; }
+    else { ready = false; fee = 0; label = t.addBtn; }
+    const types0 = isNew ? (d.types || []) : alTypesSel;
+    Object.assign(v, {
+      addBtnShown: true,
+      addShown: !!s.addOpen || isNew,
+      addTitle: editing ? t.editAthlete : t.addTitle,
+      addTabsShown: !editing,
+      addTabs: [['lookup', t.tabLookup], ['new', t.tabNew]].map(([k, l]) => ({label: l,
+        onClick: () => this.setState(k === 'new' ? {draft: s.draft || this.blankDraft(), addOpen: false, error: ''} : {draft: null, editIdx: null, addOpen: true, error: ''}),
+        style: css('flex:1;height:38px;border:0;border-radius:9px;font-family:inherit;font-size:.82rem;cursor:pointer;' + ((k === 'new') === isNew ? 'font-weight:700;color:#1e2c4f;background:#fff;box-shadow:0 2px 6px rgba(30,44,79,.12)' : 'font-weight:500;color:#6b7689;background:transparent'))})),
+      // A club that is not verified yet cannot look anybody up: open straight on "Create new".
+      openAdd: () => this.setState(clubObj ? {addOpen: true, draft: null, editIdx: null, alQ: '', alPick: null, alWeight: '', alTypesSel: [], error: ''} : {addOpen: false, draft: this.blankDraft(), editIdx: null, error: ''}),
+      closeAdd,
+      isAddLookup: !isNew, isAddNew: isNew,
+      alQ: s.alQ || '', onAlQ: e => this.setState({alQ: e.target.value, error: ''}),
+      alHint: !clubObj ? t.alHintNew : (alQ.length >= 2 && !alList.length ? t.alNone : t.alHint),
+      alRows: alList.map(a => ({...alView(a), onPick: () => this.setState({alPick: a.id, alWeight: s.picks[a.id] || '', alTypesSel: s.pickTypes[a.id] || [], error: ''})})),
+      alNoPick: !pv, alHasPick: !!pv, alPick: pv || {}, alOwn: !!(pv && pv.own), alOther: !!(pv && !pv.own),
+      alOtherMsg: pickA ? fill(t.alOtherMsg, {c: (st.club(pickA.clubId) || {}).name || '—'}) : '',
+      alUnpick: () => this.setState({alPick: null, error: ''}),
+      alWeight: s.alWeight || '', onAlWeight: e => this.setState({alWeight: e.target.value, error: ''}),
+      alCat: pickA && wOk(s.alWeight) ? (this.classify({gender: pickA.gender, dob: pickA.dob, weight: s.alWeight}) || '') : '',
+      alTypes: pickA ? indiv(pickA.dob).map(f => { const on = alTypesSel.includes(f.type); return {label: f.type, price: this.money(f.price), tick: on ? '✓ ' : '', style: chip(on),
+        toggle: () => this.setState({alTypesSel: on ? alTypesSel.filter(x => x !== f.type) : [...alTypesSel, f.type], error: ''})}; }) : [],
+      addFee: this.money(fee),
+      addFeeSub: pv && !pv.own && !isNew ? t.transferNote : !types0.length ? t.feePick : isLate ? fill(t.feeLate, {f: this.money(EV.lateFee)}) : (fee ? '' : t.feeNone),
+      addAria: ready ? 'false' : 'true',
+      addBtnLabel: label,
+      addBtnStyle: css('margin-inline-start:auto;flex:none;height:48px;padding:0 24px;border:0;border-radius:12px;font-family:inherit;font-size:.9rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);box-shadow:0 8px 20px rgba(202,161,79,.3);' + (ready ? 'cursor:pointer' : 'opacity:.45;cursor:not-allowed;box-shadow:none')),
+      onAddConfirm: () => {
+        if (isNew) {
+          if (!(d.types || []).length) return this.setState({error: t.eTypes});
+          return v.saveDraft();   // its own checks (name, dob, weight, duplicate national ID) still apply
+        }
+        if (!pv) return;
+        if (!pv.own) { if (pv.pend) return; return this.setState({transferReq: [...s.transferReq, pickA.id], addOpen: false, alPick: null, error: ''}); }
+        if (pv.entered) return;
+        if (!wOk(s.alWeight)) return this.setState({error: t.eWeight});
+        if (!alTypesSel.length) return this.setState({error: t.eTypes});
+        this.setState({picks: {...s.picks, [pickA.id]: s.alWeight}, pickTypes: {...s.pickTypes, [pickA.id]: alTypesSel}, addOpen: false, alPick: null, error: ''});
+      }
+    });
+    // Every athlete already on the list shows what they cost.
+    v.athCards = v.athCards.map((c, i) => ({...c, feeTxt: this.money(feeOf(s.athletes[i].dob, s.athletes[i].types))}));
+    v.rosterRows = v.rosterRows.map(r => { const a = st && st.athlete(r.tk); return {...r, feeTxt: r.on ? this.money(feeOf(a && a.dob, s.pickTypes[r.tk] || [])) : ''}; });
     const teams = this.teamsState();
     v.teamRows = EV.fees.filter(f => f.unit === 'team').map(f => { const n = +teams[f.type] || 0;
       return {label: f.type, n: String(n), sub: t.perTeam.replace('{p}', this.money(f.price)).replace('{n}', f.teamSize),
         inc: () => this.setState({teams: {...this.teamsState(), [f.type]: n + 1}, error: ''}), dec: () => this.setState({teams: {...this.teamsState(), [f.type]: Math.max(0, n - 1)}})}; });
     const inv = this.previewInvoice();
+    // ── The opening screen: quick facts, then the organiser's own sections.
+    const cur = (EV && EV.currency) || 'BHD';
+    const indivFees = (EV.fees || []).filter(f => f.unit === 'athlete'), paidFees = (EV.fees || []).filter(f => +f.price > 0);
+    const minAth = indivFees.filter(f => +f.price > 0).reduce((m, f) => Math.min(m, +f.price), Infinity);
+    const jump = id => () => { try { const el = document.getElementById(id); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); } catch (e) {} };
+    const known = x => x && x !== '—';
+    v.qfCardStyle = css('background:#fff;border-radius:22px;border:1px solid #eef1f6;box-shadow:0 14px 40px rgba(30,44,79,.12);padding:14px 10px;margin:0 0 16px;position:relative;z-index:2');
+    v.qfWhenVal = known(t.compVal) ? t.compVal : '—'; v.qfWhenSub = t.compSub || t.qfWhen;
+    v.qfEntryVal = paidFees.length ? (isFinite(minAth) ? fill(t.feeFrom, {p: this.money(minAth)}) : this.money(paidFees[0].price)) : ((EV.fees || []).length ? t.freeEntry : '—');
+    v.qfEntrySub = paidFees.length ? t.perAthleteU : ((EV.fees || []).length ? t.freeEntrySub : t.qfEntry);
+    v.qfWhereVal = t.venueLine || t.locationLine || t.whereTbc; v.qfWhereSub = t.venueLine && t.locationLine && t.locationLine !== t.venueLine ? t.locationLine : t.qfWhere;
+    v.jumpDates = jump('inv-dates'); v.jumpFees = jump('inv-fees'); v.jumpWhere = jump('inv-where');
+    v.hasAbout = !!t.aboutHtml;
+    v.aboutRef = el => { if (el && el._html !== t.aboutHtml) { el.innerHTML = t.aboutHtml || ''; el._html = t.aboutHtml; } };
+    v.feeRows = (EV.fees || []).map(f => ({label: f.type,
+      unit: f.unit === 'team' ? fill(t.perTeamU, {n: f.teamSize || ''}) : t.perAthleteU,
+      price: +f.price > 0 ? this.money(f.price) : t.freeEntry,
+      priceStyle: css('flex:none;font-size:.9rem;font-weight:700;' + (+f.price > 0 ? 'color:#1e2c4f' : 'color:#2f7a4f'))}));
+    v.noFees = v.feeRows.length === 0;
+    v.hasLateNote = +EV.lateFee > 0; v.lateNote = fill(t.lateNoteT, {f: this.money(EV.lateFee)});
+    const drows = [[t.opens, t.opensVal, ''], [t.deadline, t.deadlineVal, '', true], [t.weighin, t.weighinVal, t.weighinWhere], [t.draw, t.drawVal, ''], [t.comp, t.compVal, t.compSub], [t.brk, t.brkVal, '']].filter(r => known(r[1]));
+    v.dateRows = drows.map(([label, value, sub, hi], i) => ({label, value, sub: known(sub) ? sub : '', hasSub: known(sub),
+      dot: css('position:relative;width:14px;height:14px;flex:none;margin-top:3px;border-radius:50%;box-sizing:border-box;' + (hi ? 'background:#d8b25f;border:3px solid #fdf6e6;box-shadow:0 0 0 2px #d8b25f' : 'background:#fff;border:2px solid #c3cad6')),
+      valueStyle: css('display:block;font-size:.9rem;font-weight:700;margin-top:2px;color:' + (hi ? '#8a6d20' : '#1e2c4f'))}));
+    v.hasReqs = (t.reqList || []).length > 0; v.reqRows = (t.reqList || []).map((r, i) => ({n: String(i + 1), text: r}));
+    v.whereTitle = t.venueLine || t.locationLine || t.whereTbc;
+    v.whereSub = t.venueLine && t.locationLine && t.locationLine !== t.venueLine ? t.locationLine : ''; v.hasWhereSub = !!v.whereSub;
+    v.hasMap = /^https?:\/\//i.test(t.mapUrl || ''); v.mapHref = v.hasMap ? t.mapUrl : '#';
     v.runningLabel = t.running; v.runningTotal = this.money(inv.total);
     v.invRef = (baseEntry && baseEntry.ref) || (EV.code ? EV.code + '-…' : '');
     v.invLines = inv.lines.map(l => ({label: l.label, detail: l.detail, amount: this.money(l.amount)}));
@@ -1247,8 +1620,25 @@ class Component extends DCLogic {
       athCountLabel: (() => { const n = this.entries().length; return n === 1 ? t.athleteN : t.athletesN.replace('{n}', n); })(),
       confirmAria: s.confirm ? 'true' : 'false', confirmTick: s.confirm ? '\u2713' : '', confirmBox: tick(s.confirm), confirmCard: chkCard(s.confirm),
       toggleConfirm: () => this.setState({confirm: !s.confirm, error: ''}),
-      subClub: s.subClub, subCountLabel: s.subCount === 1 ? t.athleteN : t.athletesN.replace('{n}', s.subCount)
+      subClub: s.subClub, subCountLabel: (s.subCount === 1 ? t.athleteN : t.athletesN.replace('{n}', s.subCount)) + (s.subSkipped ? ' · ' + t.skippedN.replace('{n}', s.subSkipped) : '')
     });
+    // The cover says up front whether entries are open, late or closed —
+    // not after a coach has typed a whole club in.
+    const ph0 = st && st.phase ? st.phase() : 'open';
+    const mine = !!(st && s.clubId && st.entry(s.clubId));
+    const closed = ph0 === 'locked' && !mine;
+    Object.assign(v, {
+      coverPhaseShown: ph0 !== 'open',
+      coverPhaseMsg: ph0 === 'locked' ? t.phaseClosedCover : fill(t.phaseLateCover, {f: this.money(EV.lateFee || 0)}),
+      coverPhaseStyle: css('margin-bottom:10px;padding:10px 12px;border-radius:12px;font-size:.78rem;line-height:1.5;text-align:center;' + (ph0 === 'locked' ? 'background:#fdecea;color:#8f2f25' : 'background:#fdf1e0;color:#7a4a0c')),
+      ctaLabel: closed ? t.closedCta : (ph0 === 'locked' ? t.viewEntries : t.start + ' ' + v.arrow),
+      ctaSub: closed ? t.ctaSubClosed : t.takesMinutes,
+      ctaDisabled: closed ? 'true' : 'false',
+      ctaStyle: css('width:100%;height:54px;border-radius:14px;font-size:.98rem;letter-spacing:.02em;border:0;font-weight:600;' + (closed ? 'background:#dfe3ea;color:#6b7689;cursor:not-allowed' : 'background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;cursor:pointer;box-shadow:0 8px 20px rgba(202,161,79,.3)')),
+      goStart: () => { if (closed) return; if (ph0 === 'locked') return this.go(6); this.go(1); }
+    });
+    if (step === 4 && s.submitting) v.nextLabel = t.submitting;
+    this.saveDraftStore();
     // cropper
     v.cropOpen = !!s.cropper;
     if (s.cropper) { const c = s.cropper, box = this.cropBox(c), base = Math.max(box.w / c.iw, box.h / c.ih), isLogo = c.target === 'logo';

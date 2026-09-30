@@ -26,6 +26,7 @@ class UpdateClubRequest extends FormRequest
             'vat_reg_number' => 'nullable|string|max:100',
             'vat_percentage' => 'nullable|numeric|min:0|max:100',
             'email' => 'nullable|email|max:255',
+            'use_owner_contact' => 'nullable|boolean',
             'country' => 'nullable|string|max:2',
             'phone_code' => 'nullable|string|max:10',
             'phone_number' => 'nullable|string|max:20',
@@ -35,7 +36,12 @@ class UpdateClubRequest extends FormRequest
             'address' => 'nullable|string|max:500',
             'gps_lat' => 'nullable|numeric',
             'gps_long' => 'nullable|numeric',
-            'maps_url' => 'nullable|url|max:500',
+            // Only a real Google Maps link (App\Support\MapLink) — the map pin follows it.
+            'maps_url' => ['nullable', 'string', 'max:500', function ($attr, $value, $fail) {
+                if (! \App\Support\MapLink::isGoogle((string) $value)) {
+                    $fail(__('shared.map_link_invalid'));
+                }
+            }],
             'logo' => 'nullable',
             'favicon' => 'nullable',
             'cover_image' => 'nullable',

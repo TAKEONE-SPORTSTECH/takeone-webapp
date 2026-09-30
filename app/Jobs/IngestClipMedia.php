@@ -166,7 +166,7 @@ class IngestClipMedia implements ShouldQueue
             'event' => $event->uuid,
             'title' => $event->title,
             'date' => $event->date?->toDateString(),
-            'host_club' => $event->tenant?->name,
+            'host_club' => $event->host()->name ?: null,
         ]);
 
         if ($match === null) {

@@ -137,7 +137,7 @@ class ParityCommand extends Command
 
             return array_filter(array_merge(
                 (array) ($context['keep'] ?? []),
-                [$event->title, $event->tenant?->club_name, $event->location],
+                [$event->title, $event->host()->name ?: null, $event->location],
             ));
         });
     }

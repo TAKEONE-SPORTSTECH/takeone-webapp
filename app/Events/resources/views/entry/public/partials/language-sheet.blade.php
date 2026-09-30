@@ -84,6 +84,17 @@
     usort($rest, fn ($a, $b) => strcmp($a['name'], $b['name']));
 
     $languageRows = array_merge($interface, $rest);
+
+    /* Where the sheet sends its three requests. A caller whose record is not a
+       club event (the federation's club invitation) hands its own doors in as
+       `$languageUrls`; absent, these are the event's own, as they always were. */
+    $langUrls = array_merge([
+        'set' => route('locale.set'),
+        'method' => 'PUT',
+        'back' => route('me.events.show', ['event' => $e['key']], false),
+        'prepare' => route('events.public.language.prepare', ['event' => $e['key']]),
+        'status' => route('events.public.language.status', ['event' => $e['key'], 'locale' => '__L__']),
+    ], isset($languageUrls) && is_array($languageUrls) ? $languageUrls : []);
 @endphp
 
 <div x-data="eventLanguages(@js($e['key']), @js(app()->getLocale()))"
@@ -257,16 +268,16 @@
     {{-- The language is set by the same plain <form> the cover's tiles use —
          one endpoint, one code path, and a browser that has just been through a
          fetch() still changes language the ordinary way. --}}
-    <form method="POST" action="{{ route('locale.set') }}" x-ref="form" style="display:none;">
+    <form method="POST" action="{{ $langUrls['set'] }}" x-ref="form" style="display:none;">
         @csrf
-        @method('PUT')
+        @method($langUrls['method'])
         <input type="hidden" name="locale" x-ref="locale" value="">
         {{-- Scopes it to this event — see the note in cover-actions. --}}
         <input type="hidden" name="event" value="{{ $e['key'] }}">
         {{-- Where to come back to. The event surface is self-contained and a
              language change must never land the reader on the platform — see
              LocaleController, which holds this to a path on our own host. --}}
-        <input type="hidden" name="back" value="{{ route('events.public', ['event' => $e['key']], false) }}">
+        <input type="hidden" name="back" value="{{ $langUrls['back'] }}">
     </form>
 </div>
 
@@ -387,7 +398,7 @@
 
                 this.$refs.locale.value = row.code;
 
-                fetch(@js(route('events.public.language.prepare', ['event' => $e['key']])), {
+                fetch(@js($langUrls['prepare']), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -424,7 +435,7 @@
                 const tick = () => {
                     if (Date.now() > this._deadline) { this.stop(); this.giveUp(); return; }
 
-                    fetch(@js(route('events.public.language.status', ['event' => $e['key'], 'locale' => '__L__'])).replace('__L__', encodeURIComponent(row.code)), {
+                    fetch(@js($langUrls['status']).replace('__L__', encodeURIComponent(row.code)), {
                         headers: { 'Accept': 'application/json' },
                     })
                     .then(r => r.ok ? r.json() : Promise.reject(r))

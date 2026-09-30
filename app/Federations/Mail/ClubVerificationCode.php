@@ -13,7 +13,7 @@ class ClubVerificationCode extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public string $code, public string $clubName, public string $eventName) {}
+    public function __construct(public string $code, public string $clubName, public string $eventName, public ?string $link = null) {}
 
     public function envelope(): Envelope
     {

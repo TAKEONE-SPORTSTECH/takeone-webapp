@@ -41,6 +41,7 @@ return [
     'preview_club_page'    => 'Club Page',
     'send_notification'    => 'Send notification',
     'back_to_chain'        => 'Back to chain',
+    'back_to_business'     => 'Back to business',
     'back_to_explore'      => 'Back to explore',
 
     // shared (cross-feature)
@@ -668,6 +669,10 @@ return [
     'club_details_index_vat_rate_warning' => 'This VAT rate applies to NEW transactions only. Past transactions preserve their original VAT rate.',
     'club_details_index_contact_information' => 'Contact Information',
     'club_details_index_club_contact' => 'Club Contact',
+    'club_details_index_use_owner_contact' => "Use the owner's contact information",
+    'club_details_index_use_owner_contact_help' => "Members and visitors see the owner's email and phone instead of the club's own. The club's own details are kept.",
+    'club_details_index_owner_contact_missing' => 'The owner has no email or phone on file.',
+    'club_details_index_no_owner_contact' => 'Assign an owner first.',
     'club_details_index_club_email_label' => 'Club Email',
     'club_details_index_club_email_placeholder' => 'info@yourclub.com',
     'club_details_index_country_label' => 'Country',

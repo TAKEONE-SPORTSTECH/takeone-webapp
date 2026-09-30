@@ -131,7 +131,7 @@ class EntryPanelController extends Controller
             'permissions' => $permissions,
             'withdrawal' => $pending ? $this->withdrawals->present($pending) : null,
             'clubs' => $this->entries->representableClubs($me),
-            'belts' => BeltRank::ladder(),
+            'belts' => app(\App\Events\Support\CategorySystems::class)->ladderFor($event),
             'drawOpen' => $drawOpen,
             'drawNote' => $drawOpen ? null : $access->drawHiddenMessage($event),
             'myBouts' => $myBouts,
@@ -274,7 +274,7 @@ class EntryPanelController extends Controller
             'state' => $state,
             'paid_at' => $registration->paid_at?->toIso8601String(),
             'has_proof' => (bool) $registration->payment_proof,
-            'club' => $event->tenant?->club_name,
+            'club' => $event->host()->name ?: null,
             // Only the fields a payer actually needs to make the transfer. No
             // storage path for the proof itself ever leaves this method — the
             // file is read back through the officials' own authorised route.
@@ -439,7 +439,7 @@ class EntryPanelController extends Controller
     {
         $validated = $request->validate([
             'weight' => ['sometimes', 'nullable', 'numeric', 'min:15', 'max:250'],
-            'belt_colour' => ['sometimes', 'nullable', 'string', Rule::in(BeltRank::colours())],
+            'belt_colour' => ['sometimes', 'nullable', 'string', Rule::in(BeltRank::accepted($event->sport))],
             'belt_grade' => ['sometimes', 'nullable', 'string', 'max:32'],
             // Real bytes are checked by the trait; this only refuses anything
             // that is not a data URI before we spend time decoding it.

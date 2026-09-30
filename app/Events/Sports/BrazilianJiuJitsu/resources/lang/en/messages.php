@@ -53,4 +53,8 @@ return [
     'belt_purple' => 'Purple',
     'belt_brown' => 'Brown',
     'belt_black' => 'Black',
+
+    // Grades on the sport's own belt ladder (beltLadder()), 2026-09-27.
+    'grade_stripes' => '{0} No stripes|{1} 1 stripe|[2,*] :n stripes',
+    'grade_degree' => '{1} 1st degree|{2} 2nd degree|{3} 3rd degree|[4,*] :nth degree',
 ];

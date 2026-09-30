@@ -71,6 +71,7 @@
                                 addressName="address"
                                 :defaultLat="$club->latitude ?? 25.2048"
                                 :defaultLng="$club->longitude ?? 55.2708"
+                                mapsUrlName="maps_url"
                             />
                             <div class="space-y-1" x-show="lang==='ar'" x-cloak>
                                 <label class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_edit_address_ar_label') }}</label>
@@ -82,12 +83,6 @@
                                        x-cloak
                                        placeholder="العنوان بالعربية"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                            </div>
-                            <div class="space-y-1">
-                                <label class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_edit_google_maps_url') }}</label>
-                                <input type="url" id="editFacilityMapsUrl" name="maps_url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                       placeholder="https://maps.google.com/...">
-                                <p class="text-xs text-gray-500">{{ __('admin.club_facilities_edit_maps_url_hint') }}</p>
                             </div>
                         </div>
 

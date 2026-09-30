@@ -82,7 +82,9 @@
                                 :defaultLat="$club->latitude ?? 25.2048"
                                 :defaultLng="$club->longitude ?? 55.2708"
                                 :required="true"
+                                mapsUrlName="maps_url"
                             />
+                            <span id="addFacilityError_maps_url" class="text-red-500 text-xs hidden block"></span>
                             <div class="space-y-1" x-show="lang==='ar'" x-cloak>
                                 <label class="block text-sm font-medium text-gray-700">Address (العربية)</label>
                                 <input type="text"
@@ -95,14 +97,6 @@
                                        value="{{ old('translations.address.ar', data_get($facility ?? null, 'translations.address.ar')) }}">
                             </div>
                             <input type="hidden" id="facilityMapZoom" name="map_zoom" value="13">
-                            <div class="space-y-1">
-                                <label class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_add_google_maps_url') }}</label>
-                                <input type="url" id="facilityMapsUrl" name="maps_url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                       placeholder="https://maps.google.com/..."
-                                       oninput="clearAddFacilityError('maps_url')">
-                                <span id="addFacilityError_maps_url" class="text-red-500 text-xs hidden block"></span>
-                                <p class="text-xs text-gray-500">{{ __('admin.club_facilities_add_maps_url_hint') }}</p>
-                            </div>
                         </div>
 
                         <!-- Operating Hours Section -->
@@ -329,10 +323,10 @@ document.addEventListener('DOMContentLoaded', function() {
             valid = false;
         }
 
-        const mapsUrlVal = document.getElementById('facilityMapsUrl')?.value.trim();
+        const mapsUrlVal = document.getElementById('addFacilityMapsUrl')?.value.trim();
         if (mapsUrlVal && !/^https?:\/\/.+/.test(mapsUrlVal)) {
             showAddFacilityError('maps_url', '{{ __("admin.club_facilities_add_invalid_url") }}');
-            document.getElementById('facilityMapsUrl').classList.add('border-red-400');
+            document.getElementById('addFacilityMapsUrl').classList.add('border-red-400');
             valid = false;
         }
 
@@ -370,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const fieldMap = {
                     name:        { id: 'name',     inputId: 'facilityName' },
                     description: { id: 'description', inputId: 'facilityDescription' },
-                    maps_url:    { id: 'maps_url', inputId: 'facilityMapsUrl' },
+                    maps_url:    { id: 'maps_url', inputId: 'addFacilityMapsUrl' },
                     address:     { id: 'address',  inputId: null },
                     latitude:    { id: 'latitude', inputId: null },
                     longitude:   { id: 'longitude',inputId: null },
@@ -421,7 +415,7 @@ function showAddFacilityError(field, message) {
 function clearAddFacilityError(field) {
     const el = document.getElementById('addFacilityError_' + field);
     if (el) { el.textContent = ''; el.classList.add('hidden'); }
-    const inputMap = { name: 'facilityName', maps_url: 'facilityMapsUrl', description: 'facilityDescription' };
+    const inputMap = { name: 'facilityName', maps_url: 'addFacilityMapsUrl', description: 'facilityDescription' };
     const inputId = inputMap[field];
     if (inputId) document.getElementById(inputId)?.classList.remove('border-red-400');
 }

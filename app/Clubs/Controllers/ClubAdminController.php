@@ -316,6 +316,15 @@ class ClubAdminController extends Controller
             $data['settings'] = array_merge($club->settings ?? [], $request->settings);
         }
 
+        // Contact source switch — only touched when the details form submits it.
+        // The club's own email/phone are kept either way, so switching back
+        // restores them.
+        if ($request->has('use_owner_contact')) {
+            $data['settings'] = array_merge($data['settings'] ?? $club->settings ?? [], [
+                'contact_source' => $request->boolean('use_owner_contact') ? 'owner' : 'club',
+            ]);
+        }
+
         foreach (['logo', 'favicon', 'cover_image', 'registration_splash_image'] as $field) {
             if ($request->filled($field) && str_starts_with($request->input($field), 'data:image')) {
                 if ($club->$field && Storage::disk('public')->exists($club->$field)) {

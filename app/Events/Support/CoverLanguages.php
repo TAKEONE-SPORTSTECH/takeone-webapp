@@ -69,6 +69,51 @@ class CoverLanguages
     }
 
     /**
+     * The same carousel rows for ANY translatable record — a federation's club
+     * invitation, so far (added 2026-09-28). The locale loop, the flag, the
+     * native name and the three control labels are this class's one copy; the
+     * caller supplies only what is ITS record's words in each language:
+     * `$words(string $code): array{tag: string, ev_title: string, ev_date: string}`,
+     * called while that locale is set.
+     *
+     * Not cached here — the caller knows what its record's key is.
+     *
+     * @param  callable(string): array{tag: string, ev_title: string, ev_date: string}  $words
+     * @return array<int, array<string, mixed>>
+     */
+    public static function forRecord(\App\Translation\Contracts\TranslatableContent&\Illuminate\Database\Eloquent\Model $record, callable $words): array
+    {
+        $locales = Translations::locales();
+        $offered = array_flip(Translations::offered($record));
+        $was = app()->getLocale();
+        $rows = [];
+
+        try {
+            foreach ($locales->all() as $code => $meta) {
+                if (! isset($offered[$code])) {
+                    continue;
+                }
+                app()->setLocale($code);
+
+                $rows[] = [
+                    'code' => $code,
+                    'flag' => $locales->flag($code),
+                    'native' => $meta['native'],
+                    'title' => $meta['name'],
+                    'dir' => $meta['dir'] ?? 'ltr',
+                    'label_language' => (string) trans('events::events.cover_language', [], $code),
+                    'label_search' => (string) trans('events::events.cover_search', [], $code),
+                    'label_enter' => (string) trans('events::events.cover_enter', [], $code),
+                ] + $words($code);
+            }
+        } finally {
+            app()->setLocale($was);
+        }
+
+        return $rows;
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     private static function build(ClubEvent $event, array $payload): array

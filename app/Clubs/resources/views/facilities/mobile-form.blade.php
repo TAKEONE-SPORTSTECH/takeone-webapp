@@ -33,6 +33,7 @@ window.facilityFormSheet = function () {
         mapEl(suffix) { return document.getElementById('facilityMap' + suffix); },
         setMap(lat, lng, address) {
             const a = this.mapEl('Address'); if (a) a.value = address || '';
+            const u = this.mapEl('MapsUrl'); if (u) u.value = this.maps_url || '';
             const fLat = parseFloat(lat), fLng = parseFloat(lng);
             const la = this.mapEl('Lat'); if (la) la.value = isNaN(fLat) ? '' : fLat;
             const ln = this.mapEl('Lng'); if (ln) ln.value = isNaN(fLng) ? '' : fLng;
@@ -206,15 +207,11 @@ window.facilityFormSheet = function () {
                         addressName="address"
                         :defaultLat="$club->latitude ?? 25.2048"
                         :defaultLng="$club->longitude ?? 55.2708"
-                        height="13rem" />
+                        height="13rem"
+                        mapsUrlName="maps_url" />
                     <div x-show="lang==='ar'" x-cloak>
                         <label class="form-label">{{ __('admin.fac_address') }} (العربية)</label>
                         <input type="text" name="translations[address][ar]" x-model="address_ar" dir="rtl" placeholder="العنوان بالعربية" class="form-control">
-                    </div>
-                    <div>
-                        <label class="form-label">{{ __('admin.fac_maps_url') }}</label>
-                        <input type="url" name="maps_url" x-model="maps_url" placeholder="https://maps.google.com/..." class="form-control">
-                        <p class="text-xs text-muted-foreground mt-1">{{ __('admin.club_facilities_add_maps_url_hint') }}</p>
                     </div>
                 </div>
 
