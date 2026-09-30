@@ -43,9 +43,100 @@ class BrazilianJiuJitsu extends AbstractCombatSport
      * only one table — so nothing that already asks for weightDivisions() has
      * to know a second one now exists.
      */
+    /**
+     * The IBJJF belt system — this sport's own, declared here and nowhere
+     * else (see App\Sports\Combat\BeltLadder). Kids (4–15) wear the grey,
+     * yellow, orange and green families, each in its white-striped, solid and
+     * black-striped form; adults (16+) white to black; the coral and red belts
+     * are the masters' 7th to 10th degree. Stripes 0–4 on every coloured belt,
+     * degrees 1–6 on black.
+     */
+    public function beltLadder(): array
+    {
+        $stripes = \App\Sports\Combat\BeltLadder::numbered('sport-brazilianjiujitsu::messages.grade_stripes', range(0, 4));
+        $degrees = \App\Sports\Combat\BeltLadder::numbered('sport-brazilianjiujitsu::messages.grade_degree', range(1, 6));
+        $rank = fn (string $v, string $g, array $grades) => \App\Sports\Combat\BeltLadder::rank($v, $g, $grades);
+
+        $kids = [$rank('white', 'kids', $stripes)];
+        foreach (['grey', 'yellow', 'orange', 'green'] as $family) {
+            foreach ([$family.'-white', $family, $family.'-black'] as $v) {
+                $kids[] = $rank($v, 'kids', $stripes);
+            }
+        }
+
+        return array_merge($kids, [
+            $rank('blue', 'adult', $stripes),
+            $rank('purple', 'adult', $stripes),
+            $rank('brown', 'adult', $stripes),
+            $rank('black', 'adult', $degrees),
+            $rank('red-black', 'master', \App\Sports\Combat\BeltLadder::numbered('sport-brazilianjiujitsu::messages.grade_degree', [7])),
+            $rank('red-white', 'master', \App\Sports\Combat\BeltLadder::numbered('sport-brazilianjiujitsu::messages.grade_degree', [8])),
+            $rank('red', 'master', \App\Sports\Combat\BeltLadder::numbered('sport-brazilianjiujitsu::messages.grade_degree', [9, 10])),
+        ]);
+    }
+
     public function weightDivisions(string $ruleset = 'gi'): array
     {
-        return config(self::RULESETS[$ruleset] ?? self::RULESETS['gi'], []);
+        /* This sport's own tables, in its own folder (divisions/gi.php and
+           divisions/nogi.php) — moved out of the shared events config on
+           2026-09-27; the old config keys still answer for any reader that has
+           not moved. The data files are the published limits, untouched; the
+           official structure IBJJF adds on top of them is added here. */
+        static $tables = [];
+
+        $file = $ruleset === 'nogi' ? 'nogi' : 'gi';
+
+        return $tables[$file] ??= self::withOfficialStructure(
+            (static fn () => require __DIR__.'/divisions/'.$file.'.php')()
+        );
+    }
+
+    /** The IBJJF masters bands: same weights, separated by age. */
+    public const MASTER_BANDS = [
+        'Master 1' => ['min' => 30, 'max' => 35],
+        'Master 2' => ['min' => 36, 'max' => 40],
+        'Master 3' => ['min' => 41, 'max' => 45],
+        'Master 4' => ['min' => 46, 'max' => 50],
+        'Master 5' => ['min' => 51, 'max' => 55],
+        'Master 6' => ['min' => 56, 'max' => 60],
+        'Master 7' => ['min' => 61, 'max' => null],
+    ];
+
+    /**
+     * What IBJJF runs beyond the weight limits themselves (2026-09-27):
+     *
+     *   · the OPEN CLASS (absolute) — every weight, entered in addition to a
+     *     weight class, for Juvenile, Adult and every Master band. Flagged
+     *     `open` so classify() never places an athlete into it by weight, and
+     *     the range fallback in Enrolment prefers the tighter weight class.
+     *   · MASTER 1–7 — the masters split by age (30–35, 36–40 … 61+), each on
+     *     the adult weights. Added AFTER the existing 'Master' band, which
+     *     stays (30+, every master together), so every division already named
+     *     after it, and every placement made against it, is unchanged.
+     *
+     * Kids are left as the table has them: IBJJF weighs kids per year of age,
+     * and those limits are to be supplied from the federation's own sheet
+     * rather than written from memory.
+     */
+    private static function withOfficialStructure(array $table): array
+    {
+        $open = ['label' => 'Open', 'name' => 'Open Class', 'min' => 0, 'max' => 200, 'open' => true];
+
+        foreach (['Juvenile', 'Adult', 'Master'] as $band) {
+            foreach (['male', 'female'] as $gender) {
+                if (isset($table[$band][$gender]) && ! collect($table[$band][$gender])->contains('open', true)) {
+                    $table[$band][$gender][] = $open;
+                }
+            }
+        }
+
+        if (isset($table['Master'])) {
+            foreach (array_keys(self::MASTER_BANDS) as $band) {
+                $table[$band] ??= $table['Master'];
+            }
+        }
+
+        return $table;
     }
 
     /**
@@ -67,6 +158,21 @@ class BrazilianJiuJitsu extends AbstractCombatSport
      *
      * @return array<string, array{min: int, max: int|null}>
      */
+    public function defaultCategorySystem(): string
+    {
+        return 'ibjjf';
+    }
+
+    public function defaultCategoryLabel(): string
+    {
+        return 'IBJJF';
+    }
+
+    public function categoryAgeGroups(): array
+    {
+        return collect(self::ageBands())->map(fn ($r, $k) => ['key' => $k, 'min' => $r['min'], 'max' => $r['max']])->values()->all();
+    }
+
     public static function ageBands(): array
     {
         return [
@@ -76,7 +182,7 @@ class BrazilianJiuJitsu extends AbstractCombatSport
             // Master 1 opens at 30 and every band above it shares these
             // weights, which is why they share one entry.
             'Master' => ['min' => 30, 'max' => null],
-        ];
+        ] + self::MASTER_BANDS;   // AFTER 'Master', so classify() still answers 'Master'
     }
 
     /**
@@ -119,6 +225,12 @@ class BrazilianJiuJitsu extends AbstractCombatSport
         $table = $this->weightDivisions($ruleset);
 
         foreach ($table[$group][$gender] ?? [] as $class) {
+            // The open class takes every weight; nobody is PLACED in it by
+            // the scale — it is a division an athlete enters on purpose.
+            if ($class['open'] ?? false) {
+                continue;
+            }
+
             if ($weight >= $class['min'] && $weight <= $class['max']) {
                 return [
                     'age_group' => $group,
@@ -235,5 +347,11 @@ class BrazilianJiuJitsu extends AbstractCombatSport
             'red' => __('sport-brazilianjiujitsu::messages.corner_blue'),
             'blue' => __('sport-brazilianjiujitsu::messages.corner_white'),
         ];
+    }
+
+    /** The red corner stands on the RIGHT of every screen in this sport. */
+    public function redCornerSide(): string
+    {
+        return 'right';
     }
 }

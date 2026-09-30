@@ -62,7 +62,9 @@ class BeltIcon
             return null;
         }
 
-        return self::fromColour($chip['colour'], $tip, $chip['pale'])
+        // A two-tone belt (BJJ grey-white, Taekwondo yellow-green) shows its
+        // second colour as the stripe when nothing else is asked for.
+        return self::fromColour($chip['colour'], $tip ?? ($chip['accent'] ?? null), $chip['pale'])
             + ['label' => $chip['label']];
     }
 

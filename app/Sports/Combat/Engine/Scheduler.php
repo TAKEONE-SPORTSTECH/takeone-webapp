@@ -44,7 +44,8 @@ class Scheduler
             return 1;
         }
 
-        $elapsed = (int) $event->date->copy()->startOfDay()->diffInDays(now()->startOfDay(), absolute: false);
+        // The competition day rolls over at the HALL's midnight, not UTC's.
+        $elapsed = (int) $event->atLocal($event->date)->diffInDays($event->localNow()->startOfDay(), absolute: false);
 
         return max(1, min($this->eventDayCount($event), $elapsed + 1));
     }

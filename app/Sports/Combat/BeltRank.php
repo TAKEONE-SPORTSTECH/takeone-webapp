@@ -63,8 +63,16 @@ class BeltRank
      *
      * @return array<int, array{value: string, label: string, bg: string, fg: string}>
      */
-    public static function ladder(): array
+    public static function ladder(?string $sport = null): array
     {
+        /* The event's own sport first — BJJ offers IBJJF belts, Karate kyu and
+           dan, Taekwondo geup/poom/dan (each declared in its sport folder, see
+           BeltLadder). A sport that declares none, and a caller with no event
+           to hand, get the platform's generic ladder below, exactly as before. */
+        if ($sport !== null && ($own = BeltLadder::forSport($sport)) !== []) {
+            return $own;
+        }
+
         return [
             ['value' => 'white',  'label' => __('personal.belt_white'),  'bg' => '#f8fafc', 'fg' => '#1f2937'],
             ['value' => 'yellow', 'label' => __('personal.belt_yellow'), 'bg' => '#facc15', 'fg' => '#1f2937'],
@@ -109,7 +117,10 @@ class BeltRank
             return null;
         }
 
-        $row = collect(self::ladder())->firstWhere('value', $key);
+        $row = collect(self::ladder())->firstWhere('value', $key)
+            // A sport's own colour (`grey-white`, `red-black`, …) — drawn
+            // wherever it appears, whether or not the sport is to hand.
+            ?? collect(BeltLadder::everySport())->firstWhere('value', $key);
 
         if ($row === null) {
             return null;
@@ -129,13 +140,42 @@ class BeltRank
             'colour' => $row['bg'],
             'label' => trim($row['label'].($degrees > 0 ? ' '.$degrees : '')),
             'pale' => $lum > 0.82,
+            // The second colour of a two-tone belt, or null.
+            'accent' => $row['accent'] ?? null,
         ];
     }
 
     /** The colour values the ladder offers — for an `in:` validation rule. */
-    public static function colours(): array
+    public static function colours(?string $sport = null): array
     {
-        return array_column(self::ladder(), 'value');
+        return array_column(self::ladder($sport), 'value');
+    }
+
+    /**
+     * Every colour the server ACCEPTS for this sport: its own ladder plus the
+     * generic one. Forms offer only the sport's own list; validation takes
+     * both, so an entry saved before the sport had a ladder can still be
+     * edited without its belt being refused.
+     *
+     * @return list<string>
+     */
+    public static function accepted(?string $sport = null): array
+    {
+        return array_values(array_unique(array_merge(self::colours($sport), self::colours())));
+    }
+
+    /**
+     * The grades a belt of this colour carries in this sport — stripes, kyu,
+     * dan… — in order, for the grade to be picked rather than typed. Empty
+     * when the sport declares none; the grade stays free text then.
+     *
+     * @return list<string>
+     */
+    public static function grades(?string $sport, ?string $colour): array
+    {
+        $row = collect(self::ladder($sport))->firstWhere('value', $colour);
+
+        return array_values($row['grades'] ?? []);
     }
 
     /**

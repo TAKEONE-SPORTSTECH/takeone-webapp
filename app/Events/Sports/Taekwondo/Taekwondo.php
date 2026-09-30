@@ -7,7 +7,7 @@ use App\Sports\Combat\AbstractCombatSport;
 /**
  * Taekwondo (World Taekwondo) — the first combat-sport plug-in.
  * Wraps the single-source weight tables (config/taekwondo_divisions.php) and the
- * autoloaded classifier helper (classifyTaekwondo).
+ * package's own Classifier (formerly the global classifyTaekwondo helper).
  */
 class Taekwondo extends AbstractCombatSport
 {
@@ -21,14 +21,68 @@ class Taekwondo extends AbstractCombatSport
         return __('sport-taekwondo::messages.sport_label');
     }
 
+    /**
+     * Geup, poom and dan — the World Taekwondo / Kukkiwon system, declared
+     * here and nowhere else (see App\Sports\Combat\BeltLadder). Coloured
+     * belts from 10th geup (white) to 1st geup (red), the red-and-black poom
+     * belt for black-belt holders under 15 (1st–4th poom), and black from 1st
+     * to 9th dan. Tipped belts are drawn with their stripe colour.
+     */
+    public function beltLadder(): array
+    {
+        $geup = fn (array $n) => \App\Sports\Combat\BeltLadder::numbered('sport-taekwondo::messages.grade_geup', $n);
+        $rank = fn (string $v, string $g, array $grades) => \App\Sports\Combat\BeltLadder::rank($v, $g, $grades);
+
+        return [
+            $rank('white', 'geup', $geup([10])),
+            $rank('white-yellow', 'geup', $geup([9])),
+            $rank('yellow', 'geup', $geup([8])),
+            $rank('yellow-green', 'geup', $geup([7])),
+            $rank('green', 'geup', $geup([6])),
+            $rank('green-blue', 'geup', $geup([5])),
+            $rank('blue', 'geup', $geup([4])),
+            $rank('blue-red', 'geup', $geup([3])),
+            $rank('red', 'geup', $geup([2, 1])),
+            $rank('red-black', 'poom', \App\Sports\Combat\BeltLadder::numbered('sport-taekwondo::messages.grade_poom', range(1, 4))),
+            $rank('black', 'dan', \App\Sports\Combat\BeltLadder::numbered('sport-taekwondo::messages.grade_dan', range(1, 9))),
+        ];
+    }
+
     public function weightDivisions(): array
     {
-        return config('taekwondo_divisions', []);
+        // This sport's own table, in its own folder (divisions.php) — moved out
+        // of the shared events config on 2026-09-27; the old config key still
+        // answers for any reader that has not moved.
+        static $table = null;
+
+        return $table ??= (static fn () => require __DIR__.'/divisions.php')();
     }
 
     public function classify(string $gender, int $age, float $weight): ?array
     {
-        return classifyTaekwondo($gender, $age, $weight);
+        return Classifier::classify($gender, $age, $weight);
+    }
+
+    public function defaultCategorySystem(): string
+    {
+        return 'wt';
+    }
+
+    public function defaultCategoryLabel(): string
+    {
+        return 'World Taekwondo';
+    }
+
+    /** The bands classifyTaekwondo() applies (app/Events/Helpers/taekwondo_weightclass.php). */
+    public function categoryAgeGroups(): array
+    {
+        return [
+            ['key' => 'Kids', 'min' => 6, 'max' => 11],
+            ['key' => 'Cadet', 'min' => 12, 'max' => 14],
+            ['key' => 'Junior', 'min' => 15, 'max' => 17],
+            ['key' => 'Senior', 'min' => 18, 'max' => 30],
+            ['key' => 'Master', 'min' => 31, 'max' => null],
+        ];
     }
 
     /** WT awards two bronzes via repechage. */

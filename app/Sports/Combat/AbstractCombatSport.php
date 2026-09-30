@@ -33,9 +33,72 @@ abstract class AbstractCombatSport implements CombatSport
         ];
     }
 
+    /**
+     * This sport's own belts and grades (App\Sports\Combat\BeltLadder).
+     * Empty means "none declared", and every screen falls back to the
+     * platform's generic ladder.
+     */
+    public function beltLadder(): array
+    {
+        return [];
+    }
+
     public function bronzeRule(): string
     {
         return 'repechage';
+    }
+
+    // ─── Category and belt systems (2026-09-28) ─────────────────────────
+    //
+    // A sport runs under more than one rule book. Its DEFAULT system is its
+    // own table and its own classifier, untouched — so an event that never
+    // chose a system is classified exactly as it always was. A sport adds
+    // others by overriding categorySystems() (Karate adds Shotokan);
+    // organisers add their own (App\Events\Support\CategorySystems).
+
+    /** The key of this sport's own rule book, e.g. 'wkf'. */
+    public function defaultCategorySystem(): string
+    {
+        return 'standard';
+    }
+
+    /** Its name, as an organiser picks it. */
+    public function defaultCategoryLabel(): string
+    {
+        return $this->label();
+    }
+
+    /**
+     * The age groups of the default table, for an editor that starts a custom
+     * system from it. The classifier does not read these — it keeps its own.
+     *
+     * @return array<int, array{key: string, min: int, max: ?int}>
+     */
+    public function categoryAgeGroups(): array
+    {
+        return [];
+    }
+
+    /** @return array<string, CategorySystem> */
+    public function categorySystems(): array
+    {
+        $default = new CategorySystem(
+            key: $this->defaultCategorySystem(),
+            label: $this->defaultCategoryLabel(),
+            ageGroups: $this->categoryAgeGroups(),
+            classifier: fn (string $g, int $a, float $w, ?string $ruleset = null) => $ruleset !== null ? $this->classify($g, $a, $w, $ruleset) : $this->classify($g, $a, $w),
+            table: fn (?string $ruleset = null) => $ruleset !== null ? $this->weightDivisions($ruleset) : $this->weightDivisions(),
+        );
+
+        return [$default->key => $default];
+    }
+
+    /** @return array<string, BeltSystem> */
+    public function beltSystems(): array
+    {
+        $ladder = $this->beltLadder();
+
+        return $ladder === [] ? [] : [$this->defaultCategorySystem() => new BeltSystem($this->defaultCategorySystem(), $this->defaultCategoryLabel(), $ladder)];
     }
 
     /**
@@ -61,5 +124,18 @@ abstract class AbstractCombatSport implements CombatSport
             'red' => __('events::events.corner_red'),
             'blue' => __('events::events.corner_blue'),
         ];
+    }
+
+    /**
+     * Which side of every screen the red corner stands on: 'left' or 'right'.
+     *
+     * A convention of the sport, not of a screen — the up-next queue, the
+     * introduction, the scoreboard and the scoring table all read it, so an
+     * athlete is on the same side of the hall wherever they are looked for.
+     * Read through App\Sports\Combat\CornerSide, never compared inline.
+     */
+    public function redCornerSide(): string
+    {
+        return 'left';
     }
 }

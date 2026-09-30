@@ -7,7 +7,7 @@ use App\Sports\Combat\AbstractCombatSport;
 /**
  * Karate (World Karate Federation) — a combat-sport plug-in.
  * Wraps the single-source weight tables (config/karate_divisions.php) and the
- * autoloaded classifier helper (classifyKarate).
+ * package's own Classifier (formerly the global classifyKarate helper).
  */
 class Karate extends AbstractCombatSport
 {
@@ -21,14 +21,80 @@ class Karate extends AbstractCombatSport
         return __('sport-karate::messages.sport_label');
     }
 
+    /**
+     * Kyu and dan — the WKF grading system, declared here and nowhere else
+     * (see App\Sports\Combat\BeltLadder). Kyu belt colours differ between
+     * styles and federations; this is the widely used sequence, white at
+     * 10th kyu to brown at 1st kyu, then black from 1st to 10th dan.
+     */
+    public function beltLadder(): array
+    {
+        $kyu = fn (array $n) => \App\Sports\Combat\BeltLadder::numbered('sport-karate::messages.grade_kyu', $n);
+        $rank = fn (string $v, string $g, array $grades) => \App\Sports\Combat\BeltLadder::rank($v, $g, $grades);
+
+        return [
+            $rank('white', 'kyu', $kyu([10, 9])),
+            $rank('yellow', 'kyu', $kyu([8])),
+            $rank('orange', 'kyu', $kyu([7])),
+            $rank('green', 'kyu', $kyu([6])),
+            $rank('blue', 'kyu', $kyu([5])),
+            $rank('purple', 'kyu', $kyu([4])),
+            $rank('brown', 'kyu', $kyu([3, 2, 1])),
+            $rank('black', 'dan', \App\Sports\Combat\BeltLadder::numbered('sport-karate::messages.grade_dan', range(1, 10))),
+        ];
+    }
+
     public function weightDivisions(): array
     {
-        return config('karate_divisions', []);
+        // This sport's own table, in its own folder (divisions.php) — moved out
+        // of the shared events config on 2026-09-27; the old config key still
+        // answers for any reader that has not moved.
+        static $table = null;
+
+        return $table ??= (static fn () => require __DIR__.'/divisions.php')();
     }
 
     public function classify(string $gender, int $age, float $weight): ?array
     {
-        return classifyKarate($gender, $age, $weight);
+        return Classifier::classify($gender, $age, $weight);
+    }
+
+    public function defaultCategorySystem(): string
+    {
+        return 'wkf';
+    }
+
+    public function defaultCategoryLabel(): string
+    {
+        return 'WKF';
+    }
+
+    /** The bands classifyKarate() applies (app/Events/Helpers/karate_weightclass.php). */
+    public function categoryAgeGroups(): array
+    {
+        return [
+            ['key' => 'Kids', 'min' => 6, 'max' => 11],
+            ['key' => 'Cadet', 'min' => 12, 'max' => 15],
+            ['key' => 'Junior', 'min' => 16, 'max' => 17],
+            ['key' => 'Senior', 'min' => 18, 'max' => null],
+        ];
+    }
+
+    /**
+     * WKF (the sport's own table), and Shotokan — the season table the
+     * federation already publishes (public/libraries/karate-shotukan-weightclasses),
+     * read from that one file so the two can never disagree.
+     */
+    public function categorySystems(): array
+    {
+        $systems = parent::categorySystems();
+
+        $shotokan = \App\Support\KarateShotukanWeightclasses::categorySystem();
+        if ($shotokan) {
+            $systems[$shotokan->key] = $shotokan;
+        }
+
+        return $systems;
     }
 
     /**
@@ -95,5 +161,11 @@ class Karate extends AbstractCombatSport
             'red' => __('sport-karate::messages.corner_aka'),
             'blue' => __('sport-karate::messages.corner_ao'),
         ];
+    }
+
+    /** The red corner stands on the RIGHT of every screen in this sport. */
+    public function redCornerSide(): string
+    {
+        return 'right';
     }
 }
