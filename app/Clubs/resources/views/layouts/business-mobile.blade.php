@@ -36,7 +36,7 @@
             </div>
             <nav class="p-3 flex-1">
                 <p class="px-2 mt-1 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('clubs::business.chain') }}</p>
-                <a href="{{ route('business.dashboard') }}" data-shell-link data-route="business.dashboard"
+                <a href="{{ $dashboardUrl ?? route('business.dashboard') }}" data-shell-link data-route="business.dashboard"
                    class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {{ $currentRoute === 'business.dashboard' ? 'is-active' : '' }}">
                     <i class="bi bi-speedometer2 text-lg w-5 text-center"></i>{{ __('clubs::business.dashboard') }}
                 </a>

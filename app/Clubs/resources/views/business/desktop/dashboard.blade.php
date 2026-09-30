@@ -20,10 +20,12 @@
                 <p class="text-sm text-muted-foreground">{{ __('clubs::business.business_desktop_dashboard_chain_performance', ['count' => $totals['clubs'], 'clubs' => Str::plural('club', $totals['clubs'])]) }}</p>
             </div>
         </div>
+        @unless($readOnly ?? false)
         <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }))"
                 class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
             <i class="bi bi-plus-lg"></i>{{ __('clubs::business.create_club') }}
         </button>
+        @endunless
     </div>
 
     {{-- KPI cards --}}
@@ -62,10 +64,12 @@
             <div class="p-10 text-center">
                 <i class="bi bi-diagram-3 text-4xl text-gray-300"></i>
                 <p class="text-sm text-muted-foreground mt-3">{{ __('clubs::business.business_desktop_dashboard_no_clubs') }}</p>
+                @unless($readOnly ?? false)
                 <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }))"
                         class="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
                     <i class="bi bi-plus-lg"></i>{{ __('clubs::business.create_club') }}
                 </button>
+                @endunless
             </div>
         @else
             <div class="overflow-x-auto">
@@ -114,9 +118,11 @@
     </div>
 
     <div x-data>
+        @unless($readOnly ?? false)
         <template x-teleport="body">
             <x-club-modal mode="create" context="business" />
         </template>
+        @endunless
     </div>
 </div>
 @endsection

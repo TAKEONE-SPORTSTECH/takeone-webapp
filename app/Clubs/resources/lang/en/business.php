@@ -101,4 +101,7 @@ return [
     'business_setup_status_rejected' => 'Rejected',
     'business_setup_subheading' => 'Group several clubs under one brand and manage them from a single dashboard.',
     'business_setup_submit_button' => 'Submit for approval',
+    'pick_title'        => 'Businesses',
+    'pick_sub'          => 'Pick a business to see its whole chain.',
+    'pick_none'         => 'No approved businesses yet.',
 ];

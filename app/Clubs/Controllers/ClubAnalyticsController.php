@@ -5,6 +5,7 @@ namespace App\Clubs\Controllers;
 use App\Http\Controllers\Controller;
 use App\Clubs\Models\ClubPackage;
 use App\Clubs\Models\Tenant;
+use App\Clubs\Support\ClubAnalytics;
 use App\Clubs\Support\ClubCache;
 use App\Clubs\Concerns\HandlesClubAuthorization;
 use Illuminate\Support\Facades\Cache;
@@ -13,24 +14,12 @@ class ClubAnalyticsController extends Controller
 {
     use HandlesClubAuthorization;
 
-    public function analytics(Tenant $club)
+    public function analytics(Tenant $club, ClubAnalytics $analytics)
     {
         $this->authorizeClub($club);
         $clubId = $club->id;
 
-        $analytics = [
-            'new_members' => 0,
-            'new_members_change' => 0,
-            'retention_rate' => 0,
-            'retention_change' => 0,
-            'avg_revenue' => 0,
-            'total_checkins' => 0,
-            'checkins_change' => 0,
-            'monthly_members' => array_fill(0, 12, 0),
-            'activity_labels' => ['No data'],
-            'activity_data' => [100],
-            'hourly_checkins' => array_fill(0, 9, 0),
-        ];
+        $analytics = $analytics->build($club);
 
         $popularPackages = Cache::remember(ClubCache::analyticsPopularPackages($clubId), ClubCache::TTL_ANALYTICS, function () use ($clubId) {
             return ClubPackage::where('tenant_id', $clubId)
@@ -39,6 +28,10 @@ class ClubAnalyticsController extends Controller
                 ->take(5)
                 ->get();
         });
+
+        // Each package's share of the subscriptions, for the progress bars.
+        $totalSubs = max(1, (int) $popularPackages->sum('subscriptions_count'));
+        $popularPackages->each(fn ($p) => $p->percentage = (int) round($p->subscriptions_count / $totalSubs * 100));
 
         return view(\App\Clubs\Support\ClubView::pick('analytics', 'clubs'), compact('club', 'analytics', 'popularPackages'));
     }

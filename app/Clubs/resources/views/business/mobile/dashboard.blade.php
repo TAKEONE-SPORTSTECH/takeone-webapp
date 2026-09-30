@@ -15,10 +15,12 @@
                 <h1 class="text-2xl font-black mt-0.5 tabular-nums">{{ $cur }} {{ number_format($totals['revenue'], 2) }}</h1>
             </div>
             <div class="flex items-center gap-2">
+                @unless($readOnly ?? false)
                 <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }))"
                         class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('clubs::business.create_club') }}">
                     <i class="bi bi-plus-lg text-xl"></i>
                 </button>
+                @endunless
                 <button type="button" @click="drawer = true" class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('clubs::business.menu') }}">
                     <i class="bi bi-grid text-xl"></i>
                 </button>
@@ -92,10 +94,12 @@
             <div class="m-card p-8 text-center">
                 <i class="bi bi-diagram-3 text-3xl text-gray-300 m-float inline-block"></i>
                 <p class="text-sm text-muted-foreground mt-2">{{ __('clubs::business.no_clubs_linked') }}</p>
+                @unless($readOnly ?? false)
                 <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }))"
                         class="m-press mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-medium">
                     <i class="bi bi-plus-lg"></i>{{ __('clubs::business.create_club') }}
                 </button>
+                @endunless
             </div>
         @else
             <div class="mobile-stagger space-y-3">
@@ -135,8 +139,10 @@
 </div>
 
 <div x-data>
+    @unless($readOnly ?? false)
     <template x-teleport="body">
         <x-club-modal mode="create" context="business" />
     </template>
+    @endunless
 </div>
 @endsection

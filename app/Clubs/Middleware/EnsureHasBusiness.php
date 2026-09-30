@@ -2,6 +2,7 @@
 
 namespace App\Clubs\Middleware;
 
+use App\Clubs\Models\Business;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +16,23 @@ class EnsureHasBusiness
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $business = Auth::user()?->ownedBusiness;
+        $user = Auth::user();
+        $business = $user?->ownedBusiness;
+
+        // A super-admin may LOOK at any approved business (?b={slug}), read
+        // only: this applies to GET requests alone, so every write in this
+        // area still acts on the business the user actually owns.
+        if ($user?->isSuperAdmin() && $request->isMethod('GET')) {
+            $picked = $request->query('b');
+            if (is_string($picked) && $picked !== '') {
+                $business = Business::approved()->where('slug', $picked)->first();
+                if (! $business) {
+                    return redirect()->route('business.home');
+                }
+            } elseif (! $business || ! $business->isApproved()) {
+                return redirect()->route('business.home');
+            }
+        }
 
         if (! $business || ! $business->isApproved()) {
             return redirect()->route('business.setup');
