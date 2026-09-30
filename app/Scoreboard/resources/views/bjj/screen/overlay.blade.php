@@ -94,6 +94,25 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; }
 <div id="stage">
   <div id="strip"></div>
   <div id="bar">
+    {{-- The corners stand where they stand on the wall — BJJ puts its red
+         corner (BLUE in the data) on the RIGHT (App\\Sports\\Combat\\CornerSide).
+         Each plate reads from the outer edge in: name, score, then the ladders. --}}
+    @if (\App\Sports\Combat\CornerSide::redRight('bjj'))
+    <div class="plate white" style="border-right:none; border-left:5px solid var(--corner-white-muted);">
+      <div class="pName" id="whiteName"></div>
+      <div class="pScore num" id="whiteScore">0</div>
+      <div class="mini"><span class="a" id="whiteAdv"></span><span class="p" id="whitePen"></span></div>
+    </div>
+    <div class="plate" id="clockPlate">
+      <div class="num" id="clock">0:00</div>
+      <div id="state"></div>
+    </div>
+    <div class="plate blue" style="border-left:none; border-right:5px solid var(--corner-blue);">
+      <div class="mini"><span class="p" id="bluePen"></span><span class="a" id="blueAdv"></span></div>
+      <div class="pScore num" id="blueScore">0</div>
+      <div class="pName" id="blueName"></div>
+    </div>
+    @else
     <div class="plate blue">
       <div class="pName" id="blueName"></div>
       <div class="pScore num" id="blueScore">0</div>
@@ -108,6 +127,7 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; }
       <div class="pScore num" id="whiteScore">0</div>
       <div class="pName" id="whiteName"></div>
     </div>
+    @endif
     <div id="spacer"></div>
   </div>
 </div>

@@ -519,7 +519,7 @@
        wrong everywhere else the entry appears. --}}
   <div id="ctlTop">
     <div style="display:flex;align-items:center;gap:16px;min-width:0;">
-      @php $hostLogo = $event->tenant?->logo ? file_url($event->tenant->logo) : null; @endphp
+      @php $hostLogo = $event->host()->logo; @endphp
       @if ($hostLogo)
         {{-- The host's crest, bare on a sizing box (Design Rule #5), and only
              when there is one — never a white tile standing in for it. --}}
@@ -563,9 +563,12 @@
   {{-- ── BLUE | centre | WHITE ──────────────────────────────────────────── --}}
   <div id="ctlBody">
 
+    {{-- Which side the red corner (BLUE in the data) stands on is BJJ's
+         convention (App\\Sports\\Combat\\CornerSide) — the console matches the wall. --}}
+    @php $rr = \App\Sports\Combat\CornerSide::redRight('bjj'); @endphp
     @foreach ([
-        ['blue', __('sport-brazilianjiujitsu::messages.corner_blue'), 'var(--blue)', 'var(--blue-ink)', '1', '.05s', false, '100deg'],
-        ['white', __('sport-brazilianjiujitsu::messages.corner_white'), 'var(--white)', 'var(--white-ink)', '3', '.3s', true, '260deg'],
+        ['blue', __('sport-brazilianjiujitsu::messages.corner_blue'), 'var(--blue)', 'var(--blue-ink)', $rr ? '3' : '1', '.05s', $rr, $rr ? '260deg' : '100deg'],
+        ['white', __('sport-brazilianjiujitsu::messages.corner_white'), 'var(--white)', 'var(--white-ink)', $rr ? '1' : '3', '.3s', ! $rr, $rr ? '100deg' : '260deg'],
     ] as [$side, $label, $colour, $plateInk, $order, $delay, $mirror, $angle])
     <div class="corner{{ $mirror ? ' mirror' : '' }}" style="order:{{ $order }};animation:cardIn .6s {{ $delay }} cubic-bezier(.2,.8,.2,1) both;">
       <span class="rule" style="background:{{ $colour }};"></span>

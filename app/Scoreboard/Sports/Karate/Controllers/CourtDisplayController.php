@@ -213,8 +213,7 @@ class CourtDisplayController extends Controller
                 // a queue board, and stays on this surface between bouts.
                 'pinned' => $surface === 'bout' ? 'bout' : false,
                 // The host club's crest fills the design's dashed logo box.
-                'eventLogo' => $device->event->tenant?->logo
-                    ? file_url($device->event->tenant->logo) : null,
+                'eventLogo' => $device->event->host()->logo,
                 // Where this screen fetches what it plays: the PREFIX, with the
                 // page appending a slot the first time it needs one and
                 // remembering a 404 as "this event did not upload that".

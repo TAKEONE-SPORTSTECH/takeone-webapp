@@ -38,6 +38,89 @@
         </div>
     </form>
 
+    {{-- Hall screens: which side the red corner stands on, per sport.
+         Saves on tap (no page reload); every screen of that sport follows it
+         on its next reload. App\Sports\Combat\CornerSide. --}}
+    <div class="mt-8 max-w-2xl">
+        <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">{{ __('platform.corner_side_title') }}</h3>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+             x-data="{
+                rows: @js($cornerSides),
+                saving: null,
+                async pick(row, side) {
+                    if (this.saving) return;
+                    this.saving = row.sport;
+                    try {
+                        const res = await fetch(@js(route('admin.platform.settings.corner-side')), {
+                            method: 'PUT',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({ sport: row.sport, side: side }),
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            Object.assign(row, data.corner);
+                            window.showToast('success', data.message);
+                        } else {
+                            window.showToast('error', data.message || 'Could not save.');
+                        }
+                    } catch (e) {
+                        window.showToast('error', 'Network error while saving.');
+                    } finally {
+                        this.saving = null;
+                    }
+                },
+             }">
+            <p class="font-semibold text-gray-900">{{ __('platform.corner_side_heading') }}</p>
+            <p class="text-sm text-muted-foreground mt-0.5">{{ __('platform.corner_side_desc') }}</p>
+
+            <div class="mt-5 space-y-4">
+                <template x-for="row in rows" :key="row.sport">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between border-t border-gray-100 pt-4 first:border-t-0 first:pt-0">
+                        <div class="min-w-0">
+                            <p class="font-medium text-gray-900" x-text="row.label"></p>
+                            <p class="text-xs text-muted-foreground mt-0.5">
+                                <span x-text="row.default === 'right'
+                                    ? @js(__('platform.corner_side_default_is', ['side' => __('platform.corner_side_side_right')]))
+                                    : @js(__('platform.corner_side_default_is', ['side' => __('platform.corner_side_side_left')]))"></span>
+                                <template x-if="row.override">
+                                    <span class="ms-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium">
+                                        <i class="bi bi-arrow-left-right"></i>{{ __('platform.corner_side_overridden') }}
+                                    </span>
+                                </template>
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-shrink-0" role="radiogroup" :aria-label="row.label">
+                            {{-- The two choices drawn as the corners themselves: a red and a blue tile, in the order they would stand. --}}
+                            <template x-for="side in ['left', 'right']" :key="side">
+                                <button type="button" role="radio" :aria-checked="row.side === side"
+                                        @click="pick(row, side)" :disabled="saving === row.sport"
+                                        class="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60"
+                                        :class="row.side === side ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-gray-700 hover:bg-muted/60'">
+                                    <span class="inline-flex rounded overflow-hidden" aria-hidden="true">
+                                        <span class="w-3 h-4" :class="side === 'left' ? 'bg-red-600' : 'bg-blue-600'"></span>
+                                        <span class="w-3 h-4" :class="side === 'left' ? 'bg-blue-600' : 'bg-red-600'"></span>
+                                    </span>
+                                    <span x-text="side === 'left' ? @js(__('platform.corner_side_left')) : @js(__('platform.corner_side_right'))"></span>
+                                </button>
+                            </template>
+                            <button type="button" x-show="row.override" x-cloak @click="pick(row, 'default')" :disabled="saving === row.sport"
+                                    class="px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/60 transition-colors"
+                                    title="{{ __('platform.corner_side_default') }}">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
     <div class="mt-8">
         <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">{{ __('platform.admin_platform_settings_integrations') }}</h3>
 

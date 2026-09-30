@@ -132,7 +132,7 @@ class IslandProps
             'rows' => ScreenBoard::ROWS,
             'event' => [
                 'title' => (string) $event->title,
-                'logo' => $event->tenant?->logo ? file_url($event->tenant->logo) : null,
+                'logo' => $event->host()->logo,
             ],
             'state' => $state,
             'board' => $board,

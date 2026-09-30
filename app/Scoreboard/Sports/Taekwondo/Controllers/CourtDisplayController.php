@@ -189,8 +189,7 @@ class CourtDisplayController extends Controller
                 'statusUrl' => route('court-display.status', $token, false),
                 'pinned' => $surface === 'bout' ? 'bout' : false,
                 // The host club's crest fills the design's dashed logo box.
-                'eventLogo' => $device->event->tenant?->logo
-                    ? file_url($device->event->tenant->logo) : null,
+                'eventLogo' => $device->event->host()->logo,
             ]);
         }
 

@@ -168,6 +168,10 @@
   </div>
 
   {{-- ── The scoreboard ─────────────────────────────────────────────────── --}}
+  {{-- Which side each corner stands on is the SPORT's convention
+       (App\\Sports\\Combat\\CornerSide). Each corner keeps its own block —
+       ids, colours, data — and only its geometry mirrors. --}}
+  @php $rr = \App\Sports\Combat\CornerSide::redRight('karate'); @endphp
   <div id="sb" class="layer" hidden style="background:#000; display:flex; flex-direction:column;">
     <div style="height:110px; background:#0a0b10; display:flex; align-items:center; justify-content:space-between; padding:0 48px; border-bottom:3px solid #1c1e28; animation:introDrop .6s cubic-bezier(.2,.8,.2,1) both;">
       <div style="display:flex; align-items:center; gap:26px;">
@@ -183,11 +187,11 @@
 
     <div style="flex:1; display:flex; position:relative;">
       {{-- AKA (red) --}}
-      <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(135deg,#b3121f 0%,#7c0a14 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(225deg,#b3121f 0%,#7c0a14 100%); position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; order:3; animation:introSlideR' : 'background:linear-gradient(135deg,#b3121f 0%,#7c0a14 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL' }} .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbAkaWin" hidden style="position:absolute; inset:0; border:14px solid #ffd666; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
-        <div style="display:flex; align-items:center; gap:28px;">
+        <div style="display:flex; align-items:center; {{ $rr ? 'gap:28px; flex-direction:row-reverse;' : 'gap:28px;' }}">
           <img id="sbAkaFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.5);">
-          <div style="display:flex; flex-direction:column;">
+          <div style="display:flex; {{ $rr ? 'flex-direction:column; align-items:flex-end;' : 'flex-direction:column;' }}">
             <div id="sbAkaCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
             <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">AKA</div>
           </div>
@@ -204,7 +208,7 @@
       </div>
 
       {{-- Clock --}}
-      <div style="width:470px; background:#0a0b10; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; position:relative; z-index:2; box-shadow:0 0 80px rgba(0,0,0,.8);">
+      <div style="width:470px; order:2; background:#0a0b10; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; position:relative; z-index:2; box-shadow:0 0 80px rgba(0,0,0,.8);">
         {{-- The weight class, ABOVE the clock and big.
              It used to be a 38px line in the header strip, sharing that band
              with the logo, the tournament, the bout number, the mat and the
@@ -222,11 +226,11 @@
       </div>
 
       {{-- AO (blue) --}}
-      <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(225deg,#0d55b8 0%,#083473 100%); position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(135deg,#0d55b8 0%,#083473 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; order:1; animation:introSlideL' : 'background:linear-gradient(225deg,#0d55b8 0%,#083473 100%); position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR' }} .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbAoWin" hidden style="position:absolute; inset:0; border:14px solid #ffd666; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
-        <div style="display:flex; align-items:center; gap:28px; flex-direction:row-reverse;">
+        <div style="display:flex; align-items:center; {{ $rr ? 'gap:28px;' : 'gap:28px; flex-direction:row-reverse;' }}">
           <img id="sbAoFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.5);">
-          <div style="display:flex; flex-direction:column; align-items:flex-end;">
+          <div style="display:flex; {{ $rr ? 'flex-direction:column;' : 'flex-direction:column; align-items:flex-end;' }}">
             <div id="sbAoCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
             <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">AO</div>
           </div>
@@ -251,44 +255,44 @@
 
   {{-- ── The introduction, over the top of it ───────────────────────────── --}}
   <div id="vs" class="layer" hidden style="z-index:12; background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
-    <div style="position:absolute; inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%); overflow:hidden; background:#2b1416;background:oklch(0.28 0.09 25); animation:panelL 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' : 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' }} overflow:hidden; background:#2b1416;background:oklch(0.28 0.09 25); animation:{{ $rr ? 'panelR' : 'panelL' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsRedPhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg, rgba(154,55,48,0.55) 0%, transparent 55%);background:linear-gradient(115deg, oklch(0.45 0.18 25 / 0.55) 0%, transparent 55%);"></div>
+      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, rgba(154,55,48,0.55) 0%, transparent 55%);background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, oklch(0.45 0.18 25 / 0.55) 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
     </div>
-    <div style="position:absolute; inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%); overflow:hidden; background:#10233f;background:oklch(0.28 0.09 255); animation:panelR 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' : 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' }} overflow:hidden; background:#10233f;background:oklch(0.28 0.09 255); animation:{{ $rr ? 'panelL' : 'panelR' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsBluePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite reverse;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(245deg, rgba(40,86,152,0.55) 0%, transparent 55%);background:linear-gradient(245deg, oklch(0.45 0.15 255 / 0.55) 0%, transparent 55%);"></div>
+      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '115deg' : '245deg' }}, rgba(40,86,152,0.55) 0%, transparent 55%);background:linear-gradient({{ $rr ? '115deg' : '245deg' }}, oklch(0.45 0.15 255 / 0.55) 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
     </div>
     <div style="position:absolute; top:-6%; bottom:-6%; left:50%; width:3px; margin-left:-1.5px; transform:rotate(10.15deg); pointer-events:none; background:linear-gradient(to bottom, transparent, rgba(253,196,54,0.9) 20%, rgba(253,196,54,0.9) 80%, transparent);background:linear-gradient(to bottom, transparent, oklch(0.85 0.16 85 / 0.9) 20%, oklch(0.85 0.16 85 / 0.9) 80%, transparent); filter:blur(1px);"></div>
 
-    <div style="position:absolute; left:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0; animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'right:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' : 'left:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' }} animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#c8382c;background:oklch(0.55 0.2 25); padding:5.4px 15.1px 5.4px 18.9px;">AKA · RED</div>
-      <div style="display:flex; align-items:center; gap:15.1px;">
+      <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px; flex-direction:row-reverse;' : 'gap:15.1px;' }}">
         <div id="vsRedFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
         <div id="vsRedCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#e8b3ad; color:oklch(0.85 0.05 25);"></div>
       </div>
       <div id="vsRedName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
-      <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px;">
+      <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px; flex-direction:row-reverse;' : 'margin-top:4.3px;' }}">
         <div id="vsRedLogo" style="width:69.1px; height:69.1px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); border-radius:50%; background-size:cover; background-position:center;"></div>
         <div id="vsRedClub" style="font-weight:600; font-size:30.2px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,230,224,0.9);"></div>
       </div>
-      <div id="vsRedChips" style="display:flex; flex-wrap:wrap; gap:9.7px; margin-top:5.4px;"></div>
+      <div id="vsRedChips" style="display:flex; flex-wrap:wrap; gap:9.7px; {{ $rr ? 'margin-top:5.4px; justify-content:flex-end;' : 'margin-top:5.4px;' }}"></div>
     </div>
 
-    <div style="position:absolute; right:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right; animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'left:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' : 'right:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' }} animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1f5aa8;background:oklch(0.5 0.16 255); padding:5.4px 15.1px 5.4px 18.9px;">AO · BLUE</div>
-      <div style="display:flex; align-items:center; gap:15.1px; flex-direction:row-reverse;">
+      <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px;' : 'gap:15.1px; flex-direction:row-reverse;' }}">
         <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
         <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#a9c6ea; color:oklch(0.85 0.05 255);"></div>
       </div>
       <div id="vsBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
-      <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px; flex-direction:row-reverse;">
+      <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px;' : 'margin-top:4.3px; flex-direction:row-reverse;' }}">
         <div id="vsBlueLogo" style="width:69.1px; height:69.1px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); border-radius:50%; background-size:cover; background-position:center;"></div>
         <div id="vsBlueClub" style="font-weight:600; font-size:30.2px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,230,224,0.9);"></div>
       </div>
-      <div id="vsBlueChips" style="display:flex; flex-wrap:wrap; gap:9.7px; margin-top:5.4px; justify-content:flex-end;"></div>
+      <div id="vsBlueChips" style="display:flex; flex-wrap:wrap; gap:9.7px; {{ $rr ? 'margin-top:5.4px;' : 'margin-top:5.4px; justify-content:flex-end;' }}"></div>
     </div>
 
     <div style="position:absolute; top:34.6px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:10.8px; z-index:8; width:92%; pointer-events:none; animation:dropIn 0.8s 0.5s cubic-bezier(0.22,1,0.36,1) both;">
@@ -376,6 +380,8 @@
      hidden layer becomes visible (a hidden element has no width to measure
      against), and once the webfonts have loaded, because Anton is far narrower
      than the fallback and fitting to the wrong metrics sizes every name wrong. */
+  // Karate's red corner (AKA) stands on the right — App\\Sports\\Combat\\CornerSide.
+  var RED_RIGHT = @json(\App\Sports\Combat\CornerSide::redRight('karate'));
   var nameSpec = {};
   function setName(id, value, max, min) {
     var n = el(id);
@@ -410,7 +416,10 @@
       var ratio = Math.max(0.6, n.clientWidth / n.scrollWidth);
       // Condense toward the edge the name is aligned to, so it never drifts
       // away from its own corner.
-      n.style.transformOrigin = /Ao|Blue/.test(id) ? 'right center' : 'left center';
+      // Anchored at the line's START: overflow runs toward its end however
+      // the line is aligned, so an end-anchored squeeze pushed a long name's
+      // tail past its own box.
+      n.style.transformOrigin = getComputedStyle(n).direction === 'rtl' ? 'right center' : 'left center';
       n.style.transform = 'scaleX(' + ratio.toFixed(3) + ')';
     }
 
@@ -675,7 +684,7 @@
     var host = el('sbCallout');
     var colour = ev.side === 'aka' ? '#ff3b47' : '#4d9aff';
     host.textContent = '';
-    host.style.left = (ev.side === 'aka' ? '25%' : '75%');
+    host.style.left = ((ev.side === 'aka') !== RED_RIGHT ? '25%' : '75%');
     host.style.top = '44%';
 
     var ring = document.createElement('div');

@@ -78,6 +78,9 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])
 
         // All Members Management
         Route::get('/members', [PlatformController::class, 'members'])->name('platform.members');
+        // Scan for duplicates — literal paths, registered before /members/{id}.
+        Route::get('/members/duplicates', [PlatformController::class, 'memberDuplicates'])->name('platform.members.duplicates')->middleware('throttle:member-scan');
+        Route::post('/members/duplicates/dismiss', [PlatformController::class, 'dismissMemberDuplicate'])->name('platform.members.duplicates.dismiss')->middleware('throttle:admin-write');
 
         Route::post('/members', [PlatformController::class, 'storeMember'])->name('platform.members.store')->middleware('throttle:admin-write');
 
@@ -88,6 +91,14 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])
         Route::put('/members/{id}', [PlatformController::class, 'updateMember'])->name('platform.members.update')->middleware('throttle:admin-write');
 
         Route::delete('/members/{id}', [PlatformController::class, 'destroyMember'])->name('platform.members.destroy')->middleware('throttle:admin-write');
+
+        // A person made a member of a club with no package — they trained there before the platform.
+        Route::post('/members/{id}/club-membership', [PlatformController::class, 'addClubMembership'])->name('platform.members.club-membership')->middleware('throttle:admin-write');
+        // One person, one account: fold a duplicate into the account being kept (undoable).
+        Route::get('/members/{id}/merge-candidates', [PlatformController::class, 'mergeCandidates'])->name('platform.members.merge-candidates')->middleware('throttle:60,1');
+        Route::get('/members/merge/preview', [PlatformController::class, 'mergePreview'])->name('platform.members.merge-preview')->middleware('throttle:60,1');
+        Route::post('/members/merge', [PlatformController::class, 'mergeMembers'])->name('platform.members.merge')->middleware('throttle:admin-write');
+        Route::post('/members/merges/{uuid}/undo', [PlatformController::class, 'undoMemberMerge'])->name('platform.members.merge-undo')->middleware('throttle:admin-write');
 
         Route::post('/members/{id}/upload-picture', [PlatformController::class, 'uploadMemberPicture'])->name('platform.members.upload-picture')->middleware('throttle:uploads');
 
@@ -117,6 +128,8 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])
 
         Route::put('/settings', [PlatformController::class, 'updateSettings'])->name('platform.settings.update')->middleware('throttle:admin-write');
 
+        Route::put('/settings/corner-side', [PlatformController::class, 'updateCornerSide'])->name('platform.settings.corner-side')->middleware('throttle:admin-write');
+
         Route::put('/settings/whatsapp', [PlatformController::class, 'updateWhatsAppSettings'])->name('platform.settings.whatsapp.update')->middleware('throttle:admin-write');
 
         Route::post('/settings/whatsapp/test', [PlatformController::class, 'testWhatsAppConnection'])->name('platform.settings.whatsapp.test')->middleware('throttle:admin-write');
@@ -136,5 +149,13 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])
 
         // Audit Log
         Route::get('/audit-log', [PlatformController::class, 'auditLog'])->name('platform.audit-log');
+
+        // Paid featuring on /me/events — review the proofs, set the fee (App\Events\Support\EventFeaturing).
+        Route::get('/featured-events', [\App\Platform\Controllers\FeaturedEventsController::class, 'index'])->name('platform.featured-events');
+        Route::get('/featured-events/list', [\App\Platform\Controllers\FeaturedEventsController::class, 'list'])->middleware('throttle:60,1')->name('platform.featured-events.list');
+        Route::put('/featured-events/fee', [\App\Platform\Controllers\FeaturedEventsController::class, 'fee'])->middleware('throttle:admin-write')->name('platform.featured-events.fee');
+        Route::get('/featured-events/{featureRequest:uuid}/proof', [\App\Platform\Controllers\FeaturedEventsController::class, 'proof'])->middleware('throttle:120,1')->name('platform.featured-events.proof');
+        Route::post('/featured-events/{featureRequest:uuid}/{decision}', [\App\Platform\Controllers\FeaturedEventsController::class, 'decide'])
+            ->whereIn('decision', ['approve', 'reject', 'revoke'])->middleware('throttle:admin-write')->name('platform.featured-events.decide');
 
     });

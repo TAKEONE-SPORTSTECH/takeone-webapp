@@ -282,9 +282,13 @@
        the mat they are looking at. --}}
   <div style="flex:1;display:grid;grid-template-columns:1fr 500px 1fr;gap:22px;min-height:0;">
 
+    {{-- Which side AKA stands on is Karate's convention (App\\Sports\\Combat\\CornerSide):
+         the console matches the wall, so the half an official reaches for is
+         the half of the mat they are looking at. --}}
+    @php $rr = \App\Sports\Combat\CornerSide::redRight('karate'); @endphp
     @foreach ([
-        ['aka', 'AKA', '#b3121f', '#b3121f', '1', '.05s', false, '100deg'],
-        ['ao', 'AO', '#0d55b8', '#2f7bdb', '3', '.3s', true, '260deg'],
+        ['aka', 'AKA', '#b3121f', '#b3121f', $rr ? '3' : '1', '.05s', $rr, $rr ? '260deg' : '100deg'],
+        ['ao', 'AO', '#0d55b8', '#2f7bdb', $rr ? '1' : '3', '.3s', ! $rr, $rr ? '100deg' : '260deg'],
     ] as [$side, $label, $colour, $plateInk, $order, $delay, $mirror, $angle])
     @php $rev = $mirror ? 'flex-direction:row-reverse;' : ''; @endphp
     <div class="card" style="border-top:8px solid {{ $colour }};padding:24px 32px;display:flex;flex-direction:column;gap:18px;order:{{ $order }};animation:cardIn .6s {{ $delay }} cubic-bezier(.2,.8,.2,1) both;">
@@ -636,10 +640,10 @@
       {{-- Selection cards, not a dropdown: this is chosen once, under pressure,
            on a touch screen at the mat. --}}
       <div style="display:flex;gap:14px;">
-        <button class="endSide" data-side="aka" style="flex:1;font-size:26px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--fill);color:var(--aka-ink);border:2px solid transparent;border-radius:14px;padding:16px 0;cursor:pointer;">
+        <button class="endSide" data-side="aka" style="order:{{ $rr ? 2 : 1 }};flex:1;font-size:26px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--fill);color:var(--aka-ink);border:2px solid transparent;border-radius:14px;padding:16px 0;cursor:pointer;">
           AKA <span class="endSideName" style="display:block;font-size:17px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--second);"></span>
         </button>
-        <button class="endSide" data-side="ao" style="flex:1;font-size:26px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--fill);color:var(--ao-ink);border:2px solid transparent;border-radius:14px;padding:16px 0;cursor:pointer;">
+        <button class="endSide" data-side="ao" style="order:{{ $rr ? 1 : 2 }};flex:1;font-size:26px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--fill);color:var(--ao-ink);border:2px solid transparent;border-radius:14px;padding:16px 0;cursor:pointer;">
           AO <span class="endSideName" style="display:block;font-size:17px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--second);"></span>
         </button>
       </div>

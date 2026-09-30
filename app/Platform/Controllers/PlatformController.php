@@ -138,6 +138,36 @@ class PlatformController extends Controller
             'realtimeSettings' => $realtime->adminSettings(),
             'realtimeStatus'   => $realtime->probe(),
             'whatsappSettings' => $whatsapp->adminSettings(),
+            'cornerSides'      => \App\Sports\Combat\CornerSide::all(),
+        ]);
+    }
+
+    /**
+     * Which side the red corner stands on, per combat sport — every hall
+     * screen and scoring table of that sport follows it. The sport declares a
+     * default; this overrides it, in case that convention was got wrong.
+     * `default` clears the override. Super-admin only (route group).
+     */
+    public function updateCornerSide(Request $request)
+    {
+        $sports = array_keys(app(\App\Sports\Combat\SportRegistry::class)->all());
+        $data = $request->validate([
+            'sport' => ['required', 'string', \Illuminate\Validation\Rule::in($sports)],
+            'side'  => 'required|in:left,right,default',
+        ]);
+
+        \App\Sports\Combat\CornerSide::setOverride($data['sport'], $data['side'] === 'default' ? null : $data['side']);
+
+        \Illuminate\Support\Facades\Log::info('Corner side changed', [
+            'by' => $request->user()->id, 'sport' => $data['sport'], 'side' => $data['side'],
+        ]);
+
+        $row = collect(\App\Sports\Combat\CornerSide::all())->firstWhere('sport', $data['sport']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('platform.corner_side_saved'),
+            'corner'  => $row,
         ]);
     }
 
@@ -398,6 +428,239 @@ class PlatformController extends Controller
             $mobile ? 'platform::mobile.members' : 'platform::members.index',
             compact('members', 'search', 'sort', 'filterState', 'filterCount', 'filterClubs', 'filterNationalities')
         );
+    }
+
+    /**
+     * Make a person a member of a club WITHOUT a package: somebody newly on the
+     * platform who has trained at the club, in a sport, since long before it.
+     * Creates (or re-activates) the membership and records the history as a
+     * club affiliation dated from when they started — the platform's own
+     * "member since" — with the sport as its skill. No subscription, no invoice.
+     */
+    /** Accounts that look like this member (same phone/email/name/birthday), or a search for any other. */
+    public function mergeCandidates(Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+        $user = User::findOrFail($id);
+        $q = mb_substr(trim((string) $request->query('q', '')), 0, 80);
+        $merger = app(\App\Members\Support\AccountMerger::class);
+
+        $rows = $q !== ''
+            ? $merger->search($q, $user)->map(fn ($u) => ['user' => $u, 'reasons' => []])
+            : $merger->candidates($user);
+
+        return response()->json([
+            'success' => true,
+            'self' => $this->mergeSummary($user, $merger),
+            'results' => $rows->map(fn ($r) => $this->mergeSummary($r['user'], $merger) + ['reasons' => $r['reasons']])->values(),
+        ]);
+    }
+
+    /** Scan: every pair of accounts that look like one person, to examine before merging. */
+    public function memberDuplicates(Request $request): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+        $merger = app(\App\Members\Support\AccountMerger::class);
+        $pairs = $merger->scan(100);
+        $users = User::whereIn('id', collect($pairs)->flatMap(fn ($p) => [$p['a'], $p['b']])->unique())->get()->keyBy('id');
+        $summary = [];
+        $one = function (int $id) use ($users, $merger, &$summary) {
+            return $summary[$id] ??= $this->mergeSummary($users[$id], $merger);
+        };
+
+        return response()->json([
+            'success' => true,
+            'pairs' => collect($pairs)->filter(fn ($p) => isset($users[$p['a']], $users[$p['b']]))
+                ->map(fn ($p) => ['key' => $p['a'].'-'.$p['b'], 'a' => $one($p['a']), 'b' => $one($p['b']), 'reasons' => $p['reasons'], 'strong' => $p['score'] >= 5])
+                ->values(),
+        ], 200, ['Cache-Control' => 'no-store, private']);
+    }
+
+    /** "Not the same person": the scan stops offering this pair. */
+    public function dismissMemberDuplicate(Request $request): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+        $data = $request->validate(['a' => ['required', 'integer', 'different:b'], 'b' => ['required', 'integer']]);
+        $a = User::findOrFail($data['a']);
+        $b = User::findOrFail($data['b']);
+        app(\App\Members\Support\AccountMerger::class)->dismiss($a, $b, $request->user());
+        activity()->causedBy($request->user())->performedOn($a)->withProperties(['other' => $b->uuid])->log('platform.members_not_duplicate');
+
+        return response()->json(['success' => true, 'message' => 'Marked as two different people.', 'pair' => min($a->id, $b->id).'-'.max($a->id, $b->id)]);
+    }
+
+    public function mergePreview(Request $request): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+        $data = $request->validate(['keep' => ['required', 'integer'], 'merge' => ['required', 'integer']]);
+        $keep = User::findOrFail($data['keep']);
+        $dup = User::findOrFail($data['merge']);
+        $merger = app(\App\Members\Support\AccountMerger::class);
+        $plan = $merger->plan($dup, $keep);
+
+        return response()->json([
+            'success' => true,
+            'keep' => $this->mergeSummary($keep, $merger),
+            'merge' => $this->mergeSummary($dup, $merger),
+            'blockers' => $plan['blockers'],
+            'warnings' => $plan['warnings'],
+            // The one account both become: field by field, where each value comes from.
+            'combined' => collect($merger->combine($dup, $keep))
+                ->map(fn ($r) => \Illuminate\Support\Arr::except($r, ['combined']))->values(),
+            'total' => $plan['total'],
+            'counts' => collect($plan['counts'])->map(fn ($n, $t) => ['label' => \Illuminate\Support\Str::of($t)->replace('_', ' ')->ucfirst()->toString(), 'count' => $n])->values()->take(12),
+        ]);
+    }
+
+    public function mergeMembers(Request $request): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+        $data = $request->validate([
+            'keep' => ['required', 'integer', 'different:merge'],
+            'merge' => ['required', 'integer'],
+            'confirm' => ['required', 'string', 'in:MERGE'],
+            // Where both accounts hold a different value: the fields to take from the other one.
+            'take' => ['nullable', 'array', 'max:20'],
+            'take.*' => ['string', 'in:'.implode(',', array_keys(\App\Members\Support\AccountMerger::FIELDS))],
+        ], ['confirm.in' => 'Type MERGE to confirm.']);
+        $keep = User::findOrFail($data['keep']);
+        $dup = User::findOrFail($data['merge']);
+
+        try {
+            $log = app(\App\Members\Support\AccountMerger::class)->merge($dup, $keep, $request->user(), array_values(array_unique($data['take'] ?? [])));
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+        $this->pushMembersRefresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => ($dup->full_name ?: $dup->name).' was merged into '.($keep->full_name ?: $keep->name).'.',
+            'merge' => ['uuid' => $log->uuid, 'kept' => $keep->id, 'merged' => $dup->id, 'rows' => count($log->moved), 'removed' => count($log->removed)],
+        ]);
+    }
+
+    public function undoMemberMerge(Request $request, string $uuid): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+        $log = \App\Members\Models\AccountMerge::where('uuid', $uuid)->firstOrFail();
+        try {
+            app(\App\Members\Support\AccountMerger::class)->undo($log);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\Illuminate\Database\QueryException $e) {
+            report($e);
+
+            return response()->json(['success' => false, 'message' => 'The merge could not be undone automatically — the accounts have changed since. Restore from the backup instead.'], 422);
+        }
+        activity()->causedBy($request->user())->withProperties(['merge' => $log->uuid])->log('platform.members_merge_undone');
+        $this->pushMembersRefresh();
+
+        return response()->json(['success' => true, 'message' => 'Merge undone — both accounts are back as they were.', 'merge' => ['uuid' => $log->uuid, 'kept' => $log->kept_user_id, 'merged' => $log->merged_user_id]]);
+    }
+
+    /** Every other super-admin with the members list open re-reads it (refresh signal only). */
+    private function pushMembersRefresh(): void
+    {
+        rescue(function () {
+            $batch = User::whereHas('roles', fn ($q) => $q->where('slug', 'super-admin'))
+                ->where('id', '!=', Auth::id())->pluck('id')
+                ->map(fn ($uid) => ['topic' => \Takeone\Realtime\Support\Topics::user((int) $uid, 'members'), 'payload' => ['action' => 'refresh']])
+                ->values()->all();
+            if ($batch !== []) {
+                \Realtime()->publishMany($batch);
+            }
+        }, report: true);
+    }
+
+    private function mergeSummary(User $u, \App\Members\Support\AccountMerger $merger): array
+    {
+        $clubs = DB::table('memberships')->join('tenants', 'tenants.id', '=', 'memberships.tenant_id')
+            ->where('memberships.user_id', $u->id)->where('memberships.status', 'active')->limit(4)->pluck('tenants.club_name');
+
+        return [
+            'id' => $u->id,
+            'name' => $u->full_name ?: $u->name,
+            'photo' => \App\Members\Support\MemberLookup::photo($u),
+            'email' => $u->email,
+            'mobile' => is_array($u->mobile) && filled($u->mobile['number'] ?? null) ? trim(($u->mobile['code'] ?? '').' '.$u->mobile['number']) : null,
+            'birthdate' => $u->birthdate?->format('d/m/Y'),
+            'gender' => $u->gender,
+            'nationality' => $u->nationality,
+            'clubs' => $clubs->values(),
+            'joined' => $u->created_at?->format('M Y'),
+            'signs_in' => $merger->signsIn($u),
+        ];
+    }
+
+    public function addClubMembership(Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+        $user = User::findOrFail($id);
+        $data = $request->validate([
+            'club' => ['required', 'string', 'exists:tenants,slug'],
+            'activity' => ['nullable', 'integer'],
+            'since' => ['required', 'date_format:Y-m'],
+        ]);
+        $club = Tenant::where('slug', $data['club'])->firstOrFail();
+        $since = \Carbon\Carbon::createFromFormat('!Y-m', $data['since'])->startOfMonth();
+        if ($since->isFuture()) {
+            return response()->json(['success' => false, 'message' => 'Member since cannot be in the future.'], 422);
+        }
+        $activity = ! empty($data['activity']) ? \App\Clubs\Models\ClubActivity::where('tenant_id', $club->id)->find($data['activity']) : null;
+        if (! empty($data['activity']) && ! $activity) {
+            return response()->json(['success' => false, 'message' => 'That sport is not one of this club\'s activities.'], 422);
+        }
+
+        $verify = app(\App\Members\Support\AchievementVerificationService::class);
+        [$membership, $affiliation] = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $club, $since, $activity, $verify, $request) {
+            $membership = Membership::firstOrNew(['tenant_id' => $club->id, 'user_id' => $user->id]);
+            $membership->status = 'active';
+            $membership->save();
+
+            // Their history at this club: the open affiliation, started at the earliest known date.
+            $affiliation = \App\Clubs\Models\ClubAffiliation::where('member_id', $user->id)->where('tenant_id', $club->id)->whereNull('end_date')->first();
+            if (! $affiliation) {
+                $affiliation = \App\Clubs\Models\ClubAffiliation::create([
+                    'member_id' => $user->id, 'tenant_id' => $club->id,
+                    'club_name' => $club->getRawOriginal('club_name'), 'logo' => $club->logo,
+                    'start_date' => $since->toDateString(),
+                ]);
+                $verify->recordByAdmin($affiliation, $request->user());
+            } elseif (! $affiliation->start_date || $since->lt($affiliation->start_date)) {
+                $affiliation->forceFill(['start_date' => $since->toDateString()])->save();
+            }
+
+            if ($activity) {
+                $skill = \App\Members\Models\SkillAcquisition::where('club_affiliation_id', $affiliation->id)->where('activity_id', $activity->id)->first();
+                if (! $skill) {
+                    $skill = new \App\Members\Models\SkillAcquisition;
+                    $skill->forceFill([
+                        'club_affiliation_id' => $affiliation->id, 'user_id' => $user->id,
+                        'activity_id' => $activity->id, 'activity_name' => $activity->getRawOriginal('name') ?? $activity->name,
+                        'skill_name' => $activity->getRawOriginal('name') ?? $activity->name, 'start_date' => $since->toDateString(),
+                        'duration_months' => max(1, (int) $since->diffInMonths(now())),
+                    ])->save();
+                    $verify->recordByAdmin($skill, $request->user());
+                }
+            }
+
+            return [$membership, $affiliation];
+        });
+
+        activity()->causedBy($request->user())->performedOn($user)
+            ->withProperties(['club' => $club->slug, 'since' => $since->format('Y-m'), 'activity' => $activity?->id])
+            ->log('platform.member_added_to_club');
+        rescue(fn () => \App\Members\Models\UserNotification::notifyUser((int) $user->id, 'club_membership_added',
+            'You are a member of '.$club->club_name, [
+                'actor_id' => $request->user()->id, 'tenant_id' => $club->id,
+                'body' => 'Member since '.$since->format('F Y').($activity ? ' · '.$activity->name : '').'.',
+                'icon' => 'bi-person-check',
+            ]), report: true);
+
+        return response()->json(['success' => true,
+            'message' => ($user->full_name ?: $user->name).' is now a member of '.$club->club_name.' (since '.$since->format('M Y').').',
+            'membership' => ['club' => $club->club_name, 'since' => $since->format('Y-m'), 'sport' => $activity?->name, 'status' => $membership->status]]);
     }
 
     public function memberPopup(User $user)

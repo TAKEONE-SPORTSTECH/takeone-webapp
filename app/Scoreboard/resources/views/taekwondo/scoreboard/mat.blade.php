@@ -247,24 +247,24 @@
     <div style="position:absolute; left:0; right:0; bottom:0; height:290px; display:grid; grid-template-columns:1fr 1fr; z-index:5;">
       <div style="display:flex; align-items:center; gap:28px; background:linear-gradient(90deg, oklch(0.3 0.11 25) 0%, rgba(10,10,14,0.95) 85%); border-top:6px solid oklch(0.6 0.22 25); padding:0 40px 0 70px; min-width:0; animation:barIn 0.7s 0.55s cubic-bezier(0.22,1,0.36,1) both;">
         <div id="sbAkaLogo" style="width:170px; height:170px; flex:0 0 auto; border-radius:50%; background-color:rgba(255,255,255,0.1); background-size:cover; background-position:center; border:3px solid rgba(255,255,255,0.4); box-shadow:0 10px 40px rgba(0,0,0,0.6);"></div>
-        <div style="min-width:0; display:flex; flex-direction:column; gap:8px;">
+        <div style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:8px;">
           <div id="sbAkaName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:78px; line-height:1; text-transform:uppercase; color:#fff;"></div>
           <div style="display:flex; align-items:center; gap:16px; max-width:100%;">
             <div id="sbAkaFlag" style="width:84px; flex:0 0 auto; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:2px solid rgba(255,255,255,0.45);"></div>
-            <div id="sbAkaCountry" style="max-width:470px; flex:0 1 auto; min-width:0; font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
+            <div id="sbAkaCountry" style="max-width:470px; flex:0 0 auto; min-width:0; font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
             <div style="width:8px; height:8px; flex:0 0 auto; transform:rotate(45deg); background:oklch(0.85 0.16 85);"></div>
-            <div id="sbAkaClub" style="font-weight:600; font-size:38px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,230,224,0.75); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+            <div id="sbAkaClub" style="flex:0 1 auto; min-width:0; font-weight:600; font-size:38px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,230,224,0.75); white-space:nowrap;"></div>
           </div>
         </div>
       </div>
       <div style="display:flex; align-items:center; justify-content:flex-end; gap:28px; background:linear-gradient(270deg, oklch(0.28 0.1 255) 0%, rgba(10,10,14,0.95) 85%); border-top:6px solid oklch(0.52 0.19 255); padding:0 70px 0 40px; min-width:0; animation:barIn 0.7s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
-        <div style="min-width:0; display:flex; flex-direction:column; align-items:flex-end; gap:8px; text-align:right;">
+        <div style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:flex-end; gap:8px; text-align:right;">
           <div id="sbAoName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:78px; line-height:1; text-transform:uppercase; color:#fff;"></div>
           <div style="display:flex; align-items:center; gap:16px; max-width:100%; flex-direction:row-reverse;">
             <div id="sbAoFlag" style="width:84px; flex:0 0 auto; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:2px solid rgba(255,255,255,0.45);"></div>
-            <div id="sbAoCountry" style="max-width:470px; flex:0 1 auto; min-width:0; font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
+            <div id="sbAoCountry" style="max-width:470px; flex:0 0 auto; min-width:0; font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
             <div style="width:8px; height:8px; flex:0 0 auto; transform:rotate(45deg); background:oklch(0.85 0.16 85);"></div>
-            <div id="sbAoClub" style="font-weight:600; font-size:38px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,230,224,0.75); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+            <div id="sbAoClub" style="flex:0 1 auto; min-width:0; font-weight:600; font-size:38px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,230,224,0.75); white-space:nowrap;"></div>
           </div>
         </div>
         <div id="sbAoLogo" style="width:170px; height:170px; flex:0 0 auto; border-radius:50%; background-color:rgba(255,255,255,0.1); background-size:cover; background-position:center; border:3px solid rgba(255,255,255,0.4); box-shadow:0 10px 40px rgba(0,0,0,0.6);"></div>
@@ -427,6 +427,7 @@
     if (n.getAttribute('data-fit') === spec.v) return;
 
     n.style.transform = 'none';
+    n.style.overflow = '';
     var size = spec.max;
     n.style.fontSize = size + 'px';
     for (var i = 0; i < 120 && size > spec.min && n.scrollWidth > n.clientWidth; i++) {
@@ -434,11 +435,33 @@
       n.style.fontSize = size + 'px';
     }
     if (n.scrollWidth > n.clientWidth) {
-      var ratio = Math.max(0.6, n.clientWidth / n.scrollWidth);
-      n.style.transformOrigin = /Ao|Blue/.test(id) ? 'right center' : 'left center';
+      var need = n.clientWidth / n.scrollWidth, ratio = Math.max(0.6, need);
+      // Anchored at the line's START: overflow runs toward its end whichever
+      // way the text is aligned, so a right-anchored squeeze pushed the tail of
+      // a blue-corner line past its own box.
+      n.style.transformOrigin = getComputedStyle(n).direction === 'rtl' ? 'right center' : 'left center';
       n.style.transform = 'scaleX(' + ratio.toFixed(3) + ')';
+      // Past the readable limit the line is clipped to its box rather than
+      // spilling over its neighbour — the one case left for the operator to
+      // shorten on the control page.
+      if (need < 0.6) n.style.overflow = 'hidden';
     }
     n.setAttribute('data-fit', spec.v);
+  }
+  /* The strip under a name holds the flag, the country and the club on one
+     line. A long club could only be fitted by squeezing it past legibility, so
+     the country — set large by design — gives up size first, two pixels at a
+     time, until the club fits (or the country reaches its own floor). */
+  function balanceStrip(k) {
+    var club = el('sb' + k + 'Club'), country = el('sb' + k + 'Country');
+    if (!club || !country || !nameSpec['sb' + k + 'Club'] || !club.clientWidth) return;
+    var size = parseFloat(country.style.fontSize) || 44;
+    for (var i = 0; i < 12 && club.style.overflow === 'hidden' && size > 26; i++) {
+      size -= 2;
+      country.style.fontSize = size + 'px';
+      club.removeAttribute('data-fit');
+      fitName('sb' + k + 'Club');
+    }
   }
   function refitNames() {
     Object.keys(nameSpec).forEach(function (id) {
@@ -446,6 +469,7 @@
       if (n) n.removeAttribute('data-fit');
       fitName(id);
     });
+    balanceStrip('Aka'); balanceStrip('Ao');
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitNames);
 
@@ -664,8 +688,9 @@
     [['Aka', a], ['Ao', b]].forEach(function (pair) {
       var k = pair[0], c = pair[1];
       setName('sb' + k + 'Name', c.name || '', 78, 30);
-      text('sb' + k + 'Club', c.club || '');
+      setName('sb' + k + 'Club', c.club || '', 38, 22);
       setName('sb' + k + 'Country', c.country || '', 44, 20);
+      balanceStrip(k);
       bg('sb' + k + 'Flag', flagUrl(c.flag));
       bg('sb' + k + 'Logo', c.logo);
     });

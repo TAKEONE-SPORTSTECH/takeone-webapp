@@ -115,6 +115,11 @@
        The white corner is a LIGHT panel with dark ink rather than a second
        saturated colour: it is the corner of a white gi, and from the back of a
        hall the two halves must be told apart by value, not only by hue. --}}
+  {{-- Which side each corner stands on is the SPORT's convention
+       (App\\Sports\\Combat\\CornerSide): BJJ puts its red corner (BLUE in the
+       data) on the RIGHT. Each corner keeps its own block — ids, colours,
+       data — and only its geometry mirrors. --}}
+  @php $rr = \App\Sports\Combat\CornerSide::redRight('bjj'); @endphp
   <div id="sb" class="layer" hidden style="background:#000; display:flex; flex-direction:column;">
     <div style="height:110px; background:#0a0b10; display:flex; align-items:center; justify-content:space-between; padding:0 48px; border-bottom:3px solid #1c1e28; animation:introDrop .6s cubic-bezier(.2,.8,.2,1) both;">
       <div style="display:flex; align-items:center; gap:26px;">
@@ -130,23 +135,23 @@
 
     <div style="flex:1; display:flex; position:relative;">
       {{-- BLUE --}}
-      <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(135deg,#c1121f 0%,#5c0a10 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(225deg,#c1121f 0%,#5c0a10 100%); position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; order:3; animation:introSlideR' : 'background:linear-gradient(135deg,#c1121f 0%,#5c0a10 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL' }} .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbBlueWin" hidden style="position:absolute; inset:0; border:14px solid #ffd666; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
         {{-- The referee's stalling count, on the wall.
              Sits over the corner it is against — over BOTH when the count is a
              double stall — and is drawn from the board's own clock, so it
              ticks smoothly between server messages instead of jumping when one
              happens to arrive. Hidden whenever no count is running. --}}
-        <div id="sbBlueStall" hidden style="position:absolute; top:44px; right: 30px; z-index:6;
+        <div id="sbBlueStall" hidden style="position:absolute; top:44px; {{ $rr ? 'left: 30px;' : 'right: 30px;' }} z-index:6;
              display:flex; align-items:center; gap:18px; padding:12px 28px; border-radius:999px;
              background:rgba(10,10,14,.82); border:3px solid #ffd666; color:#ffd666;
              animation:stallPulse 1s ease-in-out infinite;">
           <span style="font-size:32px; font-weight:700; letter-spacing:.2em; text-transform:uppercase;">{{ __('scoreboard::bjj_messages.ctl_stall') }}</span>
           <span id="sbBlueStallNum" style="font-family:'Anton',sans-serif; font-size:52px; line-height:1; font-variant-numeric:tabular-nums;"></span>
         </div>
-        <div style="display:flex; align-items:center; gap:28px;">
+        <div style="display:flex; align-items:center; {{ $rr ? 'gap:28px; flex-direction:row-reverse;' : 'gap:28px;' }}">
           <img id="sbBlueFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.5);">
-          <div style="display:flex; flex-direction:column;">
+          <div style="display:flex; {{ $rr ? 'flex-direction:column; align-items:flex-end;' : 'flex-direction:column;' }}">
             <div id="sbBlueCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
             <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">{{ __('sport-brazilianjiujitsu::messages.corner_blue') }}</div>
           </div>
@@ -159,6 +164,18 @@
         <div style="flex:1; display:flex; align-items:center; justify-content:center; align-self:stretch;">
           <div id="sbBlueScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:#fff; text-shadow:0 10px 60px rgba(0,0,0,.5); font-variant-numeric:tabular-nums;">0</div>
         </div>
+        @if ($rr)
+        <div style="display:flex; flex-direction:column; gap:12px; min-height:180px; justify-content:flex-end; align-items:flex-end;">
+          <div style="display:flex; align-items:center; gap:20px; flex-direction:row-reverse;">
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
+            <div id="sbBlueAdv" style="display:flex; gap:10px; flex-direction:row-reverse;"></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:20px; flex-direction:row-reverse;">
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
+            <div id="sbBluePen" style="display:flex; gap:10px; flex-direction:row-reverse;"></div>
+          </div>
+        </div>
+        @else
         <div style="display:flex; flex-direction:column; gap:12px; min-height:180px; justify-content:flex-end;">
           <div style="display:flex; align-items:center; gap:20px;">
             <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
@@ -169,10 +186,11 @@
             <div id="sbBluePen" style="display:flex; gap:10px;"></div>
           </div>
         </div>
+        @endif
       </div>
 
       {{-- Clock --}}
-      <div style="width:470px; background:#0a0b10; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; position:relative; z-index:2; box-shadow:0 0 80px rgba(0,0,0,.8);">
+      <div style="width:470px; order:2; background:#0a0b10; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; position:relative; z-index:2; box-shadow:0 0 80px rgba(0,0,0,.8);">
         {{-- The division, ABOVE the clock and big: it is the single fact a coach
              or a spectator looks for first ("is this my division?"), so it sits
              in the column everybody is already watching, in the clock's face. --}}
@@ -186,23 +204,23 @@
       </div>
 
       {{-- WHITE --}}
-      <div style="flex:1; min-width:0; overflow:hidden; background:linear-gradient(225deg,#1362d1 0%,#08284f 100%); color:#fff; position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(135deg,#1362d1 0%,#08284f 100%); color:#fff; position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; order:1; animation:introSlideL' : 'background:linear-gradient(225deg,#1362d1 0%,#08284f 100%); color:#fff; position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR' }} .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbWhiteWin" hidden style="position:absolute; inset:0; border:14px solid #b3861f; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
         {{-- The referee's stalling count, on the wall.
              Sits over the corner it is against — over BOTH when the count is a
              double stall — and is drawn from the board's own clock, so it
              ticks smoothly between server messages instead of jumping when one
              happens to arrive. Hidden whenever no count is running. --}}
-        <div id="sbWhiteStall" hidden style="position:absolute; top:44px; left: 30px; z-index:6;
+        <div id="sbWhiteStall" hidden style="position:absolute; top:44px; {{ $rr ? 'right: 30px;' : 'left: 30px;' }} z-index:6;
              display:flex; align-items:center; gap:18px; padding:12px 28px; border-radius:999px;
              background:rgba(10,10,14,.82); border:3px solid #ffd666; color:#ffd666;
              animation:stallPulse 1s ease-in-out infinite;">
           <span style="font-size:32px; font-weight:700; letter-spacing:.2em; text-transform:uppercase;">{{ __('scoreboard::bjj_messages.ctl_stall') }}</span>
           <span id="sbWhiteStallNum" style="font-family:'Anton',sans-serif; font-size:52px; line-height:1; font-variant-numeric:tabular-nums;"></span>
         </div>
-        <div style="display:flex; align-items:center; gap:28px; flex-direction:row-reverse;">
+        <div style="display:flex; align-items:center; {{ $rr ? 'gap:28px;' : 'gap:28px; flex-direction:row-reverse;' }}">
           <img id="sbWhiteFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.35);">
-          <div style="display:flex; flex-direction:column; align-items:flex-end;">
+          <div style="display:flex; {{ $rr ? 'flex-direction:column;' : 'flex-direction:column; align-items:flex-end;' }}">
             <div id="sbWhiteCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
             <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
           </div>
@@ -212,6 +230,18 @@
         <div style="flex:1; display:flex; align-items:center; justify-content:center; align-self:stretch;">
           <div id="sbWhiteScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:#fff; text-shadow:0 10px 60px rgba(0,0,0,.5); font-variant-numeric:tabular-nums;">0</div>
         </div>
+        @if ($rr)
+        <div style="display:flex; flex-direction:column; gap:12px; min-height:180px; justify-content:flex-end;">
+          <div style="display:flex; align-items:center; gap:20px;">
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
+            <div id="sbWhiteAdv" style="display:flex; gap:10px;"></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:20px;">
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
+            <div id="sbWhitePen" style="display:flex; gap:10px;"></div>
+          </div>
+        </div>
+        @else
         <div style="display:flex; flex-direction:column; gap:12px; min-height:180px; justify-content:flex-end; align-items:flex-end;">
           <div style="display:flex; align-items:center; gap:20px; flex-direction:row-reverse;">
             <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
@@ -222,6 +252,7 @@
             <div id="sbWhitePen" style="display:flex; gap:10px; flex-direction:row-reverse;"></div>
           </div>
         </div>
+        @endif
       </div>
     </div>
 
@@ -246,14 +277,14 @@
 
   {{-- ── The introduction, over the top of it ──────────────────────────────── --}}
   <div id="vs" class="layer" hidden style="z-index:12; background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
-    <div style="position:absolute; inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%); overflow:hidden; background:#3f1013; animation:panelL 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' : 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' }} overflow:hidden; background:#3f1013; animation:{{ $rr ? 'panelR' : 'panelL' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsBluePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg, rgba(40,86,152,0.55) 0%, transparent 55%);"></div>
+      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, rgba(40,86,152,0.55) 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
     </div>
-    <div style="position:absolute; inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%); overflow:hidden; background:#10233f; animation:panelR 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' : 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' }} overflow:hidden; background:#10233f; animation:{{ $rr ? 'panelL' : 'panelR' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsWhitePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite reverse;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(245deg, rgba(226,232,240,0.42) 0%, transparent 55%);"></div>
+      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '115deg' : '245deg' }}, rgba(226,232,240,0.42) 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
     </div>
     <div style="position:absolute; top:-6%; bottom:-6%; left:50%; width:3px; margin-left:-1.5px; transform:rotate(10.15deg); pointer-events:none; background:linear-gradient(to bottom, transparent, rgba(253,196,54,0.9) 20%, rgba(253,196,54,0.9) 80%, transparent); filter:blur(1px);"></div>
@@ -265,32 +296,32 @@
          as low as this can go. Lowered 2026-09-12 at the organiser's request;
          the strip came down with it to buy the room. The canvas is a fixed
          1920x1080, which is why these can be hand-measured at all. --}}
-    <div style="position:absolute; left:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; z-index:6; max-width:44%; min-width:0; animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'right:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-end; gap:10px; z-index:6; max-width:44%; min-width:0; text-align:right;' : 'left:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; z-index:6; max-width:44%; min-width:0;' }} animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#c1121f; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_blue') }}</div>
-      <div style="display:flex; align-items:center; gap:15.1px;">
+      <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px; flex-direction:row-reverse;' : 'gap:15.1px;' }}">
         <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
         <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#a9c6ea;"></div>
       </div>
       <div id="vsBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
-      <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px;">
+      <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px; flex-direction:row-reverse;' : 'margin-top:4.3px;' }}">
         <div id="vsBlueLogo" style="width:69.1px; height:69.1px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); border-radius:50%; background-size:cover; background-position:center;"></div>
         <div id="vsBlueClub" style="font-weight:600; font-size:30.2px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,230,224,0.9);"></div>
       </div>
-      <div id="vsBlueChips" style="display:flex; flex-wrap:wrap; gap:9.7px; margin-top:5.4px;"></div>
+      <div id="vsBlueChips" style="display:flex; flex-wrap:wrap; gap:9.7px; {{ $rr ? 'margin-top:5.4px; justify-content:flex-end;' : 'margin-top:5.4px;' }}"></div>
     </div>
 
-    <div style="position:absolute; right:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-end; gap:10px; z-index:6; max-width:44%; min-width:0; text-align:right; animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'left:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; z-index:6; max-width:44%; min-width:0;' : 'right:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-end; gap:10px; z-index:6; max-width:44%; min-width:0; text-align:right;' }} animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1362d1; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
-      <div style="display:flex; align-items:center; gap:15.1px; flex-direction:row-reverse;">
+      <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px;' : 'gap:15.1px; flex-direction:row-reverse;' }}">
         <div id="vsWhiteFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
         <div id="vsWhiteCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#dfe6ef;"></div>
       </div>
       <div id="vsWhiteName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
-      <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px; flex-direction:row-reverse;">
+      <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px;' : 'margin-top:4.3px; flex-direction:row-reverse;' }}">
         <div id="vsWhiteLogo" style="width:69.1px; height:69.1px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); border-radius:50%; background-size:cover; background-position:center;"></div>
         <div id="vsWhiteClub" style="font-weight:600; font-size:30.2px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,230,224,0.9);"></div>
       </div>
-      <div id="vsWhiteChips" style="display:flex; flex-wrap:wrap; gap:9.7px; margin-top:5.4px; justify-content:flex-end;"></div>
+      <div id="vsWhiteChips" style="display:flex; flex-wrap:wrap; gap:9.7px; {{ $rr ? 'margin-top:5.4px;' : 'margin-top:5.4px; justify-content:flex-end;' }}"></div>
     </div>
 
     <div style="position:absolute; top:34.6px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:10.8px; z-index:8; width:92%; pointer-events:none; animation:dropIn 0.8s 0.5s cubic-bezier(0.22,1,0.36,1) both;">
@@ -351,7 +382,9 @@
   <div id="queue" class="layer" hidden style="background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); display:flex; flex-direction:column;">
     <div id="qHead" style="display:flex; align-items:center; justify-content:space-between; gap:30px; padding:34px 60px 24px; animation:headerIn 0.8s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="flex:1; display:flex; align-items:center; gap:18px;">
-        <div style="width:10px; height:64px; background:#1677FF;"></div>
+        {{-- The corners' colours, on the sides the corners stand — as on the Karate board. --}}
+        @php $upRedRight = \App\Sports\Combat\CornerSide::redRight('bjj'); @endphp
+        <div style="width:10px; height:64px; background:{{ $upRedRight ? '#026fd7' : '#ea3c3f' }};"></div>
         <div id="qEvent" style="font-weight:700; font-size:34px; letter-spacing:0.24em; text-transform:uppercase; color:rgba(232,230,224,0.85); max-width:520px;"></div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
@@ -364,7 +397,7 @@
           <span style="font-weight:600; font-size:32px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.court_court') }}</span>
           <span id="qCourtNumber" style="font-family:'Anton',sans-serif; font-size:52px; color:#fff;"></span>
         </div>
-        <div style="width:10px; height:64px; background:#1362d1;"></div>
+        <div style="width:10px; height:64px; background:{{ $upRedRight ? '#ea3c3f' : '#026fd7' }};"></div>
       </div>
     </div>
 
@@ -431,6 +464,13 @@
       'penalties' => __('scoreboard::bjj_messages.decided_by_penalties'),
     ];
 @endphp
+@php
+  // Left side first. Which corner stands where is the sport's convention.
+  $upNextSides = \App\Sports\Combat\CornerSide::redRight('bjj')
+      ? [['key' => 'white', 'tone' => 'blue'], ['key' => 'blue', 'tone' => 'red']]
+      : [['key' => 'blue', 'tone' => 'red'], ['key' => 'white', 'tone' => 'blue']];
+@endphp
+@include('scoreboard::partials.up-next')
 <script>
 (function () {
   'use strict';
@@ -439,7 +479,7 @@
      draws what the server sent, or derives the clock from it. */
 
   var EVENT_TITLE = @json($event->title);
-  var EVENT_LOGO  = @json($event->tenant?->logo ? file_url($event->tenant->logo) : null);
+  var EVENT_LOGO  = @json($event->host()->logo);
   var COURT       = @json($court);
   var ROWS        = @json(\App\Scoreboard\Sports\BrazilianJiuJitsu\HallScreen\ScreenBoard::ROWS);
 
@@ -506,6 +546,21 @@
      worse than small type. Measured, not guessed — and re-measured when a
      hidden layer becomes visible (a hidden element has no width) and once the
      webfaces have loaded, because Anton is far narrower than the fallback. */
+  // BJJ's red corner (BLUE in the data) stands on the right — App\\Sports\\Combat\\CornerSide.
+  var RED_RIGHT = @json(\App\Sports\Combat\CornerSide::redRight('bjj'));
+  /* The division above the clock. A BJJ division is long ("GROUP D (+70)
+     ADULT [GI] - COLOR BELT") and was sized by counting characters, on one
+     line — so it ran out of the clock column over both clubs. It now wraps
+     between words (never inside one) and is shrunk until it fits the column
+     in at most about three lines (partials/fit-text). */
+  function fitCategory() {
+    var c = el('sbCategory');
+    if (!c || !window.ScreenFit) return;
+    c.style.whiteSpace = 'normal';
+    c.style.width = '440px';
+    window.ScreenFit.lines(c, 84, 26, 190);
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitCategory(); });
   var nameSpec = {};
   function setName(id, value, max, min) {
     var n = el(id);
@@ -533,7 +588,10 @@
     // toward the edge it is aligned to.
     if (n.scrollWidth > n.clientWidth) {
       var ratio = Math.max(0.6, n.clientWidth / n.scrollWidth);
-      n.style.transformOrigin = /White/.test(id) ? 'right center' : 'left center';
+      // Anchored at the line's START: overflow runs toward its end however
+      // the line is aligned, so an end-anchored squeeze pushed a long name's
+      // tail past its own box.
+      n.style.transformOrigin = getComputedStyle(n).direction === 'rtl' ? 'right center' : 'left center';
       n.style.transform = 'scaleX(' + ratio.toFixed(3) + ')';
     }
 
@@ -547,6 +605,7 @@
     });
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitNames);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitQueue(document.getElementById('qRows')); });
 
   // Our own files, served from this box — a hall with no uplink is the
   // ordinary case (CLAUDE.md -> Flags Come From One Local Source).
@@ -830,7 +889,7 @@
     var blue = ev.side === 'blue';
     var colour = blue ? '#ff5a63' : '#4d9aff';
     host.textContent = '';
-    host.style.left = (blue ? '25%' : '75%');
+    host.style.left = (blue !== RED_RIGHT ? '25%' : '75%');
     host.style.top = '44%';
 
     var ring = document.createElement('div');
@@ -994,11 +1053,7 @@
     }
 
     text('sbCategory', S.division || '');
-    var catEl = el('sbCategory');
-    if (catEl) {
-      var n = (S.division || '').length;
-      catEl.style.fontSize = (n <= 9 ? 84 : n <= 14 ? 64 : n <= 22 ? 46 : 34) + 'px';
-    }
+    fitCategory();
     text('sbMatchNo', S.matchNo || '');
     text('sbCourt', (S.courtLabel || COURT).replace(/[^0-9]/g, '') || (S.courtLabel || COURT));
     text('sbRound', S.stage || '');
@@ -1112,221 +1167,18 @@
     return v !== '';
   }
 
-  /** One corner half — photo, name, flag, crest, club. */
-  function half(m, corner) {
-    var blue = corner === 'blue';
-    var wrap = node('div', 'flex:1; min-width:0; display:flex; align-items:stretch;' +
-      (blue
-        ? 'background:linear-gradient(90deg, #c1121f 0%, #5c0a10 100%);' +
-          'clip-path:polygon(0 0, 100% 0, calc(100% - 60px) 100%, 0 100%); margin-right:-30px; color:#fff;'
-        : 'flex-direction:row-reverse;' +
-          'background:linear-gradient(270deg, #1362d1 0%, #08284f 100%);' +
-          'clip-path:polygon(60px 0, 100% 0, 100% 100%, 0 100%); margin-left:-30px; color:#fff;'));
-
-    // ⚠️ The box is the PICTURE'S OWN SHAPE, not a fixed width.
-    //
-    // Every profile picture on the platform is portrait 3:4 — stored 600x800,
-    // cropped by the member through a 300x400 viewport (CLAUDE.md, "Profile
-    // Pictures Are Portrait 3:4"). This box was 230px wide by whatever height
-    // the row happened to be — landscape — so `cover` filled the width and ate
-    // the top and bottom of the crop the member chose. From ten metres that is
-    // a forehead and a chin.
-    //
-    // Tying the width to the height at 3:4 makes `cover` an exact fit: the
-    // whole crop, at its own ratio, whatever height the rows settle at when
-    // four of them share the screen.
-    var photo = node('div', 'align-self:stretch; aspect-ratio:3/4; width:auto; flex:0 0 auto; background-color:' + (blue ? '#6e1219' : '#0e3f80') + ';' +
-      'background-size:cover; background-position:center 12%;');
-    // Their own face, and the drawn stand-in when there is none — the same
-    // rule as the introduction panel. The stand-in sits well back, so nobody
-    // reads it as a photograph of the athlete about to walk on.
-    var face = m[corner + 'Photo'] || m[corner + 'Fallback'];
-    bgOrHide(photo, face);
-    photo.style.opacity = (face && !m[corner + 'Photo']) ? '.45' : '1';
-    wrap.appendChild(photo);
-
-    var col = node('div', 'flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:6px;' +
-      (blue ? 'padding:10px 60px 10px 26px;' : 'align-items:flex-end; padding:10px 26px 10px 60px; text-align:right;'));
-
-    // The country goes ABOVE the name: flag, then the country spelled out.
-    // A reader scanning four rows from the back of a hall finds the nation
-    // first and the person second, which is the order a competition is read
-    // in. The plate below the name keeps the club, which is the smaller claim.
-    //
-    // The flag is smaller here than it was in the club strip — it sits over a
-    // 56px name rather than beside a 30px club, and a 76px plate above the
-    // name out-shouted it.
-    var nat = node('div', 'display:flex; align-items:center; gap:12px; max-width:100%;' + (blue ? '' : 'flex-direction:row-reverse;'));
-
-    // Stretched to fill the box — `100% 100%`, not `cover` and not `contain`.
-    // National flags run from 1.43:1 to 2:1 while this box is 4:3, so the three
-    // options are crop (which ate a third off a 2:1 flag), letterbox (grey
-    // bands), or stretch — which keeps every flag WHOLE and fills the plate.
-    var flag = node('div', 'width:58px; flex:0 0 auto; aspect-ratio:4/3; background-color:rgba(0,0,0,0.25); background-size:100% 100%; image-rendering:auto; background-repeat:no-repeat; background-position:center; border:1px solid rgba(255,255,255,0.4);');
-    var hasFlag = bgOrHide(flag, flagUrl(m[corner + 'Flag']));
-    nat.appendChild(flag);
-
-    var country = node('div', 'min-width:0; font-weight:700; font-size:26px; letter-spacing:0.14em; text-transform:uppercase; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;');
-    var hasCountry = textOrHide(country, m[corner + 'Country']);
-    nat.appendChild(country);
-
-    // Neither one — the line steps aside rather than leaving its gap over the
-    // name. Same rule as the club strip below.
-    show(nat, hasFlag || hasCountry);
-    col.appendChild(nat);
-
-    // The one field that never hides: a nameless half looks broken from ten
-    // metres, so an undrawn slot says so instead.
-    col.appendChild(node('div', "font-family:'Anton',sans-serif; font-size:56px; line-height:1; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;", m[corner + 'Name'] || TBD));
-
-    var meta = node('div', 'display:flex; align-items:center; gap:12px; max-width:100%;' + (blue ? '' : 'flex-direction:row-reverse;'));
-
-    var crest = node('div', 'width:66px; height:66px; flex:0 0 auto; border-radius:50%; background-color:rgba(255,255,255,0.12); background-size:cover; background-position:center; border:1px solid rgba(255,255,255,0.35);');
-    var hasCrest = bgOrHide(crest, m[corner + 'Logo']);
-    meta.appendChild(crest);
-
-    var club = node('div', 'min-width:0; font-weight:600; font-size:30px; letter-spacing:0.06em; text-transform:uppercase; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;');
-    var hasClub = textOrHide(club, m[corner + 'Club']);
-    meta.appendChild(club);
-
-    // With crest and club both absent the strip is an empty flex row that
-    // would still eat its gap under the name — so the row itself steps aside.
-    show(meta, hasCrest || hasClub);
-
-    col.appendChild(meta);
-    wrap.appendChild(col);
-    return wrap;
-  }
-
-  /** The centre plate: match number, round, division — gold when it is next. */
-  function plate(m, isNext) {
-    var GOLD = '#fdc436';
-    var p = node('div', 'position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:2px;' +
-      (isNext ? 'background:' + GOLD + ';' : 'background:#101016;') +
-      'border:2px solid ' + (isNext ? '#fffdf0' : 'rgba(255,255,255,0.3)') + ';' +
-      'padding:10px 26px 12px; min-width:220px; box-shadow:0 0 30px rgba(0,0,0,0.7); z-index:3;');
-
-    var ink = isNext ? '#141210' : '#fff';
-    var accent = isNext ? '#141210' : GOLD;
-    var muted = isNext ? 'rgba(20,18,16,0.65)' : 'rgba(232,230,224,0.65)';
-
-    if (isNext) {
-      // GET READY breathes by STRETCHING its word, not by animating
-      // letter-spacing — tracking is a layout property, and re-laying-out text
-      // sixty times a second is the one animation here that would reach past
-      // paint into layout.
-      var ready = node('div', 'font-weight:800; font-size:26px; letter-spacing:0.2em; text-transform:uppercase; background:#141210; color:' + GOLD + '; padding:3px 18px 3px 20px; margin-bottom:2px; overflow:hidden;');
-      ready.appendChild(node('span', 'display:inline-block; animation:readyBreath 1.6s ease-in-out infinite;', GET_READY));
-      p.appendChild(ready);
-    }
-
-    // "MATCH 12" — the label is only meaningful next to a number, so the whole
-    // line steps aside for a match that has not been given one yet.
-    var line = node('div', 'display:flex; align-items:baseline; gap:8px;');
-    line.appendChild(node('span', 'font-weight:600; font-size:26px; letter-spacing:0.24em; text-transform:uppercase; color:' + muted + ';', MATCH_WORD));
-    var num = node('span', "font-family:'Anton',sans-serif; font-size:54px; line-height:1; color:" + accent + ';' + (isNext ? ' animation:numBeat 1.6s ease-in-out infinite;' : ''));
-    show(line, textOrHide(num, m.number));
-    line.appendChild(num);
-    p.appendChild(line);
-
-    var stage = node('div', 'font-weight:800; font-size:30px; letter-spacing:0.16em; text-transform:uppercase; color:' + ink + ';');
-    textOrHide(stage, m.stage);
-    p.appendChild(stage);
-
-    var weight = node('div', 'font-weight:600; font-size:26px; letter-spacing:0.14em; text-transform:uppercase; color:' + muted + ';');
-    textOrHide(weight, m.weightClass);
-    p.appendChild(weight);
-
-    return p;
-  }
-
-  /**
-   * One match row.
-   *
-   * `enter` is false for a match that was already on screen before this update.
-   * When one finishes the rows shift up, and re-playing the entrance on all
-   * four would read as the whole board flinching — only new rows fly in.
-   */
-  function qRow(m, i, isNext, enter) {
-    var GOLD = '#fdc436';
-    /* ⚠️ MOVEMENT BELONGS TO THE FIRST ROW ONLY (2026-09-20).
-
-       Four rows each carrying an entrance, and a shine crossing all four on
-       four staggered clocks, meant something was always moving somewhere on
-       the wall — and a reader looking for the bout that is NEXT had nothing to
-       look at, because everything was equally alive. The gold ring, the breath
-       and the beating number on row 0 were competing with three rows of
-       decoration rather than standing out from them.
-
-       So the queue below the first row is STILL. Row 0 keeps everything it
-       had; rows 1-3 draw and stay drawn. Nothing is removed — it is scoped,
-       which is what makes the top row read as the top row. */
-    var anim = (enter && isNext) ? ' animation:rowEnterL 0.7s 0.2s cubic-bezier(0.22,1,0.36,1) both;' : '';
-
-    /* ── Rounded corners, and the two layers that make them possible ───────
-       Asked for 2026-09-20. A radius alone would not have shown: the two
-       halves are CLIP-PATH polygons, which replace the border box entirely,
-       so their outer corners stay square however the row is rounded. They
-       have to be clipped by an ancestor.
-
-       But that ancestor cannot be the row itself, because `overflow:hidden`
-       clips a CHILD'S box-shadow — and the breath on row 0 is exactly that: a
-       child whose 110px glow is meant to spread OUTSIDE the row. Clipping it
-       would delete the thing that marks the next bout.
-
-       So the row splits in two. `r` is unclipped and carries everything that
-       belongs outside the edge (the glow, the running border); `body` is the
-       rounded, clipped box and carries everything that belongs inside it. */
-    var R = 16;
-
-    var r = node('div', 'flex:1; min-height:0; position:relative; border-radius:' + R + 'px;' +
-      // The quiet half of the breath, as a plain static shadow. The loud half
-      // is the layer below, faded over the top of it. An element's OWN shadow
-      // is not clipped by its own overflow, so this one is safe here.
-      (isNext ? 'box-shadow:0 0 16px rgba(253,196,54,0.35), 0 0 44px rgba(253,196,54,0.15);' : '') + anim);
-
-    if (isNext) {
-      // The breath: the strong shadow rasterised ONCE and faded in and out,
-      // rather than a 110px blur re-drawn around a full-width row every frame.
-      r.appendChild(node('div', 'position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:0;' +
-        'border-radius:' + R + 'px; box-shadow:0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35);' +
-        'animation:glowPulse 2.2s 1.2s ease-in-out infinite;'));
-
-      /* The running border: one rounded plate carrying the sliding gradient,
-         with the body laid over it 2px in. It used to be four straight strips
-         — no mask, and no render surface, which was the point — but four
-         straight strips cannot follow a curve, and rounding them left a notch
-         on each corner. Two stacked rounded boxes need no mask either. */
-      var ring = node('div', 'position:absolute; inset:-2px; border-radius:' + (R + 2) + 'px; overflow:hidden; pointer-events:none; z-index:0;');
-      // The gradient repeats every 50% of its own width, so a -50% slide loops
-      // with no seam.
-      ring.appendChild(node('div', 'position:absolute; top:0; bottom:0; left:0; width:300%;' +
-        'background:linear-gradient(90deg, ' + GOLD + ', #fffdf0 25%, ' + GOLD + ' 50%, #6b5310 75%, ' + GOLD + ');' +
-        'animation:goldSlide 2.5s linear infinite;'));
-      r.appendChild(ring);
-    }
-
-    // Everything that must be clipped to the rounded shape lives in here.
-    var body = node('div', 'position:absolute; inset:0; display:flex; align-items:stretch; overflow:hidden;' +
-      'border-radius:' + R + 'px; background:#101016; z-index:1;' +
-      (isNext ? '' : 'border:1px solid rgba(255,255,255,0.15);'));
-    r.appendChild(body);
-
-    // The travelling shine, on the next bout and nowhere else.
-    if (isNext) {
-      var sweepWrap = node('div', 'position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2;');
-      sweepWrap.appendChild(node('div', 'position:absolute; top:0; bottom:0; width:26%; background:linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent); animation:rowSweep 4.5s 1.2s ease-in-out infinite;'));
-      body.appendChild(sweepWrap);
-    }
-
-    body.appendChild(half(m, 'blue'));
-    body.appendChild(half(m, 'white'));
-
-    var pl = plate(m, isNext);
-    if (enter) pl.style.animation = 'platePop 0.55s ' + (0.55 + i * 0.15) + 's cubic-bezier(0.22,1,0.36,1) both';
-    body.appendChild(pl);
-    return r;
-  }
+  /* The rows are the shared up-next design (partials/up-next) — the same
+     rows Karate and Taekwondo draw. BJJ's corners are BLUE and WHITE in the
+     payload and are drawn red and blue respectively; which one stands on
+     which side is the sport's convention (App\Sports\Combat\CornerSide). */
+  var UP = {
+    sides: @json($upNextSides),
+    tbd: TBD,
+    getReady: GET_READY,
+    match: MATCH_WORD
+  };
+  function qRow(m, i, isNext, enter) { return UpNext.row(m, i, isNext, enter, UP); }
+  function fitQueue(host) { if (window.UpNext && host) UpNext.fit(host); }
 
   var shownVersion = null, shownKeys = [], firstQueue = true;
   function keyOf(m) { return String(m.number) + '|' + (m.blueName || '') + '|' + (m.whiteName || ''); }
@@ -1391,7 +1243,7 @@
     el('idle').hidden = !onIdle;
     el('sb').hidden = !onBoard;
 
-    if (onQueue) paintQueue();
+    if (onQueue) { paintQueue(); fitQueue(el('qRows')); }
     if (onBoard || onVs) paintScoreboard();
     if (onVs) paintVs();
 

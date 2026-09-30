@@ -102,6 +102,7 @@
 </style>
 @endonce
 
+@include('scoreboard::partials.fit-text')
 @once('taekwondo-winner-celebration-script')
 <script>
 /* The celebration, painted into whatever host it is handed. Defined once per
@@ -273,9 +274,15 @@
 
     var nameEl = div(block, 'position:relative;color:#fff;font-weight:700;font-style:italic;line-height:.96;' +
       'font-size:' + clamp(57.6 * k / 1.35, 8.6 * vw, 168 * k) + 'px;text-transform:uppercase;' +
-      'letter-spacing:-.01em;overflow-wrap:break-word;' +
+      'letter-spacing:-.01em;overflow-wrap:normal;word-break:normal;max-width:100%;' +
       'animation:wcNameSlam .55s cubic-bezier(.2,1.3,.4,1) .2s both, wcTextGlow 2.6s ease-in-out .9s infinite;');
     nameEl.textContent = name;
+    // Broken only BETWEEN words, never inside one ("FARAMAR / ZI"), and sized
+    // so a long name stays on the wall instead of climbing off its top.
+    var nameMax = clamp(57.6 * k / 1.35, 8.6 * vw, 168 * k);
+    if (window.ScreenFit) requestAnimationFrame(function () {
+      window.ScreenFit.lines(nameEl, nameMax, Math.round(nameMax * 0.4), 46 * vh);
+    });
 
     div(block, 'height:' + (6 * k) + 'px;max-width:100%;border-radius:' + (3 * k) + 'px;' +
       'background:linear-gradient(90deg, var(--wcA), var(--wcB));' +
@@ -287,7 +294,7 @@
     if (club || logo) {
       var badge = 110 * k;
       var row = div(block, 'display:flex;align-items:center;gap:' + (22 * k) + 'px;margin-top:' + (0.4 * vh) + 'px;' +
-        'width:max-content;animation:wcRiseIn .5s .7s both;' + (mirrored ? 'flex-direction:row-reverse;' : ''));
+        'width:max-content;max-width:100%;animation:wcRiseIn .5s .7s both;' + (mirrored ? 'flex-direction:row-reverse;' : ''));
 
       if (logo) {
         var crest = document.createElement('img');
@@ -306,10 +313,18 @@
       }
 
       if (club) {
-        var clubEl = div(row, 'font-size:' + clamp(32 * k / 1.35, 4.2 * vw, 64 * k) + 'px;font-weight:700;' +
+        var clubSize = clamp(32 * k / 1.35, 4.2 * vw, 64 * k);
+        var clubEl = div(row, 'font-size:' + clubSize + 'px;font-weight:700;' +
           'font-style:italic;line-height:1.05;letter-spacing:.06em;text-transform:uppercase;color:#fff;' +
-          'white-space:nowrap;text-shadow:0 0 ' + (44 * k) + 'px var(--wcGlow), 0 ' + (6 * k) + 'px ' + (24 * k) + 'px rgba(0,0,0,.7);');
+          'white-space:nowrap;min-width:0;overflow:hidden;' +
+          'text-shadow:0 0 ' + (44 * k) + 'px var(--wcGlow), 0 ' + (6 * k) + 'px ' + (24 * k) + 'px rgba(0,0,0,.7);');
         clubEl.textContent = club;
+        // A long club ran on across the photograph: the row is held to the
+        // name's column and the club fitted to it (smaller, then condensed —
+        // never cut). See partials/fit-text.
+        clubEl.setAttribute('data-fit', Math.round(clubSize) + ':' + Math.round(clubSize * 0.55));
+        if (mirrored) clubEl.setAttribute('data-fit-end', 'right');
+        if (window.ScreenFit) requestAnimationFrame(function () { window.ScreenFit.fit(clubEl); });
       }
     }
 
