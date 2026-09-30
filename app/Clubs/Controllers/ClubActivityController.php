@@ -146,6 +146,10 @@ class ClubActivityController extends Controller
         // it becomes reusable by other clubs — the whole point of the catalog.
         $this->contributeToCatalog($activity, $clubId);
 
+        // Which sport package this activity is (Karate, BJJ…), so what that
+        // sport brings — ranks and grading — comes with it. Never blocks the save.
+        app(\App\Ranks\Support\ActivityPackages::class)->autoLink($activity);
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -181,6 +185,9 @@ class ClubActivityController extends Controller
         $activity->update($data);
 
         $this->applyTranslations($activity, $request);
+
+        // A rename may change what sport it is — unless the club chose it itself.
+        app(\App\Ranks\Support\ActivityPackages::class)->autoLink($activity->fresh());
 
         if ($request->wantsJson()) {
             return response()->json([

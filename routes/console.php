@@ -45,6 +45,8 @@ Schedule::command('takeone:backup')
     ->withoutOverlapping()
     ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('Nightly backup FAILED — restore capability is compromised.'));
 Schedule::command('goals:daily-encouragement')->dailyAt('09:00');
+// Ranks & grading reminders — each sent once; a no-op while RANKS_ENABLED is off.
+Schedule::command('ranks:reminders')->dailyAt('08:00')->withoutOverlapping();
 Schedule::command('alerts:recheck-low-stock')->dailyAt('08:00');
 
 // Court displays that enrolled and were never claimed. Enrolment is open by

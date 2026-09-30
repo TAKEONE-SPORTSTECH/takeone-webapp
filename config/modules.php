@@ -54,6 +54,21 @@ return [
         \App\Forms\Forms::class,
 
         /*
+         * Certificates: printed, signed, verifiable by QR. The engine is the
+         * vendored ahl/laravel-certificates package; what a certificate is FOR
+         * (an event's participation and podium, later belt tests and courses)
+         * is supplied by the module that owns it — see app/Certificates.
+         */
+        \App\Certificates\Certificates::class,
+
+        /*
+         * Ranks & grading. Not a club feature: it arrives with an ACTIVITY whose
+         * sport package has belts, and hangs off that activity — see
+         * app/Ranks/Ranks.php. Off unless RANKS_ENABLED.
+         */
+        \App\Ranks\Ranks::class,
+
+        /*
          * Governing bodies clubs affiliate WITH (not a chain that owns them).
          * Every file lives in app/Federations — its config and migrations too.
          */

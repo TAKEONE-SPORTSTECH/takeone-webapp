@@ -869,6 +869,8 @@
 
         {{-- ===== Overview ===== --}}
         <div x-show="tab==='overview'" x-transition.opacity class="space-y-3">
+            {{-- Belts, when the member trains in a sport that has them (App\Ranks). Renders nothing otherwise. --}}
+            <x-member-ranks :user="$relationship->dependent" class="m-card p-4" />
 
             {{-- Account security (setting or generating a password) now lives in the
                  edit sheet's Security tab: the place a person is edited is the place

@@ -310,6 +310,8 @@
         <div id="profileTabsContent">
             <!-- Overview Tab -->
             <div x-show="activeTab === 'overview'" x-transition id="overview" role="tabpanel">
+            {{-- Belts, when the member trains in a sport that has them (App\Ranks). Renders nothing otherwise. --}}
+            <x-member-ranks :user="$relationship->dependent" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4" />
             <!-- Profile Statistics and Revenue Chart Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                 <!-- Profile Statistics -->
