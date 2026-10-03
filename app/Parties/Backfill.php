@@ -235,7 +235,12 @@ final class Backfill
     private function grantFrom(string $table, int $id, string $fromKind, $fromId, string $role, string $toKind, $toId, array $attrs, bool $apply, callable $count): void
     {
         $source = "{$table}:{$id}";
-        $isNew = ! PartyRelation::where('source', $source)->exists();
+        // Not new if this source was copied before, or if the same open
+        // relationship already exists from another source (a creator who is
+        // also an appointed organiser is ONE organiser) — grant() would
+        // return that row rather than create one.
+        $isNew = ! PartyRelation::where('source', $source)->exists()
+            && ! (empty($attrs['ends_at']) && $this->activeExists($fromKind, $fromId, $toKind, $toId, $role));
         $count($table, $isNew);
         if (! $isNew || ! $apply || ! $fromId || ! $toId) {
             return;
