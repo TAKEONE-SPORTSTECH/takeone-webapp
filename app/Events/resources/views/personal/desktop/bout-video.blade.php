@@ -218,6 +218,10 @@
   .ctrl-quality{font-family:'Archivo',sans-serif;font-weight:600;letter-spacing:.5px;color:var(--ink-2)}
   .fs-btn{background:none;border:none;color:#ccc;font-size:17px;line-height:1;cursor:pointer;padding:2px 4px;transition:.12s}
   .fs-btn:hover{color:#fff;transform:scale(1.15)}
+  /* Speed, loop and picture-in-picture — the controls the phone player has (2026-10-03). */
+  .ctl-btn{background:none;border:none;color:#ccc;font-size:13px;line-height:1;cursor:pointer;padding:2px 4px;transition:.12s;font-family:'Archivo',sans-serif;font-weight:600;letter-spacing:.5px}
+  .ctl-btn:hover{color:#fff}
+  .ctl-btn.on{color:#fff;text-shadow:0 0 8px rgba(255,255,255,.55)}
 
   /* Fullscreen highlights */
   .fs-hl-btn{position:absolute;top:14px;right:14px;z-index:20;display:none;align-items:center;gap:7px;padding:9px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.55);color:var(--ink);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;backdrop-filter:blur(6px);letter-spacing:.3px}
@@ -391,7 +395,9 @@
             <div class="ctrl-row">
               <span id="clock">00:00 / 00:00</span>
               <span class="ctrl-right">
-                <span class="ctrl-quality">1080p &middot; 1&times;</span>
+                <button class="ctl-btn" id="loopBtn" title="Loop" aria-pressed="false">&#x27F2;</button>
+                <button class="ctl-btn" id="pipBtn" title="Picture in picture" hidden>&#x29C9;</button>
+                <button class="ctl-btn ctrl-quality" id="speedBtn" title="Playback speed">1&times;</button>
                 <button class="fs-btn" id="fsBtn" title="Fullscreen">&#x26F6;</button>
               </span>
             </div>
@@ -417,9 +423,12 @@
       </div>
       <div class="actions">
         <button class="btn toggled" id="railBtn">&#9776; Hide Highlights</button>
-        <button class="btn">&#9825; Like</button>
-        <button class="btn">&#8599; Share</button>
-        <button class="btn accent">&#8681; Download</button>
+        {{-- Like had nothing behind it (no bout-like action exists) and is gone;
+             Share and Download do what mobile's do (2026-10-03). --}}
+        <button class="btn" id="shareBtn">&#8599; Share</button>
+        @if(! empty($angles[0]['mp4']))
+          <a class="btn accent" id="downloadBtn" href="{{ $angles[0]['mp4'] }}" download style="text-decoration:none">&#8681; Download</a>
+        @endif
       </div>
     </div>
 
@@ -676,6 +685,20 @@ function renderPanel(mount, sticky){
 renderPanel(document.getElementById('railMount'));
 renderPanel(document.getElementById('fsPanel'));
 
+/* ── Share: the system share sheet where there is one, else copy the link ── */
+(function(){
+  const btn = document.getElementById('shareBtn'); if (!btn) return;
+  btn.onclick = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) { await navigator.share({ title: document.title, url }); return; }
+      await navigator.clipboard.writeText(url);
+      const toast = document.getElementById('toast');
+      if (toast) { toast.textContent = 'Link copied'; toast.classList.add('show'); clearTimeout(toast._h); toast._h = setTimeout(() => toast.classList.remove('show'), 2500); }
+    } catch (e) {}
+  };
+})();
+
 /* ── Coach notes: add / edit / delete (desktop parity) ─────────────────── */
 function rerenderPanels(){ renderPanel(document.getElementById('railMount')); renderPanel(document.getElementById('fsPanel')); }
 function noteRow(n){
@@ -752,6 +775,32 @@ railBtn.onclick = () => {
 
 /* ══════════ Fullscreen ══════════ */
 const player = document.getElementById('player');
+/* Speed cycles through the steps the phone offers; loop and picture-in-picture
+   are the browser's own, offered only where the browser has them. */
+(function(){
+  if (!vid) return;
+  const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+  const sb = document.getElementById('speedBtn');
+  if (sb) sb.onclick = () => {
+    const i = speeds.indexOf(vid.playbackRate);
+    vid.playbackRate = speeds[(i + 1) % speeds.length] || 1;
+    sb.textContent = vid.playbackRate + '\u00d7';
+  };
+  const lb = document.getElementById('loopBtn');
+  if (lb) lb.onclick = () => {
+    vid.loop = !vid.loop;
+    lb.classList.toggle('on', vid.loop);
+    lb.setAttribute('aria-pressed', vid.loop ? 'true' : 'false');
+  };
+  const pb = document.getElementById('pipBtn');
+  if (pb && document.pictureInPictureEnabled && !vid.disablePictureInPicture) {
+    pb.hidden = false;
+    pb.onclick = () => {
+      (document.pictureInPictureElement ? document.exitPictureInPicture() : vid.requestPictureInPicture()).catch(() => {});
+    };
+  }
+})();
+
 document.getElementById('fsBtn').onclick = () => {
   if (document.fullscreenElement) { document.exitFullscreen(); return; }
   if (player.classList.contains('fs')) { player.classList.remove('fs'); return; }

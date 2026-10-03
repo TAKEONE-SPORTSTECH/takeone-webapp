@@ -816,6 +816,17 @@ document.addEventListener('DOMContentLoaded', function() {
                             selectedMemberCard.classList.remove('hidden');
                             searchResults.classList.add('hidden');
                             memberSearchInput.value = '';
+                            // Pre-fill the skills the platform already knows they have, as
+                            // the mobile wizard does (2026-10-03).
+                            // Best-effort: a failure leaves the fields as they were.
+                            fetch(`{{ route('admin.club.instructors.prefill', ['club' => $club->slug, 'user' => '__UID__']) }}`.replace('__UID__', encodeURIComponent(selectedMemberId)),
+                                  { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                                .then(r => r.json()).then(d => {
+                                    if (!d || !d.success) return;
+                                    // Skills only: the experience comes back as display text ("3 yrs 2 mo"),
+                                    // and guessing a number from it could put months in a years box.
+                                    (Array.isArray(d.skills) ? d.skills : []).forEach(sk => window.addInstructorSkillExisting && window.addInstructorSkillExisting(sk));
+                                }).catch(() => {});
                         });
                     });
                 } else {

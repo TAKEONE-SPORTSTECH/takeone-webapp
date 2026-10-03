@@ -75,6 +75,14 @@
                         <i class="bi bi-lightning-charge-fill mr-1 text-primary"></i>{{ __('personal.challenge') }}
                     </a>
                     @endif
+                    {{-- Share — the phone has it in its header (2026-10-03). --}}
+                    <button type="button"
+                            @click="const url = window.location.href;
+                                    if (navigator.share) { navigator.share({ title: @js($person->full_name), url }).catch(() => {}); return; }
+                                    navigator.clipboard?.writeText(url).then(() => window.showToast && window.showToast('success', @js(__('shared.link_copied')))).catch(() => {});"
+                            class="w-full text-sm font-semibold py-2.5 rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                        <i class="bi bi-share mr-1"></i>{{ __('shared.share') }}
+                    </button>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2 mt-5 pt-5 border-t border-gray-100">
@@ -141,6 +149,65 @@
                         </p>
                     </div>
                 </div>
+
+            {{-- Sports and certifications — both on the phone's profile (2026-10-03). --}}
+            @if($sports->count())
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-sm font-bold text-gray-900 mb-3">{{ __('personal.sports') }}</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        @foreach($sports as $sp)
+                            <div class="flex items-start gap-3 p-3 rounded-xl border border-gray-100">
+                                <span class="w-10 h-10 rounded-xl bg-primary text-white grid place-items-center flex-shrink-0"><i class="bi {{ $sp['icon'] }}"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm font-bold text-gray-900 flex-1 min-w-0">{{ $sp['name'] }}</p>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ $sp['competing'] ? 'bg-green-50 text-green-700' : 'bg-muted text-muted-foreground' }}">{{ $sp['competing'] ? __('personal.sport_competing') : ($sp['active'] ? __('personal.sport_registered') : __('personal.sport_past')) }}</span>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-accent text-primary"><i class="bi bi-patch-check-fill"></i>{{ $sp['grade'] ?: __('personal.no_grading') }}</span>
+                                        @if($sp['experience'])
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-500"><i class="bi bi-hourglass-split"></i>{{ $sp['experience'] }}</span>
+                                        @endif
+                                        @if($sp['bouts'] || $sp['events'])
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700"><i class="bi bi-bar-chart-fill"></i>{{ $sp['bouts']
+                                                ? trans_choice('personal.sport_bouts', $sp['bouts'], ['count' => $sp['bouts']])
+                                                : trans_choice('personal.sport_events', $sp['events'], ['count' => $sp['events']]) }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            @if($certifications->count())
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-sm font-bold text-gray-900 mb-3">{{ __('personal.certifications') }}</h2>
+                    <div class="space-y-2">
+                        @foreach($certifications as $c)
+                            @php
+                                $expired = $c->expiry_date !== null && $c->expiry_date->isPast();
+                                // Member-supplied, so only an http(s) address is ever linked.
+                                $link = filter_var((string) $c->credential_url, FILTER_VALIDATE_URL) && \Illuminate\Support\Str::startsWith($c->credential_url, ['http://', 'https://'])
+                                    ? $c->credential_url : null;
+                            @endphp
+                            <{{ $link ? 'a' : 'div' }} @if($link) href="{{ $link }}" target="_blank" rel="noopener nofollow" @endif
+                                class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 {{ $link ? 'hover:bg-gray-50 transition-colors' : '' }}">
+                                <span class="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center flex-shrink-0"><i class="bi bi-patch-check"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold text-gray-900">{{ $c->title }}</p>
+                                    <p class="text-[11px] text-muted-foreground mt-0.5">{{ collect([$c->issuer, $c->credential_id])->filter()->implode(' · ') }}</p>
+                                </div>
+                                @if($c->expiry_date)
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ $expired ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700' }}">{{ $expired ? __('personal.certificate_expired') : __('personal.certificate_valid') }}</span>
+                                @endif
+                                @if($link)<i class="bi bi-box-arrow-up-right text-[11px] text-gray-400"></i>@endif
+                            </{{ $link ? 'a' : 'div' }}>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             @if($skills->count())
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">

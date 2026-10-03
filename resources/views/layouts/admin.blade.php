@@ -222,8 +222,11 @@
         'Management' => [
             ['route'=>'admin.platform.clubs',      'pattern'=>['admin.platform.clubs*'],     'icon'=>'bi-building',  'label'=>__('nav.layouts_admin_nav_all_clubs')],
             ['route'=>'admin.platform.members',    'pattern'=>['admin.platform.members*'],    'icon'=>'bi-people',    'label'=>__('nav.layouts_admin_nav_all_members')],
-            ['route'=>'admin.platform.businesses', 'pattern'=>['admin.platform.businesses*'], 'icon'=>'bi-buildings', 'label'=>__('nav.layouts_admin_nav_businesses')],
-            ['route'=>'admin.platform.featured-events', 'pattern'=>['admin.platform.featured-events*'], 'icon'=>'bi-stars', 'label'=>__('platform.featured_nav')],
+            // Waiting-for-a-decision counts, as the mobile platform home shows them (2026-10-03).
+            ['route'=>'admin.platform.businesses', 'pattern'=>['admin.platform.businesses*'], 'icon'=>'bi-buildings', 'label'=>__('nav.layouts_admin_nav_businesses'),
+                'badge' => \App\Clubs\Models\Business::where('status', \App\Clubs\Models\Business::STATUS_PENDING)->count()],
+            ['route'=>'admin.platform.featured-events', 'pattern'=>['admin.platform.featured-events*'], 'icon'=>'bi-stars', 'label'=>__('platform.featured_nav'),
+                'badge' => \App\Events\Models\EventFeatureRequest::where('status', 'pending')->count()],
         ],
         'System' => [
             ['route'=>'admin.platform.activities',    'pattern'=>['admin.platform.activities*'],'icon'=>'bi-lightning-charge','label'=>'Activities'],
@@ -312,7 +315,11 @@
                        class="nav-item {{ $active ? 'active' : '' }}" style="margin-bottom:2px">
                         <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
                         <span>{{ $item['label'] }}</span>
-                        <span class="nav-dot"></span>
+                        @if(!empty($item['badge']))
+                            <span class="ms-auto pa-collapse-hide inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-[11px] font-bold">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
+                        @else
+                            <span class="nav-dot"></span>
+                        @endif
                     </a>
                 @endforeach
             @endforeach

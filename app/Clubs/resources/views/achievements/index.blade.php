@@ -71,6 +71,33 @@ $achievementsJson = $achievements->map(function($a) {
             </div>
         </div>
     @else
+        @php
+            // Search + year filter — the mobile list has both (2026-10-03).
+            $achYearOf = function ($a) {
+                if ($a->achievement_date) return $a->achievement_date->format('Y');
+                if (preg_match('/(\d{4})/', (string) ($a->date_label ?? ''), $m)) return $m[1];
+                return '';
+            };
+            $achTextOf = fn ($a) => mb_strtolower(trim(implode(' ', array_filter([$a->title, $a->short_title, $a->location, $a->description, $a->tag]))));
+            $achYears = $achievements->map($achYearOf)->filter()->unique()->sortDesc()->values();
+        @endphp
+        <div x-data="{ achQ: '', achYear: 'all',
+                       achShow(t, y) { const q = this.achQ.trim().toLowerCase(); return (q === '' || t.includes(q)) && (this.achYear === 'all' || String(y) === String(this.achYear)); } }">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+            <div class="relative flex-1">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                <input type="search" x-model="achQ" placeholder="{{ __('admin.ach_search') }}"
+                       class="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+            @if($achYears->isNotEmpty())
+                <div class="flex gap-2 overflow-x-auto pb-1">
+                    <button type="button" @click="achYear = 'all'" :class="achYear === 'all' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'" class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors">{{ __('admin.ach_all_years') }}</button>
+                    @foreach($achYears as $y)
+                        <button type="button" @click="achYear = '{{ $y }}'" :class="achYear === '{{ $y }}' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'" class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors">{{ $y }}</button>
+                    @endforeach
+                </div>
+            @endif
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             @foreach($achievements as $achievement)
             @php
@@ -79,6 +106,7 @@ $achievementsJson = $achievements->map(function($a) {
                 if (empty($achCardImages) && $achievement->image_path) $achCardImages = [file_url($achievement->image_path)];
             @endphp
             <div class="card border-0 shadow-sm overflow-hidden {{ $isInactive ? 'opacity-60' : '' }} cursor-pointer"
+                 x-show="achShow(@js($achTextOf($achievement)), @js($achYearOf($achievement)))"
                  id="achievement-{{ $achievement->id }}"
                  @click="openDetail({{ $achievement->id }})">
                 {{-- Card visual --}}
@@ -132,6 +160,7 @@ $achievementsJson = $achievements->map(function($a) {
             </div>
             @endforeach
         </div>
+        </div>{{-- /search + year filter --}}
     @endif
 
     {{-- ===== DETAIL MODAL ===== --}}

@@ -721,6 +721,29 @@
         </div>
     </form>
 
+    {{-- Recent reviews with what members actually wrote — mobile shows them here;
+         desktop showed only the average (2026-10-03). Read-only. --}}
+    @if(isset($reviews) && $reviews->isNotEmpty())
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2 mb-4">
+                <i class="bi bi-star-fill text-amber-500"></i>{{ __('admin.det_recent_reviews') }}
+                <span class="py-0.5 px-2.5 rounded-full text-xs font-medium bg-purple-100 text-purple-600">{{ number_format((float) ($averageRating ?? 0), 1) }}</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                @foreach($reviews->take(6) as $r)
+                    <div class="rounded-lg border border-gray-100 p-4">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-sm font-medium text-gray-900 truncate">{{ $r->user->full_name ?? __('admin.det_member') }}</span>
+                            <span class="text-xs text-amber-500 flex-shrink-0">@for($i = 0; $i < 5; $i++)<i class="bi bi-star{{ $i < ($r->rating ?? 0) ? '-fill' : '' }}"></i>@endfor</span>
+                        </div>
+                        @if($r->comment)<p class="text-sm text-muted-foreground mt-2">{{ $r->comment }}</p>@endif
+                        <p class="text-xs text-muted-foreground mt-2">{{ $r->created_at?->diffForHumans() }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
 @if($transferOwnershipUrl ?? null)
 <!-- Transfer Ownership Modal -->
 <div x-show="showOwnerModal"

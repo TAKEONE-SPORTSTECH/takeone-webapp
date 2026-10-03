@@ -58,6 +58,19 @@
         ? ['type' => 'pending', 'status' => $row['data']['status']]
         : ['type' => $row['data']->type, 'status' => $row['data']->subscription?->payment_status ?? null]
     )->values();
+    // Search text and month for each row, in the same order (2026-10-03, as on mobile).
+    $ledgerMeta = $ledgerMeta->map(function ($meta, $i) use ($ledgerRows) {
+        $row = $ledgerRows[$i];
+        $d = $row['data'];
+        $date = $row['sort_date'] ? \Illuminate\Support\Carbon::parse($row['sort_date']) : null;
+        $text = $row['kind'] === 'pending'
+            ? implode(' ', [$d['name'] ?? '', $d['package'] ?? '', $d['description'] ?? '', number_format((float) ($d['amount'] ?? 0), 2)])
+            : implode(' ', [$d->description, $d->category, $d->payment_method, $d->reference_number,
+                $d->subscription?->user?->full_name ?? $d->user?->full_name ?? '', number_format((float) $d->amount, 2)]);
+
+        return $meta + ['q' => mb_strtolower($text), 'month' => $date?->format('Y-m')];
+    })->values();
+    $ledgerMonths = $ledgerMeta->pluck('month')->filter()->unique()->sortDesc()->values();
 @endphp
 
 <div x-data="{
@@ -152,8 +165,13 @@
     get ledgerStart() { return (this.ledgerPage - 1) * this.ledgerPerPage; },
     get ledgerEnd()   { return this.ledgerPage * this.ledgerPerPage; },
     setLedgerFilter(key) { this.ledgerFilter = key; this.ledgerPage = 1; },
+    ledgerQ: '',
+    ledgerMonth: 'all',
     rowMatchesLedgerFilter(row) {
         if (!row) return true;
+        const q = (this.ledgerQ || '').trim().toLowerCase();
+        if (q && !(row.q || '').includes(q)) return false;
+        if (this.ledgerMonth !== 'all' && row.month !== this.ledgerMonth) return false;
         if (this.ledgerFilter === 'all') return true;
         if (this.ledgerFilter === 'pending') return row.status === 'unpaid' || row.status === 'pending_approval';
         return row.type === this.ledgerFilter;
@@ -452,6 +470,18 @@
                 </button>
             @endforeach
         </div>
+        {{-- Search the ledger and scope it to a month — mobile has both (2026-10-03). --}}
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3 border-b border-gray-100">
+            <div class="relative flex-1">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                <input type="search" x-model="ledgerQ" @input="ledgerPage = 1" placeholder="{{ __('admin.fin_search') }}"
+                       class="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+            @if($ledgerMonths->isNotEmpty())
+                <x-fields.select model="ledgerMonth" change="ledgerPage = 1"
+                    :options="array_merge([['value' => 'all', 'label' => __('admin.fin_filter_all')]], $ledgerMonths->map(fn ($m) => ['value' => $m, 'label' => \Illuminate\Support\Carbon::createFromFormat('Y-m', $m)->translatedFormat('F Y')])->all())" />
+            @endif
+        </div>
 
         <p x-show="ledgerFilteredTotal === 0" x-cloak class="text-sm text-gray-400 py-8 text-center">{{ __('admin.fin_no_results') }}</p>
 
@@ -530,6 +560,7 @@
                         $txPayer = ($t->subscription && $t->subscription->user)
                             ? ($t->subscription->user->full_name ?? $t->subscription->user->name)
                             : ($t->user->full_name ?? $t->user->name ?? '');
+                        $txPayerUuid = $t->subscription?->user?->uuid ?? $t->user?->uuid;
                         $txOrder = $t->reference_number ? ($shopOrders ?? collect())->get($t->reference_number) : null;
                         $txItemsSummary = $txOrder
                             ? $txOrder->items->map(fn ($it) => ($it->name ?: __('admin.fin_item')) . ' ×' . (int) $it->qty)->implode(' · ')
@@ -557,7 +588,7 @@
                             </div>
                             @if($txPayer)
                             <p class="ms-4 mt-0.5 text-xs text-primary/90 flex items-center gap-1 truncate max-w-[200px]">
-                                <i class="bi bi-person-circle text-[11px]"></i>{{ $txPayer }}
+                                <i class="bi bi-person-circle text-[11px]"></i>@if($txPayerUuid)<a href="{{ route('member.show', $txPayerUuid) }}" @click.stop class="hover:underline truncate">{{ $txPayer }}</a>@else{{ $txPayer }}@endif
                             </p>
                             @endif
                             @if($txItemsSummary)

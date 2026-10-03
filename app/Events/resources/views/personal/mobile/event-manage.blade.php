@@ -267,6 +267,24 @@
                                     :title="$e['title']" />
                 @endif
 
+                {{-- An official who scores but does not manage: the scoring table
+                     otherwise lives only inside the organiser's hall-screens panel,
+                     so they had no way in from here (desktop has this card). --}}
+                @if(! $canManage && ! empty($scoringUrl))
+                <a href="{{ $scoringUrl }}"
+                   class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3 no-underline">
+                    <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 bg-rose-50 text-rose-600"><i class="bi bi-stopwatch-fill text-lg"></i></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-foreground truncate">{{ __('personal.event_manage_scoring') }}</span>
+                        <span class="block text-[11px] text-muted-foreground mt-0.5 truncate">{{ __('personal.event_manage_scoring_sub') }}</span>
+                    </span>
+                    <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
+                </a>
+                @endif
+
+                {{-- Clubs and Divisions are the organiser's pages (both refuse
+                     anyone else), so an official is not shown doors that refuse. --}}
+                @if($canManage)
                 {{-- Clubs, immediately under it: the two doors an organiser
                      uses on the morning are "somebody turned up" and "a club
                      turned up", and they belong together (2026-09-12). --}}
@@ -289,6 +307,7 @@
                     </span>
                     <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
                 </a>
+                @endif
                 {{-- The rule book: category system + belt system. A change
                      re-sorts everybody entered (CategorySystems::change). --}}
                 @php $rbEvent = $canManage ? \App\Events\Models\ClubEvent::where('uuid', $e['key'])->first() : null; @endphp

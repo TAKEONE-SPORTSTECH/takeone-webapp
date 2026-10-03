@@ -19,6 +19,24 @@
         this.packageModalMode = 'edit';
         this.showPackageModal = true;
         this.$nextTick(() => window.populatePackageForm && window.populatePackageForm(pkg));
+    },
+    // Duplicate = the NEW-package form, pre-filled from this one (the button did
+    // nothing until 2026-10-03). Saved as a new package; the cover image is not
+    // copied, so the preview is cleared rather than promising one.
+    openDuplicateModal(pkg) {
+        if (! pkg) return;
+        this.packageModalMode = 'add';
+        this.showPackageModal = true;
+        this.$nextTick(() => {
+            window.populatePackageForm && window.populatePackageForm(pkg);
+            const form = document.getElementById('packageForm');
+            form.action = @js(route('admin.club.packages.store', $club->slug));
+            document.getElementById('packageFormMethod').value = 'POST';
+            const name = document.getElementById('packageName');
+            name.value = (pkg.name || '') + ' (' + @js(__('admin.club_packages_index_duplicate')) + ')';
+            const preview = document.getElementById('previewContainer_packageImageCropper');
+            if (preview) { preview.classList.remove('has-image'); preview.innerHTML = '<div id=\'preview_packageImageCropper\' class=\'cropper-preview-placeholder\' style=\'width:300px;height:169px;border-radius:8px;\'><i class=\'bi bi-image\' style=\'font-size:2rem;\'></i></div>'; }
+        });
     }
 }">
     <div class="flex justify-between items-center mb-6">
@@ -40,7 +58,8 @@
                         @click="openEditModal(packagesData.find(p => p.id === {{ $package->id }}))">
                     <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-secondary" title="{{ __('admin.club_packages_index_duplicate') }}">
+                <button class="btn btn-sm btn-secondary" title="{{ __('admin.club_packages_index_duplicate') }}"
+                        @click="openDuplicateModal(packagesData.find(p => p.id === {{ $package->id }}))">
                     <i class="bi bi-copy"></i>
                 </button>
                 <form action="{{ route('admin.club.packages.destroy', [$club->slug, $package->id]) }}" method="POST" class="inline" onsubmit="event.preventDefault(); const f = this; window.confirmAction({ title: '{{ __("admin.club_packages_index_delete_title") }}', message: '{{ __("admin.club_packages_index_delete_confirm") }}', type: 'danger', confirmText: '{{ __("shared.delete") }}' }).then(ok => { if (ok) f.submit(); }); return false;">

@@ -22,6 +22,13 @@
             </a>
 
             <div class="flex items-center gap-2 flex-shrink-0">
+                {{-- Scan a member's QR (or type the 6-character code) and the bell —
+                     what the mobile club bar already has (2026-10-03). --}}
+                <button type="button" class="nav-icon-btn" title="{{ __('header.scan_or_type') }}"
+                        onclick="window.dispatchEvent(new CustomEvent('qr-scan:open', { detail: { manual: true, manualLength: 6, manualLabel: @js(__('header.scan_or_type')), manualPlaceholder: @js(__('header.scan_code_placeholder')) } }))">
+                    <i class="bi bi-qr-code-scan text-xl"></i>
+                </button>
+                @include('partials.notification-bell')
                 @if($__lockCount > 1)
                     <a href="{{ route('club.entry') }}"
                        class="inline-flex items-center gap-2 border border-primary text-primary bg-transparent px-3 py-1.5 rounded-md text-sm font-medium hover:bg-primary hover:text-white transition-colors no-underline">

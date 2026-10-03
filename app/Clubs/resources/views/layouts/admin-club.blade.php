@@ -248,6 +248,19 @@ html, body { overflow: hidden !important; height: 100% !important; }
      * ['label' => …, 'items' => [...]].
      */
     $navGroups = app(\App\Support\Modules\ModuleRegistry::class)->clubAdminNavGroups($club, 'desktop');
+
+    // The Financials tooltip: THIS month's real income and expenses, in the
+    // club's current Test/Live mode (it showed made-up figures until 2026-10-03).
+    // Cached briefly — it renders on every admin page.
+    $sbCash = $club ? \Illuminate\Support\Facades\Cache::remember('club-sb-cash:'.$club->id.':'.(int) $club->is_test_mode.':'.now()->format('Y-m'), 300, function () use ($club) {
+        $sum = fn (string $type) => (float) \App\Clubs\Models\ClubTransaction::where('tenant_id', $club->id)
+            ->where('is_test', (bool) $club->is_test_mode)->where('type', $type)
+            ->whereBetween('transaction_date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
+            ->sum('amount');
+
+        return ['in' => $sum('income'), 'out' => $sum('expense')];
+    }) : ['in' => 0, 'out' => 0];
+    $sbCur = $club->currency ?? 'BHD';
 @endphp
 
 <div x-data="{ showNotificationModal: false }">
@@ -324,9 +337,9 @@ html, body { overflow: hidden !important; height: 100% !important; }
                                 <span class="nav-dot"></span>
                                 <div class="emp-tip-box">
                                     <div class="emp-tip-ttl">{{ __('nav.layouts_admin_club_cash_flow') }}</div>
-                                    <div class="emp-tip-row"><span>{{ __('nav.layouts_admin_club_income') }}</span><span class="v vp">BHD 250</span></div>
-                                    <div class="emp-tip-row"><span>{{ __('nav.layouts_admin_club_expenses') }}</span><span class="v vn">BHD -200</span></div>
-                                    <div class="emp-tip-tot"><span>{{ __('nav.layouts_admin_club_total') }}</span><span class="v">BHD 50</span></div>
+                                    <div class="emp-tip-row"><span>{{ __('nav.layouts_admin_club_income') }}</span><span class="v vp">{{ $sbCur }} {{ number_format($sbCash['in'], 2) }}</span></div>
+                                    <div class="emp-tip-row"><span>{{ __('nav.layouts_admin_club_expenses') }}</span><span class="v vn">{{ $sbCur }} -{{ number_format($sbCash['out'], 2) }}</span></div>
+                                    <div class="emp-tip-tot"><span>{{ __('nav.layouts_admin_club_total') }}</span><span class="v">{{ $sbCur }} {{ number_format($sbCash['in'] - $sbCash['out'], 2) }}</span></div>
                                 </div>
                             </a>
                         @else

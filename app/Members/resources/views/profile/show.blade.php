@@ -149,6 +149,12 @@
                             @endif
                         </div>
                         @endunless
+                        {{-- Share — on the phone's profile header (2026-10-03). --}}
+                        <button type="button"
+                                onclick="navigator.share ? navigator.share({ title: @js($pfUser->full_name), url: location.href }).catch(() => {}) : navigator.clipboard?.writeText(location.href).then(() => window.showToast && window.showToast('success', @js(__('shared.link_copied'))))"
+                                class="mt-2 px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 text-gray-700 hover:bg-muted transition-colors">
+                            <i class="bi bi-share me-1"></i>{{ __('shared.share') }}
+                        </button>
                     @endif
                 </div>
                             <p id="profile-display-motto" class="text-gray-500 italic mb-3"@if(!$relationship->dependent->motto) style="display:none"@endif>@if($relationship->dependent->motto)"{{ $relationship->dependent->motto }}"@endif</p>
@@ -363,6 +369,11 @@
                     <i class="bi bi-briefcase me-2"></i>{{ __('members::member.tab_worked') }}
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'challenges'" :class="{ 'active': activeTab === 'challenges' }" class="nav-link text-dark" id="challenges-tab" type="button" role="tab">
+                    <i class="bi bi-lightning-charge me-2"></i>{{ __('members::member.challenge') }}
+                </button>
+            </li>
         </ul>
         </div>{{-- end overflow-x-auto tab wrapper --}}
 
@@ -372,6 +383,16 @@
             <div x-show="activeTab === 'overview'" x-transition id="overview" role="tabpanel">
             {{-- Belts, when the member trains in a sport that has them (App\Ranks). Renders nothing otherwise. --}}
             <x-member-ranks :user="$relationship->dependent" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4" />
+            {{-- Contact — the phone shows it on the profile; this page is already
+                 limited to the member, their family and their club's staff. --}}
+            @php $pfPhone = $relationship->dependent->mobile_formatted ?? null; @endphp
+            @if($relationship->dependent->email || $pfPhone)
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+                    <span class="text-sm font-bold text-gray-900 flex items-center gap-2"><i class="bi bi-telephone text-primary"></i>{{ __('members::member.contact') }}</span>
+                    @if($relationship->dependent->email)<a href="mailto:{{ $relationship->dependent->email }}" class="flex items-center gap-2 text-sm text-gray-700 hover:text-primary"><i class="bi bi-envelope text-primary"></i>{{ $relationship->dependent->email }}</a>@endif
+                    @if($pfPhone)<a href="tel:{{ $pfPhone }}" class="flex items-center gap-2 text-sm text-gray-700 hover:text-primary"><i class="bi bi-phone text-primary"></i><span dir="ltr">{{ $pfPhone }}</span></a>@endif
+                </div>
+            @endif
             <!-- Profile Statistics and Revenue Chart Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                 <!-- Profile Statistics -->
@@ -676,6 +697,98 @@
                     </div>
                 </div>
             </div>
+            {{-- Class schedule — every dated class of the subscribed package (attended,
+                 missed, upcoming), as on the phone (2026-10-03). --}}
+            <div class="mt-4">
+            @if($scheduleSessions->isNotEmpty())
+                @php
+                    $statusStyles = [
+                        'attended' => ['bg-green-50 text-green-600', 'bi-check-lg', __('members::member.attended')],
+                        'missed' => ['bg-red-50 text-red-500', 'bi-x-lg', __('members::member.missed')],
+                        'upcoming' => ['bg-gray-100 text-gray-500', 'bi-clock', __('members::member.upcoming')],
+                    ];
+                @endphp
+                <p class="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1 mt-4 mb-2">{{ __('members::member.class_schedule') }}</p>
+                <div class="space-y-2">
+                @foreach($scheduleSessions as $session)
+                    @php [$badgeClass, $icon, $label] = $statusStyles[$session->status]; @endphp
+                    <a href="{{ $session->url }}" class="block hover:bg-gray-50 transition-colors bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center gap-3">
+                        <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 {{ $badgeClass }}">
+                            <i class="bi {{ $icon }}"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold text-foreground truncate">{{ $session->title }}</p>
+                            <p class="text-[11px] text-muted-foreground mt-0.5">{{ $session->date->format('d M Y') }} · {{ $session->start_time }}@if($session->coach) · {{ $session->coach }}@endif</p>
+                        </div>
+                        <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $badgeClass }}">{{ $label }}</span>
+                        <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/60 text-xs flex-shrink-0"></i>
+                    </a>
+                @endforeach
+                </div>
+            @else
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+                    <i class="bi bi-calendar-x text-2xl text-gray-300"></i>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('members::member.no_schedule_sessions') }}</p>
+                </div>
+            @endif
+            </div>
+        </div>
+
+        <!-- Challenges Tab — this member's head-to-head history, as on the phone (2026-10-03). -->
+        <div x-show="activeTab === 'challenges'" x-transition x-cloak id="challenges" role="tabpanel" class="space-y-3">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 grid grid-cols-3 gap-4 text-center">
+                <div><p class="text-2xl font-bold text-primary">{{ (int) $challengeWinRate }}%</p><p class="text-xs text-muted-foreground">{{ __('members::member.ch_won') }} {{ $challengeWins }}</p></div>
+                <div><p class="text-2xl font-bold text-gray-900">{{ $challengesTotal }}</p><p class="text-xs text-muted-foreground">{{ __('members::member.ch_completed') }}</p></div>
+                <div><p class="text-2xl font-bold text-gray-900">{{ $memberChallenges->count() }}</p><p class="text-xs text-muted-foreground">{{ __('members::member.ch_total') }}</p></div>
+            </div>
+            @forelse($memberChallenges as $ch)
+                @php
+                    // Status / result badge tokens.
+                    if ($ch->result === 'won')       [$bTone,$bText] = ['bg-green-100 text-green-700', __('members::member.ch_won')];
+                    elseif ($ch->result === 'lost')  [$bTone,$bText] = ['bg-red-100 text-red-600',      __('members::member.ch_lost')];
+                    elseif ($ch->result === 'draw')  [$bTone,$bText] = ['bg-gray-100 text-gray-600',     __('members::member.ch_draw')];
+                    elseif ($ch->status === 'active')   [$bTone,$bText] = ['bg-blue-100 text-blue-700',  __('members::member.ch_active')];
+                    elseif ($ch->status === 'pending')  [$bTone,$bText] = ['bg-amber-100 text-amber-700',__('members::member.ch_pending')];
+                    elseif ($ch->status === 'reported') [$bTone,$bText] = ['bg-purple-100 text-purple-700', __('members::member.ch_reported')];
+                    else [$bTone,$bText] = ['bg-gray-100 text-gray-500', ucfirst($ch->status)];
+                    $hasScore = filled($ch->my_score) || filled($ch->rival_score);
+                @endphp
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3.5 flex items-center gap-3">
+                    {{-- rival avatar --}}
+                    @if($ch->rival_uuid)
+                        <a href="{{ route('member.show', $ch->rival_uuid) }}" class="flex-shrink-0">
+                    @else
+                        <span class="flex-shrink-0">
+                    @endif
+                        @if($ch->rival_avatar)
+                            <img src="{{ $ch->rival_avatar }}" alt="" class="w-11 h-11 rounded-full object-cover border border-gray-100">
+                        @else
+                            <x-gender-avatar :gender="$ch->rival_gender" class="w-11 h-11 rounded-full border border-gray-100" />
+                        @endif
+                    @if($ch->rival_uuid)</a>@else</span>@endif
+
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-foreground truncate">
+                            <i class="bi {{ $ch->type === 'fight' ? 'bi-shield-shaded' : 'bi-lightning-charge-fill' }} text-primary mr-0.5"></i>
+                            {{ $ch->discipline }}
+                        </p>
+                        <p class="text-[11px] text-muted-foreground truncate">{{ __('members::member.ch_vs') }} {{ $ch->rival_name }} · {{ optional($ch->date)->format('d M Y') }}</p>
+                        @if($hasScore)
+                            <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('members::member.ch_score') }}: <span class="font-semibold text-foreground">{{ $ch->my_score ?? '—' }}</span> – <span class="font-semibold text-foreground">{{ $ch->rival_score ?? '—' }}</span></p>
+                        @endif
+                    </div>
+
+                    <div class="text-right flex-shrink-0">
+                        <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $bTone }}">{{ $bText }}</span>
+                        <p class="text-[10px] text-muted-foreground mt-1"><i class="bi bi-star-fill text-amber-400"></i> {{ $ch->stake }}</p>
+                    </div>
+                </div>
+            @empty
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+                    <i class="bi bi-lightning-charge text-3xl text-gray-300"></i>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('members::member.ch_empty') }}</p>
+                </div>
+            @endforelse
         </div>
 
         <!-- Health Tab -->

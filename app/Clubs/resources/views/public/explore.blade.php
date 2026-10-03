@@ -93,6 +93,16 @@
 
     {{-- Events (Explore → Events tab): featured, happening now, coming up, then finished. --}}
     <div id="eventsSection" style="display: none;">
+        {{-- Create an event straight from Explore → Events (2026-10-03). The editor
+             itself decides who may host what (a club, a federation, or yourself). --}}
+        @auth
+        <div class="flex justify-end mb-6">
+            <a href="{{ route('me.events.create') }}"
+               class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm">
+                <i class="bi bi-plus-lg"></i>{{ __('personal.personal_events_create_event') }}
+            </a>
+        </div>
+        @endauth
         {{-- Featured — approved paid featuring, still open --}}
         <section id="eventsFeaturedGroup" class="mb-9" style="display: none;">
             <header class="flex items-center gap-3 mb-4">
@@ -147,6 +157,12 @@
             </div>
             <h4 class="text-muted-foreground font-semibold">{{ __('clubs::explore.ev_none_title') }}</h4>
             <p class="text-muted-foreground text-sm">{{ __('clubs::explore.ev_none_hint') }}</p>
+            @auth
+            <a href="{{ route('me.events.create') }}"
+               class="mt-4 inline-flex items-center gap-2 border border-primary text-primary bg-transparent px-4 py-2 rounded-md text-sm font-medium hover:bg-primary hover:text-white transition-colors">
+                <i class="bi bi-plus-lg"></i>{{ __('personal.personal_events_create_event') }}
+            </a>
+            @endauth
         </div>
     </div>
 

@@ -52,3 +52,21 @@ Five read-only agents compared every mobile/desktop pair. Nothing was changed.
 - Open Mat and My Videos are in neither menu.
 
 Full agent reports are in this session's history; file:line references above.
+
+## Status — 2026-10-03
+
+- **All 13 HIGH items: done** (commit db328fff).
+- **MEDIUM: done** — club dashboard pending/recent cards; financials search + month + open member;
+  achievements search + year; instructor skills prefill; club reviews; club-mode bar QR + bell
+  (the bell is now ONE partial, `partials/notification-bell`, used by both bars); Security,
+  My videos, Open Mat in the desktop menu; shop orders month + stats; featured/businesses badges;
+  running order pick-and-place; bout player speed/loop/picture-in-picture; scorers see
+  Running order; profile share/contact/challenges tab/class schedule; people profile
+  share/sports/certifications.
+- **Bugs: fixed** — fake Financials tooltip, Renew + Duplicate buttons, bout Like/Share/Download,
+  officials seeing Clubs/Divisions, scorers with no way into scoring, menus missing Open Mat/videos.
+- **Not done:** Roles page per-member access (still reachable from Members); "theater" mode
+  (Hide Highlights already widens the player); super-admin Delete video on mobile;
+  Hall of Fame / schedule placeholder bars on the club dashboard.
+- **Note:** championship event pages are phone-layout at EVERY width by design
+  (`BrandEventPage`), so the desktop event templates only serve Sparring, Open Mat and generic events.

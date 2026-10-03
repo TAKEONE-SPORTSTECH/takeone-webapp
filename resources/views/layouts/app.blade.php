@@ -166,6 +166,22 @@
         .nav-cluster .nav-icon-btn { width: 2.25rem; height: 2.25rem; border-radius: 0.625rem; }
         .nav-divider { width: 1px; height: 1.25rem; background: hsl(210 14% 84%); flex-shrink: 0; }
 
+        /* My-space tabs — the phone's bottom tab bar, as visible tabs on a wide screen.
+           Icons from lg, labels from xl; the current section is highlighted. */
+        .me-tabs { display: flex; align-items: center; gap: 2px; }
+        .me-tab {
+            display: inline-flex; align-items: center; gap: .4rem;
+            height: 2.25rem; padding: 0 .65rem; border-radius: .625rem;
+            font-size: .8125rem; font-weight: 600; color: hsl(220 9% 46%);
+            transition: background-color .18s ease, color .18s ease;
+            text-decoration: none; white-space: nowrap;
+        }
+        .me-tab i { font-size: 1.05rem; }
+        .me-tab:hover { background: hsl(250 60% 92%); color: hsl(var(--primary)); }
+        .me-tab.is-active { background: hsl(250 60% 92%); color: hsl(var(--primary)); }
+        .me-tab-label { display: none; }
+        @media (min-width: 1280px) { .me-tab-label { display: inline; } }
+
         /* Brand lockup — divider only shows when a sidebar toggle is injected next to the logo */
         .brand-divider { display: none; width: 1px; height: 1.5rem; background: hsl(210 14% 86%); flex-shrink: 0; }
         .brand-zone:has(#emp-sidebar-toggle) .brand-divider,
@@ -320,6 +336,29 @@
                 </div>
 
                 @auth
+                {{-- My space — Feed, Schedule, Challenge, Events, Market as visible tabs
+                     on a wide screen, the way the phone's bottom bar shows them (2026-10-03). --}}
+                @php
+                    $meTabs = [
+                        ['me.home',      ['me.home', 'me.feed*'],  'bi-newspaper',      __('nav.tab_feed')],
+                        ['me.schedule',  ['me.schedule*'],          'bi-calendar-week',  __('nav.tab_schedule')],
+                        ['me.challenge', ['me.challenge*'],         'bi-trophy',         __('nav.tab_challenge')],
+                        ['me.events',    ['me.events*'],            'bi-calendar-heart', __('nav.tab_events')],
+                        ['me.market',    ['me.market*'],            'bi-shop',           __('nav.tab_market')],
+                    ];
+                @endphp
+                <nav class="me-tabs hidden lg:flex ms-3" aria-label="{{ __('nav.tab_feed') }}">
+                    @foreach($meTabs as [$tabRoute, $tabMatch, $tabIcon, $tabLabel])
+                        <a href="{{ route($tabRoute) }}" title="{{ $tabLabel }}"
+                           class="me-tab {{ request()->routeIs(...$tabMatch) ? 'is-active' : '' }}"
+                           @if(request()->routeIs(...$tabMatch)) aria-current="page" @endif>
+                            <i class="bi {{ $tabIcon }}"></i><span class="me-tab-label">{{ $tabLabel }}</span>
+                        </a>
+                    @endforeach
+                </nav>
+                @endauth
+
+                @auth
                 @php
                     // Unread DMs across all of the user's conversations (single query) — used by both the mobile and desktop chat icons.
                     $chatUnread = \Illuminate\Support\Facades\DB::table('messages as m')
@@ -380,9 +419,10 @@
                         <!-- Utility action cluster (segmented capsule) -->
                         <div class="nav-cluster">
                         <!-- My space (Feed) — the personal hub the mobile tab bar opens on -->
-                        <a class="nav-icon-btn" href="{{ route('me.home') }}" title="{{ __('nav.tab_feed') }}">
+                        {{-- Only where the tabs above are hidden (below lg). --}}
+                        <span class="lg:hidden"><a class="nav-icon-btn" href="{{ route('me.home') }}" title="{{ __('nav.tab_feed') }}">
                             <i class="bi bi-house text-xl"></i>
-                        </a>
+                        </a></span>
                         <!-- Explore Button -->
                         <a class="nav-icon-btn" href="{{ route('clubs.explore') }}" title="{{ __('nav.layouts_app_explore') }}">
                             <i class="bi bi-compass text-xl"></i>
@@ -460,94 +500,7 @@
 
                         <span class="nav-divider"></span>
 
-                        <!-- Notifications Dropdown -->
-                        @auth
-                        @php
-                            $recentNotifs = \App\Members\Models\UserNotification::where('user_id', Auth::id())
-                                ->with(['clubNotification.tenant', 'actor', 'tenant'])
-                                ->latest()
-                                ->take(5)
-                                ->get();
-                            $unreadCount = \App\Members\Models\UserNotification::where('user_id', Auth::id())
-                                ->where('is_read', false)
-                                ->count();
-                        @endphp
-                        <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" id="rt-bell-btn" class="nav-icon-btn" title="{{ __('nav.layouts_app_notifications') }}">
-                                <i class="bi bi-bell text-xl" id="navNotifBell"></i>
-                                @if($unreadCount > 0)
-                                    <span class="notification-badge">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
-                                @endif
-                            </button>
-                            <div x-show="open" @click.outside="open = false" x-cloak
-                                 x-transition:enter="transition ease-out duration-100"
-                                 x-transition:enter-start="opacity-0 scale-95"
-                                 x-transition:enter-end="opacity-100 scale-100"
-                                 x-transition:leave="transition ease-in duration-75"
-                                 x-transition:leave-start="opacity-100 scale-100"
-                                 x-transition:leave-end="opacity-0 scale-95"
-                                 id="rt-notif-dropdown"
-                                 class="absolute end-0 mt-2 notification-dropdown bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50">
-                                <div id="rt-notif-header" class="flex items-center justify-between px-4 py-3 border-b border-border">
-                                    <h6 class="text-sm font-semibold mb-0">{{ __('nav.layouts_app_notifications') }}</h6>
-                                    <div class="flex items-center gap-3">
-                                        @if($unreadCount > 0)
-                                            <button onclick="markAllNotificationsRead(this)"
-                                                    class="text-xs text-primary hover:underline cursor-pointer bg-transparent border-0 p-0">
-                                                {{ __('nav.layouts_app_mark_all_read') }}
-                                            </button>
-                                        @endif
-                                        @if($recentNotifs->isNotEmpty())
-                                            <button onclick="clearAllNotifications(this)"
-                                                    class="text-xs text-destructive hover:underline cursor-pointer bg-transparent border-0 p-0">
-                                                {{ __('nav.layouts_app_clear_all') }}
-                                            </button>
-                                        @endif
-                                    </div>
-                                </div>
-
-                                @forelse($recentNotifs as $notif)
-                                    @php $d = $notif->display(); $notifUrl = $d['url']; @endphp
-                                    <div class="notification-item cursor-pointer {{ $notif->is_read ? 'opacity-70' : '' }}"
-                                         data-notif-id="{{ $notif->id }}"
-                                         onclick="markNotificationRead({{ $notif->id }}, this, @js($notifUrl))">
-                                        <div class="flex items-center gap-2.5">
-                                            <span class="shrink-0 w-7 h-7 rounded-full bg-accent text-primary flex items-center justify-center overflow-hidden">
-                                                @if($d['avatar'])
-                                                    <img src="{{ $d['avatar'] }}" alt="" class="w-7 h-7 object-cover">
-                                                @else
-                                                    <i class="bi {{ $d['icon'] }} text-xs"></i>
-                                                @endif
-                                            </span>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="flex items-center gap-2">
-                                                    <strong class="text-[13px] leading-tight truncate {{ !$notif->is_read ? 'text-primary' : '' }}">
-                                                        {{ Str::limit($d['title'], 40) }}
-                                                    </strong>
-                                                    @if(!$notif->is_read)
-                                                        <span class="shrink-0 w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                                    @endif
-                                                </div>
-                                                <p class="mb-0 text-[11px] text-muted-foreground truncate">
-                                                    {{ $d['context'] ?? 'TakeOne' }}
-                                                    · {{ $notif->created_at->diffForHumans(null, true, true) }}
-                                                </p>
-                                            </div>
-                                            @if($notifUrl)
-                                                <i class="bi bi-chevron-right text-muted-foreground text-xs shrink-0"></i>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @empty
-                                    <div class="px-4 py-8 text-center">
-                                        <i class="bi bi-bell-slash text-2xl text-gray-300 block mb-2"></i>
-                                        <p class="text-sm text-muted-foreground mb-0">{{ __('nav.layouts_app_no_notifications_yet') }}</p>
-                                    </div>
-                                @endforelse
-
-                            </div>
-                        </div>
-                        @endauth
+                        @include('partials.notification-bell')
                         </div>{{-- /.nav-cluster --}}
 
                         <!-- Personal / Business View Switcher (matches mobile switcher) -->
@@ -659,6 +612,9 @@
                                     <a class="profile-dropdown-item" href="{{ route('me.challenge') }}"><i class="bi bi-trophy me-2"></i>{{ __('nav.tab_challenge') }}</a>
                                     <a class="profile-dropdown-item" href="{{ route('me.events') }}"><i class="bi bi-calendar-heart me-2"></i>{{ __('nav.tab_events') }}</a>
                                     <a class="profile-dropdown-item" href="{{ route('me.market') }}"><i class="bi bi-shop me-2"></i>{{ __('nav.tab_market') }}</a>
+                                    <a class="profile-dropdown-item" href="{{ route('me.videos') }}"><i class="bi bi-camera-reels me-2"></i>{{ __('nav.my_videos') }}</a>
+                                    <a class="profile-dropdown-item" href="{{ route('openmat') }}"><i class="bi bi-fire me-2"></i>{{ __('nav.open_mat') }}</a>
+                                    <a class="profile-dropdown-item" href="{{ route('security.show') }}"><i class="bi bi-shield-lock me-2"></i>{{ __('nav.layouts_app_security') }}</a>
                                 </div>
                                 <div class="border-t border-border py-1">
                                     <a class="profile-dropdown-item" href="{{ route('member.show', Auth::user()->uuid) }}#affiliations"

@@ -289,6 +289,7 @@ return [
     'fin_search_ph'           => 'Search transactions…',
     'fin_no_results'          => 'No transactions match your search.',
     'fin_filter_all'          => 'All',
+    'fin_search'              => 'Search the ledger…',
     'fin_filter_pending'      => 'Pending',
     'fin_awaiting'            => 'Awaiting payment',
     'fin_mark_paid'           => 'Mark as paid',

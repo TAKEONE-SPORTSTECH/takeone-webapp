@@ -82,8 +82,20 @@
                     </template>
 
                     <template x-for="(row, i) in rows" :key="row.uuid">
+                        <div>
+                        {{-- Pick a part (click its name), then place it anywhere —
+                             the same pick/place the mobile board has (2026-10-03).
+                             The arrows stay for one-step moves and the keyboard. --}}
+                        <template x-if="picked && picked !== row.uuid">
+                            <button type="button" @click="placeAt(i)"
+                                    class="w-full my-1 py-1.5 px-3 rounded-lg text-xs font-bold border border-dashed transition-colors"
+                                    :style="`border-color: {{ $roColor }}; color: {{ $roColor }}; background: {{ $roColor }}0a;`">
+                                {{ __('events::events.run_order_place_here') }}
+                            </button>
+                        </template>
                         <div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 transition-colors"
-                             :style="row.is_division ? '' : 'background:#f9fafb;'">
+                             :class="picked === row.uuid ? 'border' : 'border border-transparent'"
+                             :style="picked === row.uuid ? `background: {{ $roColor }}0f; border-color: {{ $roColor }}4d;` : (row.is_division ? '' : 'background:#f9fafb;')">
 
                             <div class="flex-none flex flex-col gap-0.5">
                                 <button type="button" @click="nudge(row.uuid, -1)" :disabled="i === 0"
@@ -105,10 +117,12 @@
 
                             <span class="flex-none w-2 h-2 rounded-full" :style="`background: ${dot(row)};`"></span>
 
-                            <div class="min-w-0 flex-1">
+                            <button type="button" @click="pick(row.uuid)"
+                                    :title="picked === row.uuid ? @js(__('events::events.run_order_tap_to_place')) : @js(__('events::events.run_order_tap_to_move'))"
+                                    class="min-w-0 flex-1 text-start">
                                 <p class="mq text-sm font-bold text-gray-900 leading-snug"><span dir="auto" x-text="row.name"></span></p>
                                 <p class="mq text-[11px] text-gray-400 mt-0.5"><span x-text="meta(row)"></span></p>
-                            </div>
+                            </button>
 
                             {{-- This division, on the mats — the seam between
                                  the two tabs: when it runs, and what runs
@@ -136,6 +150,16 @@
                                 <i class="bi bi-x-lg text-[11px]"></i>
                             </button>
                         </div>
+                        </div>
+                    </template>
+
+                    {{-- The tail: placing something at the very end. --}}
+                    <template x-if="picked">
+                        <button type="button" @click="placeAt(rows.length)"
+                                class="w-full my-1 py-1.5 px-3 rounded-lg text-xs font-bold border border-dashed"
+                                :style="`border-color: {{ $roColor }}; color: {{ $roColor }}; background: {{ $roColor }}0a;`">
+                            {{ __('events::events.run_order_place_here') }}
+                        </button>
                     </template>
                 </div>
             </div>

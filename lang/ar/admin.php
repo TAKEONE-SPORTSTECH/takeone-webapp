@@ -1428,6 +1428,7 @@ return [
     'fin_err_desc' => 'يرجى إدخال وصف.',
     'fin_expense' => 'مصروف',
     'fin_filter_all' => 'الكل',
+    'fin_search' => 'ابحث في السجل…',
     'fin_filter_pending' => 'معلّقة',
     'fin_in' => 'وارد',
     'fin_income' => 'دخل',

@@ -308,6 +308,25 @@
 
     @endif
 
+    {{-- An official who scores but does not manage still runs the day from the
+         running order (the page allows them) — mobile shows them this row. --}}
+    @if(! $canManage && ! empty($scoringUrl))
+        <div class="mb-6 max-w-xl">
+            <a href="{{ route('me.events.order.page', $e['key']) }}" data-shell-link
+               class="block bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
+                <div class="flex items-center gap-3">
+                    <span class="w-11 h-11 rounded-xl grid place-items-center flex-shrink-0"
+                          style="background: {{ $mgColor }}14; color: {{ $mgColor }};"><i class="bi bi-list-ol text-lg"></i></span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-bold text-gray-900 truncate">{{ __('events::events.order_title') }}</p>
+                        <p class="text-[12px] text-muted-foreground mt-0.5 truncate">{{ __('events::events.order_console_sub') }}</p>
+                    </div>
+                    <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs flex-shrink-0"></i>
+                </div>
+            </a>
+        </div>
+    @endif
+
     @if($canManage)
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {{-- Documents --}}

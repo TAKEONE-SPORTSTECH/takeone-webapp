@@ -493,6 +493,73 @@
 
     </div>{{-- end dash-grid --}}
 
+    {{-- Who owes what, and what just moved — the mobile dashboard's two lists;
+         desktop only had them hidden inside the chart (2026-10-03). --}}
+    @php
+        $dashCur = $club->currency ?: '';
+        $dashPending = collect($pendingSubscriptions ?? []);
+        $dashRecent = collect($transactions ?? [])->take(6);
+    @endphp
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <i class="bi bi-hourglass-split text-amber-500"></i>{{ __('admin.fin_pending_payments') }}
+                    @if($dashPending->count() > 0)<span class="py-0.5 px-2.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">{{ $dashPending->count() }}</span>@endif
+                </h3>
+                <a href="{{ route('admin.club.financials', $club->slug) }}" data-shell-link data-route="admin.club.financials" class="text-xs text-primary font-semibold">{{ __('admin.view_all') }}</a>
+            </div>
+            @if($dashPending->isEmpty())
+                <p class="text-sm text-muted-foreground flex items-center gap-1.5"><i class="bi bi-check-circle text-emerald-500"></i>{{ __('admin.dash_all_settled') }}</p>
+            @else
+                <div class="divide-y divide-gray-50">
+                    @foreach($dashPending->take(6) as $sub)
+                        <a href="{{ $sub->user?->uuid ? route('member.show', $sub->user->uuid) : route('admin.club.members', $club->slug) }}"
+                           class="flex items-center gap-3 py-2.5 hover:bg-muted/40 rounded-lg px-1 transition-colors">
+                            <span class="w-8 h-8 rounded-full bg-amber-50 text-amber-600 grid place-items-center flex-shrink-0"><i class="bi bi-hourglass-split text-xs"></i></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-medium text-gray-900 truncate">{{ $sub->user->full_name ?? __('admin.fin_member') }}</span>
+                                <span class="block text-xs text-muted-foreground truncate">{{ $sub->package->name ?? $sub->package->package_name ?? '' }}</span>
+                            </span>
+                            <span class="text-sm font-bold text-amber-600 tabular-nums flex-shrink-0">{{ $dashCur }} {{ number_format((float) ($sub->amount_due ?? 0), 2) }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2"><i class="bi bi-arrow-left-right text-primary"></i>{{ __('admin.dash_recent') }}</h3>
+                <a href="{{ route('admin.club.financials', $club->slug) }}" data-shell-link data-route="admin.club.financials" class="text-xs text-primary font-semibold">{{ __('admin.view_all') }}</a>
+            </div>
+            @if($dashRecent->isEmpty())
+                <p class="text-sm text-muted-foreground">{{ __('admin.dash_no_activity') }}</p>
+            @else
+                <div class="divide-y divide-gray-50">
+                    @foreach($dashRecent as $t)
+                        @php
+                            $isIncome = $t->type === 'income';
+                            $payer = ($t->subscription && $t->subscription->user)
+                                ? ($t->subscription->user->full_name ?? $t->subscription->user->name)
+                                : ($t->user->full_name ?? $t->user->name ?? '');
+                        @endphp
+                        <div class="flex items-center gap-3 py-2.5 px-1">
+                            <span class="w-8 h-8 rounded-full grid place-items-center flex-shrink-0 {{ $isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-accent text-primary' }}">
+                                <i class="bi {{ $isIncome ? 'bi-arrow-down-left' : 'bi-arrow-up-right' }} text-xs"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-medium text-gray-900 truncate">{{ $t->description ?: ($t->category ?: $t->type) }}</span>
+                                <span class="block text-xs text-muted-foreground truncate">{{ $payer ? $payer.' · ' : '' }}{{ \App\Support\Cldr::shortDate($t->transaction_date) }}</span>
+                            </span>
+                            <span class="text-sm font-bold tabular-nums flex-shrink-0 {{ $isIncome ? 'text-emerald-600' : 'text-gray-900' }}">{{ $isIncome ? '+' : '−' }}{{ number_format((float) $t->amount, 2) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    </div>
+
     @if(isset($expiringSubscriptions) && count($expiringSubscriptions) > 0)
     <div style="background:#fff;border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:14px;padding:16px">
         <h5 style="font-size:13px;color:#111827;margin:0 0 12px;display:flex;align-items:center;gap:6px">
@@ -509,7 +576,9 @@
                     <td style="font-weight:600;color:#374151">{{ $sub->user->full_name ?? __('admin.club_dashboard_index_na') }}</td>
                     <td style="color:#6b7280">{{ $sub->package->name ?? __('admin.club_dashboard_index_na') }}</td>
                     <td style="font-size:11px;color:#d97706">{{ $sub->end_date?->format('M d, Y') ?? __('admin.club_dashboard_index_na') }}</td>
-                    <td><button style="background:hsl(250 60% 93%);border:none;color:hsl(250 65% 60%);border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">{{ __('admin.club_dashboard_index_renew') }}</button></td>
+                    {{-- There is no one-tap renewal; this opened nothing (2026-10-03). It now opens
+                         the member — where the renewal is done — the same door mobile's financials use. --}}
+                    <td><a href="{{ $sub->user?->uuid ? route('member.show', $sub->user->uuid) : route('admin.club.members', $club->slug) }}" title="{{ __('admin.fin_open_member') }}" style="display:inline-block;background:hsl(250 60% 93%);border:none;color:hsl(250 65% 60%);border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer;text-decoration:none">{{ __('admin.club_dashboard_index_renew') }}</a></td>
                 </tr>
                 @endforeach
                 </tbody>
