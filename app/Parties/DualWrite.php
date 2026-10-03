@@ -55,7 +55,9 @@ final class DualWrite
 
         FederationClub::saved(fn (FederationClub $c) => self::guard(fn () => self::federationClub($c)));
 
-        ClubEvent::created(fn (ClubEvent $e) => self::guard(fn () => self::eventCreated($e)));
+        // saved, not created: a host is often set right after the row exists
+        // (a federation's sync, a person's own event) — and may change.
+        ClubEvent::saved(fn (ClubEvent $e) => self::guard(fn () => self::eventSaved($e)));
         EventOfficial::created(fn (EventOfficial $o) => self::guard(fn () => self::grantFor($o->user_id, $o->role === 'organiser' ? Roles::ORGANISER : Roles::OFFICIAL, Kinds::EVENT, $o->event_id, ['title' => $o->role_label, 'meta' => ['official_role' => $o->role]])));
         EventOfficial::deleted(fn (EventOfficial $o) => self::guard(fn () => self::endFor($o->user_id, $o->role === 'organiser' ? Roles::ORGANISER : Roles::OFFICIAL, Kinds::EVENT, $o->event_id, 'removed')));
     }
@@ -205,16 +207,29 @@ final class DualWrite
         }
     }
 
-    private static function eventCreated(ClubEvent $e): void
+    private static function eventSaved(ClubEvent $e): void
     {
+        if (! $e->wasRecentlyCreated && ! $e->wasChanged(['tenant_id', 'host_type', 'host_id'])) {
+            return;
+        }
         $relations = app(Relations::class);
         $host = $e->tenant_id
             ? Tenant::withTrashed()->find($e->tenant_id)
-            : ($e->host_type === 'federation' && $e->host_id ? Federation::withTrashed()->find($e->host_id) : null);
+            : match (true) {
+                $e->host_type === 'federation' && (bool) $e->host_id => Federation::withTrashed()->find($e->host_id),
+                $e->host_type === 'person' && (bool) $e->host_id => User::withTrashed()->find($e->host_id),
+                default => null,
+            };
+        // The host moved (or was set after creation): end any other host first.
+        foreach ($relations->active($e, Roles::HOST) as $r) {
+            if (! $host || $r->from_type !== Kinds::keyOf($host) || (int) $r->from_id !== (int) $host->getKey()) {
+                $relations->end($r, 'host changed', Auth::id());
+            }
+        }
         if ($host) {
             $relations->grant($host, Roles::HOST, $e, ['granted_by' => $e->created_by]);
         }
-        if ($e->created_by && ($creator = User::withTrashed()->find($e->created_by))) {
+        if ($e->wasRecentlyCreated && $e->created_by && ($creator = User::withTrashed()->find($e->created_by))) {
             $relations->grant($creator, Roles::ORGANISER, $e, ['meta' => ['creator' => true]]);
         }
     }

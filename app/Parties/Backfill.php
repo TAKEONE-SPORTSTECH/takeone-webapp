@@ -223,6 +223,9 @@ final class Backfill
             } elseif ($e->host_type === 'federation' && $e->host_id) {
                 $this->grantFrom('club_events.host', $e->id, Kinds::FEDERATION, $e->host_id, Roles::HOST, Kinds::EVENT, $e->id,
                     ['starts_at' => $this->at($e->created_at)], $apply, $count);
+            } elseif ($e->host_type === 'person' && $e->host_id) {
+                $this->grantFrom('club_events.host', $e->id, Kinds::PERSON, $e->host_id, Roles::HOST, Kinds::EVENT, $e->id,
+                    ['starts_at' => $this->at($e->created_at)], $apply, $count);
             }
             if ($e->created_by) {
                 $this->grantFrom('club_events.created_by', $e->id, Kinds::PERSON, $e->created_by, Roles::ORGANISER, Kinds::EVENT, $e->id,

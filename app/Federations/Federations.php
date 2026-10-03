@@ -35,7 +35,7 @@ use App\Support\Modules\Surfaces\HostsEvents;
  * are reached through the ContributesMessengerThreads surface; with the
  * module gone they are orphaned `type = 'federation'` conversations.)
  */
-class Federations extends AbstractModule implements ContributesMessengerThreads, ContributesCopilotSkills, SealsItsSurface, HostsEvents
+class Federations extends AbstractModule implements ContributesMessengerThreads, ContributesCopilotSkills, SealsItsSurface, HostsEvents, \App\Support\Modules\Surfaces\CreatesHostedEvents
 {
     public function key(): string
     {
@@ -209,5 +209,102 @@ class Federations extends AbstractModule implements ContributesMessengerThreads,
             'home' => $home && $root !== null, 'signIn' => $signIn,
             'favicon' => Support\FederationBrand::favicon($root),
         ], $status)->header('Cache-Control', 'no-store, private');
+    }
+
+    // ------------------------------------------------------------------
+    // One event editor (owner, 2026-10-03): a federation's managers may pick
+    // their body as the organiser in the shared editor. The event is created
+    // through the federation's OWN save (FederationEvents::save), so its
+    // dashboard row, invitation, draws and statistics exist exactly as if the
+    // dashboard form had made it; that save then syncs the platform event.
+    // Off unless events.federation_hosts and the platform-events bridge are on.
+    // ------------------------------------------------------------------
+
+    /** Platform sport key → the federation's sport name, where the two round-trip (sync lowercases). */
+    private const EDITOR_SPORTS = [
+        'karate' => 'Karate', 'taekwondo' => 'Taekwondo', 'judo' => 'Judo', 'boxing' => 'Boxing',
+        'kickboxing' => 'Kickboxing', 'wrestling' => 'Wrestling', 'mma' => 'MMA', 'fencing' => 'Fencing',
+    ];
+
+    public function eventHostChoices(\App\Members\Models\User $user): array
+    {
+        if (! config('events.federation_hosts') || ! config('federations.enabled') || ! config('federations.platform_events')) {
+            return [];
+        }
+        $directory = app(\App\Federations\Services\FederationDirectory::class);
+        $access = $directory->access($user);
+        if (! $access || ! $access['manager']) {
+            return [];
+        }
+
+        return collect($directory->subtree($access['root']))
+            ->filter(fn ($f) => $f->isApproved() && ! $f->isSuspended())
+            ->map(fn ($f) => [
+                'id' => 'federation:'.$f->uuid,
+                'name' => $f->name.' · '.__('events::events.host_kind_federation'),
+                'currency' => $f->currency ?: null,
+                'timezone' => $f->timezone ?: null,
+            ])->values()->all();
+    }
+
+    public function createHostedEvent(string $choice, \App\Members\Models\User $user, array $input): ?\App\Events\Models\ClubEvent
+    {
+        // Re-checked, never trusted: the choice must be one this user is offered NOW.
+        if (! collect($this->eventHostChoices($user))->contains('id', $choice)) {
+            return null;
+        }
+        $fedUuid = substr($choice, strlen('federation:'));
+        $sport = self::EDITOR_SPORTS[(string) ($input['sport'] ?? '')] ?? null;
+        if (! $sport) {
+            return null;   // a sport the federation side cannot round-trip
+        }
+
+        $directory = app(\App\Federations\Services\FederationDirectory::class);
+        $access = $directory->access($user);
+        $time = fn ($v) => is_string($v) && preg_match('/^\d{2}:\d{2}/', $v) ? substr($v, 0, 5) : null;
+        $day = fn ($d, $t) => $d ? substr((string) $d, 0, 10).($t ? 'T'.$t : '') : null;
+        $fees = collect((array) ($input['fee_options'] ?? []))
+            ->filter(fn ($o) => is_array($o) && ($o['role'] ?? 'participant') === 'participant' && trim((string) ($o['label'] ?? '')) !== '')
+            ->map(fn ($o) => ['label' => trim((string) $o['label']), 'amount' => (string) ($o['amount'] ?? ''), 'type' => trim((string) $o['label'])])
+            ->values()->all();
+        $about = trim((string) ($input['description'] ?? ''));
+
+        $posted = [
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'name' => (string) ($input['title'] ?? ''),
+            'sport' => $sport,
+            'status' => 'Planning',
+            'cap' => $input['max_capacity'] ?? null,
+            'startDate' => $day($input['date'] ?? null, $time($input['start_time'] ?? null)),
+            'endDate' => $day($input['end_date'] ?? ($input['date'] ?? null), $time($input['end_time'] ?? null)),
+            'dayStart' => $time($input['start_time'] ?? null) ?? '',
+            'dayEnd' => $time($input['end_time'] ?? null) ?? '',
+            'venue' => (string) ($input['location'] ?? ''),
+            'location' => (string) ($input['location'] ?? ''),
+            'about' => $about === '' ? '' : '<p>'.nl2br(e($about), false).'</p>',
+            'enrollStart' => $day($input['enrollment_starts_at'] ?? null, null),
+            'enrollEnd' => $day($input['enrollment_ends_at'] ?? null, null),
+            'weighIn' => isset($input['weigh_in_at']) ? str_replace(' ', 'T', substr((string) $input['weigh_in_at'], 0, 16)) : null,
+            'mats' => $input['courts'] ?? null,
+            'breakOn' => ! empty($input['break_start']) && ! empty($input['break_end']),
+            'breakFrom' => $time($input['break_start'] ?? null) ?? '',
+            'breakTo' => $time($input['break_end'] ?? null) ?? '',
+            'free' => (bool) ($input['participant_free'] ?? false),
+            'fees' => $fees,
+            'types' => array_column($fees, 'label'),
+            'lateFee' => isset($input['late_fee_amount']) ? (string) $input['late_fee_amount'] : '',
+            'lat' => $input['gps_lat'] ?? '',
+            'lng' => $input['gps_long'] ?? '',
+            'mapUrl' => (string) ($input['location_url'] ?? ''),
+            'reqs' => (array) ($input['requirements'] ?? []),
+        ];
+
+        $shaped = app(\App\Federations\Services\FederationEvents::class)->save($user, $access, $posted, $fedUuid);
+        if (! $shaped) {
+            return null;
+        }
+        $fe = \App\Federations\Models\FederationEvent::where('uuid', $posted['id'])->first();
+
+        return $fe?->club_event_id ? \App\Events\Models\ClubEvent::find($fe->club_event_id) : null;
     }
 }

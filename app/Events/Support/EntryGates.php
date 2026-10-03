@@ -155,19 +155,43 @@ class EntryGates
 
     public function paymentInstructions(ClubEvent $event): array
     {
+        return [
+            'club' => $event->host()->name ?: null,
+            'bank' => $this->bankFor($event),
+        ];
+    }
+
+    /**
+     * Where an entrant sends the money — ONE answer for every surface: the
+     * host club's primary bank account, or, for an event a person organised
+     * with no club, the payment details they typed for it. Only the fields a
+     * payer needs; null when there is nothing to show.
+     *
+     * @return array<string, string>|null
+     */
+    public function bankFor(ClubEvent $event): ?array
+    {
         $bank = $event->tenant?->bankAccounts()
             ->orderByDesc('is_primary')->orderBy('id')->first();
 
-        return [
-            'club' => $event->host()->name ?: null,
-            'bank' => $bank ? array_filter([
+        if ($bank) {
+            return array_filter([
                 'bank_name' => $bank->bank_name,
                 'account_name' => $bank->account_name,
                 'account_number' => $bank->account_number,
                 'iban' => $bank->iban,
                 'benefitpay' => $bank->benefitpay_account,
-            ]) : null,
-        ];
+            ]);   // exactly as before for a club (an empty account stays [])
+        }
+
+        if (! $event->tenant_id && is_array($event->host_payment)) {
+            return array_filter(array_map(
+                fn ($v) => is_scalar($v) ? trim((string) $v) : '',
+                array_intersect_key($event->host_payment, array_flip(['bank_name', 'account_name', 'account_number', 'iban', 'benefitpay'])),
+            )) ?: null;
+        }
+
+        return null;
     }
 
     public function feeTypes(ClubEvent $event): array

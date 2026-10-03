@@ -45,6 +45,8 @@
              themselves with config(['events.unified_page' => true]). -->
         <env name="EVENT_UNIFIED_PAGE" value="false" force="true"/>
         <env name="EVENT_ONE_FORM" value="false" force="true"/>
+        <env name="EVENT_PERSON_HOSTS" value="false" force="true"/>
+        <env name="EVENT_FEDERATION_HOSTS" value="false" force="true"/>
         <!-- Same reason: stage runs these ON. Tests switch them on themselves. -->
         <env name="PARTIES_ENABLED" value="false" force="true"/>
         <env name="PARTIES_SHADOW" value="false" force="true"/>

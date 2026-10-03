@@ -67,6 +67,10 @@ final class Authority
             if ($party instanceof Federation && $this->managesFederationEvents($user, $party)) {
                 return true;
             }
+            // A self-organised event: its host IS a person (Members::managesEventsOf).
+            if ($party instanceof User && $party->is($user)) {
+                return true;
+            }
         }
 
         return false;

@@ -220,6 +220,8 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
     protected $casts = [
         // How the event takes entries (App\Events\Support\EntryChannels). NULL = the platform default.
         'entry_channels' => 'array',
+        // A self-organised event's own payment details (EntryGates::bankFor). Only when no club hosts it.
+        'host_payment' => 'array',
         'date' => 'date',
         // Nullable on purpose: NULL means "whatever the sport says".
         'third_place_match' => 'boolean',

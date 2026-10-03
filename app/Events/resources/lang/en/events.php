@@ -1839,4 +1839,6 @@ return [
     'entry_channels_club_hint' => 'Clubs enter their athletes as a squad; the club is billed for all of them.',
     'entry_channels_existing' => 'Athletes already entered keep their place — this only changes how NEW entries come in. You can always add anyone yourself.',
     'entry_channels_saved' => 'Entry settings saved.',
+    'host_kind_federation' => 'federation',
+    'host_create_refused' => 'This event could not be created for that organiser. Check the sport and the dates, or create it from the organiser’s own dashboard.',
 ];

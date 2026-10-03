@@ -75,6 +75,23 @@ return [
     'one_form' => (bool) env('EVENT_ONE_FORM', false),
 
     /*
+     | Self-organised events (owner, 2026-10-03): a person may host an event
+     | with no club — "Myself" in the editor, their own payment details and
+     | currency, never "this club only", and never announced to anybody (an
+     | event with no club reaches people by its link). OFF: clubs only.
+     */
+    'person_hosts' => (bool) env('EVENT_PERSON_HOSTS', false),
+
+    /*
+     | A federation as the organiser in the shared editor (owner, 2026-10-03):
+     | its managers pick it like a club; the event is created through the
+     | federation's own save (dashboard row, invitation, draws), which then
+     | makes the platform event. Needs federations.platform_events. OFF:
+     | federations create events only from their dashboard, as before.
+     */
+    'federation_hosts' => (bool) env('EVENT_FEDERATION_HOSTS', false),
+
+    /*
      | Karate on the shared championship base (App\Events\Support\Tournament),
      | the one BJJ already runs on. OFF by default: the karate package keeps its
      | own copies until this has been verified on real events. See

@@ -1483,4 +1483,8 @@ return [
     'event_card_save' => 'حفظ التسجيل',
     'event_card_save_n' => 'حفظ التسجيل (:n)',
     'event_card_enrollment_saved' => 'تم حفظ التسجيل.',
+    'personal_event_create_host_myself' => 'أنا (بدون نادٍ)',
+    'personal_event_create_host_money_title' => 'بيانات الدفع الخاصة بك',
+    'personal_event_create_host_money_hint' => 'لا يقف نادٍ وراء هذه الفعالية، لذا يدفع المشاركون لك مباشرة، ويرون هذه البيانات عند الدفع.',
+    'personal_event_create_host_currency' => 'العملة',
 ];

@@ -3973,6 +3973,14 @@ class PersonalEventController extends Controller
         $preselect = $slug !== '' ? \App\Clubs\Models\Tenant::where('slug', $slug)->value('id') : null;
         $preselect = collect($clubs)->contains(fn ($c) => (int) $c['id'] === (int) $preselect) ? (int) $preselect : null;
 
+        // Other organisers this person may act for (a federation they manage),
+        // and arriving from one (?host=federation:{uuid}) chooses it.
+        $clubs = array_merge($this->withMyself($clubs), $this->hostChoices($me));
+        $host = (string) $request->query('host', '');
+        if ($host !== '' && collect($clubs)->contains('id', $host)) {
+            $preselect = $host;
+        }
+
         return view('events::personal.event-create', ['clubs' => $clubs, 'preselectClub' => $preselect] + $this->schemaPayload());
     }
 
@@ -4015,8 +4023,14 @@ class PersonalEventController extends Controller
     {
         $me = Auth::user();
 
+        // "Myself" in the editor: a self-organised event, no club (events.person_hosts).
+        $asPerson = config('events.person_hosts') && $request->input('tenant_id') === 'me';
+        // Another organiser this person acts for — a federation (CreatesHostedEvents).
+        $asHost = ! $asPerson && is_string($request->input('tenant_id'))
+            && collect($this->hostChoices($me))->contains('id', $request->input('tenant_id'));
+
         $data = $request->validate([
-            'tenant_id' => ['required', 'integer'],
+            'tenant_id' => $asPerson ? ['required', 'in:me'] : ($asHost ? ['required', 'string'] : ['required', 'integer']),
             'title' => ['required', 'string', 'max:140'],
             'event_type' => ['required', Rule::in(array_keys($this->types()))],
             'scope' => ['nullable', Rule::in(array_keys($this->scopes()))],
@@ -4067,20 +4081,51 @@ class PersonalEventController extends Controller
             'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
         ], $this->eventMessages());
 
-        // Must belong to — or run — the club you're creating the event for.
-        abort_unless(
-            collect($this->clubsICanCreateFor($me))->contains('id', (int) $data['tenant_id']),
-            403,
-        );
+        if ($asHost) {
+            // Created through that organiser's OWN storage (a federation's
+            // dashboard row, invitation, draws), which then makes the platform
+            // event. Whatever it refuses is refused here.
+            $type = $this->typeForInput($data);
+            $data += $request->validate($type->validationRules(), $this->eventMessages());
+            $event = $this->hostModule((string) $data['tenant_id'])?->createHostedEvent(
+                (string) $data['tenant_id'], $me,
+                $data + ['fee_options' => (array) $request->input('fee_options', [])],
+            );
+            if (! $event) {
+                return response()->json(['success' => false, 'message' => __('events::events.host_create_refused')], 422);
+            }
 
-        $this->assertMayBroadcast($me, (int) $data['tenant_id'], $data['scope'] ?? 'internal');
+            return response()->json([
+                'success' => true,
+                'message' => 'Event created 🎉',
+                'redirect' => route('me.events.show', $event->uuid),
+            ]);
+        }
+
+        if ($asPerson) {
+            $data += $this->personHostInput($request);
+            // No club → no "this club only"; and it is announced to nobody
+            // (AudienceResolver needs a host club), so no broadcast power to check.
+            if (($data['scope'] ?? 'internal') === 'internal') {
+                $data['scope'] = 'inter_club';
+            }
+        } else {
+            // Must belong to — or run — the club you're creating the event for.
+            abort_unless(
+                collect($this->clubsICanCreateFor($me))->contains('id', (int) $data['tenant_id']),
+                403,
+            );
+
+            $this->assertMayBroadcast($me, (int) $data['tenant_id'], $data['scope'] ?? 'internal');
+        }
 
         // The owning package validates and normalises its own half of the payload.
         $type = $this->typeForInput($data);
         $data += $request->validate($type->validationRules(), $this->eventMessages());
 
+        // The host is set explicitly (forceFill below), never mass-assigned.
         $event = ClubEvent::create($type->columnsFromInput($data) + [
-            'tenant_id' => $data['tenant_id'],
+            'tenant_id' => $asPerson ? null : $data['tenant_id'],
             'created_by' => $me->id,
             'title' => $data['title'],
             'event_type' => $data['event_type'],
@@ -4110,7 +4155,15 @@ class PersonalEventController extends Controller
             'is_archived' => false,
             // Priced in the host club's currency, from the amount that was
             // typed — never from a sentence assembled in the browser.
-        ] + $this->feeColumns($data, Tenant::whereKey($data['tenant_id'])->value('currency') ?: 'BHD'));
+        ] + $this->feeColumns($data, $asPerson
+            ? $data['fee_currency']
+            : (Tenant::whereKey($data['tenant_id'])->value('currency') ?: 'BHD')));
+
+        if ($asPerson) {
+            // The person IS the host; where entrants send the money is their own
+            // details (EntryGates::bankFor).
+            $event->forceFill(['host_type' => 'person', 'host_id' => $me->id, 'host_payment' => $data['host_payment']])->save();
+        }
 
         $this->syncFeeOptions($event, $data);
         $this->refreshFeeDisplay($event);
@@ -4146,6 +4199,10 @@ class PersonalEventController extends Controller
         $this->assertCanManage($event, $me);
 
         $clubs = $this->clubsICanCreateFor($me, $event);
+        // A self-organised event shows "Myself" as its organiser (and keeps it).
+        if ($event->host_type === 'person' && ! $event->tenant_id) {
+            $clubs = $this->withMyself([], true);
+        }
 
         return view('events::personal.event-create', ['clubs' => $clubs, 'mode' => 'edit', 'event' => $event] + $this->schemaPayload($event));
     }
@@ -4154,6 +4211,7 @@ class PersonalEventController extends Controller
     {
         $me = Auth::user();
         $this->assertCanManage($event, $me);
+
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:140'],
@@ -4204,7 +4262,9 @@ class PersonalEventController extends Controller
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
             'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
-            'tenant_id' => ['nullable', 'integer'],
+            // A hosted event (a federation's, a person's) has no club to move to:
+            // whatever its picker posted ("me" for "Myself") is ignored below.
+            'tenant_id' => (! $event->tenant_id && $event->host_type) ? ['nullable'] : ['nullable', 'integer'],
         ]);
 
         /*
@@ -4304,7 +4364,13 @@ class PersonalEventController extends Controller
             'icon' => $event->icon ?: ($this->typeIcon($data['event_type'])),
             'date' => $data['date'],
             'start_time' => $data['start_time'],
-        ] + $this->feeColumns($data, EventFee::currency($event)));
+        ] + $this->feeColumns($data, $event->host_type === 'person' && ! $event->tenant_id && $request->filled('fee_currency')
+            ? $this->personHostInput($request)['fee_currency']
+            : EventFee::currency($event)));
+
+        if ($event->host_type === 'person' && ! $event->tenant_id && $request->has('host_payment')) {
+            $event->forceFill(['host_payment' => $this->personHostInput($request)['host_payment']])->save();
+        }
 
         $this->syncFeeOptions($event, $data);
         $this->refreshFeeDisplay($event);
@@ -4345,6 +4411,69 @@ class PersonalEventController extends Controller
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
+    /**
+     * Organisers other than a club or "Myself" that this person may act for in
+     * the editor — a federation they manage (App\Support\Modules\Surfaces\
+     * CreatesHostedEvents). Each module decides its own list.
+     *
+     * @return list<array{id: string, name: string, currency: ?string, timezone: ?string}>
+     */
+    private function hostChoices(User $me): array
+    {
+        return app(\App\Support\Modules\ModuleRegistry::class)
+            ->contributingTo(\App\Support\Modules\Surfaces\CreatesHostedEvents::class)
+            ->flatMap(fn ($m) => rescue(fn () => $m->eventHostChoices($me), [], report: true))
+            ->values()->all();
+    }
+
+    /** The module that owns a host choice id ("federation:…"). */
+    private function hostModule(string $choice): ?\App\Support\Modules\Surfaces\CreatesHostedEvents
+    {
+        $me = Auth::user();
+
+        return app(\App\Support\Modules\ModuleRegistry::class)
+            ->contributingTo(\App\Support\Modules\Surfaces\CreatesHostedEvents::class)
+            ->first(fn ($m) => collect(rescue(fn () => $m->eventHostChoices($me), [], report: true))->contains('id', $choice));
+    }
+
+    /**
+     * The organiser picker's "Myself" choice (events.person_hosts): an event
+     * with no club, its host the person creating it. Last in the list, so a
+     * member of a club still lands on their club by default.
+     */
+    private function withMyself(array $clubs, bool $force = false): array
+    {
+        if (! $force && ! config('events.person_hosts')) {
+            return $clubs;
+        }
+        $clubs[] = ['id' => 'me', 'name' => __('personal.personal_event_create_host_myself'), 'currency' => null, 'timezone' => null];
+
+        return $clubs;
+    }
+
+    /**
+     * A self-organised event's own money details: the currency it charges in
+     * and where to send it — the same fields a club's bank account has.
+     *
+     * @return array{fee_currency: string, host_payment: array<string, string>|null}
+     */
+    private function personHostInput(Request $request): array
+    {
+        $v = $request->validate([
+            'fee_currency' => ['nullable', 'string', 'size:3', 'alpha'],
+            'host_payment' => ['nullable', 'array'],
+            'host_payment.bank_name' => ['nullable', 'string', 'max:120'],
+            'host_payment.account_name' => ['nullable', 'string', 'max:120'],
+            'host_payment.account_number' => ['nullable', 'string', 'max:60'],
+            'host_payment.iban' => ['nullable', 'string', 'max:60'],
+            'host_payment.benefitpay' => ['nullable', 'string', 'max:60'],
+        ]);
+        $pay = array_filter(array_map(fn ($x) => is_string($x) ? trim($x) : null,
+            array_intersect_key((array) ($v['host_payment'] ?? []), array_flip(['bank_name', 'account_name', 'account_number', 'iban', 'benefitpay']))));
+
+        return ['fee_currency' => strtoupper($v['fee_currency'] ?? '') ?: 'BHD', 'host_payment' => $pay ?: null];
+    }
+
     private function feeColumns(array $data, string $currency): array
     {
         $free = (bool) ($data['participant_free'] ?? false);

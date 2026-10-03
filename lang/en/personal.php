@@ -1549,4 +1549,8 @@ return [
     'event_card_save' => 'Save enrollment',
     'event_card_save_n' => 'Save enrollment (:n)',
     'event_card_enrollment_saved' => 'Enrollment saved.',
+    'personal_event_create_host_myself' => 'Myself (no club)',
+    'personal_event_create_host_money_title' => 'Your payment details',
+    'personal_event_create_host_money_hint' => 'No club is behind this event, so entrants pay you directly. They see these details when they pay.',
+    'personal_event_create_host_currency' => 'Currency',
 ];

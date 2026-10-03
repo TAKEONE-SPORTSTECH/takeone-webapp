@@ -78,4 +78,24 @@ class OneEventEditorTest extends TestCase
 
         $this->actingAs($admin)->get(route('me.events.edit', $event->uuid))->assertOk();
     }
+
+    /**
+     * Regression (found 2026-10-03): an event hosted by a federation or a
+     * person has no club to pick, so the editor must not demand one before it
+     * lets the organiser save.
+     */
+    public function test_a_hosted_event_can_be_saved_without_choosing_a_club(): void
+    {
+        [$owner] = $this->setUpClub();
+        $event = ClubEvent::create([
+            'created_by' => $owner->id, 'title' => 'Nationals', 'event_type' => 'championship',
+            'sport' => 'taekwondo', 'scope' => 'nationwide', 'status' => 'active', 'is_archived' => false,
+            'date' => now()->addWeek()->toDateString(), 'start_time' => '09:00', 'end_time' => '17:00',
+        ]);
+        $event->forceFill(['tenant_id' => null, 'host_type' => 'federation', 'host_id' => 999])->save();
+
+        $this->actingAs($owner)->get(route('me.events.edit', $event->uuid))
+            ->assertOk()
+            ->assertSee('!this.tenant_id && !true', false);
+    }
 }

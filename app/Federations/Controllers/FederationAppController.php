@@ -158,6 +158,10 @@ class FederationAppController extends Controller
                 'region' => route('federations.api.region'),
                 'billing' => route('federations.api.billing'),
                 'events' => route('federations.api.events'),
+                // One event editor (events.federation_hosts): "Plan new event" opens
+                // the shared editor with this federation chosen. Null keeps the modal.
+                'eventCreate' => config('events.federation_hosts') && config('federations.platform_events') && ($access['manager'] ?? false)
+                    ? route('me.events.create', ['host' => 'federation:'.$access['root']->uuid]) : null,
                 'testMode' => \Illuminate\Support\Facades\Route::has('federations.api.events.test-mode') ? route('federations.api.events.test-mode') : null,
                 'ruleBook' => \Illuminate\Support\Facades\Route::has('federations.api.events.rulebook') ? route('federations.api.events.rulebook') : null,
                 'feature' => \Illuminate\Support\Facades\Route::has('federations.api.events.feature') ? route('federations.api.events.feature') : null,

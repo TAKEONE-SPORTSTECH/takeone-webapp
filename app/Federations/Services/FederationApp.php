@@ -530,6 +530,10 @@ class FederationApp
                 // PLATFORM: a manager can delete an event from its edit form. Two
                 // steps (ask, then confirm) — no native dialog — and the server
                 // decides (FederationEvents::delete); the flag only offers it.
+                // PLATFORM: one event editor (events.federation_hosts) — "Plan new
+                // event" opens the shared editor with this federation chosen when
+                // the boot data carries its address; otherwise the modal, as before.
+                'event-create-editor' => ["openCreate: () => this.setState({editOpen: true, eMode: 'create',", "openCreate: () => (window.TakeOneFed && window.TakeOneFed.boot && window.TakeOneFed.boot.urls && window.TakeOneFed.boot.urls.eventCreate) ? (window.location.href = window.TakeOneFed.boot.urls.eventCreate) : this.setState({editOpen: true, eMode: 'create',", 1],
                 'event-del-reset' => ["openEdit: () => this.setState({editOpen: true, eMode: 'edit',", "openEdit: () => this.setState({editOpen: true, eMode: 'edit', eDelAsk: false, eDelBusy: false, eDelErr: false,", 1],
                 'event-del-vals' => ["eSaveLabel: s.eMode === 'create' ? 'Create event' : 'Save changes',",
                     "eSaveLabel: s.eMode === 'create' ? 'Create event' : 'Save changes',\n"

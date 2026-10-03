@@ -16,7 +16,15 @@
     $isEdit = $mode === 'edit';
     $ev = $event ?? null;
     $sportsByFamily = collect($schema['sports'])->groupBy('family');
-    $initTenant  = $ev?->tenant_id ?? ($preselectClub ?? null) ?? (!empty($clubs) ? $clubs[0]['id'] : 'null');
+    // A self-organised event's organiser is 'me' (events.person_hosts).
+    // (A federation's event keeps exactly what it always started with: the
+    // first club — the server ignores a club for a hosted event anyway.)
+    $initTenant  = $ev
+        ? ($ev->tenant_id ?? ($ev->host_type === 'person' ? 'me' : (!empty($clubs) ? $clubs[0]['id'] : null)))
+        : (($preselectClub ?? null) ?? (!empty($clubs) ? $clubs[0]['id'] : null));
+    // Hosted by a federation or a person: no club to choose, so none is required.
+    $isHosted    = (bool) ($ev && ! $ev->tenant_id && $ev->host_type);
+    $initHostPay = $ev?->host_type === 'person' ? (array) ($ev->host_payment ?? []) : [];
     $initStart   = $ev?->start_time ? \Carbon\Carbon::parse($ev->start_time)->format('H:i') : '';
     $initEnd     = $ev?->end_time ? \Carbon\Carbon::parse($ev->end_time)->format('H:i') : '';
     // A NEW event is paid by default — an organiser opts INTO free, rather than
@@ -104,9 +112,12 @@
         mode: @js($ev ? ($ev->sport ? 'sport' : 'generic') : null),
         picked: @js($ev?->sport ?? ($isEdit ? 'general' : null)),
         sportSearch2: '',
-        tenant_id: {{ $initTenant }},
+        tenant_id: @js($initTenant),
+        // A self-organised event's own currency and payment details.
+        fee_currency: @js($ev?->host_type === 'person' ? ($ev->fee_currency ?: 'BHD') : 'BHD'),
+        host_payment: Object.assign({ bank_name: '', account_name: '', account_number: '', iban: '', benefitpay: '' }, @js((object) $initHostPay)),
         type: @js($ev?->event_type ?? 'class'),
-        scope: @js($ev?->scope ?? 'internal'),
+        scope: @js($ev?->scope ?? ($initTenant === 'me' ? 'inter_club' : (is_string($initTenant) ? 'nationwide' : 'internal'))),
         sport: @js($ev?->sport ?? ''),
         // The rule book (App\Events\Support\CategorySystems): null = the sport's own.
         category_system: @js($ev?->category_system),
@@ -233,7 +244,7 @@
         get days() { return Array.from({ length: this.dayCount }, (_, i) => i + 1); },
         get isCombat() { return this.sportMeta.family === 'Combat'; },
         get isChampionship() { return ['championship', 'tournament'].includes(this.type); },
-        get currency() { const c = (this.clubs || []).find(c => c.id === this.tenant_id); return (c && c.currency) ? c.currency : 'BHD'; },
+        get currency() { if (this.tenant_id === 'me') return this.fee_currency || 'BHD'; const c = (this.clubs || []).find(c => c.id === this.tenant_id); return (c && c.currency) ? c.currency : 'BHD'; },
         // ----- Step 1: generic vs sport, then the sport filter -----
         sportCards() {
             const q = (this.sportSearch2 || '').toLowerCase().trim();
@@ -385,7 +396,7 @@
         // just sitting there dimmed.
         missing() {
             const m = [];
-            if (!this.tenant_id) m.push(@js(__("personal.personal_event_create_club")));
+            if (!this.tenant_id && !@js($isHosted)) m.push(@js(__("personal.personal_event_create_club")));
             if (this.title.trim().length < 2) m.push(@js(__("personal.personal_event_create_title_label")));
             if (!this.date) m.push(@js(__("personal.personal_event_create_start_date")));
             if (!this.start_time) m.push(@js(__("personal.personal_event_create_start_time")));
@@ -410,6 +421,7 @@
                 const breakOn = this.isChampionship && this.break_enabled;
                 const payload = {
                     tenant_id: this.tenant_id, title: this.title.trim(), event_type: this.type, scope: this.scope, sport: this.sport || null,
+                    ...(this.tenant_id === 'me' ? { fee_currency: this.fee_currency, host_payment: this.host_payment } : {}),
                     category_system: this.isCombat ? (this.category_system || null) : null,
                     belt_system: this.isCombat ? (this.belt_system || null) : null,
                     timezone: this.timezone || null,
@@ -506,7 +518,7 @@
      }"
      x-init="normalizeDivisions();
              if (!timezone) timezone = (clubs.find(c => c.id == tenant_id) || {}).timezone || @js(\App\Events\Models\ClubEvent::firstValidZone());
-             $watch('tenant_id', v => { if (!tzTouched) timezone = (clubs.find(c => c.id == v) || {}).timezone || timezone; });
+             $watch('tenant_id', v => { if (!tzTouched) timezone = (clubs.find(c => c.id == v) || {}).timezone || timezone; if (typeof v === 'string' && scope === 'internal') scope = v === 'me' ? 'inter_club' : 'nationwide'; });
              $watch('timezone', (v, old) => { if (old && v !== (clubs.find(c => c.id == tenant_id) || {}).timezone) tzTouched = true; })"
      class="-mx-4 -mt-4 pb-6">
 
@@ -650,6 +662,29 @@
                     <x-fields.select model="tenant_id" :options="collect($clubs)->map(fn ($c) => ['value' => $c['id'], 'label' => $c['name']])->all()" />
                 </div>
             @endif
+
+            {{-- "Myself": no club behind the event, so the organiser says what
+                 it charges in and where the money goes (events.person_hosts). --}}
+            <div x-show="tenant_id === 'me'" x-cloak class="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-3">
+                <div class="flex items-start gap-2">
+                    <i class="bi bi-person-badge text-primary mt-0.5"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-foreground">{{ __('personal.personal_event_create_host_money_title') }}</p>
+                        <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_host_money_hint') }}</p>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_host_currency') }}</label>
+                    <x-fields.select model="fee_currency" :options="collect(['BHD', 'SAR', 'AED', 'KWD', 'QAR', 'OMR', 'EGP', 'JOD', 'USD', 'EUR', 'GBP'])->map(fn ($c) => ['value' => $c, 'label' => $c])->all()" />
+                </div>
+                @foreach (['bank_name', 'account_name', 'account_number', 'iban', 'benefitpay'] as $f)
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.event_show_bank_'.$f) }}</label>
+                        <input x-model="host_payment.{{ $f }}" type="text" maxlength="{{ in_array($f, ['bank_name', 'account_name'], true) ? 120 : 60 }}" autocomplete="off"
+                               class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    </div>
+                @endforeach
+            </div>
 
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_title_label') }}</label>
@@ -832,7 +867,7 @@
             <p class="text-sm font-bold text-foreground mb-1"><i class="bi bi-broadcast text-primary"></i> {{ __('personal.personal_event_create_who_join') }}</p>
             <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.personal_event_create_who_join_desc') }}</p>
             <div class="space-y-2">
-                <template x-for="[key, sc] in Object.entries(schema.scopes || {})" :key="key">
+                <template x-for="[key, sc] in Object.entries(schema.scopes || {}).filter(([k]) => ! (typeof tenant_id === 'string' && k === 'internal'))" :key="key">
                     <button type="button" @click="scope = key"
                             class="m-press w-full flex items-center gap-3 p-3 rounded-xl border-2 text-start transition-colors"
                             :class="scope === key ? 'border-primary bg-accent' : 'border-gray-100 bg-white'">

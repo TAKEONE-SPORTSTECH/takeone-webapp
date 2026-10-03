@@ -264,8 +264,7 @@ class EntryPanelController extends Controller
             ? 'approved'
             : ($registration->payment_proof ? 'submitted' : 'owed');
 
-        $bank = $event->tenant?->bankAccounts()
-            ->orderByDesc('is_primary')->orderBy('id')->first();
+        $bank = app(\App\Events\Support\EntryGates::class)->bankFor($event);
 
         return [
             'amount' => (float) $amount,
@@ -278,13 +277,7 @@ class EntryPanelController extends Controller
             // Only the fields a payer actually needs to make the transfer. No
             // storage path for the proof itself ever leaves this method — the
             // file is read back through the officials' own authorised route.
-            'bank' => $bank ? array_filter([
-                'bank_name' => $bank->bank_name,
-                'account_name' => $bank->account_name,
-                'account_number' => $bank->account_number,
-                'iban' => $bank->iban,
-                'benefitpay' => $bank->benefitpay_account,
-            ]) : null,
+            'bank' => $bank,
         ];
     }
 
