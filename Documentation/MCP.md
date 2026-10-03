@@ -7,7 +7,7 @@ directly into the app's models, Sanctum auth, roles and policies.
 
 **Core guarantee:** every tool runs **AS the authenticated user** and enforces
 exactly the same tenant scope and authorization the web UI does
-(super-admin → club owner → club-admin → guardian/self). The MCP can never read
+(super-admin → club owner → approved chain owner → club-admin → guardian/self; the chain owner was added 2026-10-03 to match the web). The MCP can never read
 or write anything the acting user could not do in the app.
 
 ---

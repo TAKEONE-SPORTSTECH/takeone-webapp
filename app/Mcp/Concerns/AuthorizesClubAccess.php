@@ -39,7 +39,11 @@ trait AuthorizesClubAccess
             ->where('user_id', $user->id)
             ->pluck('tenant_id');
 
-        return $owned->merge($roleScoped)->merge($memberOf)
+        // Clubs in a chain the user owns (approved) — the web's authorizeClub()
+        // grants these full control, so the MCP must at least see them (2026-10-03).
+        $chain = Tenant::query()->whereIn('business_id', $this->ownedApprovedBusinessIds($user))->pluck('id');
+
+        return $owned->merge($roleScoped)->merge($memberOf)->merge($chain)
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();
@@ -84,13 +88,27 @@ trait AuthorizesClubAccess
     }
 
     /**
-     * May the user administer (write to) this club? owner / club-admin / super.
+     * May the user administer (write to) this club?
+     * owner / club-admin / approved chain owner / super — the same four the web's
+     * HandlesClubAuthorization::authorizeClub() accepts (chain owner added 2026-10-03;
+     * the MCP used to refuse what the web allowed).
      */
     protected function canAdminClub(User $user, Tenant $club): bool
     {
         return $user->isSuperAdmin()
             || (int) $club->owner_user_id === (int) $user->id
-            || $user->isClubAdmin($club->id);
+            || $user->isClubAdmin($club->id)
+            || ($club->business_id && $this->ownedApprovedBusinessIds($user)->contains((int) $club->business_id));
+    }
+
+    /** @return Collection<int, int> ids of the APPROVED chains this user owns. */
+    protected function ownedApprovedBusinessIds(User $user): Collection
+    {
+        return \App\Clubs\Models\Business::query()
+            ->where('owner_user_id', $user->id)
+            ->where('status', \App\Clubs\Models\Business::STATUS_APPROVED)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
     }
 
     /**

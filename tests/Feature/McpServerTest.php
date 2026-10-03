@@ -1254,4 +1254,28 @@ class McpServerTest extends TestCase
         $this->assertArrayHasKey('error', $this->callTool(SetMemberRankTool::class, ['activity' => $uuid, 'member' => $member->uuid, 'belt' => 'blue']));
         $this->assertArrayHasKey('error', $this->callTool(ListActivityRanksTool::class, ['club' => $club->slug]));
     }
+
+    /**
+     * A chain owner administers every club in their APPROVED chain on the web
+     * (authorizeClub); the MCP refused them until 2026-10-03. A chain still
+     * awaiting approval grants nothing, on either side.
+     */
+    public function test_an_approved_chain_owner_administers_the_chains_clubs_and_a_pending_one_does_not(): void
+    {
+        $chainOwner = $this->createUser();
+        $business = \App\Clubs\Models\Business::create([
+            'owner_user_id' => $chainOwner->id, 'name' => 'Chain', 'slug' => 'chain-'.uniqid(),
+            'status' => \App\Clubs\Models\Business::STATUS_APPROVED,
+        ]);
+        $club = $this->createClub($this->createUser(), ['slug' => 'chain-club']);
+        $club->forceFill(['business_id' => $business->id])->save();
+
+        $this->actingAs($chainOwner);
+        $this->assertTrue(collect($this->callTool(ListClubsTool::class)['clubs'])->pluck('slug')->contains('chain-club'));
+        $this->assertArrayNotHasKey('error', $this->callTool(ClubFinancialsTool::class, ['club' => 'chain-club']));
+
+        $business->forceFill(['status' => 'pending'])->save();
+        $this->assertFalse(collect($this->callTool(ListClubsTool::class)['clubs'])->pluck('slug')->contains('chain-club'));
+        $this->assertArrayHasKey('error', $this->callTool(ClubFinancialsTool::class, ['club' => 'chain-club']));
+    }
 }

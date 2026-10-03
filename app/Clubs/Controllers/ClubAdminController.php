@@ -438,7 +438,7 @@ class ClubAdminController extends Controller
                 'gender' => $request->gender,
                 'birthdate' => $request->birthdate,
                 'nationality' => $request->nationality,
-                'blood_type' => $request->blood_type,
+                'blood_type' => $request->blood_type ?? 'Unknown',   // column is NOT NULL (default 'Unknown'); the form makes it optional
                 'mobile' => $request->mobile ? ['code' => $request->mobile_code ?? '+973', 'number' => $request->mobile] : null,
             ]);
         } elseif ($newOwner) {
@@ -452,7 +452,7 @@ class ClubAdminController extends Controller
                 'gender' => $request->gender,
                 'birthdate' => $request->birthdate,
                 'nationality' => $request->nationality,
-                'blood_type' => $request->blood_type,
+                'blood_type' => $request->blood_type ?? 'Unknown',   // column is NOT NULL (default 'Unknown'); the form makes it optional
                 'mobile' => $request->mobile ? ['code' => $request->mobile_code ?? '+973', 'number' => $request->mobile] : null,
             ]);
         }
