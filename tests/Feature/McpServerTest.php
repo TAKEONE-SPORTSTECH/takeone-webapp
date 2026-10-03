@@ -1278,4 +1278,44 @@ class McpServerTest extends TestCase
         $this->assertFalse(collect($this->callTool(ListClubsTool::class)['clubs'])->pluck('slug')->contains('chain-club'));
         $this->assertArrayHasKey('error', $this->callTool(ClubFinancialsTool::class, ['club' => 'chain-club']));
     }
+
+    /** Ownership over MCP: the same rules as the owners panel (PLAN.md Phase 5). */
+    public function test_club_ownership_tools_follow_the_owners_rules(): void
+    {
+        config(['parties.enabled' => true]);
+        $a = $this->createUser();
+        $b = $this->createUser();
+        $club = $this->createClub($a, ['slug' => 'owned-club']);
+        app(\App\Parties\Relations::class)->setOwners($club, [[$a, 4000], [$b, 6000]], 'partnership');
+        $this->makeClubAdmin($a, $club);
+        $this->makeClubAdmin($b, $club);
+
+        // a (40%) proposes: it waits for a vote.
+        $this->actingAs($a);
+        $list = $this->callTool(\App\Mcp\Tools\ListClubOwnersTool::class, ['club' => 'owned-club']);
+        $this->assertCount(2, $list['owners']);
+        $proposed = $this->callTool(\App\Mcp\Tools\ProposeClubOwnershipTool::class, [
+            'club' => 'owned-club', 'owners' => [['user_id' => $a->id, 'share_percent' => 50], ['user_id' => $b->id, 'share_percent' => 50]],
+        ]);
+        $this->assertSame('open', $proposed['status']);
+
+        // A club admin who owns nothing cannot vote.
+        $admin = $this->createUser();
+        $this->makeClubAdmin($admin, $club);
+        $this->actingAs($admin);
+        $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\VoteClubOwnershipTool::class, [
+            'club' => 'owned-club', 'proposal_uuid' => $proposed['proposal_uuid'], 'approve' => true,
+        ]));
+
+        // b (60%) votes for: it passes.
+        $this->actingAs($b);
+        $voted = $this->callTool(\App\Mcp\Tools\VoteClubOwnershipTool::class, [
+            'club' => 'owned-club', 'proposal_uuid' => $proposed['proposal_uuid'], 'approve' => true,
+        ]);
+        $this->assertSame('passed', $voted['status']);
+
+        // A stranger sees nothing.
+        $this->actingAs($this->createUser());
+        $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\ListClubOwnersTool::class, ['club' => 'owned-club']));
+    }
 }

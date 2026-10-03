@@ -715,6 +715,9 @@
 
     {{-- ─────────── Owner ─────────── --}}
     <section x-show="panel === 'owner'" x-cloak class="px-4 py-5 space-y-4 m-panel-in" x-data="csOwner()">
+        {{-- Owners & shares — renders only while PARTIES_ENABLED. --}}
+        <x-ownership-panel :club="$club" />
+
         <div class="m-card p-4" id="csOwnerCard">
             @if($club->owner)
                 <div class="flex items-center gap-3">

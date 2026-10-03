@@ -289,6 +289,9 @@
                         @endif
                         </div>{{-- /#ownerSection --}}
 
+                        {{-- Owners & shares — renders only while PARTIES_ENABLED. --}}
+                        <x-ownership-panel :club="$club" class="mt-4" />
+
                         <input type="hidden" name="owner_name" value="{{ old('owner_name', $club->owner_name) }}">
                         <input type="hidden" name="owner_email" value="{{ old('owner_email', $club->owner_email) }}">
                     </div>

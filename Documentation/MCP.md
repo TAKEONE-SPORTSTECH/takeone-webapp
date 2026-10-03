@@ -73,6 +73,9 @@ Or point a local client (Claude Desktop) at `php artisan mcp:start takeone`. If
 | `list_members` | read | scoped | Members of a club (search + paginate) |
 | `get_member` | read | gated | One member profile (uuid or id) — super-admin/self/guardian/club-admin only. Includes `medals` (club-awarded + club-**verified** tournament medals), `skills` (provenance-backed, **verified** only — activity/club/since/proficiency; never self-reported/pending), `certifications` (self-managed) and `work_history` (self-managed, current roles first) |
 | `club_financials` | read | admin | Income, expenses, net, cash-to-collect for a club — scoped to the club's current Test/Live mode |
+| `list_club_owners` | read | admin | A club's owners with shares (percent), ownership history, and any open ownership proposal with its tally. Only while `PARTIES_ENABLED` |
+| `propose_club_ownership` | write | owner | Set a club's owners and shares (must total 100%). The majority owner's change applies at once; anyone else's goes to a share-weighted vote (more than 50% passes). Owners and super-admins only |
+| `vote_club_ownership` | write | owner | Vote for/against an open ownership proposal; only the club's owners vote, weighted by share |
 | `club_staff` | read | admin | A club's staff (instructors, secretaries, operators, cleaners, ...) with staff type, compensation, and active status. Read-only — hiring/terminating staff is not exposed over MCP |
 | `search_people` | read | any | Club-scoped discoverable-member search (confirmed club-mates of the acting user only, never platform-wide) — **safe public fields only** |
 | `record_transaction` | write | admin | Log a manual income/expense for a club |

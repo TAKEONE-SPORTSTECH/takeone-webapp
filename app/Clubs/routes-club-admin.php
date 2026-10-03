@@ -26,6 +26,7 @@ use App\Clubs\Controllers\ClubGalleryController;
 use App\Clubs\Controllers\ClubInstructorController;
 use App\Clubs\Controllers\ClubMemberAdminController;
 use App\Clubs\Controllers\ClubMessageController;
+use App\Clubs\Controllers\ClubOwnershipController;
 use App\Clubs\Controllers\ClubNotificationController;
 use App\Clubs\Controllers\ClubPackageController;
 use App\Clubs\Controllers\ClubRoleController;
@@ -47,6 +48,13 @@ Route::post('/social-links', [ClubAdminController::class, 'storeSocialLink'])->n
 Route::delete('/social-links/{link}', [ClubAdminController::class, 'destroySocialLink'])->name('social-links.destroy');
 Route::post('/transfer-ownership', [ClubAdminController::class, 'transferOwnership'])->name('transfer-ownership')->middleware('throttle:admin-write');
 Route::post('/create-owner', [ClubAdminController::class, 'createOwner'])->name('create-owner')->middleware('throttle:admin-write');
+
+// Owners & shares (App\Parties — 404 unless PARTIES_ENABLED). Proposing and
+// voting are the owners'; App\Parties\Motions refuses anyone else.
+Route::get('/owners', [ClubOwnershipController::class, 'show'])->name('owners');
+Route::post('/owners/motions', [ClubOwnershipController::class, 'propose'])->name('owners.propose');
+Route::post('/owners/motions/{motion}/vote', [ClubOwnershipController::class, 'vote'])->name('owners.vote');
+Route::post('/owners/motions/{motion}/withdraw', [ClubOwnershipController::class, 'withdraw'])->name('owners.withdraw');
 
 // Gallery
 Route::get('/gallery', [ClubGalleryController::class, 'gallery'])->name('gallery');

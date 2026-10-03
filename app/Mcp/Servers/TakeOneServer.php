@@ -21,6 +21,9 @@ use App\Mcp\Tools\ListEventFeatureRequestsTool;
 use App\Mcp\Tools\AddWorkHistoryTool;
 use App\Mcp\Tools\ArrangeEventBracketTool;
 use App\Mcp\Tools\ClubFinancialsTool;
+use App\Mcp\Tools\ListClubOwnersTool;
+use App\Mcp\Tools\ProposeClubOwnershipTool;
+use App\Mcp\Tools\VoteClubOwnershipTool;
 use App\Mcp\Tools\ClubStaffTool;
 use App\Mcp\Tools\EnrollMembersTool;
 use App\Mcp\Tools\EnterEventAthletesTool;
@@ -97,6 +100,9 @@ class TakeOneServer extends Server
         ListMembersTool::class,
         GetMemberTool::class,
         ClubFinancialsTool::class,
+        ListClubOwnersTool::class,
+        ProposeClubOwnershipTool::class,
+        VoteClubOwnershipTool::class,
         ClubStaffTool::class,
         SearchPeopleTool::class,
         RecordTransactionTool::class,

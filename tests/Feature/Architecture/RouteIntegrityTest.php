@@ -215,7 +215,12 @@ class RouteIntegrityTest extends TestCase
      * bootstrap/cache/routes-v7.php (phpunit.xml APP_ROUTES_CACHE): the cache
      * is whatever the last deploy built, not the code under test.
      */
-    private const EXPECTED_ROUTE_COUNT = 937;
+    /*
+     * 941 since 2026-10-03: +4, the club owners panel (App\Parties, PLAN.md
+     * Phase 5) — admin.club.owners, .owners.propose, .owners.vote,
+     * .owners.withdraw. All four answer 404 unless PARTIES_ENABLED.
+     */
+    private const EXPECTED_ROUTE_COUNT = 941;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -458,6 +463,7 @@ class RouteIntegrityTest extends TestCase
         // the misspelling redirect the /business front door added (50897a22).
         // Thirteen unnamed now: mcp ×3, busniess, profile, family, members,
         // family/dashboard, POST login, POST register, api/user, up, /.
-        $this->assertCount(924, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 928 on 2026-10-03: the four owners-panel routes, all named.
+        $this->assertCount(928, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

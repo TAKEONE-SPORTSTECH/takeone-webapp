@@ -240,7 +240,9 @@ class ClubAdminController extends Controller
         // Null for anyone who may run the club but not give it away: the views
         // then draw no transfer control at all (the endpoints refuse anyway).
         $canActAsOwner = $this->canActAsClubOwner($club);
-        $transferOwnershipUrl = $canActAsOwner ? route('admin.club.transfer-ownership', $club->slug) : null;
+        // A co-owned club changes hands through its owners' vote (the owners
+        // panel), never through the single-owner transfer.
+        $transferOwnershipUrl = $canActAsOwner && ! $this->isCoOwned($club) ? route('admin.club.transfer-ownership', $club->slug) : null;
         $deleteClubUrl = $canActAsOwner ? route('admin.club.destroy', $club->slug) : null;
 
         return view(\App\Clubs\Support\ClubView::pick('details', 'clubs'), compact('club', 'activeMembersCount', 'reviews', 'averageRating', 'whatsappSettings', 'transferOwnershipUrl', 'deleteClubUrl'));
@@ -423,6 +425,9 @@ class ClubAdminController extends Controller
     {
         $this->authorizeClub($club);
         $this->authorizeClubOwnerAction($club);
+        if ($refusal = $this->refuseIfCoOwned($club)) {
+            return $refusal;
+        }
 
         $newOwner = null;
         if ($request->filled('email')) {
@@ -507,6 +512,9 @@ class ClubAdminController extends Controller
     {
         $this->authorizeClub($club);
         $this->authorizeClubOwnerAction($club);
+        if ($refusal = $this->refuseIfCoOwned($club)) {
+            return $refusal;
+        }
 
         $mode = $request->input('mode');
 
@@ -618,5 +626,23 @@ class ClubAdminController extends Controller
         }
 
         return $data;
+    }
+
+    /** More than one owner on record (App\Parties)? Always false while PARTIES_ENABLED is off. */
+    private function isCoOwned(Tenant $club): bool
+    {
+        return config('parties.enabled') && app(\App\Parties\Relations::class)->owners($club)->count() > 1;
+    }
+
+    /**
+     * The single-owner transfer would flatten a co-owned club to one owner and
+     * silently take everyone else's share away — so it refuses, and the owners
+     * decide through the owners panel instead.
+     */
+    private function refuseIfCoOwned(Tenant $club): ?\Illuminate\Http\JsonResponse
+    {
+        return $this->isCoOwned($club)
+            ? response()->json(['success' => false, 'message' => __('parties::parties.err_co_owned')], 422)
+            : null;
     }
 }

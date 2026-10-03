@@ -145,6 +145,20 @@ final class Relations
      */
     public function setOwners(Model $to, array $owners, string $reason, ?int $by = null, array $attrs = []): Collection
     {
+        $wanted = $this->validateOwnerSet($owners);
+
+        return $this->applyOwners($to, $wanted, $reason, $by, $attrs);
+    }
+
+    /**
+     * Check an ownership set without writing it: non-empty, every share
+     * positive, nobody twice, total exactly 100%. Throws on the first problem.
+     *
+     * @param  list<array{0: Model, 1: int}>  $owners
+     * @return array<string, array{0: Model, 1: int}> keyed "kind:id"
+     */
+    public function validateOwnerSet(array $owners): array
+    {
         $wanted = [];
         foreach ($owners as [$holder, $share]) {
             $share = (int) $share;
@@ -164,6 +178,12 @@ final class Relations
             throw new \InvalidArgumentException('Ownership shares must add up to exactly 100%.');
         }
 
+        return $wanted;
+    }
+
+    /** @param  array<string, array{0: Model, 1: int}>  $wanted */
+    private function applyOwners(Model $to, array $wanted, string $reason, ?int $by, array $attrs): Collection
+    {
         return DB::transaction(function () use ($to, $wanted, $reason, $by, $attrs) {
             $now = now();
 
