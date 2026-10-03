@@ -152,6 +152,7 @@ class Tenant extends Model
 
             // Role assignments for this club
             DB::table('user_roles')->where('tenant_id', $id)->delete();
+            \App\Parties\DualWrite::clubAllRolesCleared($id);
         });
     }
 

@@ -631,7 +631,10 @@ class ClubAdminController extends Controller
     /** More than one owner on record (App\Parties)? Always false while PARTIES_ENABLED is off. */
     private function isCoOwned(Tenant $club): bool
     {
-        return config('parties.enabled') && app(\App\Parties\Relations::class)->owners($club)->count() > 1;
+        // Never the reason a page fails: if the records cannot be read, the club
+        // is treated as single-owned, exactly as before the records existed.
+        return config('parties.enabled')
+            && rescue(fn () => app(\App\Parties\Relations::class)->owners($club)->count() > 1, false, report: true);
     }
 
     /**

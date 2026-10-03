@@ -613,5 +613,8 @@ class DemoSeed extends Command
         }
         $id = DB::table('user_roles')->insertGetId(['user_id' => $userId, 'role_id' => $roleId, 'tenant_id' => $tenantId, 'created_at' => now(), 'updated_at' => now()]);
         $this->m->track('user_roles', $id);
+        if ($user = \App\Members\Models\User::find($userId)) {
+            \App\Parties\DualWrite::roleChanged($user, $slug, $tenantId, true);
+        }
     }
 }

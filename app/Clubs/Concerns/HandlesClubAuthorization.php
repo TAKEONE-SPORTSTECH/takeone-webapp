@@ -32,7 +32,8 @@ trait HandlesClubAuthorization
 
         // Shadow mode (PARTIES_SHADOW): the relationships answer the same
         // question and any disagreement is recorded. $ok still decides.
-        return \App\Parties\Shadow::compare('club.manage', $user, 'club:'.$club->id, $ok,
+        // With PARTIES_AUTHORITY=clubs the relationships DECIDE (old answer still recorded beside it).
+        return \App\Parties\Shadow::decide('clubs', 'club.manage', $user, 'club:'.$club->id, $ok,
             fn () => app(\App\Parties\Authority::class)->manageClub($user, $club));
     }
 
@@ -55,7 +56,7 @@ trait HandlesClubAuthorization
             || $club->owner_user_id === $user->id
             || ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id));
 
-        return \App\Parties\Shadow::compare('club.owner', $user, 'club:'.$club->id, $ok,
+        return \App\Parties\Shadow::decide('clubs', 'club.owner', $user, 'club:'.$club->id, $ok,
             fn () => app(\App\Parties\Authority::class)->actAsClubOwner($user, $club));
     }
 

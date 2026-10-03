@@ -301,6 +301,12 @@ removed; `federation_events` + sync retired; club-admin event form removed; dead
 5. **Federation president:** the term is only recorded (start/end); nothing expires on its own.
 6. Failing tests first — DONE.
 
+## 9b. Owner decisions (2026-10-03, second round)
+7. **One event editor for clubs** — the club panel's Add/Edit event opens the shared full editor; the small club form retires later.
+8. **One event editor for federations too** — federation-only fields (team entries, spectator tickets, artwork, draw date) move into the shared editor first; the federation's own form stays until proven.
+9. **Self-organised events** — the person picks "Myself" as organiser, types their own payment details and currency; no "my club only" scope.
+10. **Cut-over, clubs first** — App\Parties\Authority decides the club admin panel's permissions; old checks stay as the one-line fallback. Events and federations follow one at a time.
+
 ## 10. Decisions needed from the owner before building
 1. **Shares:** do shares only RECORD ownership, or do they decide things (e.g. majority
    owner can transfer; all owners must agree to add a co-owner)?

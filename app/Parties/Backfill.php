@@ -89,6 +89,17 @@ final class Backfill
             }
         }
 
+        // The other direction — the one that matters once Authority decides: an
+        // ACTIVE admin relationship whose role row is gone would let somebody
+        // keep a club they were removed from.
+        foreach (PartyRelation::query()->active()->where('role', Roles::ADMIN)->where('from_type', Kinds::PERSON)->where('to_type', Kinds::CLUB)->get() as $r) {
+            $still = DB::table('user_roles')->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                ->where('user_roles.user_id', $r->from_id)->where('user_roles.tenant_id', $r->to_id)->where('roles.slug', 'club-admin')->exists();
+            if (! $still) {
+                $out[] = "party_relations: user {$r->from_id} is still admin of club {$r->to_id}; no club-admin role row";
+            }
+        }
+
         foreach (DB::table('club_instructors')->where('is_active', true)->get(['user_id', 'tenant_id']) as $r) {
             if (! $this->activeExists(Kinds::PERSON, $r->user_id, Kinds::CLUB, $r->tenant_id, Roles::STAFF)) {
                 $out[] = "club_instructors: user {$r->user_id} active staff of club {$r->tenant_id}; no active relation";

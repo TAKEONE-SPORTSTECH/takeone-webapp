@@ -47,6 +47,7 @@
         <!-- Same reason: stage runs these ON. Tests switch them on themselves. -->
         <env name="PARTIES_ENABLED" value="false" force="true"/>
         <env name="PARTIES_SHADOW" value="false" force="true"/>
+        <env name="PARTIES_AUTHORITY" value="" force="true"/>
         <!-- Never boot the tests from the server's cached route/event tables:
              they reflect the last `route:cache`, not the code under test (and
              give every unnamed route a generated name). Pointing at a file

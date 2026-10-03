@@ -301,6 +301,7 @@ class ClubRoleController extends Controller
 
             // The custom set becomes the member's effective access for this club.
             $user->roles()->wherePivot('tenant_id', $clubId)->detach();
+            \App\Parties\DualWrite::clubRolesCleared($user, $clubId);
             if (! empty($data['permissions'])) {
                 $user->roles()->attach($role->id, ['tenant_id' => $clubId]);
             }

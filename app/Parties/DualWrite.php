@@ -71,6 +71,46 @@ final class DualWrite
             : self::endFor($user->id, self::ROLE_MAP[$slug], Kinds::CLUB, $tenantId, 'role removed'));
     }
 
+    /**
+     * Every role a person held in one club was removed at once (the custom
+     * access editor detaches them all) — end the matching relationships. Staff
+     * that come from club_instructors are left alone: only rows that came from
+     * a role (meta.role_slug) are ended.
+     */
+    public static function clubRolesCleared(User $user, int $tenantId): void
+    {
+        self::guard(function () use ($user, $tenantId) {
+            $club = Tenant::withTrashed()->find($tenantId);
+            if (! $club) {
+                return;
+            }
+            $relations = app(Relations::class);
+            foreach ($relations->active($club, [Roles::ADMIN, Roles::COACH, Roles::STAFF]) as $r) {
+                if ((int) $r->from_id === (int) $user->id && $r->from_type === Kinds::PERSON
+                    && ($r->role !== Roles::STAFF || ! empty($r->meta['role_slug']))) {
+                    $relations->end($r, 'roles replaced', Auth::id());
+                }
+            }
+        });
+    }
+
+    /** A club's role rows were all deleted (the club itself was deleted). */
+    public static function clubAllRolesCleared(int $tenantId): void
+    {
+        self::guard(function () use ($tenantId) {
+            $club = Tenant::withTrashed()->find($tenantId);
+            if (! $club) {
+                return;
+            }
+            $relations = app(Relations::class);
+            foreach ($relations->active($club, [Roles::ADMIN, Roles::COACH, Roles::STAFF]) as $r) {
+                if ($r->role !== Roles::STAFF || ! empty($r->meta['role_slug'])) {
+                    $relations->end($r, 'club deleted', Auth::id());
+                }
+            }
+        });
+    }
+
     /* ---------------- handlers ---------------- */
 
     private static function ownerColumn(Model $org): void

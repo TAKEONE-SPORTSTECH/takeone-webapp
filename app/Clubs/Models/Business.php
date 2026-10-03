@@ -86,7 +86,13 @@ class Business extends Model
         $reassignedCount = 0;
 
         if ($reassignClubs) {
-            $reassignedCount = $this->clubs()->update(['owner_user_id' => $newOwnerId]);
+            // One by one rather than one bulk UPDATE, so each club's own saved
+            // hooks run — the ownership record (App\Parties) and the activity
+            // log see every club that changed hands. Same rows, same count.
+            $this->clubs()->get()->each(function ($club) use ($newOwnerId, &$reassignedCount) {
+                $club->update(['owner_user_id' => $newOwnerId]);
+                $reassignedCount++;
+            });
         }
 
         $this->update(['owner_user_id' => $newOwnerId]);
