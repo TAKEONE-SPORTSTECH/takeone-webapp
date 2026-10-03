@@ -220,7 +220,11 @@ class RouteIntegrityTest extends TestCase
      * Phase 5) — admin.club.owners, .owners.propose, .owners.vote,
      * .owners.withdraw. All four answer 404 unless PARTIES_ENABLED.
      */
-    private const EXPECTED_ROUTE_COUNT = 941;
+    /*
+     * 942 since 2026-10-03: +1, me.events.entry-channels — how athletes enter
+     * an event, the organiser's switch (PLAN.md Phase 7).
+     */
+    private const EXPECTED_ROUTE_COUNT = 942;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -464,6 +468,7 @@ class RouteIntegrityTest extends TestCase
         // Thirteen unnamed now: mcp ×3, busniess, profile, family, members,
         // family/dashboard, POST login, POST register, api/user, up, /.
         // 928 on 2026-10-03: the four owners-panel routes, all named.
-        $this->assertCount(928, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 929 on 2026-10-03: me.events.entry-channels.
+        $this->assertCount(929, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

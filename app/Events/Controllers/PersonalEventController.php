@@ -391,6 +391,13 @@ class PersonalEventController extends Controller
             $hostEntry['host'] = $event->host()->name;
         }
 
+        // The organiser's channels (EntryChannels): with individual entry off,
+        // a member's club enters them — the join card explains instead of
+        // offering a door that refuses. With club entry off, no squad card.
+        $channels = app(\App\Events\Support\EntryChannels::class);
+        $individualClosed = ! $hostEntry && ! $channels->allows($event, \App\Events\Support\EntryChannels::INDIVIDUAL);
+        $clubClosed = ! $channels->allows($event, \App\Events\Support\EntryChannels::CLUB);
+
         $view = $this->packageView($type, 'show', $device, $isMobile ? 'events::personal.mobile.event-show' : 'events::personal.desktop.event-show');
 
         $entries = app(EntryService::class);
@@ -409,12 +416,13 @@ class PersonalEventController extends Controller
              * same doors with the same words on them (partials/event-doors).
              */
             'typePublic' => $type->publicView($event),
-            'canCompete' => ($banned || $excluded || $hostEntry) ? false : $gate->allowed,
+            'canCompete' => ($banned || $excluded || $hostEntry || $individualClosed) ? false : $gate->allowed,
             'hostEntry' => $hostEntry,
             'eligReason' => match (true) {
                 $banned => __('events::events.banned_by_organiser'),
                 $excluded !== null => $excluded->sentence(),
                 $hostEntry !== null => __('events::events.host_entry_body', ['host' => $hostEntry['host']]),
+                $individualClosed => __('events::events.entry_individual_closed'),
                 default => $gate->message,
             },
             // Removed by the deadline rather than by a person — a different
@@ -462,7 +470,7 @@ class PersonalEventController extends Controller
             // a club, and only while the event is still taking entries.
             // Only while entries are actually open — a card that opens a sheet
             // where every row is refused is a door onto a wall.
-            'canEnterAthletes' => ! $hostEntry && $entriesState['open'] && $entries->administeredClubIds($me) !== [],
+            'canEnterAthletes' => ! $hostEntry && ! $clubClosed && $entriesState['open'] && $entries->administeredClubIds($me) !== [],
             // Whether anyone may still take a place, and the reason when not.
             'entriesOpen' => $entriesState['open'],
             'entriesNote' => $entriesState['note'],
@@ -724,6 +732,10 @@ class PersonalEventController extends Controller
             // decision, though an official always reads it (EventAccess::
             // drawVisible).
             'drawReveal' => $event->draw_reveal ?: \App\Events\Models\ClubEvent::DRAW_ALWAYS,
+            // How athletes enter (EntryChannels). Not offered where the host
+            // takes its athletes from clubs through its own invitation.
+            'entryChannels' => app(\App\Events\Support\EntryChannels::class)->allowed($event),
+            'entryChannelsEditable' => ! $event->host_type,
             'drawRevealDate' => $event->date ? Cldr::skeleton($event->date, 'EEEdMMM', 'D j M') : null,
             // Strangers who followed the public link and are waiting to be let
             // in. Rendered by the organiser's console only — accepting one is
@@ -4884,6 +4896,16 @@ class PersonalEventController extends Controller
             ], 422);
         }
 
+        // The organiser takes this event's entries through clubs only
+        // (EntryChannels): a member's club enters them.
+        if (! $alreadyIn && ! app(\App\Events\Support\EntryChannels::class)->allows($event, \App\Events\Support\EntryChannels::INDIVIDUAL)) {
+            return response()->json([
+                'success' => false,
+                'code' => 'individual_closed',
+                'message' => __('events::events.entry_individual_closed'),
+            ], 422);
+        }
+
         if (($event->hasStarted() || $event->isOverdueToStart()) && ! $alreadyIn) {
             return response()->json([
                 'success' => false,
@@ -7629,6 +7651,35 @@ class PersonalEventController extends Controller
             'draw_reveal' => $data['draw_reveal'],
             'revealed' => $event->fresh()->drawRevealed(),
             'message' => __('events::events.draw_reveal_saved'),
+        ]);
+    }
+
+    /**
+     * How athletes enter this event — individuals, clubs, or both (owner,
+     * 2026-10-03; App\Events\Support\EntryChannels). Organiser only. Only
+     * NEW entries are affected; nobody already entered loses their place.
+     */
+    public function setEntryChannels(Request $request, ClubEvent $event, EventAccess $access): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+        abort_if(! $access->canManage($event, $me), 403);
+
+        $data = $request->validate([
+            'channels' => ['required', 'array', 'min:1'],
+            'channels.*' => ['required', 'string', Rule::in(\App\Events\Support\EntryChannels::ALL)],
+        ]);
+
+        $channels = app(\App\Events\Support\EntryChannels::class);
+        $channels->set($event, $data['channels']);
+
+        // Readers' join cards change with this — each re-fetches its own view.
+        $this->pushEventRefresh($event);
+
+        return response()->json([
+            'success' => true,
+            'channels' => $channels->allowed($event->fresh()),
+            'message' => __('events::events.entry_channels_saved'),
         ]);
     }
 

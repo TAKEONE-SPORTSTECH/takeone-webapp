@@ -127,6 +127,8 @@ class ListEventsTool extends BaseTool
             // The rule book: null = the sport's own (App\Events\Support\CategorySystems).
             'category_system' => $e->category_system,
             'belt_system' => $e->belt_system,
+            // How athletes enter: individual · club (App\Events\Support\EntryChannels).
+            'entry_channels' => app(\App\Events\Support\EntryChannels::class)->allowed($e),
             'country' => $e->tenant?->country,
             'location' => $e->location,
             'event_type' => $e->event_type,

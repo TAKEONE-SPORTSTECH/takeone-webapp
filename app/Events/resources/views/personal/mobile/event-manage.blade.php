@@ -486,6 +486,12 @@
                                              :color="$mgColor" :title="$e['title']" />
                 @endif
 
+                {{-- How athletes enter: individuals, clubs, or both (EntryChannels). --}}
+                @if($entryChannelsEditable ?? false)
+                    <x-event-entry-channels :event="$e['key']" :channels="$entryChannels ?? ['individual', 'club']"
+                                            :color="$mgColor" :title="$e['title']" />
+                @endif
+
 
 
 

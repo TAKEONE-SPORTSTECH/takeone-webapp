@@ -798,6 +798,8 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // only — it never changes who may ARRANGE a draw, and the organiser and
     // their officials read it at every setting.
     Route::post('/events/{event:uuid}/draw-reveal', [App\Events\Controllers\PersonalEventController::class, 'setDrawReveal'])->name('events.draw-reveal')->middleware('throttle:admin-write');
+    // How athletes enter — individuals, clubs, or both (App\Events\Support\EntryChannels). Organiser only.
+    Route::post('/events/{event:uuid}/entry-channels', [App\Events\Controllers\PersonalEventController::class, 'setEntryChannels'])->name('events.entry-channels')->middleware('throttle:admin-write');
     // The rule book an event runs under: category and belt systems (App\Events\Support\CategorySystems).
     Route::get('/category-systems', [App\Events\Controllers\CategorySystemController::class, 'index'])->name('category-systems')->middleware('throttle:60,1');
     Route::post('/category-systems', [App\Events\Controllers\CategorySystemController::class, 'store'])->name('category-systems.store')->middleware('throttle:admin-write');

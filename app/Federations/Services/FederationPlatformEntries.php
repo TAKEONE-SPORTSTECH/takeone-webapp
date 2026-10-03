@@ -160,6 +160,16 @@ class FederationPlatformEntries
             $row->forceFill(['approval' => 'Approved'])->save();
         }
 
+        // The CLUB entered them, so the club owes their fee (PLAN.md Phase 7):
+        // its platform club when it has one, the federation's own club record
+        // otherwise. Only the payer — the entry stays on the federation's own
+        // lifecycle (withdrawals go through the dashboard), so its channel is
+        // left as it is rather than handing coaches platform-side squad controls.
+        ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $user->id)->where('role', 'participant')
+            ->update($tenantId
+                ? ['payer_type' => 'club', 'payer_id' => $tenantId]
+                : ($club ? ['payer_type' => 'federation_club', 'payer_id' => $club->id] : []) + ['updated_at' => now()]);
+
         // A federation sorts its athletes by the rule book itself: an entered
         // athlete with no division is placed, the division created if needed.
         $registration ??= ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $user->id)->where('role', 'participant')->first();

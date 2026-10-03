@@ -1222,6 +1222,7 @@ class EntryEditor
     private function syncEventClubEntrant(ClubEventRegistration $registration, ?int $eventClubId): void
     {
         DB::table('event_club_entrants')->where('registration_id', $registration->id)->delete();
+        ClubEventRegistration::billToEventClub($registration->id, $eventClubId);
 
         if ($eventClubId === null) {
             return;

@@ -385,6 +385,12 @@
                                              :color="$mgColor ?? $e['color']" :title="$e['title']" />
                 @endif
 
+                {{-- How athletes enter: individuals, clubs, or both (EntryChannels). --}}
+                @if($entryChannelsEditable ?? false)
+                    <x-event-entry-channels :event="$e['key']" :channels="$entryChannels ?? ['individual', 'club']"
+                                            :color="$mgColor ?? $e['color']" :title="$e['title']" />
+                @endif
+
                 {{-- Certificates for the people who competed: participation and
                      podium, drafted from the finished draw, approved here
                      (App\Certificates). Only for a type with divisions, and only

@@ -98,6 +98,14 @@ class EntryClaim
             return ['ok' => false, 'message' => __('events::events.claim_no_authority')];
         }
 
+        // A club entry by a coach needs the club channel open (EntryChannels);
+        // the people running the event may always add anybody.
+        if (! app(EntryChannels::class)->allows($event, EntryChannels::CLUB)
+            && ! $actor->isSuperAdmin()
+            && ! app(EventAccess::class)->canEnterAthletes($event, $actor)) {
+            return ['ok' => false, 'message' => __('events::events.entry_club_closed')];
+        }
+
         // The same gate that closes the join button and the coach's roster —
         // one answer, so they can never disagree about whether a place is still
         // available. Asked BEFORE anything is created.

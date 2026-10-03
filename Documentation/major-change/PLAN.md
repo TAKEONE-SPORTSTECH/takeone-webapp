@@ -144,6 +144,20 @@ Security (§2.5):
 - 🐞 Found, NOT fixed (outside scope): create-owner 500s when no blood type is given
   (`users.blood_type` is NOT NULL, the controller writes NULL).
 
+## 2.8 Progress (2026-10-03)
+
+| Phase | State | Notes |
+|---|---|---|
+| 0 Safety net | ✅ | `scripts/test-per-file.sh`; empty failing baseline; Parties + federation shadow tests |
+| 1 party_relations + Relations | ✅ live | migrated on stage after a verified backup |
+| 2 Backfill + verify | ✅ live | 109 rows; `parties:verify` = no drift |
+| 3 Dual write | ✅ ON on stage | `PARTIES_ENABLED=true`; can never break the mirrored write |
+| 4 Shadow authority | ✅ ON on stage | `PARTIES_SHADOW=true`; 1,360 live checks, 0 disagreements. Cut-over (Authority deciding) NOT done — owner's call |
+| 5 Co-ownership + votes | ✅ live (on) | owners panel on club details (desktop + mobile), MCP tools |
+| 6 One event surface | ⏳ | needs owner input — see §10a |
+| 7 Entry channels + payer | ✅ | organiser switch in both consoles; payer on every entry (backfilled). 7.3 deviation: federation entries get the CLUB as payer but keep their channel — their lifecycle belongs to the federation dashboard, and the club channel would hand coaches platform-side squad controls that bypass it. 7.4 invoices still to do (EVENTS-ENTRY-BILLING Phase 3) |
+| 8 Retire the old | ⏸ | separate owner approval |
+
 ## 3. Target model
 
 ### 3.1 Parties

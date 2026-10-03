@@ -35,9 +35,44 @@ class ClubEventRegistration extends Model
 
     protected static function booted(): void
     {
+        /*
+         * Who owes this entry's fee, decided ONCE, from how it came in (PLAN.md
+         * Phase 7): an athlete their club entered is the club's bill, anything
+         * else the person's own. A caller that knows better (an off-platform
+         * event club — see EntryEditor / EventClubsController) says so itself.
+         */
+        static::creating(function (self $r) {
+            if ($r->payer_type) {
+                return;
+            }
+            if ($r->entry_channel === 'club' && $r->representing_tenant_id) {
+                $r->payer_type = 'club';
+                $r->payer_id = $r->representing_tenant_id;
+            } else {
+                $r->payer_type = 'person';
+                $r->payer_id = $r->user_id;
+            }
+        });
+
         static::deleting(function (self $registration) {
             \App\Events\Support\EntryPhoto::discard($registration->photo);
         });
+    }
+
+    /**
+     * A CLUB entry that names no platform club is billed to the off-platform
+     * club it was filed under (event_clubs). One rule, called wherever an entry
+     * is put under an event club; a person's own entry stays the person's.
+     */
+    public static function billToEventClub(int $registrationId, ?int $eventClubId): void
+    {
+        $q = \Illuminate\Support\Facades\DB::table('club_event_registrations')->where('id', $registrationId)
+            ->where('entry_channel', 'club')->whereNull('representing_tenant_id')
+            ->where(fn ($w) => $w->whereNull('payer_type')->orWhereIn('payer_type', ['person', 'event_club']));
+
+        $eventClubId
+            ? $q->update(['payer_type' => 'event_club', 'payer_id' => $eventClubId])
+            : $q->where('payer_type', 'event_club')->update(['payer_type' => 'person', 'payer_id' => \Illuminate\Support\Facades\DB::raw('user_id')]);
     }
 
     /** The division was worked out by the platform, and may be corrected by it. */
@@ -74,6 +109,9 @@ class ClubEventRegistration extends Model
         'entered_by',
         // How they got in, and who they compete FOR — see the migration.
         'entry_channel',
+        // WHO owes the fee (person | club | event_club) — never who verified it (`paid_by`).
+        'payer_type',
+        'payer_id',
         // Whether the entry is finished. A coach may commit one from a NAME
         // alone; the athlete completes it through a claim link.
         'entry_state',

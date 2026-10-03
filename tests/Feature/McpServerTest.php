@@ -1318,4 +1318,26 @@ class McpServerTest extends TestCase
         $this->actingAs($this->createUser());
         $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\ListClubOwnersTool::class, ['club' => 'owned-club']));
     }
+
+    /** How athletes enter, over MCP: the organiser reads and sets it; nobody else. */
+    public function test_entry_channels_tool_is_the_organisers(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->createClub($owner, ['slug' => 'chan-club']);
+        $event = \App\Events\Models\ClubEvent::create([
+            'tenant_id' => $club->id, 'created_by' => $owner->id, 'title' => 'Cup', 'event_type' => 'championship',
+            'sport' => 'taekwondo', 'scope' => 'internal', 'status' => 'active', 'is_archived' => false,
+            'date' => now()->addWeek()->toDateString(), 'start_time' => '09:00', 'end_time' => '17:00',
+        ]);
+
+        $this->actingAs($owner);
+        $this->assertSame(['individual', 'club'], $this->callTool(\App\Mcp\Tools\SetEventEntryChannelsTool::class, ['event' => $event->uuid])['channels']);
+        $set = $this->callTool(\App\Mcp\Tools\SetEventEntryChannelsTool::class, ['event' => $event->uuid, 'channels' => ['club']]);
+        $this->assertSame(['club'], $set['channels']);
+        $this->assertTrue($set['chosen']);
+
+        $this->actingAs($this->createUser());
+        $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\SetEventEntryChannelsTool::class, ['event' => $event->uuid, 'channels' => ['individual']]));
+        $this->assertSame(['club'], $event->fresh()->entry_channels);
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\AddCertificationTool;
 use App\Mcp\Tools\SetEventRulebookTool;
+use App\Mcp\Tools\SetEventEntryChannelsTool;
 use App\Mcp\Tools\DecideEventFeatureRequestTool;
 use App\Mcp\Tools\GetSportRuleBookTool;
 use App\Mcp\Tools\ListActivityRanksTool;
@@ -137,6 +138,7 @@ class TakeOneServer extends Server
         ListCornerSidesTool::class,
         SetCornerSideTool::class,
         SetEventRulebookTool::class,
+        SetEventEntryChannelsTool::class,
         ListEventCertificatesTool::class,
         SetEventCertificateSettingsTool::class,
         GenerateEventCertificatesTool::class,

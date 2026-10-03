@@ -560,6 +560,7 @@ class EventClubsController extends Controller
                         'created_at' => now(),
                     ]
                 );
+                \App\Events\Models\ClubEventRegistration::billToEventClub((int) $id, $eventClub->id);
             }
 
             /*

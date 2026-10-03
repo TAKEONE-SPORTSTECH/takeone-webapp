@@ -161,6 +161,11 @@ class PublicEntry
             return ['ok' => false, 'message' => $state['note'] ?? __('events::events.public_enrol_closed')];
         }
 
+        // Entering yourself needs the individual channel open (EntryChannels).
+        if (! app(EntryChannels::class)->allows($event, EntryChannels::INDIVIDUAL)) {
+            return ['ok' => false, 'message' => __('events::events.entry_individual_closed')];
+        }
+
         // The priced extras they ticked. Read here, once, so both branches of
         // this door price the same way — and read as UUIDS ONLY: what they cost
         // is the event's business, never the form's.
@@ -447,6 +452,11 @@ class PublicEntry
         $state = $this->state($event);
         if (! $state['open']) {
             return ['ok' => false, 'message' => $state['note'] ?? __('events::events.public_enrol_closed')];
+        }
+
+        // Entering yourself needs the individual channel open (EntryChannels).
+        if (! app(EntryChannels::class)->allows($event, EntryChannels::INDIVIDUAL)) {
+            return ['ok' => false, 'message' => __('events::events.entry_individual_closed')];
         }
 
         // The priced extras they ticked. Read here, once, so both branches of

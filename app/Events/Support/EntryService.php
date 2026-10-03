@@ -192,6 +192,12 @@ class EntryService
             return $reject('out_of_scope', __('events::events.entry_out_of_scope', ['name' => $name]));
         }
 
+        // 2b. The event takes club entries? The organiser's choice
+        //     (EntryChannels). Whoever runs the event may always add anybody.
+        if (! $runsThisEvent && ! app(EntryChannels::class)->allows($event, EntryChannels::CLUB)) {
+            return $reject('channel_closed', __('events::events.entry_club_closed'));
+        }
+
         // 3. Moderation.
         if ($this->isBanned($event, $athlete->id)) {
             return $reject('banned', __('events::events.entry_banned', ['name' => $name]));

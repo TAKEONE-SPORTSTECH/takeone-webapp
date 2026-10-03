@@ -218,6 +218,8 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
     ];
 
     protected $casts = [
+        // How the event takes entries (App\Events\Support\EntryChannels). NULL = the platform default.
+        'entry_channels' => 'array',
         'date' => 'date',
         // Nullable on purpose: NULL means "whatever the sport says".
         'third_place_match' => 'boolean',
