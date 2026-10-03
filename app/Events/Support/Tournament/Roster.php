@@ -95,6 +95,10 @@ abstract class Roster
                      */
                     'category_id' => $r->category_id,
                     'weight_class' => $weightClass,
+                    // The division's WHOLE name ("Séniors Men -75 kg"). `category`
+                    // above is only its age half, and a chip that names the
+                    // division must say all of it (RosterPeople::byPerson).
+                    'division_name' => $r->category?->name,
                     'meta' => $user?->gender ?: ($ageGroup ? $this->t('roster_registered') : $this->t('roster_unclassified')),
                     // The three things an organiser checks off before a
                     // competitor can be drawn. `weighed` is the OFFICIAL

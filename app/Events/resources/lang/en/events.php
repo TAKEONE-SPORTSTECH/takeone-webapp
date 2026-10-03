@@ -300,6 +300,7 @@ return [
     'bracket_bench' => 'Entrants',
     'bracket_bench_empty' => 'Everyone is in the draw.',
     'bracket_no_draw' => 'No draw yet for this division.',
+    'bracket_no_divisions' => 'No draw yet.',
     'bracket_load_failed' => 'Could not load the bracket.',
     'bracket_move_failed' => 'Could not move that competitor.',
     'bracket_locked' => 'Draw final',
@@ -366,6 +367,7 @@ return [
     'bracket_add_no_division' => 'Open a division first — a competitor is added to the draw in front of you.',
     'bracket_unlock' => 'Unlock the board to change the draw and the results',
     'bracket_lock' => 'Lock the board',
+    'bracket_unlock_short' => 'Unlock the board',
     'bracket_unlocked' => 'Unlocked',
     'bracket_locked_word' => 'Locked',
     'bracket_unlock_first' => 'Unlock the board first.',
@@ -867,6 +869,9 @@ return [
 
     // Officials · Gallery · Participants — the sections that follow the draw.
     'public_officials_lead' => 'Who is running the competition.',
+    'public_officials_tab' => 'Officials',
+    'public_officials_search' => 'Search a name, a job or a club…',
+    'public_officials_n' => '{1} :count official|[2,*] :count officials',
     'public_gallery_lead' => 'Every bout that was filmed. Tap one to watch it here.',
     'public_participants_lead' => 'Everyone entered, as the entry list stands today.',
     'public_participants_clubs' => '{0} No clubs|{1} :n club|[2,*] :n clubs',

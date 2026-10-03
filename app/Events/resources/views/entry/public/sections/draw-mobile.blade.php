@@ -39,6 +39,7 @@
          component-tag parser is not the Blade compiler: a directive — or even
          a Blade comment — in an attribute list makes it give up and print the
          whole tag as text on the page, with no error to say so. --}}
+    @php $drawQrTitle = ($e['title'] ?? '').' — '.__('personal.event_show_event'); @endphp
     <x-draw-stage
         id="public-draw"
         :event="$e['key']"
@@ -95,8 +96,50 @@
                 'signedIn' => $signedIn ?? auth()->check(),
                 'signedInName' => auth()->user()?->full_name ?? auth()->user()?->name,
                 'signOutUrl' => ($posterPublic ?? true) ? route('events.public.sign-out', ['event' => $e['key']]) : null,
+                // Whoever manages the event gets the stage's ONE menu, which
+                // carries the gear and the ⋯ rows below (2026-10-02).
+                'trailing' => ($memberDraw['canManage'] ?? false) ? 'none' : 'all',
             ])
         </x-slot:controls>
+
+        @if($memberDraw['canManage'] ?? false)
+            <x-slot:menuExtra>
+                {{-- What the band's gear and ⋯ menu held, as rows of the same
+                     menu: the console, the QR, share, and sign out. --}}
+                @if(($console ?? null) !== false)
+                    <a href="{{ $console ?? route('events.public.manage', $e['key']) }}" role="menuitem" class="bk-menu-row no-underline">
+                        <i class="bi bi-gear"></i>
+                        <span>{{ __('events::events.public_manage_title') }}</span>
+                    </a>
+                @endif
+                <x-qr-code
+                    :url="route('me.events.show', ['event' => $e['key']])"
+                    :title="$drawQrTitle"
+                    :caption="__('personal.event_show_qr_caption')"
+                    :filename="'qr-event-' . $e['key']"
+                    :poster-url="route('qr.event', ['event' => $e['key']])"
+                    :label="__('events::events.band_qr')"
+                    button-class="bk-menu-row">
+                    <x-slot:trigger>
+                        <i class="bi bi-qr-code"></i>
+                        <span>{{ __('events::events.band_qr') }}</span>
+                    </x-slot:trigger>
+                </x-qr-code>
+                <button type="button" role="menuitem" class="bk-menu-row" @click="menu = false; share()">
+                    <i class="bi bi-share-fill"></i>
+                    <span>{{ __('events::events.public_share') }}</span>
+                </button>
+                @if(($signedIn ?? auth()->check()) && ($posterPublic ?? true))
+                    <form method="POST" action="{{ route('events.public.sign-out', ['event' => $e['key']]) }}" style="margin:0;">
+                        @csrf
+                        <button type="submit" role="menuitem" class="bk-menu-row" style="color: hsl(0 72% 45%);">
+                            <i class="bi bi-box-arrow-right"></i>
+                            <span>{{ __('events::events.band_sign_out') }}</span>
+                        </button>
+                    </form>
+                @endif
+            </x-slot:menuExtra>
+        @endif
     </x-draw-stage>
 @else
     @php $drawDivisions = count($e['divisions']); @endphp

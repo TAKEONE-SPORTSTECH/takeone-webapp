@@ -319,4 +319,21 @@ class CourtScreenPairingTest extends TestCase
         $this->assertSame('Mat 2', $screens['screens'][0]['court']);
         $this->assertArrayNotHasKey('token_hash', $screens['screens'][0]);
     }
+
+    public function test_an_event_with_no_draw_still_has_its_configured_mats(): void
+    {
+        $organiser = $this->createUser();
+        $event = $this->event($this->clubFor($organiser), $organiser);
+        $type = app(\App\Events\EventTypeRegistry::class)->for($event);
+
+        $event->forceFill(['courts' => null])->save();
+        $this->assertSame(['Mat 1'], $type->hallScreens($event->fresh())['mats']);
+
+        $event->forceFill(['courts' => 3])->save();
+        $this->assertSame(['Mat 1', 'Mat 2', 'Mat 3'], $type->hallScreens($event->fresh())['mats']);
+
+        // Once the draw puts bouts on mats, those are the mats.
+        $this->bout($event, 'Mat 2');
+        $this->assertSame(['Mat 2'], $type->hallScreens($event->fresh())['mats']);
+    }
 }

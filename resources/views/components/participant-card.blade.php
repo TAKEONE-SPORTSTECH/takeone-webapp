@@ -75,6 +75,9 @@
        work, because striking a name off is the host's endpoint, its
        confirmation and its list to patch afterwards. */
     'canRemove' => false,
+    /* The glyph on each chip. A division is measured (`bi-rulers`); the
+       officials list puts a JOB in the same chip and passes its own. */
+    'chipIcon' => 'bi-rulers',
 ])
 
 @php
@@ -386,7 +389,7 @@
                      very much out, which is worse than saying nothing. --}}
                 @php $dTap = $drawOpen ? 'onDivisionTap(this)' : ($drawNote ? 'onDrawClosed()' : null); @endphp
                 <div class="{{ $drawOpen ? 'div' : 'div closed' }}" data-division-id="{{ $d['id'] }}"
-                     @if($dTap) onclick="event.stopPropagation();{{ $dTap }}" @endif><i class="bi bi-rulers"></i><span>{{ $d['name'] }}</span></div>
+                     @if($dTap) onclick="event.stopPropagation();{{ $dTap }}" @endif><i class="bi {{ preg_match('/^bi-[a-z0-9-]+$/', (string) $chipIcon) ? $chipIcon : 'bi-rulers' }}"></i><span>{{ $d['name'] }}</span></div>
             @endforeach
         </div>
     @endif

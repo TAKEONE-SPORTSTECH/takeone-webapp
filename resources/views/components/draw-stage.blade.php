@@ -227,7 +227,7 @@
          public event's own band controls) is untouched — that bar belongs to
          the EVENT's colour, which is a different answer to a different
          question. --}}
-    <header class="h-14 shrink-0 flex items-center gap-3 px-3 sm:px-4 text-white {{ $dsBanded ? '' : 'bk-stage-bar' }}"
+    <header class="h-14 shrink-0 flex items-center gap-3 px-3 sm:px-4 text-white {{ $dsBanded ? 'bk-stage-banded' : 'bk-stage-bar' }}"
             @if($dsBanded) style="background: linear-gradient(150deg, {{ $dsColor }}, {{ $dsColor }}b0);" @endif>
 
         @if($dsBanded)
@@ -302,6 +302,7 @@
                      every one of those acts asks the server for the same
                      authority it always did; this decides what may be touched
                      on screen, not what may be done. --}}
+                @unless($dsBanded)
                 <button type="button" x-show="unlockable" x-cloak
                         @click="window.BracketBoard.setUnlocked(! unlocked)"
                         :aria-pressed="unlocked"
@@ -312,6 +313,7 @@
                     <i class="bi" :class="unlocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
                     <span x-text="unlocked ? @js(__('events::events.bracket_unlocked')) : @js(__('events::events.bracket_locked_word'))"></span>
                 </button>
+                @endunless
 
                 {{-- ===== ONE MENU FOR EVERYTHING THAT IS NOT THE PADLOCK =====
 
@@ -329,6 +331,21 @@
                                    :color="$dsColor" :as-menu="true">
                     <x-slot:actions>
                         <div class="bk-menu">
+
+                            @if($dsBanded)
+                                {{-- BANDED: the bar holds back, the title and
+                                     this ONE menu (2026-10-02, the owner's
+                                     request — four controls were eating the
+                                     event's name). The padlock leads it,
+                                     because everything below it waits on it. --}}
+                                <button type="button" role="menuitem" class="bk-menu-row" x-show="unlockable" x-cloak
+                                        @click="window.BracketBoard.setUnlocked(! unlocked)"
+                                        :aria-pressed="unlocked">
+                                    <i class="bi" :class="unlocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
+                                    <span x-text="unlocked ? @js(__('events::events.bracket_lock')) : @js(__('events::events.bracket_unlock_short'))"></span>
+                                </button>
+                                <div class="bk-menu-rule" x-show="unlockable" x-cloak></div>
+                            @endif
 
                             @if($canManage && ! empty($drawActions))
                                 <p class="bk-menu-head">{{ __('events::events.bracket_the_draw') }}</p>
@@ -422,6 +439,13 @@
                                 <i class="bi bi-x-circle"></i>
                                 <span>{{ __('events::events.bracket_background_clear') }}</span>
                             </button>
+
+                            @isset($menuExtra)
+                                {{-- The host's own rows — on the public event,
+                                     what its band's gear and ⋯ menu held. --}}
+                                <div class="bk-menu-rule"></div>
+                                {{ $menuExtra }}
+                            @endisset
                         </div>
                     </x-slot:actions>
                 </x-division-groups>
@@ -680,6 +704,16 @@
     }
     #{{ $sid }}-stage .bk-stage-bar .ev-ico:hover{background:rgba(255,255,255,.25);}
 
+    /* The same trigger on the BANDED bar (the event's own gradient), where it
+       is the one menu: white, and the round 40px control the back arrow
+       opposite it is (.ev-ctl), not a grey square. */
+    #{{ $sid }}-stage .bk-stage-banded .ev-ico{
+        width:40px;height:40px;border-radius:50%;
+        background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.26);color:#fff;
+        -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    }
+    #{{ $sid }}-stage .bk-stage-banded .ev-ico:hover{background:rgba(255,255,255,.25);}
+
     /* ── The padlock ───────────────────────────────────────────────────────
        Shut: a quiet translucent control, like the back arrow opposite it —
        the board is being READ and nothing is asking to be pressed. Open: the
@@ -703,7 +737,13 @@
        Sits inside the division-groups menu's own panel, so it inherits that
        panel's width and border and brings only its own rhythm. Scrolls on its
        own: the settings make this menu taller than the bar it hangs from. */
-    #{{ $sid }}-stage .bk-menu{padding:10px 12px 12px;max-height:60vh;overflow-y:auto;}
+    #{{ $sid }}-stage .bk-menu{padding:10px 12px 12px;max-height:calc(100dvh - 11rem);overflow-y:auto;}
+
+    /* The event's name in the banded bar WRAPS to a second line rather than
+       being cut off (names are never truncated). With the gear, the ⋯ and the
+       padlock folded into the one menu there is room for it. */
+    #{{ $sid }}-stage .ev-ctl-title{flex:1 1 auto;}
+    #{{ $sid }}-stage .ev-ctl-name{white-space:normal;overflow:visible;font-size:13px;line-height:1.15;}
     #{{ $sid }}-stage .bk-menu-head{
         font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
         color:#97a1b4;margin:0 0 6px;

@@ -87,7 +87,9 @@ class RosterPeople
         foreach (array_values($rows) as $i => $row) {
             $entry = [
                 'registration' => $row['registration'] ?? null,
-                'division' => $row['category'] ?? $row['weight_class'] ?? null,
+                // The whole division name where the roster gives one; the age
+                // half alone ("Séniors") does not say which division it is.
+                'division' => $row['division_name'] ?? $row['category'] ?? $row['weight_class'] ?? null,
                 'division_id' => $row['category_id'] ?? null,
                 /* Money belongs to an ENTRY, not to a person: an event may run
                    several activities and each is entered, drawn and PAID FOR

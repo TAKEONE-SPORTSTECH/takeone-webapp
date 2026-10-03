@@ -664,7 +664,10 @@ window.BracketBoard = window.BracketBoard || (function () {
             const box = el('div', 'bk-empty');
             box.appendChild(el('i', 'bi bi-diagram-3 bracket-icon text-4xl'));
             const msg = el('div'); msg.textContent = S.cfg.text.loadFailed; box.appendChild(msg);
-            S.canvas.appendChild(box);
+            /* On the VIEWPORT, not the canvas: the canvas carries the pan/zoom
+               transform, which shrank this box and scaled its words up until
+               they wrapped one to a line. */
+            S.vp.appendChild(box);
         }
     }
 
@@ -718,6 +721,18 @@ window.BracketBoard = window.BracketBoard || (function () {
         S.svg.innerHTML = '';
         S.vp.querySelectorAll('.bk-empty').forEach(n => n.remove());
         paintBackground();
+
+        /* No division to show at all — an event whose draw has not been made
+           yet sends none. That is a state, not a failure: it read
+           `div.rounds` off nothing, threw, and the catch in load() painted
+           "Could not load the bracket". Drawn on the viewport, unzoomed. */
+        if (!div) {
+            const box = el('div', 'bk-empty');
+            box.appendChild(el('i', S.hiddenMsg ? 'bi bi-lock-fill text-4xl' : 'bi bi-diagram-3 bracket-icon text-4xl'));
+            const msg = el('div'); msg.textContent = S.hiddenMsg || S.cfg.text.noDivisions || S.cfg.text.noDraw; box.appendChild(msg);
+            S.vp.appendChild(box);
+            return;
+        }
 
         /* ── The bronze bout is NOT a round ───────────────────────────────
            The server sends it as one ('Third place'), because that is how it

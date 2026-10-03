@@ -567,7 +567,7 @@ class PublicEvent
     private function officials(ClubEvent $event): array
     {
         $rows = $event->officials()
-            ->with('user:id,full_name,name,nationality')
+            ->with('user:id,full_name,name,nationality,gender,profile_picture,profile_picture_is_public')
             ->get()
             ->filter(fn ($o) => $o->user !== null);
 
@@ -593,7 +593,63 @@ class PublicEvent
             ];
         }
 
-        return ['count' => $rows->count(), 'groups' => $groups];
+        /* A job with no fixed word (`other`) carries its own in `role_label`
+           ("Team manager", "Referee 1"). It is in none of the labels above, so
+           every such official was COUNTED and never LISTED: an officials sheet
+           saying 7 and showing nobody. One group per wording, in the order
+           they were appointed, after the fixed roles. */
+        $byRole->get(\App\Events\Models\EventOfficial::ROLE_OTHER, collect())
+            ->groupBy(fn ($o) => trim((string) $o->role_label) ?: __('personal.personal_event_officials_role_other'))
+            ->each(function ($people, $label) use (&$groups) {
+                $groups[] = [
+                    'key' => 'other:'.$label,
+                    'label' => (string) $label,
+                    'people' => $people->map(fn ($o) => [
+                        'name' => $o->user->full_name ?: $o->user->name,
+                        'country' => $o->user->nationality ? strtoupper($o->user->nationality) : null,
+                    ])->values()->all(),
+                ];
+            });
+
+        /* The same sheet as CARDS, for the officials section drawn like the
+           entry list (2026-10-02): one row per appointment in the order the
+           groups read, the job as the card's chip, the club they came with.
+           The face follows the entry list's own rule (see face()): a photo
+           supplied for THIS event shows, a profile picture only when its owner
+           made it public. Still no uuid, contact or fee. */
+        $order = collect($groups)->pluck('key')->flip();
+        $cards = $rows
+            ->sortBy(fn ($o) => $order[$o->role === \App\Events\Models\EventOfficial::ROLE_OTHER
+                ? 'other:'.(trim((string) $o->role_label) ?: __('personal.personal_event_officials_role_other'))
+                : $o->role] ?? PHP_INT_MAX)
+            ->map(function ($o) use ($labels) {
+                $club = $o->club();
+                $photo = EntryPhoto::showable($o->photo) ? file_url($o->photo) : null;
+                if (! $photo && $o->user->profile_picture && $o->user->profile_picture_is_public) {
+                    $photo = file_url($o->user->profile_picture);
+                }
+                $job = $o->role === \App\Events\Models\EventOfficial::ROLE_OTHER
+                    ? (trim((string) $o->role_label) ?: __('personal.personal_event_officials_role_other'))
+                    : ($labels[$o->role] ?? $o->role);
+
+                return [
+                    'name' => $o->user->full_name ?: $o->user->name,
+                    'gender' => $o->user->gender ?: null,
+                    'country' => $o->user->nationality ? strtoupper($o->user->nationality) : null,
+                    'photo' => $photo,
+                    'club' => $club['name'] ?? null,
+                    'club_logo' => $club['logo'] ?? null,
+                    'job' => $job,
+                    'division_rows' => [['id' => 0, 'name' => $job]],
+                ];
+            })
+            ->values()->all();
+
+        $clubRows = collect($cards)->filter(fn ($r) => filled($r['club']))->groupBy('club')
+            ->map(fn ($g, $name) => ['name' => $name, 'logo' => $g->first()['club_logo'], 'country' => null, 'officials' => $g->count()])
+            ->sortByDesc('officials')->values()->all();
+
+        return ['count' => $rows->count(), 'groups' => $groups, 'rows' => $cards, 'club_rows' => $clubRows];
     }
 
     /**

@@ -86,6 +86,10 @@
        member address (config `events.unified_page`), keep the organiser's QR
        without becoming the member row. */
     $hasQr = ! $isPublic || ($withQr ?? false);
+    /* `$trailing = 'none'` leaves the gear and the ⋯ menu out of this row: the
+       draw stage folds both into its own single menu for whoever manages the
+       event, so the bar holds back, the title and ONE menu (2026-10-02). */
+    $trailing = ($trailing ?? 'all') === 'none' ? 'none' : 'all';
     $hasPublic = ! $isPublic && ! empty($publicUrl ?? null);
     $hasSignOut = $isPublic && ($signedIn ?? false) && ! empty($signOutUrl ?? null);
 
@@ -158,7 +162,9 @@
     {{-- `$console === false` is the one way to say "no gear": the member
          address for an event with no public page, read by somebody who does
          not run it — the event's own sign-in 404s there. --}}
-    @if($isPublic && ($console ?? null) !== false)
+    @if($trailing === 'none')
+        {{-- The host draws these in its own menu. --}}
+    @elseif($isPublic && ($console ?? null) !== false)
         <a href="{{ $console ?? route('events.public.manage', $e['key']) }}" class="m-press ev-ctl"
            aria-label="{{ __('events::events.public_manage_title') }}" title="{{ __('events::events.public_manage_title') }}">
             <i class="bi bi-gear"></i>
@@ -172,6 +178,7 @@
     @endif
 
     {{-- ===== 2 of 2: the menu ===== --}}
+    @if($trailing === 'all')
     <button type="button" x-ref="menuBtn" @click="toggle()"
             class="m-press ev-ctl" :aria-expanded="menu ? 'true' : 'false'"
             aria-label="{{ __('events::events.band_more') }}" title="{{ __('events::events.band_more') }}">
@@ -264,4 +271,5 @@
             </div>
         </div>
     </template>
+    @endif
 </span>

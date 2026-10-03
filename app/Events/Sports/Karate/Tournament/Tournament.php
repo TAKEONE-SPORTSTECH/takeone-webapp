@@ -1049,8 +1049,8 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
     public function hallScreens(ClubEvent $event): ?array
     {
         return [
-            'mats' => EventMatch::where('event_id', $event->id)
-                ->whereNotNull('court')->distinct()->orderBy('court')->pluck('court')->all(),
+            // From the start, not only once the draw has put bouts on them.
+            'mats' => \App\Events\Support\EventMats::of($event),
             'screens' => CourtDisplayDevice::where('event_id', $event->id)
                 ->whereNull('revoked_at')
                 ->orderBy('court')->orderBy('id')

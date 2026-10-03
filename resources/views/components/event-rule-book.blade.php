@@ -51,7 +51,7 @@
         savedCat: @js($initial['category'] ?? null),
         savedBelt: @js($initial['belt'] ?? null),
         weights: [], belts: [], loading: false, saving: false,
-        sheet: false, kind: 'weights', startFrom: '', draft: null,
+        open: false, sheet: false, kind: 'weights', startFrom: '', draft: null,
         palette: @js($palette), hex: @js($hex),
         sportLabels: @js(collect(app(\App\Sports\Combat\SportRegistry::class)->all())->map(fn ($p) => $p->label())->all()),
         sportRead() { return {{ $sportModel ? $sportModel : 'this.sportNow' }}; },
@@ -154,6 +154,56 @@
         },
      }" x-show="weights.length || belts.length || loading" x-cloak>
 
+    @if ($console)
+    {{-- CONSOLE: one row, like every other tool in the console, opening the
+         choices in a bottom sheet. The row names what is chosen now. --}}
+    <button type="button" @click="open = true"
+            class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
+        <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white" style="background: {{ $c }};">
+            <i class="bi bi-journal-bookmark-fill text-lg"></i>
+        </span>
+        <span class="min-w-0 flex-1">
+            <span class="block text-sm font-bold text-foreground">{{ $w('rulebook_title') }}</span>
+            <span class="block text-[11px] text-muted-foreground mt-0.5 truncate"
+                  x-text="[(chosen(weights, cat) || {}).label, (chosen(belts, belt) || {}).label].filter(Boolean).join(' · ') || @js($w('rulebook_sub'))"></span>
+        </span>
+        <i class="bi bi-arrow-repeat animate-spin text-muted-foreground flex-shrink-0" x-show="loading || saving" x-cloak></i>
+        <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
+    </button>
+
+    <template x-teleport="body" data-teleport-template="true">
+        <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center"
+             @keydown.escape.window="if (! sheet) open = false" style="display:none;">
+            <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/40" @click="open = false"></div>
+            <div x-show="open"
+                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="relative w-full max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl overflow-hidden" style="max-width:640px;">
+                {{-- gradient header band (Design Rule #8) --}}
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, {{ $c }}, {{ $c }}b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-journal-bookmark-fill text-xl"></i></span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ $w('rulebook_title') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5 truncate">{{ $event->title }}</p>
+                        </div>
+                        <i class="bi bi-arrow-repeat animate-spin text-white/85 mt-2" x-show="loading || saving" x-cloak></i>
+                        <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <p class="relative mt-3 mb-0 text-[11.5px] text-white/85 leading-snug flex items-start gap-1.5">
+                        <i class="bi bi-info-circle mt-0.5 flex-shrink-0"></i>{{ $w('rulebook_sub') }}
+                    </p>
+                </div>
+                {{-- Read-only body has no footer: the band's ✕ closes it, so the
+                     body carries the safe-area padding itself. --}}
+                <div class="flex-1 overflow-y-auto px-5 pt-1 pb-4" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+    @else
     <div class="m-card rounded-2xl p-4">
         <div class="flex items-start gap-3">
             <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 text-white" style="background: {{ $c }};"><i class="bi bi-journal-bookmark-fill"></i></span>
@@ -163,6 +213,7 @@
             </div>
             <i class="bi bi-arrow-repeat animate-spin text-muted-foreground" x-show="loading || saving" x-cloak></i>
         </div>
+    @endif
 
         {{-- The rule-book VERSION this event is locked to (Sport Package Plan,
              phase 4). Read-only while each style has one version; a later
@@ -233,7 +284,14 @@
                 </button>
             </div>
         </div>
+    @if ($console)
+                </div>
+            </div>
+        </div>
+    </template>
+    @else
     </div>
+    @endif
 
     {{-- ===== The editor — a bottom sheet (Design Rule #8) ===== --}}
     <template x-teleport="body" data-teleport-template="true">

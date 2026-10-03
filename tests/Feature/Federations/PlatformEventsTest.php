@@ -98,31 +98,28 @@ class PlatformEventsTest extends TestCase
         $this->assertSame(0, ClubEvent::whereNotNull('host_type')->count());
     }
 
-    public function test_clubs_athletes_arrive_as_requests_and_decisions_go_both_ways(): void
+    public function test_a_clubs_athletes_are_entered_straight_away_and_withdrawing_takes_them_off(): void
     {
         $fe = $this->fedEvent();
         $a = $this->clubEntry($fe);
         $ev = app(FederationPlatformEvent::class)->sync($fe);   // first link brings the entry across
 
+        // No approval step (2026-10-02): entered at once, placed in the division
+        // the rule book says, and marked Approved on the federation's side too.
         $req = EventPublicEntry::where('event_id', $ev->id)->where('user_id', $a['user']->id)->first();
         $this->assertNotNull($req);
-        $this->assertSame('pending', $req->state);
+        $this->assertSame('accepted', $req->state);
         $this->assertSame($a['club']->id, (int) $req->representing_tenant_id);
-
-        // Approved on the dashboard: entered, and placed in the division the rule book says.
-        $a['row']->forceFill(['approval' => 'Approved'])->save();
-        app(FederationPlatformEntries::class)->sync($fe->fresh());
         $reg = ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $a['user']->id)->first();
         $this->assertNotNull($reg);
         $this->assertNotNull($reg->category_id);
         $this->assertStringContainsString('-75', $reg->category->name);
+        $this->assertSame('Approved', $a['row']->fresh()->approval);
 
-        // A second athlete, declined in the console: withdrawn on the federation's side.
-        $b = $this->clubEntry($fe);
+        // Withdrawn on the dashboard: taken off the event.
+        $a['row']->forceFill(['status' => 'Withdrawn', 'withdrawn_at' => now()])->save();
         app(FederationPlatformEntries::class)->sync($fe->fresh());
-        $req2 = EventPublicEntry::where('event_id', $ev->id)->where('user_id', $b['user']->id)->first();
-        app(\App\Events\Support\PublicEntry::class)->decline($req2, $this->owner->fresh());
-        $this->assertSame('Withdrawn', $b['row']->fresh()->status);
+        $this->assertFalse(ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $a['user']->id)->where('role', 'participant')->exists());
     }
 
     public function test_club_officials_arrive_without_powers_and_are_never_duplicated(): void

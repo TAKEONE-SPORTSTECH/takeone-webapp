@@ -281,6 +281,7 @@
                 benchEmpty: @json(__('events::events.bracket_bench_empty')),
                 provisional: @json(__('events::events.bracket_legend_provisional')),
                 noDraw: @json(__('events::events.bracket_no_draw')),
+                noDivisions: @json(__('events::events.bracket_no_divisions')),
                 loadFailed: @json(__('events::events.bracket_load_failed')),
                 moveFailed: @json(__('events::events.bracket_move_failed')),
                 clearTitle: @json(__('events::events.bracket_clear_title')),

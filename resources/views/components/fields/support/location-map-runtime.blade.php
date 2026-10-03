@@ -111,9 +111,13 @@ window.LocationMap = (function () {
             doubleClickZoom: false, boxZoom: false, keyboard: false,
             tap: false, touchZoom: false,
         } : {}).setView([lat, lng], cfg.zoom);
+        // OpenStreetMap answers "Access blocked" to a tile request with no
+        // Referer, and some pages (the federation invitation) are served with
+        // `Referrer-Policy: same-origin`. The layer names its own: origin only.
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap',
             maxZoom: 19,
+            referrerPolicy: 'strict-origin-when-cross-origin',
         }).addTo(map);
 
         const marker = L.marker([lat, lng], { draggable: cfg.draggable, icon: markerIcon() }).addTo(map);

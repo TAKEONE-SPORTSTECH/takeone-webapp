@@ -23,8 +23,9 @@ use Illuminate\Support\Str;
  * already knows (`event_public_entries`, reviewed under "Entry requests"), so
  * that is what each athlete becomes — never a second queue:
  *
- *   entered, awaiting approval   → a pending request (weight, belt, fees, club)
- *   approved (dashboard)         → the request accepted: they are ENTERED
+ *   entered by a club            → ENTERED at once (the request is made and
+ *                                  accepted in one go; since 2026-10-02 there
+ *                                  is no approval step)
  *   withdrawn                    → the request declined, or the entry removed
  *
  * And back: an organiser who accepts or declines a request in the console is
@@ -143,12 +144,20 @@ class FederationPlatformEntries
             $request->forceFill($values)->save();
         }
 
-        // Approved on the dashboard: they are in.
-        if ($row->approval === 'Approved' && $request && $request->isPending()) {
+        // A club's entry IS the entry (owner's decision, 2026-10-02): an athlete
+        // a club enters is in straight away, with no approval step. The
+        // federation's own row is marked Approved to match, so the dashboard
+        // and the club's "Your entries" tell the same story. Withdrawing (on
+        // either side) is still how somebody is taken off.
+        if ($request && $request->isPending()) {
             $r = app(PublicEntry::class)->accept($request->fresh(), $actor);
             if (! ($r['ok'] ?? false)) {
                 Log::info('federation-entries: could not accept', ['event' => $ev->uuid, 'user' => $user->id, 'why' => $r['message'] ?? null]);
             }
+        }
+        if ($row->approval !== 'Approved'
+            && ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $user->id)->where('role', 'participant')->exists()) {
+            $row->forceFill(['approval' => 'Approved'])->save();
         }
 
         // A federation sorts its athletes by the rule book itself: an entered
@@ -166,6 +175,59 @@ class FederationPlatformEntries
                 ->whereNull('weighed_in_at')->get()
                 ->each(fn ($r) => (float) $r->weight !== (float) $row->weight ? $r->forceFill(['weight' => $row->weight])->save() : null);
         }
+
+        // A club that is not on the platform yet (a federation's club
+        // applicant) is written down as one of the EVENT's clubs, exactly as an
+        // organiser writes one down at the desk (EventClub, read through
+        // EntryClub), so it is listed beside its athletes on every surface.
+        $applicant = trim((string) ($row->entry?->application?->name ?? ''));
+        if (! $tenantId && $applicant !== '' && $registration) {
+            $this->eventClub($ev, $user, $applicant, $actor, $row->entry?->application?->logo);
+        }
+    }
+
+    /** The event's own club of this name, created once, holding every entry this athlete has. */
+    private function eventClub(ClubEvent $ev, User $user, string $name, User $actor, ?string $logo = null): void
+    {
+        $club = $this->eventClubNamed($ev, $name, $actor, $logo);
+
+        $ids = ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $user->id)
+            ->where('role', 'participant')->pluck('id')->all();
+        $club->entrants()->syncWithoutDetaching(array_fill_keys($ids, ['added_by' => $actor->id]));
+    }
+
+    /** The event's own club of this name (one per name), its crest filled in from the application. */
+    private function eventClubNamed(ClubEvent $ev, string $name, User $actor, ?string $logo = null): \App\Events\Models\EventClub
+    {
+        $name = mb_substr($name, 0, 120);
+        $club = \App\Events\Models\EventClub::where('event_id', $ev->id)->whereNull('tenant_id')
+            ->get()->first(fn ($c) => mb_strtolower($c->name) === mb_strtolower($name));
+        if (! $club) {
+            $club = \App\Events\Models\EventClub::create([
+                'event_id' => $ev->id,
+                'name' => $name,
+                'state' => 'listed',
+                'created_by' => $actor->id,
+            ]);
+        }
+
+        // The crest the club uploaded through the invitation. COPIED into the
+        // event's own clubs folder, because that is where a written-down club's
+        // crest is served from to everyone (FileAccess::isEventClubCrest), and
+        // the application's file moves away when the club is approved. Only
+        // ever fills a blank: a crest the organiser set by hand is theirs.
+        if (! $club->logo && $logo) {
+            $disk = \Illuminate\Support\Facades\Storage::disk('public');
+            $ext = strtolower(pathinfo($logo, PATHINFO_EXTENSION));
+            if ($disk->exists($logo) && in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'gif'], true)) {
+                $target = \App\Support\StoragePath::event($ev, 'clubs').'/'.Str::uuid().'.'.$ext;
+                if (rescue(fn () => $disk->copy($logo, $target), false, report: true)) {
+                    $club->forceFill(['logo' => $target])->save();
+                }
+            }
+        }
+
+        return $club;
     }
 
     /**
@@ -223,13 +285,45 @@ class FederationPlatformEntries
         $slots = ['mgr' => __('federations::invite.ui.manager'), 'ref1' => __('federations::invite.ui.referee1'), 'ref2' => __('federations::invite.ui.referee2')];
         $named = (array) (is_string($entry->officials) ? json_decode($entry->officials, true) : $entry->officials);
         $tenantId = $entry->club?->tenant_id;
-        $clubLabel = $entry->club?->tenant?->club_name ?? $entry->application?->name ?? '';
+        // The club is a FIELD on the appointment, never part of the job's
+        // wording (2026-10-02): a platform club through representing_tenant_id,
+        // a club that is not on the platform through its event club. The
+        // officials sheet then groups by the job ("Team manager", "Referee 1")
+        // instead of drawing one group per club per job.
+        // The application's name — still known once the club is approved, through
+        // the application that became it.
+        $applicant = trim((string) ($entry->application?->name
+            ?? ($entry->federation_club_id ? \App\Federations\Models\FederationClubApplication::where('federation_club_id', $entry->federation_club_id)->value('name') : null)
+            ?? ''));
+        $evClub = (! $tenantId && $applicant !== '') ? $this->eventClubNamed($ev, $applicant, $actor, $entry->application?->logo) : null;
+        // What this sync used to write, so a row made before is found and moved over.
+        $legacyClub = $entry->club?->tenant?->club_name ?? $entry->application?->name ?? '';
 
         foreach ($slots as $slot => $title) {
-            $label = mb_substr(trim($title.($clubLabel !== '' ? ' · '.$clubLabel : '')), 0, 120);
+            $label = mb_substr(trim($title), 0, 120);
+            $legacy = mb_substr(trim($title.($legacyClub !== '' ? ' · '.$legacyClub : '')), 0, 120);
             $name = trim(strip_tags((string) ($named[$slot]['name'] ?? '')));
             $existing = \App\Events\Models\EventOfficial::where('event_id', $ev->id)
-                ->where('role', \App\Events\Models\EventOfficial::ROLE_OTHER)->where('role_label', $label)->first();
+                ->where('role', \App\Events\Models\EventOfficial::ROLE_OTHER)
+                ->whereIn('role_label', array_unique([$label, $legacy]))
+                // Oldest first: the slot's own official is the first one made
+                // for it. A club can carry EXTRA officials under the same job
+                // (two clubs merged, 2026-10-02), and those must never be taken
+                // for the slot and overwritten.
+                ->orderBy('id')
+                ->get()
+                ->first(fn ($o) => $tenantId
+                    // A club approved AFTER its officials arrived: they were
+                    // filed under the event's own club of the application's
+                    // name, and are the same people, not new ones.
+                    ? ((int) $o->representing_tenant_id === (int) $tenantId
+                        || ($o->representing_tenant_id === null && $o->event_club_id && $applicant !== ''
+                            && mb_strtolower((string) \App\Events\Models\EventClub::whereKey($o->event_club_id)->value('name')) === mb_strtolower($applicant)))
+                    : ($evClub && ((int) $o->event_club_id === (int) $evClub->id
+                        || ($o->event_club_id === null && $o->representing_tenant_id === null && $o->role_label === $legacy && $legacy !== $label))));
+            if ($existing && ($existing->role_label !== $label || (int) $existing->event_club_id !== (int) ($evClub?->id ?? 0))) {
+                $existing->forceFill(['role_label' => $label, 'event_club_id' => $evClub?->id, 'representing_tenant_id' => $tenantId])->saveQuietly();
+            }
 
             if ($name === '') {
                 if ($existing) {
@@ -261,6 +355,7 @@ class FederationPlatformEntries
                     'role' => \App\Events\Models\EventOfficial::ROLE_OTHER, 'role_label' => $label,
                     'assigned_by' => $actor->id, 'compensation' => \App\Events\Models\EventOfficial::COMP_VOLUNTEER,
                     'representing_tenant_id' => $tenantId,
+                    'event_club_id' => $evClub?->id,
                 ])->save();
             }
             $this->photo($o->fresh('user'), $named[$slot]['photo'] ?? null);

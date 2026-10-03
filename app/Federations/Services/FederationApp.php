@@ -476,6 +476,15 @@ class FederationApp
                 // direct, and the organiser marks it received here — so the invoice
                 // list speaks of a payment, not a bank transfer. (Display only: the
                 // stored status is still 'Awaiting transfer'.)
+                // PLATFORM: a club's headcount is its whole roster — every member
+                // of the platform club, active or not, plus the federation's own
+                // athletes for it (FederationDesk::headcount). The prototype
+                // counted only the federation's athlete records.
+                // PLATFORM: a club history row always names its club — the server
+                // sends `clubName` beside the key (FederationRegistry::clubNameOf),
+                // so a club the directory no longer lists never prints as `fa-…`.
+                'club-history-name' => ['{club: c ? c.name : x.clubId,', '{club: c ? c.name : (x.clubName || x.clubId),', 1],
+                'club-headcount' => ['const roster = c => (FS && FS.roster ? FS.roster(c.id).length : 0);', 'const roster = c => (c.rosterCount != null ? +c.rosterCount : (FS && FS.roster ? FS.roster(c.id).length : 0));', 1],
                 'entry-pay-pill' => ["['Awaiting transfer', '#a8620f', '#fdf1e0']", "['Awaiting payment', '#a8620f', '#fdf1e0']", 1],
                 'entry-pay-confirm' => ['title="Mark the bank transfer as received"', 'title="Mark this club’s payment as received"', 1],
                 'font' => ['https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap', './vendor/fonts/poppins.css', 1],

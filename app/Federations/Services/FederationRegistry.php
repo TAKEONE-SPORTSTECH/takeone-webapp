@@ -61,7 +61,26 @@ class FederationRegistry
 
         return $m[1] === 'fc'
             ? FederationClub::where('uuid', $m[2])->whereIn('federation_id', $federationIds)->where('status', FederationClub::STATUS_APPROVED)->first()
-            : FederationClubApplication::where('uuid', $m[2])->whereIn('federation_id', $federationIds)->where('status', '!=', FederationClubApplication::STATUS_REJECTED)->first();
+            : $this->becameClub(FederationClubApplication::where('uuid', $m[2])->whereIn('federation_id', $federationIds)->where('status', '!=', FederationClubApplication::STATUS_REJECTED)->first());
+    }
+
+    /**
+     * An APPROVED application answers as the club it became.
+     *
+     * A browser that remembered a club's application key from before its
+     * approval kept sending it, and its new entries and athletes were filed
+     * under the application — a club the dashboard no longer lists, so its
+     * club history printed the raw `fa-…` key (2026-10-02, Sparta). An
+     * application still pending, or approved without a club behind it, is
+     * returned unchanged.
+     */
+    private function becameClub(?FederationClubApplication $app): FederationClub|FederationClubApplication|null
+    {
+        if ($app && $app->status === FederationClubApplication::STATUS_APPROVED && $app->federation_club_id) {
+            return FederationClub::whereKey($app->federation_club_id)->where('status', FederationClub::STATUS_APPROVED)->first() ?? $app;
+        }
+
+        return $app;
     }
 
     /** A club by its secret personal link. */
@@ -72,7 +91,7 @@ class FederationRegistry
         }
 
         return FederationClub::where('invite_token', $token)->whereIn('federation_id', $federationIds)->where('status', FederationClub::STATUS_APPROVED)->first()
-            ?? FederationClubApplication::where('invite_token', $token)->whereIn('federation_id', $federationIds)->where('status', '!=', FederationClubApplication::STATUS_REJECTED)->first();
+            ?? $this->becameClub(FederationClubApplication::where('invite_token', $token)->whereIn('federation_id', $federationIds)->where('status', '!=', FederationClubApplication::STATUS_REJECTED)->first());
     }
 
     public function token(FederationClub|FederationClubApplication $c): string
@@ -161,6 +180,24 @@ class FederationRegistry
         return $a->clubs()->whereIn('federation_id', $federationIds)->whereNull('to_ym')->latest('id')->first();
     }
 
+    /**
+     * The club's NAME for a history row, whatever state the club is in —
+     * registered, applying, approved or not (owner's ruling, 2026-10-02: a
+     * club history always says which club). Sent beside the key so the page
+     * never has to print the key itself.
+     */
+    public function clubNameOf(?FederationAthleteClub $row): ?string
+    {
+        if (! $row) {
+            return null;
+        }
+        $club = $row->federation_club_id ? $row->club : ($row->application ? $this->becameClub($row->application) : null);
+
+        return $club instanceof FederationClub
+            ? ($club->club?->club_name ?? $row->application?->name)
+            : ($club?->name ?? $row->application?->name);
+    }
+
     public function clubKeyOf(?FederationAthleteClub $row): ?string
     {
         if (! $row) {
@@ -170,7 +207,8 @@ class FederationRegistry
             return $this->clubKey($row->club);
         }
 
-        return $row->application ? $this->clubKey($row->application) : null;
+        // An approved application is the club it became (see becameClub()).
+        return $row->application ? $this->clubKey($this->becameClub($row->application)) : null;
     }
 
     /**
@@ -193,7 +231,7 @@ class FederationRegistry
         }
 
         $hist = $a->clubs()->whereIn('federation_id', $federationIds)->orderBy('from_ym')->orderBy('id')->get()
-            ->map(fn (FederationAthleteClub $h) => ['clubId' => $this->clubKeyOf($h), 'from' => $h->from_ym, 'to' => $h->to_ym])->all();
+            ->map(fn (FederationAthleteClub $h) => ['clubId' => $this->clubKeyOf($h), 'clubName' => $this->clubNameOf($h), 'from' => $h->from_ym, 'to' => $h->to_ym])->all();
 
         return $row + [
             'natId' => (string) $a->national_id,

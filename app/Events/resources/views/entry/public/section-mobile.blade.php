@@ -150,7 +150,7 @@
          (`<x-event-podium-list>`, the same ones the organiser's sheet draws)
          and they were sitting inside the white panel with their own borders
          showing against it — the card-on-a-card the note above describes. --}}
-    @php $ownSurface = in_array($section, ['participants', 'gallery', 'results'], true); @endphp
+    @php $ownSurface = in_array($section, ['participants', 'officials', 'gallery', 'results'], true); @endphp
     @if($ownScreen)
         {{-- No gutters, no panel, no ride-up: the section IS the screen. --}}
         @include('events::entry.public.sections.'.$section.'-mobile')

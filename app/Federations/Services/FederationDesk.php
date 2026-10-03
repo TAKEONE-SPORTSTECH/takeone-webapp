@@ -84,7 +84,7 @@ class FederationDesk
         return [
             'directory' => $this->directory($ids, $athleteIds, $clubs, $this->sportsOf($access), $viewer),
             'officials' => $this->officials($entries),
-            'clubs' => $clubs->map(fn ($c) => $this->registry->club($c))->concat($extra)->values()->all(),
+            'clubs' => $clubs->map(fn ($c) => $this->registry->club($c) + ['rosterCount' => $this->headcount($c)])->concat($extra)->values()->all(),
             'athletes' => FederationAthlete::with('user')->whereIn('id', $athleteIds)->get()->map(fn ($a) => $this->registry->athlete($a, $ids))->values()->all(),
             'transfers' => $transfers->map(fn ($t) => $this->registry->transfer($t))->all(),
             'entriesByEvent' => (object) $byEvent,
@@ -203,6 +203,12 @@ class FederationDesk
         $joined = DB::table('club_event_registrations as r')->join('club_events as e', 'e.id', '=', 'r.event_id')
             ->whereIn('r.user_id', $userIds)->where('r.status', 'joined')->where('r.role', 'participant')
             ->where('e.scope', '!=', 'internal')
+            // The platform event BEHIND a federation event is the same
+            // competition, already listed above from the federation's entries:
+            // listing it again read as two events (2026-10-02).
+            ->whereNotIn('e.id', FederationEvent::whereNotNull('club_event_id')->pluck('club_event_id'))
+            // One row per event even with two entries in it (Kumite and Kata).
+            ->distinct()
             ->get(['r.user_id', 'e.id', 'e.title', 'e.date', 'e.sport']);
         // A platform event links to the page THIS viewer can open, never to a
         // 404: the event page when EventAccess lets them see it (host club,
@@ -646,5 +652,26 @@ class FederationDesk
         }
 
         return true;
+    }
+
+    /**
+     * How many people a club has, as the dashboard's Clubs page prints it
+     * (2026-10-02, the owner's ruling: "active or not it has members").
+     *
+     * Everybody on the platform club's own roster, whatever their membership
+     * status, plus every federation athlete whose current club this is — each
+     * person once. A club still applying has no platform roster, so only the
+     * federation's athletes count for it. Only on the dashboard's payload: a
+     * club reading the invitation is never told another club's headcount.
+     */
+    private function headcount(FederationClub|FederationClubApplication $c): int
+    {
+        $users = $this->registry->roster($c)->pluck('user_id')->filter();
+
+        if ($c instanceof FederationClub && $c->tenant_id) {
+            $users = $users->merge(\App\Members\Models\Membership::where('tenant_id', $c->tenant_id)->pluck('user_id'));
+        }
+
+        return $users->filter()->unique()->count();
     }
 }
