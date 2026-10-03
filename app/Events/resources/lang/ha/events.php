@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Shiga',
     'cover_language' => 'Harshe',
     'cover_search' => 'Nema',
+    'times_in_zone' => 'Duk lokuta a :zone',
 
 ];

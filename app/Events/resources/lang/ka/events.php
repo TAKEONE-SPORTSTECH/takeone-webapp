@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'შესვლა',
     'cover_language' => 'ენა',
     'cover_search' => 'ძიება',
+    'times_in_zone' => 'ყველა დრო: :zone',
 
 ];

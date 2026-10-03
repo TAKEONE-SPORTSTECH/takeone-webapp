@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Gå in',
     'cover_language' => 'Språk',
     'cover_search' => 'Sök',
+    'times_in_zone' => 'Alla tider i :zone',
 
 ];

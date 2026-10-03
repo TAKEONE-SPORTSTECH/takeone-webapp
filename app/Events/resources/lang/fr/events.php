@@ -1242,5 +1242,6 @@ return [
     'withdraw_response_label' => 'Un mot de retour (facultatif)',
     'withdraw_take_back' => 'Annuler ma demande',
     'withdraw_title' => 'Se retirer de cette compétition',
+    'times_in_zone' => 'Toutes les heures en :zone',
 
 ];

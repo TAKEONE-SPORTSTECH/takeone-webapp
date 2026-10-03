@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Siirry',
     'cover_language' => 'Kieli',
     'cover_search' => 'Haku',
+    'times_in_zone' => 'Kaikki ajat: :zone',
 
 ];

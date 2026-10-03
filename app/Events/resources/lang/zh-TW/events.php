@@ -27,5 +27,6 @@ return [
     'cover_enter' => '進入',
     'cover_language' => '語言',
     'cover_search' => '搜尋',
+    'times_in_zone' => '所有時間均為 :zone',
 
 ];

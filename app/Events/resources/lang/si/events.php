@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'ඇතුල් වන්න',
     'cover_language' => 'භාෂාව',
     'cover_search' => 'සොයන්න',
+    'times_in_zone' => 'සියලු වේලාවන් :zone අනුව',
 
 ];

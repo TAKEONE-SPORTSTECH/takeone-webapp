@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Pumasok',
     'cover_language' => 'Wika',
     'cover_search' => 'Maghanap',
+    'times_in_zone' => 'Lahat ng oras ay sa :zone',
 
 ];

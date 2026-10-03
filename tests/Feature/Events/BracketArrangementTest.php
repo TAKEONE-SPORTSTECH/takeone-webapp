@@ -143,9 +143,11 @@ class BracketArrangementTest extends TestCase
         $this->assertNull($bout->fresh()->a_name);
         $this->assertNull($bout->fresh()->a_competitor_id);
 
-        // Their opponent is now alone in the bout — that is a bye, and it wins.
-        $this->assertSame('b', $bout->fresh()->winner);
-        $this->assertSame('done', $bout->fresh()->status);
+        // Their opponent is now alone in the bout — and simply WAITS. Arranging
+        // never decides a bout (owner, 2026-09-18): the organiser declares a
+        // walkover themselves. See Arrangement::reflow().
+        $this->assertNull($bout->fresh()->winner);
+        $this->assertNotSame('done', $bout->fresh()->status);
 
         // And back in again, into a different slot.
         $other = $this->firstRound($category->fresh())[1];

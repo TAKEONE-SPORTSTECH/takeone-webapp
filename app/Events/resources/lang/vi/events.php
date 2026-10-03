@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Vào',
     'cover_language' => 'Ngôn ngữ',
     'cover_search' => 'Tìm kiếm',
+    'times_in_zone' => 'Tất cả thời gian theo :zone',
 
 ];

@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Орох',
     'cover_language' => 'Хэл',
     'cover_search' => 'Хайх',
+    'times_in_zone' => 'Бүх цаг :zone-ээр',
 
 ];

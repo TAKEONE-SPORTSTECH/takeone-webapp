@@ -1085,5 +1085,6 @@ return [
     'withdraw_response_label' => 'پیامی به همراه (اختیاری)',
     'withdraw_take_back' => 'بازگرداندن درخواست من',
     'withdraw_title' => 'انصراف از این مسابقه',
+    'times_in_zone' => 'همه زمان‌ها به وقت :zone',
 
 ];

@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'പ്രവേശിക്കുക',
     'cover_language' => 'ഭാഷ',
     'cover_search' => 'തിരയുക',
+    'times_in_zone' => 'എല്ലാ സമയവും :zone പ്രകാരം',
 
 ];

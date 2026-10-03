@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Είσοδος',
     'cover_language' => 'Γλώσσα',
     'cover_search' => 'Αναζήτηση',
+    'times_in_zone' => 'Όλες οι ώρες σε :zone',
 
 ];

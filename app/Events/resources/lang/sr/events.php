@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Уђи',
     'cover_language' => 'Језик',
     'cover_search' => 'Претрага',
+    'times_in_zone' => 'Сва времена су у :zone',
 
 ];

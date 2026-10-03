@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'প্রবেশ',
     'cover_language' => 'ভাষা',
     'cover_search' => 'খুঁজুন',
+    'times_in_zone' => 'সব সময় :zone অনুযায়ী',
 
 ];

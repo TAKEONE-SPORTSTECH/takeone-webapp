@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Kirish',
     'cover_language' => 'Til',
     'cover_search' => 'Qidirish',
+    'times_in_zone' => 'Barcha vaqtlar :zone boʻyicha',
 
 ];

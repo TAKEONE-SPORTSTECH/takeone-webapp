@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Įeiti',
     'cover_language' => 'Kalba',
     'cover_search' => 'Ieškoti',
+    'times_in_zone' => 'Visas laikas: :zone',
 
 ];

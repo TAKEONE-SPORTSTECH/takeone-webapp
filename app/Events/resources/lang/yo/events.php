@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Wọlé',
     'cover_language' => 'Èdè',
     'cover_search' => 'Wá',
+    'times_in_zone' => 'Gbogbo àkókò ní :zone',
 
 ];

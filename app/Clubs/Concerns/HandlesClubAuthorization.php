@@ -50,6 +50,35 @@ trait HandlesClubAuthorization
         return false;
     }
 
+    /**
+     * May the current user act as this club's OWNER — give it to somebody
+     * else, or delete it? (security fix, 2026-10-03)
+     *
+     * Narrower than canManageClub() on purpose: running a club and giving it
+     * away (or destroying it, uploaded files and all) are different powers. A
+     * club admin runs it; only the people who own it — the owner, the approved
+     * chain owner above it, or a super-admin — may transfer or delete it.
+     */
+    private function canActAsClubOwner(Tenant $club): bool
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return false;
+        }
+        if ($user->isSuperAdmin() || $club->owner_user_id === $user->id) {
+            return true;
+        }
+
+        return $club->business_id && $this->ownsClubBusiness($user->id, $club->business_id);
+    }
+
+    private function authorizeClubOwnerAction(Tenant $club): void
+    {
+        if (! $this->canActAsClubOwner($club)) {
+            abort(403, 'Only the club\'s owner may do this.');
+        }
+    }
+
     private function ownsClubBusiness(int $userId, int $businessId): bool
     {
         return Business::where('id', $businessId)

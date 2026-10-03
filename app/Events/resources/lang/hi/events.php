@@ -1242,5 +1242,6 @@ return [
     'withdraw_response_label' => 'एक शब्द वापस (वैकल्पिक)',
     'withdraw_take_back' => 'मेरा अनुरोध वापस लें',
     'withdraw_title' => 'इस प्रतियोगिता से वापस आएं',
+    'times_in_zone' => 'सभी समय :zone के अनुसार',
 
 ];

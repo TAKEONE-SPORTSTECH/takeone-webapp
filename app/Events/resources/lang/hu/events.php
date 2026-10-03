@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Belépés',
     'cover_language' => 'Nyelv',
     'cover_search' => 'Keresés',
+    'times_in_zone' => 'Minden időpont: :zone',
 
 ];

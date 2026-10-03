@@ -1085,5 +1085,6 @@ return [
     'withdraw_response_label' => 'Bir mesaj geri (isteğe bağlı)',
     'withdraw_take_back' => 'Talebimi geri çek',
     'withdraw_title' => 'Bu yarışmadan çekil',
+    'times_in_zone' => 'Tüm saatler :zone',
 
 ];

@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Увійти',
     'cover_language' => 'Мова',
     'cover_search' => 'Пошук',
+    'times_in_zone' => 'Увесь час указано за :zone',
 
 ];

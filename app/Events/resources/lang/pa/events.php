@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'ਦਾਖਲ',
     'cover_language' => 'ਭਾਸ਼ਾ',
     'cover_search' => 'ਖੋਜੋ',
+    'times_in_zone' => 'ਸਾਰੇ ਸਮੇਂ :zone ਅਨੁਸਾਰ',
 
 ];

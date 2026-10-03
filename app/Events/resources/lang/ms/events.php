@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Masuk',
     'cover_language' => 'Bahasa',
     'cover_search' => 'Cari',
+    'times_in_zone' => 'Semua masa dalam :zone',
 
 ];

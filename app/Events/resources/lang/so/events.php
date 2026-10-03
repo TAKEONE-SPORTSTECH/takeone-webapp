@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Gal',
     'cover_language' => 'Luqad',
     'cover_search' => 'Raadi',
+    'times_in_zone' => 'Dhammaan waqtiyada :zone',
 
 ];

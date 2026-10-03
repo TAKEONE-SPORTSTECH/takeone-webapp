@@ -1242,5 +1242,6 @@ return [
     'withdraw_response_label' => '一句话回复（可选）',
     'withdraw_take_back' => '撤回我的申请',
     'withdraw_title' => '退出此比赛',
+    'times_in_zone' => '所有时间均为 :zone',
 
 ];

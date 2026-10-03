@@ -151,7 +151,7 @@ class EventNavigationTest extends TestCase
         $this->actingAs($owner->fresh())
             ->get("/me/events/{$published->uuid}/manage")
             ->assertOk()
-            ->assertSee(route('events.public', ['event' => $published->uuid]), false);
+            ->assertSee(route('me.events.show', ['event' => $published->uuid]), false);
 
         // No poster → no preview control at all, rather than one that lies.
         $private = $this->event($owner, $club, ['entry_mode' => 'members', 'title' => 'Closed']);
@@ -163,8 +163,12 @@ class EventNavigationTest extends TestCase
     }
 
     /**
-     * The crossing closes: a reader sent from the platform into a public
-     * section page can get back to the platform.
+     * Back from a section page lands on the event page.
+     *
+     * Since 2026-09-27 the poster and the member page are ONE address
+     * (`me.events.show`), so the old platform/poster "crossing" is gone: the
+     * `from=me` key and the plain visit now arrive at the same place. What
+     * still matters is that Back is that page, for a member either way.
      */
     public function test_a_section_page_entered_from_the_platform_goes_back_to_it(): void
     {
@@ -172,34 +176,33 @@ class EventNavigationTest extends TestCase
         $club = $this->club($owner);
         $event = $this->event($owner, $club);
         $member = $this->member($club);
+        config(['events.unified_page' => true]);
 
-        $this->actingAs($member)
-            ->get("/e/{$event->uuid}/participants?from=me")
-            ->assertOk()
-            ->assertSee(route('me.events.show', ['event' => $event->uuid]), false);
-
-        // The stranger's normal path is unchanged: back to the poster.
-        $this->actingAs($member)
-            ->get("/e/{$event->uuid}/participants")
-            ->assertOk()
-            ->assertSee(route('events.public', ['event' => $event->uuid]), false)
-            ->assertDontSee(route('me.events.show', ['event' => $event->uuid]), false);
+        foreach (["/me/events/{$event->uuid}/participants?from=me", "/me/events/{$event->uuid}/participants"] as $url) {
+            $this->actingAs($member)
+                ->get($url)
+                ->assertOk()
+                ->assertSee(route('me.events.show', ['event' => $event->uuid]), false);
+        }
     }
 
     /**
-     * `from` is a KEY, not a destination — and it is only honoured for somebody
-     * who could open the page it names. A signed-out stranger forging it must
-     * not be handed a Back button that answers with a login form.
+     * `from` is a KEY, not a destination. A signed-out stranger forging it
+     * gets the ordinary Back — and that Back must open for them (a published
+     * event's page is readable by a stranger), never answer with a login form.
      */
     public function test_a_forged_from_key_falls_back_to_the_poster(): void
     {
         $owner = $this->createUser();
         $club = $this->club($owner);
         $event = $this->event($owner, $club);
+        config(['events.unified_page' => true]);
 
-        $this->get("/e/{$event->uuid}/participants?from=me")
+        $this->get("/me/events/{$event->uuid}/participants?from=me")
             ->assertOk()
-            ->assertDontSee(route('me.events.show', ['event' => $event->uuid]), false);
+            ->assertSee(route('me.events.show', ['event' => $event->uuid]), false);
+
+        $this->get(route('me.events.show', ['event' => $event->uuid]))->assertOk();
     }
 
     /**

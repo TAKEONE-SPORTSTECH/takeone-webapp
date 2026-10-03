@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Ingia',
     'cover_language' => 'Lugha',
     'cover_search' => 'Tafuta',
+    'times_in_zone' => 'Saa zote kwa :zone',
 
 ];

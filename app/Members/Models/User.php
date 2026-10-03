@@ -76,6 +76,23 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
             }
         });
 
+        /*
+         * ⚠️ A person who OWNS something is never permanently deleted
+         * (security fix, 2026-10-03). tenants / businesses / federations
+         * `owner_user_id` are ON DELETE CASCADE, so a hard delete of an owner
+         * silently deletes their club, chain or federation with it. Ownership
+         * must be transferred first. Mass `->forceDelete()` on a query (the
+         * demo purges, the baseline reset) does not fire model events and is
+         * unaffected — those wipe the organisations deliberately.
+         */
+        static::forceDeleting(function (self $user) {
+            $owned = $user->ownedOrganisationNames(includeTrashed: true);
+            if ($owned !== []) {
+                throw new \LogicException('Refusing to permanently delete user '.$user->id
+                    .' who still owns: '.implode(', ', $owned).'. Transfer ownership first.');
+            }
+        });
+
         // Clean up all orphan-prone records when a user is soft-deleted.
         // DB cascades only fire on hard delete; soft delete leaves these behind.
         static::deleting(function (self $user) {
@@ -827,6 +844,51 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
      * it was. Widening this grants no access; it only stops the platform
      * demanding a birthdate from someone who does not have one.
      */
+    /**
+     * Names of every club, chain/business and federation this person OWNS.
+     * Empty when they own nothing. The one answer to "may this account be
+     * deleted?" — both delete screens and the hard-delete guard ask it.
+     *
+     * `$includeTrashed`: the delete SCREENS ask about live organisations only
+     * (exactly as they always did for clubs); the hard-delete guard asks about
+     * soft-deleted ones too, because their rows — and the cascade — still exist.
+     *
+     * @return list<string>
+     */
+    public function ownedOrganisationNames(bool $includeTrashed = false): array
+    {
+        $q = fn (string $model) => $includeTrashed ? $model::withTrashed() : $model::query();
+
+        $names = $q(\App\Clubs\Models\Tenant::class)->where('owner_user_id', $this->id)->pluck('club_name')->all();
+        $names = array_merge($names, $q(\App\Clubs\Models\Business::class)->where('owner_user_id', $this->id)->pluck('name')->all());
+        $names = array_merge($names, $q(\App\Federations\Models\Federation::class)->where('owner_user_id', $this->id)->pluck('name')->all());
+
+        return array_values(array_map('strval', $names));
+    }
+
+    /**
+     * Does this account hold power over OTHER people's data — and therefore
+     * must never be signed in through a lightweight door (an organiser's desk
+     * code, the public entry form's password check) that skips the real
+     * sign-in and its second factor? (security fix, 2026-10-03)
+     *
+     * Wider than entersPeopleOnBehalfOfOthers(), which decides only how strict
+     * a person form is and is NOT a security check: it never knew about chain
+     * owners or federation owners and staff, so an event organiser could issue
+     * a desk code for a federation head entered as an athlete and set their
+     * password. Soft-deleted organisations count (they can be restored).
+     */
+    public function holdsPrivilegedAccess(): bool
+    {
+        if ($this->entersPeopleOnBehalfOfOthers()) {
+            return true;
+        }
+
+        return \App\Clubs\Models\Business::withTrashed()->where('owner_user_id', $this->id)->exists()
+            || \App\Federations\Models\Federation::withTrashed()->where('owner_user_id', $this->id)->exists()
+            || \Illuminate\Support\Facades\DB::table('federation_staff')->where('user_id', $this->id)->exists();
+    }
+
     public function entersPeopleOnBehalfOfOthers(): bool
     {
         if ($this->hasRole('super-admin')) {

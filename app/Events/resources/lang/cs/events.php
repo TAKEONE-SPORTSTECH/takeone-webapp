@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Vstoupit',
     'cover_language' => 'Jazyk',
     'cover_search' => 'Hledat',
+    'times_in_zone' => 'Všechny časy v :zone',
 
 ];

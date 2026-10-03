@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Кіру',
     'cover_language' => 'Тіл',
     'cover_search' => 'Іздеу',
+    'times_in_zone' => 'Барлық уақыт :zone бойынша',
 
 ];

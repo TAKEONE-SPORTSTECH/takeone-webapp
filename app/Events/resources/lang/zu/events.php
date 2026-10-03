@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Ngena',
     'cover_language' => 'Ulimi',
     'cover_search' => 'Sesha',
+    'times_in_zone' => 'Zonke izikhathi ku-:zone',
 
 ];

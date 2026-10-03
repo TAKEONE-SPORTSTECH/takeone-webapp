@@ -259,7 +259,7 @@
                  the centred language; Continue confirms it. Only the languages
                  this wizard is fully written in are offered. --}}
             @php
-                $wizLocales = app(\App\Translation\Services\ContentLocales::class);
+                $wizLocales = \App\Translation\Translations::locales();
                 $wizMeta = $wizLocales->all();
                 $wizServing = in_array(app()->getLocale(), ['en', 'ar'], true) ? app()->getLocale() : 'en';
                 $wizLangs = [];

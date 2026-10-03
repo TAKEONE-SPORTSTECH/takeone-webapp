@@ -263,9 +263,11 @@
                                         </p>
                                         @endif
                                     </div>
+                                    @if($transferOwnershipUrl ?? null)
                                     <button type="button" class="btn btn-sm btn-outline-secondary" @click="showOwnerModal = true">
                                         <i class="bi bi-pencil"></i>
                                     </button>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -273,6 +275,7 @@
                         <div class="text-center py-4 border-2 border-dashed rounded">
                             <i class="bi bi-person-plus text-muted" style="font-size: 2rem;"></i>
                             <p class="text-muted mt-2 mb-3">{{ __('admin.club_details_index_no_owner_assigned') }}</p>
+                            @if($transferOwnershipUrl ?? null)
                             <div class="flex gap-2 justify-center">
                                 <button type="button" class="btn btn-outline-primary btn-sm" @click="showOwnerModal = true; ownerTab = 'existing'">
                                     <i class="bi bi-link me-1"></i>{{ __('admin.club_details_index_link_existing') }}
@@ -281,6 +284,7 @@
                                     <i class="bi bi-person-plus me-1"></i>{{ __('admin.club_details_index_create_new') }}
                                 </button>
                             </div>
+                            @endif
                         </div>
                         @endif
                         </div>{{-- /#ownerSection --}}
@@ -688,6 +692,7 @@
                 </div>
             </div>
 
+            @if($deleteClubUrl ?? null)
             <!-- Danger Zone -->
             <div class="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
                 <div class="px-6 py-4 border-b border-red-200 bg-red-50">
@@ -709,9 +714,11 @@
                     </button>
                 </div>
             </div>
+            @endif
         </div>
     </form>
 
+@if($transferOwnershipUrl ?? null)
 <!-- Transfer Ownership Modal -->
 <div x-show="showOwnerModal"
      x-cloak
@@ -799,7 +806,9 @@
         </div>
     </div>
 </div>
+@endif
 
+@if($deleteClubUrl ?? null)
 <!-- Delete Club Modal -->
 <div x-show="showDeleteClubModal"
      x-cloak
@@ -842,8 +851,10 @@
         </div>
     </div>
 </div>
+@endif
 </div>
 
+@if($transferOwnershipUrl ?? null)
 {{-- Create Owner Modal --}}
 <x-profile-modal
     mode="create"
@@ -854,6 +865,7 @@
     formMethod="POST"
     eventName="open-create-owner-modal"
 />
+@endif
 
 {{-- Styles moved to app.css (Phase 6) --}}
 
@@ -1024,7 +1036,7 @@ function confirmOwnerTransfer() {
         body.password  = password;
     }
 
-    fetch('{{ route('admin.club.transfer-ownership', $club->slug) }}', {
+    fetch(@json($transferOwnershipUrl ?? null), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
         body: JSON.stringify(body),

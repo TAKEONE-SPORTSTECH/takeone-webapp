@@ -114,16 +114,13 @@ class RegisteredUserController extends Controller
                 'nationality' => $request->nationality,
             ]);
 
-            // Assign super-admin role to the first registered user if no super-admin exists
-            $hasSuperAdmin = User::whereHas('roles', function ($query) {
-                $query->where('slug', 'super-admin');
-            })->exists();
-
-            if (! $hasSuperAdmin) {
-                $user->assignRole('super-admin');
-                // Refresh the user to load the role relationship
-                $user->load('roles');
-            }
+            // Public registration NEVER grants super-admin (security fix,
+            // 2026-10-03). It used to hand the role to whoever registered while
+            // no super-admin existed — so losing the one super-admin account
+            // (deleted, role removed) gave the whole platform to the next
+            // stranger through the sign-up form. A super-admin is made only
+            // from the server: `php artisan admin:make-super {email}` or
+            // SuperAdminSeeder.
 
             // If the registrant came in through a club that has switched OFF email
             // verification (mail-service escape hatch), verify them on creation and

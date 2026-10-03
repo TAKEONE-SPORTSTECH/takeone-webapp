@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'પ્રવેશ',
     'cover_language' => 'ભાષા',
     'cover_search' => 'શોધો',
+    'times_in_zone' => 'બધા સમય :zone મુજબ',
 
 ];

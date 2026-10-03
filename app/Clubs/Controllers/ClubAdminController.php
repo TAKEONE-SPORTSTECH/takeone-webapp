@@ -237,7 +237,13 @@ class ClubAdminController extends Controller
         $averageRating = $reviews->avg('rating') ?? 0;
         $whatsappSettings = app(\App\Clubs\Services\ClubWhatsAppManager::class)->adminSettings($club);
 
-        return view(\App\Clubs\Support\ClubView::pick('details', 'clubs'), compact('club', 'activeMembersCount', 'reviews', 'averageRating', 'whatsappSettings'));
+        // Null for anyone who may run the club but not give it away: the views
+        // then draw no transfer control at all (the endpoints refuse anyway).
+        $canActAsOwner = $this->canActAsClubOwner($club);
+        $transferOwnershipUrl = $canActAsOwner ? route('admin.club.transfer-ownership', $club->slug) : null;
+        $deleteClubUrl = $canActAsOwner ? route('admin.club.destroy', $club->slug) : null;
+
+        return view(\App\Clubs\Support\ClubView::pick('details', 'clubs'), compact('club', 'activeMembersCount', 'reviews', 'averageRating', 'whatsappSettings', 'transferOwnershipUrl', 'deleteClubUrl'));
     }
 
     public function updateWhatsAppSettings(\Illuminate\Http\Request $request, Tenant $club, \App\Clubs\Services\ClubWhatsAppManager $whatsapp)
@@ -365,6 +371,8 @@ class ClubAdminController extends Controller
     public function destroy(Tenant $club)
     {
         $this->authorizeClub($club);
+        // Deleting the club (and its files) is the owner's call, not a club admin's.
+        $this->authorizeClubOwnerAction($club);
         $clubId = $club->id;
 
         foreach (['clubs/'.$clubId.'/branding', 'clubs/'.$clubId.'/gallery', 'clubs/'.$clubId.'/facilities', 'clubs/'.$clubId.'/instructors'] as $folder) {
@@ -414,6 +422,7 @@ class ClubAdminController extends Controller
     public function createOwner(CreateOwnerRequest $request, Tenant $club)
     {
         $this->authorizeClub($club);
+        $this->authorizeClubOwnerAction($club);
 
         $newOwner = null;
         if ($request->filled('email')) {
@@ -497,6 +506,7 @@ class ClubAdminController extends Controller
     public function transferOwnership(TransferOwnershipRequest $request, Tenant $club)
     {
         $this->authorizeClub($club);
+        $this->authorizeClubOwnerAction($club);
 
         $mode = $request->input('mode');
 

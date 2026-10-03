@@ -1708,9 +1708,11 @@ class PlatformController extends Controller
 
         $member = User::findOrFail($id);
 
-        $ownedClubs = \App\Clubs\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
+        // Clubs, chains and federations alike (2026-10-03) — this used to ask
+        // about clubs only.
+        $ownedClubs = collect($member->ownedOrganisationNames());
         if ($ownedClubs->isNotEmpty()) {
-            $msg = 'Cannot delete this account. They own the club(s): '.$ownedClubs->join(', ').'. Transfer ownership first.';
+            $msg = 'Cannot delete this account. They own: '.$ownedClubs->join(', ').'. Transfer ownership first.';
 
             return $wantsJson
                 ? response()->json(['success' => false, 'message' => $msg], 422)

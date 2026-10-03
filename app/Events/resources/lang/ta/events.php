@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'நுழை',
     'cover_language' => 'மொழி',
     'cover_search' => 'தேடு',
+    'times_in_zone' => 'அனைத்து நேரங்களும் :zone படி',
 
 ];

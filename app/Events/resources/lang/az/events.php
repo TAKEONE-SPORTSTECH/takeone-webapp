@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Daxil ol',
     'cover_language' => 'Dil',
     'cover_search' => 'Axtar',
+    'times_in_zone' => 'Bütün vaxtlar :zone üzrə',
 
 ];

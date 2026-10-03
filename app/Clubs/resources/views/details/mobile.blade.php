@@ -194,6 +194,7 @@
                 <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
             </button>
 
+            @if($deleteClubUrl ?? null)
             <button type="button" @click="open('danger')" class="m-card m-press cs-row block border-red-200">
                 <span class="w-11 h-11 rounded-xl grid place-items-center flex-shrink-0 bg-red-100 text-red-600"><i class="bi bi-exclamation-triangle text-lg"></i></span>
                 <span class="min-w-0 flex-1">
@@ -202,6 +203,7 @@
                 </span>
                 <i class="bi bi-chevron-right text-muted-foreground text-sm flex-shrink-0"></i>
             </button>
+            @endif
         </div>
 
         {{-- Recent reviews — read-only context, kept from the old mobile page --}}
@@ -737,6 +739,7 @@
             @endif
         </div>
 
+        @if($transferOwnershipUrl ?? null)
         <div class="m-card p-4 space-y-3">
             <h3 class="font-semibold text-foreground text-sm">{{ __('admin.cs_transfer_owner') }}</h3>
             <p class="text-xs text-muted-foreground">{{ __('admin.club_details_index_transfer_existing_help') }}</p>
@@ -777,8 +780,10 @@
                 <i class="bi bi-check-lg me-1"></i>{{ __('admin.cs_owner_confirm') }}
             </button>
         </div>
+        @endif
     </section>
 
+@if($deleteClubUrl ?? null)
     {{-- ─────────── Danger zone ─────────── --}}
     <section x-show="panel === 'danger'" x-cloak class="px-4 py-5 space-y-4 m-panel-in" x-data="{ confirmName: '' }">
         <div class="m-card p-4 border-red-200">
@@ -804,6 +809,7 @@
             </form>
         </div>
     </section>
+    @endif
 </div>
 
 {{-- Inline (not @push): the mobile shell only re-executes scripts inside the swapped content. --}}
@@ -976,7 +982,7 @@ function csOwner() {
 
             this.busy = true;
             try {
-                const res = await fetch(@json(route('admin.club.transfer-ownership', $club->slug)), {
+                const res = await fetch(@json($transferOwnershipUrl ?? null), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

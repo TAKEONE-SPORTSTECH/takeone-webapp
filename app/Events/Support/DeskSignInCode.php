@@ -48,7 +48,7 @@ class DeskSignInCode
         }
 
         $person = $entry->user;
-        if (! $person || $person->isSuperAdmin() || $person->hasTwoFactorEnabled() || $person->entersPeopleOnBehalfOfOthers()) {
+        if (! $person || $person->isSuperAdmin() || $person->hasTwoFactorEnabled() || $person->holdsPrivilegedAccess()) {
             return ['ok' => false, 'message' => __('events::events.desk_code_protected')];
         }
         if (blank($person->phone_key)) {
@@ -108,7 +108,7 @@ class DeskSignInCode
             }
 
             $person = User::find($hit->user_id);
-            if (! $person || $person->hasTwoFactorEnabled() || $person->entersPeopleOnBehalfOfOthers()) {
+            if (! $person || $person->hasTwoFactorEnabled() || $person->holdsPrivilegedAccess()) {
                 return null;
             }
 

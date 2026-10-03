@@ -369,7 +369,7 @@ class PublicEntry
                 // This door signs its entrant in. An account with two-factor,
                 // or one that runs clubs or events, must go through the real
                 // sign-in, which asks for the second factor — never past it.
-                if ($person->hasTwoFactorEnabled() || $person->entersPeopleOnBehalfOfOthers()) {
+                if ($person->hasTwoFactorEnabled() || $person->holdsPrivilegedAccess()) {
                     return ['ok' => false, 'state' => 'known', 'field' => 'password',
                             'message' => __('events::events.public_enrol_known_sign_in')];
                 }

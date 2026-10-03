@@ -1085,5 +1085,6 @@ return [
     'withdraw_response_label' => 'ایک الفاظ واپس (اختیاری)',
     'withdraw_take_back' => 'مجھے میری درخواست واپس لیں',
     'withdraw_title' => 'اس کمپیٹیشن سے نکالیں',
+    'times_in_zone' => 'تمام اوقات :zone کے مطابق',
 
 ];

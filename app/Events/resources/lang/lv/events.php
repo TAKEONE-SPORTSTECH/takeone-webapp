@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Ieiet',
     'cover_language' => 'Valoda',
     'cover_search' => 'Meklēt',
+    'times_in_zone' => 'Visi laiki: :zone',
 
 ];

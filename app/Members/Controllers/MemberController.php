@@ -2827,10 +2827,11 @@ class MemberController extends Controller
 
         $member = User::findOrFail($id);
 
-        $ownedClubs = \App\Clubs\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
+        // Clubs, chains and federations alike (2026-10-03).
+        $ownedClubs = collect($member->ownedOrganisationNames());
         if ($ownedClubs->isNotEmpty()) {
             return redirect()->back()
-                ->with('error', 'Cannot delete this account. They are the owner of the following club(s): '.$ownedClubs->join(', ').'. Transfer ownership first.');
+                ->with('error', 'Cannot delete this account. They are the owner of: '.$ownedClubs->join(', ').'. Transfer ownership first.');
         }
 
         $memberName = $member->full_name;

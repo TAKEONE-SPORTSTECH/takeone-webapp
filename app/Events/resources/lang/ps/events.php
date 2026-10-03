@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'ننوتل',
     'cover_language' => 'ژبه',
     'cover_search' => 'لټون',
+    'times_in_zone' => 'ټول وختونه د :zone له مخې',
 
 ];

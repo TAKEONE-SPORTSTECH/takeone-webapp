@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Betree',
     'cover_language' => 'Taal',
     'cover_search' => 'Soek',
+    'times_in_zone' => 'Alle tye in :zone',
 
 ];

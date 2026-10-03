@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Entra',
     'cover_language' => 'Lingua',
     'cover_search' => 'Cerca',
+    'times_in_zone' => 'Tutti gli orari in :zone',
 
 ];

@@ -56,7 +56,7 @@ class PublicEventThrottleTest extends TestCase
         // Comfortably past the old shared ceiling, from ONE address.
         for ($i = 1; $i <= 70; $i++) {
             $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.11'])
-                ->get("/e/{$event->uuid}")
+                ->get("/me/events/{$event->uuid}")
                 ->assertOk();
         }
     }
@@ -82,8 +82,10 @@ class PublicEventThrottleTest extends TestCase
     public function test_every_read_door_of_the_public_event_is_on_that_limiter(): void
     {
         $expected = [
-            'events.public',
-            'events.public.section',
+            'me.events.show',
+            'me.events.participants',
+            'me.events.results.page',
+            'me.events.bracket.manage',
             'events.public.manifest',
             'events.public.icon',
             'events.public.draw.data',

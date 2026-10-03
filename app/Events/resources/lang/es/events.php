@@ -564,5 +564,6 @@ return [
     'withdraw_refused' => 'Se mantiene :name en la competencia.',
     'withdraw_take_back' => 'Retirar mi solicitud',
     'withdraw_title' => 'Retirarse de esta competencia',
+    'times_in_zone' => 'Todas las horas en :zone',
 
 ];

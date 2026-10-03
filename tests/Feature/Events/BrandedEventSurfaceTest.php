@@ -84,7 +84,8 @@ class BrandedEventSurfaceTest extends TestCase
          * identical in all aspects"). Sparring, Open Mat and everything still
          * in the generic bucket keep the member shell they have always had.
          */
-        $this->assertSame(['bjj_tournament', 'karate_tournament', 'league', 'taekwondo_tournament'], $branded);
+        // `sport_championship` (the generic competition engine) opts in for the same reason.
+        $this->assertSame(['bjj_tournament', 'karate_tournament', 'league', 'sport_championship', 'taekwondo_tournament'], $branded);
         $this->assertFalse($registry->fallback()->brandedSurface(), 'the generic bucket must keep the member shell');
     }
 
@@ -257,7 +258,7 @@ class BrandedEventSurfaceTest extends TestCase
         $this->actingAs($owner->fresh())
             ->get("/me/events/{$published->uuid}")
             ->assertOk()
-            ->assertViewHas('publicUrl', route('events.public', ['event' => $published->uuid]))
+            ->assertViewHas('publicUrl', route('me.events.show', ['event' => $published->uuid]))
             ->assertSee('bi-box-arrow-up-right', false);
     }
 
@@ -275,6 +276,9 @@ class BrandedEventSurfaceTest extends TestCase
      */
     public function test_the_participants_tile_opens_the_public_entry_list_when_there_is_one(): void
     {
+        // The entry list as its own page exists on the one-page design.
+        config(['events.unified_page' => true]);
+
         $owner = $this->createUser();
         $club = $this->club($owner);
         $member = $this->member($club);
@@ -284,21 +288,26 @@ class BrandedEventSurfaceTest extends TestCase
         $this->actingAs($member)
             ->get("/me/events/{$published->uuid}")
             ->assertOk()
-            ->assertSee(route('events.public.section', ['event' => $published->uuid, 'section' => 'participants']), false)
+            ->assertSee(route('me.events.participants', ['event' => $published->uuid]), false)
             ->assertDontSee(route('me.events.people', $published->uuid), false);
 
         // And that destination actually renders, for the member and the owner.
         $this->actingAs($member)
-            ->get(route('events.public.section', ['event' => $published->uuid, 'section' => 'participants']))
+            ->get(route('me.events.participants', ['event' => $published->uuid]))
             ->assertOk();
 
-        // No public page → the tile keeps the roster it always had.
+        // No public page: on the one-page design the tile still opens the
+        // entry list — and what matters is that it never lands on a refusal
+        // for the member reading it.
         $private = $this->event($owner, $club, ['title' => 'Closed Trials']);
+        $list = route('me.events.participants', ['event' => $private->uuid]);
 
         $this->actingAs($member)
             ->get("/me/events/{$private->uuid}")
             ->assertOk()
-            ->assertSee(route('me.events.people', $private->uuid), false);
+            ->assertSee($list, false);
+
+        $this->actingAs($member)->get($list)->assertOk();
     }
 
     /**

@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Verder',
     'cover_language' => 'Taal',
     'cover_search' => 'Zoeken',
+    'times_in_zone' => 'Alle tijden in :zone',
 
 ];

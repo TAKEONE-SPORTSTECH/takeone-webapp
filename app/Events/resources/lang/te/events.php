@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'ప్రవేశం',
     'cover_language' => 'భాష',
     'cover_search' => 'వెతకండి',
+    'times_in_zone' => 'అన్ని సమయాలు :zone ప్రకారం',
 
 ];

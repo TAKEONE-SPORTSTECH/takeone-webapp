@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Intră',
     'cover_language' => 'Limbă',
     'cover_search' => 'Caută',
+    'times_in_zone' => 'Toate orele în :zone',
 
 ];

@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Մուտք',
     'cover_language' => 'Լեզու',
     'cover_search' => 'Որոնել',
+    'times_in_zone' => 'Բոլոր ժամերը՝ :zone',
 
 ];

@@ -155,7 +155,7 @@ class LocaleParityTest extends TestCase
             $this->translateContent($event, $locale);
 
             $html = $this->withHeaders(['Accept-Language' => $locale])
-                ->get("/e/{$event->uuid}")
+                ->get("/me/events/{$event->uuid}")
                 ->assertOk()
                 ->getContent();
 
@@ -196,7 +196,7 @@ class LocaleParityTest extends TestCase
         $this->translateContent($event, 'ja');
 
         $html = $this->withHeaders(['Accept-Language' => 'ja'])
-            ->get("/e/{$event->uuid}/enter")
+            ->get("/me/events/{$event->uuid}/enter")
             ->assertOk()
             ->getContent();
 

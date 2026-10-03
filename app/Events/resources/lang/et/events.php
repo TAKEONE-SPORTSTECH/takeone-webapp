@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Sisene',
     'cover_language' => 'Keel',
     'cover_search' => 'Otsi',
+    'times_in_zone' => 'Kõik ajad: :zone',
 
 ];

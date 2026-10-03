@@ -174,7 +174,7 @@ class MyBoutsTest extends TestCase
             'status' => 'upcoming',
         ]);
 
-        $response = $this->actingAs($me->user)->get("/e/{$event->uuid}/my-entry")->assertOk();
+        $response = $this->actingAs($me->user)->get("/me/events/{$event->uuid}/my-entry")->assertOk();
 
         // The division is the athlete's OWN fact and is shown.
         $response->assertViewHas('drawOpen', false);
@@ -202,7 +202,7 @@ class MyBoutsTest extends TestCase
         ]);
 
         $this->actingAs($me->user)
-            ->get("/e/{$event->uuid}/my-entry")
+            ->get("/me/events/{$event->uuid}/my-entry")
             ->assertOk()
             ->assertViewHas('drawOpen', true)
             ->assertSee('Theirs', false)

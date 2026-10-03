@@ -32,6 +32,14 @@ use Tests\TestCase;
  */
 class ParticipantCardTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // These pages are the one-page design's entry list (/me/events/{uuid}/participants).
+        config(['events.unified_page' => true]);
+    }
+
     private function club(User $owner): Tenant
     {
         $club = $this->createClub($owner, ['country' => 'BH', 'club_name' => 'Emperor Taekwondo']);
@@ -88,7 +96,7 @@ class ParticipantCardTest extends TestCase
         $event = $this->event($owner, $club);
         $this->entrant($event, $club, 'Mohammed Ali Saloom');
 
-        $html = $this->get("/e/{$event->uuid}/participants")->assertOk()->getContent();
+        $html = $this->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent();
 
         // The card itself is there, with everything a public entry list says.
         $this->assertStringContainsString('class="pcard"', $html);
@@ -115,7 +123,7 @@ class ParticipantCardTest extends TestCase
         $this->entrant($event, $club, 'Mohammed Ali Saloom');
 
         $html = $this->actingAs($owner->fresh())
-            ->get("/e/{$event->uuid}/participants")->assertOk()->getContent();
+            ->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent();
 
         /* TWO badges, each coloured by its own fact (split 2026-09-16). Paid is
            settled, so it is green; the scale has not happened, so that one is
@@ -167,7 +175,7 @@ class ParticipantCardTest extends TestCase
         ]);
 
         $this->actingAs($scale->fresh())
-            ->get("/e/{$event->uuid}/participants")->assertOk()
+            ->get("/me/events/{$event->uuid}/participants")->assertOk()
             ->assertSee('data-status="paid"', false);
     }
 
@@ -185,7 +193,7 @@ class ParticipantCardTest extends TestCase
         $this->entrant($event, $club, 'Rival Athlete', ['weight' => 91.5]);
 
         $html = $this->actingAs($mine->user->fresh())
-            ->get("/e/{$event->uuid}/participants")->assertOk()->getContent();
+            ->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent();
 
         $this->assertStringContainsString('data-status="pending"', $html, 'a competitor cannot see their own unpaid fee');
         // Their own two badges and nobody else's.
@@ -210,7 +218,7 @@ class ParticipantCardTest extends TestCase
             $this->entrant($event, $club, 'Athlete '.$i);
         }
 
-        $html = $this->get("/e/{$event->uuid}/participants")->assertOk()->getContent();
+        $html = $this->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent();
 
         $this->assertSame(3, substr_count($html, 'class="pcard"'));
         $this->assertSame(1, substr_count($html, 'id="lightbox"'));
@@ -228,7 +236,7 @@ class ParticipantCardTest extends TestCase
         $entry = $this->entrant($event, $club, 'Mohammed Ali Saloom');
 
         $html = $this->actingAs($owner->fresh())
-            ->get("/e/{$event->uuid}/participants")->assertOk()->getContent();
+            ->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent();
 
         $plain = str_replace('\/', '/', $html);
 
@@ -269,7 +277,7 @@ class ParticipantCardTest extends TestCase
         $entry = $this->entrant($event, $club, 'Private Person');
         $entry->user->update(['is_discoverable' => false]);
 
-        $html = $this->get("/e/{$event->uuid}/participants")->assertOk()->getContent();
+        $html = $this->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent();
 
         $this->assertStringContainsString('Private Person', $html);
         $this->assertStringNotContainsString($entry->user->uuid.'"', str_replace('\/', '/', $html));
@@ -286,12 +294,12 @@ class ParticipantCardTest extends TestCase
         /* The guest FIRST: `actingAs()` holds for the rest of the test, so a
            signed-out request made after a signed-in one is still signed in —
            and this assertion would pass by never being a guest at all. */
-        $this->get("/e/{$event->uuid}/participants")->assertOk()
+        $this->get("/me/events/{$event->uuid}/participants")->assertOk()
             ->assertDontSee('id="participant-sheet"', false)
             ->assertDontSee(__('personal.event_card_action_enroll'), false);
 
         $this->actingAs($owner->fresh())
-            ->get("/e/{$event->uuid}/participants")->assertOk()
+            ->get("/me/events/{$event->uuid}/participants")->assertOk()
             ->assertSee('id="participant-sheet"', false);
     }
 
@@ -313,7 +321,7 @@ class ParticipantCardTest extends TestCase
         $reader->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
 
         $html = str_replace('\/', '/', $this->actingAs($reader->fresh())
-            ->get("/e/{$event->uuid}/participants")->assertOk()->getContent());
+            ->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent());
 
         $this->assertStringContainsString(
             route('sealed.people.show', ['event' => $event->uuid, 'uuid' => $entry->user->uuid]).'?from=participants',
@@ -324,7 +332,7 @@ class ParticipantCardTest extends TestCase
         $this->actingAs($reader->fresh())
             ->get(route('sealed.people.show', ['event' => $event->uuid, 'uuid' => $entry->user->uuid]).'?from=participants')
             ->assertOk()
-            ->assertSee(route('events.public.section', ['event' => $event->uuid, 'section' => 'participants']), false);
+            ->assertSee(route('me.events.participants', ['event' => $event->uuid]), false);
     }
 
     /**
@@ -348,7 +356,7 @@ class ParticipantCardTest extends TestCase
         $entry = $this->entrant($event, $club, 'Mohammed Ali Saloom');
 
         $html = str_replace('\/', '/', $this->actingAs($owner->fresh())
-            ->get("/e/{$event->uuid}/participants")->assertOk()->getContent());
+            ->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent());
 
         $profile = route('sealed.people.show', ['event' => $event->uuid, 'uuid' => '__UUID__']);
 
@@ -362,7 +370,7 @@ class ParticipantCardTest extends TestCase
         $this->actingAs($owner->fresh())
             ->get(route('sealed.people.show', ['event' => $event->uuid, 'uuid' => $entry->user->uuid]).'?from=participants')
             ->assertOk()
-            ->assertSee(route('events.public.section', ['event' => $event->uuid, 'section' => 'participants']), false)
+            ->assertSee(route('me.events.participants', ['event' => $event->uuid]), false)
             ->assertDontSee(url('/e/'.$event->uuid.'/admin/people'), false);
     }
 
@@ -391,7 +399,7 @@ class ParticipantCardTest extends TestCase
         $other = $this->entrant($event, $club, 'Someone Else');
 
         $html = $this->actingAs($owner->fresh())
-            ->get("/e/{$event->uuid}/participants")->assertOk()->getContent();
+            ->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent();
 
         // The card carries the entry, so the tap is a plain navigation.
         $this->assertStringContainsString('data-entry="'.$entry->id.'"', $html);
@@ -440,7 +448,7 @@ class ParticipantCardTest extends TestCase
 
         $event->update(['draw_reveal' => ClubEvent::DRAW_HIDDEN]);
 
-        $html = $this->get("/e/{$event->uuid}/participants")->assertOk()->getContent();
+        $html = $this->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent();
 
         $this->assertStringContainsString('onDrawClosed()', $html, 'a withheld draw must not be linked to');
         $this->assertStringNotContainsString('onDivisionTap(this)', $html);
@@ -452,7 +460,7 @@ class ParticipantCardTest extends TestCase
            consults its own memo, so a withheld draw never got memoised. */
         $event->update(['draw_reveal' => ClubEvent::DRAW_ALWAYS]);
 
-        $html = $this->get("/e/{$event->uuid}/participants")->assertOk()->getContent();
+        $html = $this->get("/me/events/{$event->uuid}/participants")->assertOk()->getContent();
 
         $this->assertStringContainsString('onDivisionTap(this)', $html);
     }

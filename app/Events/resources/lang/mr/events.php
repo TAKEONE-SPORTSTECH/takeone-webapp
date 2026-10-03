@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'प्रवेश',
     'cover_language' => 'भाषा',
     'cover_search' => 'शोधा',
+    'times_in_zone' => 'सर्व वेळा :zone नुसार',
 
 ];

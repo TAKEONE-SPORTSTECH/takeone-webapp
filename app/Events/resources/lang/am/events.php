@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'ግባ',
     'cover_language' => 'ቋንቋ',
     'cover_search' => 'ፈልግ',
+    'times_in_zone' => 'ሁሉም ሰዓቶች በ:zone',
 
 ];

@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'ចូល',
     'cover_language' => 'ភាសា',
     'cover_search' => 'ស្វែងរក',
+    'times_in_zone' => 'ម៉ោងទាំងអស់គិតតាម :zone',
 
 ];

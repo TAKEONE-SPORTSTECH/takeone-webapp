@@ -201,7 +201,21 @@ class RouteIntegrityTest extends TestCase
      * file moves the same day changed no route — the table was diffed before
      * and after, URI by URI, name, middleware and action.
      */
-    private const EXPECTED_ROUTE_COUNT = 769;
+    /*
+     * 937 since 2026-10-03 (+168), reconciled on branch major-change. Every one
+     * of them was added by a COMMITTED feature since ff177fb1, none by the
+     * uncommitted tree — a git diff of every module's routes file since ff177fb1 shows 209
+     * route lines added and 27 removed across: federations (dashboard API,
+     * invitations, staff, events), certificates (member + public verify), the
+     * /business front door and chain views, sport championships, club ranks,
+     * the AI routes, platform tools, and the /e/ → /me/events move of
+     * 2026-09-27 (same names, new addresses). The closure count is unchanged.
+     *
+     * Also from this date the suite reads the route FILES, never
+     * bootstrap/cache/routes-v7.php (phpunit.xml APP_ROUTES_CACHE): the cache
+     * is whatever the last deploy built, not the code under test.
+     */
+    private const EXPECTED_ROUTE_COUNT = 937;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -440,6 +454,10 @@ class RouteIntegrityTest extends TestCase
         // unnamed, the same twelve as before, so nothing lost a name in the
         // model moves either.
         // 757 on 2026-09-23: the two federation routes, both named.
-        $this->assertCount(757, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 924 on 2026-10-03: the +168 above, all named except ONE — `busniess`,
+        // the misspelling redirect the /business front door added (50897a22).
+        // Thirteen unnamed now: mcp ×3, busniess, profile, family, members,
+        // family/dashboard, POST login, POST register, api/user, up, /.
+        $this->assertCount(924, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

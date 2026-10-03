@@ -1241,5 +1241,6 @@ return [
     'withdraw_response_label' => '一言メッセージ（任意）',
     'withdraw_take_back' => '申請を取り消す',
     'withdraw_title' => 'この大会から退出する',
+    'times_in_zone' => '時刻はすべて :zone',
 
 ];

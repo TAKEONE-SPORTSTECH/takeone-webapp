@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'ဝင်ရန်',
     'cover_language' => 'ဘာသာစကား',
     'cover_search' => 'ရှာရန်',
+    'times_in_zone' => 'အချိန်အားလုံး :zone',
 
 ];

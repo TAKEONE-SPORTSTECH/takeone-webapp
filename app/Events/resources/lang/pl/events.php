@@ -27,5 +27,6 @@ return [
     'cover_enter' => 'Wejdź',
     'cover_language' => 'Język',
     'cover_search' => 'Szukaj',
+    'times_in_zone' => 'Wszystkie godziny w strefie :zone',
 
 ];

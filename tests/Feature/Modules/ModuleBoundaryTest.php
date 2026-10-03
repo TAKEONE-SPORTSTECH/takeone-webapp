@@ -56,6 +56,14 @@ class ModuleBoundaryTest extends TestCase
                     continue;
                 }
 
+                // So may the module's OWN tests (tests/Feature/<Module>/): they
+                // are how the module verifies itself, not another vertical
+                // reaching in. A test of one module poking another's internals
+                // is still caught.
+                if (str_starts_with($relative, 'tests/Feature/'.basename($dir).'/')) {
+                    continue;
+                }
+
                 foreach (self::PRIVATE_LAYERS as $layer) {
                     /*
                      * The layer may sit at ANY depth inside the module, not only

@@ -1085,5 +1085,6 @@ return [
     'withdraw_response_label' => 'Uma palavra de resposta (opcional)',
     'withdraw_take_back' => 'Retirar o meu pedido',
     'withdraw_title' => 'Desistir desta competição',
+    'times_in_zone' => 'Todos os horários em :zone',
 
 ];

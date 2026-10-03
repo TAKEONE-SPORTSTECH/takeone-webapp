@@ -92,7 +92,7 @@ class TranslationRoutesTest extends TestCase
          * `false` against a locale that may be promoted tomorrow makes this
          * test a tripwire on an unrelated decision.
          */
-        $this->postJson("/e/{$event->uuid}/language", ['locale' => 'ja'])
+        $this->postJson("/me/events/{$event->uuid}/language", ['locale' => 'ja'])
             ->assertOk()
             ->assertJson(['success' => true, 'status' => 'preparing', 'ready' => false, 'interface' => false]);
 
@@ -107,7 +107,7 @@ class TranslationRoutesTest extends TestCase
 
         // The picker tells a reader, before they choose, whether they are
         // getting a translated EVENT or a translated PRODUCT.
-        $this->postJson("/e/{$event->uuid}/language", ['locale' => 'pt'])
+        $this->postJson("/me/events/{$event->uuid}/language", ['locale' => 'pt'])
             ->assertOk()
             ->assertJson(['interface' => true]);
     }
@@ -118,15 +118,15 @@ class TranslationRoutesTest extends TestCase
         $organiser = $this->createUser();
         $event = $this->event($this->clubFor($organiser), $organiser, ['entry_mode' => 'members']);
 
-        $this->postJson("/e/{$event->uuid}/language", ['locale' => 'pt'])->assertNotFound();
-        $this->getJson("/e/{$event->uuid}/language/pt")->assertNotFound();
+        $this->postJson("/me/events/{$event->uuid}/language", ['locale' => 'pt'])->assertNotFound();
+        $this->getJson("/me/events/{$event->uuid}/language/pt")->assertNotFound();
 
         Queue::assertNothingPushed();
     }
 
     public function test_an_unknown_event_is_the_same_404(): void
     {
-        $this->postJson('/e/'.\Illuminate\Support\Str::uuid().'/language', ['locale' => 'pt'])
+        $this->postJson('/me/events/'.\Illuminate\Support\Str::uuid().'/language', ['locale' => 'pt'])
             ->assertNotFound();
     }
 
@@ -136,11 +136,11 @@ class TranslationRoutesTest extends TestCase
         $organiser = $this->createUser();
         $event = $this->event($this->clubFor($organiser), $organiser);
 
-        $this->postJson("/e/{$event->uuid}/language", ['locale' => 'klingon'])
+        $this->postJson("/me/events/{$event->uuid}/language", ['locale' => 'klingon'])
             ->assertOk()
             ->assertJson(['status' => 'unavailable', 'ready' => false]);
 
-        $this->getJson("/e/{$event->uuid}/language/..%2F..%2Fetc")->assertNotFound();
+        $this->getJson("/me/events/{$event->uuid}/language/..%2F..%2Fetc")->assertNotFound();
 
         Queue::assertNothingPushed();
     }
@@ -152,7 +152,7 @@ class TranslationRoutesTest extends TestCase
 
         $this->machineTranslate($event, 'pt');
 
-        $this->getJson("/e/{$event->uuid}/language/pt")
+        $this->getJson("/me/events/{$event->uuid}/language/pt")
             ->assertOk()
             ->assertJson(['status' => 'ready', 'ready' => true, 'locale' => 'pt', 'dir' => 'ltr']);
     }
@@ -162,7 +162,7 @@ class TranslationRoutesTest extends TestCase
         $organiser = $this->createUser();
         $event = $this->event($this->clubFor($organiser), $organiser, ['source_locale' => 'ar']);
 
-        $this->getJson("/e/{$event->uuid}/language/ar")
+        $this->getJson("/me/events/{$event->uuid}/language/ar")
             ->assertOk()
             ->assertJson(['status' => 'source', 'ready' => true, 'dir' => 'rtl', 'interface' => true]);
     }

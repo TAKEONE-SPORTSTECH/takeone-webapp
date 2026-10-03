@@ -27,5 +27,6 @@ return [
     'cover_enter' => '입장',
     'cover_language' => '언어',
     'cover_search' => '검색',
+    'times_in_zone' => '모든 시간은 :zone 기준',
 
 ];
