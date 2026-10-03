@@ -296,6 +296,8 @@ html, body { overflow: hidden !important; height: 100% !important; }
                 <a href="{{ route('clubs.explore') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_back_to_explore') }}"><i class="bi bi-chevron-left"></i></a>
             @endif
             <a href="{{ $club->url }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_preview_club') }}" target="_blank"><i class="bi bi-eye"></i></a>
+            {{-- Send a notification to members — mobile has it in the drawer's Actions. --}}
+            <button type="button" @click="showNotificationModal = true" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_send_notification') }}" aria-label="{{ __('nav.layouts_admin_club_send_notification') }}"><i class="bi bi-send"></i></button>
             <a href="{{ route('admin.club.details', $clubId) }}" data-shell-link data-route="admin.club.details" class="emp-sb-btn {{ $currentRoute === 'admin.club.details' ? 'active' : '' }}" title="{{ __('nav.layouts_admin_club_club_details') }}"><i class="bi bi-gear"></i></a>
         </div>
 

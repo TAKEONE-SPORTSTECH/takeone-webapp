@@ -379,6 +379,10 @@
 
                         <!-- Utility action cluster (segmented capsule) -->
                         <div class="nav-cluster">
+                        <!-- My space (Feed) — the personal hub the mobile tab bar opens on -->
+                        <a class="nav-icon-btn" href="{{ route('me.home') }}" title="{{ __('nav.tab_feed') }}">
+                            <i class="bi bi-house text-xl"></i>
+                        </a>
                         <!-- Explore Button -->
                         <a class="nav-icon-btn" href="{{ route('clubs.explore') }}" title="{{ __('nav.layouts_app_explore') }}">
                             <i class="bi bi-compass text-xl"></i>
@@ -648,6 +652,14 @@
                                         <i class="bi bi-phone me-2"></i>{{ __('nav.get_app') }}
                                     </a>
                                 </div>
+                                {{-- The mobile bottom tab bar's destinations — desktop had no way in. --}}
+                                <div class="border-t border-border py-1">
+                                    <a class="profile-dropdown-item" href="{{ route('me.home') }}"><i class="bi bi-newspaper me-2"></i>{{ __('nav.tab_feed') }}</a>
+                                    <a class="profile-dropdown-item" href="{{ route('me.schedule') }}"><i class="bi bi-calendar-week me-2"></i>{{ __('nav.tab_schedule') }}</a>
+                                    <a class="profile-dropdown-item" href="{{ route('me.challenge') }}"><i class="bi bi-trophy me-2"></i>{{ __('nav.tab_challenge') }}</a>
+                                    <a class="profile-dropdown-item" href="{{ route('me.events') }}"><i class="bi bi-calendar-heart me-2"></i>{{ __('nav.tab_events') }}</a>
+                                    <a class="profile-dropdown-item" href="{{ route('me.market') }}"><i class="bi bi-shop me-2"></i>{{ __('nav.tab_market') }}</a>
+                                </div>
                                 <div class="border-t border-border py-1">
                                     <a class="profile-dropdown-item" href="{{ route('member.show', Auth::user()->uuid) }}#affiliations"
                                        onclick="var t=document.getElementById('affiliations-tab'); if(t){t.click();}">
@@ -670,6 +682,10 @@
                                         <i class="bi bi-patch-check me-2"></i>{{ __('cert::messages.mine_title') }}
                                     </a>
                                     @endif
+                                    {{-- Paying a subscription bill (upload proof) — mobile's "Payments". --}}
+                                    <a class="profile-dropdown-item" href="{{ route('me.payments') }}">
+                                        <i class="bi bi-credit-card me-2"></i>{{ __('nav.payments') }}
+                                    </a>
                                     <a class="profile-dropdown-item" href="{{ route('bills.index') }}">
                                         <i class="bi bi-receipt me-2"></i>{{ __('nav.layouts_app_payments_subscriptions') }}
                                     </a>
@@ -683,7 +699,7 @@
                                         <i class="bi bi-compass me-2"></i>{{ __('nav.explore_clubs') }}
                                     </a>
                                     @endunless
-                                    <button type="button" class="profile-dropdown-item w-full text-start" @click="open = false; window.dispatchEvent(new CustomEvent('qr-scan:open'))">
+                                    <button type="button" class="profile-dropdown-item w-full text-start" @click="open = false; window.dispatchEvent(new CustomEvent('qr-scan:open', { detail: { manual: true, manualLength: 6, manualLabel: @js(__('header.scan_or_type')), manualPlaceholder: @js(__('header.scan_code_placeholder')) } }))">
                                         <i class="bi bi-qr-code-scan me-2"></i>{{ __('header.scan_qr') }}
                                     </button>
                                 </div>
@@ -749,6 +765,12 @@
     @php
         $authUser = Auth::user();
         $cmds = [
+            ['label' => __('nav.tab_feed'),                      'sub' => '', 'icon' => 'bi-newspaper',      'url' => route('me.home')],
+            ['label' => __('nav.tab_schedule'),                  'sub' => '', 'icon' => 'bi-calendar-week',  'url' => route('me.schedule')],
+            ['label' => __('nav.tab_challenge'),                 'sub' => '', 'icon' => 'bi-trophy',         'url' => route('me.challenge')],
+            ['label' => __('nav.tab_events'),                    'sub' => '', 'icon' => 'bi-calendar-heart', 'url' => route('me.events')],
+            ['label' => __('nav.tab_market'),                    'sub' => '', 'icon' => 'bi-shop',           'url' => route('me.market')],
+            ['label' => __('nav.payments'),                      'sub' => '', 'icon' => 'bi-credit-card',    'url' => route('me.payments')],
             ['label' => __('nav.layouts_app_cmd_explore_clubs'), 'sub' => __('nav.layouts_app_cmd_explore_clubs_sub'), 'icon' => 'bi-compass',      'url' => route('clubs.explore')],
             ['label' => __('nav.layouts_app_messages'),          'sub' => __('nav.layouts_app_cmd_messages_sub'),      'icon' => 'bi-chat-dots',    'url' => route('messages.index')],
             ['label' => __('nav.layouts_app_cmd_my_profile'),    'sub' => __('nav.layouts_app_cmd_my_profile_sub'),    'icon' => 'bi-person',       'url' => route('member.show', $authUser->uuid)],

@@ -261,13 +261,20 @@ class PeopleDiscoveryTest extends TestCase
         $me = $this->createUser();
         $person = $this->createUser(['full_name' => 'Public Athlete']);
 
-        $this->actingAs($me)->get("/people/{$person->uuid}")
+        $res = $this->actingAs($me)->get("/people/{$person->uuid}")
             ->assertOk()
             ->assertSee('Public Athlete')
             // Sensitive sections must NOT appear on the public profile.
-            ->assertDontSee('Billing')
             ->assertDontSee('Health Records')
             ->assertDontSee('Emergency');
+
+        // Billing is checked in the PROFILE (<main>), not the whole page: the
+        // viewer's own account menu has a "Payments & Billing" link of its own
+        // (2026-10-03), which is about them, not about the person on screen.
+        $html = $res->getContent();
+        $main = substr($html, (int) strpos($html, '<main>'), (int) strpos($html, '</main>') - (int) strpos($html, '<main>'));
+        $this->assertNotSame('', $main, 'the profile content was not found');
+        $this->assertStringNotContainsString('Billing', $main);
     }
 
     public function test_viewing_own_public_profile_redirects_to_full_profile(): void

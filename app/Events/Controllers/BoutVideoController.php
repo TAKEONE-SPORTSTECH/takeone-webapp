@@ -106,6 +106,11 @@ class BoutVideoController extends Controller
             'comments' => $this->commentsPayload($match, $me),
             'duration' => $angles[0]['duration'] ?? 0,
             'canComment' => true,
+            // Desktop parity with the mobile player (2026-10-03): who may write
+            // coach notes, and who may remove anybody's comment. The endpoints
+            // re-check both whatever was rendered.
+            'canAnnotate' => $this->mayAnnotate($event, $match, $me),
+            'canModerate' => $me !== null && $this->access->canManage($event, $me),
             // The slim event payload the hero band needs — same shape the board
             // and next-up screens already use, rather than the full eventView():
             // this page is about the bout, and the event is its backdrop.
@@ -389,6 +394,10 @@ class BoutVideoController extends Controller
                 'note' => $n['note'],
                 'author' => $n['coach'],
                 'secs' => (int) round($n['start']),
+                // For editing (desktop): which note, and its exact moments.
+                'uuid' => $n['uuid'],
+                'start' => $n['start'],
+                'end' => $n['end'],
                 // Only a ranged note can be replayed slowly; the design shows a
                 // SLOW-MO affordance and it must not lie.
                 'slowmo' => $n['end'] !== null,

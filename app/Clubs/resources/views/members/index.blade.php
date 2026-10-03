@@ -27,6 +27,15 @@
                             class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted/60 transition-colors">
                         <i class="bi bi-people text-primary w-4"></i>{{ __('admin.club_members_index_walkin_registration') }}
                     </button>
+                    {{-- Same two doors the mobile add-member menu has (2026-10-03). --}}
+                    <button type="button" @click="open = false; window.dispatchEvent(new CustomEvent('open-walkin-modal', { detail: { type: 'child' } }))"
+                            class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted/60 transition-colors">
+                        <i class="bi bi-balloon text-primary w-4"></i>{{ __('admin.child') }}
+                    </button>
+                    <button type="button" @click="open = false; window.dispatchEvent(new CustomEvent('qr-scan:open', { detail: { emit: 'club-member-qr', title: @js(__('admin.scan_qr')) } }))"
+                            class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted/60 transition-colors">
+                        <i class="bi bi-qr-code-scan text-primary w-4"></i>{{ __('admin.scan_qr') }}
+                    </button>
                     <button type="button" @click="open = false; openAddExistingUserModal()"
                             class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted/60 transition-colors">
                         <i class="bi bi-person-check text-primary w-4"></i>{{ __('admin.club_members_index_add_existing_user') }}
@@ -37,6 +46,70 @@
                     </button>
                 </div>
             </div>
+        </div>
+
+        {{-- Add a member by scanning their profile QR (the shared scanner hands
+             the value back on `club-member-qr`), then confirm — mobile's flow. --}}
+        <div x-data="{
+                resolved: null, busy: false,
+                csrf() { return document.querySelector('meta[name=csrf-token]')?.content || ''; },
+                async resolve(value) {
+                    try {
+                        const r = await fetch(@js(route('admin.club.members.resolve-qr', $club->slug)), { method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                            body: JSON.stringify({ value }) });
+                        const d = await r.json().catch(() => ({}));
+                        if (r.ok && d.success) { this.resolved = d.user; return; }
+                        window.showToast('error', d.message || @js(__('admin.qr_not_member')));
+                    } catch (e) { window.showToast('error', @js(__('admin.qr_not_member'))); }
+                },
+                async add() {
+                    if (! this.resolved || this.busy) return;
+                    this.busy = true;
+                    try {
+                        const r = await fetch(@js(route('admin.club.members.store', $club->slug)), { method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                            body: JSON.stringify({ user_ids: [this.resolved.id] }) });
+                        const d = await r.json().catch(() => ({}));
+                        if (r.ok && d.success) {
+                            window.showToast('success', d.message || @js(__('admin.member_added')));
+                            this.resolved = null;
+                            // Same as adding an existing user here: show them under All.
+                            window.location.href = @js(route('admin.club.members', $club->slug)) + '?filter=all';
+                            return;
+                        }
+                        window.showToast('error', d.message || @js(__('admin.add_failed')));
+                    } catch (e) { window.showToast('error', @js(__('admin.add_failed'))); }
+                    finally { this.busy = false; }
+                },
+             }"
+             @club-member-qr.window="resolve($event.detail?.value ?? $event.detail)">
+            <template x-teleport="body">
+                <div x-show="resolved" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4" @keydown.escape.window="resolved = null">
+                    <div class="absolute inset-0 bg-black/50" @click="resolved = null"></div>
+                    <div class="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl p-5" x-transition>
+                        <div class="flex items-center gap-3">
+                            <span class="w-[42px] h-14 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                                <template x-if="resolved && resolved.profile_picture"><img :src="resolved.profile_picture" alt="" class="w-full h-full object-cover"></template>
+                                <template x-if="resolved && ! resolved.profile_picture"><i class="bi bi-person text-muted-foreground text-2xl"></i></template>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-base font-bold text-foreground break-words" x-text="resolved?.name"></p>
+                                <p class="text-xs text-muted-foreground break-all" x-text="resolved?.email || ''"></p>
+                            </div>
+                        </div>
+                        <template x-if="resolved && resolved.is_member">
+                            <p class="mt-4 text-sm text-center text-green-700 bg-green-50 rounded-xl py-3">{{ __('admin.already_a_member') }}</p>
+                        </template>
+                        <div class="mt-4 flex gap-3">
+                            <button type="button" @click="resolved = null; window.dispatchEvent(new CustomEvent('qr-scan:open', { detail: { emit: 'club-member-qr', title: @js(__('admin.scan_qr')) } }))"
+                                    class="flex-1 py-2.5 rounded-xl border border-gray-200 text-foreground font-medium hover:bg-muted transition-colors">{{ __('admin.scan_again') }}</button>
+                            <button type="button" x-show="resolved && ! resolved.is_member" @click="add()" :disabled="busy"
+                                    class="flex-1 py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">{{ __('admin.add_to_club') }}</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 

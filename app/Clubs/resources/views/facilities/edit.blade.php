@@ -56,6 +56,18 @@
                                        placeholder="الاسم بالعربية"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             </div>
+
+                            <!-- Description — editable here too, as on mobile (2026-10-03). Pre-filled from the
+                                 saved text (populateEditForm), so saving never clears it. -->
+                            <div class="space-y-2">
+                                <label for="editFacilityDescription" class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_add_description') }}</label>
+                                <textarea id="editFacilityDescription" name="description" rows="3" x-show="lang==='en'"
+                                          placeholder="{{ __('admin.club_facilities_add_description_placeholder') }}"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                                <textarea id="editFacilityDescriptionAr" name="translations[description][ar]" rows="3" dir="rtl" x-show="lang==='ar'" x-cloak
+                                          placeholder="الوصف بالعربية"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                            </div>
                         </div>
 
                         <!-- Location Section -->

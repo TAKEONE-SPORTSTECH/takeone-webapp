@@ -484,8 +484,15 @@ const REVIEWS = @json($reviews);
 const OFFICIALS = @json($officials);
 const COMMENTS  = @json($comments);
 const DURATION  = @json($duration);
+/* Desktop parity (2026-10-03): coach notes can be written here, and a comment
+   removed by its author or the organiser — the endpoints re-check both. */
+const CAN_ANNOTATE = @json((bool) ($canAnnotate ?? false));
+const CAN_MODERATE = @json((bool) ($canModerate ?? false));
+const NOTE_EMOJI = @json(\App\Media\Models\BoutCoachNote::EMOJI);
+const COACH_NAME = @json(auth()->user()?->full_name ?: auth()->user()?->name ?: '');
 const ENDPOINTS = {
   comment: @json(route('me.events.bout.comments.store', ['event' => $e['key'], 'matchNo' => $bout['match_no']])),
+  notes: @json(route('me.events.bout.notes.store', ['event' => $e['key'], 'matchNo' => $bout['match_no']])),
   csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
 };
 const SOURCES = @json(collect($angles)->map(fn ($a) => ['label' => $a['label'], 'hls' => $a['hls'], 'mp4' => $a['mp4']])->values());
@@ -645,9 +652,22 @@ function renderPanel(mount, sticky){
       + '<span class="rv-foot"><span class="rv-author">'+esc(rv.author)+'</span>'
       + '<span class="rv-slowmo">&#9654; SLOW-MO</span></span></span></div>';
     it.querySelector('.rv-card').onclick = () => seek(rv.secs, 'Coach review · ' + rv.range);
+    if (CAN_ANNOTATE && rv.uuid) {
+      const tools = document.createElement('div'); tools.className = 'cm-tools';
+      tools.innerHTML = '<span class="reply-btn nt-edit">Edit</span><span class="reply-btn nt-del" style="color:var(--red-soft)">Delete</span>';
+      tools.querySelector('.nt-edit').onclick = (e) => { e.stopPropagation(); noteForm(rv); };
+      tools.querySelector('.nt-del').onclick = (e) => { e.stopPropagation(); deleteNote(rv, e.currentTarget); };
+      it.append(tools);
+    }
     wrap.append(it);
   });
   pRev.append(wrap);
+  if (CAN_ANNOTATE) {
+    const add = document.createElement('button'); add.className = 'cm-post'; add.style.margin = '12px 0 0';
+    add.textContent = '+ Add note at ' + fmt(Math.floor((vid && vid.currentTime) || 0));
+    add.onclick = () => noteForm(null);
+    pRev.append(add);
+  }
   mount.append(pPts, pRev);
 
   tp.onclick = () => { tp.classList.add('on'); tr.classList.remove('on'); pPts.classList.add('on'); pRev.classList.remove('on'); };
@@ -655,6 +675,72 @@ function renderPanel(mount, sticky){
 }
 renderPanel(document.getElementById('railMount'));
 renderPanel(document.getElementById('fsPanel'));
+
+/* ── Coach notes: add / edit / delete (desktop parity) ─────────────────── */
+function rerenderPanels(){ renderPanel(document.getElementById('railMount')); renderPanel(document.getElementById('fsPanel')); }
+function noteRow(n){
+  const c = s => fmt(Math.floor(s || 0));
+  return { range: n.end != null ? c(n.start) + ' → ' + c(n.end) : c(n.start), emoji: n.emoji, note: n.note, author: n.coach,
+           secs: Math.round(n.start), uuid: n.uuid, start: n.start, end: n.end, slowmo: n.end != null };
+}
+function noteRequest(method, url, body){
+  return fetch(url, { method, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined,
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': ENDPOINTS.csrf } })
+    .then(r => r.json().then(d => ({ ok: r.ok, d }))).catch(() => ({ ok: false, d: {} }));
+}
+function noteForm(rv){
+  const start = rv ? rv.start : Math.floor((vid && vid.currentTime) || 0);
+  const host = document.getElementById('railMount');
+  const box = document.createElement('div'); box.className = 'rv-card'; box.style.cssText = 'display:block;margin:12px 0';
+  box.innerHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
+    + NOTE_EMOJI.map(e => '<button type="button" class="nt-emo" data-e="'+esc(e)+'" style="font-size:18px;padding:2px 6px;border-radius:8px;border:1px solid var(--line-2)">'+esc(e)+'</button>').join('')
+    + '</div><input class="cm-input nt-text" maxlength="1000" placeholder="Note at '+esc(fmt(Math.floor(start)))+'&hellip;">'
+    + '<div style="display:flex;gap:8px;margin-top:8px"><button class="cm-post nt-save">Save</button><button class="cm-post nt-cancel" style="background:transparent;border:1px solid var(--line-2)">Cancel</button></div>';
+  let emoji = rv ? rv.emoji : NOTE_EMOJI[0];
+  const paintEmo = () => box.querySelectorAll('.nt-emo').forEach(b => b.style.background = b.dataset.e === emoji ? 'var(--line-2)' : 'transparent');
+  box.querySelectorAll('.nt-emo').forEach(b => b.onclick = () => { emoji = b.dataset.e; paintEmo(); });
+  paintEmo();
+  const text = box.querySelector('.nt-text'); text.value = rv ? rv.note : '';
+  box.querySelector('.nt-cancel').onclick = () => box.remove();
+  box.querySelector('.nt-save').onclick = async () => {
+    const note = text.value.trim(); if (!note) { text.focus(); return; }
+    const body = { start_seconds: start, end_seconds: rv ? rv.end : null, note, coach_name: rv ? rv.author : (COACH_NAME || 'Coach'), emoji };
+    const res = await noteRequest(rv ? 'PUT' : 'POST', rv ? ENDPOINTS.notes + '/' + rv.uuid : ENDPOINTS.notes, body);
+    if (!res.ok || !res.d.success) { pageMsg(res.d.message || 'Could not save the note'); return; }
+    const row = noteRow(res.d.note);
+    const i = rv ? REVIEWS.findIndex(x => x.uuid === rv.uuid) : -1;
+    if (i >= 0) REVIEWS[i] = row; else REVIEWS.push(row);
+    REVIEWS.sort((a, b) => a.start - b.start);
+    rerenderPanels();
+  };
+  host.prepend(box); text.focus();
+}
+/* This page is standalone (no platform dialogs): a delete asks twice — the
+   first click turns the button into "Confirm", the second removes. */
+const armed = new Set();
+function confirmTwice(key, el){
+  if (armed.has(key)) { armed.delete(key); return true; }
+  armed.add(key); el.textContent = 'Confirm delete';
+  setTimeout(() => { if (armed.delete(key)) el.textContent = 'Delete'; }, 4000);
+  return false;
+}
+function pageMsg(label){
+  const toast = document.getElementById('toast'); if (!toast) return;
+  toast.textContent = label; toast.classList.add('show');
+  clearTimeout(toast._h); toast._h = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+async function deleteNote(rv, el){
+  if (el && !confirmTwice('n:' + rv.uuid, el)) return;
+  const res = await noteRequest('DELETE', ENDPOINTS.notes + '/' + rv.uuid);
+  if (res.ok && res.d.success) { const i = REVIEWS.findIndex(x => x.uuid === rv.uuid); if (i >= 0) REVIEWS.splice(i, 1); rerenderPanels(); }
+  else pageMsg(res.d.message || 'Could not delete the note');
+}
+async function deleteComment(c, el){
+  if (el && !confirmTwice('c:' + c.key, el)) return;
+  const res = await noteRequest('DELETE', ENDPOINTS.comment + '/' + c.key);
+  if (res.ok && res.d.success) { const i = COMMENTS.findIndex(x => x.key === c.key); if (i >= 0) COMMENTS.splice(i, 1); renderComments(); }
+  else pageMsg(res.d.message || 'Could not delete the comment');
+}
 
 /* ══════════ Rail toggle ══════════ */
 const railBtn = document.getElementById('railBtn'), railSlot = document.getElementById('railSlot');
@@ -719,7 +805,8 @@ function renderComments(){
     el.innerHTML = '<div class="cm-avatar" style="background:'+esc(c.bg)+'">'+esc(c.initials)+'</div>'
       + '<div style="min-width:0;flex:1"><span class="cm-name">'+esc(c.name)+'</span><span class="cm-when">'+esc(c.when)+'</span>'
       + '<div class="cm-text">'+(c.stamp ? '<button class="cm-stamp">'+esc(c.stamp)+'</button>' : '')+esc(c.text)+'</div>'
-      + '<div class="cm-tools"><span class="cm-like"'+(c.liked?' style="color:var(--red-soft)"':'')+'>&#9825; '+Number(c.likes || 0)+'</span><span class="reply-btn">Reply</span></div>'
+      + '<div class="cm-tools"><span class="cm-like"'+(c.liked?' style="color:var(--red-soft)"':'')+'>&#9825; '+Number(c.likes || 0)+'</span><span class="reply-btn">Reply</span>'
+      + ((c.mine || CAN_MODERATE) ? '<span class="reply-btn cm-del" style="color:var(--red-soft)">Delete</span>' : '') + '</div>'
       + (replyOpenKey === c.key
           ? '<div style="display:flex;gap:8px;margin-top:10px"><input class="cm-input rp-in" placeholder="Reply to '+esc(c.name)+'&hellip;"><button class="cm-post rp-go">Reply</button></div>'
           : '')
@@ -735,6 +822,9 @@ function renderComments(){
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': ENDPOINTS.csrf },
       }).then(r => r.json()).then(d => { if (d && d.success) { c.likes = d.likes; c.liked = d.liked; renderComments(); } }).catch(()=>{});
     };
+
+    const del = el.querySelector('.cm-del');
+    if (del) del.onclick = (e) => deleteComment(c, e.currentTarget);
 
     el.querySelector('.reply-btn').onclick = () => {
       replyOpenKey = replyOpenKey === c.key ? null : c.key; renderComments();

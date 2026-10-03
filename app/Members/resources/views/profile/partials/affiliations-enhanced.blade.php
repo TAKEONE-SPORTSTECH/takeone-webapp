@@ -142,6 +142,22 @@
                                                                     <i class="bi bi-hourglass-split me-1"></i>{{ $affiliation->formatted_duration }}
                                                                 </small>
                                                             @endif
+                                                            {{-- Verification — your own affiliations only, as on mobile (2026-10-03). --}}
+                                                            @if(Auth::id() === (int) $affiliation->member_id && $affiliation->uuid)
+                                                                <span class="inline-flex items-center gap-2" data-verify-row="{{ $affiliation->uuid }}">
+                                                                    <x-verification-badge data-verify-badge :status="$affiliation->verification_status" />
+                                                                    @if(in_array($affiliation->verification_status, ['self_reported', 'rejected'], true) || ! $affiliation->verification_status)
+                                                                        @if($affiliation->tenant_id)
+                                                                            <button type="button" data-verify-btn onclick="window.requestAchievementVerification && window.requestAchievementVerification(this)"
+                                                                                    data-verify-url="{{ route('member.affiliation.request-verification', [$affiliation->member_id, $affiliation->uuid]) }}"
+                                                                                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-white underline-offset-2 hover:underline"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
+                                                                        @else
+                                                                            <button type="button" onclick="window.shareTournamentForVouch && window.shareTournamentForVouch('{{ route('people.show', Auth::user()->uuid) }}')"
+                                                                                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-white underline-offset-2 hover:underline" title="{{ __('members::member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('members::member.get_vouched') }}</button>
+                                                                        @endif
+                                                                    @endif
+                                                                </span>
+                                                            @endif
                                                             @if($ageAtStart)
                                                                 <small class="opacity-90">
                                                                     <i class="bi bi-person me-1"></i>{{ __('members::member.partials_affiliations_enhanced_age') }} {{ $ageAtStart }}{{ $ageAtEnd && $ageAtEnd != $ageAtStart ? ' ' . __('members::member.partials_affiliations_enhanced_age_to') . " $ageAtEnd" : '' }}

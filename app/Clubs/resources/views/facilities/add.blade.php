@@ -62,8 +62,12 @@
                                 <label for="facilityDescription" class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_add_description') }}</label>
                                 <textarea id="facilityDescription"
                                           name="description"
+                                          x-show="lang==='en'"
                                           rows="3"
                                           placeholder="{{ __('admin.club_facilities_add_description_placeholder') }}"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                                <textarea name="translations[description][ar]" rows="3" dir="rtl" x-show="lang==='ar'" x-cloak
+                                          placeholder="الوصف بالعربية"
                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
                         </div>

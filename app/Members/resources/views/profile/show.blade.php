@@ -54,6 +54,14 @@
                             aria-label="{{ __('members::member.templates_member_show_edit_photo') }}">
                         <i class="bi bi-pencil-fill text-sm"></i>
                     </button>
+                    {{-- All of this person's pictures: add one, choose the face, delete —
+                         the mobile profile's photo sheet (2026-10-03). --}}
+                    <button type="button"
+                            onclick="window.dispatchEvent(new CustomEvent('open-profile-photo-sheet'))"
+                            class="absolute top-11 right-2 w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-primary hover:bg-accent transition-colors"
+                            aria-label="{{ __('members::member.photos') }}" title="{{ __('members::member.photos') }}">
+                        <i class="bi bi-images text-sm"></i>
+                    </button>
                 @endif
             </div>
 
@@ -86,9 +94,61 @@
                             </ul>
                         </div>
                     @else
-                        <button class="bg-primary text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-primary/90 transition-colors">
-                            <i class="bi bi-person-plus me-1"></i>{{ __('members::member.templates_member_show_follow') }}
-                        </button>
+                        {{-- Follow · Message · Public profile — the same three the mobile
+                             profile offers. The Follow button used to do nothing here (2026-10-03). --}}
+                        @php
+                            $pfUser = $relationship->dependent;
+                            $pfViewer = auth()->user();
+                            $pfSelf = $pfViewer && (int) $pfViewer->id === (int) $pfUser->id;
+                            $pfFollowing = (! $pfSelf && $pfViewer) ? $pfViewer->isFollowing($pfUser->id) : false;
+                            $pfChat = ! $pfSelf && $pfViewer && $pfViewer->canMessage($pfUser);
+                        @endphp
+                        @unless($pfSelf)
+                        <div class="flex items-center gap-2 flex-wrap" x-data="{
+                                following: @js($pfFollowing), busy: false, chatBusy: false,
+                                csrf() { return document.querySelector('meta[name=csrf-token]')?.content || ''; },
+                                async toggle() {
+                                    if (this.busy) return;
+                                    const on = ! this.following; this.busy = true; this.following = on;
+                                    try {
+                                        const r = await fetch(@js(route('wall.follow', $pfUser)), { method: on ? 'POST' : 'DELETE', credentials: 'same-origin',
+                                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() } });
+                                        const d = await r.json().catch(() => ({}));
+                                        if (! r.ok || d.success === false) throw new Error();
+                                        if (d.relationship && typeof d.relationship.following === 'boolean') this.following = d.relationship.following;
+                                    } catch (e) { this.following = ! on; window.showToast && window.showToast('error', @js(__('members::member.follow_error'))); }
+                                    finally { this.busy = false; }
+                                },
+                                async chat() {
+                                    if (this.chatBusy) return; this.chatBusy = true;
+                                    try {
+                                        const r = await fetch(@js($pfChat ? route('messages.start', $pfUser) : ''), { method: 'POST', credentials: 'same-origin',
+                                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() } });
+                                        const d = await r.json().catch(() => ({}));
+                                        if (! r.ok || d.success === false || ! d.conversation_id) throw new Error(d.message || '');
+                                        window.location.href = '/messages/' + d.conversation_id;
+                                    } catch (e) { this.chatBusy = false; window.showToast && window.showToast('error', e.message || @js(__('members::member.chat_error'))); }
+                                },
+                             }">
+                            <button type="button" @click="toggle()" :disabled="busy"
+                                    class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
+                                    :class="following ? 'border border-primary text-primary bg-transparent hover:bg-primary hover:text-white' : 'bg-primary text-white hover:bg-primary/90'">
+                                <i class="bi me-1" :class="busy ? 'bi-arrow-repeat animate-spin' : (following ? 'bi-person-check-fill' : 'bi-person-plus')"></i><span x-text="following ? @js(__('members::member.unfollow')) : @js(__('members::member.follow'))"></span>
+                            </button>
+                            @if($pfChat)
+                                <button type="button" @click="chat()" :disabled="chatBusy"
+                                        class="px-3 py-1.5 rounded-full text-xs font-medium border border-primary text-primary hover:bg-primary hover:text-white transition-colors disabled:opacity-60">
+                                    <i class="bi me-1" :class="chatBusy ? 'bi-arrow-repeat animate-spin' : 'bi-chat-dots'"></i>{{ __('members::member.message') }}
+                                </button>
+                            @endif
+                            @if($pfUser->canViewPublicProfile($pfViewer))
+                                <a href="{{ route('people.show', $pfUser->uuid) }}"
+                                   class="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 text-gray-700 hover:bg-muted transition-colors">
+                                    <i class="bi bi-person-vcard me-1"></i>{{ __('members::member.public_profile') }}
+                                </a>
+                            @endif
+                        </div>
+                        @endunless
                     @endif
                 </div>
                             <p id="profile-display-motto" class="text-gray-500 italic mb-3"@if(!$relationship->dependent->motto) style="display:none"@endif>@if($relationship->dependent->motto)"{{ $relationship->dependent->motto }}"@endif</p>
@@ -1775,6 +1835,10 @@
                 'end_label' => $w->end_date ? $w->end_date->format('M Y') : null,
                 'current' => $w->isCurrent(), 'description' => $w->description,
                 'derived' => false, 'logo' => null, 'skills' => [], 'club_url' => null, '_sort' => optional($w->start_date)->timestamp ?? 0,
+                // Verification — as on the mobile profile (2026-10-03).
+                'verification' => $w->verification_status,
+                'can_request' => (bool) $w->attestingTenant(),
+                'request_url' => route('member.work.request-verification', [$user->id, $w->uuid]),
             ]);
 
             $workCatalogByNameD = \App\Platform\Models\ActivityCatalog::where('is_active', true)
@@ -1880,6 +1944,23 @@
                                     </template>
                                 </div>
                                 <p class="text-[11px] text-gray-600 mt-2 whitespace-pre-line" x-show="w.description" x-text="w.description"></p>
+                                {{-- Verification: state, and the way to get it (mobile parity, 2026-10-03). --}}
+                                <div class="mt-1.5 flex items-center gap-2 text-[11px]" x-show="!w.derived && w.verification" @click.stop>
+                                    <template x-if="w.verification === 'verified'"><span class="inline-flex items-center gap-1 font-semibold text-green-600"><i class="bi bi-patch-check-fill"></i>{{ __('members::member.verified') }}</span></template>
+                                    <template x-if="w.verification === 'pending'"><span class="inline-flex items-center gap-1 font-medium text-muted-foreground"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('members::member.pending') }}</span></template>
+                                    <template x-if="canEdit && (w.verification === 'self_reported' || w.verification === 'rejected') && w.can_request">
+                                        <button type="button" class="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                                                @click="(async () => { try { const r = await fetch(w.request_url, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' } }); const d = await r.json().catch(() => ({})); if (r.ok && d.success) { w.verification = 'pending'; window.showToast && window.showToast('success', d.message); } else { window.showToast && window.showToast('error', d.message || @js(__('Could not request verification.'))); } } catch (e) { window.showToast && window.showToast('error', @js(__('Something went wrong.'))); } })()">
+                                            <i class="bi bi-patch-check"></i>{{ __('Request verification') }}
+                                        </button>
+                                    </template>
+                                    <template x-if="canEdit && (w.verification === 'self_reported' || w.verification === 'rejected') && !w.can_request">
+                                        <button type="button" class="inline-flex items-center gap-1 font-medium text-primary hover:underline" title="{{ __('members::member.get_vouched_hint') }}"
+                                                @click="window.shareTournamentForVouch && window.shareTournamentForVouch(@js(route('people.show', $user->uuid)))">
+                                            <i class="bi bi-people"></i>{{ __('members::member.get_vouched') }}
+                                        </button>
+                                    </template>
+                                </div>
                                 <template x-if="canEdit && !w.derived">
                                     <div class="mt-2 flex items-center gap-3">
                                         <button type="button" @click="openEdit(w)" class="text-[11px] font-medium text-gray-500 hover:text-primary inline-flex items-center gap-1"><i class="bi bi-pencil"></i>{{ __('Edit') }}</button>
@@ -4280,6 +4361,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {{-- Document viewer — black tint, zoom + pan (opened by [data-media-lightbox]). --}}
 <x-media-lightbox />
+
+@if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id || $relationship->relationship_type == 'admin_view')
+    <x-profile-photo-sheet :user="$relationship->dependent" />
+@endif
 
 <!-- Quick Photo Edit Modal (opened from the pencil icon on the profile picture) -->
 <x-photo-edit-modal

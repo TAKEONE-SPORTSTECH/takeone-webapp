@@ -34,6 +34,15 @@
             </p>
         </div>
     </div>
+    @if(! empty($demoList))
+        {{-- Create an event while you already have some — mobile has it in its band (2026-10-03). --}}
+        <div class="flex justify-end -mt-2 mb-4">
+            <a href="{{ route('me.events.create') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors">
+                <i class="bi bi-plus-lg"></i> {{ __('personal.personal_events_create_event') }}
+            </a>
+        </div>
+    @endif
     @if(empty($demoList))
         <div class="bg-white rounded-2xl border border-gray-100 px-5 py-16 text-center">
             <i class="bi bi-calendar-x text-4xl text-gray-300"></i>

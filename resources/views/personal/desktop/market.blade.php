@@ -33,6 +33,29 @@
             </p>
         </div>
     </div>
+
+    {{-- Search, My orders and the cart — the mobile band has all three; desktop had
+         the cart drawer and the search filter but no way to reach either (2026-10-03). --}}
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+        <div class="relative flex-1">
+            <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+            <input x-model="q" type="search" placeholder="{{ __('market.personal_market_search_placeholder') }}"
+                   class="w-full ps-10 pe-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('me.orders') }}"
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors">
+                <i class="bi bi-receipt"></i>{{ __('market.my_orders') }}
+            </a>
+            <button type="button" @click="cartOpen=true"
+                    class="relative inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors">
+                <i class="bi bi-bag" :class="cartBump ? 'cart-bump' : ''"></i>
+                <span x-show="count>0" x-cloak class="min-w-5 h-5 px-1 rounded-full bg-white text-primary text-[10px] font-bold grid place-items-center"
+                      :class="cartBump ? 'cart-pop' : ''" x-text="count"></span>
+            </button>
+        </div>
+    </div>
+
     {{-- ===== Category chips ===== --}}
     <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-6">
         @foreach($categories as $c)

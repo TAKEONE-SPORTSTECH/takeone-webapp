@@ -45,6 +45,14 @@
         </div>
     </div>
 
+    {{-- Your results — mobile links it twice; desktop had no way in (2026-10-03). --}}
+    <div class="flex justify-end -mt-2 mb-4">
+        <a href="{{ route('me.challenge.history') }}"
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors">
+            <i class="bi bi-clock-history"></i>{{ __('challenge.personal_challenge_see_history') }}
+        </a>
+    </div>
+
     {{-- ===== Two-column arena: Versus | Solo (desktop shows both at once) ===== --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 

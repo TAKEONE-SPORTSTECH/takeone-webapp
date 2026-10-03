@@ -59,7 +59,8 @@ class ModuleRegistryTest extends TestCase
 
         $this->assertSame([
             ['admin.club.dashboard', 'admin.club.analytics', 'admin.club.financials'],
-            ['admin.club.members', 'admin.club.instructors', 'admin.club.roles', 'admin.club.achievements.verifications'],
+            // Messages + Notifications joined on 2026-10-03: they were mobile-only, and desktop had no way in.
+            ['admin.club.members', 'admin.club.instructors', 'admin.club.roles', 'admin.club.achievements.verifications', 'admin.club.messages', 'admin.club.notifications'],
             ['admin.club.activities', 'admin.club.packages', 'admin.club.events', 'admin.club.sparring', 'admin.club.facilities'],
             ['admin.club.shop', 'admin.club.orders', 'admin.club.perks'],
             ['admin.club.timeline', 'admin.club.gallery', 'admin.club.achievements'],

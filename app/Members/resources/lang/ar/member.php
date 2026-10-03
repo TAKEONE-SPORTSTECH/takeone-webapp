@@ -1123,4 +1123,5 @@ return [
     'years_old' => 'سنة',
     'your_pictures' => 'الصور',
 
+    'photos' => 'الصور',
 ];

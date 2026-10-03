@@ -53,6 +53,21 @@
         </div>
     </div>
 
+    {{-- Revenue per club over time — the controller already hands this to the
+         desktop view; only mobile drew it (2026-10-03). --}}
+    @if($clubs->isNotEmpty() && ! empty($revenueChart['labels'] ?? []))
+        <x-chart
+            type="line"
+            :labels="$revenueChart['labels']"
+            :datasets="$revenueChart['datasets']"
+            :valuePrefix="$cur . ' '"
+            title="{{ __('clubs::business.clubs') }}"
+            subtitle="{{ __('clubs::business.chain_revenue') }}"
+            icon="bi-graph-up-arrow"
+            :height="260"
+        />
+    @endif
+
     {{-- Per-club breakdown --}}
     <div id="clubs" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100">

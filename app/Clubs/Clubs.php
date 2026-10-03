@@ -71,6 +71,9 @@ class Clubs extends AbstractModule implements ContributesClubAdminNav, Contribut
 
                 ['group' => 'people', 'order' => 20, 'route' => 'admin.club.instructors', 'icon' => 'bi-people', 'label' => __('nav.layouts_admin_club_nav_instructors')],
                 $verifications,
+                // Same as the mobile drawer — desktop had no way to reach these two (2026-10-03).
+                ['group' => 'people', 'order' => 50, 'route' => 'admin.club.messages', 'icon' => 'bi-chat-dots', 'label' => __('nav.layouts_admin_club_nav_messages')],
+                ['group' => 'people', 'order' => 60, 'route' => 'admin.club.notifications', 'icon' => 'bi-bell', 'label' => __('nav.layouts_admin_club_nav_notifications')],
 
                 ['group' => 'programs', 'order' => 10, 'route' => 'admin.club.activities', 'icon' => 'bi-activity', 'label' => __('nav.layouts_admin_club_nav_activities')],
                 ['group' => 'programs', 'order' => 20, 'route' => 'admin.club.packages', 'icon' => 'bi-box', 'label' => __('nav.layouts_admin_club_nav_packages')],

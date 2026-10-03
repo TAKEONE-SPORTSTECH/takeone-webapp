@@ -1174,4 +1174,5 @@ return [
     'two_factor_on' => 'Active',
     'two_factor_on_since' => 'Active since :date',
     'public_profile' => 'Public profile',
+    'photos' => 'Photos',
 ];

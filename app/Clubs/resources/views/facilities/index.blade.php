@@ -261,6 +261,8 @@ function populateEditForm(facility) {
     // Populate fields
     document.getElementById('editFacilityName').value = facility.name || '';
     document.getElementById('editFacilityNameAr').value = facility.translations?.name?.ar || '';
+    document.getElementById('editFacilityDescription').value = facility.description || '';
+    document.getElementById('editFacilityDescriptionAr').value = facility.translations?.description?.ar || '';
     document.getElementById('editFacilityAddress').value = facility.address || '';
     document.getElementById('editFacilityAddressAr').value = facility.translations?.address?.ar || '';
     document.getElementById('editFacilityLat').value = facility.gps_lat || '';
