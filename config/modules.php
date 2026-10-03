@@ -75,6 +75,15 @@ return [
         \App\Federations\Federations::class,
 
         /*
+         * Parties & relationships: who holds what role in which party, since
+         * when, with what share — one dated table for owners, staff, members,
+         * presidents, hosts (Documentation/major-change/PLAN.md). Its doors
+         * (Relations, Authority) sit at the module root because every other
+         * module calls them. PARTIES_ENABLED / PARTIES_SHADOW, both OFF.
+         */
+        \App\Parties\Parties::class,
+
+        /*
          * The operator's own vertical: the super-admin's room, the global
          * activity directory, platform-wide settings, and the commands that
          * back up, reset a baseline or seed a demo. Last, because it is about

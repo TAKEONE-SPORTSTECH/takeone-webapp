@@ -10,21 +10,10 @@ trait HandlesClubAuthorization
 {
     private function authorizeClub(Tenant $club): void
     {
-        $user = Auth::user();
-        if ($user->isSuperAdmin()) {
-            return;
+        // One rule, written once (canManageClub). Same four doors as always.
+        if (! $this->canManageClub($club)) {
+            abort(403, 'Unauthorized access to this club.');
         }
-        if ($club->owner_user_id === $user->id) {
-            return;
-        }
-        if ($user->isClubAdmin($club->id)) {
-            return;
-        }
-        // Chain owners have full control over every club in their approved business.
-        if ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id)) {
-            return;
-        }
-        abort(403, 'Unauthorized access to this club.');
     }
 
     /** Non-throwing variant of authorizeClub() — true if the current user may manage the club. */
@@ -34,20 +23,17 @@ trait HandlesClubAuthorization
         if (! $user) {
             return false;
         }
-        if ($user->isSuperAdmin()) {
-            return true;
-        }
-        if ($club->owner_user_id === $user->id) {
-            return true;
-        }
-        if ($user->isClubAdmin($club->id)) {
-            return true;
-        }
-        if ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id)) {
-            return true;
-        }
 
-        return false;
+        $ok = $user->isSuperAdmin()
+            || $club->owner_user_id === $user->id
+            || $user->isClubAdmin($club->id)
+            // Chain owners have full control over every club in their approved business.
+            || ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id));
+
+        // Shadow mode (PARTIES_SHADOW): the relationships answer the same
+        // question and any disagreement is recorded. $ok still decides.
+        return \App\Parties\Shadow::compare('club.manage', $user, 'club:'.$club->id, $ok,
+            fn () => app(\App\Parties\Authority::class)->manageClub($user, $club));
     }
 
     /**
@@ -65,11 +51,12 @@ trait HandlesClubAuthorization
         if (! $user) {
             return false;
         }
-        if ($user->isSuperAdmin() || $club->owner_user_id === $user->id) {
-            return true;
-        }
+        $ok = $user->isSuperAdmin()
+            || $club->owner_user_id === $user->id
+            || ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id));
 
-        return $club->business_id && $this->ownsClubBusiness($user->id, $club->business_id);
+        return \App\Parties\Shadow::compare('club.owner', $user, 'club:'.$club->id, $ok,
+            fn () => app(\App\Parties\Authority::class)->actAsClubOwner($user, $club));
     }
 
     private function authorizeClubOwnerAction(Tenant $club): void

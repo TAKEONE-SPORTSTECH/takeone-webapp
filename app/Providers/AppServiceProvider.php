@@ -113,6 +113,11 @@ class AppServiceProvider extends ServiceProvider
         // A new avatar joins the profile's own pictures, whichever path set it.
         \App\Members\Models\User::observe(\App\Members\Observers\UserObserver::class);
 
+        // Mirror ownership/role/staff/membership writes into party_relations
+        // (PLAN.md Phase 3). Every handler returns at once unless
+        // PARTIES_ENABLED, and none can break the write it mirrors.
+        \App\Parties\DualWrite::register();
+
         // A deleted member leaves every open federation dashboard at once,
         // whichever path deleted them (admin, self-service, a guardian).
         \App\Members\Models\User::deleted(fn ($user) => \App\Federations\Support\FederationPulse::forDeletedMember($user));

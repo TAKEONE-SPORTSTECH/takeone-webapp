@@ -1076,6 +1076,9 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
 
         $this->roles()->attach($role->id, ['tenant_id' => $tenantId]);
 
+        // Mirror into party_relations (no-op unless PARTIES_ENABLED; never throws).
+        \App\Parties\DualWrite::roleChanged($this, $roleSlug, $tenantId, true);
+
         // Invalidate all active sessions so the new role takes effect immediately.
         DB::table('sessions')->where('user_id', $this->id)->delete();
     }
@@ -1096,6 +1099,8 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
         } else {
             $this->roles()->detach($role->id);
         }
+
+        \App\Parties\DualWrite::roleChanged($this, $roleSlug, $tenantId, false);
 
         // Invalidate all active sessions so the removed role takes effect immediately.
         DB::table('sessions')->where('user_id', $this->id)->delete();

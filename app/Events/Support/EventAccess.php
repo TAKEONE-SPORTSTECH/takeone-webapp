@@ -66,7 +66,10 @@ class EventAccess
     {
         $key = $event->id.':'.$user->id;
 
-        return $this->manages[$key] ??= $this->resolveCanManage($event, $user);
+        return $this->manages[$key] ??= \App\Parties\Shadow::compare(
+            'event.manage', $user, 'event:'.$event->id, $this->resolveCanManage($event, $user),
+            fn () => app(\App\Parties\Authority::class)->manageEvent($user, $event),
+        );
     }
 
     /** @var array<string, bool> */

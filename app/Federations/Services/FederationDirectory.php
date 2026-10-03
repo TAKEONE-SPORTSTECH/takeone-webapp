@@ -52,6 +52,24 @@ class FederationDirectory
      */
     public function access(User $user): ?array
     {
+        $access = $this->accessFromSources($user);
+
+        // Shadow mode (PARTIES_SHADOW): does the relationships table land this
+        // user on the same body with the same powers? Recorded, never decides.
+        \App\Parties\Shadow::compare('federation.access', $user, 'user:'.$user->id, true, function () use ($user, $access) {
+            $new = app(\App\Parties\Authority::class)->federationAccess($user);
+
+            return $access === null
+                ? $new === null
+                : $new !== null && (int) $new['root'] === (int) $access['root']->id && $new['manager'] === $access['manager'];
+        });
+
+        return $access;
+    }
+
+    /** @return array{root: Federation, manager: bool, sports: array<int,string>, role: string}|null */
+    private function accessFromSources(User $user): ?array
+    {
         // Someone who owns a body AND one beneath it lands on the higher one —
         // it already shows everything below. Same depth: the oldest, as before.
         $owned = Federation::approved()->whereNull('suspended_at')
