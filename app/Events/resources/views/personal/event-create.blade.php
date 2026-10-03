@@ -16,7 +16,7 @@
     $isEdit = $mode === 'edit';
     $ev = $event ?? null;
     $sportsByFamily = collect($schema['sports'])->groupBy('family');
-    $initTenant  = $ev?->tenant_id ?? (!empty($clubs) ? $clubs[0]['id'] : 'null');
+    $initTenant  = $ev?->tenant_id ?? ($preselectClub ?? null) ?? (!empty($clubs) ? $clubs[0]['id'] : 'null');
     $initStart   = $ev?->start_time ? \Carbon\Carbon::parse($ev->start_time)->format('H:i') : '';
     $initEnd     = $ev?->end_time ? \Carbon\Carbon::parse($ev->end_time)->format('H:i') : '';
     // A NEW event is paid by default — an organiser opts INTO free, rather than

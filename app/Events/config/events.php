@@ -66,6 +66,15 @@ return [
     'unified_page' => (bool) env('EVENT_UNIFIED_PAGE', false),
 
     /*
+     | ONE event editor (owner, 2026-10-03; PLAN.md Phase 6): the club admin
+     | panel's Add / Edit event open the shared full editor (/me/events/create,
+     | /me/events/{uuid}/edit) with the club already chosen, instead of the
+     | panel's own smaller form. OFF: the panel's form, exactly as before. The
+     | small form is retired only after this has run (RULE #1).
+     */
+    'one_form' => (bool) env('EVENT_ONE_FORM', false),
+
+    /*
      | Karate on the shared championship base (App\Events\Support\Tournament),
      | the one BJJ already runs on. OFF by default: the karate package keeps its
      | own copies until this has been verified on real events. See

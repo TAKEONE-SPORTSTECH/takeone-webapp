@@ -126,6 +126,8 @@
     @endphp
     <script>
 window.eventsData = @json($eventsData);
+// ONE event editor (events.one_form): null keeps the sheet form.
+window.__clubOneForm = @json($oneForm ?? null);
 window.EVT_MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 
 function escEvent(s) {

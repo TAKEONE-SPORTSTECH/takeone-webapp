@@ -118,8 +118,12 @@ window.eventFormSheet = function () {
             this.lateAmount = this.lateDate = this.lateTime = '';
             this.keptImages = []; this.newImages = [];
         },
-        openAdd() { this.mode = 'add'; this.editId = null; this.resetAll(); this.open = true; },
+        openAdd() {
+            if (window.__clubOneForm) { window.location.href = window.__clubOneForm.create; return; }
+            this.mode = 'add'; this.editId = null; this.resetAll(); this.open = true;
+        },
         openEdit(id) {
+            if (window.__clubOneForm && window.__clubOneForm.edit[id]) { window.location.href = window.__clubOneForm.edit[id]; return; }
             const d = (window.eventsData || {})[id];
             if (!d) { window.showToast('error', 'Event not found.'); return; }
             this.mode = 'edit'; this.editId = id; this.resetAll();

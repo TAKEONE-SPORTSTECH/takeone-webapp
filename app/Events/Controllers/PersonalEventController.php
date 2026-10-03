@@ -3962,12 +3962,18 @@ class PersonalEventController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $me = Auth::user();
         $clubs = $this->clubsICanCreateFor($me);
 
-        return view('events::personal.event-create', ['clubs' => $clubs] + $this->schemaPayload());
+        // Arriving from a club's admin panel (?club={slug}): that club is
+        // chosen — but only if it is one this person may create for.
+        $slug = (string) $request->query('club', '');
+        $preselect = $slug !== '' ? \App\Clubs\Models\Tenant::where('slug', $slug)->value('id') : null;
+        $preselect = collect($clubs)->contains(fn ($c) => (int) $c['id'] === (int) $preselect) ? (int) $preselect : null;
+
+        return view('events::personal.event-create', ['clubs' => $clubs, 'preselectClub' => $preselect] + $this->schemaPayload());
     }
 
     /** Schema + (in edit mode) the event's existing divisions for the form. */

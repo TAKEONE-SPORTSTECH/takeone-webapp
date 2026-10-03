@@ -545,6 +545,8 @@ function initStripDrag(e, el) {
 
 const eventsData    = @json($eventsJson);
 const storeUrl      = '{{ route('admin.club.events.store', $club->slug) }}';
+// ONE event editor (events.one_form): null keeps this page's own form.
+const oneForm       = @json($oneForm ?? null);
 const baseEditUrl   = '{{ url('admin/club/' . $club->slug . '/events') }}';
 
 const emptyForm = {
@@ -585,6 +587,7 @@ function eventsAdmin() {
         },
 
         openAdd() {
+            if (oneForm) { window.location.href = oneForm.create; return; }
             this.isEdit      = false;
             this.formAction  = storeUrl;
             this.formData    = { ...emptyForm };
@@ -594,6 +597,7 @@ function eventsAdmin() {
         },
 
         openEdit(id) {
+            if (oneForm && oneForm.edit[id]) { window.location.href = oneForm.edit[id]; return; }
             const ev = eventsData.find(e => e.id === id);
             if (!ev) return;
             this.isEdit      = true;

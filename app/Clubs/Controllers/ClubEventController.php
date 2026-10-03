@@ -98,7 +98,14 @@ class ClubEventController extends Controller
         $events = ClubEvent::where('tenant_id', $club->id)->orderBy('date')->orderBy('start_time')->get();
         $facilities = ClubFacility::where('tenant_id', $club->id)->orderBy('name')->get();
 
-        return view(\App\Clubs\Support\ClubView::pick('events', 'clubs'), compact('club', 'events', 'facilities'));
+        // ONE event editor (events.one_form): Add / Edit go to the shared editor
+        // with this club chosen. Null keeps the panel's own form.
+        $oneForm = config('events.one_form') ? [
+            'create' => route('me.events.create', ['club' => $club->slug]),
+            'edit' => $events->mapWithKeys(fn ($e) => [$e->id => route('me.events.edit', $e->uuid)])->all(),
+        ] : null;
+
+        return view(\App\Clubs\Support\ClubView::pick('events', 'clubs'), compact('club', 'events', 'facilities', 'oneForm'));
     }
 
     public function storeEvent(EventRequest $request, Tenant $club)
