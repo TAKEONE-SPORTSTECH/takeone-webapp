@@ -97,6 +97,13 @@ class ProfileHistorySync
             return null;
         }
 
+        // A HIDDEN event leaves no copy on the member's public record (its name
+        // would be listed where the event itself is not). Their own profile
+        // still shows the entry, read live from the event.
+        if ($event->isHidden()) {
+            return null;
+        }
+
         // Spectators did not compete, so they get no tournament record.
         if ($registration->role && $registration->role !== 'participant') {
             return null;

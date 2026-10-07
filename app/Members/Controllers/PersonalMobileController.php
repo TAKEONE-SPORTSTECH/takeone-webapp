@@ -145,6 +145,11 @@ class PersonalMobileController extends Controller
         $isMobile = (bool) $request->attributes->get('is_mobile');
         $viewData = compact('user', 'posts', 'personalPosts', 'followingPosts', 'suggestions', 'allPosts', 'feedTabDots');
 
+        // New UI (branch new-ui) — same data, new page. Off → the classic views.
+        if (\App\Ui\NewUi::active()) {
+            return view($isMobile ? 'ui::feed.mobile' : 'ui::feed.desktop', $viewData);
+        }
+
         return view($isMobile ? 'members::personal.mobile.home' : 'members::personal.desktop.home', $viewData);
     }
 

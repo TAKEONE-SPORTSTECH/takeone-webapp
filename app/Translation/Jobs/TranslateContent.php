@@ -47,7 +47,12 @@ class TranslateContent implements ShouldQueue
         public string $morphAlias,
         public int $recordId,
         public string $locale,
-    ) {}
+    ) {
+        // Off the default queue when one is configured — see config/translation.php.
+        if ($connection = config('translation.queue')) {
+            $this->onConnection($connection)->onQueue('translation');
+        }
+    }
 
     /**
      * One job per record+language in flight. Belt and braces with the dispatch

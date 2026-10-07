@@ -376,6 +376,16 @@
              button that greys out exactly when you reach for it is worse than
              no button at all. --}}
         <button id="btnResync" class="cbtn" style="color:var(--ao-ink);border:1px solid rgba(138,180,255,.45);">{{ __('scoreboard::karate_messages.ctl_resync') }}</button>
+        {{-- The draw on this tablet (App\Events\Support\TabletDraw) — whole
+             row, so the odd button out does not leave a hole in the grid. --}}
+        @if(! empty($drawUrl))
+            <a href="{{ $drawUrl }}" class="cbtn" style="grid-column:1 / -1;gap:14px;color:var(--gold);border:1px solid var(--gold);text-decoration:none;">
+                {{-- A knockout bracket, drawn inline: this console loads no icon font. --}}
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 4h5v6H3M3 14h5v6H3M8 7h4v10H8M12 12h4M16 9h5v6h-5"/>
+                </svg>{{ __('events::events.tablet_draw_button') }}
+            </a>
+        @endif
       </div>
 
       <div style="font-size:16px;color:var(--faint);letter-spacing:.06em;text-align:center;">{{ __('scoreboard::karate_messages.ctl_resync_hint') }}</div>

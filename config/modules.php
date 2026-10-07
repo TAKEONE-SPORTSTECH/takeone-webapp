@@ -75,6 +75,12 @@ return [
         \App\Federations\Federations::class,
 
         /*
+         * The new UI shell (top bar, phone header and tabs, Play/Manage) and
+         * the screens rebuilt on it. Off unless NEW_UI — see app/Ui/Ui.php.
+         */
+        \App\Ui\Ui::class,
+
+        /*
          * Parties & relationships: who holds what role in which party, since
          * when, with what share — one dated table for owners, staff, members,
          * presidents, hosts (Documentation/major-change/PLAN.md). Its doors

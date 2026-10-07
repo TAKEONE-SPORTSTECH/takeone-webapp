@@ -44,6 +44,101 @@ class Karate extends AbstractCombatSport
         ];
     }
 
+    /**
+     * The grading of each Karate STYLE the platform's activity list names, as
+     * its main world association grades it. Each is a belt system an event may
+     * choose (CategorySystems → `club_events.belt_system`), and choosing one is
+     * what names the event's style ("Kyokushin Karate").
+     *
+     * Kyu colours are NOT standard even within one style — a national body or
+     * a dojo often swaps a colour — so each ladder follows one named source:
+     *
+     *  - Kyokushin — IKO (Kyokushinkaikan), the owner's choice 2026-10-07.
+     *  - Shotokan  — JKA.
+     *  - Goju-ryu  — IOGKF.
+     *  - Shito-ryu — Shitokai.
+     *  - Wado-ryu  — Wado-kai.
+     *
+     * A colour worn at two or three kyu carries them all ("9th kyu" on an
+     * orange belt). The stripe or tab that marks the higher of them is not
+     * drawn: what it looks like varies by branch, and the grade already says
+     * it. Grading only — none of these styles has one weight table every
+     * organisation shares, so an organiser builds their own with the category
+     * editor (Shotokan's season table is the one exception, see categorySystems()).
+     *
+     * @return array<string, array<int, array>>  style key => BeltLadder rows
+     */
+    public function styleLadders(): array
+    {
+        $kyu = fn (array $n) => \App\Sports\Combat\BeltLadder::numbered('sport-karate::messages.grade_kyu', $n);
+        $rank = fn (string $v, array $grades, string $group = 'kyu') => \App\Sports\Combat\BeltLadder::rank($v, $group, $grades);
+        $black = $rank('black', \App\Sports\Combat\BeltLadder::numbered('sport-karate::messages.grade_dan', range(1, 10)), 'dan');
+        $beginner = fn (string $key) => [__('sport-karate::messages.'.$key)];
+
+        return [
+            'kyokushin' => [
+                $rank('white', $beginner('grade_mukyu')),
+                $rank('orange', $kyu([10, 9])),
+                $rank('blue', $kyu([8, 7])),
+                $rank('yellow', $kyu([6, 5])),
+                $rank('green', $kyu([4, 3])),
+                $rank('brown', $kyu([2, 1])),
+                $black,
+            ],
+            'shotokan' => [
+                $rank('white', $kyu([10])),
+                $rank('orange', $kyu([9])),
+                $rank('red', $kyu([8])),
+                $rank('yellow', $kyu([7])),
+                $rank('green', $kyu([6])),
+                $rank('purple', $kyu([5, 4])),
+                $rank('brown', $kyu([3, 2, 1])),
+                $black,
+            ],
+            'goju_ryu' => [
+                $rank('white', array_merge($beginner('grade_ungraded'), $kyu([10]))),
+                $rank('blue', $kyu([9, 8])),
+                $rank('yellow', $kyu([7, 6])),
+                $rank('green', $kyu([5, 4])),
+                $rank('brown', $kyu([3, 2, 1])),
+                $black,
+            ],
+            'shito_ryu' => [
+                $rank('white', $beginner('grade_ungraded')),
+                $rank('red', $kyu([9])),
+                $rank('yellow', $kyu([8])),
+                $rank('orange', $kyu([7])),
+                $rank('green', $kyu([6])),
+                $rank('blue', $kyu([5])),
+                $rank('purple', $kyu([4])),
+                $rank('brown', $kyu([3, 2, 1])),
+                $black,
+            ],
+            'wado_ryu' => [
+                $rank('white', $beginner('grade_ungraded')),
+                $rank('yellow', $kyu([8])),
+                $rank('orange', $kyu([7])),
+                $rank('green', $kyu([6])),
+                $rank('blue', $kyu([5])),
+                $rank('purple', $kyu([4])),
+                $rank('brown', $kyu([3, 2, 1])),
+                $black,
+            ],
+        ];
+    }
+
+    /** The WKF ladder (the sport's default), then each style's beside it. */
+    public function beltSystems(): array
+    {
+        $systems = parent::beltSystems();
+
+        foreach ($this->styleLadders() as $key => $ladder) {
+            $systems[$key] = new \App\Sports\Combat\BeltSystem($key, __('sport-karate::messages.style_'.$key), $ladder);
+        }
+
+        return $systems;
+    }
+
     public function weightDivisions(): array
     {
         // This sport's own table, in its own folder (divisions.php) — moved out

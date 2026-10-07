@@ -173,6 +173,8 @@ class InterfaceAgent
                     [],
                     [
                         'max_tokens' => (int) config('translation.max_tokens', 8000),
+                        // Ollama only: room for a 60-string batch. See config/translation.php.
+                        'num_ctx' => (int) config('translation.num_ctx', 32768),
                         // Lower than the translation pass: editing is not a
                         // creative task and a warm model rewrites rather than
                         // corrects.
@@ -381,6 +383,8 @@ class InterfaceAgent
                     [],
                     [
                         'max_tokens' => (int) config('translation.max_tokens', 8000),
+                        // Ollama only: room for a 60-string batch. See config/translation.php.
+                        'num_ctx' => (int) config('translation.num_ctx', 32768),
                         'temperature' => (float) config('translation.temperature', 0.3),
                         'json' => config('translation.json_mode', true) && $link->supportsJsonMode(),
                         // Labels are not a reasoning problem either.

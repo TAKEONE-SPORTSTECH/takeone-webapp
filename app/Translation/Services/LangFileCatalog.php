@@ -359,6 +359,20 @@ class LangFileCatalog
         return is_array($data) ? $this->flatten($data) : [];
     }
 
+    /**
+     * The ENGLISH strings that need a translation: every string except the
+     * empty ones. An empty English value (`'payBankS' => ''`, a slot a layout
+     * fills or leaves blank) has nothing to translate — counting it made a
+     * language "missing" a string no model could ever supply, so Japanese
+     * read "still English" forever over two blanks (2026-10-05).
+     *
+     * @return array<string, string>
+     */
+    public function sourceStrings(string $path): array
+    {
+        return array_filter($this->strings($path), fn ($v) => trim($v) !== '');
+    }
+
     /** @return array<string, string> */
     private function flatten(array $data, string $prefix = ''): array
     {

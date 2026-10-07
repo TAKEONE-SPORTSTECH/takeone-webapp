@@ -647,8 +647,13 @@ window.BracketBoard = window.BracketBoard || (function () {
                 S.division = wanted ? wanted.id : (drawable[0] ? drawable[0].id : null);
             }
 
-            render(keepView);
+            /* The view class BEFORE the render, never after: `is-phone` makes
+               every face 56px instead of 48px, and render() measures the cards
+               to space them. Measured first and enlarged second, each card
+               grew 24px after its gap was set, and the tallest (a bye, with
+               its footer) ate the gap and touched its neighbour. */
             applyView();
+            render(keepView);
             emit('bracket:loaded', {
                 divisions: summary(),
                 division: S.division, canArrange: arrangeable(), locked: S.locked,

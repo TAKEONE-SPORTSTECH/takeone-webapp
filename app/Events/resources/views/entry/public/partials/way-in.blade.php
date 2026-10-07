@@ -31,7 +31,9 @@
                 </div>
                 <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0"></i>
             </a>
-        @elseif($e['enrol']['open'])
+        @elseif($e['enrol']['open'] || ! empty($e['club_entry']))
+            <div class="space-y-3">
+            @if($e['enrol']['open'])
             {{-- The same card as the doors above it — icon tile, title, sub-line,
                  chevron — so the way IN reads as one of the places you can go
                  rather than a button bolted underneath them. Maroon rather than
@@ -53,6 +55,27 @@
                 </div>
                 <i class="bi bi-chevron-right text-white/80 relative flex-shrink-0"></i>
             </a>
+            @endif
+            @if(! empty($e['club_entry']))
+                {{-- "Register your club" — the club's way in (PublicEvent →
+                     `club_entry`): rules first, then the club, its athletes,
+                     review. The only card on a clubs-only event. --}}
+                <a href="{{ $e['club_entry'] }}"
+                   class="m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex items-center gap-3.5 no-underline"
+                   style="background: linear-gradient(135deg, #7f1d1d, #1f2937);">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
+
+                    <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                        <i class="bi bi-building-add text-2xl"></i>
+                    </div>
+                    <div class="relative min-w-0 flex-1">
+                        <h3 class="font-black text-base leading-tight">{{ __('events::events.club_entry_cta') }}</h3>
+                        <p class="text-xs text-white/85 mt-0.5">{{ __('events::events.club_entry_cta_hint') }}</p>
+                    </div>
+                    <i class="bi bi-chevron-right rtl:rotate-180 text-white/80 relative flex-shrink-0"></i>
+                </a>
+            @endif
+            </div>
         @else
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
                 <i class="bi bi-lock-fill text-xl" style="color: {{ $e['color'] }}"></i>

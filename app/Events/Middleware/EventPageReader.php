@@ -49,6 +49,15 @@ class EventPageReader
 
     public function handle(Request $request, Closure $next): Response
     {
+        // A LINK READER (WhatsApp, Instagram…) fetching a shared event address
+        // gets the preview tags — it keeps no session, so for an event that is
+        // not public it would otherwise unfurl the login page. Only for events
+        // that are published or take entries by invitation; it reads nothing a
+        // holder of the link would not see. (App\Events\Support\ShareCard)
+        if ($preview = $this->linkPreview($request)) {
+            return $preview;
+        }
+
         $event = $this->openEvent($request);
 
         if ($event === null) {
@@ -58,6 +67,30 @@ class EventPageReader
         $request->attributes->set('event_reader', $this->signedInFully($request) ? 'member' : 'visitor');
 
         return $next($request);
+    }
+
+    private function linkPreview(Request $request): ?Response
+    {
+        if (! $request->isMethod('GET') || ! \App\Events\Support\ShareCard::isLinkReader($request)
+            || ! in_array((string) $request->route()?->getName(), \App\Events\Support\EventInvitePass::ROUTES, true)) {
+            return null;
+        }
+        $event = $request->route()?->parameter('event');
+        if (! $event instanceof ClubEvent) {
+            $event = is_string($event) && $event !== '' ? ClubEvent::where('uuid', $event)->first() : null;
+        }
+        if (! $event instanceof ClubEvent || $event->is_archived
+            || ! ($this->publisher->isPublic($event) || \App\Events\Support\ClubEntry\ClubEntryDesks::for($event) !== null)) {
+            return null;
+        }
+        $share = rescue(fn () => app(\App\Events\Support\ShareCard::class)->meta($event), null, report: true);
+        if (! $share) {
+            return null;
+        }
+
+        return response()->view('events::entry.share-preview', [
+            'share' => $share, 'url' => $request->fullUrl(), 'host' => $event->host()->name,
+        ])->header('Cache-Control', 'public, max-age=600');
     }
 
     /** The published, branded event this request names — or null. Never throws. */
@@ -83,7 +116,11 @@ class EventPageReader
             $event = is_string($event) && $event !== '' ? ClubEvent::where('uuid', $event)->first() : null;
         }
 
-        return $event instanceof ClubEvent && $this->publisher->isPublic($event) ? $event : null;
+        // An invitation pass (EventInvitePass) opens it as well — for the event
+        // page and its club-entry steps only, never its other sections.
+        return $event instanceof ClubEvent
+            && ($this->publisher->isPublic($event) || \App\Events\Support\EventInvitePass::opens($request, $event))
+            ? $event : null;
     }
 
     /** Would this reader have passed the member stack? Asked, never enforced. */

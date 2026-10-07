@@ -319,4 +319,81 @@ return [
 
     'temperature' => (float) env('TRANSLATION_TEMPERATURE', 0.3),
 
+    /*
+    |--------------------------------------------------------------------------
+    | The queue translation jobs run on
+    |--------------------------------------------------------------------------
+    |
+    | Null keeps them on the default queue, which is what they always did.
+    |
+    | ⚠️ Set it to `translation` only once a worker serves that queue (the
+    | `takeone-translation-worker` systemd unit). The default connection hands a
+    | job to a SECOND worker after 90 seconds (`retry_after`), and a language
+    | run lasts up to an hour and a half — so on the default queue another
+    | worker picks the same run up, finds it "attempted too many times" and
+    | marks it failed while the first is still writing strings (2026-10-05).
+    | The `translation` connection in config/queue.php waits long enough.
+    */
+    'queue' => env('TRANSLATION_QUEUE_CONNECTION') ?: null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Context window asked of an Ollama server, per translation request
+    |--------------------------------------------------------------------------
+    |
+    | A batch of 60 strings is ~2,000 tokens in and ~4,000-5,000 out. Ollama's
+    | own default is 4,096, which cut replies off mid-JSON. Asked for on every
+    | request so it never depends on how the server was started. Match it to
+    | OLLAMA_CONTEXT_LENGTH on the server, or Ollama reloads the model to
+    | change size.
+    */
+    'num_ctx' => (int) env('TRANSLATION_NUM_CTX', 32768),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ollama lanes — one language run split across several GPUs
+    |--------------------------------------------------------------------------
+    |
+    | One Ollama server answers one request at a time, so a run used one GPU
+    | and left the other idle. List one URL per Ollama instance (each pinned to
+    | its own GPU) and `translate:interface` splits a language's files across
+    | them and runs the lanes side by side:
+    |
+    |     TRANSLATION_OLLAMA_LANES=http://192.168.0.40:11434,http://192.168.0.40:11435
+    |
+    | Only an Ollama PROVIDER whose base_url is one of these is redirected per
+    | lane; any other provider is used exactly as configured. Empty (or one
+    | URL) is the old single-lane behaviour.
+    */
+    'ollama_lanes' => array_values(array_filter(array_map(
+        fn ($u) => rtrim(trim($u), '/'),
+        explode(',', (string) env('TRANSLATION_OLLAMA_LANES', '')),
+    ))),
+
+    /*
+    |--------------------------------------------------------------------------
+    | The translation doctor — fix what it can, report what it cannot
+    |--------------------------------------------------------------------------
+    |
+    | `translate:doctor`, every five minutes (routes/console.php). The doctor
+    | class in the Translation module says exactly what it touches.
+    | OFF by default; it re-queues paid work when the chain is not local.
+    */
+    'autofix' => [
+        'enabled' => (bool) env('TRANSLATION_AUTOFIX', false),
+
+        // Automatic resumes of one language's run per day, before it gives up
+        // and tells a person. Only while a PAID provider is in reach — when
+        // every working translator is self-hosted Ollama there is no cap.
+        'max_resumes_per_day' => (int) env('TRANSLATION_AUTOFIX_MAX_RESUMES', 4),
+
+        // Ask a reachable Ollama server to download a configured model it is
+        // missing (a reinstalled server comes back with no models).
+        'pull_models' => (bool) env('TRANSLATION_AUTOFIX_PULL_MODELS', true),
+        'pull_timeout' => (int) env('TRANSLATION_AUTOFIX_PULL_TIMEOUT', 1800),
+
+        // How long a probe waits for a provider to answer.
+        'probe_timeout' => (int) env('TRANSLATION_AUTOFIX_PROBE_TIMEOUT', 5),
+    ],
+
 ];

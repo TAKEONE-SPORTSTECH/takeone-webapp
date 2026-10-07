@@ -101,6 +101,16 @@ class MemberFederationEvents
             ->whereIn('event_id', $platform->keys())->where('user_id', $user->id)->where('role', 'participant')
             ->pluck('event_id')->flip();
 
+        // A HIDDEN platform event is on nobody's list but those who run it or
+        // are entered in it (ClubEvent::scopeListedFor) — reached by its link.
+        $hiddenIds = \App\Events\Models\ClubEvent::whereIn('id', $platform->keys())->where('visibility', \App\Events\Models\ClubEvent::HIDDEN)->pluck('id');
+        if ($hiddenIds->isNotEmpty()) {
+            $mayList = \App\Events\Models\ClubEvent::whereIn('id', $hiddenIds)->listedFor($user)->pluck('id')->flip();
+            // …and those who run the federation hosting it.
+            $events = $events->reject(fn (FederationEvent $e) => $e->club_event_id && $hiddenIds->contains($e->club_event_id)
+                && ! isset($mayList[$e->club_event_id]) && ! in_array((int) $e->federation_id, array_map('intval', (array) $run), true))->values();
+        }
+
         return $events->map(function (FederationEvent $e) use ($featured, $platform, $mine) {
             $card = self::card($e) + ['featured' => isset($featured[$e->id])];
             if ($ev = $platform->get($e->club_event_id)) {
@@ -136,6 +146,9 @@ class MemberFederationEvents
             'id' => 'fed-'.$e->id,
             'key' => $e->uuid,
             'href' => route('federations.app.invitation').'?event='.rawurlencode($e->uuid),
+            // The event's own front door — artwork and language picker — kept
+            // even when `href` is switched to the platform event page below.
+            'invitation' => route('federations.app.invitation').'?event='.rawurlencode($e->uuid),
             'external' => true,
             'source' => 'federation',
             'sort' => $start?->timestamp ?? PHP_INT_MAX,

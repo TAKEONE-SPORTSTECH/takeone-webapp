@@ -125,6 +125,7 @@ class PublicTranslationController extends Controller
      */
     private function assertPublic(ClubEvent $event): void
     {
-        abort_unless($this->publisher->isPublic($event), 404);
+        // …or the reader holds this event's invitation pass (App\Events\Support\EventInvitePass).
+        abort_unless($this->publisher->isPublic($event) || \App\Events\Support\EventInvitePass::has(request(), $event), 404);
     }
 }

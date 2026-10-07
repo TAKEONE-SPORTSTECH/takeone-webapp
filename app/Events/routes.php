@@ -388,6 +388,55 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 */
 // `throttle:public-event` (300/min per person or connection) because a stranger
 // can reach these now, exactly as on /e/{uuid}.
+// The rules screen's acceptance, and the club stamped on it after a
+// registration (ClubEntryController::consent). Public like the screens — an
+// invited club has no account — with the controller's own reading gate, CSRF
+// from the web stack, and a tight throttle.
+// "Register your club" on a CLUB-hosted event — its JSON doors (ClubEntryApiController,
+// PlatformClubEntry). Public like the screens, gated in the controller; tight throttles.
+Route::prefix('/me/events/{event:uuid}/club/api')->whereUuid('event')->name('events.club-entry.api.')->group(function () {
+    Route::get('/clubs', [App\Events\Controllers\ClubEntryApiController::class, 'clubs'])->middleware('throttle:20,1')->name('clubs');
+    Route::post('/code', [App\Events\Controllers\ClubEntryApiController::class, 'code'])->middleware('throttle:5,1')->name('code');
+    Route::post('/verify', [App\Events\Controllers\ClubEntryApiController::class, 'verify'])->middleware('throttle:10,1')->name('verify');
+    Route::post('/choose', [App\Events\Controllers\ClubEntryApiController::class, 'choose'])->middleware('throttle:10,1')->name('choose');
+    Route::post('/check-club', [App\Events\Controllers\ClubEntryApiController::class, 'checkClub'])->middleware('throttle:20,1')->name('check-club');
+    Route::post('/submit', [App\Events\Controllers\ClubEntryApiController::class, 'submit'])->middleware(['throttle:10,1', 'throttle:uploads'])->name('submit');
+    Route::post('/withdraw', [App\Events\Controllers\ClubEntryApiController::class, 'withdraw'])->middleware('throttle:20,1')->name('withdraw');
+    Route::post('/proof', [App\Events\Controllers\ClubEntryApiController::class, 'proof'])->middleware(['throttle:10,1', 'throttle:uploads'])->name('proof');
+});
+
+// The drawn picture a shared event link unfurls into (ShareCardController).
+Route::get('/me/events/{event:uuid}/share-card.jpg', [App\Events\Controllers\ShareCardController::class, 'show'])
+    ->name('events.share-card')->whereUuid('event')->middleware('throttle:public-event');
+
+/*
+ | The draw on a SCORING TABLET (App\Events\Support\TabletDraw). No `auth`: the
+ | tablet is a paired DEVICE and its token is its identity, exactly like the
+ | scoring console beside it. Reading rides on the pairing; every edit needs
+ | the event's tablet PIN and runs as the organiser who set it. The page never
+ | 404s (it redirects to the pairing room); the JSON doors 404 a dead token.
+ */
+Route::where(['token' => '[A-Za-z0-9]{40}'])->prefix('/tablet/{token}/draw')->name('tablet.draw')->group(function () {
+    Route::get('/', [App\Events\Controllers\TabletDrawController::class, 'show'])->middleware('throttle:screen-token');
+    Route::get('/data', [App\Events\Controllers\TabletDrawController::class, 'data'])->name('.data')->middleware('throttle:screen-token');
+    Route::post('/unlock', [App\Events\Controllers\TabletDrawController::class, 'unlock'])->name('.unlock')->middleware('throttle:10,1');
+    Route::post('/lock', [App\Events\Controllers\TabletDrawController::class, 'lock'])->name('.lock')->middleware('throttle:30,1');
+    Route::put('/arrange', [App\Events\Controllers\TabletDrawController::class, 'arrange'])->name('.arrange')->middleware('throttle:bracket-arrange');
+    Route::put('/admit', [App\Events\Controllers\TabletDrawController::class, 'admit'])->name('.admit')->middleware('throttle:member-write');
+    Route::get('/candidates', [App\Events\Controllers\TabletDrawController::class, 'candidates'])->name('.candidates')->middleware('throttle:event-desk');
+    Route::post('/unnamed', [App\Events\Controllers\TabletDrawController::class, 'unnamed'])->name('.unnamed')->middleware('throttle:admin-write');
+    Route::get('/clubs', [App\Events\Controllers\TabletDrawController::class, 'clubs'])->name('.clubs')->middleware('throttle:60,1');
+    Route::post('/outcomes/{unit}', [App\Events\Controllers\TabletDrawController::class, 'outcome'])->name('.outcome')->whereNumber('unit')->middleware('throttle:member-write');
+    Route::put('/entrants/{registration}', [App\Events\Controllers\TabletDrawController::class, 'entrant'])->name('.entrant')->whereNumber('registration')->middleware('throttle:member-write');
+});
+
+Route::middleware(['throttle:30,1'])->group(function () {
+    Route::post('/me/events/{event:uuid}/consent', [App\Events\Controllers\ClubEntryController::class, 'consent'])
+        ->name('events.club-entry.consent')->whereUuid('event');
+    Route::post('/me/events/{event:uuid}/consent/club', [App\Events\Controllers\ClubEntryController::class, 'consentClub'])
+        ->name('events.club-entry.consent-club')->whereUuid('event');
+});
+
 Route::middleware(['throttle:public-event', \App\Events\Middleware\EventPageReader::class, \App\Events\Middleware\BrandEventPage::class])
     ->prefix('me')->name('me.')->group(function () {
         Route::get('/events/{event:uuid}', [App\Events\Controllers\PersonalEventController::class, 'show'])
@@ -414,6 +463,13 @@ Route::middleware(['throttle:public-event', \App\Events\Middleware\EventPageRead
             ->name('events.results.page')->whereUuid('event');
         Route::get('/events/{event:uuid}/table', [App\Events\Controllers\PersonalEventController::class, 'tablePage'])
             ->name('events.table')->whereUuid('event');
+
+        // "Register your club" — one address per screen, every host the same
+        // screens (ClubEntryController; config `events.club_entry`).
+        foreach (App\Events\Controllers\ClubEntryController::STEPS as $n => $path) {
+            Route::get('/events/{event:uuid}/'.$path, [App\Events\Controllers\ClubEntryController::class, 'page'])
+                ->defaults('step', $n)->name('events.club-entry.'.str_replace('/', '-', $path))->whereUuid('event');
+        }
     });
 
 Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\BrandEventPage::class])
@@ -648,6 +704,15 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // type (the package decides what a legal arrangement is), so this is one
     // surface rather than a route per sport.
     Route::get('/events/{event:uuid}/brackets/data', [App\Events\Controllers\PersonalEventController::class, 'bracketData'])->name('events.bracket.data')->middleware('throttle:120,1');
+    /* The draw as an A4 PDF — the real board printed by headless Chromium
+       (App\Events\Support\BracketPdf). The most expensive read there is, so
+       organiser/jury only and throttled hard; 404 while the flag is off. */
+    Route::get('/events/{event:uuid}/brackets/pdf', [App\Events\Controllers\BracketPdfController::class, 'show'])->name('events.bracket.pdf')->middleware('throttle:6,1');
+    /* The tablet PIN — lends a scoring tablet the organiser's authority to edit
+       the draw in an emergency (App\Events\Support\TabletDraw). Organiser only. */
+    Route::get('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'show'])->name('events.draw-pin')->middleware('throttle:60,1');
+    Route::put('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'update'])->name('events.draw-pin.update')->middleware('throttle:member-write');
+    Route::delete('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'destroy'])->name('events.draw-pin.destroy')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/brackets/arrange', [App\Events\Controllers\PersonalEventController::class, 'arrangeBracket'])->name('events.bracket.arrange')->middleware('throttle:bracket-arrange');
     Route::put('/events/{event:uuid}/brackets/clear', [App\Events\Controllers\PersonalEventController::class, 'clearBracket'])->name('events.bracket.clear')->middleware('throttle:member-write');
     /* Whether THIS championship plays third place off. Re-cuts the play-off
@@ -798,6 +863,12 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // only — it never changes who may ARRANGE a draw, and the organiser and
     // their officials read it at every setting.
     Route::post('/events/{event:uuid}/draw-reveal', [App\Events\Controllers\PersonalEventController::class, 'setDrawReveal'])->name('events.draw-reveal')->middleware('throttle:admin-write');
+    // Club payments — the proofs clubs sent, and the organiser's decision (ClubPaymentsController).
+    Route::get('/events/{event:uuid}/club-payments', [App\Events\Controllers\ClubPaymentsController::class, 'index'])->name('events.club-payments')->middleware('throttle:60,1');
+    Route::get('/events/{event:uuid}/club-payments/{invoice}/proof', [App\Events\Controllers\ClubPaymentsController::class, 'proof'])->whereUuid('invoice')->name('events.club-payments.proof');
+    Route::post('/events/{event:uuid}/club-payments/{invoice}', [App\Events\Controllers\ClubPaymentsController::class, 'decide'])->whereUuid('invoice')->name('events.club-payments.decide')->middleware('throttle:admin-write');
+    // Listed or hidden — whether the event appears in any list (ClubEvent::isHidden). Organiser only.
+    Route::post('/events/{event:uuid}/visibility', [App\Events\Controllers\PersonalEventController::class, 'setVisibility'])->name('events.visibility')->middleware('throttle:admin-write');
     // How athletes enter — individuals, clubs, or both (App\Events\Support\EntryChannels). Organiser only.
     Route::post('/events/{event:uuid}/entry-channels', [App\Events\Controllers\PersonalEventController::class, 'setEntryChannels'])->name('events.entry-channels')->middleware('throttle:admin-write');
     // The rule book an event runs under: category and belt systems (App\Events\Support\CategorySystems).

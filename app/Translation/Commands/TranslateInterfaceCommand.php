@@ -8,7 +8,9 @@ use App\Translation\Services\InterfaceStore;
 use App\Translation\Services\LangFileCatalog;
 use App\Translation\Services\LangFileValidator;
 use App\Translation\Services\LangFileWriter;
+use App\Translation\Jobs\TranslateInterfaceLocale;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Translate the product's own interface into a language.
@@ -49,7 +51,9 @@ class TranslateInterfaceCommand extends Command
         {--dry-run : say what would be translated, call no model}
         {--rewrite : replace existing keys instead of only filling gaps}
         {--write-files : ALSO mirror the result into lang/<code>/*.php (rows are the store)}
-        {--promote : after a clean --check, list the locale in config/locales.php so it is actually served}';
+        {--promote : after a clean --check, list the locale in config/locales.php so it is actually served}
+        {--lane= : internal — run as Ollama lane N (config translation.ollama_lanes)}
+        {--only= : internal — only these lang file ids, comma-separated}';
 
     protected $description = "Translate the interface — buttons, headings, labels — into another language";
 
@@ -101,6 +105,25 @@ class TranslateInterfaceCommand extends Command
             )
             : $catalog->filesFor((string) $this->option('tier'), $locale);
 
+        if (($only = (string) $this->option('only')) !== '') {
+            $wantedIds = array_filter(array_map('trim', explode(',', $only)));
+            $files = array_filter($files, fn ($id) => in_array($id, $wantedIds, true), ARRAY_FILTER_USE_KEY);
+        }
+
+        $lanes = (array) config('translation.ollama_lanes', []);
+        $lane = (int) $this->option('lane');
+
+        if ($lane > 0) {
+            if (! isset($lanes[$lane - 1])) {
+                $this->error("No Ollama lane {$lane}. See TRANSLATION_OLLAMA_LANES.");
+
+                return self::FAILURE;
+            }
+
+            // ProviderChain reads this and points the lane's Ollama provider here.
+            config(['translation.active_lane' => $lanes[$lane - 1]]);
+        }
+
         if ($files === []) {
             $this->error('No lang files matched. --tier=visitor|member|staff|all, or --file=events.');
 
@@ -112,9 +135,14 @@ class TranslateInterfaceCommand extends Command
             .count($files).' files · '.($this->option('check') ? 'checking' : 'translating'));
         $this->line('');
 
-        $result = $this->option('check')
-            ? $this->check($files, $catalog, $validator, $locale, $store)
-            : $this->generate($files, $locale, $catalog, $validator, $writer, $agent, $store);
+        $split = ! $this->option('check') && ! $this->option('dry-run') && $lane === 0
+            && count($lanes) > 1;
+
+        $result = match (true) {
+            (bool) $this->option('check') => $this->check($files, $catalog, $validator, $locale, $store),
+            $split => $this->runLanes($locale, $lanes),
+            default => $this->generate($files, $locale, $catalog, $validator, $writer, $agent, $store),
+        };
 
         /*
          * Promotion is what actually SERVES the language. Generating
@@ -293,7 +321,7 @@ class TranslateInterfaceCommand extends Command
             // Narrowed on the `event` tier, so "falling back to English" counts
             // the strings this surface actually asks for — not the 9,500 in the
             // tree, most of which it will never render.
-            $source = $this->narrow($catalog, $id, $catalog->strings($file['source']));
+            $source = $this->narrow($catalog, $id, $catalog->sourceStrings($file['source']));
 
             if ($source === []) {
                 continue;
@@ -404,6 +432,127 @@ class TranslateInterfaceCommand extends Command
      * @param  array<string, string>  $todo
      * @return array{values: array<string, string>, model: string}
      */
+    /**
+     * One language, several GPUs: every lane takes its share of EVERY file and
+     * the lanes run side by side, one child process each.
+     *
+     * Split by STRING, not by file. Dealing whole files out left a card idle
+     * whenever one file dominated (the admin screens are 2,125 strings) or the
+     * leftovers sat in one file — and "both GPUs, no matter what" was the
+     * ask (2026-10-05). Lane N keeps the strings at positions N-1, N-1+L, …
+     * of each file's source (see slice()), so the shares are disjoint, even,
+     * and the same in every child without anything being handed between them.
+     * Each child's later passes look only at its own share, so no string is
+     * ever asked for twice.
+     *
+     * Each child is this same command with --lane, so every rule a single
+     * run follows (passes, retries, validation, the verdict) is the ONE
+     * implementation, not a copy. The run fails if any lane fails.
+     *
+     * @param  array<int, string>  $lanes
+     */
+    private function runLanes(string $locale, array $lanes): int
+    {
+        $base = [PHP_BINARY, base_path('artisan'), 'translate:interface', $locale, '--tier='.$this->option('tier'), '--no-ansi'];
+
+        foreach (['file', 'only'] as $option) {
+            if ((string) $this->option($option) !== '') {
+                $base[] = '--'.$option.'='.$this->option($option);
+            }
+        }
+
+        foreach (['rewrite', 'write-files'] as $flag) {
+            if ($this->option($flag)) {
+                $base[] = '--'.$flag;
+            }
+        }
+
+        $this->line('  Splitting every file across '.count($lanes).' Ollama lanes.');
+        $this->line('');
+
+        $results = \Illuminate\Support\Facades\Process::pool(function ($pool) use ($lanes, $base) {
+            foreach (array_keys($lanes) as $i) {
+                $pool->as('lane'.($i + 1))->forever()->path(base_path())
+                    ->command(array_merge($base, ['--lane='.($i + 1)]));
+            }
+        })->start()->wait();
+
+        $code = self::SUCCESS;
+
+        foreach ($results->collect() as $name => $result) {
+            $this->line("  <options=bold>── {$name} ──</>");
+            $this->line(rtrim($result->output()));
+
+            if (! $result->successful()) {
+                $code = self::FAILURE;
+                $this->line(rtrim($result->errorOutput()));
+            }
+        }
+
+        return $code;
+    }
+
+    /**
+     * This lane's share of one file's strings: every L-th, starting at its own
+     * position. The whole file when the run is not split.
+     *
+     * @param  array<string, string>  $source
+     * @return array<string, string>
+     */
+    private function slice(array $source): array
+    {
+        $lane = (int) $this->option('lane');
+        $count = count((array) config('translation.ollama_lanes', []));
+
+        if ($lane < 1 || $count < 2) {
+            return $source;
+        }
+
+        $mine = [];
+        $position = 0;
+
+        foreach ($source as $key => $value) {
+            if ($position++ % $count === $lane - 1) {
+                $mine[$key] = $value;
+            }
+        }
+
+        return $mine;
+    }
+
+    /*
+     * How far the run has got, for the Languages screen's progress bar.
+     *
+     * Counts the strings planned for each file's FIRST pass (all of them on a
+     * rewrite, only the gaps otherwise). Later passes are retries of strings
+     * already counted, so they never move the bar backwards or past the end.
+     * Coverage alone cannot show a rewrite: every string already exists, so
+     * that bar sits at 100% for the whole hour.
+     */
+    private int $progressBase = 0;
+
+    private int $progressTotal = 0;
+
+    private bool $progressLive = false;
+
+    private function reportProgress(string $locale, int $done, string $file = ''): void
+    {
+        if ($this->option('dry-run') || $this->option('check')) {
+            return;
+        }
+
+        try {
+            Cache::put(TranslateInterfaceLocale::progressKey($locale, ((int) $this->option('lane')) ?: null), [
+                'done' => min($this->progressTotal, $done),
+                'total' => $this->progressTotal,
+                'file' => $file,
+                'updated_at' => now()->toIso8601String(),
+            ], now()->addHours(3));
+        } catch (\Throwable) {
+            // A progress bar is a nicety; it must never stop a run.
+        }
+    }
+
     private function translateWithRetries(InterfaceAgent $agent, array $todo, string $locale, string $id): array
     {
         $values = [];
@@ -413,8 +562,14 @@ class TranslateInterfaceCommand extends Command
         for ($attempt = 1; $attempt <= 3 && $outstanding !== []; $attempt++) {
             $label = $attempt === 1 ? $id : $id.' (retry '.($attempt - 1).')';
 
-            $result = $agent->translate($outstanding, $locale, self::CONTEXT, function ($done, $total) use ($label) {
+            $live = $this->progressLive && $attempt === 1;
+
+            $result = $agent->translate($outstanding, $locale, self::CONTEXT, function ($done, $total) use ($label, $live, $locale, $id) {
                 $this->getOutput()->write("\r  ".str_pad('', 40)."\r  ".str_pad($label, 34)." {$done}/{$total}\r");
+
+                if ($live) {
+                    $this->reportProgress($locale, $this->progressBase + $done, $id);
+                }
             });
 
             $model = $result['model'] ?: $model;
@@ -445,8 +600,24 @@ class TranslateInterfaceCommand extends Command
         $totalRefused = 0;
         $totalDropped = 0;
 
+        // What the first passes will ask for, across every file — the bar's 100%.
+        $planned = [];
+
+        if (! $this->option('dry-run')) {
+            foreach ($files as $id => $file) {
+                $source = $this->slice($this->narrow($catalog, $id, $catalog->sourceStrings($file['source'])));
+                $planned[$id] = $this->option('rewrite')
+                    ? count($source)
+                    : count(array_diff_key($source, $store->stringsFor($locale, $id, $file['target'])));
+            }
+
+            $this->progressTotal = array_sum($planned);
+            $this->progressBase = 0;
+            $this->reportProgress($locale, 0);
+        }
+
         foreach ($files as $id => $file) {
-            $source = $this->narrow($catalog, $id, $catalog->strings($file['source']));
+            $source = $this->slice($this->narrow($catalog, $id, $catalog->sourceStrings($file['source'])));
 
             if ($source === []) {
                 continue;
@@ -503,6 +674,7 @@ class TranslateInterfaceCommand extends Command
 
                 $label = $pass === 1 ? $id : $id.' (pass '.$pass.')';
                 $this->getOutput()->write(sprintf('  %-34s ', $label));
+                $this->progressLive = $pass === 1;
 
                 try {
                     $result = $this->translateWithRetries($agent, $todo, $locale, $label);
@@ -624,6 +796,9 @@ class TranslateInterfaceCommand extends Command
                     break;
                 }
             }
+
+            $this->progressBase += $planned[$id] ?? 0;
+            $this->reportProgress($locale, $this->progressBase, $id);
 
             if ($stopped) {
                 continue;

@@ -44,9 +44,16 @@ class GeoController extends Controller
         $data = $request->validate(['url' => ['required', 'string', 'max:2000']]);
         $url = trim($data['url']);
 
-        $at = \App\Support\MapLink::isGoogle($url)
-            ? Cache::remember('geo:maplink:'.sha1($url), self::TTL, fn () => \App\Support\MapLink::resolve($url) ?? [])
-            : [];
+        // Only a found pin is remembered: one timeout must not make a good link
+        // read as "not found" for a month.
+        $at = [];
+        if (\App\Support\MapLink::isGoogle($url)) {
+            $key = 'geo:maplink:'.sha1($url);
+            $at = Cache::get($key) ?: (\App\Support\MapLink::resolve($url) ?? []);
+            if ($at) {
+                Cache::put($key, $at, self::TTL);
+            }
+        }
 
         return response()->json([
             'success' => true,

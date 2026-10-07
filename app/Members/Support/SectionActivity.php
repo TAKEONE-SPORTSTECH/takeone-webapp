@@ -115,7 +115,7 @@ class SectionActivity
         $challengeLatest = optional(Duel::where('opponent_id', $user->id)->where('status', 'pending')->max('created_at'),
             fn ($t) => Carbon::parse($t));
 
-        $eventsLatest = $clubIds->isEmpty() ? null : optional(ClubEvent::whereIn('tenant_id', $clubIds)
+        $eventsLatest = $clubIds->isEmpty() ? null : optional(ClubEvent::whereIn('tenant_id', $clubIds)->listed()
             ->where('is_archived', false)->whereDate('date', '>=', now()->toDateString())->max('created_at'),
             fn ($t) => Carbon::parse($t));
 

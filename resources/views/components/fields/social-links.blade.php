@@ -22,6 +22,9 @@
             <i class="bi bi-plus"></i> {{ __('shared.social_links_editor_add_link') }}
         </button>
     </div>
+    {{-- Tells the server this form rendered the rows, so an empty list is a real
+         "remove them all" and an absent list leaves them alone. --}}
+    <input type="hidden" name="social_links_present" value="1">
     <div id="{{ $containerId }}">
         @foreach($linksArray as $index => $link)
             @include('components.fields.support.social-link-row', ['index' => $index, 'link' => $link])
@@ -119,16 +122,21 @@
         return row;
     }
 
-    // Scoped remove handler for server-rendered rows
-    document.addEventListener('DOMContentLoaded', function () {
+    // Scoped remove handler for server-rendered rows. Bound now (this script runs
+    // right after its markup, also after an in-place shell navigation, when
+    // DOMContentLoaded is long gone) and again on DOMContentLoaded as a fallback;
+    // the flag keeps it to one listener per container.
+    function bindRemove() {
         const container = document.getElementById(CONTAINER_ID);
-        if (container) {
-            container.addEventListener('click', function (e) {
-                const btn = e.target.closest('.remove-social-link');
-                if (btn) btn.closest('.social-link-row').remove();
-            });
-        }
-    });
+        if (!container || container.dataset.removeBound) return;
+        container.dataset.removeBound = '1';
+        container.addEventListener('click', function (e) {
+            const btn = e.target.closest('.remove-social-link');
+            if (btn) btn.closest('.social-link-row').remove();
+        });
+    }
+    bindRemove();
+    document.addEventListener('DOMContentLoaded', bindRemove);
 
     window.socialLinksEditor_{{ $containerId }} = {
         addRow(platform = '', url = '') {

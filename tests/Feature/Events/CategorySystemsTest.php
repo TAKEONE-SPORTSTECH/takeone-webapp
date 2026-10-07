@@ -157,4 +157,75 @@ class CategorySystemsTest extends TestCase
         $done = $call($owner->fresh(), ['event' => $event->uuid, 'category_system' => 'shotokan']);
         $this->assertSame('shotokan', $done['category_system']);
     }
+
+    public function test_karate_offers_the_iko_kyokushin_belt_grades(): void
+    {
+        $owner = $this->createUser();
+        $event = $this->karateEvent($this->club($owner), $owner);
+        $systems = app(CategorySystems::class);
+
+        $this->assertArrayHasKey('kyokushin', $systems->beltsFor($event));
+
+        $event->forceFill(['belt_system' => 'kyokushin'])->save();
+        $ladder = collect($systems->ladderFor($event->fresh()));
+
+        // Mukyu white, five colours of two kyu each, then black.
+        $this->assertSame(['white', 'orange', 'blue', 'yellow', 'green', 'brown', 'black'], $ladder->pluck('value')->all());
+        $this->assertCount(2, $ladder->firstWhere('value', 'orange')['grades']);
+        // Kyokushin grading is not WKF's: there is no purple belt.
+        $this->assertNull($ladder->firstWhere('value', 'purple'));
+    }
+
+    public function test_the_style_names_the_event_only_when_one_was_chosen(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->club($owner);
+
+        $plain = $this->karateEvent($club, $owner);
+        $kyokushin = $this->karateEvent($club, $owner, ['belt_system' => 'kyokushin']);
+        $shotokan = $this->karateEvent($club, $owner, ['category_system' => 'shotokan']);
+
+        $systems = app(CategorySystems::class);
+        $this->assertNull($systems->styleLabel($plain));
+        $this->assertSame('Kyokushin', $systems->styleLabel($kyokushin));
+
+        $this->assertSame('Karate', \App\Events\Support\SportLabel::forEvent($plain));
+        $this->assertSame('Kyokushin Karate', \App\Events\Support\SportLabel::forEvent($kyokushin));
+        if (isset($systems->weightsFor($shotokan)['shotokan'])) {
+            $this->assertSame('Shotokan Karate', \App\Events\Support\SportLabel::forEvent($shotokan));
+        }
+    }
+
+    public function test_kyokushin_belts_can_be_chosen_after_the_draw(): void
+    {
+        $owner = $this->createUser();
+        $event = $this->karateEvent($this->club($owner), $owner);
+        $cat = EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men', 'sort_order' => 1]);
+        \App\Events\Models\EventMatch::create(['event_id' => $event->id, 'category_id' => $cat->id, 'round' => 'Final', 'slot' => 0]);
+
+        // Belts never re-sort anybody, so a drawn event may still change them.
+        $res = app(CategorySystems::class)->change($event, null, 'kyokushin');
+
+        $this->assertTrue($res['ok']);
+        $this->assertSame('kyokushin', $event->fresh()->belt_system);
+    }
+
+    public function test_every_karate_style_has_its_own_grading(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->club($owner);
+        $systems = app(CategorySystems::class);
+
+        $belts = $systems->beltsFor($this->karateEvent($club, $owner));
+        foreach (['wkf', 'kyokushin', 'shotokan', 'goju_ryu', 'shito_ryu', 'wado_ryu'] as $key) {
+            $this->assertArrayHasKey($key, $belts);
+            // Every style ends at black belt, 1st to 10th dan.
+            $last = collect($belts[$key]->ladder)->last();
+            $this->assertSame(['black', 10], [$last['value'], count($last['grades'])]);
+        }
+
+        // Choosing a style's belts is what names the event's style.
+        $goju = $this->karateEvent($club, $owner, ['belt_system' => 'goju_ryu']);
+        $this->assertSame('Goju-ryu Karate', \App\Events\Support\SportLabel::forEvent($goju));
+    }
 }

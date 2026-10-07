@@ -167,6 +167,8 @@ class ClubAdminMobileTest extends TestCase
                  'gps_long'     => 50.5860,
                  'address'      => 'Manama',
                  'settings'     => ['member_code_prefix' => 'STU', 'block_explore' => '1'],
+                 // The social-links component posts this marker with its rows.
+                 'social_links_present' => '1',
                  'social_links' => [['platform' => 'instagram', 'url' => 'https://instagram.com/x']],
                  'translations' => ['club_name' => ['ar' => 'نادي']],
              ])

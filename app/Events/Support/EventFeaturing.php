@@ -118,6 +118,8 @@ class EventFeaturing
         $ids = collect($ids)->filter()->values();
 
         return $ids->isEmpty() ? collect() : EventFeatureRequest::whereIn('club_event_id', $ids)
+            // Never a HIDDEN event in the spotlight, approved or not.
+            ->whereIn('club_event_id', ClubEvent::listed()->select('id'))
             ->where('status', EventFeatureRequest::APPROVED)->pluck('club_event_id')->unique()->values();
     }
 

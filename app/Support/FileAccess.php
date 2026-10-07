@@ -182,7 +182,8 @@ class FileAccess
         $needle = trim(json_encode($path), '"');
 
         return ClubEvent::query()
-            ->where('entry_mode', 'public')
+            // Public page, or HIDDEN (opened by its link — PublicEvent::isPublic).
+            ->where(fn ($q) => $q->where('entry_mode', 'public')->orWhere('visibility', ClubEvent::HIDDEN))
             ->where('is_archived', false)
             ->whereNotNull('images')
             ->where('images', 'like', '%'.$needle.'%')
@@ -200,7 +201,7 @@ class FileAccess
         return \App\Events\Models\ClubEventRegistration::query()
             ->where('photo', $path)
             ->whereHas('event', fn ($q) => $q
-                ->where('entry_mode', 'public')
+                ->where(fn ($w) => $w->where('entry_mode', 'public')->orWhere('visibility', ClubEvent::HIDDEN))
                 ->where('is_archived', false))
             ->exists();
     }

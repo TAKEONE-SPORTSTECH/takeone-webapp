@@ -51,6 +51,12 @@ class PublicClubController extends Controller
      */
     public function index()
     {
+        // New UI (branch new-ui): its own Explore, rendered by app/Ui. Off → the
+        // classic page below, unchanged. See Documentation/major-change/NEW-UI.md.
+        if (\App\Ui\NewUi::active()) {
+            return \App\Ui\Explore\ExplorePage::render(request());
+        }
+
         $user = Auth::user();
 
         // Build family members array: guardian (self) + dependents
@@ -257,7 +263,8 @@ class PublicClubController extends Controller
             'reviews.user',
             'socialLinks',
             'memberships',
-            'events',
+            // Never a HIDDEN event on the club's page — it is reached by its link only.
+            'events' => fn ($q) => $q->listed(),
             'timelinePosts.likes',
             'timelinePosts.comments.user',
             'perks',
@@ -744,6 +751,8 @@ class PublicClubController extends Controller
         return ClubEvent::query()
             ->where('is_archived', false)
             ->where('status', '!=', 'cancelled')
+            // A HIDDEN event is in nobody's Explore but its organisers' and entrants'.
+            ->listedFor($me)
             ->where(function ($q) use ($clubIds, $myCountries, $me) {
                 $q->whereIn('tenant_id', $clubIds)
                     ->orWhereIn('scope', ['inter_club', 'worldwide'])
@@ -804,6 +813,15 @@ class PublicClubController extends Controller
         $events = $this->openEventsFor(Auth::user());
         $finished = $this->finishedEventsFor(Auth::user());
 
+        // ?scope=public (the new Explore): only events with a public page —
+        // published, upcoming or running — and none of the finished ones.
+        // Without it the classic page gets exactly what it always did.
+        if ($request->query('scope') === 'public') {
+            $public = app(\App\Events\Support\PublicEvent::class);
+            $events = $events->filter(fn (ClubEvent $e) => $public->isPublic($e))->values();
+            $finished = collect();
+        }
+
         // Paid featuring: only an APPROVED request, and only while the event
         // is still open (EventFeaturing — the same rule /me/events uses).
         $featured = \App\Events\Support\EventFeaturing::featuredClubEventIds($events->pluck('id'))->flip();
@@ -838,6 +856,10 @@ class PublicClubController extends Controller
                     : ($startsAt->isPast() ? __('clubs::explore.ev_today') : $startsAt->diffForHumans(['parts' => 2, 'short' => true])),
                 'club' => $e->tenant?->club_name,
                 'location' => $e->location,
+                // Where the event is, for the new Explore map (additive): the
+                // event's own pin, else its host club's.
+                'lat' => ($e->gps_lat ?: $e->tenant?->gps_lat) ? (float) ($e->gps_lat ?: $e->tenant?->gps_lat) : null,
+                'lng' => ($e->gps_lat ? $e->gps_long : $e->tenant?->gps_long) ? (float) ($e->gps_lat ? $e->gps_long : $e->tenant?->gps_long) : null,
                 'type' => $e->event_type,
                 'sport' => $e->sport,
                 'level' => $e->level,
@@ -860,7 +882,19 @@ class PublicClubController extends Controller
         // merges in, listed until they end. A federation event already
         // running as a platform event is the SAME uuid, so it is not doubled.
         $seen = $payload->pluck('key')->flip();
-        $fed = collect($this->federationEventsFor(Auth::user()))
+        $fedRows = collect($this->federationEventsFor(Auth::user()));
+        // A federation's event that runs on the platform is listed ONCE, as the
+        // platform card — but it still opens on the federation's own front door
+        // (artwork + language picker), so that card carries the door too.
+        // Looked up from the event itself, not from the viewer's federations, so
+        // it holds for everybody who can see the card.
+        $hosted = $events->where('host_type', 'federation')->pluck('uuid', 'id');
+        $doors = $hosted->isNotEmpty() && config('federations.enabled') && \Illuminate\Support\Facades\Route::has('federations.app.invitation')
+            ? \App\Federations\Models\FederationEvent::whereIn('club_event_id', $hosted->keys())->pluck('uuid', 'club_event_id')
+                ->mapWithKeys(fn ($fedUuid, $clubEventId) => [$hosted[$clubEventId] => route('federations.app.invitation').'?event='.rawurlencode($fedUuid)])
+            : collect();
+        $payload = $payload->map(fn (array $c) => isset($doors[$c['key']]) ? $c + ['cover_url' => $doors[$c['key']]] : $c);
+        $fed = $fedRows
             ->reject(fn (array $f) => isset($seen[$f['key']]))
             ->map(fn (array $f) => $this->federationCard($f));
         $payload = $payload->concat($fed)->sortBy('sort')->values()
@@ -896,6 +930,7 @@ class PublicClubController extends Controller
         return [
             'key' => $f['key'],
             'url' => $f['href'],
+            'cover_url' => $f['invitation'] ?? null,
             'title' => $f['title'],
             'state' => ! empty($f['started']) ? 'live' : 'upcoming',
             'featured' => (bool) ($f['featured'] ?? false),

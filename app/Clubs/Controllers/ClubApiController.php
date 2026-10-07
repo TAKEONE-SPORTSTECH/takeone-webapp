@@ -12,6 +12,7 @@ use App\Members\Models\User;
 use App\Members\Support\MemberLookup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Support\StoragePath;
 use Illuminate\Support\Str;
@@ -25,8 +26,17 @@ class ClubApiController extends Controller
      */
     public function getUsers(Request $request)
     {
+        // Bounded: never the whole user table. An optional `q` narrows by name
+        // or email on the server (the picker sends what is typed).
+        $q = trim(mb_substr((string) $request->query('q', ''), 0, 100));
+
         $users = User::select('id', 'full_name', 'email', 'mobile', 'profile_picture')
+            ->when($q !== '', function ($query) use ($q) {
+                $like = '%'.$q.'%';
+                $query->where(fn ($w) => $w->where('full_name', 'like', $like)->orWhere('email', 'like', $like));
+            })
             ->orderBy('full_name')
+            ->limit(100)
             ->get()
             ->map(function ($user) {
                 return [
@@ -107,6 +117,12 @@ class ClubApiController extends Controller
             'cover_image' => $club->cover_image,
             'slogan' => $club->slogan,
             'description' => $club->description,
+            'registration_requirements' => $club->registration_requirements,
+            'registration_terms' => $club->registration_terms,
+            'translations' => [
+                'registration_requirements' => ['ar' => data_get($club->translations, 'registration_requirements.ar', '')],
+                'registration_terms' => ['ar' => data_get($club->translations, 'registration_terms.ar', '')],
+            ],
             'established_date' => $club->established_date,
             'commercial_reg_number' => $club->commercial_reg_number,
             'vat_reg_number' => $club->vat_reg_number,
@@ -120,7 +136,10 @@ class ClubApiController extends Controller
             'address' => $club->address,
             'gps_lat' => $club->gps_lat,
             'gps_long' => $club->gps_long,
+            'maps_url' => $club->maps_url,
+            'contact_source' => $club->settings['contact_source'] ?? null,
             'enrollment_fee' => $club->enrollment_fee,
+            'registration_fee' => $club->registration_fee,
             'status' => $club->status ?? 'active',
             'public_profile_enabled' => $club->public_profile_enabled ?? true,
             'owner' => $club->owner ? [
@@ -183,13 +202,15 @@ class ClubApiController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Club created successfully!',
+                'message' => __('shared.club_modal_created'),
                 'club' => $club,
             ]);
         } catch (\Exception $e) {
+            Log::error('Club create failed', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create club: '.$e->getMessage(),
+                'message' => __('shared.club_modal_create_failed'),
             ], 500);
         }
     }
@@ -199,6 +220,10 @@ class ClubApiController extends Controller
      */
     public function update(UpdateClubApiRequest $request, Tenant $club)
     {
+        // Old pictures are removed only once the new rows are committed, so a
+        // failed save never leaves the club pointing at a deleted file.
+        $replaced = [];
+
         DB::beginTransaction();
         try {
             $data = $request->validated();
@@ -223,14 +248,38 @@ class ClubApiController extends Controller
                     $old = $club->$field;
                     $data[$field] = $this->handleBase64Image($value, StoragePath::clubBranding($club), $field.'_'.Str::random(24));
 
-                    // The replacement is on disk before the old one goes.
                     if ($old && $old !== $data[$field]) {
-                        Storage::disk('public')->delete($old);
+                        $replaced[] = $old;
                     }
                 } else {
                     unset($data[$field]);
                 }
             }
+
+            // A Google Maps link with no pin behind it, or a new link the pin did
+            // not follow: read the pin from the link on the server (mirrors
+            // ClubAdminController::update).
+            if (! empty($data['maps_url'])) {
+                $noPin = blank($data['gps_lat'] ?? null) || blank($data['gps_long'] ?? null);
+                $pinStale = $data['maps_url'] !== $club->maps_url
+                    && (string) ($data['gps_lat'] ?? '') === (string) $club->gps_lat
+                    && (string) ($data['gps_long'] ?? '') === (string) $club->gps_long;
+                if (($noPin || $pinStale) && ($at = \App\Support\MapLink::resolve($data['maps_url']))) {
+                    $data['gps_lat'] = $at['lat'];
+                    $data['gps_long'] = $at['lng'];
+                }
+            }
+
+            // Settings: only the keys this form owns, merged over what is on file.
+            unset($data['settings']);
+            if (in_array($request->input('settings.contact_source'), ['owner', 'club'], true)) {
+                $data['settings'] = array_merge($club->settings ?? [], [
+                    'contact_source' => $request->input('settings.contact_source'),
+                ]);
+            }
+
+            $translations = $request->input('translations');
+            unset($data['translations']);
 
             // Set status
             $data['status'] = $request->input('club_status', 'active');
@@ -239,10 +288,18 @@ class ClubApiController extends Controller
             // Update club
             $club->update($data);
 
-            // Update social links
-            $club->socialLinks()->delete();
-            if ($request->has('social_links')) {
-                foreach ($request->social_links as $index => $link) {
+            // Other-locale copies, through the model (rich fields sanitised by
+            // Tenant::setTranslation). Only fields the form sent are touched.
+            if (is_array($translations) && $translations !== []) {
+                $club->setTranslations($translations)->save();
+            }
+
+            // Social links + bank accounts are replaced only when the form loaded
+            // the club's own rows (relations_loaded=1). A form that never showed
+            // them must not wipe them.
+            if ($request->input('relations_loaded') === '1') {
+                $club->socialLinks()->delete();
+                foreach ((array) $request->input('social_links', []) as $index => $link) {
                     if (! empty($link['platform']) && ! empty($link['url'])) {
                         ClubSocialLink::create([
                             'tenant_id' => $club->id,
@@ -252,18 +309,15 @@ class ClubApiController extends Controller
                         ]);
                     }
                 }
-            }
 
-            // Update bank accounts
-            $club->bankAccounts()->delete();
-            if ($request->has('bank_accounts')) {
-                foreach ($request->bank_accounts as $account) {
+                $club->bankAccounts()->delete();
+                foreach ((array) $request->input('bank_accounts', []) as $account) {
                     if (! empty($account['bank_name']) && ! empty($account['account_name'])) {
                         ClubBankAccount::create([
                             'tenant_id' => $club->id,
                             'bank_name' => $account['bank_name'],
                             'account_name' => $account['account_name'],
-                            'account_number' => $account['account_number'] ?? null,
+                            'account_number' => $account['account_number'] ?? '', // NOT NULL column
                             'iban' => $account['iban'] ?? null,
                             'swift_code' => $account['swift_code'] ?? null,
                             'benefitpay_account' => $account['benefitpay_account'] ?? null,
@@ -273,20 +327,25 @@ class ClubApiController extends Controller
             }
 
             DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Club updated successfully!',
-                'club' => $club,
-            ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Club update failed', ['club_id' => $club->id, 'error' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update club: '.$e->getMessage(),
+                'message' => __('shared.club_modal_update_failed'),
             ], 500);
         }
+
+        foreach ($replaced as $old) {
+            Storage::disk('public')->delete($old);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('shared.club_modal_updated'),
+            'club' => $club->fresh(),
+        ]);
     }
 
     /**

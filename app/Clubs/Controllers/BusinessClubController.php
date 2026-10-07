@@ -25,13 +25,15 @@ class BusinessClubController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Club created successfully!',
+                'message' => __('shared.club_modal_created'),
                 'club' => $club,
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Business club create failed', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create club: '.$e->getMessage(),
+                'message' => __('shared.club_modal_create_failed'),
             ], 500);
         }
     }

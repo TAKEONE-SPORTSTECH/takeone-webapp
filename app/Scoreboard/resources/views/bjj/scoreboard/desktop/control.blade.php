@@ -754,6 +754,15 @@
         <button id="btnLog" class="cbtn" style="background:var(--fill-alt);color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::bjj_messages.ctl_score_log') }}</button>
       </div>
 
+      {{-- The draw on this tablet (App\Events\Support\TabletDraw). --}}
+      @if(! empty($drawUrl))
+        <div class="row">
+          <a href="{{ $drawUrl }}" class="cbtn" style="background:var(--fill-alt);color:var(--gold);border:1px solid var(--gold);text-decoration:none;gap:12px;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h5v6H3M3 14h5v6H3M8 7h4v10H8M12 12h4M16 9h5v6h-5"/></svg>{{ __('events::events.tablet_draw_button') }}
+          </a>
+        </div>
+      @endif
+
       <div class="row">
         <button id="btnReset" class="cbtn bout" style="background:transparent;color:#ff6b78;border:1px solid rgba(255,107,120,.5);">{{ __('scoreboard::bjj_messages.ctl_reset') }}</button>
         {{-- Deliberately NOT disabled with the rest of the match controls: a

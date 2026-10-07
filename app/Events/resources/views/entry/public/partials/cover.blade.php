@@ -136,7 +136,17 @@
                     {{-- `center top`: a poster puts its name at the TOP, so when
                          `object-cover` has to crop it takes the slack off the
                          bottom and never off the title. --}}
+                    {{-- A picture WIDER than the screen (any landscape one, and a
+                         portrait poster wider than a tall phone) would be zoomed to
+                         the screen's height and lose its sides (owner, 2026-10-04:
+                         "the picture ate the background"). Measured once it loads
+                         against the frame: such a picture is shown WHOLE from the
+                         top, over a blurred copy of itself that fills the rest. One
+                         narrower than the screen keeps the full bleed. --}}
+                    <img src="{{ $e['photo'] }}" alt="" aria-hidden="true" data-cover-backdrop hidden
+                         style="position:absolute; inset:-40px; width:calc(100% + 80px); height:calc(100% + 80px); object-fit:cover; filter:blur(28px) brightness(.55); transform:scale(1.05);">
                     <img src="{{ $e['photo'] }}" alt=""
+                         onload="var r = this.naturalWidth / this.naturalHeight, f = (this.clientWidth || 1) / (this.clientHeight || 1); if (r > f * 1.04) { this.style.objectFit = 'contain'; this.style.objectPosition = r > 1 ? 'center 12%' : 'center top'; var b = this.previousElementSibling; if (b) b.hidden = false; }"
                          style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top;">
                 @else
                     <div style="position:absolute; inset:0; background:

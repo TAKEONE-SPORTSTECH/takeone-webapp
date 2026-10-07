@@ -171,8 +171,8 @@ class CoverLanguages
                  * can never disagree about what this event is called
                  * (App\Events\Support\EventClassification).
                  */
-                $sport = SportLabel::for(
-                    $event->sport,
+                $sport = SportLabel::forEvent(
+                    $event,
                     $event->sport ? (config('event_schema.sports.'.$event->sport.'.label') ?: ucfirst($event->sport)) : null,
                 );
 

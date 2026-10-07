@@ -20,7 +20,9 @@ class InvitePageTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['federations.enabled' => true, 'federations.invite_v2' => false]);
+        // The invitation page ITSELF — with the shared club-entry screens on it
+        // forwards to the event's own page instead (ClubEntryAddressesTest).
+        config(['federations.enabled' => true, 'federations.invite_v2' => false, 'events.club_entry' => false]);
     }
 
     private function federation(User $owner): Federation
@@ -148,5 +150,30 @@ class InvitePageTest extends TestCase
 
         $html = $this->get($this->url($e, '&club=secret-token-that-is-long-enough-000000'))->assertOk()->getContent();
         $this->assertStringContainsString("location.origin + location.pathname + '?event='", $html);
+    }
+
+    /** Running on the platform, the invitation carries the event's own doors — the buttons its public page shows. */
+    public function test_a_platform_event_invitation_shows_the_event_doors(): void
+    {
+        config(['federations.invite_v2' => true, 'federations.platform_events' => true]);
+        $fe = $this->event($this->federation($this->createUser()));
+        $club = app(\App\Federations\Services\FederationPlatformEvent::class)->sync($fe);
+        $this->assertNotNull($club, 'the federation event should run as a platform event');
+
+        $this->get($this->url($fe->fresh()))->assertOk()
+            ->assertSee(__('personal.event_show_tile_officials'))
+            ->assertSee(__('events::events.bout_gallery_title'))
+            ->assertSee(__('personal.event_show_tile_participants'))
+            ->assertSee((new \App\Events\Support\EventAddress($club))->section('participants'), false);
+    }
+
+    /** Without a platform event there is nothing behind a door, so none is drawn. */
+    public function test_an_invitation_without_a_platform_event_draws_no_doors(): void
+    {
+        config(['federations.invite_v2' => true, 'federations.platform_events' => false]);
+        $fe = $this->event($this->federation($this->createUser()));
+
+        $this->get($this->url($fe))->assertOk()
+            ->assertDontSee(__('events::events.bout_gallery_title'));
     }
 }

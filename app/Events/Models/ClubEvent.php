@@ -112,12 +112,59 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
     {
         return LogOptions::defaults()
             ->useLogName('club')
-            ->logOnly(['title', 'date', 'end_date', 'status', 'scope', 'is_archived', 'max_capacity'])
+            ->logOnly(['title', 'date', 'end_date', 'status', 'scope', 'is_archived', 'max_capacity', 'visibility'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
 
     protected $table = 'club_events';
+
+    /*
+     | Listed or hidden (owner, 2026-10-04). A HIDDEN event appears in no list
+     | anywhere on the platform and sends no announcements; it is reached only
+     | by its link, which anybody holding it may open (PublicEvent::isPublic).
+     | Its organisers, and people already entered in it, still find it in
+     | their own lists (scopeListedFor).
+     */
+    public const LISTED = 'listed';
+
+    public const HIDDEN = 'hidden';
+
+    public function isHidden(): bool
+    {
+        return ($this->visibility ?? self::LISTED) === self::HIDDEN;
+    }
+
+    /** Events that appear in lists for anybody — never a hidden one. */
+    public function scopeListed($query)
+    {
+        return $query->where(fn ($q) => $q->whereNull('club_events.visibility')->orWhere('club_events.visibility', '!=', self::HIDDEN));
+    }
+
+    /**
+     * Events that may appear in THIS reader's lists: every listed one, plus a
+     * hidden one they run (created it, own or administer its host club) or are
+     * entered in. Narrows a list query; the list's own scope rules still apply.
+     */
+    public function scopeListedFor($query, $user)
+    {
+        if (! $user) {
+            return $this->scopeListed($query);
+        }
+        $uid = (int) $user->id;
+
+        return $query->where(function ($q) use ($uid) {
+            $q->whereNull('club_events.visibility')
+                ->orWhere('club_events.visibility', '!=', self::HIDDEN)
+                ->orWhere('club_events.created_by', $uid)
+                ->orWhereIn('club_events.tenant_id', fn ($t) => $t->select('id')->from('tenants')->where('owner_user_id', $uid))
+                ->orWhereIn('club_events.tenant_id', fn ($t) => $t->select('user_roles.tenant_id')->from('user_roles')
+                    ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                    ->where('user_roles.user_id', $uid)->where('roles.slug', 'club-admin'))
+                ->orWhereIn('club_events.id', fn ($r) => $r->select('event_id')->from('club_event_registrations')->where('user_id', $uid))
+                ->orWhereIn('club_events.id', fn ($o) => $o->select('event_id')->from('event_officials')->where('user_id', $uid));
+        });
+    }
 
     public const DRAW_ALWAYS = 'always';
 
@@ -170,6 +217,8 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         'scope',
         // Whether this event has a page anybody may open — see the migration.
         'entry_mode',
+        // listed | hidden — whether it appears in any list (isHidden(), scopeListedFor()).
+        'visibility',
         // ...and whether an entry made through it needs the organiser to say
         // yes. Off by default; the two are separate decisions.
         'public_entry_auto_accept',

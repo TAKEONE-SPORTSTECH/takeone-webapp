@@ -44,4 +44,26 @@ class SportLabel
 
         return $fallback ?: (config('event_schema.sports.'.$sport.'.label') ?: ucfirst($sport));
     }
+
+    /**
+     * The sport's name with the STYLE the event runs under — "Kyokushin
+     * Karate", "كاراتيه كيوكوشين" — or just the sport when it runs the sport's
+     * default (CategorySystems::styleLabel). Word order is the language's own
+     * (`events.sport_with_style`).
+     */
+    public static function forEvent(\App\Events\Models\ClubEvent $event, ?string $fallback = null): ?string
+    {
+        $sport = self::for($event->sport, $fallback);
+        if (! $sport) {
+            return $sport;
+        }
+
+        try {
+            $style = app(CategorySystems::class)->styleLabel($event);
+        } catch (\Throwable) {
+            $style = null;   // a label must never break a page
+        }
+
+        return $style ? __('events::events.sport_with_style', ['sport' => $sport, 'style' => $style]) : $sport;
+    }
 }

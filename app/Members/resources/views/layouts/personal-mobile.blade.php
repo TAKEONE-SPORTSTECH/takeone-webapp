@@ -66,7 +66,8 @@
     $businessName = $hasBusiness ? $u->ownedBusiness->name : null;
 @endphp
 
-<div x-data="{ drawer:false, switcher:false }" @shell:navigated.window="drawer=false; switcher=false">
+{{-- New UI: sticky strips sit under the phone header, which is 56px at every width. --}}
+<div x-data="{ drawer:false, switcher:false }" @shell:navigated.window="drawer=false; switcher=false" @if(\App\Ui\NewUi::active()) style="--t1-bar:56px" @endif>
 
     {{-- Club mode (App\Clubs\Support\ClubLock): a page opened from the club panel
          gets the club header only — no drawer, no tabs, no way out of the club. --}}
@@ -95,6 +96,9 @@
                     </div>
                 </a>
             </div>
+            @if(\App\Ui\NewUi::active())
+            <div class="px-3 pt-2">@include('ui::shell.theme-switch')</div>
+            @endif
             {{-- Get the App / Update — compact row; device-aware badge set via JS. --}}
             <div class="px-3 pt-2">
                 <a id="get-app-nav" href="{{ route('me.app') }}" data-shell-link data-route="me.app"
@@ -221,6 +225,9 @@
 
     @unless(\App\Clubs\Support\ClubLock::active())
     {{-- ===== Bottom tab bar ===== --}}
+    @if(\App\Ui\NewUi::active())
+    @include('ui::shell.mobile-tabs')
+    @else
     <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border lg:hidden">
         <div class="grid grid-cols-5 items-end">
             @foreach($bottomTabs as $tab)
@@ -250,6 +257,7 @@
             @endforeach
         </div>
     </nav>
+    @endif
     @endunless
 
 </div>

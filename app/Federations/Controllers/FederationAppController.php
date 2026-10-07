@@ -254,7 +254,7 @@ class FederationAppController extends Controller
     }
 
     /** The club invitation — public: a club opens it from a link. */
-    public function publicPage(Request $request, string $file): Response
+    public function publicPage(Request $request, string $file): \Symfony\Component\HttpFoundation\Response
     {
         $this->ensureEnabled();
         abort_unless($this->app->isPublicPage($file), 404);
@@ -279,6 +279,33 @@ class FederationAppController extends Controller
         if ($request->user()?->hasRole('super-admin') && in_array($request->query('preview'), ['v2', 'off'], true)) {
             $request->session()->put('fedinv.preview', $request->query('preview') === 'v2');
         }
+        // ONE address per event (owner, 2026-10-04): with the shared club-entry
+        // screens on, the invitation forwards to the event's own page, carrying
+        // an invitation pass (EventInvitePass) so a club with no account can read
+        // it and register. The club's proof bound above rides along in the
+        // session. A 302 adds nothing to the history, so Back is not trapped.
+        if (config('events.club_entry') && InvitePageController::enabled($request)
+            && ($platform = app(\App\Federations\Services\FederationPlatformEvent::class)->enabled()
+                ? app(\App\Federations\Services\FederationPlatformEvent::class)->of($event) : null)
+            && ! $platform->is_archived) {
+            // A link reader (WhatsApp, Instagram…) keeps no session, so the pass
+            // would not survive the forward and it would unfurl the login page.
+            // It gets the event's preview tags here instead (ShareCard).
+            if (\App\Events\Support\ShareCard::isLinkReader($request)) {
+                return response()->view('events::entry.share-preview', [
+                    'share' => app(\App\Events\Support\ShareCard::class)->meta($platform),
+                    'url' => $request->fullUrl(),
+                    'host' => $platform->host()->name,
+                ])->header('Cache-Control', 'public, max-age=600');
+            }
+            \App\Events\Support\EventInvitePass::grant($request, $platform);
+
+            // Leaving /federation on purpose — SealFederation would otherwise
+            // re-aim it at the federation's sign-in.
+            return redirect()->to(route('me.events.show', ['event' => $platform->uuid]).'#cover')
+                ->header(\App\Federations\Middleware\SealFederation::LEAVE, '1');
+        }
+
         if (InvitePageController::enabled($request)) {
             return app(InvitePageController::class)->show($request, $event, $this->inviteBoot($event));
         }
@@ -286,8 +313,8 @@ class FederationAppController extends Controller
         return $this->html($this->app->page($file, $this->inviteBoot($event)));
     }
 
-    /** What the club invitation boots with — its store, its doors, the country list. */
-    private function inviteBoot(\App\Federations\Models\FederationEvent $event): array
+    /** What the club invitation boots with — its store, its doors, the country list. Public for FederationClubEntryDesk. */
+    public function inviteBoot(\App\Federations\Models\FederationEvent $event): array
     {
         $invitation = app(\App\Federations\Services\FederationInvitation::class);
 

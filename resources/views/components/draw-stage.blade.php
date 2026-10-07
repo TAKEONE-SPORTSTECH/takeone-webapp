@@ -65,6 +65,23 @@
        audience. Both re-check the draw's visibility for themselves. */
     'dataUrl' => null,
 
+    /* ── WHICH DOOR THE BOARD WRITES THROUGH ─────────────────────────────
+       Null (the default) is the member routes, exactly as before. A host on
+       ANOTHER door — the scoring tablet (App\Events\Support\TabletDraw),
+       whose writes are authorised by a PIN rather than a session — passes its
+       own. `clearUrl` false hands the board no clear address at all. */
+    'arrangeUrl' => null,
+    'clearUrl' => null,
+    'admitUrl' => null,
+    'outcomeUrl' => null,
+    'entrantUrl' => null,
+    /* Whether the BOARD offers the organiser's bout tools (decide a winner,
+       a score, correct a name) — separately from the stage's own editing menu,
+       which `canManage` draws. Null follows `canManage`, as before; the scoring
+       tablet turns the board's tools on under a PIN without the menu, whose
+       verbs run on member routes it cannot use. */
+    'boardCanManage' => null,
+
     /* A short, stable name, so two stages on one page cannot collide over an
        element id. Only one is ever needed in practice. */
     'id' => 'draw',
@@ -379,6 +396,27 @@
                                 @endforeach
                             @endif
 
+
+                            @if(\App\Events\Support\BracketPdf::available())
+                                {{-- The draw on paper — the board itself, printed
+                                     ink-light on A4 (App\Events\Support\BracketPdf).
+                                     High in the menu on purpose: at the foot it
+                                     sat below a phone's screen edge. The route
+                                     re-authorises; this only decides what is
+                                     offered. --}}
+                                <p class="bk-menu-head">{{ __('events::events.bracket_pdf_head') }}</p>
+                                <button type="button" role="menuitem" class="bk-menu-row"
+                                        @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), true)">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                    <span>{{ __('events::events.bracket_pdf_this') }}</span>
+                                </button>
+                                <button type="button" role="menuitem" class="bk-menu-row"
+                                        @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), false)">
+                                    <i class="bi bi-files"></i>
+                                    <span>{{ __('events::events.bracket_pdf_all') }}</span>
+                                </button>
+                            @endif
+
                             <p class="bk-menu-head">{{ __('events::events.bracket_view') }}</p>
                             <div class="bk-seg">
                                 <button type="button" class="bk-seg-b" :class="view === 'auto' && 'is-on'"
@@ -440,6 +478,15 @@
                                 <span>{{ __('events::events.bracket_background_clear') }}</span>
                             </button>
 
+                            @if($canManage && \App\Events\Support\TabletDraw::enabled())
+                                <button type="button" role="menuitem" class="bk-menu-row"
+                                        @click="window.dispatchEvent(new CustomEvent('draw-pin:open'))">
+                                    <i class="bi bi-tablet-landscape"></i>
+                                    <span>{{ __('events::events.tablet_pin_menu') }}</span>
+                                </button>
+                            @endif
+
+
                             @isset($menuExtra)
                                 {{-- The host's own rows — on the public event,
                                      what its band's gear and ⋯ menu held. --}}
@@ -474,15 +521,18 @@
                  canArrange would quietly change what a working screen hands its
                  board. The board decides what to DRAW from `can-arrange`; these
                  are only what it may reach for. --}}
-            :arrange-url="($canManage || $canArrange) ? route('me.events.bracket.arrange', $ev) : null"
-            :clear-url="($canManage || $canArrange) ? route('me.events.bracket.clear', $ev) : null"
+            :arrange-url="($canManage || $canArrange) ? ($arrangeUrl ?: route('me.events.bracket.arrange', $ev)) : null"
+            :clear-url="($canManage || $canArrange) && $clearUrl !== false ? ($clearUrl ?: route('me.events.bracket.clear', $ev)) : null"
+            :admit-url="$admitUrl"
             :event-uuid="$ev"
             :can-arrange="$canArrange"
             {{-- Deciding a bout, typing a score and correcting a name on the
                  card are the ORGANISER's — a different permission from
                  arranging. The board re-reads the server's own answer before
                  it draws any of them; this is what the host knows. --}}
-            :can-manage="$canManage"
+            :can-manage="$boardCanManage ?? $canManage"
+            :outcome-url="$outcomeUrl"
+            :entrant-url="$entrantUrl"
             :my-competitor-ids="$myCompetitorIds"
             :show-divisions="false"
             {{-- Fill the flex slot rather than computing a height from the
@@ -516,6 +566,12 @@
                  against the stage and it needs no teleport. On a phone its own
                  stylesheet turns it into a bottom sheet. --}}
             <x-bracket-add-competitor :event="$ev" :division="$division" :id="$sid.'add'" />
+
+            {{-- The tablet PIN: lends a scoring tablet this organiser's power to
+                 edit the draw in an emergency (App\Events\Support\TabletDraw). --}}
+            @if(\App\Events\Support\TabletDraw::enabled())
+                <x-draw-tablet-pin :event="$ev" :color="$dsColor" />
+            @endif
         @endif
 
         {{-- Admitting a late athlete to a division that is already being fought.
@@ -525,9 +581,20 @@
              who is standing in front of the competitor when he turns up. The
              sheet is inert until something dispatches `late-entry:open`, so
              rendering it costs a reader nothing. --}}
-        @if($canManage || $canArrange)
+        {{-- Member door only: a host on its own door (the scoring tablet passes
+             `admitUrl`) brings its own window, and the member addresses inside
+             this one have no business in a device's page source. --}}
+        @if(($canManage || $canArrange) && ! $admitUrl)
             <x-late-entry :event="$ev" :color="$dsColor" :division="$division" />
         @endif
+
+        {{-- The host's own windows that must position against the stage (no
+             transform here, so `absolute` resolves to it) — e.g. the scoring
+             tablet's add-competitor window on its own PIN-gated door. Empty
+             for every other host. --}}
+        @isset($overlay)
+            {{ $overlay }}
+        @endisset
 
         {{-- The podium is ON THE BOARD, not over it.
 
@@ -593,6 +660,7 @@
                 </template>
             </div>
         </div>
+
     </div>
 </div>
 {{-- ===== The stage is exactly as tall as the screen actually is =====
@@ -640,6 +708,65 @@
 })();
 </script>
 
+@if(\App\Events\Support\BracketPdf::available())
+{{-- ===== Download the draw as a PDF =====
+
+     Fetched, not navigated to: it takes a few seconds (a browser prints it on
+     the server), and a failure must be a toast on THIS page rather than a
+     redirect away from the board (No-Reload rule). The viewer's own layout
+     and bronze settings ride along, so the paper matches their screen.
+
+     Defined once per document — the shells re-run inline scripts. --}}
+<script>
+(function () {
+    if (window.drawStagePdf) return;
+
+    let busy = false;
+
+    window.drawStagePdf = async function (url, oneDivision) {
+        if (busy) return;
+        busy = true;
+
+        const st = (window.BracketBoard && window.BracketBoard.state) ? window.BracketBoard.state() : {};
+        const q = new URLSearchParams();
+        if (oneDivision && st.division) q.set('division', st.division);
+        if (st.layout) q.set('layout', st.layout);
+        if (st.third) q.set('third', st.third);
+
+        window.showToast && window.showToast('info', @js(__('events::events.bracket_pdf_working')));
+
+        try {
+            const res = await fetch(url + '?' + q.toString(), {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json, application/pdf' },
+            });
+            const type = res.headers.get('Content-Type') || '';
+
+            if (! res.ok || type.indexOf('application/pdf') === -1) {
+                let msg = @js(__('events::events.bracket_pdf_failed'));
+                try { const j = await res.json(); if (j && j.message) msg = j.message; } catch (e) { /* not json */ }
+                window.showToast && window.showToast('error', msg);
+                return;
+            }
+
+            const name = ((res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/) || [])[1] || 'draw.pdf';
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(await res.blob());
+            link.download = name;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+        } catch (e) {
+            window.showToast && window.showToast('error', @js(__('events::events.bracket_pdf_failed')));
+        } finally {
+            busy = false;
+        }
+    };
+})();
+</script>
+@endif
+
 <script>
 (function () {
     /* This stage's own element. Rendered in, not hunted for by class: two
@@ -674,6 +801,26 @@
     // The board measures itself to fit the draw, so it needs telling once the
     // stage has settled on its real height.
     window.addEventListener('load', size);
+
+    /* ── The three-dot menu never runs off the screen ─────────────────────
+       Its fixed cap (100dvh − 11rem) did not know how far down the menu
+       starts: under the group rows it opens ~260px from the top, so on a
+       phone its last rows — the PDF download, "Manage this event" — sat
+       below the bottom edge where no scroll could reach them. Sized to the
+       room actually left under its own top edge instead, it scrolls. */
+    const fitMenu = () => {
+        const el = document.getElementById(STAGE);
+        if (! el) return;
+        const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+        el.querySelectorAll('.bk-menu').forEach((m) => {
+            if (! m.offsetParent) return;   // closed
+            const top = m.getBoundingClientRect().top;
+            m.style.maxHeight = Math.max(160, Math.floor(h - top - 12)) + 'px';
+        });
+    };
+    // Alpine opens the menu after the click; measure once it has painted.
+    document.addEventListener('click', () => requestAnimationFrame(() => requestAnimationFrame(fitMenu)));
+    window.addEventListener('resize', fitMenu);
 })();
 </script>
 

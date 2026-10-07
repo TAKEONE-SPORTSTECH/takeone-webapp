@@ -67,11 +67,20 @@
         @endif
 
         @if($canManage)
-        {{-- Owner: edit the club itself (reuses the admin club modal) --}}
-        <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: {} }))"
+        {{-- Edit the club itself. The popup's endpoints are super-admin only, so
+             only a super-admin gets the popup; every other manager goes to the
+             club's own details page. --}}
+        @if(auth()->user()?->isSuperAdmin())
+        <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'edit', clubId: {{ (int) $club->id }} } }))"
                 class="absolute top-4 end-4 z-30 inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/90 backdrop-blur text-gray-800 text-sm font-semibold shadow-sm hover:bg-white transition-colors">
             <i class="bi bi-pencil-square"></i> {{ __('Edit club') }}
         </button>
+        @else
+        <a href="{{ route('admin.club.details', $club->slug) }}"
+           class="absolute top-4 end-4 z-30 inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/90 backdrop-blur text-gray-800 text-sm font-semibold shadow-sm hover:bg-white transition-colors">
+            <i class="bi bi-pencil-square"></i> {{ __('Edit club') }}
+        </a>
+        @endif
         @endif
 
         {{-- Banner Top: Logo only --}}
@@ -1342,7 +1351,9 @@
 
 @if($canManage)
 {{-- ===== Owner inline management: club editor + per-section modals + controls JS ===== --}}
+@if(auth()->user()?->isSuperAdmin())
 <x-club-modal mode="edit" :club="$club" />
+@endif
 <x-facility-modal :club="$club" />
 <x-confirm-dialog />
 @include('clubs::public.partials.owner-controls')

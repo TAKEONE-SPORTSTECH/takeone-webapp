@@ -156,7 +156,7 @@ class OwnershipTransferAuthorizationTest extends TestCase
 
     public function test_the_owner_can_still_delete_the_club(): void
     {
-        $this->actingAs($this->owner)->delete(route('admin.club.destroy', $this->club->slug))->assertRedirect();
+        $this->actingAs($this->owner)->delete(route('admin.club.destroy', $this->club->slug), ['confirm_name' => $this->club->club_name])->assertRedirect();
 
         $this->assertNull(Tenant::find($this->club->id));
     }

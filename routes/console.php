@@ -83,3 +83,13 @@ Schedule::command('taekwondo:court-pair --prune')->dailyAt('04:05');
 Schedule::command('media:migrate --auto')->hourly()->withoutOverlapping();
 Schedule::command('media:verify --quiet-when-clean --orphans')->dailyAt('04:30');
 
+
+/*
+| Translation doctor — finds failed, stuck or interrupted language runs and
+| dead translators, fixes what it can, tells super-admins about the rest.
+| A no-op unless TRANSLATION_AUTOFIX is on. As www-data: the cache is
+| file-based and the cron runs as root, and root-owned cache files lock the
+| web user out (the site 500s).
+*/
+Schedule::command('translate:doctor')->everyFiveMinutes()->withoutOverlapping()
+    ->runInBackground()->user('www-data');

@@ -203,6 +203,8 @@ class FederationDesk
         $joined = DB::table('club_event_registrations as r')->join('club_events as e', 'e.id', '=', 'r.event_id')
             ->whereIn('r.user_id', $userIds)->where('r.status', 'joined')->where('r.role', 'participant')
             ->where('e.scope', '!=', 'internal')
+            // A club's HIDDEN event is not the federation's to see (ClubEvent::isHidden).
+            ->where(fn ($q) => $q->whereNull('e.visibility')->orWhere('e.visibility', '!=', \App\Events\Models\ClubEvent::HIDDEN))
             // The platform event BEHIND a federation event is the same
             // competition, already listed above from the federation's entries:
             // listing it again read as two events (2026-10-02).

@@ -45,9 +45,9 @@
              same vertical axis as the content below it at every breakpoint. --}}
         <div class="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div class="flex items-center justify-between gap-2 mb-4">
-                <a href="{{ route('me.events') }}"
+                <a href="{{ $eventReturn['url'] ?? route('me.events') }}"
                    class="inline-flex items-center w-10 h-10 justify-center rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold hover:bg-white/25 transition-colors"
-           aria-label="{{ __('personal.personal_events_title') }}" title="{{ __('personal.personal_events_title') }}">
+           aria-label="{{ $eventReturn['label'] ?? __('personal.personal_events_title') }}" title="{{ $eventReturn['label'] ?? __('personal.personal_events_title') }}">
                     <i class="bi bi-chevron-left"></i>
                 </a>
 

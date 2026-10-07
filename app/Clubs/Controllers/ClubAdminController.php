@@ -258,17 +258,27 @@ class ClubAdminController extends Controller
         ]);
         $data['enabled'] = $request->boolean('enabled');
 
+        // A session is one paired phone: it belongs to ONE club. Another club's
+        // session, or the platform's own, can never be claimed from here.
+        if (! $whatsapp->sessionIsFree($club, $data['session_name'])) {
+            $message = __('admin.whatsapp_session_taken');
+
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $message, 'errors' => ['session_name' => [$message]]], 422)
+                : back()->withErrors(['session_name' => $message]);
+        }
+
         $whatsapp->save($club, $data);
 
         if ($request->expectsJson()) {
             return response()->json([
                 'success'  => true,
-                'message'  => 'WhatsApp settings saved.',
+                'message'  => __('admin.whatsapp_saved'),
                 'settings' => $whatsapp->adminSettings($club),
             ]);
         }
 
-        return back()->with('success', 'WhatsApp settings saved.');
+        return back()->with('success', __('admin.whatsapp_saved'));
     }
 
     public function testWhatsAppConnection(Tenant $club, \App\Clubs\Services\ClubWhatsAppManager $whatsapp)
@@ -300,14 +310,44 @@ class ClubAdminController extends Controller
     {
         $this->authorizeClub($club);
         $clubId = $club->id;
+        $oldSlug = $club->slug;
 
+        // owner_name / owner_email are not editable here: the owner is a member
+        // (ownership transfer), and federation matching reads these columns.
         $data = $request->only([
             'club_name', 'slogan', 'description', 'enrollment_fee', 'registration_fee',
             'registration_terms', 'registration_requirements',
             'commercial_reg_number', 'vat_reg_number', 'vat_percentage',
             'email', 'country', 'currency', 'timezone', 'slug', 'address',
-            'gps_lat', 'gps_long', 'maps_url', 'owner_name', 'owner_email',
+            'gps_lat', 'gps_long', 'maps_url',
         ]);
+
+        // Money columns are NOT NULL: a cleared field means zero, not a crash.
+        foreach (['enrollment_fee', 'registration_fee', 'vat_percentage'] as $money) {
+            if (array_key_exists($money, $data) && blank($data[$money])) {
+                $data[$money] = 0;
+            }
+        }
+
+        // A Google Maps link with no pin behind it: the form moves the pin from the
+        // link in the browser, but when that script did not run the link was saved
+        // and the club stayed off every map. Read the link here as well — when no
+        // pin was sent, or the link changed and the pin did not move with it.
+        $pinUnread = false;
+        if (! empty($data['maps_url'])) {
+            $noPin = blank($data['gps_lat'] ?? null) || blank($data['gps_long'] ?? null);
+            $pinStale = $data['maps_url'] !== $club->maps_url
+                && (string) ($data['gps_lat'] ?? '') === (string) $club->gps_lat
+                && (string) ($data['gps_long'] ?? '') === (string) $club->gps_long;
+            if ($noPin || $pinStale) {
+                if ($at = \App\Support\MapLink::resolve($data['maps_url'])) {
+                    $data['gps_lat'] = $at['lat'];
+                    $data['gps_long'] = $at['lng'];
+                } elseif ($noPin) {
+                    $pinUnread = true;
+                }
+            }
+        }
 
         if ($request->filled('phone_code') || $request->filled('phone_number')) {
             $data['phone'] = ['code' => $request->phone_code, 'number' => $request->phone_number];
@@ -320,8 +360,9 @@ class ClubAdminController extends Controller
             $data['require_email_verification'] = $request->boolean('require_email_verification');
         }
 
+        // Only the keys the request allows (UpdateClubRequest) — never whatsapp.
         if ($request->has('settings')) {
-            $data['settings'] = array_merge($club->settings ?? [], $request->settings);
+            $data['settings'] = array_merge($club->settings ?? [], (array) $request->validated('settings', []));
         }
 
         // Contact source switch — only touched when the details form submits it.
@@ -333,59 +374,140 @@ class ClubAdminController extends Controller
             ]);
         }
 
+        // Pictures: every file was validated by UpdateClubRequest before we got
+        // here. New files are written first; the old ones are deleted only after
+        // the row points at the new ones — a failure never leaves a club with a
+        // path to a file that is gone.
+        $stored = [];
+        $retire = [];
         foreach (['logo', 'favicon', 'cover_image', 'registration_splash_image'] as $field) {
-            if ($request->filled($field) && str_starts_with($request->input($field), 'data:image')) {
-                if ($club->$field && Storage::disk('public')->exists($club->$field)) {
-                    Storage::disk('public')->delete($club->$field);
-                }
-                $data[$field] = $this->storeBase64Image($request->input($field), 'clubs/'.$clubId.'/branding', $field.'_'.time());
+            $path = null;
+            if ($request->filled($field) && is_string($request->input($field)) && str_starts_with($request->input($field), 'data:image')) {
+                $path = $this->storeBase64Image($request->input($field), 'clubs/'.$clubId.'/branding', $field.'_'.time());
             } elseif ($request->hasFile($field)) {
-                // Stored at original resolution (no downscaling) — but must be a real image.
-                $request->validate([$field => 'image|mimes:jpg,jpeg,png,webp,gif|max:8192']);
-                if ($club->$field && Storage::disk('public')->exists($club->$field)) {
-                    Storage::disk('public')->delete($club->$field);
+                // Stored at original resolution (no downscaling).
+                $path = $request->file($field)->store('clubs/'.$clubId.'/branding', 'public') ?: null;
+            } elseif ($request->boolean('remove_'.$field) && $club->$field) {
+                $data[$field] = null;
+                $retire[] = $club->$field;
+
+                continue;
+            }
+            if ($path) {
+                $stored[] = $path;
+                $data[$field] = $path;
+                if ($club->$field && $club->$field !== $path) {
+                    $retire[] = $club->$field;
                 }
-                $data[$field] = $request->file($field)->store('clubs/'.$clubId.'/branding', 'public');
             }
         }
 
-        $club->update($data);
+        try {
+            DB::transaction(function () use ($club, $data, $request) {
+                $club->update($data);
 
-        $this->applyTranslations($club, $request);
+                $this->applyTranslations($club, $request);
 
-        if ($request->has('social_links')) {
-            $club->socialLinks()->delete();
-            foreach ($request->social_links as $link) {
-                if (! empty($link['platform']) && ! empty($link['url'])) {
-                    $club->socialLinks()->create(['platform' => $link['platform'], 'url' => $link['url']]);
+                // Social links are synced only by a form that rendered them
+                // (social_links_present=1). A request that never showed the rows
+                // must not wipe them.
+                if ($request->boolean('social_links_present')) {
+                    $icons = $club->socialLinks()->pluck('icon', 'platform');
+                    $club->socialLinks()->delete();
+                    foreach (array_values((array) $request->input('social_links', [])) as $i => $link) {
+                        if (! empty($link['platform']) && ! empty($link['url'])) {
+                            $club->socialLinks()->create([
+                                'platform' => $link['platform'],
+                                'url' => $link['url'],
+                                'icon' => $icons[$link['platform']] ?? null,
+                                'display_order' => $i,
+                            ]);
+                        }
+                    }
                 }
+            });
+        } catch (\Throwable $e) {
+            // Nothing was saved: the files written for this attempt go too.
+            foreach ($stored as $path) {
+                Storage::disk('public')->delete($path);
             }
-        } else {
-            $club->socialLinks()->delete();
+            throw $e;
         }
 
-        return back()->with('success', 'Club details updated successfully.');
+        foreach ($retire as $path) {
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        // A renamed slug moves the page itself: go to the new address, never back
+        // to the old one (which no longer exists). The form may name the panel or
+        // tab it was saved from, so the admin lands where they were.
+        $club->refresh();
+
+        // The details pages save in place (No-Reload): they get the saved club
+        // back, and a new address only when the slug moved the page.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('admin.club_details_updated'),
+                'warning' => $pinUnread ? __('shared.map_link_not_found') : null,
+                'redirect' => $club->slug !== $oldSlug ? route('admin.club.details', $club->slug) : null,
+                'club' => [
+                    'slug' => $club->slug,
+                    'club_name' => $club->club_name,
+                    'logo' => $club->logo ? file_url($club->logo) : null,
+                    'favicon' => $club->favicon ? file_url($club->favicon) : null,
+                    'cover_image' => $club->cover_image ? file_url($club->cover_image) : null,
+                    'registration_splash_image' => $club->registration_splash_image ? file_url($club->registration_splash_image) : null,
+                    'gps_lat' => $club->gps_lat,
+                    'gps_long' => $club->gps_long,
+                    'maps_url' => $club->maps_url,
+                ],
+            ]);
+        }
+
+        $panel = preg_match('/^[a-z0-9-]{1,30}$/', (string) $request->input('return_panel')) ? '#'.$request->input('return_panel') : '';
+        $to = $club->slug !== $oldSlug || $panel !== ''
+            ? redirect()->to(route('admin.club.details', $club->slug).$panel)
+            : back();
+
+        $to = $to->with('success', __('admin.club_details_updated'));
+        if ($pinUnread) {
+            $to = $to->with('warning', __('shared.map_link_not_found'));
+        }
+
+        return $to;
     }
 
     /**
      * Delete club
      */
-    public function destroy(Tenant $club)
+    public function destroy(\Illuminate\Http\Request $request, Tenant $club)
     {
         $this->authorizeClub($club);
-        // Deleting the club (and its files) is the owner's call, not a club admin's.
+        // Deleting the club is the owner's call, not a club admin's.
         $this->authorizeClubOwnerAction($club);
-        $clubId = $club->id;
 
-        foreach (['clubs/'.$clubId.'/branding', 'clubs/'.$clubId.'/gallery', 'clubs/'.$clubId.'/facilities', 'clubs/'.$clubId.'/instructors'] as $folder) {
-            if (Storage::disk('public')->exists($folder)) {
-                Storage::disk('public')->deleteDirectory($folder);
-            }
+        // A co-owned club is every owner's to give up, not one owner's.
+        if ($this->isCoOwned($club)) {
+            return back()->with('error', __('admin.club_co_owned_delete'));
         }
 
+        // The typed-name check is enforced here too, not only in the browser.
+        if (trim((string) $request->input('confirm_name')) !== trim((string) $club->club_name)) {
+            return back()->with('error', __('admin.club_delete_name_mismatch'));
+        }
+
+        // The club is SOFT-deleted (it can be restored), so its files stay: a
+        // restored club with its pictures gone would be a broken club. Purging
+        // the files belongs to a force-delete.
         $club->delete();
 
-        return redirect()->route('admin.platform.clubs')->with('success', 'Club deleted successfully.');
+        // Only the platform admin has the platform club list; an owner goes home.
+        $home = \Illuminate\Support\Facades\Auth::user()?->isSuperAdmin() ? route('admin.platform.clubs') : route('me.home');
+
+        return redirect()->to($home)->with('success', __('admin.club_deleted'));
     }
 
     /**
@@ -434,18 +556,10 @@ class ClubAdminController extends Controller
             $newOwner = User::withTrashed()->where('email', $request->email)->first();
         }
 
+        // A deleted account is never revived (and its password reset) from here:
+        // that would let a club owner take over somebody else's old account.
         if ($newOwner && $newOwner->trashed()) {
-            $newOwner->restore();
-            $newOwner->update([
-                'full_name' => $request->full_name,
-                'name' => $request->full_name,
-                'password' => bcrypt($request->password),
-                'gender' => $request->gender,
-                'birthdate' => $request->birthdate,
-                'nationality' => $request->nationality,
-                'blood_type' => $request->blood_type ?? 'Unknown',   // column is NOT NULL (default 'Unknown'); the form makes it optional
-                'mobile' => $request->mobile ? ['code' => $request->mobile_code ?? '+973', 'number' => $request->mobile] : null,
-            ]);
+            return response()->json(['success' => false, 'message' => __('admin.owner_email_deleted_account')], 422);
         } elseif ($newOwner) {
             return response()->json(['success' => false, 'message' => 'An active account with this email already exists. Use "Link Existing Member" instead.'], 422);
         } else {
@@ -479,10 +593,11 @@ class ClubAdminController extends Controller
 
         $newOwner->assignRole('club-admin', $club->id);
 
-        ClubMemberSubscription::create([
+        ClubMemberSubscription::firstOrCreate([
             'tenant_id' => $club->id,
             'type' => 'owner',
             'user_id' => $newOwner->id,
+        ], [
             'package_id' => null,
             'start_date' => now()->toDateString(),
             'end_date' => null,

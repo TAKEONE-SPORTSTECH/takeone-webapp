@@ -96,6 +96,8 @@
         @endif
     </div>
     <input type="hidden" name="{{ $inputName }}" id="hiddenInput_{{ $id }}" value="">
+    {{-- "1" when the admin removed the current picture (the empty value above means "unchanged"). --}}
+    <input type="hidden" name="remove_{{ $inputName }}" id="removeInput_{{ $id }}" value="">
     <input type="hidden" name="{{ $inputName }}_folder" value="{{ $folder }}">
     <input type="hidden" name="{{ $inputName }}_filename" value="{{ $filename }}">
     @endif
@@ -122,6 +124,8 @@
         @endif
     </div>
     <input type="hidden" name="{{ $inputName }}" id="hiddenInput_{{ $id }}" value="">
+    {{-- "1" when the admin removed the current picture (the empty value above means "unchanged"). --}}
+    <input type="hidden" name="remove_{{ $inputName }}" id="removeInput_{{ $id }}" value="">
     <input type="hidden" name="{{ $inputName }}_folder" value="{{ $folder }}">
     <input type="hidden" name="{{ $inputName }}_filename" value="{{ $filename }}">
     <button type="button" class="{{ $buttonClass }}" onclick="window.bsModal.show(document.querySelector('#cropperModal_{{ $id }}'))">
@@ -469,6 +473,7 @@ $(function() {
             })).then(base64 => {
                 // Store in hidden input
                 $('#hiddenInput_{{ $id }}').val(base64);
+                $('#removeInput_{{ $id }}').val('');
 
                 // …and SAY so. jQuery's .val() fires no event and does not
                 // touch the attribute, so neither a listener nor a
@@ -628,6 +633,7 @@ $(function() {
 
                 if (mode_{{ $id }} === 'form') {
                     $('#hiddenInput_{{ $id }}').val(base64);
+                    $('#removeInput_{{ $id }}').val('');
 
                     // See the note on the other form-mode branch: .val() is
                     // silent, so the value is announced for callers that keep
@@ -696,6 +702,7 @@ $(function() {
 
         // Clear hidden input
         $('#hiddenInput_{{ $id }}').val('');
+        $('#removeInput_{{ $id }}').val('1');
         document.dispatchEvent(new CustomEvent('cropperCropped', {
             detail: { id: '{{ $id }}', base64: '' },
         }));

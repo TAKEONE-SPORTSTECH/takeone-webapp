@@ -313,6 +313,20 @@ class Translations
     }
 
     /**
+     * Translation health — what the doctor last found, or a fresh DIAGNOSIS
+     * (probes the translators, changes nothing). For screens and MCP; the
+     * repairing pass is `translate:doctor` on the schedule.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function health(bool $fresh = false): ?array
+    {
+        return $fresh
+            ? app(\App\Translation\Services\TranslationDoctor::class)->run(fix: false)
+            : \App\Translation\Services\TranslationDoctor::lastReport();
+    }
+
+    /**
      * Where every language stands on the INTERFACE — coverage, and what is
      * still English. Plain data, for a screen.
      *

@@ -142,6 +142,9 @@ class PublicEventController extends Controller
         }
 
         return view('events::entry.public.mobile', ['e' => $e, 'console' => $console, 'mine' => $mine,
+            // What a shared link unfurls into (App\Events\Support\ShareCard).
+            'share' => rescue(fn () => app(\App\Events\Support\ShareCard::class)->meta($event), null, report: true),
+            'shareUrl' => \App\Events\Support\EventShareLink::for($event),
             'addr' => new \App\Events\Support\EventAddress($event),
             'visitors' => $visitors, 'visitorsCanDrill' => $canManage,
             /*

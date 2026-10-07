@@ -189,6 +189,9 @@ class ScoreboardController extends Controller
 
         return $this->consoleView($event, $mats, $device->court, [
             'commandUrl' => route('karate-scoreboard.token-command', $token),
+            // The draw, on this tablet — read-only, editable under the event's
+            // tablet PIN (App\Events\Support\TabletDraw). Null while off.
+            'drawUrl' => \App\Events\Support\TabletDraw::enabled() ? route('tablet.draw', $token) : null,
             // A paired console is a SCREEN, and the console lists it beside the
             // boards with a live dot. Commands alone would show a mat waiting
             // twenty minutes for the next bout as offline — the opposite of the

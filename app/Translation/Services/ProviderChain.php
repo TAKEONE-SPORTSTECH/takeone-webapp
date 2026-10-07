@@ -69,7 +69,7 @@ class ProviderChain
         foreach ($this->providers() as $provider) {
             try {
                 $links[] = new Link(
-                    driver: $this->ai->text($provider->id),
+                    driver: $this->laneDriver($provider) ?? $this->ai->text($provider->id),
                     label: $provider->name ?: $provider->driver,
                     driverName: (string) $provider->driver,
                     model: (string) ($provider->model ?: '—'),
@@ -91,6 +91,45 @@ class ProviderChain
         }
 
         return $links;
+    }
+
+    /**
+     * The same Ollama provider, pointed at THIS process's lane.
+     *
+     * Set by `translate:interface --lane=N` (config 'translation.active_lane').
+     * Only a provider whose own base_url is one of the configured lanes is
+     * redirected — a different server is never silently swapped for a lane.
+     * Options are read exactly as AiManager reads them for the same row.
+     */
+    private function laneDriver(AiProvider $provider): ?OllamaTextDriver
+    {
+        $lanes = (array) config('translation.ollama_lanes', []);
+        $lane = (string) config('translation.active_lane', '');
+
+        /*
+         * No lane chosen by the command: the WORKER's lane, so content
+         * translations queued from the screens run two at a time, one per GPU
+         * (one takeone-translation-worker per lane). Read with getenv(), not
+         * env()/config: the config is cached, which freezes env() for every
+         * process, and this value differs per worker process.
+         */
+        if ($lane === '' && ($worker = (int) getenv('TRANSLATION_WORKER_LANE')) > 0) {
+            $lane = (string) ($lanes[$worker - 1] ?? '');
+        }
+
+        if ($lane === '' || $provider->driver !== 'ollama'
+            || ! in_array(rtrim((string) $provider->base_url, '/'), $lanes, true)) {
+            return null;
+        }
+
+        $o = $provider->options ?? [];
+
+        return new OllamaTextDriver(
+            $lane,
+            $provider->model ?: (string) config('copilot.model'),
+            (float) ($o['temperature'] ?? 0.2),
+            (int) ($o['timeout'] ?? 120),
+        );
     }
 
     /**

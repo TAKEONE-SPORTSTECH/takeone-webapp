@@ -44,4 +44,11 @@ return [
     // Grades on the sport's own belt ladder (beltLadder()), 2026-09-27.
     'grade_kyu' => '{1} 1st kyu|{2} 2nd kyu|{3} 3rd kyu|[4,*] :nth kyu',
     'grade_dan' => '{1} 1st dan|{2} 2nd dan|{3} 3rd dan|[4,*] :nth dan',
+    'style_kyokushin' => 'Kyokushin',
+    'style_shotokan' => 'Shotokan',
+    'style_goju_ryu' => 'Goju-ryu',
+    'style_shito_ryu' => 'Shito-ryu',
+    'style_wado_ryu' => 'Wado-ryu',
+    'grade_ungraded' => 'Ungraded (beginner)',
+    'grade_mukyu' => 'Mukyu (beginner)',
 ];

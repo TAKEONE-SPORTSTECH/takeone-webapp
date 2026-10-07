@@ -143,7 +143,7 @@
     </main>
 
     {{-- ===== Bottom tab bar ===== --}}
-    <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border lg:hidden">
+    <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border lg:hidden" style="padding-bottom: env(safe-area-inset-bottom);">
         <div class="grid grid-cols-5">
             @foreach($bottomTabs as $tab)
                 @php $active = $currentRoute === $tab['route']; @endphp

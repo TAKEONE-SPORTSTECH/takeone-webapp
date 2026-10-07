@@ -73,7 +73,11 @@ class PublicEvent
     /** May anybody at all open this event's page? */
     public function isPublic(ClubEvent $event): bool
     {
-        return ($event->entry_mode ?? 'members') === 'public'
+        // A HIDDEN event (ClubEvent::isHidden) is reached only by its link — and
+        // whoever holds the link may open it (owner, 2026-10-04: "unlisted").
+        // Being public says who may OPEN it, never that it is listed anywhere:
+        // every list asks ClubEvent::scopeListed / scopeListedFor for that.
+        return (($event->entry_mode ?? 'members') === 'public' || $event->isHidden())
             && ! $event->is_archived;
     }
 
@@ -176,8 +180,8 @@ class PublicEvent
             // Through App\Events\Support\SportLabel, so the sport's name is in the
             // reader's language too. The schema keeps deciding WHICH sports
             // exist; only the words are translatable now.
-            'sport_label' => \App\Events\Support\SportLabel::for(
-                $event->sport,
+            'sport_label' => \App\Events\Support\SportLabel::forEvent(
+                $event,
                 $event->sport ? (config('event_schema.sports.'.$event->sport.'.label') ?: ucfirst($event->sport)) : null,
             ),
             'sport_icon' => 'bi-dribbble',
@@ -239,6 +243,10 @@ class PublicEvent
             'capped' => (int) $event->max_capacity > 0,
             'entered' => $going,
             'capacity' => (int) $event->max_capacity ?: null,
+
+            // Girls · boys · divisions · bouts. Counts only, like `going`; the
+            // bout count obeys the draw's disclosure rule (see EventStats).
+            'stats' => rescue(fn () => EventStats::for($event, auth()->user()), null, report: true),
 
             /*
              * WHAT IT COSTS.
@@ -370,11 +378,28 @@ class PublicEvent
             // doesn't. Asked of the one class that also answers the endpoint,
             // so a button can never offer what the door would refuse.
             'enrol' => app(PublicEntry::class)->state($event),
+            // "Register your club" — the event's own address for it, while
+            // clubs may enter and the host has club-entry screens
+            // (ClubEntryDesks). Null: no club door on this page.
+            'club_entry' => $this->clubEntryUrl($event),
             'started' => $event->hasStarted(),
             'ended' => $event->hasEnded(),
             // The competition's clock — every date and time on this page is in it.
             'timezone' => $event->zone(),
         ];
+    }
+
+    /** The first club-entry screen (/me/events/{uuid}/rules), or null — see the payload's `club_entry`. */
+    private function clubEntryUrl(ClubEvent $event): ?string
+    {
+        if (! config('events.club_entry', false)
+            || ! app(EntryChannels::class)->allows($event, EntryChannels::CLUB)
+            || ! (app(EntryService::class)->entriesState($event)['open'] ?? false)
+            || \App\Events\Support\ClubEntry\ClubEntryDesks::for($event) === null) {
+            return null;
+        }
+
+        return route('me.events.club-entry.rules', ['event' => $event->uuid]);
     }
 
     /**
@@ -1241,7 +1266,22 @@ class PublicEvent
     public function photo(ClubEvent $event): ?string
     {
         $images = is_array($event->images) ? $event->images : [];
+        if ($images) {
+            return file_url($images[0]);
+        }
 
-        return $images ? file_url($images[0]) : null;
+        // None of its own: the module that hosts it may keep artwork in its own
+        // records (a federation's poster) — ProvidesEventArtwork.
+        // Portrait first — the cover is a phone screen — else landscape.
+        foreach (['portrait', 'landscape'] as $shape) {
+            foreach (app(\App\Support\Modules\ModuleRegistry::class)->contributingTo(\App\Support\Modules\Surfaces\ProvidesEventArtwork::class) as $module) {
+                $art = rescue(fn () => $module->eventArtwork($event, $shape), null, report: true);
+                if (is_array($art) && ! empty($art['url'])) {
+                    return $art['url'];
+                }
+            }
+        }
+
+        return null;
     }
 }

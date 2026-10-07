@@ -38,6 +38,19 @@ class ChainDashboardService
             ->orderBy('club_name')
             ->get();
 
+        return $this->forClubs($clubs);
+    }
+
+    /**
+     * The same payload for any set of clubs — one club on its own, or a chain's.
+     * Each club needs id, club_name, slug, logo and currency loaded. The new UI's
+     * Manage overview (app/Ui) reads its figures through here, so a club's
+     * numbers there and on the chain dashboard follow the same rules.
+     *
+     * @return array{clubs: Collection, totals: array, revenue_chart: array}
+     */
+    public function forClubs(Collection $clubs): array
+    {
         $clubIds = $clubs->pluck('id')->all();
 
         if (empty($clubIds)) {

@@ -5,6 +5,7 @@ namespace App\Ai\Controllers;
 use App\Http\Controllers\Controller;
 use App\Ai\Models\AiProvider;
 use App\Ai\AiManager;
+use App\Ai\ModelCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -154,13 +155,73 @@ class AiProviderController extends Controller
                 ['role' => 'user', 'content' => 'Reply with the single word: OK'],
             ]);
 
+            // Best-effort: a provider that answers but cannot list (some
+            // OpenAI-compatible servers) is still a successful connection.
+            try {
+                $models = app(ModelCatalog::class)->list(
+                    $provider->driver, $provider->base_url, (string) $provider->api_key,
+                    isset($provider->options['workspace_id']) ? (string) $provider->options['workspace_id'] : null,
+                );
+            } catch (\Throwable) {
+                $models = [];
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Connected. Model replied: '.mb_substr(trim((string) ($reply['content'] ?? '')), 0, 60),
+                'models' => $models,
             ]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Failed: '.mb_substr($e->getMessage(), 0, 160)]);
         }
+    }
+
+    /**
+     * The models a provider will serve, for the picker in the form.
+     *
+     * Works before a provider is saved (the credentials typed into the form)
+     * and while editing one (`provider_id`): a blank key there means "use the
+     * stored one", which never leaves the server.
+     */
+    public function models(Request $request, ModelCatalog $catalog)
+    {
+        $data = $request->validate([
+            'provider_id' => ['nullable', 'integer'],
+            'driver' => ['required', Rule::in(ModelCatalog::DRIVERS)],
+            'base_url' => 'nullable|url|max:255',
+            'api_key' => 'nullable|string|max:400',
+        ]);
+
+        $key = $data['api_key'] ?? null;
+        $workspace = null;
+
+        if (! empty($data['provider_id'])) {
+            $provider = AiProvider::query()->find($data['provider_id']);
+            if (! $provider) {
+                return response()->json(['success' => false, 'message' => 'Provider not found.'], 404);
+            }
+            if (! filled($key)) {
+                // The stored key only ever goes where it was saved to go.
+                // Pointing it somewhere new requires typing the key again.
+                if (($data['base_url'] ?? null) != $provider->base_url || $data['driver'] !== $provider->driver) {
+                    return response()->json(['success' => false, 'message' => 'Re-enter the API key to list models from a different endpoint.'], 422);
+                }
+                $key = (string) $provider->api_key;
+            }
+            $workspace = isset($provider->options['workspace_id']) ? (string) $provider->options['workspace_id'] : null;
+        }
+
+        try {
+            $models = $catalog->list($data['driver'], $data['base_url'] ?? null, $key, $workspace);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Failed: '.mb_substr($e->getMessage(), 0, 160)]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $models ? count($models).' models available.' : 'Connected, but the provider listed no models.',
+            'models' => $models,
+        ]);
     }
 
     private function validated(Request $request, bool $creating): array

@@ -83,8 +83,8 @@
                    address the poster may not exist at all (the organiser's
                    public switch is off), and sending Back there would leave a
                    chrome-less page whose only way out is a 404. */
-                $backHref = ($sealed ?? false) ? url('/e/'.$e['key']) : route('me.events');
-                $backLabel = ($sealed ?? false) ? __('events::events.public_enrol_back_event') : __('personal.event_show_events');
+                $backHref = ($sealed ?? false) ? url('/e/'.$e['key']) : ($eventReturn['url'] ?? route('me.events'));
+                $backLabel = ($sealed ?? false) ? __('events::events.public_enrol_back_event') : ($eventReturn['label'] ?? __('personal.event_show_events'));
             @endphp
     @php
         /* The classification, the way the poster says it: "JIU JITSU

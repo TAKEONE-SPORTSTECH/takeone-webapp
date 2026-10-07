@@ -92,11 +92,18 @@
          prints above the card, and it must not announce a platform the sender
          never mentioned. --}}
     @if($e['host'])<meta property="og:site_name" content="{{ $e['host'] }}">@endif
+    @if(! empty($share))
+    {{-- ShareCard: the status in the title, date · venue · organiser in the
+         description (never the long About), and the picture by what the event
+         has — its landscape artwork, else a card drawn for it. --}}
+    @include('events::entry.partials.share-meta', ['share' => $share])
+    @else
     <meta property="og:title" content="{{ $e['title'] }}">
     <meta property="og:description" content="{{ Str::limit(strip_tags($e['about'] ?? ''), 200) ?: ($e['date'] ?? '') }}">
     @if($e['photo'])<meta property="og:image" content="{{ $e['photo'] }}">@endif
-    <meta property="og:url" content="{{ url()->current() }}">
     <meta name="twitter:card" content="{{ $e['photo'] ? 'summary_large_image' : 'summary' }}">
+    @endif
+    <meta property="og:url" content="{{ url()->current() }}">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

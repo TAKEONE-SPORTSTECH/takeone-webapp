@@ -1,7 +1,12 @@
-@props(['club' => null, 'mode' => 'create'])
+@props(['club' => null, 'mode' => 'create', 'context' => 'admin'])
 
 @php
     $isEdit = $mode === 'edit' && $club;
+    // Whose contact "use the owner's" means: the club's owner when editing, the
+    // acting user in the business flow (they become the owner).
+    $contactOwner = $isEdit ? $club->owner : ($context === 'business' ? auth()->user() : null);
+    $emailOwner = $isEdit ? (($club->settings['contact_source'] ?? null) === 'owner' || (! $club->email && ($club->settings['contact_source'] ?? null) === null)) : true;
+    $phoneOwner = $isEdit ? (($club->settings['contact_source'] ?? null) === 'owner' || (! $club->phone && ($club->settings['contact_source'] ?? null) === null)) : true;
 @endphp
 
 <div class="px-0">
@@ -45,6 +50,11 @@
     </div>
     @endif
 
+    {{-- settings[contact_source]: 'owner' when both choices below use the owner's
+         contact, otherwise 'club'. The club's own email/phone post either way,
+         so switching back restores them. --}}
+    <input type="hidden" name="settings[contact_source]" id="clubContactSource" value="{{ $emailOwner && $phoneOwner ? 'owner' : 'club' }}">
+
     <!-- Club Email -->
     <div class="mb-4">
         <label class="form-label">{{ __('shared.modal_tabs_contact_club_email') }}</label>
@@ -56,7 +66,7 @@
                    name="email_option"
                    id="email_option_owner"
                    value="owner"
-                   {{ (!$isEdit || !$club->email) ? 'checked' : '' }}>
+                   {{ $emailOwner ? 'checked' : '' }}>
             <label class="form-check-label" for="email_option_owner">
                 {{ __('shared.modal_tabs_contact_use_owner_email') }}
             </label>
@@ -68,19 +78,19 @@
                    name="email_option"
                    id="email_option_custom"
                    value="custom"
-                   {{ ($isEdit && $club->email) ? 'checked' : '' }}>
+                   {{ $emailOwner ? '' : 'checked' }}>
             <label class="form-check-label" for="email_option_custom">
                 {{ __('shared.modal_tabs_contact_use_custom_email') }}
             </label>
         </div>
 
         <!-- Owner Email Display (Read-only) -->
-        <div id="ownerEmailDisplay" class="border border-border rounded-lg p-3 mb-3 bg-muted/20" style="display: {{ (!$isEdit || !$club->email) ? 'block' : 'none' }};">
+        <div id="ownerEmailDisplay" class="border border-border rounded-lg p-3 mb-3 bg-muted/20" style="display: {{ $emailOwner ? 'block' : 'none' }};">
             <div class="flex items-center gap-2">
                 <i class="bi bi-envelope text-muted-foreground"></i>
                 <span id="ownerEmailText" class="text-muted-foreground">
-                    @if($isEdit && $club->owner)
-                        {{ $club->owner->email }}
+                    @if($contactOwner && $contactOwner->email)
+                        {{ $contactOwner->email }}
                     @else
                         {{ __('shared.modal_tabs_contact_select_owner_first') }}
                     @endif
@@ -89,7 +99,7 @@
         </div>
 
         <!-- Custom Email Input -->
-        <div id="customEmailInput" style="display: {{ ($isEdit && $club->email) ? 'block' : 'none' }};">
+        <div id="customEmailInput" style="display: {{ $emailOwner ? 'none' : 'block' }};">
             <input type="email"
                    class="form-control"
                    id="email"
@@ -111,7 +121,7 @@
                    name="phone_option"
                    id="phone_option_owner"
                    value="owner"
-                   {{ (!$isEdit || !$club->phone) ? 'checked' : '' }}>
+                   {{ $phoneOwner ? 'checked' : '' }}>
             <label class="form-check-label" for="phone_option_owner">
                 {{ __('shared.modal_tabs_contact_use_owner_phone') }}
             </label>
@@ -123,19 +133,19 @@
                    name="phone_option"
                    id="phone_option_custom"
                    value="custom"
-                   {{ ($isEdit && $club->phone) ? 'checked' : '' }}>
+                   {{ $phoneOwner ? '' : 'checked' }}>
             <label class="form-check-label" for="phone_option_custom">
                 {{ __('shared.modal_tabs_contact_use_custom_phone') }}
             </label>
         </div>
 
         <!-- Owner Phone Display (Read-only) -->
-        <div id="ownerPhoneDisplay" class="border border-border rounded-lg p-3 mb-3 bg-muted/20" style="display: {{ (!$isEdit || !$club->phone) ? 'block' : 'none' }};">
+        <div id="ownerPhoneDisplay" class="border border-border rounded-lg p-3 mb-3 bg-muted/20" style="display: {{ $phoneOwner ? 'block' : 'none' }};">
             <div class="flex items-center gap-2">
                 <i class="bi bi-phone text-muted-foreground"></i>
                 <span id="ownerPhoneText" class="text-muted-foreground">
-                    @if($isEdit && $club->owner && $club->owner->mobile)
-                        {{ $club->owner->mobile_formatted }}
+                    @if($contactOwner && $contactOwner->mobile)
+                        {{ $contactOwner->mobile_formatted }}
                     @else
                         {{ __('shared.modal_tabs_contact_select_owner_first') }}
                     @endif
@@ -144,7 +154,7 @@
         </div>
 
         <!-- Custom Phone Input -->
-        <div id="customPhoneInput" style="display: {{ ($isEdit && $club->phone) ? 'block' : 'none' }};">
+        <div id="customPhoneInput" style="display: {{ $phoneOwner ? 'none' : 'block' }};">
             <x-fields.phone-code
                 name="phone_code"
                 id="phone_code"
@@ -171,89 +181,48 @@
 
 @push('scripts')
 <script>
+    // Which contact the club shows: 'owner' only when BOTH choices use the
+    // owner's; the typed email/phone are never erased by a toggle.
+    function syncClubContactSource() {
+        const src = document.getElementById('clubContactSource');
+        if (!src) return;
+        const emailOwner = document.getElementById('email_option_owner')?.checked;
+        const phoneOwner = document.getElementById('phone_option_owner')?.checked;
+        src.value = (emailOwner && phoneOwner) ? 'owner' : 'club';
+    }
+
+    function showClubContactChoice(kind) {
+        const owner = document.getElementById(kind + '_option_owner')?.checked;
+        const display = document.getElementById(kind === 'email' ? 'ownerEmailDisplay' : 'ownerPhoneDisplay');
+        const custom = document.getElementById(kind === 'email' ? 'customEmailInput' : 'customPhoneInput');
+        if (display) display.style.display = owner ? 'block' : 'none';
+        if (custom) custom.style.display = owner ? 'none' : 'block';
+        syncClubContactSource();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        // Email option toggle
-        const emailOptionOwner = document.getElementById('email_option_owner');
-        const emailOptionCustom = document.getElementById('email_option_custom');
-        const ownerEmailDisplay = document.getElementById('ownerEmailDisplay');
-        const customEmailInput = document.getElementById('customEmailInput');
-        const emailInput = document.getElementById('email');
-
-        if (emailOptionOwner && emailOptionCustom) {
-            emailOptionOwner.addEventListener('change', function() {
-                if (this.checked) {
-                    ownerEmailDisplay.style.display = 'block';
-                    customEmailInput.style.display = 'none';
-                    if (emailInput) emailInput.value = '';
+        ['email', 'phone'].forEach(kind => {
+            ['owner', 'custom'].forEach(opt => {
+                const radio = document.getElementById(kind + '_option_' + opt);
+                if (radio && !radio.__clubContactBound) {
+                    radio.__clubContactBound = true;
+                    radio.addEventListener('change', () => showClubContactChoice(kind));
                 }
             });
-
-            emailOptionCustom.addEventListener('change', function() {
-                if (this.checked) {
-                    ownerEmailDisplay.style.display = 'none';
-                    customEmailInput.style.display = 'block';
-                }
-            });
-        }
-
-        // Phone option toggle
-        const phoneOptionOwner = document.getElementById('phone_option_owner');
-        const phoneOptionCustom = document.getElementById('phone_option_custom');
-        const ownerPhoneDisplay = document.getElementById('ownerPhoneDisplay');
-        const customPhoneInput = document.getElementById('customPhoneInput');
-        const phoneNumberInput = document.getElementById('phone_number');
-
-        if (phoneOptionOwner && phoneOptionCustom) {
-            phoneOptionOwner.addEventListener('change', function() {
-                if (this.checked) {
-                    ownerPhoneDisplay.style.display = 'block';
-                    customPhoneInput.style.display = 'none';
-                    if (phoneNumberInput) phoneNumberInput.value = '';
-                }
-            });
-
-            phoneOptionCustom.addEventListener('change', function() {
-                if (this.checked) {
-                    ownerPhoneDisplay.style.display = 'none';
-                    customPhoneInput.style.display = 'block';
-                }
-            });
-        }
-
-        // Update owner email/phone display when owner is selected
-        document.addEventListener('ownerSelected', function(e) {
-            const owner = e.detail;
-
-            const ownerEmailText = document.getElementById('ownerEmailText');
-            if (ownerEmailText && owner.email) {
-                ownerEmailText.textContent = owner.email;
-            }
-
-            const ownerPhoneText = document.getElementById('ownerPhoneText');
-            if (ownerPhoneText && owner.mobile) {
-                ownerPhoneText.textContent = owner.mobile;
-            }
         });
 
-        // Listen for owner selection from user picker
-        const ownerInput = document.getElementById('owner_user_id');
-        if (ownerInput) {
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                        updateOwnerContactInfo();
-                    }
-                });
-            });
-            observer.observe(ownerInput, { attributes: true });
-
-            ownerInput.addEventListener('change', updateOwnerContactInfo);
+        // Update owner email/phone display when owner is selected (textContent only).
+        if (window.__clubOwnerSelectedHandler) {
+            document.removeEventListener('ownerSelected', window.__clubOwnerSelectedHandler);
         }
+        window.__clubOwnerSelectedHandler = function(e) {
+            const owner = e.detail || {};
+            const ownerEmailText = document.getElementById('ownerEmailText');
+            if (ownerEmailText && owner.email) ownerEmailText.textContent = owner.email;
+            const ownerPhoneText = document.getElementById('ownerPhoneText');
+            if (ownerPhoneText && owner.mobile) ownerPhoneText.textContent = owner.mobile;
+        };
+        document.addEventListener('ownerSelected', window.__clubOwnerSelectedHandler);
     });
-
-    function updateOwnerContactInfo() {
-        // This function would ideally fetch the owner's details
-        // For now, it's handled by the user picker modal
-    }
 </script>
 @endpush

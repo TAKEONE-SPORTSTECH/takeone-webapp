@@ -148,7 +148,8 @@ class CompetitionClubs
             'end_date' => null,
             // Said plainly, because it is a different fact from membership: the
             // reader should not have to guess whether this person trains there.
-            'note' => $event?->title
+            // A HIDDEN event's name is not printed on a profile (ClubEvent::isHidden).
+            'note' => $event?->title && ! $event->isHidden()
                 ? __('personal.competed_for_at', ['event' => $event->title])
                 : __('personal.competed_for'),
             'badge' => __('personal.competed_for'),

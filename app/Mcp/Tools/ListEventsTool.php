@@ -58,6 +58,8 @@ class ListEventsTool extends BaseTool
         $query = ClubEvent::query()
             ->where('is_archived', false)
             ->where('status', '!=', 'cancelled')
+            // A HIDDEN event: listed only for those who run it or are entered.
+            ->listedFor($user)
             // Coarse pre-scope so the DB never returns the whole table; the exact
             // per-event decision is still made by EventAccess below.
             ->where(function ($q) use ($clubIds, $myCountries, $user) {
@@ -127,6 +129,8 @@ class ListEventsTool extends BaseTool
             // The rule book: null = the sport's own (App\Events\Support\CategorySystems).
             'category_system' => $e->category_system,
             'belt_system' => $e->belt_system,
+            // The style the event runs under, as a reader names it ("Kyokushin"), or null for the sport's default.
+            'style' => rescue(fn () => app(\App\Events\Support\CategorySystems::class)->styleLabel($e), null, false),
             // How athletes enter: individual · club (App\Events\Support\EntryChannels).
             'entry_channels' => app(\App\Events\Support\EntryChannels::class)->allowed($e),
             'country' => $e->tenant?->country,
@@ -134,6 +138,7 @@ class ListEventsTool extends BaseTool
             'event_type' => $e->event_type,
             'sport' => $e->sport,
             'scope' => $e->scope,
+            'visibility' => $e->visibility ?: ClubEvent::LISTED,
             'level' => $e->level,
             'participants' => (int) ($e->participant_registrations_count ?? 0),
             'max_capacity' => $e->max_capacity,

@@ -88,6 +88,10 @@
             'divisionLink' => null, 'divisionNote' => null, 'noteTap' => null,
         ])
 
+        {{-- ===== The doors — the same buttons the event's public page shows
+             (App\Events\Support\EventDoors), when the event runs on the platform. ===== --}}
+        @include('events::partials.event-doors', ['doors' => $doors ?? []])
+
         {{-- ===== The way in ===== --}}
         <span id="enter" class="block"></span>
         <div class="px-4 mt-4 space-y-3">

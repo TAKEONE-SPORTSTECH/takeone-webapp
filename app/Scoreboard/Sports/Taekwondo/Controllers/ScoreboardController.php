@@ -173,6 +173,8 @@ class ScoreboardController extends Controller
 
         return $this->consoleView($event, $mats, $device->court, [
             'commandUrl' => route('taekwondo-scoreboard.token-command', $token),
+            // The draw, on this tablet (App\Events\Support\TabletDraw). Null while off.
+            'drawUrl' => \App\Events\Support\TabletDraw::enabled() ? route('tablet.draw', $token) : null,
             'photoUrl' => route('taekwondo-scoreboard.token-photo', $token),
             // A paired console is a SCREEN, and the console lists it beside the
             // boards with a live dot. It touches `last_seen` on every command,

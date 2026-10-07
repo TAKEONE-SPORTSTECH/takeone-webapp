@@ -113,6 +113,38 @@ class CategorySystems
         return new BoundSport($sport, $cat && $cat->key !== $default ? $cat : ($sport->categorySystems()[$default] ?? $cat), $belt);
     }
 
+    /**
+     * The STYLE an event runs under, as a reader would name it — "Shotokan",
+     * "Kyokushin" — or null when it runs its sport's own default.
+     *
+     * Only an official system the organiser explicitly chose names a style:
+     * a host's custom table is an edition of something, not a style, and the
+     * sport's default says nothing the sport's name does not already say. The
+     * weight table speaks first; the belt system names the style when the
+     * weights are the default or the organiser's own (a Kyokushin event with
+     * hand-made divisions, say).
+     */
+    public function styleLabel(ClubEvent $event): ?string
+    {
+        $plugin = $event->sport ? $this->plugin((string) $event->sport) : null;
+        if (! $plugin) {
+            return null;
+        }
+        $default = $plugin->defaultCategorySystem();
+
+        if ($event->category_system && $event->category_system !== $default
+            && ($w = $this->weightsFor($event)[$event->category_system] ?? null) && ! $w->custom) {
+            return $w->label;
+        }
+
+        if ($event->belt_system && $event->belt_system !== $default
+            && ($b = $this->beltsFor($event)[$event->belt_system] ?? null) && ! $b->custom) {
+            return $b->label;
+        }
+
+        return null;
+    }
+
     /** The belt ladder this event reads — the chosen system's, else the sport's, else the platform's generic one. */
     public function ladderFor(?ClubEvent $event): array
     {

@@ -262,6 +262,13 @@
     <div style="display:flex; gap:10px; flex:0 1 auto; flex-wrap:wrap;">
       <button id="btnRefresh" class="btn">{{ __('scoreboard::taekwondo_messages.ctl_refresh_vs') }}</button>
       <button id="btnQueue" class="btn">{{ __('scoreboard::taekwondo_messages.ctl_queue') }}</button>
+      {{-- The draw on this tablet (App\Events\Support\TabletDraw), beside the
+           queue it explains. --}}
+      @if (! empty($drawUrl))
+        <a href="{{ $drawUrl }}" class="btn" style="text-decoration:none; display:inline-flex; align-items:center; gap:8px; border-color:var(--gold); color:var(--gold);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h5v6H3M3 14h5v6H3M8 7h4v10H8M12 12h4M16 9h5v6h-5"/></svg>{{ __('events::events.tablet_draw_button') }}
+        </a>
+      @endif
       {{-- The lenses pointed at this mat. Only when this door was given the
            camera addresses — a console with no camera surface shows no
            camera button. --}}

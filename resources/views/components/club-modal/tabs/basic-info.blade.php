@@ -193,15 +193,14 @@
 
     <!-- Established Date -->
     <div class="mb-4">
-        <label for="established_date" class="form-label">
+        <label class="form-label">
             {{ __('shared.tabs_basic_info_established_date_label') }}
         </label>
-        <input type="date"
-               class="form-control"
-               id="established_date"
-               name="established_date"
-               value="{{ $club->established_date ?? old('established_date') }}"
-               max="{{ date('Y-m-d') }}">
+        <div id="clubEstablishedDateField">
+            <x-fields.date name="established_date"
+                :value="$club?->established_date ? \Illuminate\Support\Carbon::parse($club->established_date)->format('Y-m-d') : old('established_date')"
+                :max="date('Y-m-d')" />
+        </div>
         <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_established_hint') }}</small>
     </div>
 
@@ -299,17 +298,6 @@
                    placeholder="{{ __('shared.tabs_basic_info_commercial_reg_placeholder') }}">
             <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_commercial_reg_hint') }}</small>
         </div>
-        <div>
-            <label for="commercial_reg_file" class="form-label">
-                {{ __('shared.tabs_basic_info_reg_document_label') }}
-            </label>
-            <input type="file"
-                   class="form-control"
-                   id="commercial_reg_file"
-                   name="commercial_reg_file"
-                   accept=".pdf,.jpg,.jpeg,.png">
-            <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_reg_document_hint') }}</small>
-        </div>
     </div>
 
     <!-- VAT Information -->
@@ -343,18 +331,6 @@
         </div>
     </div>
 
-    <!-- VAT Certificate Upload -->
-    <div class="mb-4">
-        <label for="vat_certificate_file" class="form-label">
-            {{ __('shared.tabs_basic_info_vat_cert_label') }}
-        </label>
-        <input type="file"
-               class="form-control"
-               id="vat_certificate_file"
-               name="vat_certificate_file"
-               accept=".pdf,.jpg,.jpeg,.png">
-        <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_vat_cert_hint') }}</small>
-    </div>
 </div>
 
 @push('scripts')
@@ -373,10 +349,13 @@
             updateCount(); // Initial count
         }
 
-        // Auto-generate slug from club name (will be used in Identity tab)
+        // Auto-generate slug from club name (will be used in Identity tab) —
+        // only while CREATING: renaming an existing club never moves its URL.
         const clubNameInput = document.getElementById('club_name');
-        if (clubNameInput) {
+        if (clubNameInput && !clubNameInput.__clubAutoSlug) {
+            clubNameInput.__clubAutoSlug = true;
             clubNameInput.addEventListener('input', function() {
+                if (this.closest('form')?.dataset.mode === 'edit') return;
                 const slug = this.value
                     .toLowerCase()
                     .replace(/[^a-z0-9]+/g, '-')

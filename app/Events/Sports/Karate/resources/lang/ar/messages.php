@@ -49,4 +49,11 @@ return [
     // Grades on the sport's own belt ladder (beltLadder()), 2026-09-27.
     'grade_kyu' => 'كيو :n',
     'grade_dan' => 'دان :n',
+    'style_kyokushin' => 'كيوكوشين',
+    'style_shotokan' => 'شوتوكان',
+    'style_goju_ryu' => 'غوجو-ريو',
+    'style_shito_ryu' => 'شيتو-ريو',
+    'style_wado_ryu' => 'وادو-ريو',
+    'grade_ungraded' => 'بدون حزام (مبتدئ)',
+    'grade_mukyu' => 'موكيو (مبتدئ)',
 ];

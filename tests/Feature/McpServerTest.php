@@ -681,6 +681,22 @@ class McpServerTest extends TestCase
         $this->assertSame($event->uuid, $result['events'][0]['uuid']);
         $this->assertSame('upcoming', $result['events'][0]['state']);
         $this->assertTrue($result['events'][0]['can_manage']);
+        // A Karate event that chose nothing runs the sport's default: no style.
+        $this->assertArrayHasKey('style', $result['events'][0]);
+    }
+
+    public function test_list_events_returns_the_style_an_event_runs_under(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+        if ($event->sport !== 'karate') {
+            $event->forceFill(['sport' => 'karate'])->save();
+        }
+        $event->forceFill(['belt_system' => 'kyokushin'])->save();
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventsTool::class);
+
+        $this->assertSame('Kyokushin', $result['events'][0]['style']);
     }
 
     public function test_list_events_excludes_finished_events_from_the_open_state(): void
@@ -1102,6 +1118,29 @@ class McpServerTest extends TestCase
         $this->actingAs($this->createUser());
         $denied = $this->callTool(\App\Mcp\Tools\GetEventTranslationTool::class, ['event' => $event->uuid]);
         $this->assertSame('Event not found.', $denied['error']);
+    }
+
+    public function test_translation_health_is_super_admin_only_and_changes_nothing(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        \Illuminate\Support\Facades\Http::fake(['*' => \Illuminate\Support\Facades\Http::response(['models' => []])]);
+        \Illuminate\Support\Facades\Cache::put(\App\Translation\Jobs\TranslateInterfaceLocale::statusKey('ja'), ['state' => 'failed'], now()->addHour());
+
+        $this->actingAs($this->createUser());
+        $denied = $this->callTool(\App\Mcp\Tools\TranslationHealthTool::class, ['fresh' => true]);
+        $this->assertStringContainsString('super-admin', $denied['error']);
+
+        $admin = $this->createUser();
+        $this->makeSuperAdmin($admin);
+        $this->actingAs($admin->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\TranslationHealthTool::class, ['fresh' => true]);
+
+        $this->assertArrayHasKey('providers', $result['report']);
+        $this->assertSame('ja', $result['report']['runs'][0]['locale']);
+        // A read: nothing resumed, nothing downloaded.
+        \Illuminate\Support\Facades\Queue::assertNothingPushed();
+        \Illuminate\Support\Facades\Http::assertNotSent(fn ($r) => str_ends_with($r->url(), '/api/pull'));
     }
 
     public function test_translate_event_queues_work_and_skips_what_is_pointless(): void

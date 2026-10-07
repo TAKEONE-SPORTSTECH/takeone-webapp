@@ -20,7 +20,9 @@
                 }
             },
             share() {
-                const data = { title: @js($e['title']), url: window.location.href };
+                // EventShareLink: the event's own page, or — when it is not public —
+                // its invitation link, which opens without an account.
+                const data = { title: @js($e['title']), url: @js($shareUrl ?? null) || window.location.href };
                 if (navigator.share) { navigator.share(data).catch(() => {}); return; }
                 navigator.clipboard?.writeText(data.url).then(
                     () => notice(@js(__('events::events.public_share_copied'))),

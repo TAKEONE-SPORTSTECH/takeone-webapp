@@ -50,7 +50,12 @@ class TranslateInterfaceLocale implements ShouldQueue
         public string $locale,
         public string $tier = 'event',
         public bool $rewrite = false,
-    ) {}
+    ) {
+        // Off the default queue when one is configured — see config/translation.php.
+        if ($connection = config('translation.queue')) {
+            $this->onConnection($connection)->onQueue('translation');
+        }
+    }
 
     /** Where a screen looks to see whether this language is being worked on. */
     public static function statusKey(string $locale): string
@@ -58,12 +63,57 @@ class TranslateInterfaceLocale implements ShouldQueue
         return 'itr-run:'.$locale;
     }
 
-    /** @return array{state: string, started_at: ?string, finished_at: ?string, complete: ?bool} */
+    /** Where the running command writes how many strings it has done. */
+    public static function progressKey(string $locale, ?int $lane = null): string
+    {
+        return 'itr-progress:'.$locale.($lane ? ':lane'.$lane : '');
+    }
+
+    /** @return array{state: string, started_at: ?string, finished_at: ?string, complete: ?bool, progress: ?array} */
     public static function status(string $locale): array
     {
-        return (array) Cache::get(self::statusKey($locale), ['state' => 'idle']) + [
+        $status = (array) Cache::get(self::statusKey($locale), ['state' => 'idle']) + [
             'state' => 'idle', 'started_at' => null, 'finished_at' => null, 'complete' => null,
         ];
+
+        $status['progress'] = null;
+
+        // Only while running: a finished run's last count would read as stuck.
+        if ($status['state'] !== 'running') {
+            return $status;
+        }
+
+        // One count for a single-lane run, one per lane when it is split across
+        // GPUs — summed, so the screen shows ONE bar for the language.
+        $keys = [self::progressKey($locale)];
+
+        foreach (array_keys((array) config('translation.ollama_lanes', [])) as $i) {
+            $keys[] = self::progressKey($locale, $i + 1);
+        }
+
+        $started = strtotime((string) ($status['started_at'] ?? '')) ?: null;
+        $done = 0;
+        $total = 0;
+        $seen = false;
+
+        foreach ($keys as $key) {
+            $p = Cache::get($key);
+
+            // Ignore a count left over from an EARLIER run of this language.
+            if (! is_array($p) || ($started && strtotime((string) ($p['updated_at'] ?? '')) < $started)) {
+                continue;
+            }
+
+            $seen = true;
+            $done += (int) ($p['done'] ?? 0);
+            $total += (int) ($p['total'] ?? 0);
+        }
+
+        if ($seen) {
+            $status['progress'] = ['done' => $done, 'total' => $total];
+        }
+
+        return $status;
     }
 
     public function handle(ContentLocales $locales): void
@@ -79,6 +129,8 @@ class TranslateInterfaceLocale implements ShouldQueue
             'started_at' => now()->toIso8601String(),
             'finished_at' => null,
             'complete' => null,
+            'tier' => $this->tier,
+            'rewrite' => $this->rewrite,
         ], now()->addHours(3));
 
         try {
@@ -101,6 +153,8 @@ class TranslateInterfaceLocale implements ShouldQueue
                 'started_at' => null,
                 'finished_at' => now()->toIso8601String(),
                 'complete' => $code === 0,
+                'tier' => $this->tier,
+                'rewrite' => $this->rewrite,
             ], now()->addHours(3));
         } catch (\Throwable $e) {
             Log::error('translation.interface_job_failed', [
@@ -114,6 +168,8 @@ class TranslateInterfaceLocale implements ShouldQueue
                 'started_at' => null,
                 'finished_at' => now()->toIso8601String(),
                 'complete' => false,
+                'tier' => $this->tier,
+                'rewrite' => $this->rewrite,
             ], now()->addHours(3));
         }
     }

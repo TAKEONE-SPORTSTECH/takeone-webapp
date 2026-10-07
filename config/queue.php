@@ -44,6 +44,21 @@ return [
             'after_commit' => false,
         ],
 
+        /*
+         * Long-running translation work — config('translation.queue').
+         * Same jobs table, its own queue name, and a retry_after longer than a
+         * whole language run (TranslateInterfaceLocale::$timeout = 5400), so no
+         * second worker ever takes a run that is still going.
+         */
+        'translation' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => 'translation',
+            'retry_after' => 6000,
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

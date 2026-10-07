@@ -310,4 +310,24 @@ class ExploreEventsTest extends TestCase
         $this->assertSame([], $res->json('events'));
         $this->assertSame(['Overran'], collect($res->json('finished'))->pluck('title')->all());
     }
+
+    /** The new Explore asks for ?scope=public: published events only, never a finished one. */
+    public function test_public_scope_lists_only_published_events_that_have_not_ended(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-06-15 12:00:00'));
+        $user = $this->createUser();
+        $club = $this->clubFor($user);
+
+        $this->event($club, ['title' => 'Open to all', 'entry_mode' => 'public', 'date' => now()->addDays(3)->toDateString()]);
+        $this->event($club, ['title' => 'Members only', 'entry_mode' => 'members', 'date' => now()->addDays(3)->toDateString()]);
+        $this->event($club, ['title' => 'Public but over', 'entry_mode' => 'public', 'date' => now()->subDays(3)->toDateString()]);
+
+        $res = $this->actingAs($user)->getJson('/explore/events?scope=public')->assertOk();
+        $this->assertSame(['Open to all'], collect($res->json('events'))->pluck('title')->all());
+        $this->assertSame([], $res->json('finished'));
+
+        // The classic page still gets everything it always did.
+        $classic = $this->actingAs($user)->getJson('/explore/events')->assertOk();
+        $this->assertContains('Members only', collect($classic->json('events'))->pluck('title')->all());
+    }
 }

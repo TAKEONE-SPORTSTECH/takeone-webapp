@@ -66,6 +66,31 @@ return [
     'unified_page' => (bool) env('EVENT_UNIFIED_PAGE', false),
 
     /*
+     | Back goes where you came from (owner, 2026-10-04 — step 1 of "one front
+     | door for every event"). ON, the event page's back control returns a
+     | signed-in reader to the platform page they opened the event from
+     | (Explore, a club page, the feed…), remembered per event for the session
+     | by App\Events\Support\EventReturn. OFF: back is My Events, as before.
+     */
+    'return_to' => (bool) env('EVENT_RETURN_TO', false),
+
+    /*
+     | "Register your club" at the event's own addresses (owner, 2026-10-04):
+     | /me/events/{uuid}/rules, /club, /club/athletes, /club/review, /club/done,
+     | /club/entries — one shared page (events::entry.club.page) for every host
+     | that has a ClubEntryDesk. OFF: those addresses 404 and nothing links there.
+     */
+    'club_entry' => (bool) env('EVENT_CLUB_ENTRY', false),
+
+    /*
+     | "Register your club" on CLUB-hosted events (owner, 2026-10-04 — step 6):
+     | the same screens, backed by TakeOne clubs and the event's own entries
+     | (App\Events\Support\ClubEntry\PlatformClubEntryDesk). OFF: club-hosted
+     | events have no such screens, exactly as before.
+     */
+    'club_entry_platform' => (bool) env('EVENT_CLUB_ENTRY_PLATFORM', false),
+
+    /*
      | ONE event editor (owner, 2026-10-03; PLAN.md Phase 6): the club admin
      | panel's Add / Edit event open the shared full editor (/me/events/create,
      | /me/events/{uuid}/edit) with the club already chosen, instead of the
@@ -145,5 +170,31 @@ return [
      | Set EVENT_ENTRY_DEDUPE=true in .env, then `php artisan config:cache`.
      */
     'entry_dedupe' => (bool) env('EVENT_ENTRY_DEDUPE', false),
+
+    /*
+     | Bracket PDF export — the draw board printed to A4, one division per page.
+     |
+     | Rendered by the REAL board in headless Chromium (App\Events\Support\
+     | BracketPdf), so the PDF is the screen rather than a second drawing of it.
+     | Needs the `chromium` package (and `fonts-noto-core` for Arabic names) on
+     | the box; with the flag off, or the binary missing, the menu item is not
+     | drawn and the route answers 404.
+     |
+     | OFF by default (RULE #1). EVENT_BRACKET_PDF=true, then config:cache.
+     */
+    /*
+     | The draw on a scoring tablet: a Draw button on every sport's console,
+     | read-only on the pairing, editable under the event's tablet PIN
+     | (App\Events\Support\TabletDraw). OFF by default (RULE #1).
+     | EVENT_TABLET_DRAW=true, then config:cache.
+     */
+    'tablet_draw' => (bool) env('EVENT_TABLET_DRAW', false),
+
+    'bracket_pdf' => [
+        'enabled' => (bool) env('EVENT_BRACKET_PDF', false),
+        'binary' => env('CHROMIUM_BINARY', '/usr/bin/chromium'),
+        // Seconds Chromium may take before the export is abandoned.
+        'timeout' => (int) env('EVENT_BRACKET_PDF_TIMEOUT', 90),
+    ],
 
 ];

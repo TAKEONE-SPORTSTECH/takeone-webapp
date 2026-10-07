@@ -37,7 +37,7 @@
         </div>
     </div>
 
-    <!-- Location Map -->
+    <!-- Location Map + the shared Google Maps link box (the pin follows a pasted link) -->
     <div class="mb-4">
         <x-fields.location-map
             id="clubLoc"
@@ -46,32 +46,15 @@
             :address="$club->address ?? old('address', '')"
             :defaultLat="26.0667"
             :defaultLng="50.5577"
-            height="400px"
+            mapsUrlName="maps_url"
+            :mapsUrl="$club->maps_url ?? ''"
+            height="min(400px, 45vh)"
         />
-    </div>
-
-    <!-- Google Maps Link -->
-    <div class="mb-4">
-        <label for="google_maps_link" class="form-label">
-            <i class="bi bi-google me-1"></i>{{ __('shared.modal_tabs_location_google_maps_link_label') }}
-        </label>
-        <div class="input-group">
-            <span class="input-group-text bg-white">
-                <i class="bi bi-link-45deg"></i>
-            </span>
-            <input type="url"
-                   class="form-control"
-                   id="google_maps_link"
-                   name="google_maps_link"
-                   placeholder="{{ __('shared.modal_tabs_location_google_maps_placeholder') }}"
-                   pattern="https?://.*google\.com/maps.*|https?://goo\.gl/maps/.*">
-        </div>
-        <small class="text-muted-foreground">{{ __('shared.modal_tabs_location_google_maps_help') }}</small>
     </div>
 
     <!-- Quick Location Actions -->
     <div class="flex gap-2 flex-wrap">
-        <button type="button" class="btn btn-outline-primary btn-sm" onclick="getCurrentLocation()">
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="getCurrentLocation(this)">
             <i class="bi bi-crosshair me-2"></i>{{ __('shared.modal_tabs_location_use_current') }}
         </button>
         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="centerOnCountry()">
@@ -89,26 +72,26 @@
         return window.LocationMap ? window.LocationMap.get(CLUB_MAP_ID) : null;
     }
 
+    function clubCountryRecord(code) {
+        if (!countriesData || !code) return null;
+        const c = String(code).toLowerCase();
+        return countriesData.find(x => (x.iso2 || '').toLowerCase() === c || (x.iso3 || '').toLowerCase() === c || (x.name || '').toLowerCase() === c) || null;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        // Load countries data
-        fetch('/data/countries.json')
-            .then(response => response.json())
-            .then(countries => {
-                countriesData = countries;
-
-                const clubForm = document.getElementById('clubForm');
-                if (clubForm && clubForm.dataset.mode === 'create') {
-                    detectAndPreselectCountries(countries);
-                }
-
-                setupLocationHandlers();
-            })
-            .catch(error => console.error('Error loading countries:', error));
+        // Country list, for centring the map on a country. Nothing here asks the
+        // device for its location — only the "Use current location" button does.
+        if (!countriesData) {
+            fetch('/data/countries.json')
+                .then(response => response.json())
+                .then(countries => { countriesData = countries; })
+                .catch(error => console.error('Error loading countries:', error));
+        }
 
         // Initialize map when location tab becomes visible
         function initClubMap() {
             const mapEl = document.getElementById('clubLocMap');
-            if (mapEl && mapEl.offsetParent !== null) {
+            if (mapEl && mapEl.offsetParent !== null && window.LocationMap) {
                 LocationMap.init(CLUB_MAP_ID, 26.0667, 50.5577);
                 LocationMap.refresh(CLUB_MAP_ID);
             }
@@ -118,158 +101,48 @@
         const mapContainer = document.getElementById('clubLocContainer');
         if (mapContainer) {
             const tabPanel = mapContainer.closest('[x-show]');
-            if (tabPanel) {
+            if (tabPanel && !tabPanel.__clubMapObserved) {
+                tabPanel.__clubMapObserved = true;
                 new MutationObserver(initClubMap)
                     .observe(tabPanel, { attributes: true, attributeFilter: ['style'] });
             }
         }
 
-        // Also try on modal shown event (Bootstrap Bridge fires this)
-        const clubModal = document.getElementById('clubModal');
-        if (clubModal) {
-            clubModal.addEventListener('shown.bs.modal', function() {
-                setTimeout(initClubMap, 150);
-            });
+        // The country picker announces a pick on `country-changed` (timezone and
+        // currency follow it by themselves); the map centres on the country.
+        // One listener per page, however many times this init re-runs.
+        if (window.__clubLocCountryHandler) {
+            window.removeEventListener('country-changed', window.__clubLocCountryHandler);
         }
+        window.__clubLocCountryHandler = function (e) { handleCountryChange(e.detail && e.detail.iso2); };
+        window.addEventListener('country-changed', window.__clubLocCountryHandler);
     });
 
-    function detectAndPreselectCountries(countries) {
-        if (!navigator.geolocation) {
-            preselectCountryData('Bahrain', countries);
-            return;
-        }
+    function handleCountryChange(code) {
+        if (!document.getElementById('clubLocContainer')) return;
+        const country = clubCountryRecord(code);
+        if (!country || !country.latitude || !country.longitude) return;
 
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
+        const lat = parseFloat(country.latitude);
+        const lng = parseFloat(country.longitude);
+        if (isNaN(lat) || isNaN(lng)) return;
 
-                fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const countryName = data.countryName || 'Bahrain';
-                        preselectCountryData(countryName, countries);
-                    })
-                    .catch(() => {
-                        preselectCountryData('Bahrain', countries);
-                    });
-            },
-            function() {
-                preselectCountryData('Bahrain', countries);
-            }
-        );
-    }
-
-    function preselectCountryData(countryName, countries) {
-        const country = countries.find(c => c.name.toLowerCase() === countryName.toLowerCase());
-        if (!country) return;
-
-        const countryInput = document.getElementById('country');
-        if (countryInput && !countryInput.value) {
-            countryInput.value = country.iso3 || country.name;
-            countryInput.dispatchEvent(new Event('change'));
-        }
-
-        const timezoneInput = document.getElementById('timezone');
-        if (timezoneInput && country.timezone && !timezoneInput.value && typeof setTimezoneValue === 'function') {
-            setTimezoneValue('timezone', country.timezone, countries);
-        }
-
-        const currencyInput = document.getElementById('currency');
-        if (currencyInput && country.currency && !currencyInput.value && typeof setCurrencyValue === 'function') {
-            setCurrencyValue('currency', country.currency, countries);
-        }
-
-        if (country.latitude && country.longitude) {
-            const lat = parseFloat(country.latitude);
-            const lng = parseFloat(country.longitude);
-            if (!isNaN(lat) && !isNaN(lng)) {
-                const latInput = document.getElementById('clubLocLat');
-                const lngInput = document.getElementById('clubLocLng');
-                if (latInput && !latInput.value) latInput.value = lat.toFixed(6);
-                if (lngInput && !lngInput.value) lngInput.value = lng.toFixed(6);
-                LocationMap.setPosition(CLUB_MAP_ID, lat, lng);
-            }
+        const latInput = document.getElementById('clubLocLat');
+        const lngInput = document.getElementById('clubLocLng');
+        if (!latInput?.value || !lngInput?.value) {
+            if (window.LocationMap) LocationMap.setPosition(CLUB_MAP_ID, lat, lng);
+        } else {
+            const inst = getClubMapInstance();
+            if (inst) inst.map.setView([lat, lng], 10);
         }
     }
 
-    function setupLocationHandlers() {
-        const countryInput = document.getElementById('country');
-        if (countryInput) {
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                        handleCountryChange(countryInput.value);
-                    }
-                });
-            });
-            observer.observe(countryInput, { attributes: true });
-
-            countryInput.addEventListener('change', function() {
-                handleCountryChange(this.value);
-            });
-
-            let lastCountryValue = countryInput.value;
-            setInterval(function() {
-                if (countryInput.value !== lastCountryValue) {
-                    lastCountryValue = countryInput.value;
-                    handleCountryChange(countryInput.value);
-                }
-            }, 500);
-        }
-
-        const googleMapsInput = document.getElementById('google_maps_link');
-        if (googleMapsInput) {
-            googleMapsInput.addEventListener('change', function() {
-                parseGoogleMapsLink(this.value);
-            });
-        }
-    }
-
-    function handleCountryChange(countryName) {
-        if (!countriesData || !countryName) return;
-
-        const country = countriesData.find(c =>
-            c.name.toLowerCase() === countryName.toLowerCase() ||
-            c.iso3 === countryName
-        );
-
-        if (!country) return;
-
-        if (country.timezone && typeof setTimezoneValue === 'function') {
-            setTimezoneValue('timezone', country.timezone, countriesData);
-        }
-
-        if (country.currency && typeof setCurrencyValue === 'function') {
-            setCurrencyValue('currency', country.currency, countriesData);
-        }
-
-        if (country.latitude && country.longitude) {
-            const lat = parseFloat(country.latitude);
-            const lng = parseFloat(country.longitude);
-
-            if (!isNaN(lat) && !isNaN(lng)) {
-                const latInput = document.getElementById('clubLocLat');
-                const lngInput = document.getElementById('clubLocLng');
-                const shouldUpdate = !latInput?.value || !lngInput?.value;
-
-                if (shouldUpdate) {
-                    LocationMap.setPosition(CLUB_MAP_ID, lat, lng);
-                } else {
-                    const inst = getClubMapInstance();
-                    if (inst) inst.map.setView([lat, lng], 10);
-                }
-            }
-        }
-    }
-
-    function getCurrentLocation() {
+    function getCurrentLocation(btn) {
         if (!navigator.geolocation) {
             window.showToast('error', '{{ __("shared.modal_tabs_location_geo_unsupported") }}');
             return;
         }
 
-        const btn = event.target.closest('button');
         const originalHtml = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>{{ __("shared.modal_tabs_location_getting") }}';
@@ -285,10 +158,7 @@
 
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
-
-                if (typeof Toast !== 'undefined') {
-                    Toast.success('{{ __("shared.modal_tabs_location_success") }}', '{{ __("shared.modal_tabs_location_updated") }}');
-                }
+                window.showToast('success', '{{ __("shared.modal_tabs_location_updated") }}');
             },
             function(error) {
                 console.error('Geolocation error:', error);
@@ -301,75 +171,15 @@
 
     function centerOnCountry() {
         const countryInput = document.getElementById('country');
-        if (!countryInput || !countriesData) return;
+        const country = clubCountryRecord(countryInput && countryInput.value);
+        if (!country || !country.latitude || !country.longitude) return;
 
-        const countryName = countryInput.value;
-        const country = countriesData.find(c =>
-            c.name.toLowerCase() === countryName.toLowerCase() ||
-            c.iso3 === countryName
-        );
-
-        if (country && country.latitude && country.longitude) {
-            const lat = parseFloat(country.latitude);
-            const lng = parseFloat(country.longitude);
-
-            const inst = getClubMapInstance();
-            if (!isNaN(lat) && !isNaN(lng) && inst) {
-                inst.map.setView([lat, lng], 10);
-
-                if (typeof Toast !== 'undefined') {
-                    Toast.info('{{ __("shared.modal_tabs_location_info") }}', '{{ __("shared.modal_tabs_location_centered_on") }}'.replace(':name', country.name));
-                }
-            }
-        }
-    }
-
-    function parseGoogleMapsLink(url) {
-        if (!url) return;
-
-        try {
-            let lat, lng;
-
-            const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-            if (atMatch) {
-                lat = parseFloat(atMatch[1]);
-                lng = parseFloat(atMatch[2]);
-            }
-
-            if (!lat || !lng) {
-                const dMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-                if (dMatch) {
-                    lat = parseFloat(dMatch[1]);
-                    lng = parseFloat(dMatch[2]);
-                }
-            }
-
-            if (!lat || !lng) {
-                const llMatch = url.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
-                if (llMatch) {
-                    lat = parseFloat(llMatch[1]);
-                    lng = parseFloat(llMatch[2]);
-                }
-            }
-
-            if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                LocationMap.setPosition(CLUB_MAP_ID, lat, lng);
-                const inst = getClubMapInstance();
-                if (inst) inst.map.setView([lat, lng], 15);
-
-                if (typeof Toast !== 'undefined') {
-                    Toast.success('{{ __("shared.modal_tabs_location_success") }}', '{{ __("shared.modal_tabs_location_coords_extracted") }}');
-                }
-            } else {
-                if (typeof Toast !== 'undefined') {
-                    Toast.warning('{{ __("shared.modal_tabs_location_warning") }}', '{{ __("shared.modal_tabs_location_no_coords") }}');
-                }
-            }
-        } catch (error) {
-            console.error('Error parsing Google Maps link:', error);
-            if (typeof Toast !== 'undefined') {
-                Toast.error('{{ __("shared.error") }}', '{{ __("shared.modal_tabs_location_invalid_link") }}');
-            }
+        const lat = parseFloat(country.latitude);
+        const lng = parseFloat(country.longitude);
+        const inst = getClubMapInstance();
+        if (!isNaN(lat) && !isNaN(lng) && inst) {
+            inst.map.setView([lat, lng], 10);
+            window.showToast('info', '{{ __("shared.modal_tabs_location_centered_on") }}'.replace(':name', country.name));
         }
     }
 </script>

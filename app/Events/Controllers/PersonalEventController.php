@@ -229,6 +229,8 @@ class PersonalEventController extends Controller
         $base = fn () => ClubEvent::query()
             ->where('is_archived', false)
             ->where('status', '!=', 'cancelled')
+            // A HIDDEN event: only in the lists of those who run it or are entered.
+            ->listedFor($me)
             ->where(function ($q) use ($clubIds, $myCountries) {
                 $q->whereIn('tenant_id', $clubIds)
                     ->orWhereIn('scope', ['inter_club', 'worldwide'])
@@ -298,10 +300,23 @@ class PersonalEventController extends Controller
         // and gets the poster whatever the type or the member flag: since /e/
         // went, this IS the public page.
         if ($request->attributes->get('event_reader') === 'visitor') {
-            $poster = app(\App\Events\Support\PublicEvent::class)->payload($event);
+            $publisher = app(\App\Events\Support\PublicEvent::class);
+            $poster = $publisher->payload($event);
+            $passOnly = false;
+            // Not published, but the reader holds this event's invitation pass
+            // (EventPageReader let them in for that reason alone): the same
+            // narrow stranger's poster, with no doors into sections the pass
+            // does not open.
+            if ($poster === null && \App\Events\Support\EventInvitePass::has($request, $event)) {
+                $poster = $publisher->readerPayload($event);
+                if ($poster !== null) {
+                    $poster['manifest'] = null;
+                }
+                $passOnly = true;
+            }
             abort_if($poster === null, 404);
 
-            return app(PublicEventController::class)->poster($event, $poster);
+            return app(PublicEventController::class)->poster($event, $poster)->with('passOnly', $passOnly);
         }
 
         // READ-only widening for federation staff (FederationEventView). Every
@@ -314,7 +329,10 @@ class PersonalEventController extends Controller
             // A published event is readable by anybody at all — a stranger
             // may open it, so a signed-in member who is not eligible to ENTER
             // may certainly read it. Only on the unified page.
-            || ($unified && app(\App\Events\Support\PublicEvent::class)->isPublic($event)), 403);
+            || ($unified && app(\App\Events\Support\PublicEvent::class)->isPublic($event))
+            // An invitation pass (EventInvitePass) — reading this page only.
+            || ($passOnly = $unified && \App\Events\Support\EventInvitePass::has($request, $event)), 403);
+        $passOnly = ($passOnly ?? false) === true;
 
         $type = $this->typeFor($event);
 
@@ -406,6 +424,10 @@ class PersonalEventController extends Controller
 
         $data = [
             'e' => $e,
+            // Where the band's back control goes (EventReturn; My Events while its flag is off).
+            'eventReturn' => \App\Events\Support\EventReturn::for($request, $event),
+            // In on an invitation pass alone: no doors into sections it does not open.
+            'passOnly' => $passOnly,
             'canManage' => $canManage,
             'banned' => $banned,
             /*
@@ -732,6 +754,11 @@ class PersonalEventController extends Controller
             // decision, though an official always reads it (EventAccess::
             // drawVisible).
             'drawReveal' => $event->draw_reveal ?: \App\Events\Models\ClubEvent::DRAW_ALWAYS,
+            'visibility' => $event->visibility ?: \App\Events\Models\ClubEvent::LISTED,
+            // Club payments (EventEntryInvoice): shown where clubs pay through the platform desk.
+            'clubPayments' => ($cp = \App\Events\Models\EventEntryInvoice::where('event_id', $event->id))->exists()
+                || \App\Events\Support\ClubEntry\ClubEntryDesks::for($event) instanceof \App\Events\Support\ClubEntry\PlatformClubEntryDesk,
+            'clubPaymentsWaiting' => (clone $cp)->where('state', \App\Events\Models\EventEntryInvoice::SUBMITTED)->count(),
             // How athletes enter (EntryChannels). Not offered where the host
             // takes its athletes from clubs through its own invitation.
             'entryChannels' => app(\App\Events\Support\EntryChannels::class)->allowed($event),
@@ -5724,6 +5751,26 @@ class PersonalEventController extends Controller
     }
 
     /**
+     * Listed or hidden (ClubEvent::isHidden). Only whoever runs the event.
+     */
+    public function setVisibility(Request $request, ClubEvent $event, EventAccess $access): JsonResponse
+    {
+        $me = Auth::user();
+        abort_if($event->is_archived || ! $access->canManage($event, $me), 403);
+
+        $data = $request->validate([
+            'visibility' => ['required', 'in:'.ClubEvent::LISTED.','.ClubEvent::HIDDEN],
+        ]);
+        $event->update(['visibility' => $data['visibility']]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $data['visibility'] === ClubEvent::HIDDEN ? __('events::events.visibility_now_hidden') : __('events::events.visibility_now_listed'),
+            'visibility' => $data['visibility'],
+        ]);
+    }
+
+    /**
      * The picture the public cover opens onto.
      *
      * The cover page (`entry/public/partials/cover`) lays `images[0]` in
@@ -8490,7 +8537,7 @@ class PersonalEventController extends Controller
             'sections' => $this->typeSections($e->event_type),
             'sport' => $e->sport,
             // Translatable, same as the public poster — see App\Events\Support\SportLabel.
-            'sport_label' => \App\Events\Support\SportLabel::for($e->sport, $e->sport ? ($this->sports()[$e->sport]['label'] ?? null) : null),
+            'sport_label' => \App\Events\Support\SportLabel::forEvent($e, $e->sport ? ($this->sports()[$e->sport]['label'] ?? null) : null),
             'sport_icon' => $e->sport ? ($this->sports()[$e->sport]['icon'] ?? null) : null,
             'division_label' => $e->sport ? ($this->sports()[$e->sport]['division_label'] ?? 'Category') : 'Category',
 

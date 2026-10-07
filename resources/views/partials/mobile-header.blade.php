@@ -24,6 +24,17 @@
      and the switcher's current-view checkmark differ. --}}
 <header class="sticky top-0 z-40 bg-white border-b border-border">
     <div class="flex items-center gap-2 px-3 h-14">
+        {{-- New UI (App\Ui\NewUi): the Play/Manage switch replaces the drawer
+             button + switcher + title; tapping your face opens the same drawer. --}}
+        @if(\App\Ui\NewUi::active())
+        @include('ui::shell.mode-switch', ['onFace' => 'drawer = true', 'manage' => false])
+        <p id="shell-title" class="sr-only">{{ $shellTitle ?? '' }}</p>
+        <span class="flex-1"></span>
+        @unless(auth()->user()->isExploreLocked())
+        <a href="{{ route('clubs.explore') }}" class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 {{ request()->routeIs('clubs.explore') ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground' }}" aria-label="{{ __('ui::messages.explore') }}"><i class="bi bi-compass"></i></a>
+        @endunless
+        <a href="{{ route('me.ask') }}" class="t1 t1-hbtn t1-ai {{ request()->routeIs('me.ask') ? 'on' : '' }}" style="width:36px;height:36px" aria-label="{{ __('ui::ask.title') }}">@include('ui::shell.robot', ['uid' => 'm'])</a>
+        @else
         <button @click="drawer = true" class="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" aria-label="{{ __('header.menu') }}">
             @if($hu->profile_picture)
                 <img src="{{ file_url($hu->profile_picture) }}?v={{ optional($hu->updated_at)->timestamp }}" alt="" class="w-[27px] h-9 rounded-lg object-cover">
@@ -39,6 +50,7 @@
             @endunless
             <p id="shell-title" class="text-base font-bold text-primary leading-tight truncate">{{ $shellTitle ?? '' }}</p>
         </div>
+        @endif
 
         {{-- Page actions — a page fills this with @push('header-actions'). The shell
              navigator swaps it on AJAX nav, so it never goes stale. Keep the buttons

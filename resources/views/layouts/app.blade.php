@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" {{-- Direction from EITHER list: the interface speaks two languages, the
+<html @if(\App\Ui\NewUi::active()) data-t1-theme="{{ in_array(request()->cookie('t1_theme'), ['light', 'dark', 'system'], true) ? request()->cookie('t1_theme') : 'light' }}" @endif lang="{{ str_replace('_', '-', app()->getLocale()) }}" {{-- Direction from EITHER list: the interface speaks two languages, the
      content is readable in sixty, and Persian, Urdu and Hebrew are
      right-to-left whether or not the buttons are. --}}dir="{{ config('locales.' . app()->getLocale() . '.dir') ?? config('content_locales.' . app()->getLocale() . '.dir', 'ltr') }}">
 <head>
@@ -70,6 +70,10 @@
 
     <!-- Tailwind CSS -->
     @vite(['resources/css/app.css'])
+    {{-- New UI stylesheet — only when the new design is on (App\Ui\NewUi). --}}
+    @if(\App\Ui\NewUi::active())
+    <link rel="stylesheet" href="{{ asset('css/takeone-v2.css') }}?v={{ filemtime(public_path('css/takeone-v2.css')) }}">
+    @endif
 
     <!-- Custom Styles -->
     <style>
@@ -321,7 +325,13 @@
         @include('clubs::lock.bar')
     @endif
     @if(!$__clubLock && !$__publicGuest && !request()->routeIs('clubs.show.public') && !(session('club.context') && request()->routeIs('register', 'verification.notice')) && !$__env->hasSection('hide-navbar'))
-    <div x-data="{ mobileMenuOpen: false }" @keydown.escape.window="mobileMenuOpen = false">
+    {{-- New UI: display:contents so the sticky top bar pins to the page, not to
+         this wrapper (which ends right under it). Classic: unchanged. --}}
+    <div x-data="{ mobileMenuOpen: false }" @keydown.escape.window="mobileMenuOpen = false" @if(\App\Ui\NewUi::active()) style="display:contents" @endif>
+    {{-- New UI top bar (App\Ui\NewUi). Off → the classic bar below, unchanged. --}}
+    @if(\App\Ui\NewUi::active())
+    @include('ui::shell.desktop-bar')
+    @else
     <nav class="to-bar">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
@@ -715,6 +725,7 @@
             </div>
         </div>
     </nav>
+    @endif
 
     @auth
     {{-- ⌘K Command Palette — jump to any destination. Teleported to <body> to escape the bar's stacking context. --}}

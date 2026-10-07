@@ -1,7 +1,22 @@
 @extends('clubs::layouts.admin-club')
 
 @section('club-admin-content')
-<div class="space-y-6" x-data="{ activeTab: 'basic', showDeleteClubModal: false, showOwnerModal: false, ownerTab: 'existing' }">
+@php
+    // A failed save opens the tab holding the first error, not always "Basic".
+    $__errTab = 'basic';
+    foreach ($errors->keys() as $__k) {
+        $__errTab = match (true) {
+            \Illuminate\Support\Str::startsWith($__k, ['address', 'gps_', 'maps_url', 'translations.address']) => 'location',
+            \Illuminate\Support\Str::startsWith($__k, ['logo', 'favicon', 'cover_image', 'slug']) => 'branding',
+            \Illuminate\Support\Str::startsWith($__k, ['registration_', 'translations.registration_']) => 'registration',
+            \Illuminate\Support\Str::startsWith($__k, ['social_links']) => 'social',
+            \Illuminate\Support\Str::startsWith($__k, ['settings', 'require_email_verification']) => 'settings',
+            default => 'basic',
+        };
+        break;
+    }
+@endphp
+<div class="space-y-6" x-data="{ activeTab: @js($__errTab), showDeleteClubModal: false, showOwnerModal: false, ownerTab: 'existing' }">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
@@ -52,7 +67,7 @@
         </nav>
     </div>
 
-    <form id="clubDetailsForm" action="{{ route('admin.club.update', $club->slug) }}" method="POST" enctype="multipart/form-data" x-data="{ lang: 'en' }">
+    <form id="clubDetailsForm" action="{{ route('admin.club.update', $club->slug) }}" method="POST" enctype="multipart/form-data" x-data="{ lang: 'en' }" novalidate>
         @csrf
         @method('PUT')
 
@@ -457,7 +472,7 @@
                             return {
                                 splash: opts.current || '', logo: opts.logo || '', name: opts.name || '', fileName: '',
                                 init() {
-                                    const nameInput = document.getElementById('club_name');
+                                    const nameInput = document.querySelector('#clubDetailsForm [name="club_name"]');
                                     if (nameInput) { this.name = nameInput.value || this.name; nameInput.addEventListener('input', () => { this.name = nameInput.value; }); }
                                 },
                                 onFile(e) {
@@ -515,12 +530,12 @@
                         <label class="form-label font-medium">{{ __('admin.club_details_index_reg_requirements_label') }}</label>
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_reg_requirements_help') }}</small>
                         <p class="small font-semibold mb-1"><span class="fi fi-gb me-1"></span> {{ __('admin.club_details_index_english') }}</p>
-                        <x-fields.rich-text name="registration_requirements" :value="$club->registration_requirements ?? ''"
+                        <x-fields.rich-text name="registration_requirements" :value="old('registration_requirements', $club->registration_requirements ?? '')"
                             ai-label="Registration requirements" ai-group="registration_requirements"
                             :ai-purpose="'What a new member must provide to register at '.$club->club_name.' — e.g. valid ID/CPR, recent photo, minimum age, medical clearance for contact sports, proof of payment. Present as a short checklist.'"
                             :placeholder="__('admin.club_details_index_reg_requirements_placeholder')" />
                         <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh me-1"></span> {{ __('admin.club_details_index_arabic') }}</p>
-                        <x-fields.rich-text name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
+                        <x-fields.rich-text name="translations[registration_requirements][ar]" :value="old('translations.registration_requirements.ar', $reqAr)" dir="rtl"
                             ai-label="Registration requirements (Arabic)" ai-group="registration_requirements"
                             :ai-purpose="'What a new member must provide to register at '.$club->club_name.' — ID/CPR, recent photo, minimum age, medical clearance, proof of payment. Present as a short checklist.'"
                             placeholder="ما يحتاجه الأعضاء للتسجيل…" />
@@ -531,12 +546,12 @@
                         <label class="form-label font-medium">{{ __('admin.club_details_index_terms_conditions_label') }}</label>
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_terms_help') }}</small>
                         <p class="small font-semibold mb-1"><span class="fi fi-gb me-1"></span> {{ __('admin.club_details_index_english') }}</p>
-                        <x-fields.rich-text name="registration_terms" :value="$club->registration_terms ?? ''" min-height="200px"
+                        <x-fields.rich-text name="registration_terms" :value="old('registration_terms', $club->registration_terms ?? '')" min-height="200px"
                             ai-label="Registration terms & conditions" ai-group="registration_terms"
                             :ai-purpose="'Professional joining terms & conditions for '.$club->club_name.', covering membership, payment and refunds, code of conduct, liability and injury risk, and cancellation. Use clear headed sections.'"
                             :placeholder="__('admin.club_details_index_terms_placeholder')" />
                         <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh me-1"></span> {{ __('admin.club_details_index_arabic') }}</p>
-                        <x-fields.rich-text name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl" min-height="200px"
+                        <x-fields.rich-text name="translations[registration_terms][ar]" :value="old('translations.registration_terms.ar', $termsAr)" dir="rtl" min-height="200px"
                             ai-label="Registration terms & conditions (Arabic)" ai-group="registration_terms"
                             :ai-purpose="'Professional joining terms & conditions for '.$club->club_name.', covering membership, payment and refunds, conduct, liability and injury risk, and cancellation. Use clear headed sections.'"
                             placeholder="شروط وأحكام النادي للانضمام…" />
@@ -555,7 +570,7 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted text-sm mb-4">{{ __('admin.club_details_index_social_media_help') }}</p>
-                    <x-fields.social-links :links="$club->socialLinks" containerId="clubSocialLinksContainer" />
+                    <x-fields.social-links :links="old('social_links', $club->socialLinks)" containerId="clubSocialLinksContainer" />
                 </div>
             </div>
         </div>
@@ -632,15 +647,19 @@
                                class="mt-0.5 w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                                @checked(old('require_email_verification', $club->require_email_verification)) >
                         <span>
-                            <span class="block text-sm font-medium text-gray-900">Require email verification on sign-up</span>
-                            <span class="block text-xs text-muted-foreground mt-0.5">Members who register through this club's page must confirm their email before they get in. <strong class="text-amber-600">Turn this off only if the email service is down</strong> — new members will be let in immediately without verifying their email.</span>
+                            <span class="block text-sm font-medium text-gray-900">{{ __('admin.club_email_verify_label') }}</span>
+                            <span class="block text-xs text-muted-foreground mt-0.5">{{ __('admin.club_email_verify_help') }} <strong class="text-amber-600">{{ __('admin.club_email_verify_warn') }}</strong> {{ __('admin.club_email_verify_after') }}</span>
                         </span>
                     </label>
                 </div>
             </div>
 
             <!-- WhatsApp Integration -->
-            <div class="card mb-4" x-data="clubWhatsAppIntegration()">
+            <div class="card mb-4" x-data="clubWhatsAppIntegration($el.dataset)"
+                 data-enabled="{{ $whatsappSettings['enabled'] ? '1' : '0' }}" data-session="{{ $whatsappSettings['session_name'] }}"
+                 data-url-save="{{ route('admin.club.settings.whatsapp.update', $club->slug) }}"
+                 data-url-test="{{ route('admin.club.settings.whatsapp.test', $club->slug) }}"
+                 data-url-send="{{ route('admin.club.settings.whatsapp.send-test', $club->slug) }}">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
                         <i class="bi bi-whatsapp text-primary me-2"></i>{{ __('admin.club_details_index_whatsapp_title') }}
@@ -666,7 +685,8 @@
 
                     <div>
                         <label class="form-label">{{ __('admin.club_details_index_whatsapp_session_name') }}</label>
-                        <input type="text" x-model="form.session_name" class="form-control" placeholder="my-club-session">
+                        <input type="text" x-model="form.session_name" class="form-control" placeholder="my-club-session" @keydown.enter.prevent="save">
+                        <p class="text-xs text-red-600 mt-1" x-show="sessionError" x-text="sessionError" x-cloak></p>
                         <small class="text-muted">{{ __('admin.club_details_index_whatsapp_session_name_hint') }}</small>
                     </div>
 
@@ -684,7 +704,7 @@
                     <div class="border-top pt-3">
                         <label class="form-label">{{ __('admin.club_details_index_whatsapp_send_test_label') }}</label>
                         <div class="flex flex-col sm:flex-row gap-2">
-                            <input type="text" x-model="testPhone" class="form-control" placeholder="{{ __('admin.club_details_index_whatsapp_send_test_placeholder') }}">
+                            <input type="text" x-model="testPhone" class="form-control" placeholder="{{ __('admin.club_details_index_whatsapp_send_test_placeholder') }}" @keydown.enter.prevent="sendTest">
                             <button type="button" class="btn btn-outline-primary btn-sm w-full sm:w-auto flex-shrink-0" @click="sendTest" :disabled="sendingTest || !testPhone">
                                 <i class="bi bi-send me-1"></i>
                                 <span x-text="sendingTest ? '{{ __('admin.club_details_index_whatsapp_sending_test') }}' : '{{ __('admin.club_details_index_whatsapp_send_test') }}'"></span>
@@ -697,7 +717,7 @@
 
             @if($deleteClubUrl ?? null)
             <!-- Danger Zone -->
-            <div class="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden" id="clubDangerZone">
                 <div class="px-6 py-4 border-b border-red-200 bg-red-50">
                     <h5 class="flex items-center gap-2 text-sm font-semibold text-red-600 m-0">
                         <i class="bi bi-exclamation-triangle"></i>{{ __('admin.club_details_index_danger_zone') }}
@@ -865,7 +885,7 @@
                         <strong>{{ __('admin.club_details_index_warning_label') }}</strong>{{ __('admin.club_details_index_action_cannot_be_undone') }}
                     </div>
                     <p class="mb-3">{{ __('admin.club_details_index_confirm_delete_prompt') }} <strong>{{ $club->club_name }}</strong></p>
-                    <input type="text" class="form-control" id="confirmClubName" placeholder="{{ __('admin.club_details_index_confirm_delete_placeholder') }}" required>
+                    <input type="text" class="form-control" id="confirmClubName" name="confirm_name" autocomplete="off" placeholder="{{ __('admin.club_details_index_confirm_delete_placeholder') }}" required>
                 </div>
                 <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
                     <button type="button" class="btn btn-secondary" @click="showDeleteClubModal = false">{{ __('shared.cancel') }}</button>
@@ -903,11 +923,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Delete club confirmation
     const confirmInput = document.getElementById('confirmClubName');
     const deleteBtn = document.getElementById('confirmDeleteBtn');
-    const clubName = '{{ $club->club_name }}';
+    const clubName = @js($club->club_name);
 
     if (confirmInput && deleteBtn) {
         confirmInput.addEventListener('input', function() {
-            deleteBtn.disabled = this.value !== clubName;
+            deleteBtn.disabled = this.value.trim() !== clubName.trim();
         });
     }
 
@@ -950,8 +970,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ===== Owner Transfer =====
-let ownerSearchDebounce = null;
-let selectedOwnerId = null;
+var ownerSearchDebounce = null;
+var selectedOwnerId = null;
 
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('ownerSearchInput')?.addEventListener('input', function () {
@@ -977,22 +997,43 @@ function searchOwnerUsers(q) {
                 return;
             }
             users.forEach(user => {
+                // Names and emails are member-typed: text nodes only, never HTML.
                 const div = document.createElement('div');
                 div.className = 'flex items-center gap-3 p-2.5 border rounded-lg cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors';
-                const initial = (user.name || '?').charAt(0).toUpperCase();
-                const avatar = user.profile_picture
-                    ? `<img src="${user.profile_picture}" class="w-9 h-9 rounded-full object-cover shrink-0" onerror="this.outerHTML='<div class=\'w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm shrink-0\'>${initial}</div>'">`
-                    : `<div class="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm shrink-0">${initial}</div>`;
-                div.innerHTML = `
-                    ${avatar}
-                    <div class="min-w-0">
-                        <div class="font-medium text-sm truncate">${user.name}</div>
-                        <div class="text-xs text-muted-foreground truncate">${user.email || ''}</div>
-                    </div>`;
+                div.appendChild(ownerAvatar(user, 'w-9 h-9 rounded-full text-sm shrink-0'));
+                const text = document.createElement('div');
+                text.className = 'min-w-0';
+                const nm = document.createElement('div');
+                nm.className = 'font-medium text-sm truncate';
+                nm.textContent = user.name || '';
+                const em = document.createElement('div');
+                em.className = 'text-xs text-muted-foreground truncate';
+                em.textContent = user.email || '';
+                text.append(nm, em);
+                div.appendChild(text);
                 div.addEventListener('click', () => selectOwnerUser(user));
                 container.appendChild(div);
             });
         });
+}
+
+/** A member's avatar: their picture, or their initial on a tile if it fails. Built from nodes, not HTML. */
+function ownerAvatar(user, cls) {
+    const initial = (user.name || '?').charAt(0).toUpperCase();
+    const tile = () => {
+        const d = document.createElement('div');
+        d.className = cls + ' bg-primary/20 flex items-center justify-center font-bold text-primary';
+        d.textContent = initial;
+        return d;
+    };
+    const pic = String(user.profile_picture || '');
+    if (!/^(https?:\/\/|\/)/.test(pic)) return tile();
+    const img = document.createElement('img');
+    img.className = cls + ' object-cover';
+    img.alt = '';
+    img.src = pic;
+    img.addEventListener('error', () => img.replaceWith(tile()), { once: true });
+    return img;
 }
 
 function selectOwnerUser(user) {
@@ -1003,7 +1044,7 @@ function selectOwnerUser(user) {
     const avatarEl = document.getElementById('ownerSelectedAvatar');
     const initial = (user.name || '?').charAt(0).toUpperCase();
     if (user.profile_picture) {
-        avatarEl.innerHTML = `<img src="${user.profile_picture}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-primary/20 flex items-center justify-center font-bold text-primary\'>${initial}</div>'">`;
+        avatarEl.replaceChildren(ownerAvatar(user, 'w-full h-full'));
     } else {
         document.getElementById('ownerSelectedInitial').textContent = initial;
     }
@@ -1036,31 +1077,15 @@ function confirmOwnerTransfer() {
 
     let body = { _token: '{{ csrf_token() }}' };
 
-    if (tab === 'existing') {
-        const userId = document.getElementById('ownerSelectedUserId').value;
-        if (!userId) {
-            window.showToast('error', '{{ __('admin.club_details_index_js_select_member') }}');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ __('admin.club_details_index_confirm_transfer') }}';
-            return;
-        }
-        body.mode = 'existing';
-        body.user_id = userId;
-    } else {
-        const name     = document.getElementById('newOwnerName').value.trim();
-        const email    = document.getElementById('newOwnerEmail').value.trim();
-        const password = document.getElementById('newOwnerPassword').value;
-        if (!name || !email || !password) {
-            window.showToast('error', '{{ __('admin.club_details_index_js_fill_all_fields') }}');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ __('admin.club_details_index_confirm_transfer') }}';
-            return;
-        }
-        body.mode      = 'new';
-        body.full_name = name;
-        body.email     = email;
-        body.password  = password;
+    const userId = document.getElementById('ownerSelectedUserId').value;
+    if (!userId) {
+        window.showToast('error', '{{ __('admin.club_details_index_js_select_member') }}');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ __('admin.club_details_index_confirm_transfer') }}';
+        return;
     }
+    body.mode = 'existing';
+    body.user_id = userId;
 
     fetch(@json($transferOwnershipUrl ?? null), {
         method: 'POST',
@@ -1086,10 +1111,13 @@ function confirmOwnerTransfer() {
                     '<div class="card bg-light"><div class="card-body">' +
                         '<div class="flex justify-between items-start">' +
                             '<div id="ownerCardInfo">' + inner + '</div>' +
-                            '<button type="button" class="btn btn-sm btn-outline-secondary" @click="showOwnerModal = true"><i class="bi bi-pencil"></i></button>' +
+
                         '</div>' +
                     '</div></div>';
             }
+
+            // The club is no longer theirs to give away or delete.
+            document.getElementById('clubDangerZone')?.remove();
 
             // Close modal (Alpine 3 scope) — no reload.
             try { if (window.Alpine) window.Alpine.$data(btn).showOwnerModal = false; } catch (e) {}
@@ -1113,28 +1141,39 @@ function confirmOwnerTransfer() {
 // Copy club URL
 function copyClubUrl() {
     const url = '{{ $club->slug && $club->country ? route("clubs.show", [strtolower($club->country), $club->slug]) : "" }}';
-    if (url) {
-        navigator.clipboard.writeText(url).then(function() {
-            window.showToast('success', '{{ __('admin.club_details_index_js_url_copied') }}');
-        });
-    }
+    if (!url) return;
+    const done = () => window.showToast('success', '{{ __('admin.club_details_index_js_url_copied') }}');
+    const fallback = () => {
+        const t = document.createElement('textarea');
+        t.value = url; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select();
+        let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+        t.remove();
+        ok ? done() : window.showToast('error', '{{ __('admin.club_copy_failed') }}');
+    };
+    navigator.clipboard?.writeText ? navigator.clipboard.writeText(url).then(done, fallback) : fallback();
 }
 
-function clubWhatsAppIntegration() {
+function clubWhatsAppIntegration(ds) {
+    // State comes from the element's data attributes, not from values baked into
+    // this script (the admin shell runs a script only once per session).
     return {
         saving: false,
         testing: false,
         sendingTest: false,
         testPhone: '',
+        sessionError: '',
+        urls: { save: ds.urlSave, test: ds.urlTest, send: ds.urlSend },
         form: {
-            enabled:      @json($whatsappSettings['enabled']),
-            session_name: @json($whatsappSettings['session_name']),
+            enabled:      ds.enabled === '1',
+            session_name: ds.session || '',
         },
 
         async save() {
             this.saving = true;
+            this.sessionError = '';
             try {
-                const res = await fetch('{{ route('admin.club.settings.whatsapp.update', $club->slug) }}', {
+                const res = await fetch(this.urls.save, {
                     method: 'PUT',
                     headers: this._headers(),
                     body: JSON.stringify(this.form),
@@ -1142,11 +1181,14 @@ function clubWhatsAppIntegration() {
                 const data = await res.json();
                 if (data.success) {
                     window.showToast('success', data.message);
+                    this.$root.dataset.enabled = this.form.enabled ? '1' : '0';
+                    this.$root.dataset.session = this.form.session_name || '';
                 } else {
-                    window.showToast('error', data.message || 'Could not save settings.');
+                    this.sessionError = (data.errors && data.errors.session_name && data.errors.session_name[0]) || '';
+                    window.showToast('error', data.message || @js(__('admin.club_whatsapp_save_failed')));
                 }
             } catch (e) {
-                window.showToast('error', 'Network error while saving.');
+                window.showToast('error', @js(__('admin.club_details_index_js_network_error')));
             } finally {
                 this.saving = false;
             }
@@ -1155,14 +1197,14 @@ function clubWhatsAppIntegration() {
         async test() {
             this.testing = true;
             try {
-                const res = await fetch('{{ route('admin.club.settings.whatsapp.test', $club->slug) }}', {
+                const res = await fetch(this.urls.test, {
                     method: 'POST',
                     headers: this._headers(),
                 });
                 const data = await res.json();
                 window.showToast(data.success ? 'success' : 'error', data.message);
             } catch (e) {
-                window.showToast('error', 'Network error during test.');
+                window.showToast('error', @js(__('admin.club_details_index_js_network_error')));
             } finally {
                 this.testing = false;
             }
@@ -1172,7 +1214,7 @@ function clubWhatsAppIntegration() {
             if (!this.testPhone) return;
             this.sendingTest = true;
             try {
-                const res = await fetch('{{ route('admin.club.settings.whatsapp.send-test', $club->slug) }}', {
+                const res = await fetch(this.urls.send, {
                     method: 'POST',
                     headers: this._headers(),
                     body: JSON.stringify({ phone: this.testPhone }),
@@ -1180,7 +1222,7 @@ function clubWhatsAppIntegration() {
                 const data = await res.json();
                 window.showToast(data.success ? 'success' : 'error', data.message);
             } catch (e) {
-                window.showToast('error', 'Network error while sending.');
+                window.showToast('error', @js(__('admin.club_details_index_js_network_error')));
             } finally {
                 this.sendingTest = false;
             }
@@ -1195,6 +1237,110 @@ function clubWhatsAppIntegration() {
         },
     };
 }
+</script>
+<script>
+/*
+ * Save the club form in place (No-Reload). Delegated off document and set up
+ * once per session, so it works however the page arrived (full load or the
+ * admin shell). The server answers JSON: errors open the tab that holds them;
+ * a moved slug sends the page to its new address.
+ */
+(function () {
+    if (window.__clubDetailsSave) return; window.__clubDetailsSave = true;
+
+    const FORM = 'clubDetailsForm';
+    const snap = (f) => { const d = new FormData(f); d.delete('_token'); return JSON.stringify([...d.entries()].map(([k, v]) => [k, v instanceof File ? v.name + v.size : v])); };
+    window.__clubDetailsBaseline = null;
+    const form = () => document.getElementById(FORM);
+    const isDirty = () => { const f = form(); return !!(f && window.__clubDetailsBaseline !== null && snap(f) !== window.__clubDetailsBaseline); };
+    const baseline = () => { const f = form(); if (f) window.__clubDetailsBaseline = snap(f); };
+    // The pickers and the map settle a moment after load; take the baseline then.
+    document.addEventListener('DOMContentLoaded', () => { window.__clubDetailsBaseline = null; setTimeout(baseline, 1200); });
+
+    // "social_links.0.url" → the input named "social_links[0][url]".
+    const fieldFor = (f, key) => {
+        const parts = key.split('.');
+        const name = parts[0] + parts.slice(1).map(p => '[' + p + ']').join('');
+        return f.querySelector('[name="' + CSS.escape(name) + '"]') || f.querySelector('[name^="' + CSS.escape(parts[0]) + '"]');
+    };
+    const clearErrors = (f) => f.querySelectorAll('[data-club-error]').forEach(e => e.remove());
+    const showError = (el, msg) => {
+        const p = document.createElement('p');
+        p.className = 'text-xs text-red-600 mt-1';
+        p.setAttribute('data-club-error', '');
+        p.textContent = msg;
+        (el.closest('.mb-3, .mb-4, .form-group, .social-link-row, div') || el).appendChild(p);
+    };
+    const openTab = (el) => {
+        const pane = el && el.closest('[id^="tab-"]');
+        if (!pane || !window.Alpine) return;
+        const host = pane.closest('.space-y-6[x-data]');
+        try { window.Alpine.$data(host).activeTab = pane.id.slice(4); } catch (e) {}
+    };
+
+    document.addEventListener('submit', async (e) => {
+        const f = e.target;
+        if (!f || f.id !== FORM) return;
+        e.preventDefault();
+        if (f.dataset.saving === '1') return;
+        f.dataset.saving = '1';
+        const buttons = document.querySelectorAll('[form="' + FORM + '"], #' + FORM + ' [type="submit"]');
+        buttons.forEach(b => b.disabled = true);
+        clearErrors(f);
+        try {
+            const res = await fetch(f.action, {
+                method: 'POST',
+                body: new FormData(f),
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 422 && data.errors) {
+                let first = null;
+                Object.entries(data.errors).forEach(([key, msgs]) => {
+                    const el = fieldFor(f, key);
+                    if (el) { showError(el, msgs[0]); first = first || el; }
+                });
+                openTab(first);
+                window.showToast('error', data.message || @js(__('admin.club_details_review_errors')));
+                if (first) setTimeout(() => first.scrollIntoView({ block: 'center', behavior: 'smooth' }), 120);
+                return;
+            }
+            if (!res.ok || !data.success) {
+                window.showToast('error', data.message || @js(__('admin.club_details_index_js_something_wrong')));
+                return;
+            }
+            window.showToast('success', data.message);
+            if (data.warning) window.showToast('warning', data.warning);
+            if (data.redirect) { window.__clubDetailsBaseline = null; location.href = data.redirect; return; }
+            // A new picture is on file now: don't send it again on the next save.
+            f.querySelectorAll('input[type="hidden"][id^="hiddenInput_"], input[type="hidden"][id^="removeInput_"]').forEach(i => i.value = '');
+            f.querySelectorAll('input[type="file"]').forEach(i => i.value = '');
+            if (data.club) {
+                ['gps_lat', 'gps_long'].forEach(k => { const i = f.querySelector('[name="' + k + '"]'); if (i && data.club[k] != null) i.value = data.club[k]; });
+            }
+            window.dispatchEvent(new CustomEvent('club-details-saved', { detail: data.club || {} }));
+            baseline();
+        } catch (err) {
+            window.showToast('error', @js(__('admin.club_details_index_js_network_error')));
+        } finally {
+            f.dataset.saving = '';
+            buttons.forEach(b => b.disabled = false);
+        }
+    });
+
+    // Leaving with unsaved changes asks first — a full unload, or an in-shell link.
+    window.addEventListener('beforeunload', (e) => { if (form() && isDirty()) { e.preventDefault(); e.returnValue = ''; } });
+    document.addEventListener('click', async (e) => {
+        const a = e.target.closest && e.target.closest('a[href]');
+        const f = form();
+        if (!a || !f || f.contains(a) || a.target === '_blank' || a.hasAttribute('download') || !isDirty()) return;
+        if (a.dataset.dirtyOk === '1') { delete a.dataset.dirtyOk; return; }
+        e.preventDefault(); e.stopImmediatePropagation();
+        const ok = await window.confirmAction({ title: @js(__('admin.club_unsaved_title')), message: @js(__('admin.club_unsaved_message')), type: 'warning', confirmText: @js(__('admin.club_unsaved_leave')) });
+        if (ok) { window.__clubDetailsBaseline = null; a.dataset.dirtyOk = '1'; a.click(); }
+    }, true);
+})();
 </script>
 @endpush
 @endsection

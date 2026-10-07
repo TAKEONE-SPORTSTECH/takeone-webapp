@@ -12,8 +12,12 @@ use DOMXPath;
  *
  * Strategy: parse with DOMDocument, drop <script>/<style>/comments entirely,
  * UNWRAP any tag not on the allow-list (keeping its text), and strip every
- * attribute except a safe set — neutralising onclick=, style=, javascript:
- * hrefs, etc. Only http(s)/mailto links survive, forced to open safely.
+ * attribute except a safe set — neutralising onclick=, javascript: hrefs,
+ * etc. Only http(s)/mailto links survive, forced to open safely.
+ *
+ * `style` survives in exactly two forms the editor writes: a text colour
+ * (hex / rgb only) and a text alignment — every other declaration is dropped.
+ * The editor's <font color> becomes a <span style="color:…">.
  */
 class HtmlSanitizer
 {
@@ -21,9 +25,11 @@ class HtmlSanitizer
     private const ALLOWED = [
         'p' => [], 'br' => [], 'b' => [], 'strong' => [], 'i' => [], 'em' => [],
         'u' => [], 's' => [], 'strike' => [], 'sub' => [], 'sup' => [],
-        'ul' => [], 'ol' => [], 'li' => [], 'h2' => [], 'h3' => [], 'h4' => [],
-        'blockquote' => [], 'span' => [], 'div' => [], 'a' => ['href'],
+        'ul' => [], 'ol' => [], 'li' => [], 'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [],
+        'blockquote' => [], 'span' => [], 'div' => [], 'a' => ['href'], 'hr' => [],
     ];
+
+    private const COLOUR = '/^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+)\s*)?\))$/i';
 
     public static function clean(?string $html): ?string
     {
@@ -60,17 +66,36 @@ class HtmlSanitizer
 
             $tag = strtolower($el->nodeName);
 
+            // <font color="…"> (what the editor's colour button writes) → a span.
+            if ($tag === 'font') {
+                $colour = trim($el->getAttribute('color'));
+                if (preg_match(self::COLOUR, $colour)) {
+                    $span = $dom->createElement('span');
+                    $span->setAttribute('style', 'color: '.strtolower($colour));
+                    while ($el->firstChild) {
+                        $span->appendChild($el->firstChild);
+                    }
+                    $el->parentNode?->replaceChild($span, $el);
+
+                    continue;
+                }
+            }
+
             if (! array_key_exists($tag, self::ALLOWED)) {
                 self::unwrap($el); // keep the text, drop the tag
 
                 continue;
             }
 
+            $style = self::safeStyle($el->getAttribute('style'));
             $allowedAttrs = self::ALLOWED[$tag];
             foreach (iterator_to_array($el->attributes ?? []) as $attr) {
                 if (! in_array(strtolower($attr->name), $allowedAttrs, true)) {
                     $el->removeAttribute($attr->name);
                 }
+            }
+            if ($style !== '') {
+                $el->setAttribute('style', $style);
             }
 
             if ($tag === 'a') {
@@ -98,6 +123,24 @@ class HtmlSanitizer
         }
 
         return $out;
+    }
+
+    /** Keep only `color` (hex/rgb) and `text-align` from a style attribute. */
+    private static function safeStyle(string $style): string
+    {
+        $keep = [];
+        foreach (explode(';', $style) as $decl) {
+            [$prop, $value] = array_map('trim', explode(':', $decl, 2) + [1 => '']);
+            $prop = strtolower($prop);
+            $value = strtolower($value);
+            if ($prop === 'color' && preg_match(self::COLOUR, $value)) {
+                $keep[] = 'color: '.$value;
+            } elseif ($prop === 'text-align' && in_array($value, ['left', 'right', 'center', 'justify', 'start', 'end'], true)) {
+                $keep[] = 'text-align: '.$value;
+            }
+        }
+
+        return implode('; ', $keep);
     }
 
     private static function unwrap(DOMElement $el): void

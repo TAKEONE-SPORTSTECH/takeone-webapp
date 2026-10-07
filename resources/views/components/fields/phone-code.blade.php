@@ -210,15 +210,21 @@
                 // Listen for country-changed events (e.g. a country/nationality picker on the
                 // same form syncing the dial code). Opt out with :syncWithCountry="false" when
                 // the phone code must stay independent (e.g. nationality ≠ phone country).
-                window.addEventListener('country-changed', (e) => {
-                    const code = e.detail.call_code;
+                // The listener lives on window, which outlives this picker: once the
+                // mobile shell swaps the page away it removes itself, so in-place
+                // navigation does not stack one dead listener per visit.
+                const el = this.$el;
+                const onCountry = (e) => {
+                    if (el && ! el.isConnected) { window.removeEventListener('country-changed', onCountry); return; }
+                    const code = e.detail && e.detail.call_code;
                     if (!code) return;
                     const match = this.countries.find(c => c.code === code);
                     if (match) {
                         this.selectedCode = match.code;
                         this.selectedFlag = match.flag;
                     }
-                });
+                };
+                window.addEventListener('country-changed', onCountry);
 @endif
             },
 

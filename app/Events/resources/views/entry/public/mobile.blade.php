@@ -169,8 +169,9 @@
                 {{-- A MEMBER came here from the platform: the leading edge is
                      the way back to it, exactly as the member page it replaced
                      had it (Design Rule #6 — back leads, actions trail). --}}
-                <a href="{{ route('me.events') }}" class="m-press ev-ctl flex-none"
-                   aria-label="{{ __('personal.event_show_events') }}" title="{{ __('personal.event_show_events') }}">
+                @php $back = $eventReturn ?? ['url' => route('me.events'), 'label' => __('personal.event_show_events')]; @endphp
+                <a href="{{ $back['url'] }}" class="m-press ev-ctl flex-none"
+                   aria-label="{{ $back['label'] }}" title="{{ $back['label'] }}">
                     <i class="bi bi-chevron-left rtl:rotate-180"></i>
                 </a>
             @else
@@ -222,6 +223,9 @@
     </x-event-poster-band>
 
     @include('events::entry.public.partials.quick-facts')
+
+    {{-- The numbers: female · male · divisions · bouts (EventStats). --}}
+    @include('events::entry.public.partials.event-stats')
 
     {{-- ===== The event, in one card — the SAME partial the member page uses.
          No `sectionVariant`, so it draws the product's dark full-bleed section
@@ -276,76 +280,9 @@
          event that runs none, no table unless the owning package publishes one,
          no winners until somebody has won. --}}
     @php
-        /* Through the address helper: with the unified page on, a section
-           lives under the event's one address; otherwise under /e/{uuid}. */
-        $section = fn (string $s) => $addr->section($s);
-        $doors = [];
-
-        if (! empty($e['divisions']) || ($e['draw']['published'] ?? false)) {
-            $drawn = ($e['draw']['published'] ?? false);
-            $doors['draw'] = [
-                'href' => $section('draw'),
-                'icon' => 'bi-diagram-3-fill bracket-icon',
-                'label' => __('personal.event_show_tile_draw'),
-                'sub' => $drawn
-                    ? trans_choice('events::events.public_draw_competitors', $e['draw']['entrants'], ['n' => $e['draw']['entrants']])
-                    : __('events::events.public_draw_empty_title'),
-            ];
-        }
-
-        /* Whatever the owning package publishes of its own — the pool tables of
-           the classes that are not bracketed, or a league's whole table. Next
-           to the DRAW because they are two readings of one question: how this
-           competition is being played. */
-        if (($e['type_public']['key'] ?? null) === 'table') {
-            $doors['table'] = [
-                'href' => $section('table'),
-                'icon' => $e['type_public']['icon'] ?? 'bi-table',
-                'label' => $e['type_public']['label'] ?? '',
-                'sub' => $e['type_public']['sub'] ?? '',
-            ];
-        }
-
-        $doors['officials'] = [
-            'href' => $section('officials'),
-            'icon' => 'bi-person-badge-fill',
-            'label' => __('personal.event_show_tile_officials'),
-            'sub' => ($e['officials']['count'] ?? 0) > 0
-                ? trans_choice('personal.event_manage_officials_count', $e['officials']['count'], ['count' => $e['officials']['count']])
-                : __('events::events.public_officials_empty_title'),
-        ];
-
-        // Always a door, even with nothing behind it yet: an event's footage is
-        // a place people go looking for, and a door that only appears once
-        // something is behind it cannot be found before then.
-        $doors['gallery'] = [
-            'href' => $section('gallery'),
-            'icon' => 'bi-camera-reels-fill',
-            'label' => __('events::events.bout_gallery_title'),
-            'sub' => ($e['gallery']['count'] ?? 0) > 0
-                ? trans_choice('events::events.bout_gallery_count', $e['gallery']['count'], ['count' => $e['gallery']['count']])
-                : __('events::events.bout_gallery_none'),
-        ];
-
-        $doors['participants'] = [
-            'href' => $section('participants'),
-            'icon' => 'bi-people-fill',
-            'label' => __('personal.event_show_tile_participants'),
-            'sub' => ($e['participants']['count'] ?? 0) > 0
-                ? trans_choice('events::events.public_draw_competitors', $e['participants']['count'], ['n' => $e['participants']['count']])
-                : __('events::events.public_participants_empty_title'),
-        ];
-
-        if (($e['results']['count'] ?? 0) > 0) {
-            $doors['results'] = [
-                'href' => $section('results'),
-                'icon' => 'bi-trophy-fill',
-                'label' => __('personal.event_show_results_medals'),
-                'sub' => trans_choice('personal.event_show_results_divisions', $e['results']['count'], ['count' => $e['results']['count']]),
-                // Gold, because it is the last thing that happens at an event.
-                'style' => 'background: linear-gradient(135deg, #eab308, #78350f);',
-            ];
-        }
+        /* One list for every page that shows this event's doors — the federation
+           invitation draws the same ones (App\Events\Support\EventDoors). */
+        $doors = ($passOnly ?? false) ? [] : \App\Events\Support\EventDoors::public($e, $addr);
     @endphp
 
     @include('events::partials.event-doors')
@@ -382,7 +319,9 @@
                 }
             },
             share() {
-                const data = { title: @js($e['title']), url: window.location.href };
+                // EventShareLink: the event's own page, or — when it is not public —
+                // its invitation link, which opens without an account.
+                const data = { title: @js($e['title']), url: @js($shareUrl ?? null) || window.location.href };
                 if (navigator.share) { navigator.share(data).catch(() => {}); return; }
                 navigator.clipboard?.writeText(data.url).then(
                     () => notice(@js(__('events::events.public_share_copied'))),

@@ -35,7 +35,7 @@ use App\Support\Modules\Surfaces\HostsEvents;
  * are reached through the ContributesMessengerThreads surface; with the
  * module gone they are orphaned `type = 'federation'` conversations.)
  */
-class Federations extends AbstractModule implements ContributesMessengerThreads, ContributesCopilotSkills, SealsItsSurface, HostsEvents, \App\Support\Modules\Surfaces\CreatesHostedEvents
+class Federations extends AbstractModule implements ContributesMessengerThreads, ContributesCopilotSkills, SealsItsSurface, HostsEvents, \App\Support\Modules\Surfaces\CreatesHostedEvents, \App\Support\Modules\Surfaces\HostsClubEntry, \App\Support\Modules\Surfaces\ProvidesEventArtwork
 {
     public function key(): string
     {
@@ -160,7 +160,70 @@ class Federations extends AbstractModule implements ContributesMessengerThreads,
             || \Illuminate\Support\Facades\DB::table('user_roles')->join('roles', 'roles.id', '=', 'user_roles.role_id')
                 ->where('user_roles.user_id', $user->id)->where('roles.slug', 'club-admin')->whereNotNull('user_roles.tenant_id')->exists();
 
-        return ['url' => route('federations.app.invitation').'?event='.rawurlencode($fe->uuid), 'enters' => $runsClub];
+        // The event's own "Register your club" address when the shared screens
+        // are on (events.club_entry) — the same screens for every host; the
+        // federation's invitation link otherwise.
+        $url = config('events.club_entry') && config('federations.invite_v2') && \Illuminate\Support\Facades\Route::has('me.events.club-entry.rules')
+            ? route('me.events.club-entry.rules', ['event' => $event->uuid])
+            : route('federations.app.invitation').'?event='.rawurlencode($fe->uuid);
+
+        return ['url' => $url, 'enters' => $runsClub];
+    }
+
+    /**
+     * The posters of a platform event this federation runs, from the federation
+     * event's own record, served by the federation's own public media door.
+     */
+    public function eventArtwork(\App\Events\Models\ClubEvent $event, string $shape): ?array
+    {
+        $fe = $this->federationEventOf($event);
+        $path = $fe ? ($shape === 'landscape' ? $fe->art_landscape : ($shape === 'portrait' ? $fe->art_portrait : null)) : null;
+        if (! $path) {
+            return null;
+        }
+
+        return [
+            'url' => route('federations.event-media', ['event' => $fe->uuid, 'kind' => $shape === 'landscape' ? 'art-l' : 'art-p']).'?v='.substr(md5((string) $path), 0, 8),
+            'disk' => 'public',
+            'path' => (string) $path,
+        ];
+    }
+
+    /** The federation's own logo file, for drawing a link preview. */
+    public function eventLogoFile(\App\Events\Models\ClubEvent $event): ?array
+    {
+        if ($event->host_type !== 'federation' || ! config('federations.enabled')) {
+            return null;
+        }
+        $f = \App\Federations\Models\Federation::find($event->host_id);
+
+        return $f && $f->logo && $f->isApproved() ? ['disk' => 'public', 'path' => (string) $f->logo] : null;
+    }
+
+    private function federationEventOf(\App\Events\Models\ClubEvent $event): ?\App\Federations\Models\FederationEvent
+    {
+        if ($event->host_type !== 'federation' || ! config('federations.enabled')) {
+            return null;
+        }
+
+        return \App\Federations\Models\FederationEvent::where('club_event_id', $event->id)->first(['uuid', 'art_portrait', 'art_landscape']);
+    }
+
+    /**
+     * The shared "Register your club" screens (events::entry.club.page), for a
+     * platform event this federation runs: its own invitation's back office,
+     * behind the invitation's own gate (approved, unsuspended federation, event
+     * not completed — FederationInvitation::event).
+     */
+    public function clubEntryDesk(\App\Events\Models\ClubEvent $event): ?\App\Events\Support\ClubEntry\ClubEntryDesk
+    {
+        if ($event->host_type !== 'federation' || ! config('federations.enabled') || ! config('federations.invite_v2')) {
+            return null;
+        }
+        $fe = \App\Federations\Models\FederationEvent::where('club_event_id', $event->id)->first(['uuid']);
+        $fe = $fe ? app(\App\Federations\Services\FederationInvitation::class)->event($fe->uuid) : null;
+
+        return $fe ? new \App\Federations\Support\FederationClubEntryDesk($fe) : null;
     }
 
     /** Coach can create one of these — see App\Support\Copilot\CopilotSkill. */

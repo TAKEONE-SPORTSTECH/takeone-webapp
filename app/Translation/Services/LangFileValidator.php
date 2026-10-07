@@ -119,7 +119,7 @@ class LangFileValidator
          * Here every string is chrome.
          */
         $sourceDigits = $this->digits($source);
-        $targetDigits = $this->digits($translated);
+        $targetDigits = $this->withoutMonthNumbers($source, $this->digits($translated));
 
         /*
          * ⚠️ The other direction: a WORD becoming a NUMERAL.
@@ -265,7 +265,50 @@ class LangFileValidator
             .'|dozen|half|single|double|triple'
             .'|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth';
 
-        return (bool) preg_match('/\b(?:'.$words.')\b/i', $text);
+        if (preg_match('/\b(?:'.$words.')\b/i', $text)) {
+            return true;
+        }
+
+        /*
+         * "a month", "an hour", "about a minute" — a ONE that English spells
+         * as an article. Japanese and Chinese write it as a numeral ("1か月",
+         * "約1分"), and refusing that kept "a month" and "Try again in a
+         * minute" English in Japanese for good (2026-10-05).
+         */
+        return (bool) preg_match('/\ban?\s+(?:second|minute|hour|day|week|month|year|moment)s?\b/i', $text);
+    }
+
+    /**
+     * Drop the digits that are only a NAMED MONTH written as a number.
+     *
+     * CJK languages write months as numerals: "Apr" is "4月", "Jul 3" is
+     * "7月3日". The month's number is the same fact as its name, so it is not
+     * a number the translation changed — only what is left after removing it
+     * is compared. Twenty month labels stayed English in Japanese because of
+     * this (2026-10-05). The day in "Jul 3" is still checked: 3 must stay 3.
+     *
+     * @param  array<int, string>  $digits  sorted
+     * @return array<int, string>
+     */
+    private function withoutMonthNumbers(string $source, array $digits): array
+    {
+        $months = ['jan' => 1, 'feb' => 2, 'mar' => 3, 'apr' => 4, 'may' => 5, 'jun' => 6,
+            'jul' => 7, 'aug' => 8, 'sep' => 9, 'oct' => 10, 'nov' => 11, 'dec' => 12];
+
+        // Whole month names or their abbreviations only — never "Market".
+        preg_match_all('/\b(january|february|march|april|may|june|july|august|september|october|november|december'
+            .'|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)\b/i', $source, $m);
+
+        foreach ($m[1] as $name) {
+            $number = (string) $months[substr(strtolower($name), 0, 3)];
+            $at = array_search($number, $digits, true);
+
+            if ($at !== false) {
+                unset($digits[$at]);
+            }
+        }
+
+        return array_values($digits);
     }
 
     private function digits(string $text): array

@@ -50,6 +50,10 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])
         Route::delete('/ai/providers/{provider}', [AiProviderController::class, 'destroy'])
             ->name('ai.destroy')->middleware('throttle:admin-write');
 
+        // Which models a provider serves — for the picker in the form.
+        Route::post('/ai/models', [AiProviderController::class, 'models'])
+            ->name('ai.models')->middleware('throttle:admin-write');
+
         Route::post('/ai/providers/{provider}/test', [AiProviderController::class, 'test'])
             ->name('ai.test')->middleware('throttle:admin-write');
 

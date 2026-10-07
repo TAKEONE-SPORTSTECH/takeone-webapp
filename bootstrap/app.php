@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        // The new UI's theme choice (light|dark|system) is set by the page's own
+        // script, so it travels unencrypted; it is whitelisted wherever it is read.
+        $middleware->encryptCookies(except: ['t1_theme']);
+
         $middleware->trustProxies(at: '*');
         $middleware->append(\App\Http\Middleware\StructuredLogging::class);
         // Counts (after the response, so it costs the visitor nothing) how many

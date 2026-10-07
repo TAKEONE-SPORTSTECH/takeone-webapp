@@ -345,6 +345,15 @@
                 <x-event-public-link :event="$e['key']" :is-public="$isPublic ?? false"
                                      :url="$publicUrl" :color="$mgColor ?? $e['color']" :title="$e['title']" :auto-accept="$autoAccept ?? false" />
 
+                {{-- Listed or hidden: whether the event appears in any list. --}}
+                <x-event-visibility :event="$e['key']" :visibility="$visibility ?? 'listed'"
+                                    :url="route('me.events.show', $e['key'])" :color="$mgColor ?? $e['color']" :title="$e['title']" />
+
+                {{-- Club payments: the proofs clubs sent, approved or rejected here. --}}
+                @if($clubPayments ?? false)
+                    <x-event-club-payments :event="$e['key']" :waiting="$clubPaymentsWaiting ?? 0" :color="$mgColor ?? $e['color']" :title="$e['title']" />
+                @endif
+
                 {{-- The picture that page opens onto. Beside the switch on purpose:
                      there is no point choosing a face for a page nobody may open. --}}
                 <x-event-cover :event="$e['key']" :photo="$coverPhoto ?? null"

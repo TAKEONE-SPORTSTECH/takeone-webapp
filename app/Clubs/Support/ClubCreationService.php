@@ -47,20 +47,50 @@ class ClubCreationService
         // there is no need for the flat `clubs/logos` root these used to use.
         $branding = StoragePath::clubBySlug((string) ($data['slug'] ?? ''), 'branding', $data['country'] ?? null);
 
-        if ($request->filled('logo') && str_starts_with($request->logo, 'data:image')) {
-            $data['logo'] = $this->handleBase64Image($request->logo, $branding, 'logo_'.Str::random(24));
+        // Branding pictures: only a base64 data-URI from the cropper is a new
+        // upload. Any other string is dropped, so a client-supplied path can
+        // never become the stored one.
+        $prefixes = ['logo' => 'logo_', 'cover_image' => 'cover_', 'registration_splash_image' => 'splash_'];
+        foreach ($prefixes as $field => $prefix) {
+            $value = (string) $request->input($field, '');
+            if ($value !== '' && str_starts_with($value, 'data:image')) {
+                $data[$field] = $this->handleBase64Image($value, $branding, $prefix.Str::random(24));
+            } else {
+                unset($data[$field]);
+            }
         }
 
-        if ($request->filled('cover_image') && str_starts_with($request->cover_image, 'data:image')) {
-            $data['cover_image'] = $this->handleBase64Image($request->cover_image, $branding, 'cover_'.Str::random(24));
+        // A Google Maps link with no pin: read the pin from the link here too,
+        // so the club lands on the map even when the form's script did not run.
+        if (! empty($data['maps_url']) && (blank($data['gps_lat'] ?? null) || blank($data['gps_long'] ?? null))
+            && ($at = \App\Support\MapLink::resolve($data['maps_url']))) {
+            $data['gps_lat'] = $at['lat'];
+            $data['gps_long'] = $at['lng'];
         }
+
+        // Only the settings keys this form owns (validated: contact_source).
+        unset($data['settings']);
+        if (in_array($request->input('settings.contact_source'), ['owner', 'club'], true)) {
+            $data['settings'] = ['contact_source' => $request->input('settings.contact_source')];
+        }
+
+        // Other-locale copies go through the model's translation mechanism
+        // (rich fields sanitised by Tenant::setTranslation), after the row exists.
+        $translations = $request->input('translations');
+        unset($data['translations']);
 
         $data['status'] = $request->input('club_status', 'active');
         $data['public_profile_enabled'] = $request->boolean('public_profile_enabled', true);
         $data['social_links'] = $request->input('social_links', []);
         $data['bank_accounts'] = $request->input('bank_accounts', []);
 
-        return $this->create($data);
+        $club = $this->create($data);
+
+        if (is_array($translations) && $translations !== []) {
+            $club->setTranslations($translations)->save();
+        }
+
+        return $club;
     }
 
     /**
@@ -97,7 +127,7 @@ class ClubCreationService
                         'tenant_id' => $club->id,
                         'bank_name' => $account['bank_name'],
                         'account_name' => $account['account_name'],
-                        'account_number' => $account['account_number'] ?? null,
+                        'account_number' => $account['account_number'] ?? '', // NOT NULL column
                         'iban' => $account['iban'] ?? null,
                         'swift_code' => $account['swift_code'] ?? null,
                         'benefitpay_account' => $account['benefitpay_account'] ?? null,

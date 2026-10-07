@@ -46,12 +46,13 @@
                                        required>
                             </div>
                             <div>
-                                <label class="form-label">{{ __('shared.finance_settings_account_number') }}</label>
+                                <label class="form-label">{{ __('shared.finance_settings_account_number') }} <span class="text-destructive">*</span></label>
                                 <input type="text"
                                        class="form-control"
                                        name="bank_accounts[{{ $index }}][account_number]"
                                        value="{{ $account->account_number }}"
-                                       placeholder="{{ __('shared.finance_settings_account_number_placeholder') }}">
+                                       placeholder="{{ __('shared.finance_settings_account_number_placeholder') }}"
+                                       required>
                             </div>
                             <div>
                                 <label class="form-label">{{ __('shared.finance_settings_iban') }}</label>
@@ -100,18 +101,16 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <!-- Club Status -->
             <div>
-                <label for="club_status" class="form-label">{{ __('shared.finance_settings_club_status') }}</label>
-                <select class="form-select" id="club_status" name="club_status">
-                    <option value="active" {{ ($club->status ?? 'active') === 'active' ? 'selected' : '' }}>
-                        {{ __('shared.finance_settings_status_active') }}
-                    </option>
-                    <option value="inactive" {{ ($club->status ?? '') === 'inactive' ? 'selected' : '' }}>
-                        {{ __('shared.finance_settings_status_inactive') }}
-                    </option>
-                    <option value="pending" {{ ($club->status ?? '') === 'pending' ? 'selected' : '' }}>
-                        {{ __('shared.finance_settings_status_pending') }}
-                    </option>
-                </select>
+                <label class="form-label">{{ __('shared.finance_settings_club_status') }}</label>
+                <div id="clubStatusField">
+                    <x-fields.select name="club_status" :value="$club->status ?? 'active'"
+                        :options="[
+                            ['value' => 'active', 'label' => __('shared.finance_settings_status_active')],
+                            ['value' => 'inactive', 'label' => __('shared.finance_settings_status_inactive')],
+                            ['value' => 'pending', 'label' => __('shared.finance_settings_status_pending')],
+                        ]"
+                        change="$nextTick(() => window.updateClubFinanceSummary && window.updateClubFinanceSummary())" />
+                </div>
                 <small class="text-muted-foreground">{{ __('shared.finance_settings_club_status_help') }}</small>
             </div>
 
@@ -119,6 +118,8 @@
             <div>
                 <label class="form-label">{{ __('shared.finance_settings_public_profile') }}</label>
                 <div class="form-check form-switch pt-2">
+                    {{-- An unchecked box posts nothing; this posts the "off". --}}
+                    <input type="hidden" name="public_profile_enabled" value="0">
                     <input class="form-check-input"
                            type="checkbox"
                            role="switch"
@@ -212,11 +213,6 @@
     document.addEventListener('DOMContentLoaded', function() {
         updateSummary();
 
-        const statusSelect = document.getElementById('club_status');
-        if (statusSelect) {
-            statusSelect.addEventListener('change', updateSummary);
-        }
-
         const publicProfileToggle = document.getElementById('public_profile_enabled');
         if (publicProfileToggle) {
             publicProfileToggle.addEventListener('change', updateSummary);
@@ -256,11 +252,12 @@
                            required>
                 </div>
                 <div>
-                    <label class="form-label">{{ __('shared.finance_settings_account_number') }}</label>
+                    <label class="form-label">{{ __('shared.finance_settings_account_number') }} <span class="text-destructive">*</span></label>
                     <input type="text"
                            class="form-control"
                            name="bank_accounts[${bankAccountIndex}][account_number]"
-                           placeholder="{{ __('shared.finance_settings_account_number_placeholder') }}">
+                           placeholder="{{ __('shared.finance_settings_account_number_placeholder') }}"
+                           required>
                 </div>
                 <div>
                     <label class="form-label">{{ __('shared.finance_settings_iban') }}</label>
@@ -317,6 +314,8 @@
         });
     }
 
+    window.updateClubFinanceSummary = function () { updateSummary(); };
+
     function updateSummary() {
         const bankAccountCount = document.querySelectorAll('.bank-account-block').length;
         const countElement = document.getElementById('bankAccountCount');
@@ -324,15 +323,19 @@
             countElement.textContent = bankAccountCount;
         }
 
-        const statusSelect = document.getElementById('club_status');
+        const statusInput = document.querySelector('#clubStatusField input[name="club_status"]');
         const statusSummary = document.getElementById('statusSummary');
-        if (statusSelect && statusSummary) {
-            const statusText = statusSelect.options[statusSelect.selectedIndex].text;
-            statusSummary.textContent = statusText;
+        if (statusInput && statusSummary && statusInput.value) {
+            const labels = @js([
+                'active' => __('shared.finance_settings_status_active'),
+                'inactive' => __('shared.finance_settings_status_inactive'),
+                'pending' => __('shared.finance_settings_status_pending'),
+            ]);
+            statusSummary.textContent = labels[statusInput.value] || statusInput.value;
             statusSummary.className = 'font-semibold';
-            if (statusSelect.value === 'active') {
+            if (statusInput.value === 'active') {
                 statusSummary.classList.add('text-success');
-            } else if (statusSelect.value === 'inactive') {
+            } else if (statusInput.value === 'inactive') {
                 statusSummary.classList.add('text-destructive');
             } else {
                 statusSummary.classList.add('text-warning');

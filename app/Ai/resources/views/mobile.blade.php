@@ -205,9 +205,58 @@
 
                         {{-- Model --}}
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Model</label>
-                            <input type="text" x-model="form.model" placeholder="qwen3-coder:30b · gpt-4o-mini · claude-sonnet-5"
-                                   class="w-full px-3.5 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent">
+                            <div class="flex items-center justify-between gap-2 mb-1">
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Model</label>
+                                <button type="button" x-show="form.modality === 'text'" @click="loadModels()" :disabled="modelsLoading"
+                                    class="text-xs font-semibold text-primary inline-flex items-center gap-1 disabled:opacity-60">
+                                    <i class="bi bi-arrow-repeat" :class="modelsLoading && 'animate-spin'"></i>
+                                    <span x-text="models.length ? 'Refresh models' : 'Load available models'"></span>
+                                </button>
+                            </div>
+                            {{-- Before the provider is asked: free text. After: a dropdown of
+                                 the models it actually serves. The panel opens in the normal
+                                 flow (not absolute) so the scrolling form body never clips it. --}}
+                            <input type="text" x-model="form.model" x-show="!models.length" placeholder="qwen3-coder:30b · gpt-4o-mini · claude-sonnet-5"
+                                class="w-full px-3.5 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent">
+
+                            <div x-show="models.length" x-cloak class="relative" @click.outside="modelsOpen = false" @keydown.escape.stop="modelsOpen = false">
+                                <button type="button" @click="modelsOpen = !modelsOpen"
+                                    class="w-full flex items-center gap-2 text-left px-3.5 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+                                    :class="modelsOpen && 'ring-2 ring-primary border-transparent'">
+                                    <i class="bi bi-cpu text-muted-foreground"></i>
+                                    <span class="min-w-0 flex-1 truncate" :class="form.model ? 'text-foreground' : 'text-gray-400'" x-text="modelLabel() || 'Choose a model'"></span>
+                                    <i class="bi bi-chevron-down text-muted-foreground transition-transform duration-200" :class="modelsOpen && 'rotate-180'"></i>
+                                </button>
+
+                                <div x-show="modelsOpen" x-cloak
+                                    x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                                    x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                    class="mt-1.5 bg-white border border-gray-100 shadow-lg rounded-xl overflow-hidden">
+                                    <div class="relative border-b border-gray-100" x-show="models.length > 8">
+                                        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                        <input type="text" x-model="modelQuery" placeholder="Search models"
+                                            class="w-full pl-9 pr-3 py-2 text-sm border-0 focus:ring-0 focus:outline-none">
+                                    </div>
+                                    <div class="max-h-56 overflow-y-auto">
+                                        <template x-for="m in filteredModels()" :key="m.id">
+                                            <button type="button" @click="form.model = m.id; modelsOpen = false"
+                                                class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-muted/60 transition-colors"
+                                                :class="form.model === m.id ? 'text-primary' : 'text-foreground'">
+                                                <span class="min-w-0 flex-1">
+                                                    <span class="block font-medium break-all" x-text="m.label"></span>
+                                                    <span class="block text-[11px] text-muted-foreground break-all" x-show="m.label !== m.id" x-text="m.id"></span>
+                                                </span>
+                                                <i class="bi bi-check-lg flex-shrink-0" x-show="form.model === m.id"></i>
+                                            </button>
+                                        </template>
+                                        <p class="px-3 py-3 text-xs text-muted-foreground" x-show="filteredModels().length === 0">No model matches.</p>
+                                    </div>
+                                    <button type="button" @click="models = []; modelsOpen = false"
+                                        class="w-full text-left px-3 py-2.5 text-xs font-semibold text-primary border-t border-gray-100 hover:bg-muted/60 transition-colors">
+                                        <i class="bi bi-pencil me-1"></i> Type a model name instead
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         {{-- Tuning --}}
@@ -282,13 +331,48 @@ function aiSettingsM(providers) {
         form: {},
 
         init() { this.form = this.blank(); },
+        // The provider's own model list, for the picker under the Model field.
+        models: [],
+        modelQuery: '',
+        modelsLoading: false,
+        modelsOpen: false,
+        modelLabel() {
+            const m = this.models.find(x => x.id === this.form.model);
+            return m ? m.label : this.form.model;
+        },
+        filteredModels() {
+            const q = this.modelQuery.trim().toLowerCase();
+            return q ? this.models.filter(m => m.id.toLowerCase().includes(q) || (m.label || '').toLowerCase().includes(q)) : this.models;
+        },
+        async loadModels() {
+            if (this.modelsLoading) return;
+            this.modelsLoading = true;
+            try {
+                const res = await fetch(@js(route('admin.ai.models')), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ provider_id: this.form.id || null, driver: this.form.driver, base_url: this.form.base_url || null, api_key: this.form.api_key || null }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok || !d.success) throw new Error(d.message || 'Could not load the models.');
+                this.models = d.models || [];
+                this.modelQuery = '';
+                this.modelsOpen = this.models.length > 0;
+                window.showToast && window.showToast(this.models.length ? 'success' : 'info', d.message);
+            } catch (e) {
+                this.models = [];
+                window.showToast && window.showToast('error', e.message);
+            } finally { this.modelsLoading = false; }
+        },
+
         blank(modality = 'text') {
             return { id: null, name: '', modality, driver: 'ollama', base_url: '', api_key: '', model: '', temperature: '', max_tokens: '', timeout: '', is_default: false, enabled: true };
         },
         csrf() { return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''; },
         providersFor(m) { return this.providers.filter(p => p.modality === m); },
 
-        openCreate(modality = 'text') { this.editing = null; this.form = this.blank(modality); this.showForm = true; },
+        openCreate(modality = 'text') { this.editing = null; this.form = this.blank(modality); this.models = []; this.showForm = true; },
         openEdit(p) {
             this.editing = p;
             this.form = {
@@ -297,6 +381,7 @@ function aiSettingsM(providers) {
                 temperature: p.options?.temperature ?? '', max_tokens: p.options?.max_tokens ?? '', timeout: p.options?.timeout ?? '',
                 is_default: !!p.is_default, enabled: !!p.enabled,
             };
+            this.models = [];
             this.showForm = true;
         },
 
@@ -368,6 +453,12 @@ function aiSettingsM(providers) {
                 });
                 const data = await res.json();
                 window.showToast && window.showToast(data.success ? 'success' : 'error', data.message);
+                if (data.success && (data.models || []).length) {
+                    this.openEdit(p);
+                    this.models = data.models;
+                    this.modelQuery = '';
+                    this.modelsOpen = true;
+                }
             } catch (e) { window.showToast && window.showToast('error', 'Test failed.'); }
         },
     };

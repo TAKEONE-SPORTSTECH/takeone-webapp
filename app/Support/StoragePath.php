@@ -373,6 +373,16 @@ class StoragePath
     }
 
     /**
+     * An event's link-preview picture (App\Events\Support\ShareCard) — DERIVED,
+     * redrawn from the event whenever it is missing. The name is a hash of
+     * everything drawn on it, so a changed event is a new file.
+     */
+    public static function shareCard(string $eventUuid, string $hash): string
+    {
+        return self::join(self::CACHE, 'share-cards', preg_replace('/[^a-f0-9-]/', '', strtolower($eventUuid)), preg_replace('/[^a-f0-9]/', '', $hash).'.jpg');
+    }
+
+    /**
      * A small rendition of a stored image, for a list that paints it tiny.
      *
      * Under `cache/` like every other derived file: it can be deleted at any

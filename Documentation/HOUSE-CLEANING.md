@@ -21,9 +21,18 @@ and verified, not while both are running.
 ## Open
 
 ### Dependencies
-*Nothing registered.* A composer/npm package, CDN script or library that stops being
-needed goes here the day it stops — and one added for a trial goes here the day it is
-added, so "just for now" cannot quietly become permanent.
+A composer/npm package, CDN script or library that stops being needed goes here the day
+it stops — and one added for a trial goes here the day it is added, so "just for now"
+cannot quietly become permanent.
+
+- **`poppler-utils` (apt) on the stage box** — installed 2026-10-06 only to rasterise the
+  bracket PDF export (`pdftoppm`) and look at the pages while building it. Nothing in the
+  app calls it. *Checked:* `grep -rn "pdftoppm\|pdfinfo" app/` is empty. *Gate:* none —
+  `apt-get remove poppler-utils` whenever convenient.
+- *Not* clutter, recorded so nobody removes it: **`chromium` + `fonts-noto-core` (apt)**,
+  installed the same day, ARE used — `App\Events\Support\BracketPdf` prints the draw with
+  them (flag `EVENT_BRACKET_PDF`). Production needs both installed before the flag is
+  turned on there.
 
 ### Code
 
@@ -77,6 +86,7 @@ added, so "just for now" cannot quietly become permanent.
 | `resources/views/personal/{mobile,desktop}/event-bracket.blade.php` | The two views `/brackets` used to render. It is a permanent redirect to `/brackets/manage` now, and the only remaining reference to either file is `PersonalMobileController::eventBracket()` — one of the six unrouted methods already registered above. So nothing can reach them. They are also the last non-`draw-stage` callers of `<x-tournament-bracket>`, which is why they are listed separately from the renderer question above. | Delete with the six dead methods, but only AFTER the two-renderer question is settled — if the Blade board wins, these are the reference for what the member draw page used to do. |
 | **`<x-call-code-dropdown>`** (`resources/views/components/call-code-dropdown.blade.php`) — a NATIVE `<select>` of dial codes | Rendered nowhere: every phone field uses `<x-fields.phone-code>` (the Alpine picker with flags). Checked 2026-09-23 by grepping `app/` and `resources/` for the tag, `components.call-code-dropdown` and `dynamic-component` — zero hits. It also breaks Design Rule #4 (native select). Left in place when the generic fields moved to `components/fields/`. | Delete the file after a final grep; no data involved. |
 | The parts of `packages/ahl/certificates` TakeOne does not use: `src/Http/*` (its Sanctum JSON API + resource), `routes/{api,public}.php`, `Support/{DiskFileStore,NullNotifier}`, the package's own `CertificatePolicy` abilities (`certificates.view|issue|approve|templates`) | The package is shared with the owner's other project, so these are live code THERE — not dead code. TakeOne switches them off (`certificates.routes.enabled = false`; the route parameter binder only registers when routes are on) and replaces them with `App\Certificates` (session + CSRF routes by uuid, `TakeOneFileStore`, `TakeOneNotifier`, its own policy). Checked 2026-09-29: `route:list` shows no `api/certificates*` route. Registered 2026-09-29. | Nothing to delete while the package is shared. If it ever becomes TakeOne-only, remove the HTTP layer from the package as its own change. |
+| `app/Federations/resources/views/invite/show.blade.php` and `invite/partials/*.blade.php` (8 files) | Moved on 2026-10-04 to the shared `app/Events/resources/views/entry/club/{page,partials/*}` — the ONE "Register your club" page for every host (owner's go-ahead, step 3 of the one-front-door plan). `InvitePageController::show` and `ClubEntryController` both render the shared copy now. Checked: `grep -rn "federations::invite.(show|partials)"` finds no renderer (one comment in `EventDoors.php`). The old copies would DRIFT if edited — edit only the shared ones. Registered 2026-10-04. | Delete as its own change once the shared page has served a live event; fix the `EventDoors.php` comment with it. |
 
 ### Schema
 **Name a dead table or column here; never drop one in passing.**

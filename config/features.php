@@ -57,4 +57,20 @@ return [
      */
     'react_scoreboard' => (bool) env('REACT_SCOREBOARD', false),
 
+
+    /*
+     * The new UI (branch `new-ui`, plan: Documentation/major-change/NEW-UI.md).
+     * Every new screen is a NEW file beside the old one; this decides which
+     * of the two renders.
+     *
+     *   off     → the old design for everyone (the default; exactly today)
+     *   preview → super-admins see the new design (they may switch back to
+     *             classic for their own session at /me/new-ui); everyone else classic
+     *   on      → the new design for everyone
+     *
+     * Read it through App\Ui\NewUi::active(), never directly.
+     * Set NEW_UI=preview in .env, then `php artisan config:clear`.
+     */
+    'new_ui' => in_array(env('NEW_UI', 'off'), ['off', 'preview', 'on'], true) ? env('NEW_UI', 'off') : 'off',
+
 ];

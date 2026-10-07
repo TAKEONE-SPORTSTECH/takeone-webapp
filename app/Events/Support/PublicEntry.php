@@ -80,6 +80,13 @@ class PublicEntry
             return ['open' => false, 'note' => __('events::events.entry_full')];
         }
 
+        // Individuals switched off (EntryChannels — a clubs-only event): the
+        // button must not offer what store() refuses. Not "closed" either —
+        // the way in is the club's (PublicEvent → `club_entry`).
+        if (! app(EntryChannels::class)->allows($event, EntryChannels::INDIVIDUAL)) {
+            return ['open' => false, 'note' => null, 'clubs_only' => true];
+        }
+
         return ['open' => true, 'note' => null];
     }
 

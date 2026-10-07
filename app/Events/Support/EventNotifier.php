@@ -76,6 +76,14 @@ class EventNotifier
             return null;
         }
 
+        // A HIDDEN event announces itself to nobody: the scope-wide milestones
+        // ("new event", "registration opens / closing") are skipped BEFORE they
+        // are claimed, so they still go out if the organiser lists it later.
+        // Messages to the people already in it (registrants, participants) do.
+        if ($event->isHidden() && $milestone->audience === Milestone::AUDIENCE_SCOPE) {
+            return null;
+        }
+
         // Claim FIRST. If another worker already has it the unique index throws
         // and we stop — nobody gets a duplicate.
         if (! $this->claim($event, $milestone)) {

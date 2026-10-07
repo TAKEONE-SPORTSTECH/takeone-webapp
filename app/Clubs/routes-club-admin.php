@@ -41,8 +41,9 @@ Route::get('/dashboard', [ClubAdminController::class, 'dashboard'])->name('dashb
 Route::get('/details', [ClubAdminController::class, 'details'])->name('details');
 Route::put('/', [ClubAdminController::class, 'update'])->name('update');
 Route::put('/settings/whatsapp', [ClubAdminController::class, 'updateWhatsAppSettings'])->name('settings.whatsapp.update');
-Route::post('/settings/whatsapp/test', [ClubAdminController::class, 'testWhatsAppConnection'])->name('settings.whatsapp.test');
-Route::post('/settings/whatsapp/send-test', [ClubAdminController::class, 'sendTestWhatsAppMessage'])->name('settings.whatsapp.send-test');
+// Both reach the paid gateway — throttled so they cannot be hammered.
+Route::post('/settings/whatsapp/test', [ClubAdminController::class, 'testWhatsAppConnection'])->name('settings.whatsapp.test')->middleware('throttle:10,1');
+Route::post('/settings/whatsapp/send-test', [ClubAdminController::class, 'sendTestWhatsAppMessage'])->name('settings.whatsapp.send-test')->middleware('throttle:5,1');
 Route::delete('/', [ClubAdminController::class, 'destroy'])->name('destroy');
 Route::post('/social-links', [ClubAdminController::class, 'storeSocialLink'])->name('social-links.store');
 Route::delete('/social-links/{link}', [ClubAdminController::class, 'destroySocialLink'])->name('social-links.destroy');

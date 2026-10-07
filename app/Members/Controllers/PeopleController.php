@@ -375,9 +375,15 @@ class PeopleController extends Controller
             : EventMatch::contested()
                 ->where(fn ($q) => $q->whereIn('a_competitor_id', $compRegIds)
                     ->orWhereIn('b_competitor_id', $compRegIds))
-                ->with(['event:id,uuid,title,date,sport', 'category:id,name,weight_class'])
+                ->with(['event:id,uuid,title,date,sport,visibility,tenant_id,created_by', 'category:id,name,weight_class'])
                 ->orderByDesc('id')
                 ->get();
+
+        // A HIDDEN event's name and link are left off for a reader it is not
+        // listed for — the bout still counts, the event stays unnamed.
+        $hiddenEvents = $compBouts->pluck('event')->filter(fn ($e) => $e && $e->isHidden())->pluck('id')->unique();
+        $unnamed = $hiddenEvents->isEmpty() ? collect()
+            : $hiddenEvents->diff(\App\Events\Models\ClubEvent::whereIn('id', $hiddenEvents)->listedFor($me)->pluck('id'))->flip();
 
         $compDecided = $compBouts->filter(fn ($b) => $b->winner !== null);
         $compWon = $compDecided->filter(fn ($b) =>
@@ -425,7 +431,7 @@ class PeopleController extends Controller
             ->whereNotNull('play_url')
             ->pluck('play_url', 'match_id');
 
-        $competitionBouts = $compBouts->map(function ($b) use ($compRegIds, $compVideos, $opponentFaces) {
+        $competitionBouts = $compBouts->map(function ($b) use ($compRegIds, $compVideos, $opponentFaces, $unnamed) {
             $mine  = $compRegIds->contains($b->a_competitor_id) ? 'a' : 'b';
             $their = $mine === 'a' ? 'b' : 'a';
 
@@ -436,8 +442,8 @@ class PeopleController extends Controller
                 'opponent'    => $b->{$their.'_name'} ?: __('events::events.bout_tbd'),
                 'my_score'    => $b->{$mine.'_score'},
                 'their_score' => $b->{$their.'_score'},
-                'event'       => $b->event?->title,
-                'event_uuid'  => $b->event?->uuid,
+                'event'       => isset($unnamed[$b->event?->id]) ? null : $b->event?->title,
+                'event_uuid'  => isset($unnamed[$b->event?->id]) ? null : $b->event?->uuid,
                 'date'        => $b->event?->date,
                 'division'    => $b->category?->weight_class ?: $b->category?->name,
                 'round'       => $b->phase ?: $b->round,

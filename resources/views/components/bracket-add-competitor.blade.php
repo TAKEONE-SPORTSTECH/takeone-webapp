@@ -6,6 +6,15 @@
     'division' => null,
     /* A stable prefix, so two windows on one page cannot collide over an id. */
     'id' => 'bkadd',
+    /* The three addresses it calls. Null is the member routes, as before; the
+       scoring tablet (App\Events\Support\TabletDraw) passes its own PIN-gated
+       door. Every one re-authorises server-side either way. */
+    'candidatesUrl' => null,
+    'clubsUrl' => null,
+    'unnamedUrl' => null,
+    /* The link to the clubs page — a signed-in organiser page, so a device
+       host turns it off. */
+    'clubsLink' => true,
 ])
 
 @php
@@ -176,7 +185,7 @@
             const mine = ++this.seq;
             this.loading = true;
             try {
-                const url = new URL(@js(route('me.events.bracket.candidates', $event)), window.location.origin);
+                const url = new URL(@js($candidatesUrl ?: route('me.events.bracket.candidates', $event)), window.location.origin);
                 url.searchParams.set('category_id', this.division);
                 if (this.q.trim()) url.searchParams.set('q', this.q.trim());
                 const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
@@ -194,7 +203,7 @@
             if (this.clubsLoaded) return;
             this.clubsLoaded = true;
             try {
-                const res = await fetch(@js(route('me.events.clubs.list', $event)), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                const res = await fetch(@js($clubsUrl ?: route('me.events.clubs.list', $event)), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
                 const data = await res.json().catch(() => ({}));
                 this.clubs = (res.ok && data.success) ? (data.clubs || []) : [];
             } catch (e) { this.clubs = []; }
@@ -216,7 +225,7 @@
             if (!name || this.busy || !this.division) return;
             this.busy = true;
             try {
-                const res = await fetch(@js(route('me.events.entries.unnamed', $event)), {
+                const res = await fetch(@js($unnamedUrl ?: route('me.events.entries.unnamed', $event)), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json', 'Accept': 'application/json',
@@ -397,8 +406,10 @@
                                 </button>
                             </template>
                             <div class="bkadd-empty" x-show="! clubs.length" style="padding:10px 12px">
+                                @if($clubsLink)
                                 <a href="{{ route('me.events.clubs', $event) }}"
                                    style="color:#8a6d20;font-weight:600">{{ __('events::events.bracket_add_club') }}</a>
+                                @endif
                             </div>
                         </div>
                     </div>

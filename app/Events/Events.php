@@ -19,7 +19,7 @@ use App\Support\Modules\Surfaces\ContributesClubAdminNav;
  * Owns `club_events` as its shared core, the draw and bracket engines, entry and
  * billing, officials, the hall screens and the run-day flow.
  */
-class Events extends AbstractModule implements ContributesClubAdminNav
+class Events extends AbstractModule implements ContributesClubAdminNav, \App\Support\Modules\Surfaces\HostsClubEntry
 {
     public function key(): string
     {
@@ -38,5 +38,20 @@ class Events extends AbstractModule implements ContributesClubAdminNav
                 ['group' => 'programs', 'order' => 40, 'route' => 'admin.club.sparring', 'icon' => 'bi-lightning-charge', 'label' => __('event-sparring::messages.label')],
             ],
         };
+    }
+
+    /**
+     * "Register your club" for an event with no external host (a club's or a
+     * person's own), when it takes club entries — the platform's own desk.
+     * A federation's event answers through its own module.
+     */
+    public function clubEntryDesk(\App\Events\Models\ClubEvent $event): ?\App\Events\Support\ClubEntry\ClubEntryDesk
+    {
+        if (! config('events.club_entry_platform', false) || $event->host_type || $event->is_archived
+            || ! app(\App\Events\Support\EntryChannels::class)->allows($event, \App\Events\Support\EntryChannels::CLUB)) {
+            return null;
+        }
+
+        return new \App\Events\Support\ClubEntry\PlatformClubEntryDesk($event);
     }
 }

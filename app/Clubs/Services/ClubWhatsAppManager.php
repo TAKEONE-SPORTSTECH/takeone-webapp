@@ -36,6 +36,27 @@ class ClubWhatsAppManager
         $club->update(['settings' => $settings]);
     }
 
+    /**
+     * May this club use that session? Not when it is the platform's own session,
+     * and not when another club (deleted ones included) already holds it.
+     */
+    public function sessionIsFree(Tenant $club, string $sessionName): bool
+    {
+        $name = strtolower(trim($sessionName));
+        if ($name === '') {
+            return true;
+        }
+        if ($name === strtolower((string) $this->platform->sessionName())) {
+            return false;
+        }
+
+        return ! Tenant::withTrashed()
+            ->whereKeyNot($club->id)
+            ->whereNotNull('settings')
+            ->get(['id', 'settings'])
+            ->contains(fn (Tenant $t) => strtolower((string) data_get($t->settings, 'whatsapp.session_name')) === $name);
+    }
+
     public function adminSettings(Tenant $club): array
     {
         return [
@@ -99,6 +120,11 @@ class ClubWhatsAppManager
 
     public function sendTestMessage(Tenant $club, string $phone): array
     {
+        $session = (string) $this->sessionName($club);
+        if ($session === '' || ! $this->sessionIsFree($club, $session)) {
+            return ['success' => false, 'message' => __('admin.whatsapp_session_taken')];
+        }
+
         $text = 'This is a test message from '.$club->club_name.' via TAKEONE.';
 
         return $this->platform->sendTestMessage($this->sessionName($club), $phone, $text);

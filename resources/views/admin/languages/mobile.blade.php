@@ -35,7 +35,26 @@
         </header>
 
         <div class="-mt-10 relative z-10 space-y-3">
-            <template x-for="row in languages" :key="row.code">
+            {{-- Which level the counts and the Translate buttons cover. --}}
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-1 grid grid-cols-2 gap-1" aria-label="{{ __('platform.admin_languages_level') }}">
+                @foreach (['event' => ['bi-calendar-event', 'admin_languages_level_event'], 'all' => ['bi-globe2', 'admin_languages_level_all']] as $level => [$icon, $label])
+                    <a href="{{ route('admin.languages.index', ['tier' => $level]) }}" data-shell-link
+                       class="m-press flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors {{ $tier === $level ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground' }}">
+                        <i class="bi {{ $icon }}"></i>{{ __('platform.'.$label) }}
+                    </a>
+                @endforeach
+            </div>
+
+            <div class="relative">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input type="search" x-model="langQuery" placeholder="{{ __('platform.admin_languages_find') }}"
+                       class="w-full pl-10 pr-3 py-3 bg-white border border-gray-100 shadow-sm rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+            </div>
+            <p x-show="! filteredLanguages().length" x-cloak
+               class="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center text-muted-foreground text-sm">
+                {{ __('platform.admin_languages_none') }}
+            </p>
+            <template x-for="row in filteredLanguages()" :key="row.code">
                 <div class="m-card bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                     <div class="flex items-start gap-3">
                         <span class="w-11 h-11 rounded-2xl bg-muted grid place-items-center flex-shrink-0">
@@ -70,6 +89,25 @@
                         </div>
                     </div>
 
+                    {{-- The run itself, while it runs: strings done of strings planned.
+                         Coverage cannot show a redo — every string already exists. --}}
+                    <div x-show="row.run?.state === 'running' && row.run?.progress?.total > 0" x-cloak
+                         class="mt-3 rounded-xl bg-accent px-3 py-2">
+                        <div class="flex items-center justify-between text-[11px] mb-1">
+                            <span class="font-semibold text-primary"><i class="bi bi-arrow-repeat animate-spin mr-1"></i>{{ __('platform.admin_languages_running') }}</span>
+                            <span class="font-semibold text-primary"
+                                  x-text="Math.min(100, Math.round(100 * (row.run?.progress?.done || 0) / Math.max(1, row.run?.progress?.total || 0))) + '%'"></span>
+                        </div>
+                        <div class="h-1.5 rounded-full bg-white overflow-hidden">
+                            <div class="h-full rounded-full bg-primary transition-all duration-500"
+                                 :style="'width:' + Math.min(100, Math.round(100 * (row.run?.progress?.done || 0) / Math.max(1, row.run?.progress?.total || 0))) + '%'"></div>
+                        </div>
+                        <p class="text-[11px] text-muted-foreground mt-1"
+                           x-text="@js(__('platform.admin_languages_progress', ['done' => ':done', 'total' => ':total']))
+                               .replace(':done', (row.run?.progress?.done || 0).toLocaleString())
+                               .replace(':total', (row.run?.progress?.total || 0).toLocaleString())"></p>
+                    </div>
+
                     <div class="mt-3.5 flex gap-2">
                         <button type="button" @click="openLocale(row)"
                                 class="m-press flex-1 text-[13px] font-semibold border border-primary text-primary px-3 py-2.5 rounded-xl">
@@ -85,6 +123,12 @@
                                     ? @js(__('platform.admin_languages_retranslate'))
                                     : @js(__('platform.admin_languages_translate'))"></span>
                             </template>
+                        </button>
+                        <button type="button" @click="redo(row)" x-show="row.stored > 0 && row.missing > 0" x-cloak
+                                :disabled="row.run?.state === 'running'"
+                                aria-label="{{ __('platform.admin_languages_redo') }}"
+                                class="m-press w-11 flex-shrink-0 grid place-items-center border border-gray-200 text-foreground rounded-xl disabled:opacity-60">
+                            <i class="bi bi-arrow-counterclockwise"></i>
                         </button>
                     </div>
 

@@ -223,8 +223,45 @@ class RouteIntegrityTest extends TestCase
     /*
      * 942 since 2026-10-03: +1, me.events.entry-channels — how athletes enter
      * an event, the organiser's switch (PLAN.md Phase 7).
+     *
+     * 948 since 2026-10-04: +6, the new UI (Documentation/major-change/NEW-UI.md)
+     * — me.new-ui, me.new-ui.on, me.new-ui.off, me.manage, me.ask,
+     * me.ask.message. All six answer 404 unless NEW_UI is on (or, for the
+     * preview three, preview).
+     *
+     * 954 since 2026-10-04: +6, "Register your club" at the event's own
+     * addresses (ClubEntryController) — me.events.club-entry.{rules, club,
+     * club-athletes, club-review, club-done, club-entries}. All six answer 404
+     * unless EVENT_CLUB_ENTRY is on and the event's host has a ClubEntryDesk.
+     *
+     * 956 the same day: +2, the rules acceptance — events.club-entry.consent
+     * and events.club-entry.consent-club (ClubEntryController, EntryConsent).
+     *
+     * 957 the same day: +1, events.share-card — the drawn picture a shared
+     * event link unfurls into (ShareCardController, ShareCard).
+     *
+     * 958 the same day: +1, me.events.visibility — the organiser's Listed /
+     * Hidden switch (PersonalEventController::setVisibility).
+     *
+     * 965 the same day: +7, events.club-entry.api.{clubs, code, verify, choose,
+     * check-club, submit, withdraw} — "Register your club" on a club-hosted
+     * event (ClubEntryApiController). 404 unless EVENT_CLUB_ENTRY_PLATFORM is on.
+     * 966: +1 found at the same time, the AI providers' `/ai/models` route
+     * (app/Ai/routes.php, changed separately on 2026-10-04).
+     *
+     * 970 the same day: +4, club payment proofs — events.club-entry.api.proof
+     * (the club's upload) and me.events.club-payments{,.proof,.decide} (the
+     * organiser's list, proof and decision; ClubPaymentsController).
+     *
+     * 983 on 2026-10-07: +13 — me.events.bracket.pdf (the draw as an A4 PDF,
+     * BracketPdfController); me.events.draw-pin{,.update,.destroy} (the
+     * organiser's tablet PIN, DrawPinController); and the nine tablet.draw*
+     * doors (the draw on a scoring tablet, TabletDrawController). The PDF is
+     * 404 unless EVENT_BRACKET_PDF, the other twelve unless EVENT_TABLET_DRAW.
+     * 985 the same day: +2, tablet.draw.outcome and tablet.draw.entrant — the
+     * bout tools (winner/score, a name) on a PIN-unlocked tablet.
      */
-    private const EXPECTED_ROUTE_COUNT = 942;
+    private const EXPECTED_ROUTE_COUNT = 985;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -469,6 +506,9 @@ class RouteIntegrityTest extends TestCase
         // family/dashboard, POST login, POST register, api/user, up, /.
         // 928 on 2026-10-03: the four owners-panel routes, all named.
         // 929 on 2026-10-03: me.events.entry-channels.
-        $this->assertCount(929, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 935 on 2026-10-04: the new UI's six routes (see EXPECTED_ROUTE_COUNT).
+        // 941 the same day: the six club-entry step addresses; 943 with the two consent doors; 944 with the share card; 945 with visibility; 952 with the club-entry doors; 953 with /ai/models; 957 with club payments.
+        // 970 on 2026-10-07: +13, the bracket PDF, the tablet PIN and the tablet draw doors; 972 with the tablet's bout tools.
+        $this->assertCount(972, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

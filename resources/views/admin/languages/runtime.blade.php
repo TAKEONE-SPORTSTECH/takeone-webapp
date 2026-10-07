@@ -12,6 +12,13 @@
 function platformLanguages(languages, tier) {
     return {
         languages: languages,
+        // Narrows the list of languages; the strings view has its own search.
+        langQuery: '',
+        filteredLanguages() {
+            const q = this.langQuery.trim().toLowerCase();
+            if (!q) return this.languages;
+            return this.languages.filter(r => [r.name, r.native, r.code].some(v => (v || '').toLowerCase().includes(q)));
+        },
         tier: tier,
         open: null,
         rows: [],
@@ -77,7 +84,21 @@ function platformLanguages(languages, tier) {
             }
         },
 
-        async translate(row) {
+        /* Redo every machine translation at this level, not only the gaps.
+           Confirmed first: it is an hour of work, and a person's corrections
+           survive it (InterfaceStore), which the dialog says. */
+        async redo(row) {
+            const ok = window.confirmAction ? await window.confirmAction({
+                title: @js(__('platform.admin_languages_redo_title', ['lang' => ':lang'])).replace(':lang', row.name),
+                message: @js(__('platform.admin_languages_redo_body')),
+                type: 'warning',
+                confirmText: @js(__('platform.admin_languages_redo')),
+            }) : false;
+
+            if (ok) this.translate(row, true);
+        },
+
+        async translate(row, rewrite = null) {
             try {
                 const res = await fetch(@js(url('/admin/languages')) + '/' + row.code + '/translate', {
                     method: 'POST',
@@ -86,7 +107,7 @@ function platformLanguages(languages, tier) {
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                     },
-                    body: JSON.stringify({ tier: this.tier, rewrite: row.missing === 0 }),
+                    body: JSON.stringify({ tier: this.tier, rewrite: rewrite ?? (row.missing === 0) }),
                 });
 
                 const data = await res.json();

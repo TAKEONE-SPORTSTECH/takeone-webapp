@@ -221,6 +221,8 @@ class ScoreboardController extends Controller
 
         return $this->consoleView($event, $mats, $device->court, [
             'commandUrl' => route('bjj-scoreboard.token-command', $token),
+            // The draw, on this tablet (App\Events\Support\TabletDraw). Null while off.
+            'drawUrl' => \App\Events\Support\TabletDraw::enabled() ? route('tablet.draw', $token) : null,
             'consoleStateUrl' => route('bjj-scoreboard.token-console-state', $token, false),
             'catalogueUrl' => route('bjj-scoreboard.token-catalogue', $token, false),
             // A paired console is a SCREEN, and the organiser's panel lists it

@@ -20,12 +20,27 @@
     function eventCover() {
         const KEY = 'takeone:cover:' + @js($e['key']);
 
+        /* Arriving from an event CARD (explore, the map) is a fresh arrival,
+           whatever this tab remembers: the card's address carries `#cover`, so
+           the visitor lands on the language selector every time they open the
+           event from a list. The marker is dropped straight away, so a reload
+           or a Back into this page does not re-open it. */
+        try {
+            if (location.hash === '#cover') {
+                sessionStorage.removeItem(KEY);
+                history.replaceState(history.state, '', location.pathname + location.search);
+            }
+        } catch { /* storage blocked: seen() already reads as "show the cover" */ }
+
         const seen = () => {
             try { return sessionStorage.getItem(KEY) === '1'; } catch { return false; }
         };
 
         return {
-            open: ! seen(),
+            /* `$coverStartsClosed`: a page INSIDE the event's flow (the club
+               steps, /me/events/{uuid}/rules…) keeps the cover for when it is
+               asked for — the home control — instead of opening over the step. */
+            open: ! @js((bool) ($coverStartsClosed ?? false)) && ! seen(),
 
             init() {
                 /* The page beneath must not scroll under the cover — a stray

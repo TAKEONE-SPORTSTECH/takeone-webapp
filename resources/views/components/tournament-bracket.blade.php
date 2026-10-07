@@ -3,6 +3,15 @@
     'dataUrl',                      // GET  → { divisions, can_arrange, locked }
     'arrangeUrl' => null,           // PUT  → move one competitor
     'clearUrl' => null,             // PUT  → empty a division onto the bench
+    'outcomeUrl' => null,           // POST → decide a bout; a template with __ID__.
+    'entrantUrl' => null,           // PUT  → correct a name; a template with __ID__.
+                                    // Both null build the member routes as before;
+                                    // the scoring tablet passes its own doors.
+    'admitUrl' => null,             // PUT  → admit a late entrant. Null builds the
+                                    // member route (me.events.bracket.admit) as
+                                    // before; a host on ANOTHER door (the scoring
+                                    // tablet, App\Events\Support\TabletDraw)
+                                    // passes its own.
     'eventUuid' => null,            // scopes realtime nudges to this event
     'canArrange' => false,          // SERVER truth; the runtime re-reads it on every load
     'canManage' => false,           // may this viewer DECIDE a bout, score it,
@@ -70,14 +79,14 @@
 
        Built from a real route with a sentinel id so `php artisan route:list`
        still accounts for them, then the sentinel is swapped client-side. */
-    $outcomeTemplate = $canManage && $eventUuid
-        ? str_replace('999999999', '__ID__', route('me.events.outcome', [$eventUuid, 999999999]))
+    $outcomeTemplate = $canManage
+        ? ($outcomeUrl ?: ($eventUuid ? str_replace('999999999', '__ID__', route('me.events.outcome', [$eventUuid, 999999999])) : null))
         : null;
-    $entrantTemplate = $canManage && $eventUuid
-        ? str_replace('999999999', '__ID__', route('me.events.entrant.update', [$eventUuid, 999999999]))
+    $entrantTemplate = $canManage
+        ? ($entrantUrl ?: ($eventUuid ? str_replace('999999999', '__ID__', route('me.events.entrant.update', [$eventUuid, 999999999])) : null))
         : null;
-    $admitEndpoint = ($canManage || $canArrange) && $eventUuid
-        ? route('me.events.bracket.admit', $eventUuid)
+    $admitEndpoint = ($canManage || $canArrange)
+        ? ($admitUrl ?: ($eventUuid ? route('me.events.bracket.admit', $eventUuid) : null))
         : null;
 @endphp
 

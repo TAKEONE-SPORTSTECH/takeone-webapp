@@ -84,8 +84,6 @@
                     @endif
                 </div>
                 <input type="hidden" name="logo" id="logoInput" value="{{ $isEdit && $club->logo ? $club->logo : '' }}">
-                <input type="hidden" name="logo_folder" value="clubs/logos">
-                <input type="hidden" name="logo_filename" value="logo_{{ time() }}">
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openLogoCropper()">
                     <i class="bi bi-camera me-2"></i>{{ __('shared.tabs_identity_branding_upload_logo') }}
                 </button>
@@ -112,8 +110,6 @@
                     @endif
                 </div>
                 <input type="hidden" name="cover_image" id="coverInput" value="{{ $isEdit && $club->cover_image ? $club->cover_image : '' }}">
-                <input type="hidden" name="cover_image_folder" value="clubs/covers">
-                <input type="hidden" name="cover_image_filename" value="cover_{{ time() }}">
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openCoverCropper()">
                     <i class="bi bi-camera me-2"></i>{{ __('shared.tabs_identity_branding_upload_cover') }}
                 </button>
@@ -188,8 +184,6 @@
                     @endif
                 </div>
                 <input type="hidden" name="registration_splash_image" id="splashInput" value="{{ $isEdit && $club->registration_splash_image ? $club->registration_splash_image : '' }}">
-                <input type="hidden" name="registration_splash_image_folder" value="clubs/splash">
-                <input type="hidden" name="registration_splash_image_filename" value="splash_{{ time() }}">
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openSplashCropper()">
                     <i class="bi bi-camera me-2"></i>{{ __('shared.tabs_identity_branding_upload_splash') }}
                 </button>
@@ -404,55 +398,11 @@
         <label class="form-label">{{ __('shared.tabs_identity_branding_social_links') }}</label>
         <p class="text-muted-foreground text-sm mb-3">{{ __('shared.tabs_identity_branding_social_links_desc') }}</p>
 
-        <div id="socialLinksContainer">
-            @if($isEdit && $club->socialLinks && $club->socialLinks->count() > 0)
-                @foreach($club->socialLinks as $index => $link)
-                    <div class="social-link-row mb-3" data-index="{{ $index }}">
-                        <div class="grid grid-cols-12 gap-2">
-                            <div class="col-span-12 md:col-span-4">
-                                <select class="form-select" name="social_links[{{ $index }}][platform]" required>
-                                    <option value="">{{ __('shared.tabs_identity_branding_select_platform') }}</option>
-                                    <option value="facebook" {{ $link->platform === 'facebook' ? 'selected' : '' }}>
-                                        Facebook
-                                    </option>
-                                    <option value="instagram" {{ $link->platform === 'instagram' ? 'selected' : '' }}>
-                                        Instagram
-                                    </option>
-                                    <option value="twitter" {{ $link->platform === 'twitter' ? 'selected' : '' }}>
-                                        X (Twitter)
-                                    </option>
-                                    <option value="tiktok" {{ $link->platform === 'tiktok' ? 'selected' : '' }}>
-                                        TikTok
-                                    </option>
-                                    <option value="youtube" {{ $link->platform === 'youtube' ? 'selected' : '' }}>
-                                        YouTube
-                                    </option>
-                                    <option value="whatsapp" {{ $link->platform === 'whatsapp' ? 'selected' : '' }}>
-                                        WhatsApp
-                                    </option>
-                                    <option value="website" {{ $link->platform === 'website' ? 'selected' : '' }}>
-                                        {{ __('shared.tabs_identity_branding_website') }}
-                                    </option>
-                                </select>
-                            </div>
-                            <div class="col-span-12 md:col-span-7">
-                                <input type="url"
-                                       class="form-control"
-                                       name="social_links[{{ $index }}][url]"
-                                       value="{{ $link->url }}"
-                                       placeholder="https://..."
-                                       required>
-                            </div>
-                            <div class="col-span-12 md:col-span-1">
-                                <button type="button" class="btn btn-outline-danger w-full" onclick="removeSocialLink(this)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
-            @endif
-        </div>
+        {{-- Rows are built by addSocialLink() (also for the club's own links,
+             seeded from data-initial), so there is one row shape and one styled
+             platform dropdown — never a native <select> (Design Rule #4). --}}
+        <div id="socialLinksContainer"
+             data-initial="{{ json_encode($isEdit && $club->socialLinks ? $club->socialLinks->map(fn ($l) => ['platform' => $l->platform, 'url' => $l->url])->values() : []) }}"></div>
 
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="addSocialLink()">
             <i class="bi bi-plus-circle me-2"></i>{{ __('shared.tabs_identity_branding_add_social') }}
@@ -467,7 +417,7 @@
 <script src="https://unpkg.com/cropme@1.4.1/dist/cropme.min.js"></script>
 
 <script>
-    let socialLinkIndex = {{ $isEdit && $club->socialLinks ? $club->socialLinks->count() : 0 }};
+    let socialLinkIndex = 0;
     let qrCode = null;
 
     // PART 2: Cropper instances
@@ -486,9 +436,11 @@
         const slugInput = document.getElementById('slug');
         const urlPreview = document.getElementById('clubUrlPreview');
 
-        if (slugInput && urlPreview) {
+        if (slugInput && urlPreview && !slugInput.__clubSlugBound) {
+            slugInput.__clubSlugBound = true;
             slugInput.addEventListener('input', function() {
-                const baseUrl = '{{ url(strtolower($club?->country ?? "bh") . "/clubs") }}';
+                const country = String(document.getElementById('country')?.value || @js($club?->country ?? 'bh')).toLowerCase();
+                const baseUrl = @js(url('/')) + '/' + encodeURIComponent(country) + '/clubs';
                 const slug = this.value || 'your-club-slug';
                 urlPreview.textContent = `${baseUrl}/${slug}`;
 
@@ -599,7 +551,10 @@
         const canvas = container.querySelector('canvas');
         if (!canvas) return;
 
+        // Everything typed by a person is escaped before it is written into the page.
+        const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
         printWindow.document.write(`
             <html>
                 <head>
@@ -614,8 +569,8 @@
                 <body>
                     <div class="container">
                         <img src="${canvas.toDataURL('image/png')}" alt="{{ __("shared.tabs_identity_branding_club_qr_code") }}">
-                        <h2>${document.getElementById('club_name')?.value || '{{ __("shared.tabs_identity_branding_club_qr_code") }}'}</h2>
-                        <p>${document.getElementById('clubUrlPreview')?.textContent || ''}</p>
+                        <h2>${esc(document.getElementById('club_name')?.value || @js(__('shared.tabs_identity_branding_club_qr_code')))}</h2>
+                        <p>${esc(document.getElementById('clubUrlPreview')?.textContent || '')}</p>
                     </div>
                 </body>
             </html>
@@ -628,46 +583,143 @@
         }, 250);
     }
 
-    // Add social link row
-    function addSocialLink() {
+    // The platforms the popup offers. A link saved elsewhere with another
+    // platform keeps its value (added to the list for that row).
+    const CLUB_SOCIAL_PLATFORMS = [
+        ['facebook', 'Facebook', 'bi-facebook'],
+        ['instagram', 'Instagram', 'bi-instagram'],
+        ['twitter', 'X (Twitter)', 'bi-twitter-x'],
+        ['tiktok', 'TikTok', 'bi-tiktok'],
+        ['youtube', 'YouTube', 'bi-youtube'],
+        ['whatsapp', 'WhatsApp', 'bi-whatsapp'],
+        ['website', @js(__('shared.tabs_identity_branding_website')), 'bi-globe'],
+    ];
+
+    function clubEl(tag, cls, text) {
+        const el = document.createElement(tag);
+        if (cls) el.className = cls;
+        if (text !== undefined && text !== null) el.textContent = String(text);
+        return el;
+    }
+
+    // A styled dropdown for one row's platform (Design Rule #4): rounded trigger
+    // with a rotating chevron, rounded panel, hover rows, a check on the pick.
+    // Posts through a hidden input with the same name the native select had.
+    function clubPlatformPicker(name, value) {
+        const options = CLUB_SOCIAL_PLATFORMS.slice();
+        if (value && !options.some(o => o[0] === value)) {
+            options.push([value, value.charAt(0).toUpperCase() + value.slice(1), 'bi-link-45deg']);
+        }
+
+        const wrap = clubEl('div', 'relative');
+        wrap.dataset.platformPicker = '';
+        const hidden = clubEl('input');
+        hidden.type = 'hidden';
+        hidden.name = name;
+        hidden.value = value || '';
+
+        const trigger = clubEl('button', 'w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent');
+        trigger.type = 'button';
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        const label = clubEl('span', 'truncate');
+        const chevron = clubEl('i', 'bi bi-chevron-down text-muted-foreground transition-transform shrink-0');
+        trigger.append(label, chevron);
+
+        const panel = clubEl('div', 'absolute z-30 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden max-h-60 overflow-y-auto');
+        panel.setAttribute('role', 'listbox');
+        panel.style.display = 'none';
+
+        const paint = () => {
+            const pick = options.find(o => o[0] === hidden.value);
+            label.textContent = pick ? pick[1] : @js(__('shared.tabs_identity_branding_select_platform'));
+            label.classList.toggle('text-muted-foreground', !pick);
+            panel.querySelectorAll('[data-value]').forEach(b => {
+                const on = b.dataset.value === hidden.value;
+                b.classList.toggle('text-primary', on);
+                b.classList.toggle('font-medium', on);
+                b.querySelector('.bi-check-lg').style.visibility = on ? 'visible' : 'hidden';
+            });
+        };
+        const setOpen = (open) => {
+            panel.style.display = open ? '' : 'none';
+            chevron.classList.toggle('rotate-180', open);
+            trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+
+        options.forEach(([val, text, icon]) => {
+            const row = clubEl('button', 'w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-left transition-colors hover:bg-muted/60');
+            row.type = 'button';
+            row.dataset.value = val;
+            const left = clubEl('span', 'flex items-center gap-2 truncate');
+            left.append(clubEl('i', 'bi ' + icon), clubEl('span', '', text));
+            row.append(left, clubEl('i', 'bi bi-check-lg text-primary shrink-0'));
+            row.addEventListener('click', () => { hidden.value = val; paint(); setOpen(false); });
+            panel.appendChild(row);
+        });
+
+        trigger.addEventListener('click', () => setOpen(panel.style.display === 'none'));
+        wrap.__close = () => setOpen(false);
+        wrap.append(trigger, panel, hidden);
+        paint();
+        return wrap;
+    }
+
+    // One pair of document listeners closes any open platform panel on an
+    // outside click or Escape, however many rows there are.
+    if (!window.__clubPlatformPickerInit) {
+        window.__clubPlatformPickerInit = true;
+        document.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-platform-picker]').forEach(p => { if (!p.contains(e.target) && p.__close) p.__close(); });
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') document.querySelectorAll('[data-platform-picker]').forEach(p => p.__close && p.__close());
+        });
+    }
+
+    // Add social link row (optionally pre-filled)
+    function addSocialLink(platform = '', url = '') {
         const container = document.getElementById('socialLinksContainer');
         if (!container) return;
 
-        const row = document.createElement('div');
-        row.className = 'social-link-row mb-3';
+        const row = clubEl('div', 'social-link-row mb-3');
         row.dataset.index = socialLinkIndex;
-        row.innerHTML = `
-            <div class="grid grid-cols-12 gap-2">
-                <div class="col-span-12 md:col-span-4">
-                    <select class="form-select" name="social_links[${socialLinkIndex}][platform]" required>
-                        <option value="">{{ __("shared.tabs_identity_branding_select_platform") }}</option>
-                        <option value="facebook">Facebook</option>
-                        <option value="instagram">Instagram</option>
-                        <option value="twitter">X (Twitter)</option>
-                        <option value="tiktok">TikTok</option>
-                        <option value="youtube">YouTube</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="website">{{ __("shared.tabs_identity_branding_website") }}</option>
-                    </select>
-                </div>
-                <div class="col-span-12 md:col-span-7">
-                    <input type="url"
-                           class="form-control"
-                           name="social_links[${socialLinkIndex}][url]"
-                           placeholder="https://..."
-                           required>
-                </div>
-                <div class="col-span-12 md:col-span-1">
-                    <button type="button" class="btn btn-outline-danger w-full" onclick="removeSocialLink(this)">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `;
+        const grid = clubEl('div', 'grid grid-cols-12 gap-2');
 
+        const platformCol = clubEl('div', 'col-span-12 md:col-span-4');
+        platformCol.appendChild(clubPlatformPicker(`social_links[${socialLinkIndex}][platform]`, platform));
+
+        const urlCol = clubEl('div', 'col-span-12 md:col-span-7');
+        const urlInput = clubEl('input', 'form-control');
+        urlInput.type = 'url';
+        urlInput.name = `social_links[${socialLinkIndex}][url]`;
+        urlInput.placeholder = 'https://...';
+        urlInput.required = true;
+        urlInput.value = url || '';
+        urlCol.appendChild(urlInput);
+
+        const removeCol = clubEl('div', 'col-span-12 md:col-span-1');
+        const removeBtn = clubEl('button', 'btn btn-outline-danger w-full');
+        removeBtn.type = 'button';
+        removeBtn.setAttribute('aria-label', @js(__('shared.finance_settings_remove')));
+        removeBtn.appendChild(clubEl('i', 'bi bi-trash'));
+        removeBtn.addEventListener('click', () => removeSocialLink(removeBtn));
+        removeCol.appendChild(removeBtn);
+
+        grid.append(platformCol, urlCol, removeCol);
+        row.appendChild(grid);
         container.appendChild(row);
         socialLinkIndex++;
     }
+
+    // The club's own links, when the popup was rendered for one club.
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('socialLinksContainer');
+        if (!container || container.__seeded) return;
+        container.__seeded = true;
+        let links = [];
+        try { links = JSON.parse(container.dataset.initial || '[]'); } catch (e) { links = []; }
+        links.forEach(l => addSocialLink(l.platform || '', l.url || ''));
+    });
 
     // Remove social link row
     function removeSocialLink(button) {
@@ -698,7 +750,9 @@
         // quality: crop() re-renders from the source image at the size asked
         // for, so the output resolution is independent of the on-screen frame.
         const border = 2;
-        const canvasHeight = 400;
+        // Shorter on a small phone so the sheet's actions stay on screen.
+        const canvasHeight = Math.max(240, Math.min(400, Math.round((window.innerHeight || 800) * 0.5)));
+        el.style.height = canvasHeight + 'px';
         const canvasWidth = el.clientWidth || canvasHeight;
         const maxWidth = Math.max(40, canvasWidth - (border * 2) - 16);
         const maxHeight = Math.max(40, canvasHeight - (border * 2) - 16);
@@ -757,15 +811,11 @@
         paintLogoShapeCards();
         const overlay = document.getElementById('logoCropperOverlay');
         overlay.style.display = 'flex';
-        const modalBody = document.querySelector('#clubModal .modal-body');
-        if (modalBody) modalBody.style.overflow = 'hidden';
     }
 
     function closeLogoCropper() {
         const overlay = document.getElementById('logoCropperOverlay');
         overlay.style.display = 'none';
-        const modalBody = document.querySelector('#clubModal .modal-body');
-        if (modalBody) modalBody.style.overflow = 'auto';
         if (logoCropper) {
             logoCropper.destroy();
             logoCropper = null;
@@ -835,15 +885,11 @@
     function openCoverCropper() {
         const overlay = document.getElementById('coverCropperOverlay');
         overlay.style.display = 'flex';
-        const modalBody = document.querySelector('#clubModal .modal-body');
-        if (modalBody) modalBody.style.overflow = 'hidden';
     }
 
     function closeCoverCropper() {
         const overlay = document.getElementById('coverCropperOverlay');
         overlay.style.display = 'none';
-        const modalBody = document.querySelector('#clubModal .modal-body');
-        if (modalBody) modalBody.style.overflow = 'auto';
         if (coverCropper) {
             coverCropper.destroy();
             coverCropper = null;
@@ -913,15 +959,11 @@
     function openSplashCropper() {
         const overlay = document.getElementById('splashCropperOverlay');
         overlay.style.display = 'flex';
-        const modalBody = document.querySelector('#clubModal .modal-body');
-        if (modalBody) modalBody.style.overflow = 'hidden';
     }
 
     function closeSplashCropper() {
         const overlay = document.getElementById('splashCropperOverlay');
         overlay.style.display = 'none';
-        const modalBody = document.querySelector('#clubModal .modal-body');
-        if (modalBody) modalBody.style.overflow = 'auto';
         if (splashCropper) {
             splashCropper.destroy();
             splashCropper = null;

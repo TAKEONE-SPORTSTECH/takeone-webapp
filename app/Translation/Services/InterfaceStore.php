@@ -233,7 +233,7 @@ class InterfaceStore
          * complete (2026-09-09).
          */
         foreach ($this->catalog->filesFor($tier, $locale) as $id => $file) {
-            $english = $this->catalog->strings($file['source']);
+            $english = $this->catalog->sourceStrings($file['source']);
 
             if ($english === []) {
                 continue;
@@ -330,7 +330,7 @@ class InterfaceStore
         $wanted = [];
 
         foreach ($this->catalog->filesFor($tier, 'en') as $id => $file) {
-            $expected += count($this->catalog->strings($file['source']));
+            $expected += count($this->catalog->sourceStrings($file['source']));
 
             [$namespace, $group] = InterfaceTranslation::splitFileId($id);
             $wanted[($namespace ?? '').'|'.$group] = true;

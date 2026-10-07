@@ -5,6 +5,9 @@ namespace App\Mcp\Servers;
 use App\Mcp\Tools\AddCertificationTool;
 use App\Mcp\Tools\SetEventRulebookTool;
 use App\Mcp\Tools\SetEventEntryChannelsTool;
+use App\Mcp\Tools\SetEventVisibilityTool;
+use App\Mcp\Tools\ListEventClubPaymentsTool;
+use App\Mcp\Tools\DecideEventClubPaymentTool;
 use App\Mcp\Tools\DecideEventFeatureRequestTool;
 use App\Mcp\Tools\GetSportRuleBookTool;
 use App\Mcp\Tools\ListActivityRanksTool;
@@ -12,6 +15,7 @@ use App\Mcp\Tools\SetMemberRankTool;
 use App\Mcp\Tools\ListCornerSidesTool;
 use App\Mcp\Tools\SetCornerSideTool;
 use App\Mcp\Tools\GetEventFeaturingTool;
+use App\Mcp\Tools\ListEventEntryConsentsTool;
 use App\Mcp\Tools\ListEventCertificatesTool;
 use App\Mcp\Tools\SetEventCertificateSettingsTool;
 use App\Mcp\Tools\GenerateEventCertificatesTool;
@@ -49,6 +53,7 @@ use App\Mcp\Tools\NotifyMemberTool;
 use App\Mcp\Tools\RecordTransactionTool;
 use App\Mcp\Tools\SearchPeopleTool;
 use App\Mcp\Tools\SetEventTranslationTool;
+use App\Mcp\Tools\TranslationHealthTool;
 use App\Mcp\Tools\TranslateEventTool;
 use App\Mcp\Tools\VerifyAchievementTool;
 use App\Mcp\Tools\WhoAmITool;
@@ -124,12 +129,14 @@ class TakeOneServer extends Server
         GetEventTranslationTool::class,
         TranslateEventTool::class,
         SetEventTranslationTool::class,
+        TranslationHealthTool::class,
         ListActivityCatalogTool::class,
         VerifyAchievementTool::class,
         AddCertificationTool::class,
         AddWorkHistoryTool::class,
         ManageMemberPhotoTool::class,
         GetEventFeaturingTool::class,
+        ListEventEntryConsentsTool::class,
         ListEventFeatureRequestsTool::class,
         DecideEventFeatureRequestTool::class,
         GetSportRuleBookTool::class,
@@ -139,6 +146,9 @@ class TakeOneServer extends Server
         SetCornerSideTool::class,
         SetEventRulebookTool::class,
         SetEventEntryChannelsTool::class,
+        SetEventVisibilityTool::class,
+        ListEventClubPaymentsTool::class,
+        DecideEventClubPaymentTool::class,
         ListEventCertificatesTool::class,
         SetEventCertificateSettingsTool::class,
         GenerateEventCertificatesTool::class,

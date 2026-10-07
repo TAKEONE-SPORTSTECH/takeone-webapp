@@ -66,6 +66,19 @@ class OllamaTextDriver implements TextDriver
             $payload['options']['num_predict'] = (int) $options['max_tokens'];
         }
 
+        /*
+         * The context window, when the caller says how much it needs.
+         *
+         * Opt-in. Without it the SERVER's default applies, and a restarted
+         * Ollama defaults to 4,096 tokens — a translation batch is ~6,000, so
+         * every reply was cut off mid-JSON and whole runs stopped as "nothing
+         * usable" (2026-10-05). A caller that knows its size should not depend
+         * on how somebody else's server was last started.
+         */
+        if (! empty($options['num_ctx'])) {
+            $payload['options']['num_ctx'] = (int) $options['num_ctx'];
+        }
+
         if (isset($options['temperature'])) {
             $payload['options']['temperature'] = (float) $options['temperature'];
         }

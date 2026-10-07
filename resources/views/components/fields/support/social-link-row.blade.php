@@ -3,59 +3,59 @@
 <div class="social-link-row mb-4 flex items-end gap-2" x-data="{ open: false }">
     <!-- Platform Dropdown -->
     <div class="flex-1">
-        <label class="tf-label">Platform</label>
+        <label class="tf-label">{{ __('shared.social_links_editor_platform') }}</label>
         <div class="relative">
             <button type="button"
                     @click="open = !open"
                     @click.away="open = false"
-                    class="tf-dropdown-trigger border-primary/20 focus:border-primary text-left">
+                    class="tf-dropdown-trigger border-primary/20 focus:border-primary text-start">
                 <span class="flex items-center">
                     @if(($link['platform'] ?? '') == 'facebook')
-                        <i class="bi bi-facebook mr-2"></i>Facebook
+                        <i class="bi bi-facebook me-2"></i>Facebook
                     @elseif(($link['platform'] ?? '') == 'twitter')
-                        <i class="bi bi-twitter-x mr-2"></i>Twitter/X
+                        <i class="bi bi-twitter-x me-2"></i>Twitter/X
                     @elseif(($link['platform'] ?? '') == 'instagram')
-                        <i class="bi bi-instagram mr-2"></i>Instagram
+                        <i class="bi bi-instagram me-2"></i>Instagram
                     @elseif(($link['platform'] ?? '') == 'linkedin')
-                        <i class="bi bi-linkedin mr-2"></i>LinkedIn
+                        <i class="bi bi-linkedin me-2"></i>LinkedIn
                     @elseif(($link['platform'] ?? '') == 'youtube')
-                        <i class="bi bi-youtube mr-2"></i>YouTube
+                        <i class="bi bi-youtube me-2"></i>YouTube
                     @elseif(($link['platform'] ?? '') == 'tiktok')
-                        <i class="bi bi-tiktok mr-2"></i>TikTok
+                        <i class="bi bi-tiktok me-2"></i>TikTok
                     @elseif(($link['platform'] ?? '') == 'snapchat')
-                        <i class="bi bi-snapchat mr-2"></i>Snapchat
+                        <i class="bi bi-snapchat me-2"></i>Snapchat
                     @elseif(($link['platform'] ?? '') == 'whatsapp')
-                        <i class="bi bi-whatsapp mr-2"></i>WhatsApp
+                        <i class="bi bi-whatsapp me-2"></i>WhatsApp
                     @elseif(($link['platform'] ?? '') == 'telegram')
-                        <i class="bi bi-telegram mr-2"></i>Telegram
+                        <i class="bi bi-telegram me-2"></i>Telegram
                     @elseif(($link['platform'] ?? '') == 'discord')
-                        <i class="bi bi-discord mr-2"></i>Discord
+                        <i class="bi bi-discord me-2"></i>Discord
                     @elseif(($link['platform'] ?? '') == 'reddit')
-                        <i class="bi bi-reddit mr-2"></i>Reddit
+                        <i class="bi bi-reddit me-2"></i>Reddit
                     @elseif(($link['platform'] ?? '') == 'pinterest')
-                        <i class="bi bi-pinterest mr-2"></i>Pinterest
+                        <i class="bi bi-pinterest me-2"></i>Pinterest
                     @elseif(($link['platform'] ?? '') == 'twitch')
-                        <i class="bi bi-twitch mr-2"></i>Twitch
+                        <i class="bi bi-twitch me-2"></i>Twitch
                     @elseif(($link['platform'] ?? '') == 'github')
-                        <i class="bi bi-github mr-2"></i>GitHub
+                        <i class="bi bi-github me-2"></i>GitHub
                     @elseif(($link['platform'] ?? '') == 'spotify')
-                        <i class="bi bi-spotify mr-2"></i>Spotify
+                        <i class="bi bi-spotify me-2"></i>Spotify
                     @elseif(($link['platform'] ?? '') == 'skype')
-                        <i class="bi bi-skype mr-2"></i>Skype
+                        <i class="bi bi-skype me-2"></i>Skype
                     @elseif(($link['platform'] ?? '') == 'slack')
-                        <i class="bi bi-slack mr-2"></i>Slack
+                        <i class="bi bi-slack me-2"></i>Slack
                     @elseif(($link['platform'] ?? '') == 'medium')
-                        <i class="bi bi-medium mr-2"></i>Medium
+                        <i class="bi bi-medium me-2"></i>Medium
                     @elseif(($link['platform'] ?? '') == 'vimeo')
-                        <i class="bi bi-vimeo mr-2"></i>Vimeo
+                        <i class="bi bi-vimeo me-2"></i>Vimeo
                     @elseif(($link['platform'] ?? '') == 'messenger')
-                        <i class="bi bi-messenger mr-2"></i>Messenger
+                        <i class="bi bi-messenger me-2"></i>Messenger
                     @elseif(($link['platform'] ?? '') == 'wechat')
-                        <i class="bi bi-wechat mr-2"></i>WeChat
+                        <i class="bi bi-wechat me-2"></i>WeChat
                     @elseif(($link['platform'] ?? '') == 'line')
-                        <i class="bi bi-line mr-2"></i>Line
+                        <i class="bi bi-line me-2"></i>Line
                     @else
-                        Select Platform
+                        {{ __('shared.social_links_editor_select_platform') }}
                     @endif
                 </span>
                 <i class="bi bi-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
@@ -100,9 +100,9 @@
                 @foreach($platforms as $value => $platform)
                     <div class="tf-dropdown-item-sm"
                          @click="$el.closest('.social-link-row').querySelector('.platform-value').value = '{{ $value }}';
-                                 $el.closest('.social-link-row').querySelector('button span').innerHTML = '<i class=\'bi {{ $platform['icon'] }} mr-2\'></i>{{ $platform['name'] }}';
+                                 $el.closest('.social-link-row').querySelector('button span').innerHTML = '<i class=\'bi {{ $platform['icon'] }} me-2\'></i>{{ $platform['name'] }}';
                                  open = false">
-                        <i class="bi {{ $platform['icon'] }} mr-2"></i>{{ $platform['name'] }}
+                        <i class="bi {{ $platform['icon'] }} me-2"></i>{{ $platform['name'] }}
                     </div>
                 @endforeach
             </div>
@@ -111,7 +111,7 @@
 
     <!-- URL Input -->
     <div class="flex-1">
-        <label class="tf-label">URL</label>
+        <label class="tf-label">{{ __('shared.social_links_editor_url') }}</label>
         <input type="url"
                class="tf-input"
                name="social_links[{{ $index }}][url]"
@@ -122,7 +122,7 @@
 
     <!-- Remove Button -->
     <div>
-        <button type="button"
+        <button type="button" onclick="this.closest('.social-link-row').remove()"
                 class="p-3 text-red-500 border-2 border-red-200 rounded-xl hover:bg-red-50 hover:border-red-300 transition-all duration-300 remove-social-link">
             <i class="bi bi-trash"></i>
         </button>

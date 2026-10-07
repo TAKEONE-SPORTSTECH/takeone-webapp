@@ -2,6 +2,8 @@
      hub" destinations (Feed / Schedule / Challenge / Events / Market) have no
      top-nav presence on desktop otherwise. Sticky pill strip under the navbar,
      shared by every personal/desktop/* page so the section reads as one hub. --}}
+{{-- New UI (App\Ui\NewUi): the top bar carries these tabs, so the strip is not drawn. --}}
+@unless(\App\Ui\NewUi::active())
 @php
     $__subnavRoute = request()->route()?->getName();
     $__subnavDots = auth()->user() ? app(\App\Members\Support\SectionActivity::class)->navDots(auth()->user()) : [];
@@ -27,3 +29,4 @@
         @endforeach
     </div>
 </nav>
+@endunless

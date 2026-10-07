@@ -57,6 +57,25 @@ class InvitePageController extends Controller
     /** Called by FederationAppController::publicPage with the prototype's own boot. */
     public function show(Request $request, FederationEvent $event, array $boot): Response
     {
+        // The SHARED club-entry page (events::entry.club.page) — the same file
+        // the event's own /me/events/{uuid}/club addresses draw — with no step
+        // addresses: this legacy door keeps its in-page steps.
+        $response = response()->view('events::entry.club.page', $this->viewData($request, $event, $boot) + ['nav' => null]);
+
+        return $response->withHeaders([
+            'Cache-Control' => 'no-store, private',
+            'X-Content-Type-Options' => 'nosniff',
+            'Referrer-Policy' => 'same-origin',
+        ]);
+    }
+
+    /**
+     * Everything the club-entry page draws with, for one federation event —
+     * shared by this legacy door and App\Federations\Support\FederationClubEntryDesk.
+     * Sets the reading locale for the request as a side effect.
+     */
+    public function viewData(Request $request, FederationEvent $event, array $boot): array
+    {
         $locale = $this->readingLocale($request, $event);
         $this->useLocale($locale);
 
@@ -71,6 +90,10 @@ class InvitePageController extends Controller
                 'documents' => $this->page->documentsOf($event),
             ]);
             $coverLanguages = \App\Events\Support\CoverLanguages::for($linked, $e);
+            // The event's own doors — Draw, Officials, Gallery, Participants,
+            // Results — the same buttons its public page shows, leading into the
+            // platform event's sections (App\Events\Support\EventDoors).
+            $doors = \App\Events\Support\EventDoors::public($e, new \App\Events\Support\EventAddress($linked));
             // The event's own rule book, so a club sees the category its
             // athlete will actually be placed in (CategorySystems).
             $system = app(\App\Events\Support\CategorySystems::class)->forEvent($linked);
@@ -82,8 +105,11 @@ class InvitePageController extends Controller
             $coverLanguages = $this->coverLanguages($event, $e);
         }
 
-        $response = response()->view('federations::invite.show', [
+        $v = fn ($f) => substr(md5((string) @filemtime(app_path('Federations/resources/app/'.$f))), 0, 8);
+
+        return [
             'e' => $e,
+            'doors' => $doors ?? [],
             'event' => $event,
             'boot' => $boot,
             'coverLanguages' => $coverLanguages,
@@ -91,13 +117,13 @@ class InvitePageController extends Controller
             'console' => route('federations.invite.settings', $event->uuid),
             'strings' => (array) trans('federations::invite.ui'),
             'noindex' => true,
-        ]);
-
-        return $response->withHeaders([
-            'Cache-Control' => 'no-store, private',
-            'X-Content-Type-Options' => 'nosniff',
-            'Referrer-Policy' => 'same-origin',
-        ]);
+            // The store the steps talk to — the federation's own, one copy.
+            'scripts' => [
+                ['src' => route('federations.app.asset', 'takeone-bridge.js').'?v='.$v('takeone-bridge.js'), 'defer' => false],
+                ['src' => route('federations.app.asset', 'federation-store.platform.js').'?v='.$v('federation-store.platform.js'), 'defer' => false],
+                ['src' => route('federations.app.asset', 'takeone-test-mode.js').'?v='.$v('takeone-test-mode.js'), 'defer' => true],
+            ],
+        ];
     }
 
     /** The cover / language sheet's choice: remembered for THIS event, in this session only. */

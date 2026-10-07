@@ -61,6 +61,8 @@ class FederationDashboard
             ->count('user_id');
 
         $upcomingQuery = ClubEvent::whereIn('tenant_id', $clubIds)
+            // A club's HIDDEN event is not the federation's to see (ClubEvent::isHidden).
+            ->listed()
             ->where('date', '>=', now()->startOfDay())
             ->where('status', '!=', 'cancelled')
             ->where(fn ($q) => $q->whereNull('is_archived')->orWhere('is_archived', false));

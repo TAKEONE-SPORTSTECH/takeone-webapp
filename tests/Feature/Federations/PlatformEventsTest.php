@@ -183,10 +183,16 @@ class PlatformEventsTest extends TestCase
             ->assertStatus(422)->assertJson(['code' => 'club_entry']);
         $this->assertSame(0, ClubEventRegistration::where('event_id', $ev->id)->count());
 
-        // A club's owner is handed the federation's invitation instead.
+        // A club's owner is handed the federation's invitation instead…
+        config(['events.club_entry' => false]);
         $door = $ev->host()->entryDoor($ev, \App\Members\Models\User::find($club->owner_user_id));
         $this->assertTrue($door['enters']);
         $this->assertStringContainsString($fe->uuid, $door['url']);
+        // …or, with the shared club screens on, the event's own "Register your club" address.
+        config(['events.club_entry' => true, 'federations.invite_v2' => true]);
+        $this->assertSame(route('me.events.club-entry.rules', $ev->uuid),
+            $ev->host()->entryDoor($ev, \App\Members\Models\User::find($club->owner_user_id))['url']);
+        config(['events.club_entry' => false]);
         $this->assertFalse($ev->host()->entryDoor($ev, $member->fresh())['enters']);
 
         // The page says so: the member is told who enters them, the owner is handed the door.
@@ -282,5 +288,24 @@ class PlatformEventsTest extends TestCase
 
         // Not a manager: refused.
         $this->assertFalse($events->setRuleBook($this->owner, ['manager' => false] + $access, $fe->uuid, 'shotokan', null)['ok']);
+    }
+
+    /**
+     * Explore lists the platform card once, and it opens on the federation's
+     * invitation — also when the card comes through the club-events list (the
+     * viewer made the event) rather than the viewer's federations.
+     */
+    public function test_explore_opens_a_federation_event_on_its_invitation(): void
+    {
+        $fe = $this->fedEvent();
+        $ev = app(FederationPlatformEvent::class)->sync($fe);
+        $viewer = $this->createUser();   // in none of the federation's clubs
+        $ev->forceFill(['entry_mode' => 'public', 'created_by' => $viewer->id])->save();
+
+        $card = collect($this->actingAs($viewer)->getJson('/explore/events?scope=public')->assertOk()->json('events'))
+            ->firstWhere('key', $ev->uuid);
+
+        $this->assertNotNull($card, 'the public platform event is listed');
+        $this->assertSame(route('federations.app.invitation').'?event='.$fe->uuid, $card['cover_url']);
     }
 }
