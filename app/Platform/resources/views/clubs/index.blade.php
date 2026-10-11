@@ -73,6 +73,7 @@
 
 <!-- Include Club Modal -->
 <x-club-modal mode="create" />
+@include('platform::clubs._removal')
 
 @push('scripts')
 <script>

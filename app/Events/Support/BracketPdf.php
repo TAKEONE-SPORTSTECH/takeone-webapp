@@ -38,14 +38,18 @@ use Symfony\Component\Process\Process;
  * which the board draws as the silhouette it always draws for no picture.
  *
  * ── Orientation ───────────────────────────────────────────────────────────
- * Per division, decided here before layout: a long bracket (three rounds or
- * more — quarter-finals onwards) goes LANDSCAPE, a short one PORTRAIT. The
- * owner's rule, 2026-10-06.
+ * Every bracket sheet is LANDSCAPE, however short the bracket — flipping
+ * between portrait and landscape pages made the PDF awkward to move through
+ * (owner's rule, 2026-10-10; it replaced the 2026-10-06 "landscape from three
+ * rounds" rule). The cover, contents and teams pages stay portrait.
  */
 class BracketPdf
 {
     /** Rounds from which a bracket counts as long, and is printed landscape. */
     public const LANDSCAPE_FROM_ROUNDS = 3;
+
+    /** @var array<string, string>  the pictures of the page being built, once each */
+    private array $media = [];
 
     public function __construct(private EventTypeRegistry $registry) {}
 
@@ -85,7 +89,7 @@ class BracketPdf
 
     public function landscape(array $division): bool
     {
-        return $this->rounds($division) >= self::LANDSCAPE_FROM_ROUNDS;
+        return true;
     }
 
     /**
@@ -96,6 +100,7 @@ class BracketPdf
      */
     public function html(ClubEvent $event, User $viewer, array $divisions, string $layout, string $third, bool $withCover = false): string
     {
+        $this->media = [];
         $divisions = $this->inlinePhotos($divisions, $viewer);
 
         $payload = [
@@ -113,6 +118,10 @@ class BracketPdf
             // navy and gold, the bracket board's own (owner picked it 2026-10-07).
             'color' => '#d8b25f',
             'host' => (string) ($event->host()->name ?? ''),
+            // The organiser's own mark on every page head, inlined and
+            // re-authorised like every other picture on the sheet.
+            'media' => $this->media,
+            'hostLogo' => ($logo = $event->host()->logo) ? $this->dataUri($logo, $viewer, original: true, maxPx: 320) : null,
             'date' => $event->date ? \App\Support\Cldr::dayMonth($event->date).' '.$event->date->format('Y') : '',
             'pages' => array_map(fn (array $d) => [
                 'id' => (int) $d['id'],
@@ -120,7 +129,12 @@ class BracketPdf
                 'entrants' => (int) ($d['entrants'] ?? 0),
                 'gender' => $this->genderOf((string) $d['name']),
                 'landscape' => $this->landscape($d),
+                'podium' => $podium = $this->finishedPodium($d),
+                // The gold "not yet confirmed" dot (unpaid / not weighed in) only
+                // means something while the division is still to be fought.
+                'provisional' => $podium === null && $this->hasProvisional($d),
             ], $divisions),
+            'finished' => $this->finished($event, $divisions),
             'dataUrl' => 'data:application/json;base64,'.base64_encode(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)),
             'layout' => $layout === 'split' ? 'split' : 'linear',
             'third' => $third === 'shared' ? 'shared' : 'match',
@@ -174,6 +188,34 @@ class BracketPdf
         }
         $schedule = array_values($days);
 
+        // Once it is over, a competition day reads as it actually ran: from the
+        // first bout's start to the last bout's finish, as the mats logged them.
+        if ($this->finished($event, $divisions)) {
+            $ran = $this->actualHours($event);
+            foreach ((array) ($p['phases'] ?? []) as $ph) {
+                $iso = (string) ($ph['date'] ?? '');
+                if (empty($ph['segments']) || ! isset($ran[$iso], $days[$iso])) {
+                    continue;
+                }
+                // The day's planned segments (play, breaks) give way to one row,
+                // in the same place among that date's other rows.
+                $label = (string) ($ph['label'] ?? '');
+                $rows = [];
+                $placed = false;
+                foreach ($days[$iso]['rows'] as $r) {
+                    if ($r['label'] !== $label) {
+                        $rows[] = $r;
+                    } elseif (! $placed) {
+                        $rows[] = ['time' => $ran[$iso], 'label' => $label,
+                            'sub' => __('events::events.draw_print_actual_hours'), 'break' => false];
+                        $placed = true;
+                    }
+                }
+                $days[$iso]['rows'] = $rows;
+            }
+            $schedule = array_values($days);
+        }
+
         // The day itself, as the cover's date block.
         $on = $event->date ? \Illuminate\Support\Carbon::parse($event->date->format('Y-m-d')) : null;
         $when = $on ? ['day' => $sk($on, 'd', 'j'), 'mon' => $sk($on, 'MMM', 'M'), 'year' => $on->format('Y'), 'wday' => $sk($on, 'EEEE', 'l')] : null;
@@ -222,7 +264,7 @@ class BracketPdf
                     continue;
                 }
                 $name = (string) ($sec['items'][$i] ?? '');
-                $rows[] = ['name' => $name, 'n' => $counts[(int) $id], 'gender' => $this->genderOf($name)];
+                $rows[] = ['id' => (int) $id, 'name' => $name, 'n' => $counts[(int) $id], 'gender' => $this->genderOf($name)];
                 $seen[(int) $id] = true;
             }
             if ($rows) {
@@ -231,7 +273,7 @@ class BracketPdf
         }
         // A drawn division no heading names still gets its line.
         $loose = collect($divisions)->reject(fn ($d) => isset($seen[(int) $d['id']]))
-            ->map(fn ($d) => ['name' => (string) $d['name'], 'n' => (int) ($d['entrants'] ?? 0), 'gender' => $this->genderOf((string) $d['name'])])
+            ->map(fn ($d) => ['id' => (int) $d['id'], 'name' => (string) $d['name'], 'n' => (int) ($d['entrants'] ?? 0), 'gender' => $this->genderOf((string) $d['name'])])
             ->values()->all();
         if ($loose) {
             $groups[] = ['heading' => '', 'rows' => $loose];
@@ -248,9 +290,187 @@ class BracketPdf
             'requirements' => array_values(array_filter((array) ($p['requirements'] ?? []))),
             'officials' => (array) ($p['officials']['groups'] ?? []),
             'team' => $this->team($event, (array) ($p['officials']['rows'] ?? []), $viewer),
+            'clubs' => $this->clubs($event, $divisions, $viewer),
             'groups' => $groups,
             'total' => $counts->sum(),
         ];
+    }
+
+    /**
+     * The hours each competition day actually ran, keyed by its date in the
+     * event's own zone: the first bout clock started after the organiser
+     * started the event (so a rehearsal on the mats the day before does not
+     * count) to the last bout finished. Byes are not bouts.
+     *
+     * @return array<string, string>  'Y-m-d' => '10:53 AM – 5:30 PM'
+     */
+    private function actualHours(ClubEvent $event): array
+    {
+        $rows = \Illuminate\Support\Facades\DB::table('event_match_events as e')
+            ->join('event_matches as m', 'm.id', '=', 'e.match_id')
+            ->where('e.event_id', $event->id)
+            ->where('m.event_id', $event->id)
+            ->where('m.status', 'done')
+            ->where(fn ($q) => $q->whereNull('m.won_by_bye')->orWhere('m.won_by_bye', false))
+            ->whereIn('e.command', ['start', 'finish', 'commit'])
+            ->when($event->started_at, fn ($q) => $q->where('e.occurred_at', '>=', $event->started_at))
+            ->get(['e.command', 'e.occurred_at']);
+
+        $zone = $event->zone();
+        $days = [];
+        foreach ($rows as $r) {
+            $at = \Illuminate\Support\Carbon::parse($r->occurred_at, 'UTC')->setTimezone($zone);
+            $d = &$days[$at->format('Y-m-d')];
+            $d ??= ['from' => null, 'to' => null];
+            if ($r->command === 'start') {
+                $d['from'] = $d['from'] && $d['from']->lte($at) ? $d['from'] : $at;
+            } else {
+                $d['to'] = $d['to'] && $d['to']->gte($at) ? $d['to'] : $at;
+            }
+            unset($d);
+        }
+
+        // Cldr::time formats the wall clock it is given, so hand it the local time.
+        $clock = fn ($t) => \App\Support\Cldr::time(\Illuminate\Support\Carbon::parse($t->format('Y-m-d H:i:s')));
+
+        return collect($days)
+            ->filter(fn ($d) => $d['from'] && $d['to'] && $d['to']->gt($d['from']))
+            ->map(fn ($d) => $clock($d['from']).' – '.$clock($d['to']))
+            ->all();
+    }
+
+    /** Rows of athletes (three to a row) a teams page holds, and what a club header costs. */
+    private const CLUB_LINES_PER_PAGE = 23;
+
+    private const CLUB_HEAD_COST = 3;
+
+    private const CLUB_COLUMNS = 3;
+
+    /**
+     * The teams that took part — each club with its crest, how many it brought,
+     * the medals it won, and every athlete who entered under it with their
+     * divisions. Paginated: a big club runs on to the next page under the same
+     * header, marked as continued.
+     *
+     * A club is resolved the way the board resolves it (EntryClub: a tenant
+     * first, then the club the organiser wrote down), so the name on this page
+     * is the name under the athlete on every sheet. Ranked like a medal table
+     * once any medal is won; by size before that.
+     *
+     * @return list<list<array<string, mixed>>>  pages of club blocks
+     */
+    private function clubs(ClubEvent $event, array $divisions, User $viewer): array
+    {
+        $regs = $event->participantRegistrations()
+            ->with(['user:id,name,full_name', 'category:id,name', 'representingTenant'])
+            ->get();
+        if ($regs->isEmpty()) {
+            return [];
+        }
+
+        // Places won, per entry, from the podiums the sheets print.
+        $placed = [];
+        foreach ($divisions as $d) {
+            if ($this->finishedPodium($d) === null) {
+                continue;
+            }
+            foreach ((array) ($d['podium'] ?? []) as $w) {
+                $place = (int) ($w['place'] ?? 0);
+                if ($place >= 1 && $place <= 3 && ! empty($w['competitor_id'])) {
+                    $placed[(int) $w['competitor_id']][] = $place;
+                }
+            }
+        }
+
+        $written = EntryClub::forMany($event, $regs->pluck('id'));
+        $clubs = [];
+        $none = __('events::events.draw_print_no_club');
+
+        foreach ($regs as $r) {
+            $tenant = $r->competingClub();
+            $club = $tenant
+                ? ['name' => (string) $tenant->club_name, 'logo' => $tenant->logo ? file_url($tenant->logo) : null]
+                : ($written[$r->id] ?? null);
+            $name = trim((string) ($club['name'] ?? '')) ?: $none;
+            $key = Str::lower($name);
+
+            $clubs[$key] ??= ['name' => $name, 'logo' => $club['logo'] ?? null, 'none' => $name === $none, 'people' => [], 'medals' => [1 => 0, 2 => 0, 3 => 0]];
+            $clubs[$key]['logo'] ??= $club['logo'] ?? null;
+
+            // One line per PERSON, however many divisions they entered.
+            $who = $r->user_id ? 'u'.$r->user_id : 'r'.$r->id;
+            $person = &$clubs[$key]['people'][$who];
+            $person ??= ['name' => (string) ($r->user?->full_name ?: $r->user?->name ?: __('events::events.athlete')), 'divisions' => [], 'medals' => []];
+            if ($r->category?->name) {
+                // id => name: each division links to its own sheet in the PDF.
+                $person['divisions'][(int) $r->category->id] = (string) $r->category->name;
+            }
+            foreach ($placed[$r->id] ?? [] as $place) {
+                $person['medals'][] = $place;
+                $clubs[$key]['medals'][$place]++;
+            }
+            unset($person);
+        }
+
+        $rows = array_map(function (array $c) use ($viewer) {
+            $people = array_values($c['people']);
+            foreach ($people as &$p) {
+                sort($p['medals']);
+                $p['divisions'] = array_map(fn ($id, $name) => ['id' => $id, 'name' => $name], array_keys($p['divisions']), $p['divisions']);
+            }
+            unset($p);
+            // Medallists first, best first; then by name.
+            usort($people, fn ($a, $b) => [($a['medals'][0] ?? 9), $a['name']] <=> [($b['medals'][0] ?? 9), $b['name']]);
+
+            return [
+                'name' => $c['name'],
+                'none' => $c['none'],
+                'logo' => $c['logo'] ? $this->dataUri((string) $c['logo'], $viewer, original: true, maxPx: 240) : null,
+                'count' => count($people),
+                'medals' => $c['medals'],
+                'people' => $people,
+            ];
+        }, array_values($clubs));
+
+        $anyMedal = (bool) array_filter($rows, fn ($c) => array_sum($c['medals']) > 0);
+        usort($rows, function ($a, $b) use ($anyMedal) {
+            if ($a['none'] !== $b['none']) {
+                return $a['none'] <=> $b['none'];   // "no club" always last
+            }
+            $ka = $anyMedal ? [-$a['medals'][1], -$a['medals'][2], -$a['medals'][3], -$a['count']] : [-$a['count']];
+            $kb = $anyMedal ? [-$b['medals'][1], -$b['medals'][2], -$b['medals'][3], -$b['count']] : [-$b['count']];
+
+            return [$ka, $a['name']] <=> [$kb, $b['name']];
+        });
+        foreach ($rows as $i => &$c) {
+            $c['rank'] = $anyMedal && ! $c['none'] ? $i + 1 : null;
+        }
+        unset($c);
+
+        // Lay the blocks onto pages; a club too long for what is left runs on.
+        $pages = [[]];
+        $left = self::CLUB_LINES_PER_PAGE;
+        foreach ($rows as $c) {
+            $people = $c['people'];
+            $continued = false;
+            while (true) {
+                if ($left < self::CLUB_HEAD_COST + 2) {
+                    $pages[] = [];
+                    $left = self::CLUB_LINES_PER_PAGE;
+                }
+                $fit = ($left - self::CLUB_HEAD_COST) * self::CLUB_COLUMNS;
+                $chunk = array_splice($people, 0, $fit);
+                $pages[count($pages) - 1][] = ['continued' => $continued, 'people' => $chunk] + $c;
+                $left -= self::CLUB_HEAD_COST + (int) ceil(count($chunk) / self::CLUB_COLUMNS);
+                if ($people === []) {
+                    break;
+                }
+                $continued = true;
+                $left = 0;
+            }
+        }
+
+        return $pages;
     }
 
     /** Cards that fit on one team page, and what a section heading costs of them. */
@@ -296,7 +516,7 @@ class BracketPdf
                 'name' => (string) $r['name'],
                 'job' => (string) $r['job'],
                 'club' => $r['club'] ? (string) $r['club'] : null,
-                'logo' => ! empty($r['club_logo']) ? $this->dataUri((string) $r['club_logo'], $viewer) : null,
+                'logo' => ! empty($r['club_logo']) ? $this->dataUri((string) $r['club_logo'], $viewer, original: true, maxPx: 240) : null,
                 'photo' => $photo,
                 'placeholder' => $photo ? null : 'file://'.public_path($fallback),
             ];
@@ -410,6 +630,85 @@ class BracketPdf
     }
 
     /** "♂ 10-11 Men" on the division pill, the way the board's own menu shows it. */
+    /**
+     * The podium for a division whose every bout is decided — first, second,
+     * then third (one or two bronzes, whatever the draw settled). NULL while
+     * any bout is still to fight: half a podium on paper reads as a result.
+     *
+     * @return list<array{place:int, name:string, club:?string, country:?string, photo:?string, placeholder:?string}>|null
+     */
+    public function finishedPodium(array $division): ?array
+    {
+        $bouts = 0;
+        foreach ((array) ($division['rounds'] ?? []) as $round) {
+            foreach ((array) ($round['matches'] ?? []) as $m) {
+                $bouts++;
+                if (($m['status'] ?? null) !== 'done') {
+                    return null;
+                }
+            }
+        }
+
+        $podium = array_values(array_filter((array) ($division['podium'] ?? []),
+            fn ($p) => in_array((int) ($p['place'] ?? 0), [1, 2, 3], true) && ($p['name'] ?? '') !== ''));
+        if ($bouts === 0 || ! array_filter($podium, fn ($p) => (int) $p['place'] === 1)) {
+            return null;
+        }
+        usort($podium, fn ($a, $b) => (int) $a['place'] <=> (int) $b['place']);
+
+        $silhouette = $this->genderOf((string) ($division['name'] ?? '')) === 'female' ? 'female' : 'male';
+        $fallback = is_file(public_path("images/avatars/{$silhouette}.jpg"))
+            ? "images/avatars/{$silhouette}.jpg" : "images/avatars/{$silhouette}.svg";
+
+        return array_map(fn ($p) => [
+            'place' => (int) $p['place'],
+            // First and last name only: a podium card holds one line (owner,
+            // 2026-10-10). The full name is on the sheet above and on the
+            // teams page.
+            'name' => $this->shortName((string) $p['name']),
+            'club' => ! empty($p['club']) ? (string) $p['club'] : null,
+            'country' => ! empty($p['country']) ? (string) $p['country'] : null,
+            // Already re-authorised and inlined by inlinePhotos(); never a URL.
+            'club_logo' => $this->resolveMedia($p['club_logo'] ?? null),
+            'photo' => $this->resolveMedia($p['photo'] ?? null),
+            'placeholder' => 'file://'.public_path($fallback),
+        ], $podium);
+    }
+
+    /**
+     * The competition is over: the organiser closed it, its end has passed, or
+     * every division on the paper has its podium. Then the paper says RESULTS.
+     */
+    public function finished(ClubEvent $event, array $divisions): bool
+    {
+        if ($event->status === 'completed' || $event->hasEnded()) {
+            return true;
+        }
+
+        return $divisions !== [] && ! array_filter($divisions, fn ($d) => $this->finishedPodium($d) === null);
+    }
+
+    private function hasProvisional(array $division): bool
+    {
+        foreach ((array) ($division['rounds'] ?? []) as $round) {
+            foreach ((array) ($round['matches'] ?? []) as $m) {
+                if (! empty($m['a']['provisional']) || ! empty($m['b']['provisional'])) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** "Sayed Ali Reda Sharif" → "Sayed Sharif"; one or two words stay as they are. */
+    private function shortName(string $name): string
+    {
+        $words = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return count($words) > 2 ? $words[0].' '.end($words) : trim($name);
+    }
+
     private function genderOf(string $name): ?string
     {
         return match (true) {
@@ -428,14 +727,34 @@ class BracketPdf
      */
     private function inlinePhotos(array $node, User $viewer): array
     {
-        $cache = [];
+        $refs = [];
 
-        $walk = function (array $n) use (&$walk, &$cache, $viewer): array {
+        /* Each picture is inlined ONCE, into $this->media, and the payload
+           carries 'ref:<n>' (the board resolves it from window.BracketMedia).
+           Inlined per corner, six club crests became 256 copies and 5.7 MB of
+           JSON, copied again at every step of the render — past PHP's memory
+           limit on the live site (2026-10-10). */
+        $ref = function (string $key, callable $make) use (&$refs): ?string {
+            if (! array_key_exists($key, $refs)) {
+                $uri = $make();
+                $refs[$key] = $uri ? (string) count($this->media) : null;
+                if ($uri) {
+                    $this->media[$refs[$key]] = $uri;
+                }
+            }
+
+            return $refs[$key] === null ? null : 'ref:'.$refs[$key];
+        };
+
+        $walk = function (array $n) use (&$walk, $ref, $viewer): array {
             foreach ($n as $k => $v) {
                 if (is_array($v)) {
                     $n[$k] = $walk($v);
                 } elseif ($k === 'photo' && is_string($v) && $v !== '') {
-                    $n[$k] = $cache[$v] ??= $this->dataUri($v, $viewer);
+                    $n[$k] = $ref('photo:'.$v, fn () => $this->dataUri($v, $viewer));
+                } elseif ($k === 'club_logo' && is_string($v) && $v !== '') {
+                    // A crest, read whole: thumbnails are JPEG and lose its transparency.
+                    $n[$k] = $ref('logo:'.$v, fn () => $this->dataUri($v, $viewer, original: true, maxPx: 96));
                 }
             }
 
@@ -445,7 +764,18 @@ class BracketPdf
         return $walk($node);
     }
 
-    private function dataUri(string $url, User $viewer): ?string
+    /** A picture the payload refers to ('ref:<n>'), as its data URI. */
+    private function resolveMedia(mixed $v): ?string
+    {
+        return is_string($v) && str_starts_with($v, 'ref:') ? ($this->media[substr($v, 4)] ?? null) : null;
+    }
+
+    /**
+     * @param  bool  $original  read the uploaded file itself — for a LOGO. The
+     *                          thumbnails are JPEG, which has no alpha, so a
+     *                          transparent PNG would print on a white square.
+     */
+    private function dataUri(string $url, User $viewer, bool $original = false, int $maxPx = 0): ?string
     {
         $path = parse_url($url, PHP_URL_PATH) ?: '';
 
@@ -461,7 +791,7 @@ class BracketPdf
 
         parse_str((string) parse_url($url, PHP_URL_QUERY), $q);
         $size = (string) ($q['s'] ?? 'face');
-        $read = (Thumbnails::knows($size) ? Thumbnails::for($path, $size) : null) ?? $path;
+        $read = $original ? $path : ((Thumbnails::knows($size) ? Thumbnails::for($path, $size) : null) ?? $path);
 
         $disk = Storage::disk('local');
 
@@ -476,6 +806,49 @@ class BracketPdf
             return null;
         }
 
+        if ($maxPx > 0) {
+            [$bytes, $mime] = $this->shrink($bytes, $mime, $maxPx);
+        }
+
         return 'data:'.$mime.';base64,'.base64_encode($bytes);
+    }
+
+    /**
+     * A logo at the size it is printed, transparency kept. The same crest is
+     * inlined once per corner on every sheet — a 400px original repeated a few
+     * hundred times ran the page past PHP's memory limit (2026-10-10).
+     *
+     * @return array{0: string, 1: string}  bytes and mime; the input untouched when it is already small or GD cannot read it
+     */
+    private function shrink(string $bytes, string $mime, int $maxPx): array
+    {
+        $img = function_exists('imagecreatefromstring') ? @imagecreatefromstring($bytes) : false;
+        if (! $img) {
+            return [$bytes, $mime];
+        }
+        $w = imagesx($img);
+        $h = imagesy($img);
+        if (max($w, $h) <= $maxPx) {
+            imagedestroy($img);
+
+            return [$bytes, $mime];
+        }
+        $scale = $maxPx / max($w, $h);
+        $nw = max(1, (int) round($w * $scale));
+        $nh = max(1, (int) round($h * $scale));
+
+        $out = imagecreatetruecolor($nw, $nh);
+        imagealphablending($out, false);
+        imagesavealpha($out, true);
+        imagefill($out, 0, 0, imagecolorallocatealpha($out, 0, 0, 0, 127));
+        imagecopyresampled($out, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+
+        ob_start();
+        imagepng($out, null, 9);
+        $png = (string) ob_get_clean();
+        imagedestroy($img);
+        imagedestroy($out);
+
+        return $png !== '' ? [$png, 'image/png'] : [$bytes, $mime];
     }
 }

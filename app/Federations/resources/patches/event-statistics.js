@@ -24,7 +24,7 @@
     const regs = (s.regs || []).filter(r => /^kumite/i.test(r.division || ''));
     if (!regs.length) {
       const v = this.evStatsValsSample();
-      return {...v, hasScores: true, hasBanner: !!v.banner,
+      return {...v, cats: (v.cats || []).map(c => this.esGender(c)), hasScores: true, hasBanner: !!v.banner,
         ringNote: 'Schedule assumes 4-minute slots from 09:00. Referee assignments are not tracked yet.'};
     }
     const ev = (s.events || []).find(e => e.id === s.selectedId) || {};
@@ -61,7 +61,9 @@
       print: () => window.print(),
       hours: [], paceNote: '', values: [], techs: [], timing: [], senshuLine: '',
       jodanPct: '—', chudanPct: '—', jodanStyle: {}, chudanStyle: {},
-      ringNote: ev.mats
+      ringNote: (window.TakeOneFed && window.TakeOneFed.bracket && window.TakeOneFed.bracket(ev.id))
+        ? 'Bouts, mats and results are the event\u2019s own draw, live from the mats. Bout times are not recorded yet.'
+        : ev.mats
         ? 'Categories are spread across the ' + D.rings + ' tatami in order. Bout times and referee assignments are not recorded yet.'
         : 'Set the number of mats in Edit event to spread categories across tatami. Bout times are not recorded yet.'};
 
@@ -87,7 +89,7 @@
       return {c, cm, cd,
         status: c.athletes < 2 ? c.athletes + ' athlete · no bouts (walkover)' : !cm.length ? (fr !== 'all' ? 'no matches in filter' : 'no bouts') : fin && fin.done ? 'Champion: ' + (fin.w === 'a' ? fin.A.name : fin.B.name) : cd.length === cm.length ? 'complete' : cd.length ? 'in progress' : 'not started',
         leader: lead ? lead.a.name + ' · ' + lead.n + ' win' + (lead.n > 1 ? 's' : '') : '—'}; });
-    v.cats = catRows.filter(x => fc === 'all' || x.c.key === fc).map(x => ({label: x.c.label, ring: x.c.ring, status: x.status, athletes: x.c.athletes, matches: x.cd.length + ' / ' + x.cm.length,
+    v.cats = catRows.filter(x => fc === 'all' || x.c.key === fc).map(x => this.esGender({label: x.c.label, ring: x.c.ring, status: x.status, athletes: x.c.athletes, matches: x.cd.length + ' / ' + x.cm.length,
       prog: css('height:100%;border-radius:2px;background:#d8b25f;width:' + pct(x.cd.length, x.cm.length) + '%'),
       avg: '—', close: '—', closeStyle: css('font-weight:600;padding:2px 8px;border-radius:999px;color:#6b7689;background:#eef1f6'),
       bout: '—', pens: '—', leader: x.leader, open: () => openCat(x.c.key)}));
@@ -148,12 +150,24 @@
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (ev.name || 'event').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-kumite-results.csv'; a.click(); };
     return v;
   }
+  // A category's gender, spelled out and coloured as on every other tab
+  // (Male blue, Female pink); the rest of its name beside it.
+  esGender(c) {
+    const m = /^(Male|Female)\s+(.*)$/.exec(String(c.label || ''));
+    if (!m) return {...c, gender: '', genderStyle: {}, rest: c.label};
+    return {...c, gender: m[1], rest: m[2], genderStyle: this.cssToObj('font-weight:700;color:' + (m[1] === 'Female' ? '#db2777' : '#2563eb'))};
+  }
   esKey(r) { return (r.gender === 'F' ? 'F' : 'M') + '|' + (r.ageGroup || 'Séniors') + '|' + r.division; }
   // Walks each division's real bracket exactly as buildBracket() does for the
   // Draw tab — same slots, same bout ids ('round-index'), same bye rule — so a
   // bout here is the bout there.
   esReal(ev, regs) {
     const T = window.TakeOneFed || {};
+    // An event that runs on the platform has a REAL bracket: its divisions,
+    // bouts, mats and recorded results (FederationEventBracket). Read it as it
+    // is; the draw below is only for an event that has none to read.
+    const B = T.bracket ? T.bracket(ev.id) : null;
+    if (B) return {matches: B.matches || [], cats: B.cats || [], byes: B.byes || [], rings: Math.max(1, parseInt(B.mats) || 1), athletes: B.athletes || 0};
     const groups = {};
     regs.forEach(r => { const k = this.esKey(r); (groups[k] = groups[k] || []).push(r); });
     const rings = Math.max(1, Math.min(8, parseInt(ev.mats) || 1));

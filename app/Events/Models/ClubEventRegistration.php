@@ -94,6 +94,9 @@ class ClubEventRegistration extends Model
         // WHO chose that division — see the migration. 'auto' | 'manual'.
         'category_source',
         'weight',
+        // An age the desk was told, when nobody knows the date of birth — never
+        // turned into one (see the migration).
+        'declared_age',
         // Recorded at the same desk, by the same official, as the weight —
         // see App\Sports\Combat\BeltRank for why this outranks the profile.
         'belt_colour',

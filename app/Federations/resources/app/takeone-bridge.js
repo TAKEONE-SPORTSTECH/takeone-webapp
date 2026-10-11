@@ -281,6 +281,15 @@
   // Every change goes to the server, whose answer is that event's whole
   // schedule; a FederationPulse re-read brings other staff members' edits.
   var schedules = boot.schedules || {};
+
+  // The platform event's real bracket (FederationEventBracket): its divisions,
+  // bouts, mats and recorded results. Null for an event not on the platform.
+  var brackets = boot.brackets || {};
+  window.TakeOneFed.bracket = function (eventId) { return eventId && brackets[eventId] ? brackets[eventId] : null; };
+
+  // Each event's own officials (FederationEventOfficials), for its Officials tab.
+  var eventOfficials = boot.eventOfficials || {};
+  window.TakeOneFed.eventOfficials = function (eventId) { return eventId && eventOfficials[eventId] ? eventOfficials[eventId] : null; };
   window.TakeOneFed.schedule = function (evId) { return (evId && schedules[evId]) || []; };
   window.TakeOneFed.canEditSchedule = function () { return !!urls.schedule; };
   window.TakeOneFed.scheduleOp = function (op, body) {
@@ -446,7 +455,7 @@
   // screen changes. The prototype is never edited: its own state (nav, view,
   // selectedId, tab…) stays the truth, the address is its reflection.
   var SECTIONS = ['statistics', 'events', 'clubs', 'calendar', 'athletes', 'officials', 'financials', 'reports', 'settings'];
-  var TABS = {overview: 'overview', stats: 'statistics', regs: 'registrations', divs: 'divisions', draw: 'draw', schedule: 'schedule', fin: 'financials'};
+  var TABS = {overview: 'overview', stats: 'statistics', regs: 'registrations', offs: 'officials', divs: 'divisions', draw: 'draw', schedule: 'schedule', fin: 'financials'};
   var TAB_OF = {}; Object.keys(TABS).forEach(function (k) { TAB_OF[TABS[k]] = k; });
   // Per section, the small tab switch that has its own `?filter=`.
   var FILTERS = {clubs: 'clubTab', athletes: 'athTab'};
@@ -565,6 +574,14 @@
     if (j.draws && !same(j.draws, draws)) {
       Object.keys(draws).forEach(function (k) { delete draws[k]; });
       Object.keys(j.draws).forEach(function (k) { draws[k] = j.draws[k]; });
+    }
+    if (j.brackets && !same(j.brackets, brackets)) {
+      Object.keys(brackets).forEach(function (k) { delete brackets[k]; });
+      Object.keys(j.brackets).forEach(function (k) { brackets[k] = j.brackets[k]; });
+    }
+    if (j.eventOfficials && !same(j.eventOfficials, eventOfficials)) {
+      Object.keys(eventOfficials).forEach(function (k) { delete eventOfficials[k]; });
+      Object.keys(j.eventOfficials).forEach(function (k) { eventOfficials[k] = j.eventOfficials[k]; });
     }
     if (j.schedules && !same(j.schedules, schedules)) {
       Object.keys(schedules).forEach(function (k) { delete schedules[k]; });

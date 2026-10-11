@@ -263,6 +263,14 @@
     }
 
     // Paired or unpaired: this is a different PAGE now, not different numbers.
+    // The mat's corners were swapped or re-coloured (App\Scoreboard\Corners).
+    // Every surface draws its corners server-side, so it reloads; nothing about
+    // the match is lost — it lives on the server.
+    if (msg.action === 'corners') {
+      if (board()) window.location.reload();
+      return;
+    }
+
     if (msg.action === 'paired' || msg.action === 'unpaired') window.location.reload();
   }
 

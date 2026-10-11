@@ -285,10 +285,12 @@
     {{-- Which side AKA stands on is Karate's convention (App\\Sports\\Combat\\CornerSide):
          the console matches the wall, so the half an official reaches for is
          the half of the mat they are looking at. --}}
-    @php $rr = \App\Sports\Combat\CornerSide::redRight('karate'); @endphp
+    @php $rr = $redRight ?? \App\Sports\Combat\CornerSide::redRight('karate'); @endphp
+    {{-- Each corner's name and colours for this event (Mat\CornerLook). --}}
+    @php $L = $look ?? \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($event ?? null); @endphp
     @foreach ([
-        ['aka', 'AKA', '#b3121f', '#b3121f', $rr ? '3' : '1', '.05s', $rr, $rr ? '260deg' : '100deg'],
-        ['ao', 'AO', '#0d55b8', '#2f7bdb', $rr ? '1' : '3', '.3s', ! $rr, $rr ? '100deg' : '260deg'],
+        ['aka', $L['aka']['label'], $L['aka']['colour'], $L['aka']['plateInk'], $rr ? '3' : '1', '.05s', $rr, $rr ? '260deg' : '100deg'],
+        ['ao', $L['ao']['label'], $L['ao']['colour'], $L['ao']['plateInk'], $rr ? '1' : '3', '.3s', ! $rr, $rr ? '100deg' : '260deg'],
     ] as [$side, $label, $colour, $plateInk, $order, $delay, $mirror, $angle])
     @php $rev = $mirror ? 'flex-direction:row-reverse;' : ''; @endphp
     <div class="card" style="border-top:8px solid {{ $colour }};padding:24px 32px;display:flex;flex-direction:column;gap:18px;order:{{ $order }};animation:cardIn .6s {{ $delay }} cubic-bezier(.2,.8,.2,1) both;">
@@ -301,9 +303,9 @@
       </div>
 
       <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
-        <button class="sbtn bout" style="background:{{ $colour }};" data-cmd="point" data-side="{{ $side }}" data-n="1">Yuko +1</button>
-        <button class="sbtn bout" style="background:{{ $colour }};" data-cmd="point" data-side="{{ $side }}" data-n="2">Waza-ari +2</button>
-        <button class="sbtn bout" style="background:{{ $colour }};" data-cmd="point" data-side="{{ $side }}" data-n="3">Ippon +3</button>
+        <button class="sbtn bout" style="background:{{ $colour }};color:{{ $L[$side]['ink'] }};" data-cmd="point" data-side="{{ $side }}" data-n="1">Yuko +1</button>
+        <button class="sbtn bout" style="background:{{ $colour }};color:{{ $L[$side]['ink'] }};" data-cmd="point" data-side="{{ $side }}" data-n="2">Waza-ari +2</button>
+        <button class="sbtn bout" style="background:{{ $colour }};color:{{ $L[$side]['ink'] }};" data-cmd="point" data-side="{{ $side }}" data-n="3">Ippon +3</button>
         <button class="sbtn bout" style="background:var(--fill);color:var(--text);font-size:30px;" data-cmd="undo_point" data-side="{{ $side }}" data-n="1">Correct −1</button>
       </div>
 
@@ -396,16 +398,8 @@
   <div id="winner" hidden style="position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.45);overflow:hidden;"></div>
 
   {{-- ── Bouts: this event's running order for this mat ─────────────────── --}}
-  <div id="bouts" hidden class="scrim" style="z-index:20;">
-    <div class="modal" style="width:1100px;height:900px;gap:16px;">
-      <div class="mhead">
-        <div class="mtitle" style="font-size:26px;color:var(--green);">{{ __('scoreboard::karate_messages.ctl_bouts') }}</div>
-        <button data-close="bouts" class="mclose">✕</button>
-      </div>
-      <div id="boutsList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:160px;padding-right:14px;"></div>
-      <div style="font-size:20px;color:var(--faint);">{{ __('scoreboard::karate_messages.ctl_bouts_hint') }}</div>
-    </div>
-  </div>
+  {{-- The Bouts card — four tabs into the same draw, shared by every Karate console. --}}
+  @include('scoreboard::karate.scoreboard.partials.bouts-card')
 
 
   {{-- ── A package's own panel, if this event type contributes one ────── --}}
@@ -428,7 +422,7 @@
         {{-- The camera tab only exists when this door was given the camera
              addresses — a console with no camera surface shows no camera tab,
              the same way a type with no wall boards shows no screen panel. --}}
-        @foreach (array_merge([['rules', __('scoreboard::karate_messages.ctl_tab_rules')], ['timer', __('scoreboard::karate_messages.ctl_tab_timer')], ['sounds', __('scoreboard::karate_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
+        @foreach (array_merge([['rules', __('scoreboard::karate_messages.ctl_tab_rules')], ['corners', __('scoreboard::karate_messages.ctl_tab_corners')], ['timer', __('scoreboard::karate_messages.ctl_tab_timer')], ['sounds', __('scoreboard::karate_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
           <button class="stab" data-tab="{{ $tab }}" style="flex:1;font-size:20px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-radius:10px;padding:12px 0;cursor:pointer;">{{ $tabLabel }}</button>
         @endforeach
       </div>
@@ -461,6 +455,13 @@
           </span>
           <input id="gapVal" type="number" min="1" max="20" value="8" style="width:80px;font-family:'Anton',sans-serif;font-size:26px;text-align:center;background:var(--fill);color:var(--gold);border:none;border-radius:10px;padding:8px 6px;">
         </div>
+      </div>
+
+      {{-- Corners — which side red stands on at this mat, and what each corner
+           is called and coloured for the event. Both save as they are made,
+           so this tab has no Apply. --}}
+      <div class="spanel" data-panel="corners" hidden style="display:flex;flex-direction:column;gap:12px;">
+        @include('scoreboard::shared.corners-panel', ['look' => $L, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('karate')])
       </div>
 
       {{-- Timer --}}
@@ -650,11 +651,11 @@
       {{-- Selection cards, not a dropdown: this is chosen once, under pressure,
            on a touch screen at the mat. --}}
       <div style="display:flex;gap:14px;">
-        <button class="endSide" data-side="aka" style="order:{{ $rr ? 2 : 1 }};flex:1;font-size:26px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--fill);color:var(--aka-ink);border:2px solid transparent;border-radius:14px;padding:16px 0;cursor:pointer;">
-          AKA <span class="endSideName" style="display:block;font-size:17px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--second);"></span>
+        <button class="endSide" data-side="aka" style="order:{{ $rr ? 2 : 1 }};flex:1;font-size:26px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--fill);color:{{ $L['aka']['accent'] }};border:2px solid transparent;border-radius:14px;padding:16px 0;cursor:pointer;">
+          {{ $L['aka']['label'] }} <span class="endSideName" style="display:block;font-size:17px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--second);"></span>
         </button>
-        <button class="endSide" data-side="ao" style="order:{{ $rr ? 1 : 2 }};flex:1;font-size:26px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--fill);color:var(--ao-ink);border:2px solid transparent;border-radius:14px;padding:16px 0;cursor:pointer;">
-          AO <span class="endSideName" style="display:block;font-size:17px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--second);"></span>
+        <button class="endSide" data-side="ao" style="order:{{ $rr ? 1 : 2 }};flex:1;font-size:26px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--fill);color:{{ $L['ao']['accent'] }};border:2px solid transparent;border-radius:14px;padding:16px 0;cursor:pointer;">
+          {{ $L['ao']['label'] }} <span class="endSideName" style="display:block;font-size:17px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--second);"></span>
         </button>
       </div>
 
@@ -697,6 +698,8 @@
   var STATE = @json($state);
   var QUEUE = @json($queue);
   var MAT = @json($court);
+  // Each corner's name and colours (Mat\CornerLook), for what the script draws.
+  var LOOK = @json($L);
   // Whichever door opened this page — an organiser by event uuid, or a paired
   // scoring table by its own device token. Same console either way.
   var URL_CMD = @json($commandUrl ?? route('karate-scoreboard.command', $event->uuid));
@@ -919,7 +922,9 @@
   var popFlip = { aka: false, ao: false };
 
   function flagUrl(code) {
-    return /^[a-z]{2}$/.test(code || '') ? 'url("/images/flags/' + code + '.png")' : 'none';
+    // The vendored flag set is SVG (App\Support\Flag); asking for .png was a
+    // 404 for every flag on this console.
+    return /^[a-z]{2}$/.test(code || '') ? 'url("' + @json(asset(\App\Support\Flag::DIR)) + '/' + code + '.svg")' : 'none';
   }
 
   function paintSide(side) {
@@ -1073,7 +1078,7 @@
     ini.style.cssText = 'width:48px;height:64px;flex:0 0 auto;border-radius:8px;background:#1f2230;border:2px solid ' + colour +
       ';background-size:cover;background-position:center 15%;overflow:hidden;' +
       "display:flex;align-items:center;justify-content:center;font-family:'Anton',sans-serif;font-size:20px;color:" +
-      (colour === '#b3121f' ? '#ff6b78' : '#8ab4ff') + ';';
+      (colour === LOOK.aka.colour ? LOOK.aka.accent : LOOK.ao.accent) + ';';
 
     // Their own face first; then the drawn stand-in for their gender, which the
     // server only sends when the gender is actually on file; then their
@@ -1094,7 +1099,7 @@
     col.style.cssText = 'min-width:0;display:flex;flex-direction:column;gap:2px;' + (mirror ? 'align-items:flex-end;' : '');
 
     var nm = document.createElement('span');
-    nm.style.cssText = 'color:' + (colour === '#b3121f' ? '#ff6b78' : '#6ea8ff') +
+    nm.style.cssText = 'color:' + (colour === LOOK.aka.colour ? LOOK.aka.nameInk : LOOK.ao.nameInk) +
       ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;';
     nm.textContent = name || TBD;
 
@@ -1113,65 +1118,19 @@
     return wrap;
   }
 
-  function paintQueue() {
-    var host = el('boutsList');
-    host.textContent = '';
-
-    if (!QUEUE.length) {
-      var empty = document.createElement('div');
-      empty.style.cssText = 'font-size:21px;color:#5c6175;padding:16px 4px;';
-      empty.textContent = @json(__('scoreboard::karate_messages.ctl_no_queue'));
-      host.appendChild(empty);
-      return;
-    }
-
-    QUEUE.forEach(function (b) {
-      var row = document.createElement('button');
-      row.style.cssText = 'display:grid;grid-template-columns:100px 180px 1fr 48px 1fr;align-items:center;gap:14px;font-size:30px;' +
-        'background:' + (b.id === STATE.matchId ? '#1f2230' : '#0a0b10') + ';color:#e8eaf2;border:1px solid #1f2230;' +
-        'border-radius:12px;padding:20px 22px;cursor:pointer;text-align:left;';
-
-      var no = document.createElement('span');
-      no.style.cssText = "font-family:'Anton',sans-serif;color:#ffe135;";
-      no.textContent = '#' + (b.number == null ? '—' : b.number);
-
-      var stage = document.createElement('span');
-      stage.style.cssText = 'min-width:0;display:flex;flex-direction:column;gap:2px;';
-      var st = document.createElement('span');
-      st.style.cssText = 'color:#7d8296;text-transform:uppercase;font-size:22px;letter-spacing:.08em;line-height:1.1;';
-      st.textContent = b.stage || '';
-      var cat = document.createElement('span');
-      cat.style.cssText = 'font-size:16px;color:#5c6175;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-      cat.textContent = b.division || '';
-      stage.appendChild(st); stage.appendChild(cat);
-
-      var vs = document.createElement('span');
-      vs.style.cssText = 'color:#5c6175;text-align:center;';
-      vs.textContent = 'vs';
-
-      row.appendChild(no);
-      row.appendChild(stage);
-      // AKA is mirrored so the two portraits meet either side of the "vs".
-      row.appendChild(competitorCell(b.aka, b.akaClub, b.akaFlag, b.akaPhoto, b.akaFallback, '#b3121f', true));
-      row.appendChild(vs);
-      row.appendChild(competitorCell(b.ao, b.aoClub, b.aoFlag, b.aoPhoto, b.aoFallback, '#0d55b8', false));
-
-      if (!b.runnable) {
-        // Listed so the operator can see it coming, but not loadable: nobody
-        // can be introduced as "the winner of bout 3".
-        row.style.opacity = '.45';
-        row.style.cursor = 'not-allowed';
-        row.title = @json(__('scoreboard::karate_messages.ctl_waiting_feeder'));
-        host.appendChild(row);
-        return;
-      }
-
-      row.onclick = function () {
-        send('load', { match_id: b.id, seconds: boutSeconds() }).then(function () { el('bouts').hidden = true; });
-      };
-      host.appendChild(row);
-    });
+  // The Bouts card (partials/bouts-card) paints itself; the console hands it
+  // the few things only the console has, once, on first use.
+  var boutsCard = null;
+  function bouts() {
+    return boutsCard || (boutsCard = window.KarateBoutsCard({
+      el: el, send: send, boutSeconds: boutSeconds, competitorCell: competitorCell,
+      look: LOOK, mat: MAT, catalogueUrl: @json($catalogueUrl ?? null),
+      state: function () { return STATE; }, queue: function () { return QUEUE; },
+    }));
   }
+
+  function paintQueue() { bouts().paint(); }
+
 
   /* ── Settings ─────────────────────────────────────────────────────────── */
   var RULES = ['senshuRule', 'autoSenshu', 'winByPenalties', 'atoshiWarn', 'timeUpBuzzer', 'gapOn'];
@@ -1235,8 +1194,9 @@
     // apply something the reader is not looking at.
     var apply = el('btnApply');
     if (apply) {
-      apply.hidden = which === 'cameras';
-      if (apply.nextElementSibling) apply.nextElementSibling.hidden = which === 'cameras';
+      var own = which === 'cameras' || which === 'corners';   // both save as they go
+      apply.hidden = own;
+      if (apply.nextElementSibling) apply.nextElementSibling.hidden = own;
     }
   }
 
@@ -1247,11 +1207,11 @@
     if (!pSide) return;
 
     var c = STATE[pSide] || {};
-    var accent = pSide === 'aka' ? '#ff6b78' : '#8ab4ff';
+    var accent = (LOOK[pSide] || {}).accent || '#ff6b78';
 
     el('pBar').style.background = accent;
     el('pTitle').style.color = accent;
-    el('pTitle').textContent = pSide.toUpperCase() + ' — ' + @json(__('scoreboard::karate_messages.ctl_participant'));
+    el('pTitle').textContent = (LOOK[pSide] || {}).label + ' — ' + @json(__('scoreboard::karate_messages.ctl_participant'));
     el('pName').textContent = c.name || TBD;
     el('pClub').textContent = c.club || '—';
     el('pCountry').textContent = c.country || '—';
@@ -1297,19 +1257,47 @@
     box.style.transform = 'translate(' + crop.x + 'px,' + crop.y + 'px) rotate(' + crop.r + 'deg) scale(' + k + ')';
   }
 
+  /*
+   * Who the cropper is working for. Null is the corner on this mat (the
+   * original use); otherwise {title, colour, save(dataUrl), remove?()} handed in
+   * by the Bouts card's Players tab through window.__karateCropFor — the SAME
+   * cropper, so every face on this console is framed one way, 3:4 at 600x800.
+   */
+  var cropTarget = null;
+
+  function cropReset() {
+    releaseCrop();
+    crop = { img: null, url: null, nw: 0, nh: 0, z: 1, r: 0, x: 0, y: 0 };
+    el('cropZoom').value = 1;
+    el('cropTilt').value = 0;
+    el('cropFile').value = '';
+  }
+
+  window.__karateCropFor = function (t) {
+    cropTarget = t;
+    cropReset();
+    el('cropTitle').textContent = @json(__('scoreboard::karate_messages.ctl_crop_title')) + ' — ' + (t.title || '');
+    el('cropTitle').style.color = t.colour || '#ffe135';
+    el('cropRemove').hidden = typeof t.remove !== 'function';
+    paintCrop();
+    el('crop').hidden = false;
+  };
+
   function openCrop() {
     // Only the two competitors on this mat can be photographed, and only when
     // there is an entry behind the corner to attach it to.
     if (!PHOTO_BASE) { alertBar(@json(__('scoreboard::karate_messages.ctl_photo_unavailable'))); return; }
 
+    cropTarget = null;
+    el('cropRemove').hidden = false;
     releaseCrop();
     crop = { img: null, url: null, nw: 0, nh: 0, z: 1, r: 0, x: 0, y: 0 };
     el('cropZoom').value = 1;
     el('cropTilt').value = 0;
     el('cropFile').value = '';
     el('cropTitle').textContent = @json(__('scoreboard::karate_messages.ctl_crop_title')) + ' — ' +
-      pSide.toUpperCase() + ' · ' + ((STATE[pSide] || {}).name || TBD);
-    el('cropTitle').style.color = pSide === 'aka' ? '#ff6b78' : '#8ab4ff';
+      (LOOK[pSide] || {}).label + ' · ' + ((STATE[pSide] || {}).name || TBD);
+    el('cropTitle').style.color = (LOOK[pSide] || {}).accent || '#ff6b78';
     paintCrop();
     el('crop').hidden = false;
   }
@@ -1393,10 +1381,15 @@
     ctx.scale(k, k);
     ctx.drawImage(crop.img, -crop.nw / 2, -crop.nh / 2);
 
-    postPhoto({ image: cv.toDataURL('image/jpeg', 0.88) });
+    var shot = cv.toDataURL('image/jpeg', 0.88);
+    if (cropTarget) { cropTarget.save(shot); return; }
+    postPhoto({ image: shot });
   };
 
-  el('cropRemove').onclick = function () { postPhoto({ remove: true }); };
+  el('cropRemove').onclick = function () {
+    if (cropTarget) { if (typeof cropTarget.remove === 'function') cropTarget.remove(); return; }
+    postPhoto({ remove: true });
+  };
 
   function postPhoto(body) {
     if (!PHOTO_BASE || !pSide) return;
@@ -1487,7 +1480,9 @@
     host.hidden = false;
 
     var aka = STATE.akaLeads;
-    var colour = aka ? '#b3121f' : '#0d55b8';
+    var CL = LOOK[aka ? 'aka' : 'ao'] || {};
+    // The chip carries white type, so a light corner lends it a silver start.
+    var colour = CL.light ? '#8a8f9c' : CL.colour;
     var c = (aka ? STATE.aka : STATE.ao) || {};
     var name = c.name || '';
 
@@ -1533,6 +1528,7 @@
 
     var scene = WinnerCelebration.paint(host, {
       corner: aka ? 'red' : 'blue',
+      palette: (LOOK[aka ? 'aka' : 'ao'] || {}).celebrate,
       name: name,
       club: c.club || '',
       logo: c.logo || null,
@@ -1621,8 +1617,8 @@
     if (names[0]) names[0].textContent = (STATE.aka || {}).name || '';
     if (names[1]) names[1].textContent = (STATE.ao || {}).name || '';
 
-    var auto = STATE.akaLeads ? ((STATE.aka || {}).name || 'AKA')
-             : STATE.aoLeads ? ((STATE.ao || {}).name || 'AO')
+    var auto = STATE.akaLeads ? ((STATE.aka || {}).name || LOOK.aka.label)
+             : STATE.aoLeads ? ((STATE.ao || {}).name || LOOK.ao.label)
              : null;
     el('endAutoWho').textContent = auto
       ? @json(__('scoreboard::karate_messages.end_auto_who')).replace(':name', auto)
@@ -1667,7 +1663,11 @@
   el('btnStart').onclick = function () { send(STATE.running ? 'pause' : 'start'); };
   el('btnKo').onclick = endOpen;
   el('btnReset').onclick = function () { send('reset'); };
-  el('btnBouts').onclick = function () { el('bouts').hidden = false; paintQueue(); };
+  el('btnBouts').onclick = function () { bouts().open(); };
+
+@include('scoreboard::karate.scoreboard.partials.console-link')
+
+
   el('btnHardware').onclick = function () { el('hardware').hidden = false; };
 
   // One button, both directions. Which one it is comes from the STATE rather
@@ -1877,6 +1877,10 @@
   paint();
 })();
 </script>
+@if (! empty($screenLink))
+@include('scoreboard::karate.screen.partials.screen-link')
+@endif
+@include('scoreboard::shared.corners-script', ['look' => $L, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('karate')])
 @include('scoreboard::partials.start-day-prompt')
 </body>
 </html>

@@ -121,6 +121,10 @@ class AppServiceProvider extends ServiceProvider
         // A deleted member leaves every open federation dashboard at once,
         // whichever path deleted them (admin, self-service, a guardian).
         \App\Members\Models\User::deleted(fn ($user) => \App\Federations\Support\FederationPulse::forDeletedMember($user));
+        // ...and their national ID is released with the federation, so the same
+        // person can be entered again (2026-10-08: deleted athletes still held
+        // their IDs and could not be re-entered).
+        \App\Members\Models\User::deleted(fn ($user) => \App\Federations\Support\ReleaseDeletedAthlete::handle($user));
 
         // A club's directory card on a federation's Clubs page follows the club:
         // its contact (own or owner's, per the details-page switch), name, logo.
@@ -419,6 +423,13 @@ class AppServiceProvider extends ServiceProvider
         // 20 per minute per user — generous enough for normal use, blocks DoS.
         RateLimiter::for('uploads', function (Request $request) {
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // An organiser adding an event's photographs: one picture per request,
+        // so a hundred from the day go up in about a minute — its own bucket so
+        // it never eats the 20/min every other upload shares.
+        RateLimiter::for('event-photos', function (Request $request) {
+            return Limit::perMinute(120)->by('event-photos|'.($request->user()?->id ?: $request->ip()));
         });
 
         // Walk-in registration (admin action — creates users + subscriptions in bulk):

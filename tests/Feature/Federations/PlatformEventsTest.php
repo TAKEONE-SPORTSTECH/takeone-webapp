@@ -122,6 +122,84 @@ class PlatformEventsTest extends TestCase
         $this->assertFalse(ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $a['user']->id)->where('role', 'participant')->exists());
     }
 
+    /**
+     * Removed in the CONSOLE (not on the dashboard): the federation's row and
+     * every figure follow, and re-entering brings both back — the dashboard
+     * used to keep counting an athlete the event no longer had (2026-10-08).
+     */
+    public function test_a_console_removal_moves_the_federations_record_and_numbers(): void
+    {
+        $fe = $this->fedEvent();
+        $a = $this->clubEntry($fe);
+        $ev = app(FederationPlatformEvent::class)->sync($fe);
+        $figures = fn () => app(\App\Federations\Services\FederationEventFigures::class)->of($fe->fresh(), (array) $fe->details);
+
+        $this->assertSame(1, $figures()['reg']);
+        $this->assertSame(1, $figures()['divisions']);
+        $this->assertNotContains('18 of 22', array_column($figures()['readiness'], 'note'));
+
+        $reg = ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $a['user']->id)->firstOrFail();
+        $this->assertTrue(app(\App\Events\Support\EntryService::class)->remove($ev, $this->owner->fresh(), $reg, notify: false)['ok']);
+
+        $this->assertSame('Withdrawn', $a['row']->fresh()->status);
+        $this->assertSame(0, $figures()['reg']);
+        $this->assertSame(0, $figures()['divisions']);
+
+        // Back in: Active again, so the next sync does not take them back out.
+        $reg->replicate()->save();
+        $this->assertSame('Active', $a['row']->fresh()->status);
+        app(FederationPlatformEntries::class)->sync($fe->fresh());
+        $this->assertSame(1, $figures()['reg']);
+    }
+
+    /** The Statistics tab reads the event's real bouts and results, not a draw of its own. */
+    public function test_the_statistics_bracket_is_the_events_own_draw_and_results(): void
+    {
+        $fe = $this->fedEvent();
+        $a = $this->clubEntry($fe);
+        $b = $this->clubEntry($fe);
+        $ev = app(FederationPlatformEvent::class)->sync($fe);
+        app(FederationPlatformEntries::class)->sync($fe->fresh());
+
+        $ra = ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $a['user']->id)->firstOrFail();
+        $rb = ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $b['user']->id)->firstOrFail();
+        $this->assertSame($ra->category_id, $rb->category_id);
+
+        \App\Events\Models\EventMatch::forceCreate(['event_id' => $ev->id, 'category_id' => $ra->category_id, 'round' => 'Final', 'slot' => 0,
+            'a_name' => 'A', 'b_name' => 'B', 'a_competitor_id' => $ra->id, 'b_competitor_id' => $rb->id, 'court' => 'Mat 2',
+            'winner' => 'b', 'a_score' => '1', 'b_score' => '3', 'win_reason' => 'other', 'status' => 'done']);
+
+        $bracket = app(\App\Federations\Services\FederationEventBracket::class)->of($fe->fresh());
+        $this->assertCount(1, $bracket['cats']);
+        $this->assertSame(2, $bracket['cats'][0]['athletes']);
+        $this->assertSame(2, $bracket['mats']);
+        $m = $bracket['matches'][0];
+        $this->assertSame(['Final', 2, 'b', 'Points', true], [$m['round'], $m['ring'], $m['w'], $m['by'], $m['done']]);
+        $this->assertSame($b['user']->full_name, $m['B']['name']);
+    }
+
+    /** Deleting an athlete's account releases their national ID, so the same person can be entered again (2026-10-08). */
+    public function test_a_deleted_athletes_national_id_is_released(): void
+    {
+        $user = $this->createUser();
+        $hash = FederationAthlete::hashNationalId('880112345');
+        $a = FederationAthlete::forceCreate(['user_id' => $user->id, 'takeone_id' => 'BHR-TK'.random_int(100000, 999999),
+            'national_id' => '880112345', 'national_id_hash' => $hash]);
+
+        $user->delete();
+
+        $a->refresh();
+        $this->assertNull($a->national_id_hash);
+        $this->assertNull($a->national_id);
+        $this->assertNotNull($a->anonymised_at);
+        $this->assertFalse(FederationAthlete::where('national_id_hash', $hash)->exists());
+
+        // The same ID registers again, as a new athlete.
+        FederationAthlete::forceCreate(['user_id' => $this->createUser()->id, 'takeone_id' => 'BHR-TK'.random_int(100000, 999999),
+            'national_id' => '880112345', 'national_id_hash' => $hash]);
+        $this->assertTrue(FederationAthlete::where('national_id_hash', $hash)->exists());
+    }
+
     public function test_club_officials_arrive_without_powers_and_are_never_duplicated(): void
     {
         $fe = $this->fedEvent();

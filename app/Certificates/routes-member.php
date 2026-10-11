@@ -27,11 +27,19 @@ Route::middleware(EnsureCertificatesEnabled::class)->group(function () {
     Route::post('/certificates/{cert}/revoke', [ManageController::class, 'revoke'])->where('cert', $uuid)->name('certificates.revoke')->middleware('throttle:member-write');
     Route::delete('/certificates/{cert}', [ManageController::class, 'destroy'])->where('cert', $uuid)->name('certificates.destroy')->middleware('throttle:member-write');
 
+    // Officials' badges (App\Events\Support\EventBadges): the list, and one badge by its random token.
+    Route::get('/badges/for/{key}', [\App\Certificates\Controllers\BadgeController::class, 'index'])->where('key', $uuid)->name('badges.index')->middleware('throttle:60,1');
+    Route::get('/badges/{token}/image', [\App\Certificates\Controllers\BadgeController::class, 'image'])->where('token', '[A-Za-z0-9]{32}')->name('badges.image')->middleware('throttle:60,1');
+    Route::get('/badges/{token}/pdf', [\App\Certificates\Controllers\BadgeController::class, 'pdf'])->where('token', '[A-Za-z0-9]{32}')->name('badges.pdf')->middleware('throttle:60,1');
+
     Route::prefix('/certificates/for/{context}/{key}')->where(['context' => $alias, 'key' => $uuid])->group(function () {
         Route::get('/', [ManageController::class, 'show'])->name('certificates.manage')->middleware('throttle:60,1');
         Route::put('/settings', [ManageController::class, 'settings'])->name('certificates.settings')->middleware('throttle:member-write');
         Route::post('/generate', [ManageController::class, 'generate'])->name('certificates.generate')->middleware('throttle:10,1');
         Route::post('/approve', [ManageController::class, 'approve'])->name('certificates.approve')->middleware('throttle:10,1');
+        Route::delete('/drafts', [ManageController::class, 'destroyDrafts'])->name('certificates.drafts.destroy')->middleware('throttle:10,1');
+        Route::match(['get', 'post'], '/bundle/{type}', [ManageController::class, 'bundle'])->where('type', '[a-z_]{2,32}')->name('certificates.bundle')->middleware('throttle:30,1');
+        Route::get('/bundle/{type}/download', [ManageController::class, 'bundleDownload'])->where('type', '[a-z_]{2,32}')->name('certificates.bundle.download')->middleware('throttle:20,1');
     });
 
     Route::prefix('/certificates/design/{context}/{key}')->where(['context' => $alias, 'key' => $uuid])->group(function () {

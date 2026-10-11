@@ -46,8 +46,8 @@ class MatchEventLog
      *
      * @param  string  $sport  which package is writing — its vocabulary applies
      * @param  int|null  $matchId  null when the command hit an empty mat
-     * @param  int  $scoreA  running score of side 'a' (aka) after this command
-     * @param  int  $scoreB  running score of side 'b' (ao) after this command
+     * @param  int|float  $scoreA  running score of side 'a' (aka) after this command — a half only where a style scores halves
+     * @param  int|float  $scoreB  running score of side 'b' (ao) after this command
      */
     public static function record(
         ClubEvent $event,
@@ -56,8 +56,8 @@ class MatchEventLog
         string $command,
         array $payload,
         ?int $matchId,
-        int $scoreA,
-        int $scoreB,
+        int|float $scoreA,
+        int|float $scoreB,
         // Where in the BOUT this happened. Optional so every existing caller is
         // unchanged, and null for a command that arrives with no bout on the mat.
         ?float $clockRemaining = null,

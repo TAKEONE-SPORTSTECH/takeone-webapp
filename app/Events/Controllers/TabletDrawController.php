@@ -58,6 +58,8 @@ class TabletDrawController extends Controller
             'editorName' => $editor?->full_name,
             'secondsLeft' => $tablet->secondsLeft(),
             'hasPin' => EventDrawPin::where('event_id', $tablet->event->id)->exists(),
+            // No PIN (events.tablet_draw_pin off): no pad, no countdown, no lock.
+            'pinRequired' => TabletDraw::pinRequired(),
         ]);
     }
 
@@ -163,6 +165,90 @@ class TabletDrawController extends Controller
     {
         return $this->asEditor($token, fn ($tablet) => app()->call(
             [app(PersonalEventController::class), 'recordOutcome'], ['request' => $request, 'event' => $tablet->event, 'unit' => $unit]));
+    }
+
+    /**
+     * Where one bout stands in the running order — its mat, its number, and
+     * how many bouts each mat of that day holds — for the tablet's "edit bout
+     * number" sheet. Organiser only, like the order board it reads.
+     */
+    public function numberPlace(string $token, int $match): Response
+    {
+        return $this->asEditor($token, function ($tablet) use ($match) {
+            abort_unless($this->manages($tablet, Auth::user()), 403);
+
+            $bout = \App\Events\Models\EventMatch::where('event_id', $tablet->event->id)->find($match);
+            abort_unless($bout !== null, 404);
+
+            $plan = app(\App\Events\Support\Tournament\OrderBoard::class)->plan($tablet->event, $bout->day ?: null);
+
+            return response()->json([
+                'success' => true,
+                'match' => [
+                    'id' => $bout->id, 'no' => $bout->match_no, 'court' => $bout->court,
+                    'day' => $plan['day'], 'decided' => $bout->winner !== null,
+                    'pinned' => (bool) $bout->number_pinned,
+                ],
+                'mats' => array_map(fn ($m) => ['court' => $m['court'], 'count' => count($m['bouts'])], $plan['mats']),
+            ]);
+        });
+    }
+
+    /**
+     * Give a bout a new number (and, if asked, a new mat). A bout's number IS
+     * its position on its mat, so this is the order board's own move — the
+     * same renumbering, the same feeder rule, the same refresh push.
+     */
+    public function renumber(Request $request, string $token): Response
+    {
+        return $this->asEditor($token, function ($tablet) use ($request) {
+            abort_unless($this->manages($tablet, Auth::user()), 403);
+
+            $data = $request->validate([
+                'match' => ['required', 'integer'],
+                'court' => ['required', 'string', 'max:40'],
+                'no' => ['required', 'integer', 'min:1', 'max:999'],
+                'day' => ['nullable', 'integer', 'min:1', 'max:60'],
+            ]);
+
+            abort_unless(\App\Events\Models\EventMatch::where('event_id', $tablet->event->id)
+                ->whereKey((int) $data['match'])->exists(), 404);
+
+            // Only a mat the day actually has — never a label typed into the request.
+            $mats = array_column(app(\App\Events\Support\Tournament\OrderBoard::class)
+                ->plan($tablet->event, $data['day'] ?? null)['mats'], 'court');
+            abort_unless(in_array($data['court'], $mats, true), 422);
+
+            $request->replace([
+                'match' => (int) $data['match'],
+                'court' => $data['court'],
+                'position' => (int) $data['no'] - 1,
+                'day' => $data['day'] ?? null,
+            ]);
+
+            return app()->call([app(PersonalEventController::class), 'moveInRunningOrder'],
+                ['request' => $request, 'event' => $tablet->event]);
+        });
+    }
+
+    /** Hand a bout's number back to automatic numbering. Organiser only. */
+    public function releaseNumber(string $token, int $match): Response
+    {
+        return $this->asEditor($token, function ($tablet) use ($match) {
+            abort_unless($this->manages($tablet, Auth::user()), 403);
+
+            $result = app(\App\Events\Support\Tournament\OrderBoard::class)->release($tablet->event, $match);
+
+            if (! ($result['ok'] ?? false)) {
+                return $this->no($result['message'] ?? __('events::events.action_failed'));
+            }
+
+            rescue(fn () => app(\App\Events\EventTypeRegistry::class)->for($tablet->event)
+                ->onEntrantsChanged($tablet->event, null), null, false);
+            \App\Events\Support\HallWalls::refresh($tablet->event);
+
+            return response()->json(['success' => true, 'message' => $result['message']]);
+        });
     }
 
     /**

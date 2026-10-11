@@ -61,9 +61,14 @@ final class EventDoors
             'href' => $section('gallery'),
             'icon' => 'bi-camera-reels-fill',
             'label' => __('events::events.bout_gallery_title'),
-            'sub' => ($e['gallery']['count'] ?? 0) > 0
-                ? trans_choice('events::events.bout_gallery_count', $e['gallery']['count'], ['count' => $e['gallery']['count']])
-                : __('events::events.bout_gallery_none'),
+            'sub' => implode(' · ', array_filter([
+                ($e['gallery']['photo_count'] ?? 0) > 0
+                    ? trans_choice('events::events.gallery_photos_count', $e['gallery']['photo_count'], ['count' => $e['gallery']['photo_count']])
+                    : null,
+                ($e['gallery']['count'] ?? 0) > 0
+                    ? trans_choice('events::events.bout_gallery_count', $e['gallery']['count'], ['count' => $e['gallery']['count']])
+                    : null,
+            ])) ?: __('events::events.bout_gallery_none'),
         ];
 
         $doors['participants'] = [

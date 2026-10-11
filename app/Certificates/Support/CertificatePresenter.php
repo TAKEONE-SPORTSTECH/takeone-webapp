@@ -61,6 +61,8 @@ class CertificatePresenter
             'pdf_url' => route('me.certificates.pdf', $c->uuid),
             'download_url' => route('me.certificates.pdf', ['cert' => $c->uuid, 'download' => 1]),
             'image_url' => route('me.certificates.image', $c->uuid),
+            // Which way up the picture is, so a list can give it the right shape (only when the design is loaded).
+            'portrait' => $c->relationLoaded('template') && $c->template?->pageOrientation() === 'portrait',
         ];
     }
 }

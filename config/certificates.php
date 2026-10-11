@@ -48,11 +48,20 @@ return [
      */
     'providers' => [
         'club_event' => App\Events\Support\EventCertificates::class,
+        // Officials' badges: the same engine, design room and print-shop PDF, format `badge`.
+        'event_badges' => App\Events\Support\EventBadges::class,
     ],
 
     'types' => [
         'participation' => 'cert::messages.types.participation',
         'podium' => 'cert::messages.types.podium',
+        'official_badge' => 'cert::messages.types.official_badge',
+    ],
+
+    // The page format each type is drawn in (Ahl\Certificates\Support\Formats). A type
+    // not named here is a certificate: A4, as every certificate always was.
+    'formats' => [
+        'official_badge' => 'badge',
     ],
     'grades' => [],
     'sources' => [
@@ -67,6 +76,9 @@ return [
 
     'require_approval' => true,
     'notify_on_approve' => true,
+    // An approved certificate's PDF is drawn the first time it is opened, and stored
+    // then — never up front for a whole event, most of which nobody opens.
+    'render_on_approve' => false,
     'link_minutes' => 30,
 
     'number' => ['prefix' => 'TK', 'digits' => 5],

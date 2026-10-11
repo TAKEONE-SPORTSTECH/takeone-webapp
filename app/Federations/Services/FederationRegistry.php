@@ -136,6 +136,11 @@ class FederationRegistry
     {
         if ($c instanceof FederationClub) {
             $t = $c->club;
+            // The club itself was deleted (soft-deleted tenant) while its
+            // federation rows remain: a name-only row, never a 500.
+            if (! $t) {
+                return ['id' => $this->clubKey($c), 'name' => 'Deleted club', 'status' => 'Approved', 'coach' => '', 'email' => '', 'phone' => '', 'address' => '', 'logo' => null, 'logoShape' => 'circle', 'staff' => []];
+            }
             // Whichever contact the club chose on its details page — its own, or its owner's.
             $phone = $t->contactPhone() ?? [];
             $row = [
@@ -596,17 +601,61 @@ class FederationRegistry
         $club = $entry->club ?? $entry->application;
         $c = $club ? $this->club($club) : ['name' => '—', 'coach' => '', 'phone' => '', 'email' => '', 'address' => '', 'logo' => null, 'logoShape' => 'circle'];
         $e = $this->entry($entry, $federationIds);
+        $placed = $this->placements($entry);
 
         return [
             'eventId' => $e['eventId'], 'entryId' => $e['id'], 'clubId' => $e['clubId'], 'ref' => $e['ref'],
             'club' => $c['name'], 'coach' => $c['coach'], 'phone' => $c['phone'], 'email' => $c['email'], 'address' => $c['address'],
             'logo' => $c['logo'], 'logoShape' => $c['logoShape'], 'ts' => $e['updatedAt'],
-            'athletes' => collect($e['athletes'])->where('status', '!=', 'Withdrawn')->map(fn ($a) => [
-                'name' => $a['name'], 'gender' => $a['gender'], 'dob' => $a['dob'], 'weight' => $a['weight'], 'nat' => $a['nat'],
-                'natId' => $a['natId'], 'photo' => $a['photo'], 'athleteId' => $a['athleteId'], 'takeoneId' => $a['athleteId'],
-                'types' => $a['types'], 'approval' => $a['approval'],
-            ])->values()->all(),
+            'athletes' => collect($e['athletes'])->where('status', '!=', 'Withdrawn')
+                // A deleted account is not an entrant any more.
+                ->filter(fn ($a) => array_key_exists((string) $a['athleteId'], $placed['live']))
+                ->map(fn ($a) => [
+                    'name' => $a['name'], 'gender' => $a['gender'], 'dob' => $a['dob'], 'weight' => $a['weight'], 'nat' => $a['nat'],
+                    'natId' => $a['natId'], 'photo' => $a['photo'], 'athleteId' => $a['athleteId'], 'takeoneId' => $a['athleteId'],
+                    'types' => $a['types'], 'approval' => $a['approval'],
+                ] + ($placed['division'][(string) $a['athleteId']] ?? []))->values()->all(),
         ];
+    }
+
+    /**
+     * Who on this entry still has an account, and — when the federation's
+     * event runs on the platform — the division the EVENT placed each one in.
+     * The page used to guess the division from today's age and the generic
+     * weight table; the event's own placement is the one the draw uses.
+     *
+     * @return array{live: array<string, true>, division: array<string, array{ageGroup: string, division: string}>}
+     */
+    private function placements(FederationEntry $entry): array
+    {
+        $eventId = $entry->event?->club_event_id;
+
+        $rows = \Illuminate\Support\Facades\DB::table('federation_entry_athletes as ea')
+            ->join('federation_athletes as fa', 'fa.id', '=', 'ea.federation_athlete_id')
+            ->join('users as u', 'u.id', '=', 'fa.user_id')->whereNull('u.deleted_at')
+            ->when($eventId, fn ($q) => $q
+                ->leftJoin('club_event_registrations as r', fn ($j) => $j->on('r.user_id', '=', 'u.id')
+                    ->where('r.event_id', $eventId)->where('r.role', 'participant'))
+                ->leftJoin('event_categories as c', 'c.id', '=', 'r.category_id')
+                ->addSelect('c.name as cat', 'c.weight_class', 'c.min_age', 'c.sort_order'))
+            ->where('ea.federation_entry_id', $entry->id)
+            ->addSelect('fa.takeone_id')
+            ->get();
+
+        $live = [];
+        $division = [];
+        foreach ($rows->sortBy(fn ($r) => $r->sort_order ?? PHP_INT_MAX) as $r) {
+            $tk = (string) $r->takeone_id;
+            $live[$tk] = true;
+            if (isset($division[$tk]) || empty($r->cat)) {
+                continue;
+            }
+            // The page's own vocabulary, so its division keys stay what they were —
+            // one mapping, shared with the Statistics tab's bracket.
+            $division[$tk] = FederationEventBracket::division((string) $r->cat, $r->weight_class, $r->min_age !== null ? (int) $r->min_age : null);
+        }
+
+        return ['live' => $live, 'division' => $division];
     }
 
     // ------------------------------------------------------------- transfers

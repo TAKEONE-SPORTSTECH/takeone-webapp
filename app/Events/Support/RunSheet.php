@@ -46,6 +46,9 @@ class RunSheet
      *
      * @return array<int, array<string, mixed>>
      */
+    /** Bouts per division and part, for the slot being worked out (BoutPart::counts). */
+    private array $partCounts = [];
+
     public function rows(ClubEvent $event, int $day = 1, ?Carbon $now = null): array
     {
         $slots = EventRunSlot::query()
@@ -70,6 +73,7 @@ class RunSheet
         }
 
         $bouts = $this->boutCounts($event);
+        $this->partCounts = BoutPart::counts($event->id);
         $entrants = $this->entrantCounts($event);
         $boutMinutes = (int) ($event->minutes_per_match ?: self::DEFAULT_BOUT_MINUTES);
 
@@ -108,7 +112,17 @@ class RunSheet
                 'duration' => $duration,
                 'ends_at' => $startsAt + $duration,
                 'entrants' => $slot->category_id ? ($entrants[$slot->category_id] ?? 0) : null,
-                'bouts' => $slot->category_id ? ($bouts[$slot->category_id] ?? 0) : null,
+                'bouts' => $slot->category_id
+                    ? ($slot->parts
+                        ? array_sum(array_map(fn ($p) => $this->partCounts[$slot->category_id][$p] ?? 0, $slot->parts))
+                        : ($bouts[$slot->category_id] ?? 0))
+                    : null,
+                // The event's own break (club_events.break_start), on the day.
+                'is_event_break' => $slot->kind === EventRunSlot::KIND_BREAK && $slot->pinned_at !== null
+                    && $event->break_start && $slot->pinned_at === ((int) substr((string) $event->break_start, 0, 2)) * 60 + (int) substr((string) $event->break_start, 3, 2),
+                // Which parts of the division run here; null is all of it.
+                'parts' => $slot->isDivision() ? $slot->parts : null,
+                'parts_label' => $slot->isDivision() ? BoutPart::labels($slot->parts) : null,
                 // A division whose category has been deleted underneath it.
                 // Shown, never hidden: a silent gap in a running order is how
                 // somebody misses their own bout.
@@ -138,16 +152,21 @@ class RunSheet
      */
     public function unscheduled(ClubEvent $event): Collection
     {
-        $taken = EventRunSlot::where('event_id', $event->id)
-            ->whereNotNull('category_id')
-            ->pluck('category_id')
-            ->all();
+        // A division leaves the bench only once EVERY part of it is on the day
+        // (BoutPart); a heading holds nobody and was never one to place.
+        $order = app(RunOrder::class);
 
         return EventCategory::query()
             ->where('event_id', $event->id)
-            ->when($taken, fn ($q) => $q->whereNotIn('id', $taken))
-            ->orderBy('id')
-            ->get(['id', 'name']);
+            ->where(fn ($q) => $q->whereNull('is_heading')->orWhere('is_heading', false))
+            ->orderBy('sort_order')->orderBy('id')
+            ->get(['id', 'event_id', 'name'])
+            ->each(function ($c) use ($order) {
+                $c->remaining_parts = $order->remainingParts($c);
+                $c->present_parts = BoutPart::present($c);
+            })
+            ->filter(fn ($c) => $c->remaining_parts !== [])
+            ->values();
     }
 
     /** How many days this event's running order covers. */
@@ -235,6 +254,20 @@ class RunSheet
         if (! $slot->isDivision()) {
             return (int) ($slot->duration_minutes
                 ?: (EventRunSlot::DEFAULT_DURATIONS[$slot->kind] ?? 15));
+        }
+
+        // Part of a division: the bouts in those parts (BoutPart), byes aside.
+        if ($slot->parts) {
+            $byPart = $this->partCounts[$slot->category_id] ?? [];
+            $count = array_sum(array_map(fn ($p) => $byPart[$p] ?? 0, $slot->parts));
+            $bouts = array_intersect($slot->parts, BoutPart::ALL) !== [] ? max(1, $count) * $boutMinutes + self::TURNAROUND : 0;
+
+            // The division's awarding takes a ceremony's time.
+            $awarding = in_array(BoutPart::AWARDING, $slot->parts, true)
+                ? (int) (EventRunSlot::DEFAULT_DURATIONS[EventRunSlot::KIND_CEREMONY] ?? 15)
+                : 0;
+
+            return max(1, $bouts + $awarding);
         }
 
         // The draw is the better answer when it exists; before it is built,

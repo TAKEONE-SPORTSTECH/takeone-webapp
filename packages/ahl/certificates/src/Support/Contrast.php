@@ -22,7 +22,7 @@ class Contrast
     private ?GdImage $image = null;
 
     /** @param string|null $background raw image bytes (null = plain paper) */
-    public function __construct(?string $background, private string $paper = '#fbf8f2')
+    public function __construct(?string $background, private string $paper = '#fbf8f2', private string $orientation = 'landscape')
     {
         if ($background !== null) {
             $im = @imagecreatefromstring($background);
@@ -45,8 +45,9 @@ class Contrast
         }
         $iw = imagesx($this->image);
         $ih = imagesy($this->image);
-        $sx = $iw / Layout::PAGE_W;
-        $sy = $ih / Layout::PAGE_H;
+        [$pageW, $pageH] = Layout::page($this->orientation);
+        $sx = $iw / $pageW;
+        $sy = $ih / $pageH;
         $px = (int) max(0, min($iw - 1, $x * $sx));
         $py = (int) max(0, min($ih - 1, $y * $sy));
         $pw = (int) max(1, min($iw - $px, $w * $sx));

@@ -34,12 +34,15 @@ class EventMatch extends Model
          * the newcomer is recorded as beaten by a bout nobody fought.
          */
         'won_by_bye',
+        // A number the organiser set by hand — the scheduler numbers around it.
+        'number_pinned',
     ];
 
     protected $casts = [
         'a_provisional' => 'boolean',
         'b_provisional' => 'boolean',
         'won_by_bye' => 'boolean',
+        'number_pinned' => 'boolean',
         'day' => 'integer',
         'detail' => 'array',
         'group_no' => 'integer',

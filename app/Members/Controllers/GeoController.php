@@ -69,74 +69,14 @@ class GeoController extends Controller
             'lng' => ['required', 'numeric', 'between:-180,180'],
         ]);
 
-        // ~11 km. A country is a very coarse question; this is the resolution
-        // it deserves, and it makes the cache actually hit.
-        $lat = round((float) $data['lat'], 1);
-        $lng = round((float) $data['lng'], 1);
-
-        $iso = Cache::remember("geo:country:{$lat},{$lng}", self::TTL, function () use ($lat, $lng) {
-            return $this->lookup($lat, $lng) ?? '';
-        });
+        // The lookup, its rounding and its cache live in App\Support\GeoCountry,
+        // shared with the scoring console's door.
+        $iso = \App\Support\GeoCountry::forCoordinates((float) $data['lat'], (float) $data['lng']);
 
         return response()->json([
             'success' => true,
-            'country' => $iso !== '' ? $iso : null,
+            'country' => $iso,
         ]);
     }
 
-    /**
-     * Ask the geocoder, and believe it only if the answer is a country this app
-     * already knows how to display.
-     */
-    private function lookup(float $lat, float $lng): ?string
-    {
-        try {
-            $res = Http::timeout(4)
-                ->withHeaders(['User-Agent' => config('app.name').' ('.config('app.url').')'])
-                ->get(config('services.geocoder.reverse', 'https://nominatim.openstreetmap.org/reverse'), [
-                    'format' => 'json',
-                    'lat' => $lat,
-                    'lon' => $lng,
-                    // Country level is all that is wanted; asking for less
-                    // detail means a smaller answer and a cheaper request.
-                    'zoom' => 3,
-                    'addressdetails' => 1,
-                ]);
-
-            if (! $res->ok()) {
-                return null;
-            }
-
-            $code = strtoupper((string) ($res->json('address.country_code') ?? ''));
-        } catch (\Throwable) {
-            // The geocoder being down is not this request's problem.
-            return null;
-        }
-
-        return $this->known($code) ? $code : null;
-    }
-
-    /**
-     * The app's own country list — the same file every country picker reads, so
-     * a seeded value is always one the picker can show back.
-     */
-    private function known(string $iso): bool
-    {
-        if (! preg_match('/^[A-Z]{2}$/', $iso)) {
-            return false;
-        }
-
-        $codes = Cache::remember('geo:country-codes', 3600, function () {
-            $path = public_path('data/countries.json');
-
-            if (! is_file($path)) {
-                return [];
-            }
-
-            return collect(json_decode((string) file_get_contents($path), true) ?: [])
-                ->pluck('iso2')->filter()->map('strtoupper')->all();
-        });
-
-        return in_array($iso, $codes, true);
-    }
 }

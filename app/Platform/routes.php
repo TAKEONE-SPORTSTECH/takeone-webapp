@@ -53,6 +53,12 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])
 
         Route::delete('/clubs/{club}', [PlatformController::class, 'destroyClub'])->name('platform.clubs.destroy')->middleware('throttle:admin-write');
 
+        // Remove a club WITH the athletes that are only its own, their entries,
+        // photos and federation records — reviewed first (GET), carried out
+        // only against the reviewed fingerprint (POST). Behind CLUB_REMOVAL_TOOL.
+        Route::get('/clubs/{club}/removal', [\App\Platform\Controllers\ClubRemovalController::class, 'show'])->name('platform.clubs.removal')->middleware('throttle:30,1');
+        Route::post('/clubs/{club}/removal', [\App\Platform\Controllers\ClubRemovalController::class, 'store'])->name('platform.clubs.removal.store')->middleware('throttle:admin-write');
+
         Route::post('/clubs/{club}/upload-logo', [PlatformController::class, 'uploadClubLogo'])->name('platform.clubs.upload-logo')->middleware('throttle:uploads');
 
         Route::post('/clubs/{club}/upload-cover', [PlatformController::class, 'uploadClubCover'])->name('platform.clubs.upload-cover')->middleware('throttle:uploads');

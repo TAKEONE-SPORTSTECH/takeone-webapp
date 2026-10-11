@@ -763,6 +763,67 @@ class McpServerTest extends TestCase
         $this->assertArrayNotHasKey('path', $result['documents'][0]);
     }
 
+    public function test_list_event_photos_returns_the_gallery_to_a_reader(): void
+    {
+        config(['events.photos' => true]);
+        [$event, $organiser] = $this->drawnChampionship();
+
+        \App\Events\Models\EventPhoto::create([
+            'event_id' => $event->id, 'path' => 'events/'.$event->uuid.'/photos/a.jpg',
+            'thumb_path' => 'events/'.$event->uuid.'/photos/a-thumb.jpg', 'width' => 2400, 'height' => 1600,
+        ]);
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventPhotosTool::class, ['event' => $event->uuid]);
+
+        $this->assertSame(1, $result['total']);
+        $this->assertSame(2400, $result['photos'][0]['width']);
+        $this->assertArrayNotHasKey('path', $result['photos'][0]);
+        $this->assertArrayNotHasKey('thumb_path', $result['photos'][0]);
+    }
+
+    public function test_list_event_photos_hides_an_event_the_user_cannot_see(): void
+    {
+        config(['events.photos' => true]);
+        [$event] = $this->drawnChampionship();
+
+        $this->actingAs($this->createUser());
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventPhotosTool::class, ['event' => $event->uuid]);
+
+        $this->assertStringContainsString('Event not found', $result['error']);
+    }
+
+    public function test_list_event_exhibitions_returns_the_side_bouts_to_a_scorer(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+
+        \App\Events\Models\EventExhibitionBout::create([
+            'event_id' => $event->id, 'number' => 1, 'court' => 'Mat 1',
+            'a_name' => 'Red', 'b_name' => 'Blue', 'a_score' => '2', 'b_score' => '1',
+            'winner' => 'a', 'status' => 'done',
+        ]);
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventExhibitionsTool::class, ['event' => $event->uuid]);
+
+        $this->assertSame(1, $result['total']);
+        $this->assertSame('EX1', $result['exhibitions'][0]['code']);
+        $this->assertSame('done', $result['exhibitions'][0]['status']);
+    }
+
+    public function test_list_event_exhibitions_hides_an_event_from_a_non_scorer(): void
+    {
+        [$event] = $this->drawnChampionship();
+
+        $outsider = $this->createUser();
+        $this->actingAs($outsider);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventExhibitionsTool::class, ['event' => $event->uuid]);
+
+        $this->assertStringContainsString('Event not found', $result['error']);
+    }
+
     public function test_list_event_people_returns_the_athletes_and_their_clubs(): void
     {
         [$event, $organiser] = $this->drawnChampionship();

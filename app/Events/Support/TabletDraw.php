@@ -62,6 +62,12 @@ class TabletDraw
         return (bool) config('events.tablet_draw');
     }
 
+    /** Does editing on the tablet need the event's PIN? (events.tablet_draw_pin) */
+    public static function pinRequired(): bool
+    {
+        return (bool) config('events.tablet_draw_pin');
+    }
+
     /** The tablet behind this token, or null for every way that can fail. */
     public static function resolve(?string $token): ?self
     {
@@ -109,6 +115,13 @@ class TabletDraw
     /** The organiser whose PIN unlocked this tablet, while the grant lasts. */
     public function editor(): ?User
     {
+        // No PIN: the tablet edits as the organiser who paired it, while they
+        // may still arrange this draw. Pairing was the trust; this keeps it
+        // honest every request rather than for the life of the pairing.
+        if (! self::pinRequired()) {
+            return app(EventAccess::class)->canArrange($this->event, $this->pairedBy) ? $this->pairedBy : null;
+        }
+
         $grant = session($this->grantKey());
 
         if (! is_array($grant) || (int) ($grant['event'] ?? 0) !== $this->event->id

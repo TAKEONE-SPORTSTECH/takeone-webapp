@@ -81,6 +81,9 @@ return [
     /* Behaviour defaults. DefaultHost::setting() reads these; a host may read them from its own settings store. */
     'require_approval' => true,
     'notify_on_approve' => true,
+    /* Draw and store the PDF the moment a certificate is approved. Off: it is drawn the
+       first time somebody opens it, and stored then (pdfContents) — no file for nobody. */
+    'render_on_approve' => true,
     'link_minutes' => 30,
 
     /* Serial numbers: prefix + two-digit year + zero-padded sequence (C2600001). */

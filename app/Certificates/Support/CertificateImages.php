@@ -55,7 +55,8 @@ class CertificateImages
      *
      * @return array{ok:bool, bytes?:string, mime?:string, error?:string, warning?:string}
      */
-    public function artwork(UploadedFile $file): array
+    /** Fitted to the page the design is printed on: landscape, or portrait stood upright. */
+    public function artwork(UploadedFile $file, string $orientation = 'landscape'): array
     {
         $im = $this->decode($file, self::MAX_ARTWORK_BYTES);
         if (is_string($im)) {
@@ -64,11 +65,26 @@ class CertificateImages
         $im = $this->upright($im, $file);
 
         [$w, $h] = [imagesx($im), imagesy($im)];
-        [$tw, $th] = [3508, 2480];
+
+        // The picture itself, redrawn (never the uploaded bytes) and held to a print-sized
+        // long edge, so the page can re-fit it any way later (fill, fit, stretch, tile, center).
+        $long = 3508;
+        $k = min(1, $long / max($w, $h));
+        $src = imagecreatetruecolor(max(1, (int) round($w * $k)), max(1, (int) round($h * $k)));
+        imagefill($src, 0, 0, imagecolorallocate($src, 255, 255, 255));
+        imagecopyresampled($src, $im, 0, 0, 0, 0, imagesx($src), imagesy($src), $w, $h);
+        ob_start();
+        imagejpeg($src, null, 88);
+        $source = (string) ob_get_clean();
+        imagedestroy($src);
+
+        $portrait = $orientation === 'portrait';
+        [$tw, $th] = $portrait ? [2480, 3508] : [3508, 2480];
         $page = imagecreatetruecolor($tw, $th);
         imagefill($page, 0, 0, imagecolorallocate($page, 255, 255, 255));
 
-        if ($w / $h >= 1.2) {
+        $placed = ($portrait ? $h / $w >= 1.2 : $w / $h >= 1.2) ? 'fill' : 'fit';
+        if ($placed === 'fill') {
             // Cover: scale to fill, trim the overhang evenly.
             $scale = max($tw / $w, $th / $h);
             [$sw, $sh] = [(int) round($tw / $scale), (int) round($th / $scale)];
@@ -95,7 +111,7 @@ class CertificateImages
         $bytes = (string) ob_get_clean();
         imagedestroy($page);
 
-        return ['ok' => true, 'bytes' => $bytes, 'mime' => 'image/jpeg'] + ($small ? ['warning' => __('cert::messages.artwork_small')] : []);
+        return ['ok' => true, 'bytes' => $bytes, 'mime' => 'image/jpeg', 'source' => $source, 'fit' => $placed] + ($small ? ['warning' => __('cert::messages.artwork_small')] : []);
     }
 
     /** A phone photo stores "which way is up" beside the pixels; apply it. */

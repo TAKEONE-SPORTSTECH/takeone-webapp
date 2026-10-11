@@ -57,6 +57,27 @@ return [
      */
     'react_scoreboard' => (bool) env('REACT_SCOREBOARD', false),
 
+    /*
+     * Karate style scoreboards (2026-10-07). An event whose style is
+     * Kyokushin, Shotokan, Goju-ryu, Shito-ryu or Wado-ryu gets that style's
+     * own control screen, wall board and scoring engine
+     * (App\Scoreboard\Sports\Karate\Styles\KarateStyles). OFF: every Karate
+     * mat runs the one shared board, exactly as before.
+     *
+     * Set KARATE_STYLE_BOARDS=true in .env, then `php artisan config:cache`.
+     */
+    'karate_style_boards' => (bool) env('KARATE_STYLE_BOARDS', false),
+
+
+    /*
+     * "Remove club" for the super-admin (the Platform module's ClubRemoval):
+     * a club removed together with the athletes that are only the club's,
+     * their entries, photos and federation records, after a review screen and
+     * a backup. OFF: the button is not drawn and both routes answer 404.
+     *
+     * Set CLUB_REMOVAL_TOOL=true in .env, then `php artisan config:cache`.
+     */
+    'club_removal_tool' => (bool) env('CLUB_REMOVAL_TOOL', false),
 
     /*
      * The new UI (branch `new-ui`, plan: Documentation/major-change/NEW-UI.md).

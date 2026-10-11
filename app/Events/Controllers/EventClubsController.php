@@ -307,71 +307,21 @@ class EventClubsController extends Controller
             'country' => ['nullable', 'string', 'size:2', 'alpha'],
         ]);
 
-        $name = trim(preg_replace('/\s+/u', ' ', $data['name']));
+        // The rules themselves live in App\Events\Support\Clubs\EventClubEditor,
+        // shared with the scoring console's Clubs tab.
+        $result = app(\App\Events\Support\Clubs\EventClubEditor::class)->update($event, $eventClub, $data);
 
-        // Same rule as creating one: two spellings of one club is a start list
-        // that adds up wrong. Itself excepted, or renaming nothing would fail.
-        $clash = EventClub::where('event_id', $event->id)
-            ->where('id', '!=', $eventClub->id)
-            ->whereRaw('lower(name) = ?', [mb_strtolower($name)])
-            ->exists();
-
-        if ($clash) {
-            return response()->json([
+        if (! $result['ok']) {
+            return response()->json(array_filter([
                 'success' => false,
-                'field' => 'name',
-                'message' => __('events::events.club_exists'),
-            ], 422);
-        }
-
-        $instagram = $this->instagramUrl($data['instagram'] ?? null);
-
-        if (($data['instagram'] ?? '') !== '' && $instagram === null) {
-            return response()->json([
-                'success' => false,
-                'field' => 'instagram',
-                'message' => __('events::events.club_instagram_invalid'),
-            ], 422);
-        }
-
-        $previousLogo = $eventClub->logo;
-        $logo = $previousLogo;
-
-        if (! empty($data['logo'])) {
-            $stored = $this->storeBase64Image(
-                $data['logo'],
-                StoragePath::event($event, 'clubs'),
-                (string) Str::uuid()
-            );
-
-            if (! $stored) {
-                return response()->json([
-                    'success' => false,
-                    'field' => 'logo',
-                    'message' => __('events::events.club_logo_rejected'),
-                ], 422);
-            }
-
-            $logo = $stored;
-        }
-
-        $eventClub->forceFill([
-            'name' => $name,
-            'logo' => $logo,
-            'instagram' => $instagram,
-            'country' => isset($data['country']) ? strtoupper($data['country']) : $eventClub->country,
-        ])->save();
-
-        // The old crest goes only once the new one is safely stored, and only
-        // if it actually moved (CLAUDE.md, "Delete Files Before Records" — the
-        // replace case).
-        if ($previousLogo && $previousLogo !== $logo) {
-            rescue(fn () => Storage::disk('public')->delete($previousLogo), null, false);
+                'field' => $result['field'] ?? null,
+                'message' => $result['message'],
+            ], fn ($v) => $v !== null), 422);
         }
 
         return response()->json([
             'success' => true,
-            'message' => __('events::events.club_updated', ['name' => $name]),
+            'message' => $result['message'],
             'club' => $eventClub->fresh()->present(),
             'clubs' => $this->all($event),
         ]);
@@ -655,39 +605,7 @@ class EventClubsController extends Controller
      */
     private function instagramUrl(?string $raw): ?string
     {
-        $raw = trim((string) $raw);
-
-        if ($raw === '') {
-            return null;
-        }
-
-        // A bare handle, with or without the @.
-        if (preg_match('/^@?([A-Za-z0-9._]{1,30})$/', $raw, $m)) {
-            return 'https://instagram.com/'.$m[1];
-        }
-
-        // A URL — and it must be Instagram's, over http(s), or it is not an
-        // Instagram page whatever it claims.
-        $url = preg_match('#^https?://#i', $raw) ? $raw : 'https://'.$raw;
-        $parts = parse_url($url);
-
-        if (! $parts || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)) {
-            return null;
-        }
-
-        $host = strtolower($parts['host'] ?? '');
-
-        if (! in_array($host, ['instagram.com', 'www.instagram.com', 'm.instagram.com'], true)) {
-            return null;
-        }
-
-        $handle = trim((string) ($parts['path'] ?? ''), '/');
-
-        if (! preg_match('/^([A-Za-z0-9._]{1,30})$/', $handle, $m)) {
-            return null;
-        }
-
-        return 'https://instagram.com/'.$m[1];
+        return \App\Events\Support\Clubs\EventClubEditor::instagramUrl($raw);
     }
 
     /** Only somebody who runs this event. */

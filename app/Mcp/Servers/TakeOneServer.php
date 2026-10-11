@@ -14,12 +14,17 @@ use App\Mcp\Tools\ListActivityRanksTool;
 use App\Mcp\Tools\SetMemberRankTool;
 use App\Mcp\Tools\ListCornerSidesTool;
 use App\Mcp\Tools\SetCornerSideTool;
+use App\Mcp\Tools\SetMatCornerSideTool;
+use App\Mcp\Tools\SetCornerLookTool;
 use App\Mcp\Tools\GetEventFeaturingTool;
 use App\Mcp\Tools\ListEventEntryConsentsTool;
 use App\Mcp\Tools\ListEventCertificatesTool;
 use App\Mcp\Tools\SetEventCertificateSettingsTool;
 use App\Mcp\Tools\GenerateEventCertificatesTool;
 use App\Mcp\Tools\ApproveEventCertificatesTool;
+use App\Mcp\Tools\DeleteEventCertificateDraftsTool;
+use App\Mcp\Tools\EventCertificateBundleTool;
+use App\Mcp\Tools\EventBadgesTool;
 use App\Mcp\Tools\RevokeCertificateTool;
 use App\Mcp\Tools\ListMyCertificatesTool;
 use App\Mcp\Tools\ListEventFeatureRequestsTool;
@@ -44,6 +49,8 @@ use App\Mcp\Tools\ListClubsTool;
 use App\Mcp\Tools\ListBjjMatchEventsTool;
 use App\Mcp\Tools\ListCourtScreensTool;
 use App\Mcp\Tools\ListEventDocumentsTool;
+use App\Mcp\Tools\ListEventPhotosTool;
+use App\Mcp\Tools\ListEventExhibitionsTool;
 use App\Mcp\Tools\ListEventPeopleTool;
 use App\Mcp\Tools\ListEventsTool;
 use App\Mcp\Tools\ListEventVideosTool;
@@ -116,6 +123,8 @@ class TakeOneServer extends Server
         EnrollMembersTool::class,
         ListEventsTool::class,
         ListEventDocumentsTool::class,
+        ListEventPhotosTool::class,
+        ListEventExhibitionsTool::class,
         ListEventPeopleTool::class,
         EnterEventAthletesTool::class,
         GetBjjScoreboardTool::class,
@@ -144,6 +153,8 @@ class TakeOneServer extends Server
         SetMemberRankTool::class,
         ListCornerSidesTool::class,
         SetCornerSideTool::class,
+        SetMatCornerSideTool::class,
+        SetCornerLookTool::class,
         SetEventRulebookTool::class,
         SetEventEntryChannelsTool::class,
         SetEventVisibilityTool::class,
@@ -153,6 +164,9 @@ class TakeOneServer extends Server
         SetEventCertificateSettingsTool::class,
         GenerateEventCertificatesTool::class,
         ApproveEventCertificatesTool::class,
+        DeleteEventCertificateDraftsTool::class,
+        EventCertificateBundleTool::class,
+        EventBadgesTool::class,
         RevokeCertificateTool::class,
         ListMyCertificatesTool::class,
     ];

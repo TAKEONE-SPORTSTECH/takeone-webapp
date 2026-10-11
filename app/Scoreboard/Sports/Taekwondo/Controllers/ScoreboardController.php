@@ -55,6 +55,13 @@ class ScoreboardController extends Controller
 
         return $this->consoleView($event, $mats, $court, [
             'commandUrl' => route('taekwondo-scoreboard.command', $event->uuid),
+            // The Corners tab (App\Scoreboard\Corners).
+            'cornersUrl' => route('taekwondo-scoreboard.corners', $event->uuid, false),
+            'cornerLookUrl' => route('taekwondo-scoreboard.corner-look', $event->uuid, false),
+            // The Draw button, as on the Karate console: the signed-in official
+            // gets the event's own draw page, which checks who may arrange it on
+            // every request. (A paired tablet gets the tablet draw instead.)
+            'drawUrl' => route('me.events.bracket', $event->uuid),
             'photoUrl' => route('taekwondo-scoreboard.photo', $event->uuid),
             // Nothing to beat for: this console is a signed-in browser, not a
             // paired screen, and must not mark anybody's device as alive.
@@ -118,7 +125,13 @@ class ScoreboardController extends Controller
             // mat uses it to set the next pair without the operator ever
             // leaving the scoreboard.
             'matPanel' => $matPanel,
+            // Which side of this mat red stands on, and each corner's name and
+            // colour for the event (App\Scoreboard\Corners, via Mat\CornerLook).
+            'redRight' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::redRight($event, $court),
+            'look' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::for($event),
         ] + $urls + [
+            'cornersUrl' => null,
+            'cornerLookUrl' => null,
             // Defaults last: `+` on arrays keeps the LEFT value, so a door that
             // passed camera addresses keeps them and one that did not renders
             // no camera panel rather than an undefined variable.
@@ -173,6 +186,8 @@ class ScoreboardController extends Controller
 
         return $this->consoleView($event, $mats, $device->court, [
             'commandUrl' => route('taekwondo-scoreboard.token-command', $token),
+            'cornersUrl' => route('taekwondo-scoreboard.token-corners', $token, false),
+            'cornerLookUrl' => route('taekwondo-scoreboard.token-corner-look', $token, false),
             // The draw, on this tablet (App\Events\Support\TabletDraw). Null while off.
             'drawUrl' => \App\Events\Support\TabletDraw::enabled() ? route('tablet.draw', $token) : null,
             'photoUrl' => route('taekwondo-scoreboard.token-photo', $token),
@@ -190,6 +205,91 @@ class ScoreboardController extends Controller
             'cameraCommandBase' => \Illuminate\Support\Str::beforeLast(
                 route('taekwondo-scoreboard.token-cameras.command', [$token, 0], false), '0'
             ),
+        ]);
+    }
+
+    /**
+     * Swap which side of this mat the red corner stands on — the PHYSICAL
+     * layout, never who is in which corner. Every screen on the mat redraws.
+     */
+    public function cornerSide(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === 'taekwondo', 404);
+
+        $data = $request->validate([
+            'mat' => ['required', 'string', 'max:40'],
+            'red_right' => ['required', 'boolean'],
+        ]);
+
+        abort_unless($this->matExists($event, $data['mat']), 404);
+
+        return $this->applyCornerSide($event, $data['mat'], (bool) $data['red_right']);
+    }
+
+    public function tokenCornerSide(Request $request, string $token): JsonResponse
+    {
+        [$device, $event] = $this->controlDevice($token);
+
+        $data = $request->validate(['red_right' => ['required', 'boolean']]);
+
+        return $this->applyCornerSide($event, $device->court, (bool) $data['red_right']);
+    }
+
+    private function applyCornerSide(ClubEvent $event, string $court, bool $redRight): JsonResponse
+    {
+        \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::setRedRight($event, $court, $redRight);
+
+        \Illuminate\Support\Facades\Log::info('taekwondo.corners', [
+            'event' => $event->uuid, 'mat' => $court, 'red' => $redRight ? 'right' : 'left',
+            'by' => ($this->actor ?: Auth::user())?->id,
+        ]);
+
+        ScreenChannel::notifyCourt($event, $court, ['action' => 'corners']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::corners.saved'),
+            'red_right' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::redRight($event->fresh(), $court),
+        ]);
+    }
+
+    /**
+     * Name and colour each corner for the whole event — every mat and screen of
+     * it redraws. Blank fields return a corner to Taekwondo's own.
+     */
+    public function cornerLook(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === 'taekwondo', 404);
+
+        return $this->applyCornerLook($request, $event);
+    }
+
+    public function tokenCornerLook(Request $request, string $token): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+
+        return $this->applyCornerLook($request, $event);
+    }
+
+    private function applyCornerLook(Request $request, ClubEvent $event): JsonResponse
+    {
+        $data = $request->validate(\App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::rules());
+
+        \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::set($event, $data);
+
+        \Illuminate\Support\Facades\Log::info('taekwondo.corner-look', [
+            'event' => $event->uuid, 'by' => ($this->actor ?: Auth::user())?->id,
+        ]);
+
+        // Every mat of the event: the look is the event's, not one table's.
+        ScreenChannel::notifyCourt($event, null, ['action' => 'corners']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::corners.saved'),
+            'look' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::for($event->fresh()),
         ]);
     }
 

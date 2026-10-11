@@ -60,6 +60,14 @@ Route::get('/me/events/{event:uuid}/icon-{size}.png', [App\Events\Controllers\Pu
 Route::get('/me/events/{event:uuid}/downloads/{document:uuid}', [App\Events\Controllers\PublicEventController::class, 'document'])
     ->name('events.public.document')->middleware('throttle:30,1')->whereUuid('event')->whereUuid('document');
 
+// The gallery's photographs. Outside the auth stack because a PUBLIC event's
+// gallery is read by signed-out visitors; the controller decides per request —
+// public page on, or a signed-in member the event reaches — and answers every
+// refusal with the same 404. Behind EVENT_PHOTOS.
+Route::get('/me/events/{event:uuid}/photos/{photo:uuid}/{size}', [App\Events\Controllers\EventPhotoController::class, 'show'])
+    ->name('events.photos.show')->middleware('throttle:media-read')
+    ->whereUuid('event')->whereUuid('photo')->whereIn('size', ['thumb', 'full']);
+
 // The draw, as the hall wall shows it: read-only, no entrants bench, no faces
 // and nobody's payment state — App\Events\Support\PublicEvent::draw() decides
 // what survives. A separate door from `me.events.bracket.data`, which keeps its
@@ -427,6 +435,9 @@ Route::where(['token' => '[A-Za-z0-9]{40}'])->prefix('/tablet/{token}/draw')->na
     Route::post('/unnamed', [App\Events\Controllers\TabletDrawController::class, 'unnamed'])->name('.unnamed')->middleware('throttle:admin-write');
     Route::get('/clubs', [App\Events\Controllers\TabletDrawController::class, 'clubs'])->name('.clubs')->middleware('throttle:60,1');
     Route::post('/outcomes/{unit}', [App\Events\Controllers\TabletDrawController::class, 'outcome'])->name('.outcome')->whereNumber('unit')->middleware('throttle:member-write');
+    Route::get('/numbers/{match}', [App\Events\Controllers\TabletDrawController::class, 'numberPlace'])->name('.number')->whereNumber('match')->middleware('throttle:event-desk');
+    Route::put('/numbers', [App\Events\Controllers\TabletDrawController::class, 'renumber'])->name('.renumber')->middleware('throttle:admin-write');
+    Route::delete('/numbers/{match}', [App\Events\Controllers\TabletDrawController::class, 'releaseNumber'])->name('.number.release')->whereNumber('match')->middleware('throttle:admin-write');
     Route::put('/entrants/{registration}', [App\Events\Controllers\TabletDrawController::class, 'entrant'])->name('.entrant')->whereNumber('registration')->middleware('throttle:member-write');
 });
 
@@ -617,6 +628,9 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     Route::post('/events/{event:uuid}/documents', [App\Events\Controllers\EventDocumentController::class, 'store'])->name('events.documents.store')->middleware('throttle:uploads');
     Route::get('/events/{event:uuid}/documents/{document:uuid}', [App\Events\Controllers\EventDocumentController::class, 'download'])->name('events.documents.download');
     Route::delete('/events/{event:uuid}/documents/{document:uuid}', [App\Events\Controllers\EventDocumentController::class, 'destroy'])->name('events.documents.destroy')->middleware('throttle:member-write');
+    // The gallery's photographs — organiser only, re-checked in the controller.
+    Route::post('/events/{event:uuid}/photos', [App\Events\Controllers\EventPhotoController::class, 'store'])->name('events.photos.store')->middleware('throttle:event-photos');
+    Route::delete('/events/{event:uuid}/photos/{photo:uuid}', [App\Events\Controllers\EventPhotoController::class, 'destroy'])->name('events.photos.destroy')->middleware('throttle:member-write');
     // What this event's screens play: the introduction, the celebration, and the
     // noise a point makes. Uploaded by an organiser here; read by the screens
     // through their own token-authorised route, never through this one.
@@ -672,6 +686,9 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
        AppServiceProvider). They were on `member-write` (30/min — a member
        editing their own health records) and `admin-write`, and an organiser
        ran out of both on an event morning. */
+    // Many at once, from the entry list's select mode: mark paid / sign off
+    // declared weights. Same gates as the one-entry doors below.
+    Route::put('/events/{event:uuid}/verify/bulk', [App\Events\Controllers\PersonalEventController::class, 'verifyBulk'])->name('events.verify.bulk')->middleware('throttle:event-desk');
     Route::put('/events/{event:uuid}/verify/{registration}/weigh-in', [App\Events\Controllers\PersonalEventController::class, 'verifyWeighIn'])->name('events.verify.weigh-in')->middleware('throttle:event-desk');
     Route::put('/events/{event:uuid}/verify/{registration}/payment', [App\Events\Controllers\PersonalEventController::class, 'verifyPayment'])->name('events.verify.payment')->middleware('throttle:event-desk');
     Route::get('/events/{event:uuid}/verify/{registration}/proof', [App\Events\Controllers\PersonalEventController::class, 'verifyProof'])->name('events.verify.proof');
@@ -905,6 +922,8 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     Route::get('/events/{event:uuid}/day-order', [App\Events\Controllers\PersonalEventController::class, 'runOrder'])->name('events.run-order')->middleware('throttle:60,1');
     Route::get('/events/{event:uuid}/day-order/data', [App\Events\Controllers\PersonalEventController::class, 'runOrderData'])->name('events.run-order.data')->middleware('throttle:120,1');
     Route::post('/events/{event:uuid}/day-order', [App\Events\Controllers\PersonalEventController::class, 'storeRunSlot'])->name('events.run-order.store')->middleware('throttle:admin-write');
+    // The break set on the event, edited from the running order (2026-10-07).
+    Route::put('/events/{event:uuid}/day-order-break', [App\Events\Controllers\PersonalEventController::class, 'updateEventBreak'])->name('events.run-order.break')->middleware('throttle:admin-write');
     Route::put('/events/{event:uuid}/day-order', [App\Events\Controllers\PersonalEventController::class, 'reorderRunOrder'])->name('events.run-order.reorder')->middleware('throttle:admin-write');
     Route::put('/events/{event:uuid}/day-order/{slot}', [App\Events\Controllers\PersonalEventController::class, 'updateRunSlot'])->name('events.run-order.update')->whereUuid('slot')->middleware('throttle:admin-write');
     Route::delete('/events/{event:uuid}/day-order/{slot}', [App\Events\Controllers\PersonalEventController::class, 'destroyRunSlot'])->name('events.run-order.destroy')->whereUuid('slot')->middleware('throttle:admin-write');

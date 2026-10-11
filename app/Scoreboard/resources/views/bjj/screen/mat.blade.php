@@ -119,7 +119,14 @@
        (App\\Sports\\Combat\\CornerSide): BJJ puts its red corner (BLUE in the
        data) on the RIGHT. Each corner keeps its own block — ids, colours,
        data — and only its geometry mirrors. --}}
-  @php $rr = \App\Sports\Combat\CornerSide::redRight('bjj'); @endphp
+  @php $rr = $redRight ?? \App\Sports\Combat\CornerSide::redRight('bjj'); @endphp
+  {{-- Each corner's name and colours (App\Scoreboard\Corners) — the event's
+       own, or BJJ's when nobody set them. Keys are the SIDE, not the colour. --}}
+  @php
+    $L = $look ?? \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\CornerLook::for($event ?? null);
+    $blueGrad = $L['blue']['panelFrom'].' 0%,'.$L['blue']['deep'].' 100%); color:'.$L['blue']['ink'].';';
+    $whiteGrad = $L['white']['panelFrom'].' 0%,'.$L['white']['deep'].' 100%); color:'.$L['white']['ink'].';';
+  @endphp
   <div id="sb" class="layer" hidden style="background:#000; display:flex; flex-direction:column;">
     <div style="height:110px; background:#0a0b10; display:flex; align-items:center; justify-content:space-between; padding:0 48px; border-bottom:3px solid #1c1e28; animation:introDrop .6s cubic-bezier(.2,.8,.2,1) both;">
       <div style="display:flex; align-items:center; gap:26px;">
@@ -135,7 +142,7 @@
 
     <div style="flex:1; display:flex; position:relative;">
       {{-- BLUE --}}
-      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(225deg,#c1121f 0%,#5c0a10 100%); position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; order:3; animation:introSlideR' : 'background:linear-gradient(135deg,#c1121f 0%,#5c0a10 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL' }} .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(225deg,'.$blueGrad.' position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; order:3; animation:introSlideR' : 'background:linear-gradient(135deg,'.$blueGrad.' position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL' }} .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbBlueWin" hidden style="position:absolute; inset:0; border:14px solid #ffd666; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
         {{-- The referee's stalling count, on the wall.
              Sits over the corner it is against — over BOTH when the count is a
@@ -153,36 +160,36 @@
           <img id="sbBlueFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.5);">
           <div style="display:flex; {{ $rr ? 'flex-direction:column; align-items:flex-end;' : 'flex-direction:column;' }}">
             <div id="sbBlueCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
-            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">{{ __('sport-brazilianjiujitsu::messages.corner_blue') }}</div>
+            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:{{ $L['blue']['inkDim'] }}; margin-top:6px;">{{ $L['blue']['label'] }}</div>
           </div>
         </div>
-        <div id="sbBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:120px; line-height:1; text-transform:uppercase; margin-top:36px; text-shadow:0 6px 30px rgba(0,0,0,.4); padding-bottom:14px;"></div>
-        <div id="sbBlueClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.8); margin-top:10px;"></div>
+        <div id="sbBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:120px; line-height:1; text-transform:uppercase; margin-top:36px; text-shadow:{{ $L['blue']['light'] ? '0 4px 24px rgba(255,255,255,.5)' : '0 6px 30px rgba(0,0,0,.4)' }}; padding-bottom:14px;"></div>
+        <div id="sbBlueClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:{{ $L['blue']['inkSoft'] }}; margin-top:10px;"></div>
         {{-- POINTS, and only points. The other two ladders are counted
              separately below, because a jiu-jitsu score is three numbers and
              adding them together would be a different sport. --}}
         <div style="flex:1; display:flex; align-items:center; justify-content:center; align-self:stretch;">
-          <div id="sbBlueScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:#fff; text-shadow:0 10px 60px rgba(0,0,0,.5); font-variant-numeric:tabular-nums;">0</div>
+          <div id="sbBlueScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:{{ $L['blue']['ink'] }}; text-shadow:{{ $L['blue']['light'] ? '0 10px 40px rgba(255,255,255,.45)' : '0 10px 60px rgba(0,0,0,.5)' }}; font-variant-numeric:tabular-nums;">0</div>
         </div>
         @if ($rr)
         <div style="display:flex; flex-direction:column; gap:12px; min-height:180px; justify-content:flex-end; align-items:flex-end;">
           <div style="display:flex; align-items:center; gap:20px; flex-direction:row-reverse;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:{{ $L['blue']['light'] ? 'rgba(20,22,28,.7)' : 'rgba(255,255,255,.7)' }}; text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
             <div id="sbBlueAdv" style="display:flex; gap:10px; flex-direction:row-reverse;"></div>
           </div>
           <div style="display:flex; align-items:center; gap:20px; flex-direction:row-reverse;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:{{ $L['blue']['light'] ? 'rgba(20,22,28,.7)' : 'rgba(255,255,255,.7)' }}; text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
             <div id="sbBluePen" style="display:flex; gap:10px; flex-direction:row-reverse;"></div>
           </div>
         </div>
         @else
         <div style="display:flex; flex-direction:column; gap:12px; min-height:180px; justify-content:flex-end;">
           <div style="display:flex; align-items:center; gap:20px;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:{{ $L['blue']['light'] ? 'rgba(20,22,28,.7)' : 'rgba(255,255,255,.7)' }}; text-transform:uppercase;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
             <div id="sbBlueAdv" style="display:flex; gap:10px;"></div>
           </div>
           <div style="display:flex; align-items:center; gap:20px;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:{{ $L['blue']['light'] ? 'rgba(20,22,28,.7)' : 'rgba(255,255,255,.7)' }}; text-transform:uppercase;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
             <div id="sbBluePen" style="display:flex; gap:10px;"></div>
           </div>
         </div>
@@ -204,7 +211,7 @@
       </div>
 
       {{-- WHITE --}}
-      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(135deg,#1362d1 0%,#08284f 100%); color:#fff; position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; order:1; animation:introSlideL' : 'background:linear-gradient(225deg,#1362d1 0%,#08284f 100%); color:#fff; position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR' }} .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(135deg,'.$whiteGrad.' position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; order:1; animation:introSlideL' : 'background:linear-gradient(225deg,'.$whiteGrad.' position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR' }} .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbWhiteWin" hidden style="position:absolute; inset:0; border:14px solid #b3861f; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
         {{-- The referee's stalling count, on the wall.
              Sits over the corner it is against — over BOTH when the count is a
@@ -222,33 +229,33 @@
           <img id="sbWhiteFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.35);">
           <div style="display:flex; {{ $rr ? 'flex-direction:column;' : 'flex-direction:column; align-items:flex-end;' }}">
             <div id="sbWhiteCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
-            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
+            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:{{ $L['white']['inkDim'] }}; margin-top:6px;">{{ $L['white']['label'] }}</div>
           </div>
         </div>
-        <div id="sbWhiteName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:120px; line-height:1; text-transform:uppercase; margin-top:36px; text-shadow:0 6px 30px rgba(255,255,255,.35); padding-bottom:14px;"></div>
-        <div id="sbWhiteClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.8); margin-top:10px;"></div>
+        <div id="sbWhiteName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:120px; line-height:1; text-transform:uppercase; margin-top:36px; text-shadow:{{ $L['white']['light'] ? '0 4px 24px rgba(255,255,255,.5)' : '0 6px 30px rgba(255,255,255,.35)' }}; padding-bottom:14px;"></div>
+        <div id="sbWhiteClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:{{ $L['white']['inkSoft'] }}; margin-top:10px;"></div>
         <div style="flex:1; display:flex; align-items:center; justify-content:center; align-self:stretch;">
-          <div id="sbWhiteScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:#fff; text-shadow:0 10px 60px rgba(0,0,0,.5); font-variant-numeric:tabular-nums;">0</div>
+          <div id="sbWhiteScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:{{ $L['white']['ink'] }}; text-shadow:{{ $L['white']['light'] ? '0 10px 40px rgba(255,255,255,.45)' : '0 10px 60px rgba(0,0,0,.5)' }}; font-variant-numeric:tabular-nums;">0</div>
         </div>
         @if ($rr)
         <div style="display:flex; flex-direction:column; gap:12px; min-height:180px; justify-content:flex-end;">
           <div style="display:flex; align-items:center; gap:20px;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:{{ $L['white']['light'] ? 'rgba(20,22,28,.7)' : 'rgba(255,255,255,.7)' }}; text-transform:uppercase;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
             <div id="sbWhiteAdv" style="display:flex; gap:10px;"></div>
           </div>
           <div style="display:flex; align-items:center; gap:20px;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:{{ $L['white']['light'] ? 'rgba(20,22,28,.7)' : 'rgba(255,255,255,.7)' }}; text-transform:uppercase;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
             <div id="sbWhitePen" style="display:flex; gap:10px;"></div>
           </div>
         </div>
         @else
         <div style="display:flex; flex-direction:column; gap:12px; min-height:180px; justify-content:flex-end; align-items:flex-end;">
           <div style="display:flex; align-items:center; gap:20px; flex-direction:row-reverse;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:{{ $L['white']['light'] ? 'rgba(20,22,28,.7)' : 'rgba(255,255,255,.7)' }}; text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.adv_short') }}</div>
             <div id="sbWhiteAdv" style="display:flex; gap:10px; flex-direction:row-reverse;"></div>
           </div>
           <div style="display:flex; align-items:center; gap:20px; flex-direction:row-reverse;">
-            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:rgba(255,255,255,.7); text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
+            <div style="width:96px; font-size:26px; font-weight:700; letter-spacing:.2em; color:{{ $L['white']['light'] ? 'rgba(20,22,28,.7)' : 'rgba(255,255,255,.7)' }}; text-transform:uppercase; text-align:right;">{{ __('scoreboard::bjj_messages.pen_short') }}</div>
             <div id="sbWhitePen" style="display:flex; gap:10px; flex-direction:row-reverse;"></div>
           </div>
         </div>
@@ -277,14 +284,14 @@
 
   {{-- ── The introduction, over the top of it ──────────────────────────────── --}}
   <div id="vs" class="layer" hidden style="z-index:12; background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
-    <div style="position:absolute; {{ $rr ? 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' : 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' }} overflow:hidden; background:#3f1013; animation:{{ $rr ? 'panelR' : 'panelL' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' : 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' }} overflow:hidden; background:{{ $L['blue']['vsPanel'] }}; animation:{{ $rr ? 'panelR' : 'panelL' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsBluePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, rgba(40,86,152,0.55) 0%, transparent 55%);"></div>
+      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, {{ $L['blue']['vsGlow'] }} 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
     </div>
-    <div style="position:absolute; {{ $rr ? 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' : 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' }} overflow:hidden; background:#10233f; animation:{{ $rr ? 'panelL' : 'panelR' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' : 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' }} overflow:hidden; background:{{ $L['white']['vsPanel'] }}; animation:{{ $rr ? 'panelL' : 'panelR' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsWhitePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite reverse;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '115deg' : '245deg' }}, rgba(226,232,240,0.42) 0%, transparent 55%);"></div>
+      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '115deg' : '245deg' }}, {{ $L['white']['vsGlow'] }} 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
     </div>
     <div style="position:absolute; top:-6%; bottom:-6%; left:50%; width:3px; margin-left:-1.5px; transform:rotate(10.15deg); pointer-events:none; background:linear-gradient(to bottom, transparent, rgba(253,196,54,0.9) 20%, rgba(253,196,54,0.9) 80%, transparent); filter:blur(1px);"></div>
@@ -297,10 +304,10 @@
          the strip came down with it to buy the room. The canvas is a fixed
          1920x1080, which is why these can be hand-measured at all. --}}
     <div style="position:absolute; {{ $rr ? 'right:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-end; gap:10px; z-index:6; max-width:44%; min-width:0; text-align:right;' : 'left:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; z-index:6; max-width:44%; min-width:0;' }} animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#c1121f; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_blue') }}</div>
+      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:{{ $L['blue']['badgeInk'] }}; background:{{ $L['blue']['badgeBg'] }}; padding:5.4px 15.1px 5.4px 18.9px;">{{ $L['blue']['badge'] }}</div>
       <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px; flex-direction:row-reverse;' : 'gap:15.1px;' }}">
         <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#a9c6ea;"></div>
+        <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:{{ $L['blue']['countryInk'] }};"></div>
       </div>
       <div id="vsBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
       <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px; flex-direction:row-reverse;' : 'margin-top:4.3px;' }}">
@@ -311,10 +318,10 @@
     </div>
 
     <div style="position:absolute; {{ $rr ? 'left:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; z-index:6; max-width:44%; min-width:0;' : 'right:43.2px; bottom:36px; display:flex; flex-direction:column; align-items:flex-end; gap:10px; z-index:6; max-width:44%; min-width:0; text-align:right;' }} animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1362d1; padding:5.4px 15.1px 5.4px 18.9px;">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
+      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:{{ $L['white']['badgeInk'] }}; background:{{ $L['white']['badgeBg'] }}; padding:5.4px 15.1px 5.4px 18.9px;">{{ $L['white']['badge'] }}</div>
       <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px;' : 'gap:15.1px; flex-direction:row-reverse;' }}">
         <div id="vsWhiteFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsWhiteCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#dfe6ef;"></div>
+        <div id="vsWhiteCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:{{ $L['white']['countryInk'] }};"></div>
       </div>
       <div id="vsWhiteName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
       <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px;' : 'margin-top:4.3px; flex-direction:row-reverse;' }}">
@@ -383,8 +390,8 @@
     <div id="qHead" style="display:flex; align-items:center; justify-content:space-between; gap:30px; padding:34px 60px 24px; animation:headerIn 0.8s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="flex:1; display:flex; align-items:center; gap:18px;">
         {{-- The corners' colours, on the sides the corners stand — as on the Karate board. --}}
-        @php $upRedRight = \App\Sports\Combat\CornerSide::redRight('bjj'); @endphp
-        <div style="width:10px; height:64px; background:{{ $upRedRight ? '#026fd7' : '#ea3c3f' }};"></div>
+        @php $upRedRight = $rr; @endphp
+        <div style="width:10px; height:64px; background:{{ $upRedRight ? $L['white']['bar'] : $L['blue']['bar'] }};"></div>
         <div id="qEvent" style="font-weight:700; font-size:34px; letter-spacing:0.24em; text-transform:uppercase; color:rgba(232,230,224,0.85); max-width:520px;"></div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
@@ -397,7 +404,7 @@
           <span style="font-weight:600; font-size:32px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::bjj_messages.court_court') }}</span>
           <span id="qCourtNumber" style="font-family:'Anton',sans-serif; font-size:52px; color:#fff;"></span>
         </div>
-        <div style="width:10px; height:64px; background:{{ $upRedRight ? '#ea3c3f' : '#026fd7' }};"></div>
+        <div style="width:10px; height:64px; background:{{ $upRedRight ? $L['blue']['bar'] : $L['white']['bar'] }};"></div>
       </div>
     </div>
 
@@ -466,9 +473,17 @@
 @endphp
 @php
   // Left side first. Which corner stands where is the sport's convention.
-  $upNextSides = \App\Sports\Combat\CornerSide::redRight('bjj')
+  $upNextSides = $rr
       ? [['key' => 'white', 'tone' => 'blue'], ['key' => 'blue', 'tone' => 'red']]
       : [['key' => 'blue', 'tone' => 'red'], ['key' => 'white', 'tone' => 'blue']];
+  // A corner given its own colour paints its lane with it; untouched corners
+  // keep the board's own red/blue tones exactly.
+  foreach ($upNextSides as &$upSide) {
+      if (! empty($L[$upSide['key']]['customColour'])) {
+          $upSide['paint'] = ['from' => $L[$upSide['key']]['laneFrom'], 'to' => $L[$upSide['key']]['laneTo']];
+      }
+  }
+  unset($upSide);
 @endphp
 @include('scoreboard::partials.up-next')
 <script>
@@ -499,8 +514,10 @@
      (Ledger::POINT_VALUES). Without it the hall's callout drew a bare "+2"
      under an empty line. */
   var POINTS_WORD = @json(__('scoreboard::bjj_messages.source_points'));
-  var CORNER_BLUE = @json(__('sport-brazilianjiujitsu::messages.corner_blue'));
-  var CORNER_WHITE = @json(__('sport-brazilianjiujitsu::messages.corner_white'));
+  // Each corner's name and colours (App\Scoreboard\Corners), for what the script draws.
+  var LOOK = @json($L);
+  var CORNER_BLUE = LOOK.blue.label;
+  var CORNER_WHITE = LOOK.white.label;
   /* Named on the ONE notice that can be about the pair: a double stalling count
      running out penalises both men, and the hall is told once rather than
      shown two four-second notices for one decision. */
@@ -547,7 +564,7 @@
      hidden layer becomes visible (a hidden element has no width) and once the
      webfaces have loaded, because Anton is far narrower than the fallback. */
   // BJJ's red corner (BLUE in the data) stands on the right — App\\Sports\\Combat\\CornerSide.
-  var RED_RIGHT = @json(\App\Sports\Combat\CornerSide::redRight('bjj'));
+  var RED_RIGHT = @json($rr);
   /* The division above the clock. A BJJ division is long ("GROUP D (+70)
      ADULT [GI] - COLOR BELT") and was sized by counting characters, on one
      line — so it ran out of the clock column over both clubs. It now wraps
@@ -849,14 +866,19 @@
     var host = el(id);
     if (!host) return;
     host.textContent = '';
+    // What is drawn on a light corner (Corners\CornerLook) takes dark ink.
+    var light = !!(LOOK[/White/.test(id) ? 'white' : 'blue'] || {}).light;
+    var offBg = light ? 'rgba(20,22,28,.08)' : 'rgba(0,0,0,.28)';
+    var offFg = light ? 'rgba(20,22,28,.45)' : 'rgba(255,255,255,.45)';
+    var offLine = light ? 'rgba(20,22,28,.25)' : 'rgba(255,255,255,.25)';
     for (var i = 0; i < max; i++) {
       var on = i < n;
       var c = document.createElement('div');
       c.style.cssText = 'width:72px; height:68px; border-radius:10px; display:flex; align-items:center; justify-content:center;' +
         "font-family:'Anton',sans-serif; font-size:30px;" +
-        'background:' + (on ? tone : 'rgba(0,0,0,.28)') + ';' +
-        'color:' + (on ? ink : 'rgba(255,255,255,.45)') + ';' +
-        'border:2px solid ' + (on ? 'transparent' : 'rgba(255,255,255,.25)') + ';' +
+        'background:' + (on ? tone : offBg) + ';' +
+        'color:' + (on ? ink : offFg) + ';' +
+        'border:2px solid ' + (on ? 'transparent' : offLine) + ';' +
         (on ? 'animation:cellIn .4s both;' : '');
       c.textContent = String(i + 1);
       host.appendChild(c);
@@ -887,7 +909,8 @@
 
     var host = el('sbCallout');
     var blue = ev.side === 'blue';
-    var colour = blue ? '#ff5a63' : '#4d9aff';
+    var C = LOOK[blue ? 'blue' : 'white'] || {};
+    var colour = C.callout || (blue ? '#ff5a63' : '#4d9aff');
     host.textContent = '';
     host.style.left = (blue !== RED_RIGHT ? '25%' : '75%');
     host.style.top = '44%';
@@ -901,8 +924,9 @@
     wrap.style.cssText = 'position:absolute; left:0; top:0; transform:translate(-50%,-50%); animation:calloutIn 1.5s cubic-bezier(.2,.8,.2,1) both;' +
       'display:flex; flex-direction:column; align-items:center; gap:4px;';
     var label = document.createElement('div');
-    label.style.cssText = "font-family:'Anton',sans-serif; font-size:104px; line-height:1; color:#fff; white-space:nowrap;" +
-      'text-shadow:0 0 80px ' + colour + ', 0 8px 30px rgba(0,0,0,.7);';
+    label.style.cssText = "font-family:'Anton',sans-serif; font-size:104px; line-height:1; white-space:nowrap;" +
+      (C.light ? 'color:#14161c; text-shadow:0 0 60px rgba(255,255,255,.95), 0 6px 24px rgba(255,255,255,.6);'
+               : 'color:#fff; text-shadow:0 0 80px ' + colour + ', 0 8px 30px rgba(0,0,0,.7);');
     label.textContent = (ev.kind === 'advantage'
       ? ADVANTAGE_WORD
       : (SOURCES[ev.source] || POINTS_WORD)).toUpperCase();
@@ -974,6 +998,9 @@
 
     WinnerCelebration.paint(el('sbWinner'), {
       corner: side === 'blue' ? 'blue' : 'white',
+      // The event's own colours, only for a corner given one — an untouched
+      // corner keeps this package's own celebration exactly.
+      palette: ((LOOK[side] || {}).customColour) ? LOOK[side].celebrate : null,
       name: c.name || '',
       club: c.club || '',
       logo: c.logo || null,

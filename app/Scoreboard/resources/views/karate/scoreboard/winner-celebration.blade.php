@@ -74,7 +74,7 @@
 @keyframes wcSlideLeft { from { transform:translateX(-60px); opacity:0; } to { transform:translateX(0); opacity:1; } }
 @keyframes wcShakeHit { 0%,100% { transform:translate(0,0); } 15% { transform:translate(-14px,6px); } 30% { transform:translate(12px,-8px); } 45% { transform:translate(-8px,-4px); } 60% { transform:translate(7px,5px); } 75% { transform:translate(-4px,2px); } }
 @keyframes wcKenBurns { from { transform:scale(1); } to { transform:scale(1.08); } }
-@keyframes wcTextGlow { 0%,100% { text-shadow:.055em .055em 0 var(--wcA), 0 0 25px rgba(255,255,255,.12); } 50% { text-shadow:.055em .055em 0 var(--wcA), 0 0 70px rgba(255,255,255,.45); } }
+@keyframes wcTextGlow { 0%,100% { text-shadow:.055em .055em 0 var(--wcEdge, var(--wcA)), 0 0 25px rgba(255,255,255,.12); } 50% { text-shadow:.055em .055em 0 var(--wcEdge, var(--wcA)), 0 0 70px rgba(255,255,255,.45); } }
 @keyframes wcBeamMove { 0% { transform:translateX(calc(var(--wcW) * -0.4)) skewX(-20deg); } 100% { transform:translateX(calc(var(--wcW) * 1.4)) skewX(-20deg); } }
 @keyframes wcBarGrow { from { width:0; opacity:0; } to { width:100%; opacity:1; } }
 @keyframes wcShine { 0% { transform:translateX(-160%) skewX(-18deg); } 55%,100% { transform:translateX(280%) skewX(-18deg); } }
@@ -155,7 +155,9 @@
     o = o || {};
 
     var corner = CORNERS[o.corner] ? o.corner : 'red';
-    var C = CORNERS[corner];
+    // The event's own colours for this corner (Mat\CornerLook), when the board
+    // hands them over; otherwise this file's own red/blue scene.
+    var C = (o.palette && o.palette.a) ? o.palette : CORNERS[corner];
     var photo = safeUrl(o.photo);
     var logo = safeUrl(o.logo);
     var name = o.name || '';
@@ -188,6 +190,7 @@
     stage.className = 'wc-stage';
     stage.style.setProperty('--wcA', C.a);
     stage.style.setProperty('--wcB', C.b);
+    if (C.edge) stage.style.setProperty('--wcEdge', C.edge);
     stage.style.setProperty('--wcGlow', C.glow);
     stage.style.setProperty('--wcW', W + 'px');
     stage.style.setProperty('--wcH', H + 'px');

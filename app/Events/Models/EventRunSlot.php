@@ -49,7 +49,7 @@ class EventRunSlot extends Model
     ];
 
     protected $fillable = [
-        'uuid', 'event_id', 'category_id', 'day', 'position',
+        'uuid', 'event_id', 'category_id', 'parts', 'day', 'position',
         'kind', 'label', 'duration_minutes', 'pinned_at',
     ];
 
@@ -58,6 +58,9 @@ class EventRunSlot extends Model
         'position' => 'integer',
         'duration_minutes' => 'integer',
         'pinned_at' => 'integer',
+        // Which parts of the division this slot runs (App\Events\Support\BoutPart);
+        // null is the whole division.
+        'parts' => 'array',
     ];
 
     protected static function booted(): void
@@ -123,9 +126,27 @@ class EventRunSlot extends Model
     public function displayName(): string
     {
         if ($this->isDivision()) {
-            return (string) ($this->category?->name ?? __('events::events.run_slot_missing_division'));
+            $name = (string) ($this->category?->name ?? __('events::events.run_slot_missing_division'));
+            // The whole of it — every bout part and the awarding — is just its name.
+            // (Its awarding may be the ceremony for everyone's, not its own.)
+            $whole = false;
+            if ($this->parts && $this->category) {
+                $present = \App\Events\Support\BoutPart::present($this->category);
+                $whole = $this->parts == [...$present, \App\Events\Support\BoutPart::AWARDING]
+                    || ($this->parts == $present
+                        && in_array($this->category_id, app(\App\Events\Support\RunOrder::class)->awardedTogether((int) $this->event_id), true));
+            }
+            $parts = $whole ? null : \App\Events\Support\BoutPart::labels($this->parts);
+
+            // "8-9 Women · Bracket A — Preliminaries" when only part of it runs here.
+            return $parts ? $name.' — '.$parts : $name;
         }
 
-        return (string) ($this->label ?: __('events::events.run_slot_untitled'));
+        $label = (string) ($this->label ?: __('events::events.run_slot_untitled'));
+
+        // One medal ceremony for everyone (RunOrder::togetherCeremony): say how many.
+        $awards = is_array($this->parts) ? count((array) ($this->parts['awards'] ?? [])) : 0;
+
+        return $awards ? $label.' — '.trans_choice('events::events.run_order_awards_n', $awards, ['n' => $awards]) : $label;
     }
 }

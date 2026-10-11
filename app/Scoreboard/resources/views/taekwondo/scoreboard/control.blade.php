@@ -275,6 +275,9 @@
       @if ($cameraUrl ?? null)
         <button id="btnCameras" class="btn">{{ __('events::events.mat_cameras_tab') }}</button>
       @endif
+      @if (! empty($cornersUrl) || ! empty($cornerLookUrl))
+        <button id="btnCorners" class="btn">{{ __('scoreboard::corners.tab') }}</button>
+      @endif
       {{-- A panel the event's own PACKAGE contributes (AbstractEventType::matPanel).
            Absent for every championship, so this row is unchanged for them. An
            open mat puts "next pair" here so its operator never leaves the table.
@@ -321,6 +324,27 @@
      Same shell as the queue's, because it is the same kind of thing: something
      read at the table between bouts. Everything inside it is the shared,
      sport-neutral panel — see resources/views/partials/mat-cameras.blade.php. --}}
+{{-- Corners: which side of this mat red stands on (App\Scoreboard\Corners\
+     MatSides) and each corner's name and colours for the event (Mat\CornerLook).
+     Its own sheet, like the cameras — the shared panel, saved as it is made. --}}
+@php
+  $L = $look ?? \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::for($event ?? null);
+  $SK = \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::skin($L);
+  $rr = $redRight ?? \App\Sports\Combat\CornerSide::redRight('taekwondo');
+  $atL = $rr ? 'ao' : 'aka';
+@endphp
+@if (! empty($cornersUrl) || ! empty($cornerLookUrl))
+<div id="cornersModal" hidden class="scrim" style="z-index:50;">
+  <div class="sheet" style="width:980px; max-height:900px; overflow-y:auto;">
+    <div class="sheet-head">
+      <div class="sheet-title">{{ __('scoreboard::corners.tab') }}</div>
+      <button id="cornersClose" class="btn sheet-close">✕</button>
+    </div>
+    @include('scoreboard::shared.corners-panel', ['look' => $L, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('taekwondo')])
+  </div>
+</div>
+@endif
+
 @if ($cameraUrl ?? null)
 <div id="camerasModal" hidden class="scrim" style="z-index:50;">
   <div class="sheet" style="width:980px; max-height:900px; overflow-y:auto;">
@@ -388,9 +412,9 @@
     <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
       <div style="font-weight:600; font-size:16px; letter-spacing:0.3em; text-transform:uppercase; color:rgba(232,230,224,0.55);">{{ __('scoreboard::taekwondo_messages.ctl_round') }}</div>
       <div style="display:flex; align-items:center; gap:12px;">
-        <button id="btnAwardAka" class="btn" style="font-family:'Anton',sans-serif; font-size:20px; padding:10px 14px; border-color:oklch(0.6 0.22 25); color:#ff8b80;">◀</button>
-        <div id="roundNo" style="font-family:'Anton',sans-serif; font-size:72px; line-height:1; color:oklch(0.85 0.16 85); min-width:60px; text-align:center;">1</div>
-        <button id="btnAwardAo" class="btn" style="font-family:'Anton',sans-serif; font-size:20px; padding:10px 14px; border-color:oklch(0.52 0.19 255); color:#8bb8ff;">▶</button>
+        <button id="btnAwardAka" class="btn" style="font-family:'Anton',sans-serif; font-size:20px; padding:10px 14px; border-color:{{ $SK['aka']['accent'] }}; color:{{ $SK['aka']['softInk'] }};{{ $rr ? ' order:3;' : '' }}">{{ $rr ? '▶' : '◀' }}</button>
+        <div id="roundNo" style="font-family:'Anton',sans-serif; font-size:72px; line-height:1; color:oklch(0.85 0.16 85); min-width:60px; text-align:center;{{ $rr ? ' order:2;' : '' }}">1</div>
+        <button id="btnAwardAo" class="btn" style="font-family:'Anton',sans-serif; font-size:20px; padding:10px 14px; border-color:{{ $SK['ao']['accent'] }}; color:{{ $SK['ao']['softInk'] }};{{ $rr ? ' order:1;' : '' }}">{{ $rr ? '◀' : '▶' }}</button>
       </div>
       <div id="roundHint" style="font-weight:600; font-size:15px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(232,230,224,0.5);"></div>
       <button id="btnAwardScore" class="btn" style="padding:8px 16px; font-size:15px;">{{ __('scoreboard::taekwondo_messages.ctl_award_round') }}</button>
@@ -528,6 +552,10 @@
   var MAT = @json($court);
   var URL_CMD = @json($commandUrl);
   var GAM_LIMIT = @json(\App\Scoreboard\Sports\Taekwondo\Mat\MatState::GAM_JEOM_LIMIT);
+  // Each corner's colours (Mat\CornerLook skin) and which side red stands on
+  // at this mat (App\Scoreboard\Corners\MatSides).
+  var SKIN = @json($SK);
+  var RED_RIGHT = @json((bool) $rr);
   var TBD = @json(__('scoreboard::taekwondo_messages.court_tbd'));
   var T = {
     start: @json(__('scoreboard::taekwondo_messages.ctl_start')),
@@ -535,8 +563,8 @@
     waiting: @json(__('scoreboard::taekwondo_messages.ctl_waiting')),
     none: @json(__('scoreboard::taekwondo_messages.ctl_undo_none')),
     vs: @json(__('scoreboard::taekwondo_messages.ctl_vs')),
-    hong: @json(__('scoreboard::taekwondo_messages.sb_hong')),
-    chung: @json(__('scoreboard::taekwondo_messages.sb_chung')),
+    hong: @json($SK['aka']['label']),
+    chung: @json($SK['ao']['label']),
     gamjeom: @json(__('scoreboard::taekwondo_messages.ctl_gamjeom')),
     gamhint: @json(__('scoreboard::taekwondo_messages.ctl_gamjeom_hint')),
     winner: @json(__('scoreboard::taekwondo_messages.sb_winner')),
@@ -745,15 +773,20 @@
   function buildCorners() {
     var host = el('corners');
     host.textContent = '';
-    [['aka', T.hong, 'oklch(0.6 0.22 25)', 'rowInL'], ['ao', T.chung, 'oklch(0.52 0.19 255)', 'rowInR']].forEach(function (c) {
-      var side = c[0], label = c[1], accent = c[2], anim = c[3];
+    // Left to right as this mat stands (App\Scoreboard\Corners\MatSides);
+    // each corner wears its own colours (Mat\CornerLook).
+    var order = RED_RIGHT ? ['ao', 'aka'] : ['aka', 'ao'];
+    order.map(function (sd, i) {
+      return [sd, sd === 'aka' ? T.hong : T.chung, SKIN[sd].accent, i === 0 ? 'rowInL' : 'rowInR', i === 1];
+    }).forEach(function (c) {
+      var side = c[0], label = c[1], accent = c[2], anim = c[3], atRight = c[4];
 
       // The two corners face each other, as they do on the wall and in the
       // introduction: red reads left-to-right from its portrait, blue is the
       // mirror image of it. A console where both panels pointed the same way
       // gave the operator no spatial cue for which half of the mat they were
       // touching — and the hall screens beside them are already mirrored.
-      var mirror = side === 'ao';
+      var mirror = atRight;
       var rev = mirror ? ' flex-direction:row-reverse;' : '';
 
       var panel = document.createElement('div');
@@ -761,8 +794,7 @@
         // The gradient mirrors too, so the colour sits under the portrait on
         // both sides rather than under the portrait on one and the score on
         // the other.
-        (side === 'aka' ? 'linear-gradient(160deg, oklch(0.3 0.11 25) 0%, rgba(10,10,14,0.95) 70%)'
-                        : 'linear-gradient(200deg, oklch(0.28 0.1 255) 0%, rgba(10,10,14,0.95) 70%)') +
+        'linear-gradient(' + (atRight ? '200deg' : '160deg') + ', ' + SKIN[side].barFrom + ' 0%, rgba(10,10,14,0.95) 70%)' +
         '; border-top:6px solid ' + accent + '; padding:16px 18px; min-width:0; animation:' + anim + ' 0.5s cubic-bezier(0.22,1,0.36,1) both;' +
         'box-shadow:0 20px 50px -24px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.07);';
 
@@ -834,7 +866,7 @@
       var idRow = document.createElement('div');
       idRow.style.cssText = 'display:flex; align-items:center; gap:10px; min-width:0;' + rev;
       var tag = document.createElement('div');
-      tag.style.cssText = 'font-weight:800; font-size:17px; letter-spacing:0.22em; text-transform:uppercase; color:#fff; background:' + accent + '; padding:3px 12px 3px 14px; flex:0 0 auto;';
+      tag.style.cssText = 'font-weight:800; font-size:17px; letter-spacing:0.22em; text-transform:uppercase; color:' + SKIN[side].accentInk + '; background:' + accent + '; padding:3px 12px 3px 14px; flex:0 0 auto;';
       tag.textContent = label;
       var nm = document.createElement('div');
       nm.id = side + 'Name';
@@ -1096,10 +1128,11 @@
 
     // The sheet wears the corner's own colour, so an official adding two
     // pictures in a row is never in doubt which one they are framing.
-    var accent = side === 'aka' ? 'oklch(0.6 0.22 25)' : 'oklch(0.52 0.19 255)';
+    var accent = SKIN[side === 'aka' ? 'aka' : 'ao'].accent;
     var tag = el('cropTag');
     tag.textContent = side === 'aka' ? T.hong : T.chung;
     tag.style.background = accent;
+    tag.style.color = SKIN[side === 'aka' ? 'aka' : 'ao'].accentInk;
     el('cropView').style.borderColor = accent;
 
     el('cropImg').src = img.src;
@@ -1306,6 +1339,7 @@
     // painted against a box of no size.
     var scene = WinnerCelebration.paint(el('winnerScene'), {
       corner: side === 'aka' ? 'red' : 'blue',
+      palette: (SKIN[side] || {}).celebrate || null,
       name: c.name || '',
       club: c.club || '',
       logo: c.logo || null,
@@ -1413,6 +1447,13 @@
     el('camerasModal').onclick = function (e) { if (e.target === el('camerasModal')) el('camerasModal').hidden = true; };
   }
 
+  // The corners sheet — the shared panel; its own script saves (shared/corners-script).
+  if (el('btnCorners')) {
+    el('btnCorners').onclick = function () { el('cornersModal').hidden = false; };
+    el('cornersClose').onclick = function () { el('cornersModal').hidden = true; };
+    el('cornersModal').onclick = function (e) { if (e.target === el('cornersModal')) el('cornersModal').hidden = true; };
+  }
+
   el('btnQueue').onclick = function () { paintQueue(); el('queueModal').hidden = false; };
   el('queueClose').onclick = function () { el('queueModal').hidden = true; };
   el('queueModal').onclick = function (e) { if (e.target === el('queueModal')) el('queueModal').hidden = true; };
@@ -1428,6 +1469,7 @@
     el('queueModal').hidden = true;
     el('undoModal').hidden = true;
     if (el('camerasModal')) el('camerasModal').hidden = true;
+    if (el('cornersModal')) el('cornersModal').hidden = true;
     if (!el('cropModal').hidden) closeCrop();
   });
 
@@ -1486,6 +1528,7 @@
   }
 })();
 </script>
+@include('scoreboard::shared.corners-script', ['look' => $L, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('taekwondo')])
 @include('scoreboard::partials.start-day-prompt')
 </body>
 </html>

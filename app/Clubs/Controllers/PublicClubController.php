@@ -819,7 +819,9 @@ class PublicClubController extends Controller
         if ($request->query('scope') === 'public') {
             $public = app(\App\Events\Support\PublicEvent::class);
             $events = $events->filter(fn (ClubEvent $e) => $public->isPublic($e))->values();
-            $finished = collect();
+            // Finished ones too, for the new Explore's "Finished" section
+            // (2026-10-10) — under the same public-page rule as the open ones.
+            $finished = $finished->filter(fn (ClubEvent $e) => $public->isPublic($e))->values();
         }
 
         // Paid featuring: only an APPROVED request, and only while the event

@@ -1366,6 +1366,153 @@ class PersonalEventController extends Controller
     }
 
     /**
+     * Mark many entries paid, or sign off many weigh-ins, in one go — the
+     * entry list's select mode (asked for on 2026-10-10: a desk with a long
+     * list cannot do it one sheet at a time).
+     *
+     * A loop over EXACTLY what the one-entry endpoints do, behind the same
+     * gates (a weigh-in official still cannot approve money), scoped to this
+     * event's competitors. Nothing is invented in bulk:
+     *
+     *  - **paid** approves each unpaid entry and records its fee the way an
+     *    untouched approval does (recordFees with no choice) — an entry whose
+     *    price depends on a type nobody ticked stays UNRECORDED and is counted
+     *    back, so the desk knows to set it on that person's sheet.
+     *  - **weighed** signs off the weight already ON FILE (the entrant's
+     *    declared weight). An entry with no weight anywhere is skipped and said
+     *    out loud — a scale reading cannot be made up for somebody. Already
+     *    signed weigh-ins are left alone, so a second press changes nothing.
+     */
+    public function verifyBulk(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['paid', 'weighed'])],
+            'registration_ids' => ['required', 'array', 'min:1', 'max:500'],
+            'registration_ids.*' => ['integer'],
+        ]);
+
+        $access = app(EventAccess::class);
+        abort_unless($data['action'] === 'paid'
+            ? $access->canVerifyPayments($event, $me)
+            : $access->canVerifyWeighIn($event, $me), 403);
+
+        // Only this event's competitors; an id from anywhere else simply matches nothing.
+        $regs = $event->participantRegistrations()
+            ->whereIn('id', array_unique(array_map('intval', $data['registration_ids'])))
+            ->get();
+
+        $done = [];
+        $skipped = 0;
+        $unrecorded = 0;
+        $noWeight = [];
+
+        if ($data['action'] === 'paid') {
+            foreach ($regs as $reg) {
+                if ($reg->paid && $reg->paid_by !== null) {
+                    $skipped++;
+                    continue;
+                }
+
+                $reg->update(['paid' => true, 'paid_at' => now(), 'paid_by' => $me->id]);
+
+                $lines = $this->recordFees($event, $reg, null);
+                $recorded = $lines !== null
+                    || \App\Events\Models\EventRegistrationFeeLine::where('registration_id', $reg->id)->exists();
+
+                if (! $recorded && EventFee::chargesAnything($event, 'participant')) {
+                    $unrecorded++;
+                }
+
+                $done[] = $reg->id;
+            }
+
+            \Illuminate\Support\Facades\Log::info('event.bulk_paid', [
+                'event' => $event->uuid, 'by' => $me->id, 'count' => count($done),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => trans_choice('personal.event_people_bulk_paid_done', count($done), ['count' => count($done)])
+                    .($skipped ? ' '.trans_choice('personal.event_people_bulk_already', $skipped, ['count' => $skipped]) : ''),
+                'warning' => $unrecorded
+                    ? trans_choice('personal.event_people_bulk_fee_unrecorded', $unrecorded, ['count' => $unrecorded])
+                    : null,
+                'updated' => $done,
+            ]);
+        }
+
+        /* One body, one weight: a person entered in two divisions declared it
+           once, on whichever entry. Siblings in the batch lend it to each other,
+           and so do their other entries in this event. */
+        $declared = $event->participantRegistrations()
+            ->whereIn('user_id', $regs->pluck('user_id')->filter()->unique()->all())
+            ->whereNotNull('weight')
+            ->orderByRaw('weighed_in_by IS NULL')
+            ->get(['user_id', 'weight'])
+            ->unique('user_id')
+            ->pluck('weight', 'user_id');
+
+        $type = $this->typeFor($event);
+        $touched = [];
+
+        foreach ($regs as $reg) {
+            if ($reg->weighed_in_by !== null) {
+                $skipped++;
+                continue;
+            }
+
+            $weight = $reg->weight ?? ($reg->user_id ? ($declared[$reg->user_id] ?? null) : null);
+
+            if ($weight === null) {
+                $noWeight[] = $reg->id;
+                continue;
+            }
+
+            $reg->update([
+                'weight' => $weight,
+                'weighed_in_at' => now(),
+                'weighed_in_by' => $me->id,
+            ]);
+            $reg->refresh();
+
+            // The same placement the scale makes in verifyWeighIn().
+            $placement = method_exists($type, 'weighInPlacement')
+                ? $type->weighInPlacement($event, $reg)
+                : ['division' => $type->classifyEntry($event, $reg), 'action' => null, 'from' => null];
+
+            foreach ([$placement['division'] ?? null, $placement['from'] ?? null] as $div) {
+                if ($div) {
+                    $touched[$div->id] = $div;
+                }
+            }
+
+            $done[] = $reg->id;
+        }
+
+        // Each stale draw told once, not once per athlete in it.
+        foreach ($touched as $div) {
+            $type->onEntrantsChanged($event, $div);
+        }
+
+        \Illuminate\Support\Facades\Log::info('event.bulk_weighed', [
+            'event' => $event->uuid, 'by' => $me->id, 'count' => count($done), 'no_weight' => count($noWeight),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => trans_choice('personal.event_people_bulk_weighed_done', count($done), ['count' => count($done)])
+                .($skipped ? ' '.trans_choice('personal.event_people_bulk_already', $skipped, ['count' => $skipped]) : ''),
+            'warning' => $noWeight
+                ? trans_choice('personal.event_people_bulk_no_weight', count($noWeight), ['count' => count($noWeight)])
+                : null,
+            'updated' => $done,
+            'no_weight' => $noWeight,
+        ]);
+    }
+
+    /**
      * Write what an entry was charged, at the moment its payment is approved.
      *
      * Three cases, and the third is the reason this is careful rather than
@@ -4106,6 +4253,9 @@ class PersonalEventController extends Controller
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
             'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
+            // The event's theme colour — it lands in style attributes, so a
+            // 6-digit hex and nothing else. Absent: the type's own colour.
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ], $this->eventMessages());
 
         if ($asHost) {
@@ -4177,7 +4327,7 @@ class PersonalEventController extends Controller
             'description' => $data['description'] ?? null,
             'prize' => $data['prize'] ?? null,
             'max_capacity' => $data['max_capacity'] ?? null,
-            'color' => $this->typeColor($data['event_type']),
+            'color' => $data['color'] ?? $this->typeColor($data['event_type']),
             'status' => 'active',
             'is_archived' => false,
             // Priced in the host club's currency, from the amount that was
@@ -4292,6 +4442,7 @@ class PersonalEventController extends Controller
             // A hosted event (a federation's, a person's) has no club to move to:
             // whatever its picker posted ("me" for "Myself") is ignored below.
             'tenant_id' => (! $event->tenant_id && $event->host_type) ? ['nullable'] : ['nullable', 'integer'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
         /*
@@ -4382,6 +4533,12 @@ class PersonalEventController extends Controller
             if (array_key_exists($key, $data)) {
                 $columns[$key] = $data[$key];
             }
+        }
+
+        // The theme colour: only when one was sent. Never cleared to nothing —
+        // every header on the event is drawn from it.
+        if (! empty($data['color'])) {
+            $columns['color'] = $data['color'];
         }
 
         $event->update($type->columnsFromInput($data, $event) + $columns + ($hosted ? [] : ['tenant_id' => $host]) + [
@@ -4856,6 +5013,9 @@ class PersonalEventController extends Controller
         rescue(fn () => app(\App\Events\EventTypeRegistry::class)->for($event)
             ->onEntrantsChanged($event, null), null, false);
 
+        // …and the hall screens, whose queue IS the running order.
+        \App\Events\Support\HallWalls::refresh($event);
+
         return response()->json([
             'success' => true,
             'message' => $result['message'] ?? null,
@@ -4870,6 +5030,7 @@ class PersonalEventController extends Controller
 
         $board = app(OrderBoard::class);
         $board->auto($event);
+        \App\Events\Support\HallWalls::refresh($event);
 
         return response()->json([
             'success' => true,
@@ -7520,7 +7681,29 @@ class PersonalEventController extends Controller
              */
             'options' => ['nullable', 'array', 'max:30'],
             'options.*' => ['string', 'max:64'],
+
+            // The late-entry window's further facts (2026-10-07) — every one
+            // optional, as everything above. An AGE when nobody knows the date
+            // of birth; it is kept as an age and never becomes a birthdate.
+            'age' => ['nullable', 'integer', 'min:3', 'max:99'],
+            'nationality' => ['nullable', 'string', 'size:2', 'alpha'],
+            // A photograph and a new club's logo, as data URIs — the real bytes
+            // are checked where they are stored.
+            'photo' => ['nullable', 'string', 'starts_with:data:image/', 'max:15000000'],
+            'club_name' => ['nullable', 'string', 'min:2', 'max:120'],
+            'club_logo' => ['nullable', 'string', 'starts_with:data:image/', 'max:8000000'],
         ]);
+
+        // A club typed at the desk: the event's own by that name, or a new one.
+        $logoRejected = false;
+        if (empty($data['club']) && ! empty($data['club_name'])) {
+            $walkIn = app(\App\Events\Support\Clubs\WalkInClub::class)
+                ->findOrCreate($event, $data['club_name'], $data['club_logo'] ?? null, (int) $me->id);
+            $logoRejected = $walkIn['logo_rejected'];
+            if ($walkIn['club']) {
+                $data['club'] = $walkIn['club']->uuid;
+            }
+        }
 
         $result = $claims->issue(
             $event, $me, $data['full_name'],
@@ -7552,13 +7735,30 @@ class PersonalEventController extends Controller
          * that owns that rule. Best-effort: the person is already entered, and
          * failing the whole request over a club would lose the name.
          */
-        if (! empty($data['club']) && ! empty($result['claim']['competitor_id'])) {
-            $registration = ClubEventRegistration::where('event_id', $event->id)
-                ->find((int) $result['claim']['competitor_id']);
+        $registration = ! empty($result['claim']['competitor_id'])
+            ? ClubEventRegistration::where('event_id', $event->id)->find((int) $result['claim']['competitor_id'])
+            : null;
 
-            if ($registration) {
-                app(EntryEditor::class)->apply($event, $registration, ['club' => $data['club']], $me);
+        // Club, photograph and nationality, through the same editor — the
+        // photo then lands in the person's own store (A Person's Photo Has One
+        // Home) and the club on whichever table it belongs to.
+        $edits = array_filter([
+            'club' => $data['club'] ?? null,
+            'photo' => $data['photo'] ?? null,
+            'nationality' => isset($data['nationality']) ? strtoupper($data['nationality']) : null,
+        ], fn ($v) => $v !== null && $v !== '');
+        $warning = $logoRejected ? __('events::events.club_logo_rejected') : null;
+
+        if ($registration && $edits) {
+            $applied = app(EntryEditor::class)->apply($event, $registration, $edits, $me);
+            if (($applied['ok'] ?? true) === false) {
+                $warning = $applied['message'] ?? $warning;
             }
+        }
+
+        // An age with no date of birth stays an age.
+        if ($registration && ! empty($data['age']) && empty($data['birthdate'])) {
+            $registration->forceFill(['declared_age' => (int) $data['age']])->saveQuietly();
         }
 
         // The entrant count moved for everyone looking at this event.
@@ -7567,6 +7767,8 @@ class PersonalEventController extends Controller
         return response()->json([
             'success' => true,
             'message' => $result['message'],
+            // Entered, but something optional (a photo, a logo) was refused.
+            'warning' => $warning,
             'claim' => $result['claim'],
             'going' => $event->participantRegistrations()->count(),
             'going_people' => $event->participantRegistrations()->distinct()->count('user_id'),
@@ -7927,6 +8129,12 @@ class PersonalEventController extends Controller
             'day' => ['nullable', 'integer', 'min:1', 'max:60'],
             'category_ids' => ['nullable', 'array', 'max:200'],
             'category_ids.*' => ['integer'],
+            // Divisions with the PARTS to place (App\Events\Support\BoutPart);
+            // no parts is whatever is left of the division.
+            'divisions' => ['nullable', 'array', 'max:200'],
+            'divisions.*.id' => ['required', 'integer'],
+            'divisions.*.parts' => ['nullable', 'array', 'max:4'],
+            'divisions.*.parts.*' => ['string', Rule::in(\App\Events\Support\BoutPart::PLACEABLE)],
             'kind' => ['nullable', Rule::in([
                 \App\Events\Models\EventRunSlot::KIND_CEREMONY,
                 \App\Events\Models\EventRunSlot::KIND_BREAK,
@@ -7934,12 +8142,21 @@ class PersonalEventController extends Controller
             ])],
             'label' => ['nullable', 'string', 'max:160'],
             'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
+            // The break set on the event itself (RunOrder::addEventBreak).
+            'event_break' => ['nullable', 'boolean'],
+            // One medal ceremony for everyone at the end of the day, rather
+            // than each division's own awarding (RunOrder::togetherCeremony).
+            'together_ceremony' => ['nullable', 'boolean'],
         ]);
 
         $day = (int) ($data['day'] ?? 1);
         $order = app(\App\Events\Support\RunOrder::class);
 
-        if (! empty($data['category_ids'])) {
+        if (! empty($data['event_break'])) {
+            $order->addEventBreak($event, $day);
+        } elseif (! empty($data['divisions'])) {
+            $order->addDivisions($event, $data['divisions'], $day, ! empty($data['together_ceremony']));
+        } elseif (! empty($data['category_ids'])) {
             $order->addDivisions($event, $data['category_ids'], $day);
         } elseif (! empty($data['kind'])) {
             $order->addBlock($event, $data['kind'], $data['label'] ?? null, $data['duration_minutes'] ?? null, $day);
@@ -7948,6 +8165,30 @@ class PersonalEventController extends Controller
         }
 
         return $this->runOrderResponse($event, $day);
+    }
+
+    /**
+     * Change the event's own break — the one set when the event was created —
+     * from the running order (owner, 2026-10-07). It IS the event's break, so
+     * the schedule, the PDF and the event page follow; and if it is already on
+     * the day, its pinned slot moves with it.
+     */
+    public function updateEventBreak(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+        abort_unless($this->canManage($event, $me), 403);
+
+        $data = $request->validate([
+            'day' => ['nullable', 'integer', 'min:1', 'max:60'],
+            'start' => ['required', 'date_format:H:i'],
+            'end' => ['required', 'date_format:H:i', 'after:start'],
+        ]);
+        $day = (int) ($data['day'] ?? 1);
+
+        app(\App\Events\Support\RunOrder::class)->moveEventBreak($event, $data['start'], $data['end'], $day);
+
+        return $this->runOrderResponse($event->fresh(), $day);
     }
 
     /** Set the day's order from the board's own list of slot uuids. */
@@ -8030,6 +8271,10 @@ class PersonalEventController extends Controller
     {
         $this->applyRunOrderToMats($event);
         $this->pushEventRefresh($event);
+        // …and the hall: every mat's wall boards get their new queue and every
+        // scoring console re-reads its Bouts list, the moment the sheet moves.
+        // Best-effort — a television that is off never fails a save.
+        rescue(fn () => app(\App\Scoreboard\Fleet::class)->boardsChanged($event), null, false);
 
         return response()->json([
             'success' => true,
@@ -8114,8 +8359,26 @@ class PersonalEventController extends Controller
             'days' => $sheet->days($event),
             'rows' => $rows,
             'unscheduled' => $sheet->unscheduled($event)
-                ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values()->all(),
+                ->map(fn ($c) => [
+                    'id' => $c->id, 'name' => $c->name,
+                    // What is left of it to place, and what it has at all — a
+                    // division with no draw yet has no parts and goes on whole.
+                    'remaining' => $c->remaining_parts,
+                    'parts' => $c->present_parts,
+                ])->values()->all(),
+            'part_labels' => collect(\App\Events\Support\BoutPart::PLACEABLE)
+                ->mapWithKeys(fn ($p) => [$p => \App\Events\Support\BoutPart::label($p)])->all(),
             'conflicts' => app(\App\Events\Support\RunOrder::class)->conflicts($event, $day),
+            // The event's break times, for the edit sheet — on the day or not.
+            'break_times' => $event->break_start && $event->break_end
+                ? ['start' => substr((string) $event->break_start, 0, 5), 'end' => substr((string) $event->break_end, 0, 5)]
+                : null,
+            // Is this day's medal ceremony one for everyone? Seeds the add sheet's switch.
+            'together' => app(\App\Events\Support\RunOrder::class)->togetherSlot($event, $day) !== null,
+            // The break set on the event, while it is not on this day yet.
+            'event_break' => ($b = app(\App\Events\Support\RunOrder::class)->eventBreak($event, $day))
+                ? $b + ['starts_label' => $clock($b['starts_at']), 'ends_label' => $clock($b['starts_at'] + $b['duration'])]
+                : null,
             'finishes_at' => $sheet->finishesAt($event, $day),
             'finishes_label' => $clock($sheet->finishesAt($event, $day)),
             'starts_label' => $start ? \App\Support\Cldr::time($start) : null,

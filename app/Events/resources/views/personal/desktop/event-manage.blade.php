@@ -425,6 +425,7 @@
                      while the feature is switched on. --}}
                 @if(config('certificates.enabled') && ! empty($e['categories']))
                     <x-certificates-console context="club_event" :subject="$e['key']" :color="$mgColor ?? $e['color']" :title="$e['title']" />
+                    <x-badges-console :subject="$e['key']" :color="$mgColor ?? $e['color']" :title="$e['title']" />
                 @endif
 
                 {{-- Paid featuring: the spotlight card on everyone's /me/events

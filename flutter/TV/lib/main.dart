@@ -240,6 +240,7 @@ class _WallState extends State<Wall> {
     // loaded.
     _allowAutoplay(controller);
     _lockTextScale(controller);
+    _allowLocation(controller);
 
     if (!mounted) return;
 
@@ -264,6 +265,42 @@ class _WallState extends State<Wall> {
     if (platform is AndroidWebViewController) {
       platform.setMediaPlaybackRequiresUserGesture(false);
     }
+  }
+
+  /// Let the SCORING TABLE's own pages read where the tablet is.
+  ///
+  /// The console's Players tab seeds a blank nationality from it. Two grants
+  /// have to line up: the WebView lets the page ask (here), and Android lets
+  /// the app answer (ensureLocationPermission, asked at that moment, never at
+  /// launch). Only the tablet, and only for the one host this app renders —
+  /// a wall screen and a camera never need to know where they are.
+  void _allowLocation(WebViewController? controller) {
+    if (!Device.isTablet) return;
+
+    final platform = controller?.platform;
+    if (platform is! AndroidWebViewController) return;
+
+    platform.setGeolocationEnabled(true);
+    platform.setGeolocationPermissionsPromptCallbacks(
+      onShowPrompt: (request) async {
+        final ours = Uri.tryParse(request.origin)?.host == Config.base.host;
+        var granted = false;
+
+        if (ours) {
+          try {
+            granted = await const MethodChannel('bh.takeone/app')
+                    .invokeMethod<bool>('ensureLocationPermission') ??
+                false;
+          } on PlatformException {
+            granted = false;
+          } on MissingPluginException {
+            granted = false;
+          }
+        }
+
+        return GeolocationPermissionsResponse(allow: granted, retain: false);
+      },
+    );
   }
 
   /// The page is drawn at the size the page decides, and nothing else.

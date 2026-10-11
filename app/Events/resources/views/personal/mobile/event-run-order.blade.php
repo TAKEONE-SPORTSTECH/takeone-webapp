@@ -29,6 +29,7 @@
         'sheet' => $sheet,
         'dataUrl' => route('me.events.run-order.data', ['event' => $e['key'], 'day' => $day]),
         'storeUrl' => route('me.events.run-order.store', $e['key']),
+        'breakUrl' => route('me.events.run-order.break', $e['key']),
         'reorderUrl' => route('me.events.run-order.reorder', $e['key']),
         'slotUrl' => route('me.events.run-order.update', ['event' => $e['key'], 'slot' => '__SLOT__']),
         'errorText' => __('shared.something_went_wrong'),

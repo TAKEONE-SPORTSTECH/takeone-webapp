@@ -7,6 +7,11 @@ return [
         'title' => 'Certificate',
         'body' => 'for taking part in {event} on {date}.',
     ],
+    // An official's badge says what the card is; the rest is the official's own.
+    'official_badge' => [
+        'title' => 'Official',
+        'body' => ' ',
+    ],
     'participation' => [
         'title' => 'Certificate of Participation',
         'body' => 'competed in the {division} division of the {event} on {date}{representing}.',

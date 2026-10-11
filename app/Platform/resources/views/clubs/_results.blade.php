@@ -69,6 +69,14 @@
                                     title="{{ __('platform.platform_clubs_results_edit_club') }}">
                                 <i class="bi bi-pencil"></i>
                             </button>
+                            @if(config('features.club_removal_tool'))
+                                <button type="button"
+                                        class="btn btn-sm btn-light shadow-sm text-red-600"
+                                        onclick="event.preventDefault(); event.stopPropagation(); window.dispatchEvent(new CustomEvent('open-club-removal', { detail: { id: {{ (int) $club->id }}, name: {{ \Illuminate\Support\Js::from($club->club_name) }} } }));"
+                                        title="{{ __('Remove club') }}" aria-label="{{ __('Remove club') }}">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            @endif
                         </div>
                     </div>
 

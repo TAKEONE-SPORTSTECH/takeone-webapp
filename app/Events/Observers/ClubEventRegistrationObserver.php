@@ -3,6 +3,7 @@
 namespace App\Events\Observers;
 
 use App\Events\Models\ClubEventRegistration;
+use App\Events\Support\EventHost;
 use App\Members\Support\ProfileHistorySync;
 
 /**
@@ -19,5 +20,19 @@ class ClubEventRegistrationObserver
     public function created(ClubEventRegistration $registration): void
     {
         $this->sync->safely(fn () => $this->sync->syncRegistration($registration));
+        EventHost::entrantChanged($registration, 'created');
+    }
+
+    /** Only the changes a host's figures read: division, weigh-in, weight, entry state. */
+    public function updated(ClubEventRegistration $registration): void
+    {
+        if ($registration->wasChanged(['category_id', 'weighed_in_at', 'weight', 'entry_state', 'role'])) {
+            EventHost::entrantChanged($registration, 'updated');
+        }
+    }
+
+    public function deleted(ClubEventRegistration $registration): void
+    {
+        EventHost::entrantChanged($registration, 'deleted');
     }
 }

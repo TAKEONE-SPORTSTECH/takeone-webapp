@@ -6,6 +6,7 @@ use Ahl\Certificates\Certificates as Engine;
 use Ahl\Certificates\CertificateService;
 use Ahl\Certificates\Models\Certificate;
 use App\Certificates\Contracts\CertificateContext;
+use App\Certificates\Support\CertificateBundles;
 use App\Certificates\Support\CertificatePresenter;
 use App\Certificates\Support\CertificateRealtime;
 use App\Certificates\Support\Contexts;
@@ -30,6 +31,9 @@ class ManageController extends Controller
 
     /** Approving draws and stores a PDF each, so the console sends them in batches. */
     public const APPROVE_BATCH = 15;
+
+    /** Deleting a draft is cheap (it has no file yet); this only caps one request. */
+    public const DELETE_BATCH = 200;
 
     public function show(Request $request, string $context, string $key, CertificatePresenter $presenter): JsonResponse
     {
@@ -139,6 +143,83 @@ class ManageController extends Controller
         return response()->json(['success' => true, 'message' => __('cert::messages.deleted'), 'uuid' => $uuid]);
     }
 
+    /**
+     * Delete drafts in this context in one go: the uuids given, or — with `all` — every
+     * draft, DELETE_BATCH per request. Only drafts: an issued certificate is revoked,
+     * never deleted, because its QR code is already out in the world.
+     */
+    public function destroyDrafts(Request $request, string $context, string $key, CertificateService $service, CertificatePresenter $presenter): JsonResponse
+    {
+        [$provider, $model] = $this->managedContext($context, $key, $request);
+        $data = $request->validate([
+            'uuids' => ['sometimes', 'array', 'max:'.self::DELETE_BATCH],
+            'uuids.*' => ['uuid'],
+            'all' => ['sometimes', 'boolean'],
+        ]);
+
+        $drafts = Engine::model()::query()->forContext($model)->where('status', 'draft')->orderBy('id');
+        if (! empty($data['uuids'])) {
+            $drafts->whereIn('uuid', $data['uuids']);
+        } elseif (! ($data['all'] ?? false)) {
+            return response()->json(['success' => false, 'message' => __('cert::messages.nothing_selected')], 422);
+        }
+
+        $deleted = 0;
+        foreach ($drafts->limit(self::DELETE_BATCH)->get() as $c) {
+            if (Gate::forUser($request->user())->allows('delete', $c)) {
+                $service->delete($c);   // its file (if one was ever drawn) goes first
+                $deleted++;
+            }
+        }
+
+        Log::info('certificates.drafts_deleted', ['context' => $provider->alias(), 'key' => $key, 'by' => $request->user()->id, 'count' => $deleted]);
+        $this->tellOthers($provider, $model, $request);
+        $remaining = Engine::model()::query()->forContext($model)->where('status', 'draft')->count();
+
+        return response()->json([
+            'success' => true,
+            'message' => trans_choice('cert::messages.deleted_many', $deleted, ['count' => $deleted]),
+            'deleted' => $deleted,
+            'remaining' => $remaining,
+        ] + $this->state($provider, $model, $presenter));
+    }
+
+    /**
+     * One design's issued certificates as one PDF, for the print shop: start building it
+     * (or find it already built). The file is drawn in the background; the answer says
+     * how far along it is, and the console hears when it is ready.
+     */
+    public function bundle(Request $request, string $context, string $key, string $type, CertificateBundles $bundles): JsonResponse
+    {
+        [$provider, $model] = $this->managedContext($context, $key, $request);
+        abort_unless(in_array($type, $provider->types(), true), 404);
+
+        $state = $request->isMethod('post')
+            ? $bundles->start($provider, $model, $type, $request->user()->id)
+            : $bundles->state($provider, $model, $type);
+        if ($request->isMethod('post')) {
+            Log::info('certificates.bundle_requested', ['context' => $provider->alias(), 'key' => $key, 'type' => $type, 'by' => $request->user()->id, 'state' => $state['state']]);
+        }
+
+        return response()->json(['success' => true, 'type' => $type] + $state);
+    }
+
+    /** The built file. Private and never cached by a shared cache, like every certificate file. */
+    public function bundleDownload(Request $request, string $context, string $key, string $type, CertificateBundles $bundles)
+    {
+        [$provider, $model] = $this->managedContext($context, $key, $request);
+        abort_unless(in_array($type, $provider->types(), true), 404);
+        $path = $bundles->path($provider, $model, $type);
+        abort_unless($path && \Illuminate\Support\Facades\Storage::disk('local')->exists($path), 404);
+        $name = \Illuminate\Support\Str::slug($provider->headline($model)) ?: 'certificates';
+
+        return \Illuminate\Support\Facades\Storage::disk('local')->download($path, $name.'-'.$type.'.pdf', [
+            'Content-Type' => 'application/pdf',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     /* ───────────────────────────────────────────────────────────────── */
 
     private function state(CertificateContext $provider, Model $model, CertificatePresenter $presenter): array
@@ -158,6 +239,7 @@ class ManageController extends Controller
             'certificates' => $all->map(fn (Certificate $c) => $presenter->managed($c, $locale))->values(),
             'design_url' => route('me.certificates.design', ['context' => $provider->alias(), 'key' => $provider->key($model)]),
             'batch' => self::APPROVE_BATCH,
+            'bundles' => app(CertificateBundles::class)->states($provider, $model),
         ];
     }
 

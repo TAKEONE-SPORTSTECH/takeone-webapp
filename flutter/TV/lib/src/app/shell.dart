@@ -28,7 +28,9 @@ import '../theme.dart';
 ///   * links that leave — a club's Instagram opens in Android, not inside our
 ///     chrome, because a foreign login form wearing our frame is a phishing
 ///     surface;
-///   * the back button behaving like a phone's, not like a kiosk's.
+///   * the back button behaving like a phone's, not like a kiosk's;
+///   * files the page offers — a certificate's PDF, the print-shop bundle — which
+///     a WebView silently drops unless the host saves them (see [_download]).
 ///
 /// Deliberately NOT a kiosk: status bar, rotation and scrolling all stay. The
 /// hall variants take those away because a wall screen has nobody holding it;
@@ -124,6 +126,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         // "net::ERR_" at the member.
         disableDefaultErrorPage: true,
 
+        // A file the page hands out (Download, Print, the print-shop PDF) reaches
+        // onDownloadStartRequest instead of vanishing: a WebView cannot show a PDF,
+        // and without a download listener it does nothing at all.
+        useOnDownloadStart: true,
+
         // iOS, for when this app ships there: inline video rather than the
         // fullscreen player, and the same back-swipe a browser gives.
         allowsInlineMediaPlayback: true,
@@ -191,6 +198,32 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     } on MissingPluginException {
       // Older shell without the channel — leave the tap unhandled rather than
       // navigating somewhere the app should not go.
+    }
+  }
+
+  /// A file the page offered: saved by Android's own download manager, with the
+  /// member's session so the server recognises them, into the phone's Downloads,
+  /// where the finished notification opens it. Only our own host's files — a
+  /// download link to anywhere else is handed to the browser like any other link.
+  Future<void> _download(DownloadStartRequest request) async {
+    final url = Uri.parse(request.url.toString());
+    if (!Config.staysInside(url)) {
+      await _openExternally(url);
+      return;
+    }
+    try {
+      await const MethodChannel('bh.takeone/app').invokeMethod<void>('downloadFile', {
+        'url': url.toString(),
+        'mimeType': request.mimeType ?? '',
+        'contentDisposition': request.contentDisposition ?? '',
+        'userAgent': request.userAgent ?? '',
+        'filename': request.suggestedFilename ?? '',
+      });
+    } on PlatformException {
+      // Android could not take it (no storage, download manager disabled):
+      // staying on the page is the honest failure.
+    } on MissingPluginException {
+      // An older native side without the call.
     }
   }
 
@@ -284,6 +317,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
                     return NavigationActionPolicy.CANCEL;
                   },
+                  // ignore: deprecated_member_use
+                  onDownloadStartRequest: (controller, request) => unawaited(_download(request)),
                   onLoadStart: (controller, url) {
                     if (_offline) setState(() => _offline = false);
                   },

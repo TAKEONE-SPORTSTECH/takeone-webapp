@@ -37,6 +37,17 @@ class ScoreboardController extends Controller
     public function __construct(private Scoring $scoring) {}
 
     /**
+     * The scoring engine for this event's mats — its Karate style's own, or
+     * the shared one (App\Scoreboard\Sports\Karate\Styles\KarateStyles).
+     */
+    private function scoringFor(ClubEvent $event): Scoring
+    {
+        return \App\Scoreboard\Sports\Karate\Styles\KarateStyles::of($event)
+            ? \App\Scoreboard\Sports\Karate\Styles\KarateStyles::scoring($event)
+            : $this->scoring;
+    }
+
+    /**
      * The operator page.
      *
      * Bound by the event's uuid, never its id — a scoring URL gets read off a
@@ -54,6 +65,26 @@ class ScoreboardController extends Controller
 
         return $this->consoleView($event, $mats, $court, [
             'commandUrl' => route('karate-scoreboard.command', $event->uuid),
+            // Where the console re-reads itself when the mat's live link says
+            // the running order moved (see consoleState()).
+            'consoleStateUrl' => route('karate-scoreboard.console-state', $event->uuid, false).'?mat='.rawurlencode($court),
+            'cornersUrl' => route('karate-scoreboard.corners', $event->uuid, false),
+            'cornerLookUrl' => route('karate-scoreboard.corner-look', $event->uuid, false),
+            // The Draw button at the foot of the middle column. A paired tablet
+            // gets the tablet draw; the signed-in organiser gets the event's own
+            // draw page, which checks who may arrange it on every request.
+            'drawUrl' => route('me.events.bracket', $event->uuid),
+            // The whole draw, read-only, for the Bouts card's browsing tabs
+            // (Weight class · Member · Arcade) — App\Scoreboard\Support\BoutCatalogue.
+            'catalogueUrl' => route('karate-scoreboard.catalogue', $event->uuid, false),
+            // The Bouts card's Players tab — read the entrants, save one. Only
+            // ever offered to an ORGANISER (canManage); see players().
+            'playersUrl' => app(EventAccess::class)->canManage($event, Auth::user())
+                ? route('karate-scoreboard.players', $event->uuid, false) : null,
+            'geoCountryUrl' => app(EventAccess::class)->canManage($event, Auth::user())
+                ? route('karate-scoreboard.geo-country', $event->uuid, false) : null,
+            'clubsUrl' => app(EventAccess::class)->canManage($event, Auth::user())
+                ? route('karate-scoreboard.clubs', $event->uuid, false) : null,
             // The same panel, through the organiser's own authorisation rather
             // than a screen token: one console body, two front doors, and the
             // upload has to work through both or the feature is only there for
@@ -106,7 +137,8 @@ class ScoreboardController extends Controller
      */
     private function consoleView(ClubEvent $event, $mats, string $court, array $urls, bool $showTimeAdjust = false, ?array $matPanel = null)
     {
-        return view('scoreboard::karate.scoreboard.control', [
+        // The event's Karate style's own console, or the shared one (KarateStyles).
+        return view(\App\Scoreboard\Sports\Karate\Styles\KarateStyles::view($event, 'control'), [
             'event' => $event,
             'mats' => $mats,
             'court' => $court,
@@ -134,17 +166,454 @@ class ScoreboardController extends Controller
             // mat uses it to set the next pair without the operator ever
             // leaving the scoreboard.
             'matPanel' => $matPanel,
+            // Which side this mat's red corner physically stands on
+            // (Mat\MatCorners) — the console faces the mat the same way.
+            'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($event, $court),
+            // What each corner is called and its colour, for this event
+            // (Mat\CornerLook) — the style's own when nobody set them.
+            'look' => \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($event),
+            // The console's live link, on the MAT's topic (ScreenChannel::
+            // matTopic). Null when realtime is off, and the console then
+            // behaves as it always did: it draws what its own commands return.
+            // This is what lets a reordered running order, or the other
+            // console at this mat, reach this one without anybody pressing
+            // anything.
+            'screenLink' => (($link = \App\Scoreboard\Sports\Karate\HallScreen\ScreenChannel::consoleCredentials($event, $court)) === null
+                || empty($urls['consoleStateUrl'])) ? null
+                : $link + ['console_url' => $urls['consoleStateUrl']],
             'audioSlots' => collect(ScreenMedia::forEvent($event))
                 ->map(fn ($m) => ['name' => $m->original_name, 'bytes' => $m->bytes])
                 ->all(),
-        ] + $urls + [
+        ] + \Illuminate\Support\Arr::except($urls, ['consoleStateUrl']) + [
             // Last, so a door that DID pass camera addresses keeps them: `+`
             // on arrays keeps the left-hand value, so defaults must sit to the
             // right of the thing they are defaulting for. A door that passed
             // none renders no camera tab rather than an undefined variable.
             'cameraUrl' => null,
             'cameraCommandBase' => null,
+            'catalogueUrl' => null,
+            'playersUrl' => null,
+            'geoCountryUrl' => null,
+            'clubsUrl' => null,
         ]);
+    }
+
+    /* ── The Bouts card's Clubs tab ───────────────────────────────────────
+       ⚠️ The route parameter is `{clubKey}`, never `{club}`: a global
+       Route::bind('club') resolves that name to a TENANT and 404s first.
+       The event's own club list, and a club's details corrected from the
+       table. Organisers only, like the Players tab. Saving goes through
+       App\Events\Support\Clubs\EventClubEditor — the same rules as the
+       event's Clubs page — so only a club WRITTEN DOWN for this event can be
+       changed here; a club with its own account is shown, never edited. */
+
+    public function clubs(ClubEvent $event): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && $this->mayManage($event), 403);
+
+        return response()->json(['clubs' => $this->clubsPayload($event)]);
+    }
+
+    public function tokenClubs(string $token): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+        abort_unless($this->mayManage($event), 403);
+
+        return response()->json(['clubs' => $this->clubsPayload($event)]);
+    }
+
+    public function clubUpdate(Request $request, ClubEvent $event, string $clubKey): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && $this->mayManage($event), 403);
+
+        return $this->clubSave($request, $event, $clubKey);
+    }
+
+    public function tokenClubUpdate(Request $request, string $token, string $clubKey): JsonResponse
+    {
+        [$device, $event] = $this->controlDevice($token);
+        abort_unless($this->mayManage($event), 403);
+
+        return $this->clubSave($request, $event, $clubKey, $device->court);
+    }
+
+    private function clubsPayload(ClubEvent $event): array
+    {
+        return \App\Events\Models\EventClub::with(['tenant:id,club_name,logo,country,owner_user_id', 'entrants:id'])
+            ->where('event_id', $event->id)
+            ->where('state', '!=', 'declined')
+            ->orderBy('name')
+            ->get()
+            ->map(function (\App\Events\Models\EventClub $c) use ($event) {
+                $p = $c->present();
+
+                // A club with an account is named on entries by the TENANT,
+                // not through the event's list, so its athletes are counted
+                // from both places.
+                $athletes = $c->tenant_id
+                    ? ClubEventRegistration::where('event_id', $event->id)
+                        ->where('role', 'participant')
+                        ->where(fn ($q) => $q->where('representing_tenant_id', $c->tenant_id)
+                            ->orWhereIn('id', $c->entrants->pluck('id')))
+                        ->distinct()->count('user_id')
+                    : $p['athletes'];
+
+                return [
+                    'uuid' => $p['uuid'],
+                    'name' => $p['name'],
+                    'logo' => $p['logo'],
+                    'country' => $p['country'] ? strtoupper((string) $p['country']) : null,
+                    'instagram' => $p['instagram'],
+                    'on_platform' => $p['on_platform'],
+                    'athletes' => (int) $athletes,
+                    'editable' => ! $p['on_platform'],
+                ];
+            })
+            ->values()->all();
+    }
+
+    private function clubSave(Request $request, ClubEvent $event, string $club, ?string $court = null): JsonResponse
+    {
+        // Scoped to THIS event, always — another event's club uuid is a 404.
+        $row = \App\Events\Models\EventClub::where('event_id', $event->id)->where('uuid', $club)->first();
+        abort_unless($row, 404);
+
+        // The same vocabulary the event's Clubs page accepts.
+        $data = $request->validate([
+            'name' => ['required', 'string', 'min:2', 'max:120'],
+            'logo' => ['nullable', 'string', 'starts_with:data:image/'],
+            'instagram' => ['nullable', 'string', 'max:200'],
+            'country' => ['nullable', 'string', 'size:2', 'alpha'],
+            'mat' => ['sometimes', 'nullable', 'string', 'max:40'],
+        ]);
+        unset($data['mat']);
+
+        $result = app(\App\Events\Support\Clubs\EventClubEditor::class)->update($event, $row, $data);
+
+        if (! $result['ok']) {
+            return response()->json([
+                'success' => false, 'field' => $result['field'] ?? null, 'message' => $result['message'],
+            ], 422);
+        }
+
+        // The mat in front of this console re-reads its two corners, so a
+        // renamed club or a new crest is on the wall at once.
+        $mat = $court ?: $request->input('mat');
+        if (is_string($mat) && $mat !== '' && $this->matExists($event, $mat)) {
+            rescue(function () use ($event, $mat) {
+                $fresh = $this->scoringFor($event)->apply($event, $mat, 'refresh');
+                ScreenChannel::notifyCourt($event, $mat, ['action' => 'mat', 'state' => $fresh->toArray()]);
+            }, null, false);
+        }
+
+        $club = collect($this->clubsPayload($event))->firstWhere('uuid', $row->uuid);
+
+        return response()->json(['success' => true, 'message' => $result['message'], 'club' => $club]);
+    }
+
+    /*
+     * Where the device is, as a country — to seed a player's nationality when
+     * none is on file. The console's own door because a paired tablet has no
+     * session to reach the member one; the lookup is the shared
+     * App\Support\GeoCountry. Same audience as the Players tab.
+     */
+    public function geoCountry(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && $this->mayManage($event), 403);
+
+        return $this->geoCountryAnswer($request);
+    }
+
+    public function tokenGeoCountry(Request $request, string $token): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+        abort_unless($this->mayManage($event), 403);
+
+        return $this->geoCountryAnswer($request);
+    }
+
+    private function geoCountryAnswer(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'lat' => ['required', 'numeric', 'between:-90,90'],
+            'lng' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'country' => \App\Support\GeoCountry::forCoordinates((float) $data['lat'], (float) $data['lng']),
+        ]);
+    }
+
+    /* ── The Bouts card's Players tab ─────────────────────────────────────
+       Find an entrant and correct them from the table: name, club, date of
+       birth or age, gender, weight, belt, photo. ORGANISERS ONLY (owner,
+       2026-10-09) — an appointed official who may score is not thereby allowed
+       to rewrite the entry list.
+
+       Every write goes through App\Events\Support\EntryEditor, the same
+       editor the event's People page uses, so the rules are the platform's:
+       a real member's date of birth and gender stay theirs unless the actor
+       holds authority over that person, a name change is re-stamped across
+       the draw, a weight or birthdate change re-derives the division before
+       the event starts, and the photo lands in the person's one home. The
+       only thing handled here is a stated AGE, for a person with no date of
+       birth — EntryEditor has no field for it. */
+
+    private function mayManage(ClubEvent $event): bool
+    {
+        $user = $this->actor ?: Auth::user();
+
+        return $user !== null && app(EventAccess::class)->canManage($event, $user);
+    }
+
+    public function players(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && $this->mayManage($event), 403);
+
+        return response()->json($this->playersPayload($event));
+    }
+
+    public function tokenPlayers(string $token): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+        abort_unless($this->mayManage($event), 403);
+
+        return response()->json($this->playersPayload($event));
+    }
+
+    public function player(Request $request, ClubEvent $event, int $registration): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && $this->mayManage($event), 403);
+
+        return $this->playerShow($event, $registration);
+    }
+
+    public function tokenPlayer(string $token, int $registration): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+        abort_unless($this->mayManage($event), 403);
+
+        return $this->playerShow($event, $registration);
+    }
+
+    public function playerUpdate(Request $request, ClubEvent $event, int $registration): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && $this->mayManage($event), 403);
+
+        return $this->playerSave($request, $event, $registration);
+    }
+
+    public function tokenPlayerUpdate(Request $request, string $token, int $registration): JsonResponse
+    {
+        [$device, $event] = $this->controlDevice($token);
+        abort_unless($this->mayManage($event), 403);
+
+        return $this->playerSave($request, $event, $registration, $device->court);
+    }
+
+    /** Every participant of the event, one row per PERSON. */
+    private function playersPayload(ClubEvent $event): array
+    {
+        $regs = ClubEventRegistration::where('event_id', $event->id)
+            ->where('role', 'participant')
+            ->with(['user:id,full_name,name,gender,birthdate,profile_picture,profile_picture_is_public',
+                'user.memberClubs:id,club_name,country',
+                'representingTenant:id,club_name,country',
+                'category:id,name,weight_class'])
+            ->orderBy('id')
+            ->get();
+
+        $written = \App\Events\Support\EntryClub::forMany($event, $regs->pluck('id')->all());
+
+        return [
+            'players' => $regs->groupBy(fn ($r) => $r->user_id ? 'u'.$r->user_id : 'r'.$r->id)
+                ->map(function ($rows) use ($written) {
+                    $r = $rows->first();
+
+                    return $this->playerRow($r, $written[$r->id]['name'] ?? null, $written[$r->id]['country'] ?? null)
+                        + ['divisions' => $rows->map(fn ($x) => $x->category?->weight_class ?: $x->category?->name)
+                            ->filter()->unique()->values()->all()];
+                })
+                ->sortBy(fn ($p) => mb_strtolower((string) $p['name']))
+                ->values()->all(),
+        ];
+    }
+
+    /** One person as the Players list and its editor read them. */
+    private function playerRow(ClubEventRegistration $r, ?string $writtenClub, ?string $writtenCountry = null): array
+    {
+        $user = $r->user;
+        $club = $r->competingClub();
+        // The club's country, then the entry's own — the one flag rule.
+        $iso = collect([$club?->country, $writtenCountry, $r->countryCode()])
+            ->first(fn ($c) => preg_match('/^[A-Za-z]{2}$/', (string) $c));
+
+        return [
+            'registration' => (int) $r->id,
+            'name' => $user?->full_name ?: $user?->name,
+            'club' => $club?->club_name ?: ($writtenClub ?: ''),
+            'flag' => $iso ? strtolower((string) $iso) : null,
+            'gender' => in_array($user?->gender, ['Male', 'Female'], true) ? $user->gender : null,
+            'birthdate' => $user?->birthdate?->toDateString(),
+            'age' => $user?->birthdate ? $user->birthdate->age : ($r->declared_age ?: null),
+            'weight' => $r->weight !== null ? (float) $r->weight : null,
+            'belt_colour' => $r->belt_colour,
+            'belt_grade' => $r->belt_grade,
+            'photo' => $r->photo
+                ? file_url($r->photo)
+                : (($user?->profile_picture && $user->profile_picture_is_public) ? file_url($user->profile_picture) : null),
+            'fallback' => \App\Members\Support\Avatar::placeholder($user?->gender),
+        ];
+    }
+
+    /** One entrant, with what this organiser may change on them and why not. */
+    private function playerShow(ClubEvent $event, int $registration): JsonResponse
+    {
+        $reg = ClubEventRegistration::where('event_id', $event->id)->with('user')->find($registration);
+
+        // One answer for "no such entry" and "not this event's".
+        abort_unless($reg, 404);
+
+        $editor = app(\App\Events\Support\EntryEditor::class);
+        $actor = $this->actor ?: Auth::user();
+        $present = $editor->present($event, $reg);
+        $perm = $editor->permissions($event, $reg, $actor);
+
+        return response()->json([
+            // array_merge, not `+`: the editor's own club name must win over
+            // the row's.
+            'player' => array_merge($this->playerRow($reg, null), [
+                'declared_age' => $reg->declared_age ?: null,
+                'nationality' => $reg->user?->nationality ? strtoupper((string) $reg->user->nationality) : null,
+                'club_key' => $present['club']['slug'] ?? null,
+                'club' => $present['club']['name'] ?? '',
+            ]),
+            'clubs' => $present['clubs'] ?? [],
+            // Each rung of THIS event's belt system, with the drawing's colours
+            // (App\Sports\Combat\BeltIcon) so the console draws the same belt
+            // every other screen does, through <x-belt-icon-defs>.
+            'belts' => collect($present['belts'] ?? [])->map(fn ($r) => $r + [
+                'icon' => \App\Sports\Combat\BeltIcon::payload($r['value'])['style'] ?? null,
+            ])->values()->all(),
+            // Which fields this organiser may change, and the reason beside
+            // the ones they may not (a real member's date of birth is theirs).
+            'fields' => collect($perm['fields'])->only(['name', 'club', 'birthdate', 'gender', 'nationality', 'weight', 'belt_colour', 'belt_grade', 'photo'])
+                ->map(fn ($f) => ['editable' => (bool) $f['editable'], 'reason' => $f['reason']])->all(),
+            // Date of birth OR age — whoever may set one may set the other.
+            'age_editable' => (bool) ($perm['fields']['birthdate']['editable'] ?? false),
+        ]);
+    }
+
+    private function playerSave(Request $request, ClubEvent $event, int $registration, ?string $court = null): JsonResponse
+    {
+        $reg = ClubEventRegistration::where('event_id', $event->id)->with('user')->find($registration);
+        abort_unless($reg, 404);
+
+        // The same vocabulary the event's People page accepts.
+        $validated = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'min:2', 'max:120'],
+            'club' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'birthdate' => ['sometimes', 'nullable', 'date', 'before:today'],
+            'gender' => ['sometimes', 'nullable', \Illuminate\Validation\Rule::in(['Male', 'Female'])],
+            // ISO-3166 alpha-2, the shape the entry door takes.
+            'nationality' => ['sometimes', 'nullable', 'string', 'size:2', 'alpha'],
+            'weight' => ['sometimes', 'nullable', 'numeric', 'min:15', 'max:250'],
+            'belt_colour' => ['sometimes', 'nullable', 'string', \Illuminate\Validation\Rule::in(\App\Sports\Combat\BeltRank::accepted($event->sport))],
+            'belt_grade' => ['sometimes', 'nullable', 'string', 'max:32'],
+            // Real bytes are checked by the editor (StoresBase64Images).
+            'photo' => ['sometimes', 'nullable', 'string', 'starts_with:data:image/'],
+            'age' => ['sometimes', 'nullable', 'integer', 'min:3', 'max:99'],
+            'mat' => ['sometimes', 'nullable', 'string', 'max:40'],
+        ]);
+
+        $actor = $this->actor ?: Auth::user();
+        $editor = app(\App\Events\Support\EntryEditor::class);
+        $data = array_intersect_key($validated, array_flip(['name', 'club', 'birthdate', 'gender', 'nationality', 'weight', 'belt_colour', 'belt_grade', 'photo']));
+        if (! empty($data['nationality'])) {
+            $data['nationality'] = strtoupper($data['nationality']);
+        }
+
+        // A stated age only stands in for a date of birth nobody has — and
+        // only where this organiser may edit the person's date of birth at all.
+        if (array_key_exists('age', $validated)) {
+            $perm = $editor->permissions($event, $reg, $actor);
+            // The DOB as it will be after this request: one being cleared in the
+            // same save is how "use an age instead" is said.
+            $hasDob = array_key_exists('birthdate', $data)
+                ? ! empty($data['birthdate'])
+                : $reg->user?->birthdate !== null;
+
+            if ($hasDob || ! ($perm['fields']['birthdate']['editable'] ?? false)) {
+                return response()->json([
+                    'success' => false, 'field' => 'age',
+                    'message' => __('scoreboard::karate_messages.pl_age_locked'),
+                ], 422);
+            }
+        }
+
+        if (! $data && ! array_key_exists('age', $validated)) {
+            return response()->json(['success' => false, 'message' => __('events::events.entry_edit_nothing')], 422);
+        }
+
+        if ($data) {
+            $result = $editor->apply($event, $reg, $data, $actor);
+
+            if (! $result['ok']) {
+                return response()->json([
+                    'success' => false, 'field' => $result['field'] ?? null, 'message' => $result['message'],
+                ], 422);
+            }
+        }
+
+        if (array_key_exists('age', $validated)) {
+            $reg->forceFill(['declared_age' => $validated['age']])->save();
+        } elseif (! empty($data['birthdate']) && $reg->declared_age !== null) {
+            // A real date of birth supersedes a stated age.
+            $reg->forceFill(['declared_age' => null])->save();
+        }
+
+        $reg->refresh()->load('user');
+
+        // The draw's mats are refreshed by the editor; an EXHIBITION on this
+        // console's mat is not in the draw, so it is refreshed here.
+        $mat = $court ?: ($validated['mat'] ?? null);
+        if ($mat && $this->matExists($event, $mat)) {
+            $state = MatState::load($event, $mat);
+            $ex = $state->exhibitionId ? \App\Events\Models\EventExhibitionBout::find($state->exhibitionId) : null;
+            if ($ex && in_array((int) $reg->id, [(int) $ex->a_registration_id, (int) $ex->b_registration_id], true)) {
+                rescue(function () use ($event, $mat) {
+                    $fresh = $this->scoringFor($event)->apply($event, $mat, 'refresh');
+                    ScreenChannel::notifyCourt($event, $mat, ['action' => 'mat', 'state' => $fresh->toArray()]);
+                }, null, false);
+            }
+        }
+
+        $written = \App\Events\Support\EntryClub::forMany($event, [$reg->id]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::karate_messages.pl_saved'),
+            'player' => $this->playerRow($reg, $written[$reg->id]['name'] ?? null, $written[$reg->id]['country'] ?? null),
+            'state' => $mat && $this->matExists($event, $mat) ? MatState::load($event, $mat)->toArray() : null,
+        ]);
+    }
+
+    /** The whole draw for the Bouts card's tabs, through the organiser's own session. */
+    public function catalogueRead(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === 'karate', 404);
+
+        return response()->json(\App\Scoreboard\Support\BoutCatalogue::for($event));
+    }
+
+    /** The same draw, through a paired table's own token. JSON door: a dead token is a 404. */
+    public function tokenCatalogue(string $token): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+
+        return response()->json(\App\Scoreboard\Support\BoutCatalogue::for($event));
     }
 
     /**
@@ -189,9 +658,22 @@ class ScoreboardController extends Controller
 
         return $this->consoleView($event, $mats, $device->court, [
             'commandUrl' => route('karate-scoreboard.token-command', $token),
+            'consoleStateUrl' => route('karate-scoreboard.token-console-state', $token, false),
+            'cornersUrl' => route('karate-scoreboard.token-corners', $token, false),
+            'cornerLookUrl' => route('karate-scoreboard.token-corner-look', $token, false),
             // The draw, on this tablet — read-only, editable under the event's
             // tablet PIN (App\Events\Support\TabletDraw). Null while off.
             'drawUrl' => \App\Events\Support\TabletDraw::enabled() ? route('tablet.draw', $token) : null,
+            // The whole draw for the Bouts card's tabs, through this table's token.
+            'catalogueUrl' => route('karate-scoreboard.token-catalogue', $token, false),
+            // The Players tab, through the table's token — only when the
+            // organiser who paired it may MANAGE the event, not merely score.
+            'playersUrl' => app(EventAccess::class)->canManage($event, $this->actor)
+                ? route('karate-scoreboard.token-players', $token, false) : null,
+            'geoCountryUrl' => app(EventAccess::class)->canManage($event, $this->actor)
+                ? route('karate-scoreboard.token-geo-country', $token, false) : null,
+            'clubsUrl' => app(EventAccess::class)->canManage($event, $this->actor)
+                ? route('karate-scoreboard.token-clubs', $token, false) : null,
             // A paired console is a SCREEN, and the console lists it beside the
             // boards with a live dot. Commands alone would show a mat waiting
             // twenty minutes for the next bout as offline — the opposite of the
@@ -217,6 +699,134 @@ class ScoreboardController extends Controller
     }
 
     /** A command from a paired console. Same body, its own front door. */
+    /**
+     * The console's own state and Bouts list, for a console that has just been
+     * told the mat or the running order changed. Read-only; the same scope as
+     * the console page itself.
+     */
+    public function consoleState(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === 'karate', 404);
+
+        $court = (string) $request->query('mat', '');
+        abort_unless($court !== '' && mb_strlen($court) <= 40 && $this->matExists($event, $court), 404);
+
+        return $this->consoleStatePayload($event, $court);
+    }
+
+    /**
+     * Swap which side of this mat the red corner stands on — the PHYSICAL
+     * layout, never who is AKA. Every screen and console on the mat is told to
+     * redraw, because the layout is drawn server-side.
+     */
+    public function corners(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === 'karate', 404);
+
+        $data = $request->validate([
+            'mat' => ['required', 'string', 'max:40'],
+            'red_right' => ['required', 'boolean'],
+        ]);
+
+        abort_unless($this->matExists($event, $data['mat']), 404);
+
+        return $this->applyCorners($event, $data['mat'], (bool) $data['red_right']);
+    }
+
+    public function tokenCorners(Request $request, string $token): JsonResponse
+    {
+        [$device, $event] = $this->controlDevice($token);
+
+        $data = $request->validate(['red_right' => ['required', 'boolean']]);
+
+        return $this->applyCorners($event, $device->court, (bool) $data['red_right']);
+    }
+
+    private function applyCorners(ClubEvent $event, string $court, bool $redRight): JsonResponse
+    {
+        \App\Scoreboard\Sports\Karate\Mat\MatCorners::set($event, $court, $redRight);
+
+        // Recorded like any other change at the table: a mat that suddenly
+        // shows its corners the other way round is something somebody asks about.
+        \Illuminate\Support\Facades\Log::info('karate.corners', [
+            'event' => $event->uuid, 'mat' => $court, 'red' => $redRight ? 'right' : 'left',
+            'by' => ($this->actor ?: Auth::user())?->id,
+        ]);
+
+        \App\Scoreboard\Sports\Karate\HallScreen\ScreenChannel::notifyCourt($event, $court, ['action' => 'corners']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::karate_messages.ctl_corners_saved'),
+            'red_right' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($event->fresh(), $court),
+        ]);
+    }
+
+    /**
+     * Name and colour each corner for the whole event — every mat, screen and
+     * console of it redraws. Blank fields return a corner to its style's own.
+     */
+    public function cornerLook(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === 'karate', 404);
+
+        return $this->applyCornerLook($request, $event);
+    }
+
+    public function tokenCornerLook(Request $request, string $token): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+
+        return $this->applyCornerLook($request, $event);
+    }
+
+    private function applyCornerLook(Request $request, ClubEvent $event): JsonResponse
+    {
+        $data = $request->validate([
+            'aka' => ['required', 'array'],
+            'ao' => ['required', 'array'],
+            'aka.label' => ['nullable', 'string', 'max:'.\App\Scoreboard\Sports\Karate\Mat\CornerLook::LABEL_MAX],
+            'ao.label' => ['nullable', 'string', 'max:'.\App\Scoreboard\Sports\Karate\Mat\CornerLook::LABEL_MAX],
+            'aka.colour' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'ao.colour' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        ]);
+
+        \App\Scoreboard\Sports\Karate\Mat\CornerLook::set($event, $data);
+
+        \Illuminate\Support\Facades\Log::info('karate.corner-look', [
+            'event' => $event->uuid, 'look' => \App\Scoreboard\Sports\Karate\Mat\CornerLook::stored($event->fresh()),
+            'by' => ($this->actor ?: Auth::user())?->id,
+        ]);
+
+        // Every mat of the event: the look is the event's, not one table's.
+        \App\Scoreboard\Sports\Karate\HallScreen\ScreenChannel::notifyCourt($event, null, ['action' => 'corners']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::karate_messages.ctl_corners_saved'),
+            'look' => \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($event->fresh()),
+        ]);
+    }
+
+    /** The same, through a paired table's token — the device's mat, never the request's. */
+    public function tokenConsoleState(string $token): JsonResponse
+    {
+        [$device, $event] = $this->controlDevice($token);
+
+        return $this->consoleStatePayload($event, $device->court);
+    }
+
+    private function consoleStatePayload(ClubEvent $event, string $court): JsonResponse
+    {
+        return response()->json([
+            'state' => MatState::load($event, $court)->toArray(),
+            'queue' => $this->queue($event, $court),
+        ]);
+    }
+
     public function tokenCommand(Request $request, string $token): JsonResponse
     {
         [$device, $event] = $this->controlDevice($token);
@@ -432,7 +1042,7 @@ class ScoreboardController extends Controller
 
             // 'refresh' re-reads both corners from the entries — 'resync' was
             // used here and is a NO-OP, so the wall kept the removed face.
-            $fresh = $this->scoring->apply($event, $court, 'refresh');
+            $fresh = $this->scoringFor($event)->apply($event, $court, 'refresh');
             ScreenChannel::notifyCourt($event, $court, ['action' => 'mat', 'state' => $fresh->toArray()]);
 
             return response()->json([
@@ -492,7 +1102,7 @@ class ScoreboardController extends Controller
          * it stands, and the photograph on the wall never moved. 'refresh' is
          * the command that re-reads both corners and touches nothing else.
          */
-        $fresh = $this->scoring->apply($event, $court, 'refresh');
+        $fresh = $this->scoringFor($event)->apply($event, $court, 'refresh');
         ScreenChannel::notifyCourt($event, $court, ['action' => 'mat', 'state' => $fresh->toArray()]);
 
         return response()->json([
@@ -567,19 +1177,30 @@ class ScoreboardController extends Controller
         abort_unless($this->canScore($event), 403);
         abort_unless($event->sport === 'karate', 404);
 
+        // The engine for this event's mats decides which commands exist — a
+        // Karate style may add its own (KarateStyles); the shared engine's list
+        // is unchanged for everybody else.
+        $engine = $this->scoringFor($event);
+
         $data = $request->validate([
             'mat' => ['required', 'string', 'max:40'],
-            'command' => ['required', 'string', 'in:'.implode(',', Scoring::COMMANDS)],
+            'command' => ['required', 'string', 'in:'.implode(',', $engine::COMMANDS)],
             'side' => ['nullable', 'string', 'in:aka,ao'],
             'n' => ['nullable', 'integer', 'min:1', 'max:3'],
             'match_id' => ['nullable', 'integer'],
+            // An exhibition's two entrants (registration ids). Checked again in
+            // the engine against THIS event's entries.
+            'a' => ['nullable', 'integer', 'min:1'],
+            'b' => ['nullable', 'integer', 'min:1'],
             'minutes' => ['nullable', 'numeric', 'min:0.1', 'max:15'],
             'remaining' => ['nullable', 'numeric', 'min:0', 'max:900'],
             'dir' => ['nullable', 'integer', 'in:-1,1'],
             // The console's five penalty cells ask for a LEVEL rather than a
             // direction. 0 is "no penalty", which is what pressing the current
             // top of the ladder asks for.
-            'level' => ['nullable', 'integer', 'min:0', 'max:'.count(MatState::PENALTIES)],
+            // Up to a style's own ladder (Styles\CustomPenalties, at most 8); the
+            // shared engine still clamps to its five.
+            'level' => ['nullable', 'integer', 'min:0', 'max:8'],
             // The settings panel's clock: a bout in seconds, and how many are
             // left when the warning starts.
             'seconds' => ['nullable', 'numeric', 'min:10', 'max:900'],
@@ -614,6 +1235,31 @@ class ScoreboardController extends Controller
             'winner' => ['nullable', 'string', 'in:aka,ao'],
             'reason' => ['nullable', 'string', 'in:'.implode(',', Scoring::WIN_REASONS)],
             'note' => ['nullable', 'string', 'max:200'],
+            // A style's custom scoring buttons (Styles\CustomButtons): which one
+            // was pressed, or the whole list from the settings panel. Cleaned
+            // again inside the engine; held to these limits here because this
+            // endpoint is the contract.
+            'button' => ['nullable', 'string', 'regex:/^[a-z0-9]{1,12}$/'],
+            'buttons_default' => ['nullable', 'boolean'],
+            'buttons' => ['nullable', 'array', 'max:8'],
+            'buttons.*.id' => ['nullable', 'string', 'max:12'],
+            'buttons.*.label' => ['required', 'string', 'max:24'],
+            // Halves allowed: a Kyokushin waza-ari is 0.5.
+            'buttons.*.value' => ['required', 'numeric', 'min:0', 'max:20', 'multiple_of:0.5'],
+            'buttons.*.effect' => ['required', 'string', 'in:add,win,win_after'],
+            'buttons.*.times' => ['nullable', 'integer', 'min:2', 'max:9'],
+            // Kyokushin's hantei: how many of the five officials raised each flag.
+            'flags_aka' => ['nullable', 'integer', 'min:0', 'max:5'],
+            'flags_ao' => ['nullable', 'integer', 'min:0', 'max:5'],
+            'flags_draw' => ['nullable', 'integer', 'min:0', 'max:5'],
+            // A style's own penalty ladder (Styles\CustomPenalties).
+            'penalties_default' => ['nullable', 'boolean'],
+            'penalties' => ['nullable', 'array', 'max:8'],
+            'penalties.*.id' => ['nullable', 'string', 'max:12'],
+            'penalties.*.label' => ['required', 'string', 'max:16'],
+            'penalties.*.effect' => ['required', 'string', 'in:none,deduct,award'],
+            'penalties.*.value' => ['nullable', 'numeric', 'min:0', 'max:20', 'multiple_of:0.5'],
+            'penalties.*.ends' => ['nullable', 'boolean'],
         ]);
 
         // The mat must be one this event actually runs — not a string the
@@ -621,7 +1267,7 @@ class ScoreboardController extends Controller
         abort_unless($this->matExists($event, $data['mat']), 404);
 
         try {
-            $state = $this->scoring->apply($event, $data['mat'], $data['command'], $data);
+            $state = $engine->apply($event, $data['mat'], $data['command'], $data);
         } catch (\RuntimeException $e) {
             // A refusal the official needs to read and act on. Not a fault.
             //
@@ -670,7 +1316,7 @@ class ScoreboardController extends Controller
         // before the next bout has been loaded and before the new MatState is
         // saved, so the board it builds fails to exclude the bout that is at
         // that moment walking on, and prints GET READY over it.
-        if (in_array($data['command'], ['load', 'commit', 'clear'], true)) {
+        if (in_array($data['command'], ['load', 'commit', 'clear', 'exhibition'], true)) {
             ScreenChannel::notifyCourt($event, $data['command'] === 'commit' ? null : $data['mat']);
         }
 
@@ -773,10 +1419,29 @@ class ScoreboardController extends Controller
         // still waiting on a feeder is LISTED rather than hidden — the operator
         // needs to see what is coming — but it cannot be loaded, because nobody
         // can be introduced as "winner of bout 3".
-        $queue = $order->matQueue($event, $court)->take(12);
+        // Every bout on the mat, not a first page, in bout-number order: the
+        // bouts are numbered and the official reads the list by number. A bout
+        // still waiting on a feeder keeps its place in the count (greyed, not
+        // loadable) instead of being pushed after the runnable ones, and the
+        // bouts already fought follow at the bottom. Display order only —
+        // "what is next" is still RunningOrder::matQueue, untouched.
+        $byNumber = fn ($rows) => $rows
+            ->sortBy(fn (EventMatch $m) => [$m->match_no === null ? 1 : 0, (int) $m->match_no])
+            ->values();
+
+        $upcoming = $byNumber($order->matQueue($event, $court));
+
+        $fought = $byNumber(EventMatch::where('event_id', $event->id)
+            ->where('court', $court)
+            ->where(fn ($q) => $q->whereNotNull('winner')->orWhere('status', 'done'))
+            ->with('category:id,name')
+            ->get());
+
+        $doneIds = $fought->pluck('id')->flip();
+        $queue = $upcoming->concat($fought)->values();
 
         // matQueue loads the category as id+name only; the rows print the
-        // weight class, so pull that column on the twelve that survive.
+        // weight class, so pull that column on the rows listed.
         $queue->load('category:id,name,weight_class');
 
         // The Bouts list draws each competitor the way the wall does — club and
@@ -797,13 +1462,17 @@ class ScoreboardController extends Controller
 
         // The club they COMPETE FOR, and its country — never the person's own
         // nationality. Same rule as the corners on the board.
-        $clubOf = function (?int $id) use ($entries): array {
+        // Plus the clubs the organiser WROTE DOWN for this event — teams the
+        // platform has never met. A tenant still wins when the entry names one.
+        $written = \App\Events\Support\EntryClub::forMany($event, $entryIds);
+
+        $clubOf = function (?int $id) use ($entries, $written): array {
             $reg = $id ? $entries->get($id) : null;
             $club = $reg?->competingClub();
             $user = $reg?->user;
 
             return [
-                'club' => $club?->club_name ?: '',
+                'club' => $club?->club_name ?: (($club || ! $id) ? '' : ($written[$id]['name'] ?? '')),
                 'flag' => preg_match('/^[A-Za-z]{2}$/', (string) $club?->country)
                     ? strtolower((string) $club->country) : null,
                 // The same rule the board draws a corner by, and for the same
@@ -846,7 +1515,8 @@ class ScoreboardController extends Controller
                 'aoFlag' => $clubOf($m->b_competitor_id)['flag'],
                 'aoPhoto' => $clubOf($m->b_competitor_id)['photo'],
                 'aoFallback' => $clubOf($m->b_competitor_id)['fallback'],
-                'runnable' => $order->isRunnable($m),
+                'runnable' => ! $doneIds->has($m->id) && $order->isRunnable($m),
+                'done' => $doneIds->has($m->id),
             ])
             ->values()->all();
     }

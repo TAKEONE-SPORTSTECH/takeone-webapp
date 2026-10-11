@@ -31,6 +31,7 @@
         'sheet' => $sheet,
         'dataUrl' => route('me.events.run-order.data', ['event' => $e['key'], 'day' => $day]),
         'storeUrl' => route('me.events.run-order.store', $e['key']),
+        'breakUrl' => route('me.events.run-order.break', $e['key']),
         'reorderUrl' => route('me.events.run-order.reorder', $e['key']),
         'slotUrl' => route('me.events.run-order.update', ['event' => $e['key'], 'slot' => '__SLOT__']),
         'errorText' => __('shared.something_went_wrong'),
@@ -110,7 +111,8 @@
                 </template>
 
                 <template x-for="(row, i) in rows" :key="row.uuid">
-                    <div>
+                    <div data-ro-row @pointerdown="rowDown($event, row.uuid, i)" @touchstart="rowDown($event, row.uuid, i)"
+                         style="-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;">
                         {{-- A place to drop the part being moved. Only ever
                              shown while something is picked. --}}
                         <template x-if="picked && picked !== row.uuid">
@@ -125,7 +127,7 @@
                              :class="picked === row.uuid ? 'border' : 'border border-transparent'"
                              :style="picked === row.uuid ? `background: {{ $roColor }}0f; border-color: {{ $roColor }}4d;` : (row.is_division ? '' : 'background:#f9fafb;')">
 
-                            <button type="button" @click="pick(row.uuid)"
+                            <button type="button" data-drag-ok @click="pick(row.uuid)"
                                     class="flex items-center gap-2.5 min-w-0 flex-1 text-start">
                                 <span class="flex-none w-14">
                                     <span class="block text-[13px] font-black text-foreground tabular-nums" x-text="row.starts_label"></span>
@@ -150,6 +152,11 @@
                                         class="flex-none w-9 h-9 rounded-full grid place-items-center border border-gray-200 text-gray-400">
                                     <i class="bi bi-grid-1x2 text-[12px]"></i>
                                 </button>
+                            </template>
+
+                            <template x-if="row.is_event_break">
+                                <button type="button" @click.stop="openBreak()" :aria-label="@js(__('events::events.run_order_break_edit'))" :title="@js(__('events::events.run_order_break_edit'))"
+                                        class="flex-none w-9 h-9 rounded-full grid place-items-center border border-gray-200 text-gray-500 hover:bg-gray-50"><i class="bi bi-pencil text-[13px]"></i></button>
                             </template>
 
                             <button type="button" @click="togglePin(row)"
@@ -183,6 +190,22 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3 m-card">
             <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('events::events.run_order_bench') }}</p>
 
+            {{-- The break set on the event itself, until it is on the day. --}}
+            <template x-if="eventBreak">
+                <div class="w-full flex items-center gap-3 p-3 rounded-xl border border-dashed border-gray-300 bg-white mb-3">
+                    <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0" style="background:#fef3c7;color:#b45309;"><i class="bi bi-cup-hot-fill"></i></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-[13.5px] font-bold text-foreground">{{ __('events::events.run_order_event_break') }}</span>
+                        <span class="block text-[11.5px] text-muted-foreground" x-text="eventBreak.starts_label + ' – ' + eventBreak.ends_label + ' · ' + eventBreak.duration + ' min'"></span>
+                    </span>
+                    {{-- Change the event's break times, or put it on the day. --}}
+                    <button type="button" @click="openBreak()" :aria-label="@js(__('events::events.run_order_break_edit'))" :title="@js(__('events::events.run_order_break_edit'))"
+                            class="flex-none w-9 h-9 rounded-full grid place-items-center border border-gray-200 text-gray-500 hover:bg-gray-50"><i class="bi bi-pencil"></i></button>
+                    <button type="button" @click="addEventBreak()" :disabled="busy" :aria-label="@js(__('events::events.run_order_break_add'))" :title="@js(__('events::events.run_order_break_add'))"
+                            class="flex-none w-9 h-9 rounded-full grid place-items-center text-white" style="background: {{ $roColor }};"><i class="bi bi-plus-lg"></i></button>
+                </div>
+            </template>
+
             <template x-if="bench.length">
                 <button type="button" @click="openAdd()"
                         class="w-full flex items-center gap-3 p-3 rounded-xl text-start m-press"
@@ -198,8 +221,6 @@
             </template>
 
             <div class="flex flex-wrap gap-2">
-                <button type="button" @click="openBlock('ceremony')" class="h-9 px-3.5 rounded-full border border-gray-200 text-[12px] font-bold text-gray-700 m-press">{{ __('events::events.run_order_add_ceremony') }}</button>
-                <button type="button" @click="openBlock('break')" class="h-9 px-3.5 rounded-full border border-gray-200 text-[12px] font-bold text-gray-700 m-press">{{ __('events::events.run_order_add_break') }}</button>
                 <button type="button" @click="openBlock('custom')" class="h-9 px-3.5 rounded-full border border-gray-200 text-[12px] font-bold text-gray-700 m-press">{{ __('events::events.run_order_add_custom') }}</button>
             </div>
 

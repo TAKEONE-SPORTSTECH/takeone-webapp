@@ -186,6 +186,17 @@
                 </div>
                 <div class="t1-mapbox"><div class="t1-lmap" x-ref="lmap_events"></div></div>
             </div>
+
+            {{-- Finished: past events, newest first — results and replays live on their pages. --}}
+            <section x-show="!map && pastEvs.length" x-cloak style="margin-top:18px">
+                <div class="t1-vhead"><div><h3><i class="bi bi-flag"></i> {{ __('ui::explore.finished_title') }}</h3><p>{{ __('ui::explore.finished_sub') }}</p></div></div>
+                <div class="t1-grid">
+                    <template x-for="e in pastEvs.slice(0, pastShown)" :key="'past-' + e.key">@include('ui::explore.partials.card-event')</template>
+                </div>
+                <div x-show="pastEvs.length > pastShown" style="display:flex;justify-content:center;padding-top:12px">
+                    <button type="button" class="t1-more" @click="pastShown += 8"><span>{{ __('ui::explore.show_more') }}</span><i class="bi bi-chevron-down"></i></button>
+                </div>
+            </section>
             <button type="button" class="t1-fab" @click="map = !map"><i class="bi" :class="map ? 'bi-list' : 'bi-map'"></i><span x-text="map ? @js(__('ui::explore.hide_map')) : @js(__('ui::explore.show_map'))"></span></button>
         </div>
 

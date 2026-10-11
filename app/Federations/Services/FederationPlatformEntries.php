@@ -94,6 +94,45 @@ class FederationPlatformEntries
         }
     }
 
+    /**
+     * The event's entrant list changed on the platform — an organiser removed
+     * or re-entered somebody in the console, moved them to another division,
+     * weighed them in. The federation's record follows, and every open
+     * dashboard re-reads (a refresh signal, never data).
+     *
+     * Removed: once they hold no participant entry in the event any more, the
+     * club's row is marked Withdrawn — otherwise the dashboard keeps counting
+     * an athlete the event no longer has. Re-entered: a Withdrawn row is made
+     * Active again — otherwise the next sync() would take them back out.
+     * Skipped while sync() itself is the one writing, so neither echoes back.
+     */
+    public function entrantChanged(ClubEvent $ev, ClubEventRegistration $registration, string $change): void
+    {
+        $fe = FederationEvent::where('club_event_id', $ev->id)->first();
+        if (! $fe) {
+            return;
+        }
+
+        if (! self::$syncing && $registration->role === 'participant' && in_array($change, ['created', 'deleted'], true)) {
+            $rows = FederationEntryAthlete::whereHas('entry', fn ($q) => $q->where('federation_event_id', $fe->id))
+                ->whereHas('athlete', fn ($q) => $q->where('user_id', $registration->user_id));
+
+            if ($change === 'deleted') {
+                $stillIn = ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $registration->user_id)
+                    ->where('role', 'participant')->exists();
+                if (! $stillIn) {
+                    $rows->where('status', '!=', 'Withdrawn')->get()
+                        ->each(fn ($row) => $row->forceFill(['status' => 'Withdrawn', 'withdrawn_at' => now()])->save());
+                }
+            } else {
+                $rows->where('status', 'Withdrawn')->get()
+                    ->each(fn ($row) => $row->forceFill(['status' => 'Active', 'withdrawn_at' => null])->save());
+            }
+        }
+
+        \App\Federations\Support\FederationPulse::forEvent($fe);
+    }
+
     private function one(ClubEvent $ev, FederationEntryAthlete $row, User $actor): void
     {
         $user = $row->athlete?->user_id ? User::find($row->athlete->user_id) : null;

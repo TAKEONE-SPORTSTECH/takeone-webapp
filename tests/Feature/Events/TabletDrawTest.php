@@ -20,7 +20,9 @@ class TabletDrawTest extends ContractTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['events.tablet_draw' => true]);
+        // The tests below are the PIN mode's; the no-PIN default has its own
+        // at the end of the file.
+        config(['events.tablet_draw' => true, 'events.tablet_draw_pin' => true]);
     }
 
     /** @return array{0: \App\Events\Models\ClubEvent, 1: string, 2: \App\Members\Models\User, 3: array} */
@@ -161,5 +163,64 @@ class TabletDrawTest extends ContractTestCase
 
         // An entry from somewhere else is not this tablet's to touch.
         $this->putJson("/tablet/{$token}/draw/entrants/999999", ['name' => 'Nope'])->assertNotFound();
+    }
+
+    public function test_without_a_pin_the_paired_tablet_edits_as_the_organiser_who_paired_it(): void
+    {
+        config(['events.tablet_draw_pin' => false]);
+        [, $token, $organiser] = $this->pairedTablet();
+
+        // No pad, no lock: the board opens ready to edit.
+        $this->get("/tablet/{$token}/draw")->assertOk()
+            ->assertDontSee(__('events::events.tablet_unlock'))
+            ->assertSee($organiser->full_name)
+            // Done closes the board to edits; Edit opens it again.
+            ->assertSee(__('events::events.tablet_done'))
+            ->assertSee('resume()', false)
+            // It opens in VIEW mode: Edit unlocks, Done locks it back.
+            ->assertSee('viewOnly: ! false', false);
+
+        $data = $this->getJson("/tablet/{$token}/draw/data")->assertOk();
+        $this->assertTrue($data->json('can_arrange'));
+        $this->assertTrue($data->json('can_manage'));
+    }
+
+    public function test_without_a_pin_a_tablet_whose_pairer_lost_the_event_reads_only(): void
+    {
+        config(['events.tablet_draw_pin' => false]);
+        [$event, $token] = $this->pairedTablet();
+
+        // The person who paired it no longer runs this event: hand it to someone else.
+        $other = $this->createUser(['full_name' => 'New Owner']);
+        $event->forceFill(['created_by' => $other->id, 'tenant_id' => $this->clubFor($other)->id])->save();
+
+        $this->putJson("/tablet/{$token}/draw/arrange", ['category_id' => 1])->assertStatus(404);
+    }
+
+    public function test_a_wrong_winner_is_taken_back_and_everything_after_it_with_it(): void
+    {
+        config(['events.tablet_draw_pin' => false]);
+        [, $token, , $draw] = $this->pairedTablet();
+        $bouts = \App\Events\Models\EventMatch::where('category_id', $draw[0]->id)->orderBy('slot')->get();
+        $semis = $bouts->filter(fn ($m) => $m->a_competitor_id && $m->b_competitor_id)->values();
+        $final = $bouts->first(fn ($m) => $m->round === 'Final');
+        $this->assertCount(2, $semis);
+
+        // Three mistakes in a row: both semi-finals and the final.
+        $this->postJson("/tablet/{$token}/draw/outcomes/{$semis[0]->id}", ['winner' => 'a'])->assertOk();
+        $this->postJson("/tablet/{$token}/draw/outcomes/{$semis[1]->id}", ['winner' => 'a'])->assertOk();
+        $this->postJson("/tablet/{$token}/draw/outcomes/{$final->id}", ['winner' => 'a'])->assertOk();
+        $this->assertSame('a', $final->fresh()->winner);
+
+        // Un-win the first semi-final (the same tap again sends an empty winner):
+        // its winner leaves the final, and the final's result goes with it.
+        $this->postJson("/tablet/{$token}/draw/outcomes/{$semis[0]->id}", ['winner' => ''])->assertOk();
+        $this->assertNull($semis[0]->fresh()->winner);
+        $this->assertNull($final->fresh()->winner);
+
+        // The other semi-final keeps its result until it is taken back too.
+        $this->assertSame('a', $semis[1]->fresh()->winner);
+        $this->postJson("/tablet/{$token}/draw/outcomes/{$semis[1]->id}", ['winner' => ''])->assertOk();
+        $this->assertNull($semis[1]->fresh()->winner);
     }
 }

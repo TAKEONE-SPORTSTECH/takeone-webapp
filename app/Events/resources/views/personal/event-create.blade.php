@@ -124,6 +124,16 @@
         belt_system: @js($ev?->belt_system),
         ruleTable: null,
         title: @js($ev?->title ?? ''),
+        // The theme colour every header on the event is drawn in. Empty means
+        // the type's own colour, which is what the server falls back to.
+        themePick: @js($ev?->color ?? ''),
+        colorCustom: false,
+        colorDraft: '',
+        get themeColor() { return /^#[0-9a-fA-F]{6}$/.test(this.themePick) ? this.themePick : (this.typeMeta.color || '#7c3aed'); },
+        setCustomColor() {
+            const v = (this.colorDraft || '').trim().replace(/^([0-9a-fA-F]{6})$/, '#$1');
+            if (/^#[0-9a-fA-F]{6}$/.test(v)) { this.themePick = v.toLowerCase(); this.colorCustom = false; }
+        },
         // The competition's clock. Every date and time below is read in it.
         // Prefilled with the host club's zone; follows the club picker until
         // the organiser chooses one themselves.
@@ -421,6 +431,7 @@
                 const breakOn = this.isChampionship && this.break_enabled;
                 const payload = {
                     tenant_id: this.tenant_id, title: this.title.trim(), event_type: this.type, scope: this.scope, sport: this.sport || null,
+                    color: /^#[0-9a-fA-F]{6}$/.test(this.themePick) ? this.themePick : null,
                     ...(this.tenant_id === 'me' ? { fee_currency: this.fee_currency, host_payment: this.host_payment } : {}),
                     category_system: this.isCombat ? (this.category_system || null) : null,
                     belt_system: this.isCombat ? (this.belt_system || null) : null,
@@ -690,6 +701,57 @@
                 <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_title_label') }}</label>
                 <input x-model="title" type="text" placeholder="{{ __('personal.personal_event_create_title_ph') }}"
                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+            </div>
+
+            {{-- ===== Theme colour =====
+                 Every header on the event (the poster, its pages, the gallery,
+                 the draw) is drawn from this one colour. The preview is that
+                 band — Palette::eventBand(), written as CSS — with the title
+                 typed above, so the organiser sees the real thing. --}}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_color') }}</label>
+
+                <div class="relative overflow-hidden rounded-2xl px-4 py-4 text-white shadow-sm transition-all duration-500"
+                     :style="{ background: 'linear-gradient(155deg, color-mix(in srgb, ' + themeColor + ' 82%, #0b132b) 0%, color-mix(in srgb, ' + themeColor + ' 38%, #0b132b) 70%)', backgroundColor: themeColor }">
+                    <div class="absolute -right-6 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
+                    <div class="absolute right-10 -bottom-8 w-16 h-16 rounded-full bg-white/10"></div>
+                    <span class="relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20">
+                        <i class="bi bi-palette2"></i> {{ __('personal.personal_event_create_color_preview') }}
+                    </span>
+                    <p class="relative text-lg font-black leading-tight mt-2 break-words" x-text="title.trim() || @js(__('personal.personal_event_create_title_ph'))"></p>
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-2.5" role="radiogroup" aria-label="{{ __('personal.personal_event_create_color') }}">
+                    @foreach (['#ef4444', '#e11d48', '#f97316', '#f59e0b', '#10b981', '#14b8a6', '#0ea5e9', '#2563eb', '#4f46e5', '#7c3aed', '#c026d3', '#334155'] as $sw)
+                        <button type="button" role="radio" :aria-checked="themeColor === '{{ $sw }}'"
+                                @click="themePick = '{{ $sw }}'; colorCustom = false"
+                                class="relative w-9 h-9 rounded-full grid place-items-center transition-transform duration-200 active:scale-90 hover:scale-110"
+                                :class="themeColor === '{{ $sw }}' ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''"
+                                style="background: {{ $sw }};" title="{{ $sw }}">
+                            <i class="bi bi-check-lg text-white text-base" x-show="themeColor === '{{ $sw }}'" x-cloak></i>
+                        </button>
+                    @endforeach
+                    {{-- Any other colour, typed as a hex — a club's own brand colour. --}}
+                    <button type="button" @click="colorCustom = !colorCustom; colorDraft = themePick || themeColor"
+                            class="w-9 h-9 rounded-full grid place-items-center border-2 border-dashed border-gray-300 text-gray-500 hover:border-primary hover:text-primary transition-colors"
+                            :class="(themePick && !['#ef4444', '#e11d48', '#f97316', '#f59e0b', '#10b981', '#14b8a6', '#0ea5e9', '#2563eb', '#4f46e5', '#7c3aed', '#c026d3', '#334155'].includes(themePick)) ? 'ring-2 ring-offset-2 ring-primary' : ''"
+                            :style="(themePick && !['#ef4444', '#e11d48', '#f97316', '#f59e0b', '#10b981', '#14b8a6', '#0ea5e9', '#2563eb', '#4f46e5', '#7c3aed', '#c026d3', '#334155'].includes(themePick)) ? { background: themePick, borderStyle: 'solid', borderColor: themePick, color: '#fff' } : {}"
+                            title="{{ __('personal.personal_event_create_color_custom') }}" aria-label="{{ __('personal.personal_event_create_color_custom') }}">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+
+                <div x-show="colorCustom" x-cloak x-transition.opacity class="mt-3 flex items-center gap-2">
+                    <span class="w-9 h-9 rounded-xl flex-shrink-0 border border-gray-200 transition-colors"
+                          :style="{ background: /^#?[0-9a-fA-F]{6}$/.test(colorDraft.trim()) ? (colorDraft.trim().startsWith('#') ? colorDraft.trim() : '#' + colorDraft.trim()) : '#ffffff' }"></span>
+                    <input x-model="colorDraft" type="text" maxlength="7" placeholder="#7c3aed" dir="ltr"
+                           @keydown.enter.prevent="setCustomColor()"
+                           class="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <button type="button" @click="setCustomColor()"
+                            class="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">{{ __('personal.personal_event_create_color_use') }}</button>
+                </div>
+
+                <p class="text-[11px] text-muted-foreground mt-2" x-show="!themePick">{{ __('personal.personal_event_create_color_hint') }}</p>
             </div>
 
             {{-- Enrollment window — drives the whole date chain --}}

@@ -191,6 +191,16 @@
   </div>
 
   {{-- ── The scoreboard ─────────────────────────────────────────────────── --}}
+  {{-- Which side of this mat red stands on (App\Scoreboard\Corners\MatSides)
+       and each corner's name and colours for the event (Mat\CornerLook).
+       The corner decides the colour; the position decides the shape. --}}
+  @php
+    $L = $look ?? \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::for($event ?? null);
+    $SK = \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::skin($L);
+    $rr = $redRight ?? \App\Sports\Combat\CornerSide::redRight('taekwondo');
+    $atL = $rr ? 'ao' : 'aka';
+    $atR = $rr ? 'aka' : 'ao';
+  @endphp
   <div id="sb" class="layer" hidden style="background:repeating-linear-gradient(115deg, #0b0b10 0 6px, #0d0d13 6px 12px); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
     <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(100% 80% at 50% 30%, transparent 40%, rgba(0,0,0,0.6) 100%);"></div>
 
@@ -218,14 +228,7 @@
 
     {{-- Score cards + centre clock --}}
     <div style="position:absolute; top:200px; left:0; right:0; height:570px; display:grid; grid-template-columns:1fr 500px 1fr; align-items:stretch; z-index:5;">
-      <div style="position:relative; margin:0 -50px 0 0; background:linear-gradient(155deg, oklch(0.55 0.21 25) 0%, oklch(0.34 0.13 25) 100%); clip-path:polygon(0 0, 100% 0, calc(100% - 90px) 100%, 0 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding-right:60px; box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 60px oklch(0.6 0.22 25 / 0.35); animation:cardInL 0.8s 0.25s cubic-bezier(0.22,1,0.36,1) both;">
-        <div style="font-weight:800; font-size:34px; letter-spacing:0.4em; text-transform:uppercase; color:rgba(255,255,255,0.75); margin-bottom:14px;">{{ __('scoreboard::taekwondo_messages.sb_hong') }}</div>
-        <div id="sbAkaScore" style="font-family:'Anton',sans-serif; font-size:390px; line-height:0.95; color:#fffdf5; text-shadow:0 16px 70px rgba(0,0,0,0.55); font-variant-numeric:tabular-nums;">0</div>
-        <div style="display:flex; align-items:center; gap:14px; margin-top:18px;">
-          <span style="font-weight:700; font-size:26px; letter-spacing:0.24em; text-transform:uppercase; color:rgba(255,255,255,0.7);">{{ __('scoreboard::taekwondo_messages.sb_gamjeom') }}</span>
-          <div id="sbAkaGam" style="display:flex; gap:9px;"></div>
-        </div>
-      </div>
+@include('scoreboard::taekwondo.scoreboard.partials.score-card', ['side' => $atL, 'pos' => 'l'])
 
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; z-index:6;">
         <div id="sbRoundDots" style="display:flex; align-items:center; gap:12px;"></div>
@@ -233,42 +236,13 @@
         <div id="sbPhase" style="font-family:'Anton',sans-serif; font-size:48px; letter-spacing:0.3em; padding-left:0.3em; text-transform:uppercase; color:oklch(0.85 0.16 85);"></div>
       </div>
 
-      <div style="position:relative; margin:0 0 0 -50px; background:linear-gradient(205deg, oklch(0.5 0.18 255) 0%, oklch(0.3 0.11 255) 100%); clip-path:polygon(0 0, 100% 0, 100% 100%, 90px 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding-left:60px; box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 60px oklch(0.52 0.19 255 / 0.35); animation:cardInR 0.8s 0.4s cubic-bezier(0.22,1,0.36,1) both;">
-        <div style="font-weight:800; font-size:34px; letter-spacing:0.4em; text-transform:uppercase; color:rgba(255,255,255,0.75); margin-bottom:14px;">{{ __('scoreboard::taekwondo_messages.sb_chung') }}</div>
-        <div id="sbAoScore" style="font-family:'Anton',sans-serif; font-size:390px; line-height:0.95; color:#fffdf5; text-shadow:0 16px 70px rgba(0,0,0,0.55); font-variant-numeric:tabular-nums;">0</div>
-        <div style="display:flex; align-items:center; gap:14px; margin-top:18px;">
-          <span style="font-weight:700; font-size:26px; letter-spacing:0.24em; text-transform:uppercase; color:rgba(255,255,255,0.7);">{{ __('scoreboard::taekwondo_messages.sb_gamjeom') }}</span>
-          <div id="sbAoGam" style="display:flex; gap:9px;"></div>
-        </div>
-      </div>
+@include('scoreboard::taekwondo.scoreboard.partials.score-card', ['side' => $atR, 'pos' => 'r'])
     </div>
 
     {{-- Athlete bars --}}
     <div style="position:absolute; left:0; right:0; bottom:0; height:290px; display:grid; grid-template-columns:1fr 1fr; z-index:5;">
-      <div style="display:flex; align-items:center; gap:28px; background:linear-gradient(90deg, oklch(0.3 0.11 25) 0%, rgba(10,10,14,0.95) 85%); border-top:6px solid oklch(0.6 0.22 25); padding:0 40px 0 70px; min-width:0; animation:barIn 0.7s 0.55s cubic-bezier(0.22,1,0.36,1) both;">
-        <div id="sbAkaLogo" style="width:170px; height:170px; flex:0 0 auto; border-radius:50%; background-color:rgba(255,255,255,0.1); background-size:cover; background-position:center; border:3px solid rgba(255,255,255,0.4); box-shadow:0 10px 40px rgba(0,0,0,0.6);"></div>
-        <div style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:8px;">
-          <div id="sbAkaName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:78px; line-height:1; text-transform:uppercase; color:#fff;"></div>
-          <div style="display:flex; align-items:center; gap:16px; max-width:100%;">
-            <div id="sbAkaFlag" style="width:84px; flex:0 0 auto; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:2px solid rgba(255,255,255,0.45);"></div>
-            <div id="sbAkaCountry" style="max-width:470px; flex:0 0 auto; min-width:0; font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
-            <div style="width:8px; height:8px; flex:0 0 auto; transform:rotate(45deg); background:oklch(0.85 0.16 85);"></div>
-            <div id="sbAkaClub" style="flex:0 1 auto; min-width:0; font-weight:600; font-size:38px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,230,224,0.75); white-space:nowrap;"></div>
-          </div>
-        </div>
-      </div>
-      <div style="display:flex; align-items:center; justify-content:flex-end; gap:28px; background:linear-gradient(270deg, oklch(0.28 0.1 255) 0%, rgba(10,10,14,0.95) 85%); border-top:6px solid oklch(0.52 0.19 255); padding:0 70px 0 40px; min-width:0; animation:barIn 0.7s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
-        <div style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:flex-end; gap:8px; text-align:right;">
-          <div id="sbAoName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:78px; line-height:1; text-transform:uppercase; color:#fff;"></div>
-          <div style="display:flex; align-items:center; gap:16px; max-width:100%; flex-direction:row-reverse;">
-            <div id="sbAoFlag" style="width:84px; flex:0 0 auto; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:2px solid rgba(255,255,255,0.45);"></div>
-            <div id="sbAoCountry" style="max-width:470px; flex:0 0 auto; min-width:0; font-weight:700; font-size:44px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.9); white-space:nowrap;"></div>
-            <div style="width:8px; height:8px; flex:0 0 auto; transform:rotate(45deg); background:oklch(0.85 0.16 85);"></div>
-            <div id="sbAoClub" style="flex:0 1 auto; min-width:0; font-weight:600; font-size:38px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,230,224,0.75); white-space:nowrap;"></div>
-          </div>
-        </div>
-        <div id="sbAoLogo" style="width:170px; height:170px; flex:0 0 auto; border-radius:50%; background-color:rgba(255,255,255,0.1); background-size:cover; background-position:center; border:3px solid rgba(255,255,255,0.4); box-shadow:0 10px 40px rgba(0,0,0,0.6);"></div>
-      </div>
+@include('scoreboard::taekwondo.scoreboard.partials.athlete-bar', ['side' => $atL, 'pos' => 'l'])
+@include('scoreboard::taekwondo.scoreboard.partials.athlete-bar', ['side' => $atR, 'pos' => 'r'])
     </div>
 
     <div id="sbCallout" style="position:absolute; z-index:9; pointer-events:none;"></div>
@@ -277,45 +251,13 @@
 
   {{-- ── The introduction, over the top of it ───────────────────────────── --}}
   <div id="vs" class="layer" hidden style="z-index:12; background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
-    <div style="position:absolute; inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%); overflow:hidden; background:#2b1416;background:oklch(0.28 0.09 25); animation:panelL 0.9s cubic-bezier(0.22,1,0.36,1) both;">
-      <div id="vsRedPhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg, rgba(154,55,48,0.55) 0%, transparent 55%);background:linear-gradient(115deg, oklch(0.45 0.18 25 / 0.55) 0%, transparent 55%);"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
-    </div>
-    <div style="position:absolute; inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%); overflow:hidden; background:#10233f;background:oklch(0.28 0.09 255); animation:panelR 0.9s cubic-bezier(0.22,1,0.36,1) both;">
-      <div id="vsBluePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite reverse;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(245deg, rgba(40,86,152,0.55) 0%, transparent 55%);background:linear-gradient(245deg, oklch(0.45 0.15 255 / 0.55) 0%, transparent 55%);"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
-    </div>
+@include('scoreboard::taekwondo.scoreboard.partials.vs-half', ['side' => $atL, 'pos' => 'l', 'part' => 'panel'])
+@include('scoreboard::taekwondo.scoreboard.partials.vs-half', ['side' => $atR, 'pos' => 'r', 'part' => 'panel'])
     <div style="position:absolute; top:-6%; bottom:-6%; left:50%; width:3px; margin-left:-1.5px; transform:rotate(10.15deg); pointer-events:none; background:linear-gradient(to bottom, transparent, rgba(253,196,54,0.9) 20%, rgba(253,196,54,0.9) 80%, transparent);background:linear-gradient(to bottom, transparent, oklch(0.85 0.16 85 / 0.9) 20%, oklch(0.85 0.16 85 / 0.9) 80%, transparent); filter:blur(1px);"></div>
 
-    <div style="position:absolute; left:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0; animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#c8382c;background:oklch(0.55 0.2 25); padding:5.4px 15.1px 5.4px 18.9px;">{{ __('scoreboard::taekwondo_messages.sb_hong') }}</div>
-      <div style="display:flex; align-items:center; gap:15.1px;">
-        <div id="vsRedFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsRedCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#e8b3ad; color:oklch(0.85 0.05 25);"></div>
-      </div>
-      <div id="vsRedName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
-      <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px;">
-        <div id="vsRedLogo" style="width:69.1px; height:69.1px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); border-radius:50%; background-size:cover; background-position:center;"></div>
-        <div id="vsRedClub" style="font-weight:600; font-size:30.2px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,230,224,0.9);"></div>
-      </div>
-      <div id="vsRedChips" style="display:flex; flex-wrap:wrap; gap:9.7px; margin-top:5.4px;"></div>
-    </div>
+@include('scoreboard::taekwondo.scoreboard.partials.vs-half', ['side' => $atL, 'pos' => 'l', 'part' => 'info'])
 
-    <div style="position:absolute; right:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right; animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1f5aa8;background:oklch(0.5 0.16 255); padding:5.4px 15.1px 5.4px 18.9px;">{{ __('scoreboard::taekwondo_messages.sb_chung') }}</div>
-      <div style="display:flex; align-items:center; gap:15.1px; flex-direction:row-reverse;">
-        <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#a9c6ea; color:oklch(0.85 0.05 255);"></div>
-      </div>
-      <div id="vsBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
-      <div style="display:flex; align-items:center; gap:13px; margin-top:4.3px; flex-direction:row-reverse;">
-        <div id="vsBlueLogo" style="width:69.1px; height:69.1px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); border-radius:50%; background-size:cover; background-position:center;"></div>
-        <div id="vsBlueClub" style="font-weight:600; font-size:30.2px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,230,224,0.9);"></div>
-      </div>
-      <div id="vsBlueChips" style="display:flex; flex-wrap:wrap; gap:9.7px; margin-top:5.4px; justify-content:flex-end;"></div>
-    </div>
+@include('scoreboard::taekwondo.scoreboard.partials.vs-half', ['side' => $atR, 'pos' => 'r', 'part' => 'info'])
 
     <div style="position:absolute; top:34.6px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:10.8px; z-index:8; width:92%; pointer-events:none; animation:dropIn 0.8s 0.5s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsEvent" style="font-weight:700; font-size:30.2px; letter-spacing:0.42em; text-transform:uppercase; color:rgba(232,230,224,0.92); text-align:center; text-shadow:0 2px 14px rgba(0,0,0,0.9);"></div>
@@ -362,6 +304,10 @@
   'use strict';
 
   var GAM_LIMIT = @json(\App\Scoreboard\Sports\Taekwondo\Mat\MatState::GAM_JEOM_LIMIT);
+  // Each corner's colours (Mat\CornerLook skin) and which side red stands on
+  // at this mat (App\Scoreboard\Corners\MatSides), for what the script draws.
+  var SKIN = @json($SK);
+  var RED_RIGHT = @json((bool) $rr);
   var EVENT_TITLE = @json($event->title);
   var COURT = @json($court);
   var T = {
@@ -519,13 +465,15 @@
   function gamDots(id, n) {
     var host = el(id);
     if (!host) return;
+    // An unlit diamond on a LIGHT corner (Mat\CornerLook) takes dark ink.
+    var dark = !!(SKIN[/Ao/.test(id) ? 'ao' : 'aka'] || {}).light;
     host.textContent = '';
     for (var i = 0; i < GAM_LIMIT; i++) {
       var on = i < n;
       var d = document.createElement('div');
       d.style.cssText = 'width:26px; height:26px; transform:rotate(45deg);' +
-        'background:' + (on ? 'oklch(0.85 0.16 85)' : 'rgba(0,0,0,0.25)') + ';' +
-        'border:3px solid ' + (on ? '#fffdf0' : 'rgba(255,255,255,0.4)') + ';' +
+        'background:' + (on ? 'oklch(0.85 0.16 85)' : (dark ? 'rgba(20,22,28,0.12)' : 'rgba(0,0,0,0.25)')) + ';' +
+        'border:3px solid ' + (on ? '#fffdf0' : (dark ? 'rgba(20,22,28,0.35)' : 'rgba(255,255,255,0.4)')) + ';' +
         // Only the newest one blinks — the source's own rule.
         (i === n - 1 ? 'animation:foulBlink 1.4s ease-in-out infinite;' : '');
       host.appendChild(d);
@@ -557,9 +505,9 @@
     var tally = document.createElement('div');
     tally.style.cssText = 'display:flex; align-items:center; gap:10px; margin-left:14px;' +
       "font-family:'Anton',sans-serif; font-size:34px;";
-    var r = document.createElement('span'); r.style.color = 'oklch(0.65 0.22 25)'; r.textContent = s.akaRounds;
+    var r = document.createElement('span'); r.style.color = SKIN.aka.tally; r.textContent = s.akaRounds;
     var sep = document.createElement('span'); sep.style.color = 'rgba(232,230,224,0.5)'; sep.textContent = '·';
-    var b = document.createElement('span'); b.style.color = 'oklch(0.62 0.19 255)'; b.textContent = s.aoRounds;
+    var b = document.createElement('span'); b.style.color = SKIN.ao.tally; b.textContent = s.aoRounds;
     tally.appendChild(r); tally.appendChild(sep); tally.appendChild(b);
     host.appendChild(tally);
   }
@@ -571,9 +519,11 @@
     lastCallout = ev.ts;
 
     var host = el('sbCallout');
-    var colour = ev.side === 'aka' ? '#ff5548' : '#4d9aff';
+    var C = SKIN[ev.side === 'aka' ? 'aka' : 'ao'] || {};
+    var colour = C.callout || '#ff5548';
     host.textContent = '';
-    host.style.left = (ev.side === 'aka' ? '25%' : '75%');
+    // Over the scoring corner's card, wherever this mat stands it.
+    host.style.left = ((ev.side === 'aka') !== RED_RIGHT ? '25%' : '75%');
     host.style.top = '44%';
 
     var ring = document.createElement('div');
@@ -585,8 +535,9 @@
     wrap.style.cssText = 'position:absolute; left:0; top:0; transform:translate(-50%,-50%); animation:calloutIn 1.5s cubic-bezier(.2,.8,.2,1) both;' +
       'display:flex; flex-direction:column; align-items:center; gap:4px;';
     var label = document.createElement('div');
-    label.style.cssText = "font-family:'Anton',sans-serif; font-size:110px; line-height:1; color:#fff; white-space:nowrap;" +
-      'text-shadow:0 0 80px ' + colour + ', 0 8px 30px rgba(0,0,0,.7);';
+    label.style.cssText = "font-family:'Anton',sans-serif; font-size:110px; line-height:1; white-space:nowrap;" +
+      (C.light ? 'color:#14161c; text-shadow:0 0 60px rgba(255,255,255,.95), 0 6px 24px rgba(255,255,255,.6);'
+               : 'color:#fff; text-shadow:0 0 80px ' + colour + ', 0 8px 30px rgba(0,0,0,.7);');
     label.textContent = ev.label || '';
     var plus = document.createElement('div');
     plus.style.cssText = "font-family:'Anton',sans-serif; font-size:72px; color:oklch(0.85 0.16 85); text-shadow:0 0 40px rgba(255,214,102,.7);";
@@ -608,6 +559,8 @@
 
     WinnerCelebration.paint(el('sbWinner'), {
       corner: side === 'aka' ? 'red' : 'blue',
+      // A corner with a colour of its own hands the scene its palette.
+      palette: (SKIN[side] || {}).celebrate || null,
       name: c.name || '',
       club: c.club || '',
       logo: c.logo || null,

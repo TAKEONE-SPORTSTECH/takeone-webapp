@@ -35,6 +35,9 @@
         'approve' => route('me.certificates.approve', $p),
         'revoke' => route('me.certificates.revoke', ['cert' => '00000000-0000-0000-0000-000000000000']),
         'destroy' => route('me.certificates.destroy', ['cert' => '00000000-0000-0000-0000-000000000000']),
+        'drafts' => route('me.certificates.drafts.destroy', $p),
+        'bundle' => route('me.certificates.bundle', $p + ['type' => 'xtypex']),
+        'bundleDownload' => route('me.certificates.bundle.download', $p + ['type' => 'xtypex']),
     ];
     $viewer = 'open-certificate-view';
 @endphp
@@ -49,9 +52,11 @@
         busy: false,
         tab: 'draft',
         progress: null,
+        wiping: null,
         revoking: null,
         reason: '',
-        s: { settings: { participation: true, podium: true, trigger: 'division' }, eligible: { participation: 0, podium: 0, decided: 0, pending: 0 }, counts: { draft: 0, approved: 0, revoked: 0 }, certificates: [], design_url: null, batch: 15 },
+        s: { settings: { participation: true, podium: true, trigger: 'division' }, eligible: { participation: 0, podium: 0, decided: 0, pending: 0 }, counts: { draft: 0, approved: 0, revoked: 0 }, certificates: [], design_url: null, batch: 15, bundles: [] },
+        _bundleT: null,
         urls: @js($urls),
 
         get rows() { return this.s.certificates.filter(r => r.status === this.tab); },
@@ -75,7 +80,10 @@
             return d;
         },
         take(d) {
-            ['settings', 'eligible', 'counts', 'certificates', 'design_url', 'batch'].forEach(k => { if (d[k] !== undefined) this.s[k] = d[k]; });
+            ['settings', 'eligible', 'counts', 'certificates', 'design_url', 'batch', 'bundles'].forEach(k => { if (d[k] !== undefined) this.s[k] = d[k]; });
+            // Nothing waiting: open on what has been issued, not on an empty drafts list.
+            if (this.tab === 'draft' && ! this.s.counts.draft && this.s.counts.approved) this.tab = 'approved';
+            this.watchBundles();
             this.loaded = true;
             window.dispatchEvent(new CustomEvent('certificates-changed', { detail: { context: @js($alias), key: @js($subject), counts: this.s.counts } }));
         },
@@ -127,6 +135,48 @@
                 window.showToast('success', d.message);
             } catch (e) { window.showToast('error', e.message); }
         },
+        async removeAll() {
+            if (this.busy || ! this.s.counts.draft) return;
+            const ok = await window.confirmAction({ title: @js(__('cert::messages.delete_all_title')), message: @js(__('cert::messages.delete_all_message')), type: 'danger', confirmText: @js(__('cert::messages.delete')) });
+            if (! ok) return;
+            this.busy = true;
+            const total = this.s.counts.draft;
+            this.wiping = { done: 0, total };
+            let done = 0, last = null;
+            try {
+                for (let guard = 0; guard < 100; guard++) {
+                    const d = last = await this.call('DELETE', this.urls.drafts, { all: true });
+                    this.take(d);
+                    done += d.deleted;
+                    this.wiping = { done: Math.min(done, total), total };
+                    if (! d.deleted || ! d.remaining) break;
+                }
+                window.showToast('success', last && last.deleted === done ? last.message : @js(trans_choice('cert::messages.deleted_many', 2)).replace(':count', done));
+            } catch (e) { window.showToast('error', e.message); }
+            finally { this.busy = false; this.wiping = null; }
+        },
+        /* One PDF of every issued certificate of a design, for the print shop: built in
+           the background; while it is, the sheet asks how far along it is. */
+        bundleUrl(type, download) { return (download ? this.urls.bundleDownload : this.urls.bundle).replace('xtypex', type); },
+        async buildBundle(b) {
+            try {
+                const d = await this.call('POST', this.bundleUrl(b.type));
+                Object.assign(b, { state: d.state, done: d.done, total: d.total, size: d.size });
+                this.watchBundles();
+            } catch (e) { window.showToast('error', e.message); }
+        },
+        watchBundles() {
+            clearTimeout(this._bundleT);
+            if (! this.open || ! (this.s.bundles || []).some(b => b.state === 'building')) return;
+            this._bundleT = setTimeout(async () => {
+                for (const b of this.s.bundles.filter(x => x.state === 'building')) {
+                    try { const d = await this.call('GET', this.bundleUrl(b.type)); Object.assign(b, { state: d.state, done: d.done, total: d.total, size: d.size }); } catch (e) {}
+                }
+                this.watchBundles();
+            }, 3000);
+        },
+        mb(bytes) { return bytes ? (bytes / 1048576).toFixed(1) + ' MB' : ''; },
+        downloadUrl(row) { return row.pdf_url + (row.pdf_url.includes('?') ? '&' : '?') + 'download=1'; },
         async revoke(row) {
             if (this.reason.trim().length < 3) { window.showToast('warning', @js(__('cert::messages.revoke_reason_needed'))); return; }
             try {
@@ -278,11 +328,46 @@
                         </button>
                     </section>
 
-                    {{-- The certificates themselves --}}
+                    {{-- For the print shop: every issued certificate of a design in one PDF --}}
+                    <section x-show="(s.bundles || []).length" class="space-y-2">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">{{ __('cert::messages.bundle_heading') }}</p>
+                        <template x-for="b in s.bundles" :key="'bundle-' + b.type">
+                            <div class="bg-white rounded-2xl border border-gray-100 p-3 flex items-center gap-3">
+                                <span class="w-11 h-11 rounded-xl bg-accent text-primary grid place-items-center flex-shrink-0"><i class="bi bi-file-earmark-pdf text-lg"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold text-foreground" x-text="@js(__('cert::messages.bundle_title')).replace(':type', b.label)"></p>
+                                    <p class="text-[12px] text-muted-foreground"
+                                       x-text="b.state === 'building'
+                                            ? @js(__('cert::messages.bundle_building')).replace(':done', b.done).replace(':total', b.total || b.count)
+                                            : (b.state === 'failed' ? @js(__('cert::messages.bundle_failed'))
+                                            : @js(__('cert::messages.bundle_pages')).replace(':count', b.count) + (b.size ? ' · ' + mb(b.size) : ''))"></p>
+                                    <div x-show="b.state === 'building'" class="h-1.5 rounded-full bg-muted overflow-hidden mt-1.5">
+                                        <div class="h-full bg-primary transition-all duration-300" :style="'width:' + Math.max(6, Math.round(b.done / Math.max(1, b.total || b.count) * 100)) + '%'"></div>
+                                    </div>
+                                </div>
+                                <template x-if="b.state === 'ready'">
+                                    <a :href="bundleUrl(b.type, true)" download class="m-press h-10 px-3.5 rounded-xl bg-primary text-white text-[12px] font-bold inline-flex items-center gap-1.5 flex-shrink-0"><i class="bi bi-download"></i>{{ __('cert::messages.download') }}</a>
+                                </template>
+                                <template x-if="b.state === 'idle' || b.state === 'failed'">
+                                    <button type="button" @click="buildBundle(b)" class="m-press h-10 px-3.5 rounded-xl border border-primary text-primary text-[12px] font-bold inline-flex items-center gap-1.5 flex-shrink-0"><i class="bi bi-file-earmark-arrow-down"></i>{{ __('cert::messages.bundle_make') }}</button>
+                                </template>
+                                <template x-if="b.state === 'building'">
+                                    <span class="h-10 px-3 rounded-xl bg-muted/60 text-muted-foreground text-[12px] font-bold inline-flex items-center gap-1.5 flex-shrink-0"><i class="bi bi-arrow-repeat animate-spin"></i></span>
+                                </template>
+                            </div>
+                        </template>
+                    </section>
+
+                    {{-- The certificates themselves, with the switch between them right above --}}
                     <section class="space-y-2">
-                        <div class="flex items-center justify-between px-1">
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground"
-                               x-text="tab === 'draft' ? @js(__('cert::messages.list_drafts')) : (tab === 'approved' ? @js(__('cert::messages.list_issued')) : @js(__('cert::messages.list_revoked')))"></p>
+                        <div class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted/60" role="tablist">
+                            @foreach(['draft' => 'cert::messages.stat_drafts', 'approved' => 'cert::messages.stat_issued', 'revoked' => 'cert::messages.stat_revoked'] as $k => $label)
+                                <button type="button" role="tab" @click="tab = '{{ $k }}'" :aria-selected="tab === '{{ $k }}'"
+                                        class="m-press h-9 rounded-lg text-[12px] font-bold inline-flex items-center justify-center gap-1.5 transition-colors"
+                                        :class="tab === '{{ $k }}' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'">
+                                    {{ __($label) }} <span class="text-[11px] opacity-80" x-text="s.counts.{{ $k }}"></span>
+                                </button>
+                            @endforeach
                         </div>
 
                         <template x-if="loaded && ! rows.length">
@@ -320,6 +405,9 @@
                                         <a :href="row.print_url" target="_blank" rel="noopener" class="m-press h-9 px-3 rounded-xl border border-gray-200 text-[12px] font-bold text-foreground inline-flex items-center gap-1.5"><i class="bi bi-printer"></i>{{ __('cert::messages.print') }}</a>
                                     </template>
                                     <template x-if="row.status === 'approved'">
+                                        <a :href="downloadUrl(row)" download class="m-press h-9 px-3 rounded-xl border border-gray-200 text-[12px] font-bold text-foreground inline-flex items-center gap-1.5"><i class="bi bi-download"></i>{{ __('cert::messages.download') }}</a>
+                                    </template>
+                                    <template x-if="row.status === 'approved'">
                                         <button type="button" @click="revoking = revoking === row.uuid ? null : row.uuid; reason = ''" class="m-press h-9 px-3 rounded-xl border border-red-200 text-red-600 text-[12px] font-bold inline-flex items-center gap-1.5"><i class="bi bi-x-octagon"></i>{{ __('cert::messages.revoke') }}</button>
                                     </template>
                                 </div>
@@ -349,6 +437,13 @@
                         <span x-text="progress
                             ? @js(__('cert::messages.approving')).replace(':done', progress.done).replace(':total', progress.total)
                             : @js(__('cert::messages.approve_all')).replace(':count', s.counts.draft)"></span>
+                    </button>
+                    <button type="button" @click="removeAll()" :disabled="busy"
+                            class="m-press w-full mt-2 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-bold flex items-center justify-center gap-2 hover:bg-red-50 disabled:opacity-60 transition-opacity">
+                        <i class="bi" :class="wiping ? 'bi-arrow-repeat animate-spin' : 'bi-trash3'"></i>
+                        <span x-text="wiping
+                            ? @js(__('cert::messages.deleting')).replace(':done', wiping.done).replace(':total', wiping.total)
+                            : @js(__('cert::messages.delete_all')).replace(':count', s.counts.draft)"></span>
                     </button>
                 </div>
             </div>

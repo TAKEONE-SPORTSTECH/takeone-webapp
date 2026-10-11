@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', __('cert::messages.design_title'))
+@section('title', ($badges ?? false) ? __('cert::messages.badges_design') : __('cert::messages.design_title'))
 
 @section('content')
 @php
@@ -11,6 +11,12 @@
         'remove_title' => __('cert::messages.remove_title'),
         'remove_message' => __('cert::messages.remove_message'),
         'remove' => __('cert::messages.remove'),
+        'new_text' => __('cert::messages.new_text'),
+        'text_label' => __('cert::messages.el_text'),
+        'el_pattern' => __('cert::messages.el_pattern'),
+        'el_artwork' => __('cert::messages.el_artwork'),
+        'el_frame' => __('cert::messages.el_frame'),
+        'el_erase' => __('cert::messages.el_erase'),
     ];
     $backgrounds = ['plain', 'guilloche', 'watermark', 'motif', 'artwork', 'blank'];
 @endphp
@@ -32,13 +38,13 @@
             </div>
             <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
-                    <i class="bi bi-patch-check-fill"></i> {{ __('cert::messages.console_title') }}
+                    <i class="bi {{ ($badges ?? false) ? 'bi-person-badge-fill' : 'bi-patch-check-fill' }}"></i> {{ ($badges ?? false) ? __('cert::messages.badges_title') : __('cert::messages.console_title') }}
                 </span>
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
                     <i class="bi bi-palette-fill"></i> {{ __('cert::messages.design_chip') }}
                 </span>
             </div>
-            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('cert::messages.design_title') }}</h1>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ ($badges ?? false) ? __('cert::messages.badges_design') : __('cert::messages.design_title') }}</h1>
             <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5"><i class="bi bi-trophy"></i>{{ $headline }}</p>
         </div>
     </div>
@@ -100,18 +106,19 @@
                 @foreach($state['locales'] as $l)
                     <div x-show="lang === '{{ $l }}'" class="space-y-3" dir="{{ $l === 'ar' ? 'rtl' : 'ltr' }}">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1" for="cert-title-{{ $l }}">{{ __('cert::messages.field_title') }}</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="cert-title-{{ $l }}" x-text="isCert ? @js(__('cert::messages.field_title')) : @js(__('cert::messages.field_badge_title'))">{{ __('cert::messages.field_title') }}</label>
                             <input id="cert-title-{{ $l }}" type="text" maxlength="150" x-model="form.title['{{ $l }}']" @input="touch()"
                                    class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                         </div>
-                        <div>
+                        <div x-show="isCert">
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="cert-body-{{ $l }}">{{ __('cert::messages.field_body') }}</label>
                             <textarea id="cert-body-{{ $l }}" x-ref="body_{{ $l }}" rows="4" maxlength="800" x-model="form.body['{{ $l }}']" @input="touch()"
                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent leading-relaxed"></textarea>
                         </div>
                     </div>
                 @endforeach
-                <div>
+                <p x-show="! isCert" class="text-xs text-muted-foreground leading-relaxed">{{ __('cert::messages.badge_tokens_hint') }}</p>
+                <div x-show="isCert">
                     <p class="text-xs text-muted-foreground mb-2">{{ __('cert::messages.tokens_hint') }}</p>
                     <div class="flex flex-wrap gap-1.5">
                         <template x-for="tk in state.placeholders" :key="tk">
@@ -123,8 +130,8 @@
                 </div>
             </div>
 
-            {{-- Signatures --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            {{-- Signatures (a certificate's; a badge carries none) --}}
+            <div x-show="isCert" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                 <p class="text-sm font-bold text-foreground">{{ __('cert::messages.signatures') }}</p>
                 <p class="text-xs text-muted-foreground mt-0.5">{{ __('cert::messages.signatures_hint') }}</p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
@@ -152,70 +159,11 @@
                 </div>
             </div>
 
-            {{-- Background --}}
+            {{-- The page: which way up --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-                <p class="text-sm font-bold text-foreground">{{ __('cert::messages.background') }}</p>
-                <p class="text-xs text-muted-foreground mt-0.5">{{ __('cert::messages.background_hint') }}</p>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
-                    @foreach($backgrounds as $bg)
-                        <button type="button" @click="form.background = '{{ $bg }}'; touch()" role="radio" :aria-checked="form.background === '{{ $bg }}'"
-                                class="text-start rounded-xl border-2 p-2 transition-colors"
-                                :class="form.background === '{{ $bg }}' ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'">
-                            @include('cert::design.partials.thumb', ['bg' => $bg, 'color' => $color])
-                            <span class="flex items-center gap-1.5 mt-2">
-                                <span class="flex-1 text-xs font-bold text-foreground">{{ __('cert::messages.bg_'.$bg) }}</span>
-                                <i class="bi text-sm" :class="form.background === '{{ $bg }}' ? 'bi-check-circle-fill text-primary' : 'bi-circle text-gray-300'"></i>
-                            </span>
-                        </button>
-                    @endforeach
-                </div>
-
-                {{-- Your own artwork --}}
-                <div x-show="form.background === 'artwork'" x-transition class="mt-4 rounded-xl border border-gray-100 p-4 space-y-3">
-                    <p class="text-xs text-muted-foreground leading-relaxed">{{ __('cert::messages.artwork_rules', ['w' => \App\Certificates\Support\CertificateImages::MIN_ARTWORK[0], 'h' => \App\Certificates\Support\CertificateImages::MIN_ARTWORK[1]]) }}</p>
-                    <div class="flex gap-2">
-                        <label class="flex-1 h-10 rounded-lg bg-primary text-white text-sm font-bold grid place-items-center cursor-pointer hover:bg-primary/90 transition-colors"
-                               :class="(locked || uploading) ? 'opacity-50 pointer-events-none' : ''">
-                            <span x-text="uploading === 'artwork' ? @js(__('cert::messages.uploading')) : (t.has_artwork ? @js(__('cert::messages.replace_artwork')) : @js(__('cert::messages.upload_artwork')))"></span>
-                            <input type="file" class="sr-only" accept="image/png,image/jpeg,image/webp" @change="upload('artwork', null, $event.target)">
-                        </label>
-                        <button type="button" x-show="t.has_artwork" @click="removeFile('artwork')" :disabled="locked"
-                                class="px-4 h-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 text-sm font-medium">{{ __('cert::messages.remove') }}</button>
-                    </div>
-                    <p x-show="! t.has_artwork" class="text-xs text-amber-700"><i class="bi bi-info-circle me-1"></i>{{ __('cert::messages.artwork_missing') }}</p>
-                </div>
-
-                {{-- Blank, for pre-printed paper --}}
-                <div x-show="form.background === 'blank'" x-transition class="mt-4 rounded-xl border border-gray-100 p-4 space-y-3">
-                    <p class="text-sm font-bold text-foreground">{{ __('cert::messages.line_up') }}</p>
-                    @foreach(['y' => 'cert::messages.move_down', 'x' => 'cert::messages.move_right'] as $axis => $label)
-                        <div class="flex items-center gap-3">
-                            <span class="flex-1 text-sm text-gray-700">{{ __($label) }}</span>
-                            <button type="button" @click="nudgePrint('{{ $axis }}', -1)" class="w-9 h-9 rounded-lg border border-gray-200 font-bold hover:bg-muted/60" aria-label="−">−</button>
-                            <span class="w-16 text-center text-sm font-bold" x-text="(form.print_offset_{{ $axis }} || 0) + ' mm'"></span>
-                            <button type="button" @click="nudgePrint('{{ $axis }}', 1)" class="w-9 h-9 rounded-lg border border-gray-200 font-bold hover:bg-muted/60" aria-label="+">+</button>
-                        </div>
-                    @endforeach
-                    <p class="text-xs text-muted-foreground leading-relaxed">{{ __('cert::messages.blank_note') }}</p>
-                </div>
-            </div>
-
-            {{-- The finish --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
-                <div>
-                    <p class="text-sm font-bold text-foreground">{{ __('cert::messages.frame') }}</p>
-                    <div class="grid grid-cols-3 gap-2 mt-2">
-                        @foreach(['full', 'minimal', 'off'] as $o)
-                            <button type="button" @click="form.ornament_level = '{{ $o }}'; touch()"
-                                    class="rounded-xl border-2 py-2.5 text-sm font-bold transition-colors"
-                                    :class="form.ornament_level === '{{ $o }}' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-gray-600 hover:border-gray-200'">{{ __('cert::messages.frame_'.$o) }}</button>
-                        @endforeach
-                    </div>
-                </div>
-                <label class="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" x-model="form.show_photo" @change="touch()" class="mt-0.5 w-[18px] h-[18px] rounded border-gray-300 text-primary focus:ring-primary">
-                    <span class="text-sm text-gray-700">{{ __('cert::messages.show_photo') }}</span>
-                </label>
+                <p class="text-sm font-bold text-foreground">{{ __('cert::messages.page') }}</p>
+                <p class="text-xs text-muted-foreground mt-0.5 mb-3">{{ ($badges ?? false) ? __('cert::messages.badges_page_hint') : __('cert::messages.page_hint') }}</p>
+                @include('cert::design.partials.page', ['compact' => false])
             </div>
 
             <div class="flex items-center justify-end gap-3">
@@ -228,11 +176,15 @@
         </div>
 
         {{-- ===================== the preview ===================== --}}
-        <div class="lg:sticky lg:top-20">
+        {{-- The page stays put while it is worked on: the column is held to the screen's
+             height and scrolls inside itself, so opening an element's settings below the
+             page cannot make the pinned column taller than the screen and shove it up. --}}
+        <style>@media (min-width: 1024px) { .cert-stick { max-height: calc(100vh - 6rem); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; } }</style>
+        <div class="lg:sticky lg:top-20 cert-stick">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                 <div class="flex items-center justify-between gap-3 mb-3">
                     <p class="text-sm font-bold text-foreground">{{ __('cert::messages.preview') }}</p>
-                    <label x-show="form.background === 'blank'" class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                    <label x-show="form.print_bare" class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
                         <input type="checkbox" x-model="preview.print" @change="refreshPreview(true)" class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">{{ __('cert::messages.preview_print') }}
                     </label>
                 </div>

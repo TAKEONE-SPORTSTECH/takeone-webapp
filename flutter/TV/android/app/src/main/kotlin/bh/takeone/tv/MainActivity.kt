@@ -148,6 +148,9 @@ class MainActivity : FlutterActivity() {
     /** The page waiting on an Android camera dialog — see ensureCameraPermission. */
     private var pendingCameraResult: MethodChannel.Result? = null
 
+    /** The page waiting on an Android location dialog — see ensureLocationPermission. */
+    private var pendingLocationResult: MethodChannel.Result? = null
+
     /**
      * The host this build talks to, stamped into the variant manifest by
      * build.sh — the same value the Dart side gets as --dart-define. The
@@ -223,6 +226,28 @@ class MainActivity : FlutterActivity() {
                     // scanner shows a black viewfinder that decodes nothing and
                     // reports no error. Asked at the moment the page asks.
                     "ensureCameraPermission" -> ensureCameraPermission(result)
+                    // The same two-grant rule for LOCATION: the WebView can let
+                    // the page ask, only Android can let the app answer. Used by
+                    // the scoring table to seed a blank nationality.
+                    "ensureLocationPermission" -> ensureLocationPermission(result)
+                    // A file the page offered (a certificate, the print-shop PDF):
+                    // Android's download manager fetches it with the member's own
+                    // session cookie and puts it in Downloads, with a notification
+                    // that opens it. The shell only sends our own host's files here.
+                    "downloadFile" -> {
+                        val url = call.argument<String>("url")
+                        if (url.isNullOrBlank()) result.error("no-url", "No url given.", null)
+                        else {
+                            downloadFile(
+                                url,
+                                call.argument<String>("mimeType").orEmpty(),
+                                call.argument<String>("contentDisposition").orEmpty(),
+                                call.argument<String>("userAgent").orEmpty(),
+                                call.argument<String>("filename").orEmpty(),
+                            )
+                            result.success(null)
+                        }
+                    }
                     "downloadAndInstall" -> {
                         val url = call.argument<String>("url")
                         if (url.isNullOrBlank()) result.error("no-url", "No url given.", null)
@@ -617,12 +642,48 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /**
+     * Ask for the device's location, at the moment a page asks for it.
+     *
+     * Either grant will do — approximate is plenty for "which country". Answers
+     * false on a refusal, so the page is told no rather than handed a location
+     * API that never answers.
+     */
+    private fun ensureLocationPermission(result: MethodChannel.Result) {
+        try {
+            val fine = Manifest.permission.ACCESS_FINE_LOCATION
+            val coarse = Manifest.permission.ACCESS_COARSE_LOCATION
+            if (Build.VERSION.SDK_INT < 23 ||
+                ContextCompat.checkSelfPermission(this, coarse) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, fine) == PackageManager.PERMISSION_GRANTED
+            ) {
+                result.success(true)
+                return
+            }
+
+            pendingLocationResult?.success(false)
+            pendingLocationResult = result
+            requestPermissions(arrayOf(fine, coarse), 7313)
+        } catch (e: Throwable) {
+            pendingLocationResult = null
+            result.success(false)
+        }
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == 7313) {
+            val any = grantResults.any { it == PackageManager.PERMISSION_GRANTED }
+            pendingLocationResult?.success(any)
+            pendingLocationResult = null
+            return
+        }
+
         if (requestCode != 7312) return
 
         val granted = grantResults.isNotEmpty() &&
@@ -672,6 +733,30 @@ class MainActivity : FlutterActivity() {
      * installed app notices a higher versionCode and downloads the APK here.
      * Ported unchanged in behaviour from the Capacitor plugin.
      */
+    private fun downloadFile(url: String, mime: String, disposition: String, agent: String, suggested: String) {
+        try {
+            // A name from the server (Content-Disposition), cleaned to something a
+            // file system takes; never a path.
+            var name = android.webkit.URLUtil.guessFileName(url, disposition, mime.ifBlank { null })
+            if (suggested.isNotBlank() && name.startsWith("downloadfile")) name = suggested
+            name = name.replace(Regex("[^A-Za-z0-9._\\- ]"), "_").take(120).ifBlank { "takeone-file" }
+            val type = mime.ifBlank { "application/octet-stream" }
+
+            val request = DownloadManager.Request(Uri.parse(url))
+                .setMimeType(type)
+                .setTitle(name)
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
+            android.webkit.CookieManager.getInstance().getCookie(url)?.let { request.addRequestHeader("Cookie", it) }
+            if (agent.isNotBlank()) request.addRequestHeader("User-Agent", agent)
+
+            (getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
+            android.widget.Toast.makeText(this, "Downloading $name", android.widget.Toast.LENGTH_SHORT).show()
+        } catch (_: Throwable) {
+            android.widget.Toast.makeText(this, "Could not download that file", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun downloadAndInstall(url: String) {
         try {
             val name = "takeone-update.apk"

@@ -102,6 +102,31 @@ final class EventHost
         }
     }
 
+    /** Tell a host that follows its entrants the event's list changed (FollowsHostedEntrants). */
+    public static function entrantChanged(\App\Events\Models\ClubEventRegistration $registration, string $change): void
+    {
+        $event = $registration->event_id ? ClubEvent::find($registration->event_id) : null;
+        if (! $event || $event->tenant_id || ! $event->host_type) {
+            return;
+        }
+        $module = self::moduleFor((string) $event->host_type);
+        if ($module instanceof \App\Support\Modules\Surfaces\FollowsHostedEntrants) {
+            rescue(fn () => $module->hostedEntrantChanged($event, $registration, $change), null, report: true);
+        }
+    }
+
+    /** Tell a host that follows its event something it shows changed — bracket, results, officials (FollowsHostedEntrants). */
+    public static function contentChanged(ClubEvent $event): void
+    {
+        if ($event->tenant_id || ! $event->host_type) {
+            return;
+        }
+        $module = self::moduleFor((string) $event->host_type);
+        if ($module instanceof \App\Support\Modules\Surfaces\FollowsHostedEntrants) {
+            rescue(fn () => $module->hostedContentChanged($event), null, report: true);
+        }
+    }
+
     /**
      * Where this user's club enters them, when the host takes its entries from
      * clubs rather than from members themselves (HostsEvents::hostedEntryDoor).

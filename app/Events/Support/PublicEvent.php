@@ -1124,9 +1124,16 @@ class PublicEvent
             return $d;
         }, $divisions);
 
+        // The pictures: addresses and sizes only. The delete control is the
+        // VIEW's to add, for a reader who may manage — this payload is the
+        // same for every reader.
+        $photos = app(EventPhotos::class)->forEvent($event);
+
         return [
             'count' => (int) array_sum(array_column($divisions, 'count')),
             'divisions' => $divisions,
+            'photos' => $photos,
+            'photo_count' => count($photos),
         ];
     }
 

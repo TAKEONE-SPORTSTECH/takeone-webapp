@@ -120,6 +120,27 @@
 {{-- The fonts, the tokens and the vocabulary. Shared with the React island's
      shell so the two paths cannot drift apart. --}}
 @include('scoreboard::bjj.scoreboard.partials.console-styles')
+{{-- Each corner's name and colours for this event (App\Scoreboard\Corners).
+     Keys are the SIDE, not the colour. A corner given its OWN colour repaints
+     the console's corner variables; an untouched corner keeps them exactly. --}}
+@php $L = $look ?? \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\CornerLook::for($event ?? null); @endphp
+@if (! empty($L['blue']['customColour']) || ! empty($L['white']['customColour']))
+<style>
+  :root {
+    @foreach (['blue', 'white'] as $lk)
+      @if (! empty($L[$lk]['customColour']))
+    --{{ $lk }}: {{ $L[$lk]['colour'] }};
+    --{{ $lk }}-ink: {{ $L[$lk]['accent'] }};
+      @endif
+    @endforeach
+  }
+  @foreach (['blue', 'white'] as $lk)
+    @if (! empty($L[$lk]['customColour']) && $L[$lk]['light'])
+  #{{ $lk }}ScoreGrid .btn.score:not(.minus){color:#14161c;}
+    @endif
+  @endforeach
+</style>
+@endif
 
 {{-- ── The draft's own measurements ──────────────────────────────────────────
      Kept in THIS file rather than pushed into console-styles, and deliberately:
@@ -565,10 +586,10 @@
 
     {{-- Which side the red corner (BLUE in the data) stands on is BJJ's
          convention (App\\Sports\\Combat\\CornerSide) — the console matches the wall. --}}
-    @php $rr = \App\Sports\Combat\CornerSide::redRight('bjj'); @endphp
+    @php $rr = $redRight ?? \App\Sports\Combat\CornerSide::redRight('bjj'); @endphp
     @foreach ([
-        ['blue', __('sport-brazilianjiujitsu::messages.corner_blue'), 'var(--blue)', 'var(--blue-ink)', $rr ? '3' : '1', '.05s', $rr, $rr ? '260deg' : '100deg'],
-        ['white', __('sport-brazilianjiujitsu::messages.corner_white'), 'var(--white)', 'var(--white-ink)', $rr ? '1' : '3', '.3s', ! $rr, $rr ? '100deg' : '260deg'],
+        ['blue', $L['blue']['label'], 'var(--blue)', 'var(--blue-ink)', $rr ? '3' : '1', '.05s', $rr, $rr ? '260deg' : '100deg'],
+        ['white', $L['white']['label'], 'var(--white)', 'var(--white-ink)', $rr ? '1' : '3', '.3s', ! $rr, $rr ? '100deg' : '260deg'],
     ] as [$side, $label, $colour, $plateInk, $order, $delay, $mirror, $angle])
     <div class="corner{{ $mirror ? ' mirror' : '' }}" style="order:{{ $order }};animation:cardIn .6s {{ $delay }} cubic-bezier(.2,.8,.2,1) both;">
       <span class="rule" style="background:{{ $colour }};"></span>
@@ -916,7 +937,7 @@
     <div class="bpane" id="bpaneArcade" role="tabpanel" hidden>
       <div class="arc">
         <div class="arccol">
-          <div class="arccap" style="color:var(--blue-ink);">{{ __('sport-brazilianjiujitsu::messages.corner_blue') }}</div>
+          <div class="arccap" style="color:var(--blue-ink);">{{ $L['blue']['label'] }}</div>
           <input id="arcFindA" class="bfind" type="search" autocomplete="off" spellcheck="false"
                  style="font-size:21px;padding:10px 14px;"
                  placeholder="{{ __('scoreboard::bjj_messages.ctl_find_member') }}"
@@ -931,7 +952,7 @@
         </div>
 
         <div class="arccol">
-          <div class="arccap" style="color:var(--white-ink);">{{ __('sport-brazilianjiujitsu::messages.corner_white') }}</div>
+          <div class="arccap" style="color:var(--white-ink);">{{ $L['white']['label'] }}</div>
           <input id="arcFindB" class="bfind" type="search" autocomplete="off" spellcheck="false"
                  style="font-size:21px;padding:10px 14px;"
                  placeholder="{{ __('scoreboard::bjj_messages.ctl_find_member') }}"
@@ -958,7 +979,7 @@
     <div style="display:flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:14px;">
       {{-- The camera tab only exists when this door was given the camera
            addresses, so a console with no camera surface shows no camera tab. --}}
-      @foreach (array_merge([['rules', __('scoreboard::bjj_messages.ctl_tab_rules')], ['timer', __('scoreboard::bjj_messages.ctl_tab_timer')], ['sounds', __('scoreboard::bjj_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
+      @foreach (array_merge([['rules', __('scoreboard::bjj_messages.ctl_tab_rules')], ['corners', __('scoreboard::corners.tab')], ['timer', __('scoreboard::bjj_messages.ctl_tab_timer')], ['sounds', __('scoreboard::bjj_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
         <button class="stab" data-tab="{{ $tab }}">{{ $tabLabel }}</button>
       @endforeach
     </div>
@@ -1003,6 +1024,13 @@
                  style="width:90px;flex:0 0 auto;font-family:'Anton',sans-serif;font-size:26px;text-align:center;background:var(--fill);color:var(--gold);border:none;border-radius:10px;padding:8px 6px;">
         </div>
       @endforeach
+    </div>
+
+    {{-- Corners — which side red stands on at this mat, and what each corner is
+         called and coloured for the event (App\Scoreboard\Corners). Both save as
+         they are made, so this tab has no Apply. --}}
+    <div class="spanel" data-panel="corners" hidden>
+      @include('scoreboard::shared.corners-panel', ['look' => $L, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('bjj')])
     </div>
 
     {{-- Timer --}}
@@ -1295,8 +1323,8 @@
 
     <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:stretch;">
       @foreach ([
-          ['blue', __('sport-brazilianjiujitsu::messages.corner_blue'), 'var(--blue)', 'var(--blue-ink)', false, '140deg'],
-          ['white', __('sport-brazilianjiujitsu::messages.corner_white'), 'var(--white)', 'var(--white-ink)', true, '220deg'],
+          ['blue', $L['blue']['label'], 'var(--blue)', 'var(--blue-ink)', false, '140deg'],
+          ['white', $L['white']['label'], 'var(--white)', 'var(--white-ink)', true, '220deg'],
       ] as [$side, $label, $colour, $ink, $mirror, $angle])
         @if ($mirror)
           <span style="align-self:center;font-family:'Anton',sans-serif;font-size:40px;color:var(--faint);">{{ __('scoreboard::bjj_messages.vs') }}</span>
@@ -1553,6 +1581,7 @@
 </script>
 
 @include('scoreboard::bjj.scoreboard.runtime')
+@include('scoreboard::shared.corners-script', ['look' => $L, 'redRight' => $rr, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('bjj')])
 
 @if (! empty($screenLink))
 @include('scoreboard::bjj.partials.screen-link')

@@ -35,7 +35,7 @@ use App\Support\Modules\Surfaces\HostsEvents;
  * are reached through the ContributesMessengerThreads surface; with the
  * module gone they are orphaned `type = 'federation'` conversations.)
  */
-class Federations extends AbstractModule implements ContributesMessengerThreads, ContributesCopilotSkills, SealsItsSurface, HostsEvents, \App\Support\Modules\Surfaces\CreatesHostedEvents, \App\Support\Modules\Surfaces\HostsClubEntry, \App\Support\Modules\Surfaces\ProvidesEventArtwork
+class Federations extends AbstractModule implements ContributesMessengerThreads, ContributesCopilotSkills, SealsItsSurface, HostsEvents, \App\Support\Modules\Surfaces\CreatesHostedEvents, \App\Support\Modules\Surfaces\HostsClubEntry, \App\Support\Modules\Surfaces\ProvidesEventArtwork, \App\Support\Modules\Surfaces\FollowsHostedEntrants
 {
     public function key(): string
     {
@@ -141,6 +141,22 @@ class Federations extends AbstractModule implements ContributesMessengerThreads,
     public function hostedEntryDecided(\App\Events\Models\ClubEvent $event, \App\Events\Models\EventPublicEntry $entry): void
     {
         app(\App\Federations\Services\FederationPlatformEntries::class)->decided($entry);
+    }
+
+    /** The event's entrant list changed on the platform: the dashboard's record and numbers follow. */
+    public function hostedEntrantChanged(\App\Events\Models\ClubEvent $event, \App\Events\Models\ClubEventRegistration $registration, string $change): void
+    {
+        if ($event->host_type === 'federation') {
+            app(\App\Federations\Services\FederationPlatformEntries::class)->entrantChanged($event, $registration, $change);
+        }
+    }
+
+    /** The event's bracket, results or officials changed on the platform: every open dashboard of the federation re-reads. */
+    public function hostedContentChanged(\App\Events\Models\ClubEvent $event): void
+    {
+        if ($event->host_type === 'federation' && ($fe = \App\Federations\Models\FederationEvent::where('club_event_id', $event->id)->first())) {
+            \App\Federations\Support\FederationPulse::forEvent($fe);
+        }
     }
 
     /**

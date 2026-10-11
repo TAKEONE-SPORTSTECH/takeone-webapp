@@ -478,7 +478,7 @@
                                 <span>{{ __('events::events.bracket_background_clear') }}</span>
                             </button>
 
-                            @if($canManage && \App\Events\Support\TabletDraw::enabled())
+                            @if($canManage && \App\Events\Support\TabletDraw::enabled() && \App\Events\Support\TabletDraw::pinRequired())
                                 <button type="button" role="menuitem" class="bk-menu-row"
                                         @click="window.dispatchEvent(new CustomEvent('draw-pin:open'))">
                                     <i class="bi bi-tablet-landscape"></i>
@@ -569,7 +569,7 @@
 
             {{-- The tablet PIN: lends a scoring tablet this organiser's power to
                  edit the draw in an emergency (App\Events\Support\TabletDraw). --}}
-            @if(\App\Events\Support\TabletDraw::enabled())
+            @if(\App\Events\Support\TabletDraw::enabled() && \App\Events\Support\TabletDraw::pinRequired())
                 <x-draw-tablet-pin :event="$ev" :color="$dsColor" />
             @endif
         @endif

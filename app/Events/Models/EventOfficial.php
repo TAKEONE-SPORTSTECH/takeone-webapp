@@ -113,6 +113,11 @@ class EventOfficial extends Model
     {
         static::saved(fn (self $official) => $official->syncExpense());
 
+        // A host that shows the event's officials (a federation's dashboard)
+        // re-reads, whichever path appointed or removed one.
+        static::saved(fn (self $official) => $official->event && \App\Events\Support\EventHost::contentChanged($official->event));
+        static::deleted(fn (self $official) => $official->event && \App\Events\Support\EventHost::contentChanged($official->event));
+
         // The expense row cascades on delete via its FK, so nothing to undo here
         // beyond letting the database do it.
     }

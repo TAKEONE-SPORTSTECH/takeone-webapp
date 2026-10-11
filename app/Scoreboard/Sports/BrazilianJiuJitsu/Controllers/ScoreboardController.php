@@ -61,10 +61,17 @@ class ScoreboardController extends Controller
 
         return $this->consoleView($event, $mats, $court, [
             'commandUrl' => route('bjj-scoreboard.command', $event->uuid),
+            // The Draw button, as on the Karate console: the signed-in official
+            // gets the event's own draw page, which checks who may arrange it on
+            // every request. (A paired tablet gets the tablet draw instead.)
+            'drawUrl' => route('me.events.bracket', $event->uuid),
             // Where this console re-reads itself after the socket says the mat
             // moved under it. Its own door, so the token console never has to
             // hold a session and this one never has to hold a token.
             'consoleStateUrl' => route('bjj-scoreboard.console-state', $event->uuid, false).'?mat='.rawurlencode($court),
+            // The Corners tab (App\Scoreboard\Corners).
+            'cornersUrl' => route('bjj-scoreboard.corners', $event->uuid, false),
+            'cornerLookUrl' => route('bjj-scoreboard.corner-look', $event->uuid, false),
             // The whole draw, for the bouts card's browsing tabs. A read.
             'catalogueUrl' => route('bjj-scoreboard.catalogue', $event->uuid, false),
             // A face for a corner, from the laptop as well as the tablet. The
@@ -176,7 +183,14 @@ class ScoreboardController extends Controller
             // Feeds the country picker. The app already keeps this list; the
             // picker searches it client-side because it is 200 rows, not 20,000.
             'countries' => \App\Support\Countries::all(),
+            // Which side of THIS mat the red corner (side A, `blue` in the data)
+            // physically stands on, and each corner's name and colour for the
+            // event (App\Scoreboard\Corners) — the sport's own when unset.
+            'redRight' => \App\Scoreboard\Corners\MatSides::redRight($event, $court, self::SPORT),
+            'look' => \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\CornerLook::for($event),
         ] + \Illuminate\Support\Arr::except($urls, ['consoleStateUrl']) + [
+            'cornersUrl' => null,
+            'cornerLookUrl' => null,
             // Defaults last: `+` on arrays keeps the LEFT value, so a door that
             // passed camera addresses keeps them and one that did not renders
             // no camera panel rather than an undefined variable.
@@ -224,6 +238,8 @@ class ScoreboardController extends Controller
             // The draw, on this tablet (App\Events\Support\TabletDraw). Null while off.
             'drawUrl' => \App\Events\Support\TabletDraw::enabled() ? route('tablet.draw', $token) : null,
             'consoleStateUrl' => route('bjj-scoreboard.token-console-state', $token, false),
+            'cornersUrl' => route('bjj-scoreboard.token-corners', $token, false),
+            'cornerLookUrl' => route('bjj-scoreboard.token-corner-look', $token, false),
             'catalogueUrl' => route('bjj-scoreboard.token-catalogue', $token, false),
             // A paired console is a SCREEN, and the organiser's panel lists it
             // beside the boards with a live dot. Commands alone would show a mat
@@ -246,6 +262,91 @@ class ScoreboardController extends Controller
             'cameraCommandBase' => \Illuminate\Support\Str::beforeLast(
                 route('bjj-scoreboard.token-cameras.command', [$token, 0], false), '0'
             ),
+        ]);
+    }
+
+    /**
+     * Swap which side of this mat the red corner stands on — the PHYSICAL
+     * layout, never who is in which corner. Every screen and console on the
+     * mat is told to redraw, because the layout is drawn server-side.
+     */
+    public function corners(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === self::SPORT, 404);
+
+        $data = $request->validate([
+            'mat' => ['required', 'string', 'max:40'],
+            'red_right' => ['required', 'boolean'],
+        ]);
+
+        abort_unless($this->matExists($event, $data['mat']), 404);
+
+        return $this->applyCorners($event, $data['mat'], (bool) $data['red_right']);
+    }
+
+    public function tokenCorners(Request $request, string $token): JsonResponse
+    {
+        [$device, $event] = $this->controlDevice($token);
+
+        $data = $request->validate(['red_right' => ['required', 'boolean']]);
+
+        return $this->applyCorners($event, $device->court, (bool) $data['red_right']);
+    }
+
+    private function applyCorners(ClubEvent $event, string $court, bool $redRight): JsonResponse
+    {
+        \App\Scoreboard\Corners\MatSides::set($event, $court, $redRight, self::SPORT);
+
+        \Illuminate\Support\Facades\Log::info('bjj.corners', [
+            'event' => $event->uuid, 'mat' => $court, 'red' => $redRight ? 'right' : 'left',
+            'by' => $this->actingUser()?->id,
+        ]);
+
+        ScreenChannel::notifyCourt($event, $court, ['action' => 'corners']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::corners.saved'),
+            'red_right' => \App\Scoreboard\Corners\MatSides::redRight($event->fresh(), $court, self::SPORT),
+        ]);
+    }
+
+    /**
+     * Name and colour each corner for the whole event — every mat, screen and
+     * console of it redraws. Blank fields return a corner to the sport's own.
+     */
+    public function cornerLook(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($this->canScore($event), 403);
+        abort_unless($event->sport === self::SPORT, 404);
+
+        return $this->applyCornerLook($request, $event);
+    }
+
+    public function tokenCornerLook(Request $request, string $token): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+
+        return $this->applyCornerLook($request, $event);
+    }
+
+    private function applyCornerLook(Request $request, ClubEvent $event): JsonResponse
+    {
+        $data = $request->validate(\App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\CornerLook::rules());
+
+        \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\CornerLook::set($event, $data);
+
+        \Illuminate\Support\Facades\Log::info('bjj.corner-look', [
+            'event' => $event->uuid, 'by' => $this->actingUser()?->id,
+        ]);
+
+        // Every mat of the event: the look is the event's, not one table's.
+        ScreenChannel::notifyCourt($event, null, ['action' => 'corners']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::corners.saved'),
         ]);
     }
 

@@ -111,9 +111,10 @@ class BracketPdfTest extends ContractTestCase
         $html = $pdf->html($event, $organiser->fresh(), $divisions, 'linear', 'match');
 
         // One sheet per division; four entrants is two rounds — a short
-        // bracket, so portrait.
+        // bracket, and still landscape: every bracket sheet is.
         $this->assertSame(1, substr_count($html, 'class="pdf-page '));
-        $this->assertStringContainsString('pdf-page port', $html);
+        $this->assertStringContainsString('pdf-page land', $html);
+        $this->assertStringNotContainsString('pdf-page port', $html);
         // The same board component, fed a data: URL — nothing in the page
         // talks back to the server, and no write address is handed over.
         $this->assertStringContainsString('BracketBoard.mount', $html);
@@ -135,11 +136,23 @@ class BracketPdfTest extends ContractTestCase
         $divisions = $pdf->divisions($event, $organiser->fresh());
         $html = $pdf->html($event, $organiser->fresh(), $divisions, 'linear', 'match', true);
 
-        // Cover + division list + one sheet; the numbering counts all three.
-        $this->assertSame(3, substr_count($html, 'class="pdf-page '));
+        // Cover + division list + teams + one sheet; the numbering counts all four.
+        $this->assertSame(4, substr_count($html, 'class="pdf-page '));
         $this->assertStringContainsString('class="band cover-band"', $html);
         $this->assertStringContainsString('class="band page-band"', $html);
-        $this->assertStringContainsString('1 / 3', $html);
+        $this->assertStringContainsString('1 / 4', $html);
+        // The teams page: the club, and every athlete who entered under it.
+        $this->assertStringContainsString(e(__('events::events.draw_print_teams_title')), $html);
+        $this->assertSame(1, substr_count($html, 'class="club"'));
+        $this->assertStringContainsString(e($club->club_name), $html);
+        foreach (range(1, 4) as $i) {
+            $this->assertStringContainsString('Athlete '.$i, substr($html, strpos($html, 'class="club"')));
+        }
+        // Page 2's division and each athlete's name link to the division's sheet.
+        $id = (int) $divisions[0]['id'];
+        $this->assertStringContainsString('id="sheet-'.$id.'"', $html);
+        $this->assertStringContainsString('<a class="drow" href="#sheet-'.$id.'"', $html);
+        $this->assertSame(4, substr_count($html, '<a class="n" dir="auto" href="#sheet-'.$id.'"'));
         $this->assertStringContainsString(e(__('events::events.draw_print_division_list')), $html);
         // An event with nobody appointed prints no officials section at all.
         $this->assertStringNotContainsString('class="offs"', $html);
@@ -203,8 +216,8 @@ class BracketPdfTest extends ContractTestCase
         $pdf = app(BracketPdf::class);
         $html = $pdf->html($event, $organiser->fresh(), $pdf->divisions($event, $organiser->fresh()), 'linear', 'match', true);
 
-        // Cover, divisions, the team, one sheet.
-        $this->assertSame(4, substr_count($html, 'class="pdf-page '));
+        // Cover, divisions, the clubs, the officials, one sheet.
+        $this->assertSame(5, substr_count($html, 'class="pdf-page '));
         $this->assertSame(2, substr_count($html, 'class="pcard"'));
         $this->assertStringContainsString('Referee Ahmed', $html);
         // The organiser heads the management team.
@@ -212,5 +225,86 @@ class BracketPdfTest extends ContractTestCase
         $this->assertLessThan(strpos($team, 'Referee Ahmed'), strpos($team, 'Organiser Sara'));
         // No photo on file draws the silhouette, never initials.
         $this->assertStringContainsString('ph-none', $html);
+    }
+
+    public function test_the_podium_prints_only_once_every_bout_is_decided(): void
+    {
+        $pdf = app(BracketPdf::class);
+        $division = [
+            'name' => '8-9 Women',
+            'rounds' => [
+                ['name' => 'Semifinal', 'matches' => [['status' => 'done'], ['status' => 'done']]],
+                ['name' => 'Final', 'matches' => [['status' => 'scheduled']]],
+            ],
+            'podium' => [
+                ['place' => 3, 'name' => 'Third A', 'club' => 'X', 'country' => 'BH', 'photo' => null],
+                ['place' => 1, 'name' => 'Gold', 'club' => 'Y', 'country' => 'BH', 'photo' => 'https://elsewhere/p.jpg'],
+                ['place' => 2, 'name' => 'Sayed Ali Reda Sharif', 'club' => null, 'country' => null, 'photo' => null],
+                ['place' => 3, 'name' => 'Third B', 'club' => 'Z', 'country' => 'BH', 'photo' => null],
+            ],
+        ];
+
+        // A bout still to fight: no podium on paper at all.
+        $this->assertNull($pdf->finishedPodium($division));
+
+        $division['rounds'][1]['matches'][0]['status'] = 'done';
+        $podium = $pdf->finishedPodium($division);
+
+        // First and last name only on a podium card.
+        $this->assertSame(['Gold', 'Sayed Sharif', 'Third A', 'Third B'], array_column($podium, 'name'));
+        // Only an inlined (re-authorised) photo is printed, never a remote URL.
+        $this->assertNull($podium[0]['photo']);
+        $this->assertStringContainsString('female', $podium[0]['placeholder']);
+
+        // No champion recorded: nothing to print, even with every bout done.
+        $division['podium'] = array_values(array_filter($division['podium'], fn ($p) => $p['place'] !== 1));
+        $this->assertNull($pdf->finishedPodium($division));
+    }
+
+    public function test_a_finished_competition_prints_as_results(): void
+    {
+        $pdf = app(BracketPdf::class);
+        $done = [
+            'name' => 'Senior Men',
+            'rounds' => [['name' => 'Final', 'matches' => [[
+                'status' => 'done', 'a' => ['provisional' => true], 'b' => ['provisional' => false],
+            ]]]],
+            'podium' => [['place' => 1, 'name' => 'Gold'], ['place' => 2, 'name' => 'Silver']],
+        ];
+        $open = $done;
+        $open['rounds'][0]['matches'][0]['status'] = 'scheduled';
+
+        $event = new \App\Events\Models\ClubEvent(['status' => 'active']);
+
+        $this->assertTrue($pdf->finished($event, [$done]));
+        $this->assertFalse($pdf->finished($event, [$done, $open]));
+
+        $event->status = 'completed';
+        $this->assertTrue($pdf->finished($event, [$done, $open]));
+    }
+
+    public function test_a_finished_day_reads_from_its_first_bout_to_its_last(): void
+    {
+        $organiser = $this->createUser(['full_name' => 'Master Kim']);
+        $club = $this->clubFor($organiser);
+        $event = $this->championship($club, $organiser, ['date' => '2026-03-10', 'end_date' => '2026-03-10', 'timezone' => 'Asia/Bahrain']);
+        $this->drawnDivision($event, $club);
+        $event->forceFill(['status' => 'completed', 'started_at' => '2026-03-10 05:00:00'])->save();
+
+        $bouts = \App\Events\Models\EventMatch::where('event_id', $event->id)->orderBy('id')->get();
+        \App\Events\Models\EventMatch::where('event_id', $event->id)->update(['status' => 'done']);
+        $log = fn ($id, $cmd, $at) => \Illuminate\Support\Facades\DB::table('event_match_events')->insert([
+            'event_id' => $event->id, 'match_id' => $id, 'command' => $cmd, 'occurred_at' => $at,
+            'court' => '1', 'sport' => 'taekwondo', 'sequence' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $log($bouts[0]->id, 'start', '2026-03-09 10:00:00');   // a rehearsal the day before — not counted
+        $log($bouts[0]->id, 'start', '2026-03-10 06:05:00');   // 09:05 in Bahrain
+        $log($bouts[1]->id, 'finish', '2026-03-10 09:00:00');
+        $log($bouts[1]->id, 'finish', '2026-03-10 11:40:00');  // 14:40 in Bahrain
+
+        $hours = (new \ReflectionMethod(BracketPdf::class, 'actualHours'))->invoke(app(BracketPdf::class), $event->fresh());
+
+        $clock = fn ($t) => \App\Support\Cldr::time(\Illuminate\Support\Carbon::parse('2026-03-10 '.$t));
+        $this->assertSame(['2026-03-10' => $clock('09:05').' – '.$clock('14:40')], $hours);
     }
 }

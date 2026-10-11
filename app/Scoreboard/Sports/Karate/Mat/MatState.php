@@ -62,8 +62,11 @@ class MatState
         public ?string $referee = null,
         public array $aka = [],
         public array $ao = [],
-        public int $akaScore = 0,
-        public int $aoScore = 0,
+        // Whole points everywhere, except a style whose buttons give half points
+        // (Kyokushin's waza-ari is 0.5 — Styles\CustomButtons). A whole score is
+        // always kept as an int, so the shared board's numbers never change shape.
+        public int|float $akaScore = 0,
+        public int|float $aoScore = 0,
         public int $akaPen = 0,
         public int $aoPen = 0,
         public bool $akaSenshu = false,
@@ -148,7 +151,46 @@ class MatState
          * the celebration runs.
          */
         public bool $awaitingDecision = false,
+
+        /**
+         * The mat's own scoring buttons, when an organiser has made them — a
+         * list of {id, label, value, effect, times}. Null is "the style's
+         * built-in buttons", which is every mat that never touched the setting.
+         * Only an engine that understands them (a Karate STYLE engine, see
+         * App\Scoreboard\Sports\Karate\Styles) acts on them; the shared
+         * engine ignores the key entirely.
+         */
+        public ?array $buttons = null,
+
+        /**
+         * How many times each corner pressed each custom button in THIS bout,
+         * and in what order — {aka: {counts: {id: n}, log: [id…]}, ao: …}. What
+         * "the second waza-ari wins" and "correct the last press" are read off.
+         * Emptied whenever a bout is loaded or reset.
+         */
+        public array $tally = [],
+
+        /**
+         * The mat's own penalty ladder, when an organiser has made one
+         * (Styles\CustomPenalties). Null is the style's own ladder; only a
+         * style engine reads it.
+         */
+        public ?array $penalties = null,
+
+        /**
+         * A side EXHIBITION bout on the mat instead of a draw bout
+         * (App\Events\Models\EventExhibitionBout). Mutually exclusive with
+         * matchId: an exhibition is never an EventMatch, so nothing that files
+         * a result into the draw can reach one.
+         */
+        public ?int $exhibitionId = null,
     ) {}
+
+    /** Is any bout on the mat — a draw bout or an exhibition? */
+    public function hasBout(): bool
+    {
+        return (bool) ($this->matchId || $this->exhibitionId);
+    }
 
     /* ---------------- Reading and writing ---------------- */
 
@@ -185,6 +227,15 @@ class MatState
             }
         }
 
+        // An organiser's own scoring buttons ride with the rules.
+        $saved = (array) $event->scoreboard_settings;
+        if (isset($saved['buttons']) && is_array($saved['buttons'])) {
+            $state->buttons = $saved['buttons'];
+        }
+        if (isset($saved['penalties']) && is_array($saved['penalties'])) {
+            $state->penalties = $saved['penalties'];
+        }
+
         // The clock starts where the bout length says it does.
         $state->remaining = $state->duration;
 
@@ -204,6 +255,25 @@ class MatState
 
         foreach (self::SETTINGS as $k) {
             $settings[$k] = $this->$k;
+        }
+
+        // Custom scoring buttons, only when a mat has some — an event that never
+        // used them keeps exactly the settings it always stored.
+        if ($this->buttons !== null) {
+            $settings['buttons'] = $this->buttons;
+        }
+        if ($this->penalties !== null) {
+            $settings['penalties'] = $this->penalties;
+        }
+
+        // Each mat's corner side (MatCorners) lives beside the rules but is not
+        // one of them — carried over untouched, or saving a rule would wipe it.
+        // The same for the corners' names and colours (CornerLook).
+        foreach ([MatCorners::KEY, CornerLook::KEY] as $own) {
+            $kept = ((array) $event->scoreboard_settings)[$own] ?? null;
+            if ($kept) {
+                $settings[$own] = $kept;
+            }
         }
 
         if (((array) $event->scoreboard_settings) !== $settings) {
@@ -270,7 +340,13 @@ class MatState
     {
         return [
             'mode' => $this->mode,
-            'matchId' => $this->matchId,
+            // Every screen reads `matchId` as "which bout is on the mat" — its
+            // truthiness enables the console and its value tells one bout from
+            // the next. An exhibition is announced under a key that can never
+            // equal a draw bout's id ("x12"), and carried explicitly as well.
+            'matchId' => $this->matchId ?? ($this->exhibitionId ? 'x'.$this->exhibitionId : null),
+            'exhibitionId' => $this->exhibitionId,
+            'exhibition' => $this->exhibitionId !== null,
             'matchNo' => $this->matchNo,
             'stage' => $this->stage,
             'division' => $this->division,
@@ -315,6 +391,9 @@ class MatState
             'gap' => $this->gap,
             'warning' => $this->warning,
             'awaitingDecision' => $this->awaitingDecision,
+            'buttons' => $this->buttons,
+            'tally' => $this->tally,
+            'penalties' => $this->penalties,
         ];
     }
 
@@ -334,11 +413,20 @@ class MatState
         return $corner;
     }
 
+    /** A score as stored: whole points as an int, a half kept as a half. */
+    public static function points(mixed $v): int|float
+    {
+        $f = round((float) $v * 2) / 2;
+
+        return $f == (int) $f ? (int) $f : $f;
+    }
+
     public static function fromArray(array $a): self
     {
         return new self(
             mode: $a['mode'] ?? self::MODE_UPCOMING,
-            matchId: $a['matchId'] ?? null,
+            // Only a real draw id is a matchId; "x12" is an exhibition's key.
+            matchId: is_numeric($a['matchId'] ?? null) ? (int) $a['matchId'] : null,
             matchNo: $a['matchNo'] ?? null,
             stage: $a['stage'] ?? null,
             division: $a['division'] ?? null,
@@ -347,8 +435,8 @@ class MatState
             referee: $a['referee'] ?? null,
             aka: $a['aka'] ?? [],
             ao: $a['ao'] ?? [],
-            akaScore: (int) ($a['akaScore'] ?? 0),
-            aoScore: (int) ($a['aoScore'] ?? 0),
+            akaScore: self::points($a['akaScore'] ?? 0),
+            aoScore: self::points($a['aoScore'] ?? 0),
             akaPen: (int) ($a['akaPen'] ?? 0),
             aoPen: (int) ($a['aoPen'] ?? 0),
             akaSenshu: (bool) ($a['akaSenshu'] ?? false),
@@ -372,6 +460,10 @@ class MatState
             gap: (int) ($a['gap'] ?? 8),
             warning: (float) ($a['warning'] ?? 15),
             at: $a['at'] ?? null,
+            buttons: isset($a['buttons']) && is_array($a['buttons']) ? $a['buttons'] : null,
+            tally: isset($a['tally']) && is_array($a['tally']) ? $a['tally'] : [],
+            penalties: isset($a['penalties']) && is_array($a['penalties']) ? $a['penalties'] : null,
+            exhibitionId: is_numeric($a['exhibitionId'] ?? null) ? (int) $a['exhibitionId'] : null,
         );
     }
 }

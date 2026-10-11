@@ -3,6 +3,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- The screen must not sleep. See MainActivity + Kiosk. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Where the table is, as a COUNTRY: the console's Players tab seeds a
+         blank nationality from it (2026-10-09). Asked at the moment the page
+         asks, never at launch; approximate is enough for a country. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!-- The scoring table: a touch device, and emphatically not a leanback one.
          No LEANBACK_LAUNCHER entry either — this belongs in a tablet's app

@@ -288,6 +288,12 @@
                                 <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
                                     <i class="bi bi-trash me-2"></i>{{ __('platform.platform_clubs_edit_delete_club') }}
                                 </button>
+                                @if(config('features.club_removal_tool'))
+                                    <button type="button" class="btn btn-danger ms-2"
+                                            onclick="window.dispatchEvent(new CustomEvent('open-club-removal', { detail: { id: {{ (int) $club->id }}, name: {{ \Illuminate\Support\Js::from($club->club_name) }} } }))">
+                                        <i class="bi bi-building-x me-2"></i>{{ __('Remove club & athletes') }}
+                                    </button>
+                                @endif
                             </div>
                             <button type="submit" class="btn text-white" style="background: linear-gradient(135deg, hsl(250 65% 66%) 0%, hsl(262 60% 56%) 100%);">
                                 <i class="bi bi-check-circle me-2"></i>{{ __('platform.platform_clubs_edit_update_club') }}
@@ -298,6 +304,7 @@
         </div>
     </div>
 </div>
+<x-club-removal />
 @endsection
 
 <!-- Delete Confirmation Modal -->
@@ -422,3 +429,19 @@ $(document).ready(function() {
 });
 </script>
 @endpush
+
+@if(config('features.club_removal_tool'))
+@push('scripts')
+<script>
+    // The club this page edits is gone: back to the list, which no longer has it.
+    if (window.__clubRemovedEdit) window.removeEventListener('club-removed', window.__clubRemovedEdit);
+    window.__clubRemovedEdit = function (e) {
+        if (e.detail && String(e.detail.id) === @js((string) $club->id)) {
+            setTimeout(function () { window.location.assign(@js(route('admin.platform.clubs'))); }, 1600);
+        }
+    };
+    window.addEventListener('club-removed', window.__clubRemovedEdit);
+</script>
+@endpush
+@endif
+

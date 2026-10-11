@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Title;
 
 #[Title('Approve event certificates')]
-#[Description('For an event you manage: approve draft certificates — the uuids given, or the next batch of drafts when none are given. Up to 15 per call (each approval draws and stores the PDF and tells the holder); the answer says how many drafts remain, so call again until none do.')]
+#[Description('For an event you manage: approve draft certificates — the uuids given, or the next batch of drafts when none are given. Up to 15 per call (each approval tells the holder; the PDF is drawn and stored the first time it is opened); the answer says how many drafts remain, so call again until none do.')]
 class ApproveEventCertificatesTool extends BaseTool
 {
     protected bool $isWrite = true;

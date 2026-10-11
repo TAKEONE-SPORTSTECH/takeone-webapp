@@ -160,6 +160,10 @@ class HallScreenController extends Controller
             'pinned' => in_array($device->surface, ['bout', 'queue'], true) ? $device->surface : 'both',
             'state' => $state->present(),
             'board' => $this->board->payload($event, $device->court),
+            // This mat's corner side and the event's corner names/colours
+            // (App\Scoreboard\Corners) — the sport's own when nobody set them.
+            'redRight' => \App\Scoreboard\Corners\MatSides::redRight($event, $device->court, self::SPORT),
+            'look' => \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\CornerLook::for($event),
             'statusUrl' => route('bjj-screen.status', $token, false),
             // The prefix the board appends a SLOT to. Built by trimming a
             // placeholder rather than with one, because a slot is a route
@@ -210,6 +214,8 @@ class HallScreenController extends Controller
             'court' => $device->court,
             'state' => $state->present(),
             'stateUrl' => route('bjj-scoreboard.state', $token, false),
+            'redRight' => \App\Scoreboard\Corners\MatSides::redRight($device->event, $device->court, self::SPORT),
+            'look' => \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\CornerLook::for($device->event),
             'screenLink' => ($link = ScreenChannel::credentials($device)) === null ? null
                 : $link + ['state_url' => route('bjj-scoreboard.state', $token, false)],
         ]);

@@ -248,6 +248,16 @@ class MatState extends Model
             'theme' => $this->theme,
         ];
 
+        // Each mat's corner side and the event's corner names/colours
+        // (App\Scoreboard\Corners) live beside the rules but are not rules —
+        // carried over untouched, or saving a rule would wipe them.
+        foreach (\App\Scoreboard\Corners\MatSides::carriedKeys() as $own) {
+            $kept = ((array) $event->scoreboard_settings)[$own] ?? null;
+            if ($kept) {
+                $settings[$own] = $kept;
+            }
+        }
+
         if (((array) $event->scoreboard_settings) !== $settings) {
             $event->forceFill(['scoreboard_settings' => $settings])->saveQuietly();
         }

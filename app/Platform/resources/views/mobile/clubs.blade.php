@@ -64,6 +64,13 @@
                                         class="m-press absolute bottom-2 right-2 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-foreground shadow">
                                     <i class="bi bi-pencil"></i>
                                 </button>
+                                @if(config('features.club_removal_tool'))
+                                    <button type="button" aria-label="{{ __('Remove club') }}"
+                                            onclick="event.preventDefault(); event.stopPropagation(); window.dispatchEvent(new CustomEvent('open-club-removal', { detail: { id: {{ (int) $club->id }}, name: {{ \Illuminate\Support\Js::from($club->club_name) }} } }));"
+                                            class="m-press absolute bottom-2 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-red-600 shadow" style="right:3.25rem">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                @endif
                                 <span class="absolute -bottom-5 left-3 w-14 h-14 rounded-2xl bg-white p-0.5 shadow ring-1 ring-black/5 overflow-hidden flex items-center justify-center">
                                     @if($club->logo)
                                         <img src="{{ file_url($club->logo) }}" alt="" loading="lazy" class="club-logo-img w-full h-full rounded-xl object-contain">
@@ -103,4 +110,5 @@
 <x-club-modal mode="create" />
 
 @include('platform::clubs._scripts')
+@include('platform::clubs._removal')
 @endsection

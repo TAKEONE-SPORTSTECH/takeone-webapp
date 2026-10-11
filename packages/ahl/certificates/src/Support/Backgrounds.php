@@ -5,7 +5,8 @@ namespace Ahl\Certificates\Support;
 use GdImage;
 
 /**
- * Draws the built-in certificate backgrounds as PNG, one A4-landscape page.
+ * Draws the built-in certificate backgrounds as PNG, one A4 page — landscape, or the
+ * same drawing stood upright for a portrait page.
  *
  * Why images and not CSS: dompdf has no gradients, no blend modes and no repeating
  * patterns, so a security pattern or a watermark cannot be drawn by the view. GD draws
@@ -26,15 +27,23 @@ class Backgrounds
 
     public const PAPER = [251, 248, 242];
 
+    /** The page being drawn, in px (WIDTH × HEIGHT, or the other way up for portrait). */
+    private int $w = self::WIDTH;
+
+    private int $h = self::HEIGHT;
+
     public function __construct(private ?string $cacheDir = null) {}
 
     /**
-     * @param  string  $mode  plain | guilloche | watermark | motif
+     * @param  string  $mode  plain | guilloche | watermark | motif | paper
      * @param  string|null  $watermark  image bytes (PNG/JPEG/WebP) for the watermark mode
      */
-    public function png(string $mode, string $accent, ?string $watermark = null): string
+    public function png(string $mode, string $accent, ?string $watermark = null, string $orientation = 'landscape'): string
     {
-        $key = sha1(implode('|', [self::VERSION, $mode, strtolower($accent), $watermark !== null ? sha1($watermark) : '-']));
+        $portrait = Layout::orientation($orientation) === 'portrait';
+        [$this->w, $this->h] = $portrait ? [self::HEIGHT, self::WIDTH] : [self::WIDTH, self::HEIGHT];
+        // Landscape keeps its old cache key, so the pages already drawn are still found.
+        $key = sha1(implode('|', [self::VERSION, $mode, strtolower($accent), $watermark !== null ? sha1($watermark) : '-', ...($portrait ? ['portrait'] : [])]));
         $file = $this->cacheDir ? rtrim($this->cacheDir, '/').'/bg-'.$key.'.png' : null;
 
         if ($file && is_file($file) && ($cached = @file_get_contents($file)) !== false) {
@@ -53,14 +62,14 @@ class Backgrounds
         return $png;
     }
 
-    public function dataUri(string $mode, string $accent, ?string $watermark = null): string
+    public function dataUri(string $mode, string $accent, ?string $watermark = null, string $orientation = 'landscape'): string
     {
-        return 'data:image/png;base64,'.base64_encode($this->png($mode, $accent, $watermark));
+        return 'data:image/png;base64,'.base64_encode($this->png($mode, $accent, $watermark, $orientation));
     }
 
     private function draw(string $mode, array $accent, ?string $watermark): string
     {
-        $im = imagecreatetruecolor(self::WIDTH, self::HEIGHT);
+        $im = imagecreatetruecolor($this->w, $this->h);
         imagealphablending($im, true);
         imagefill($im, 0, 0, imagecolorallocate($im, ...self::PAPER));
 
@@ -68,6 +77,7 @@ class Backgrounds
             'guilloche' => $this->guilloche($im, $accent),
             'watermark' => $this->watermark($im, $accent, $watermark),
             'motif' => $this->motif($im, $accent),
+            'paper' => null,   // the paper itself, nothing drawn on it
             default => $this->plain($im, $accent),
         };
 
@@ -82,7 +92,7 @@ class Backgrounds
     /** Two faint rings behind the name — the classic sheet. */
     private function plain(GdImage $im, array $c): void
     {
-        [$cx, $cy] = [self::WIDTH / 2, self::HEIGHT / 2 + 10];
+        [$cx, $cy] = [$this->w / 2, $this->h / 2 + 10];
         $this->ring($im, $cx, $cy, 780, 2, $this->alpha($im, $c, 116));
         $this->ring($im, $cx, $cy, 650, 1, $this->alpha($im, $c, 118));
     }
@@ -96,24 +106,24 @@ class Backgrounds
         $gold = [184, 137, 43];
         imagesetthickness($im, 1);
 
-        for ($k = 0; $k < 34; $k++) {
+        for ($k = 0, $rows = $this->w >= $this->h ? 34 : (int) ceil($this->h / 29); $k < $rows; $k++) {
             $y0 = 20 + $k * 29;
             $this->wave($im, $y0, 18, 140, $k * 0.55, $this->alpha($im, $c, 112));
             $this->wave($im, $y0 + 14, 14, 110, -$k * 0.42, $this->alpha($im, $gold, 114));
         }
 
         // Rosettes in the four corners, the mark of a document meant to be hard to copy.
-        foreach ([[70, 70], [self::WIDTH - 70, 70], [70, self::HEIGHT - 70], [self::WIDTH - 70, self::HEIGHT - 70]] as [$x, $y]) {
+        foreach ([[70, 70], [$this->w - 70, 70], [70, $this->h - 70], [$this->w - 70, $this->h - 70]] as [$x, $y]) {
             $this->rosette($im, $x, $y, 120, $this->alpha($im, $c, 100));
         }
 
-        $this->clearing($im, self::WIDTH / 2, self::HEIGHT / 2 + 20, 980, 640);
+        $this->clearing($im, $this->w / 2, $this->h / 2 + 20, ...($this->w >= $this->h ? [980, 640] : [700, 1000]));
     }
 
     /** The owner's logo, very faint, in the middle — with rings when there is no logo. */
     private function watermark(GdImage $im, array $c, ?string $bytes): void
     {
-        [$cx, $cy] = [self::WIDTH / 2, self::HEIGHT / 2 + 10];
+        [$cx, $cy] = [$this->w / 2, $this->h / 2 + 10];
         $this->ring($im, $cx, $cy, 640, 18, $this->alpha($im, $c, 121));
         $this->ring($im, $cx, $cy, 560, 3, $this->alpha($im, $c, 121));
 
@@ -158,7 +168,7 @@ class Backgrounds
     private function motif(GdImage $im, array $c): void
     {
         $ink = [31, 26, 46];
-        [$cx, $cy] = [self::WIDTH - 170, 190];
+        [$cx, $cy] = [$this->w - 170, 190];
 
         // A brush stroke thickens and thins: arcs of a slowly growing radius, drawn
         // thick and very faint, overlap into one stroke with a tapering tail.
@@ -169,8 +179,8 @@ class Backgrounds
         }
         imagesetthickness($im, 1);
 
-        for ($x = 0; $x < self::WIDTH; $x += 16) {
-            imagefilledrectangle($im, $x, self::HEIGHT - 96, $x + 1, self::HEIGHT, $this->alpha($im, $ink, 122));
+        for ($x = 0; $x < $this->w; $x += 16) {
+            imagefilledrectangle($im, $x, $this->h - 96, $x + 1, $this->h, $this->alpha($im, $ink, 122));
         }
 
         $this->ring($im, 190, 190, 250, 6, $this->alpha($im, $c, 118));
@@ -180,7 +190,7 @@ class Backgrounds
     private function wave(GdImage $im, float $y0, float $amp, float $len, float $phase, int $color): void
     {
         $prev = null;
-        for ($x = 0; $x <= self::WIDTH; $x += 4) {
+        for ($x = 0; $x <= $this->w; $x += 4) {
             $y = $y0 + $amp * sin(2 * M_PI * $x / $len + $phase) + ($amp / 3) * sin(2 * M_PI * $x / ($len * 2.7));
             if ($prev) {
                 imageline($im, (int) $prev[0], (int) $prev[1], $x, (int) $y, $color);

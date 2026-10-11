@@ -271,6 +271,10 @@ abstract class AbstractEventType implements EventType
      */
     protected function broadcast(ClubEvent $event, array $payload, ?array $audience = null): void
     {
+        // A host that keeps its own view of the event (a federation's
+        // dashboard) re-reads too — whoever this event's own audience is.
+        \App\Events\Support\EventHost::contentChanged($event);
+
         $audience ??= $this->audienceFor($event, $payload['action'] ?? 'update');
         if (! $audience) {
             return;

@@ -260,8 +260,19 @@ class RouteIntegrityTest extends TestCase
      * 404 unless EVENT_BRACKET_PDF, the other twelve unless EVENT_TABLET_DRAW.
      * 985 the same day: +2, tablet.draw.outcome and tablet.draw.entrant — the
      * bout tools (winner/score, a name) on a PIN-unlocked tablet.
+     * 986 the same day: +1, me.events.run-order.break — the event's own break
+     * edited from the running order (PersonalEventController::updateEventBreak).
+     * 1000 on 2026-10-08: +14 — the scoring consoles' Corners tab
+     * (App\Scoreboard\Corners): {karate,taekwondo,bjj}-scoreboard .corners and
+     * .corner-look, each through the signed-in and the paired-tablet door (12),
+     * plus karate-scoreboard.console-state and .token-console-state — the
+     * Karate console re-reading itself when the running order moves.
+     * 1002 the same day: +2 — the super-admin's "Remove club"
+     * (admin.platform.clubs.removal + .removal.store, ClubRemovalController).
+     * 1005 on 2026-10-08: +3 — the tablet draw's bout numbers
+     * (tablet.draw.number, .renumber, .number.release, TabletDrawController).
      */
-    private const EXPECTED_ROUTE_COUNT = 985;
+    private const EXPECTED_ROUTE_COUNT = 1005;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -508,7 +519,10 @@ class RouteIntegrityTest extends TestCase
         // 929 on 2026-10-03: me.events.entry-channels.
         // 935 on 2026-10-04: the new UI's six routes (see EXPECTED_ROUTE_COUNT).
         // 941 the same day: the six club-entry step addresses; 943 with the two consent doors; 944 with the share card; 945 with visibility; 952 with the club-entry doors; 953 with /ai/models; 957 with club payments.
-        // 970 on 2026-10-07: +13, the bracket PDF, the tablet PIN and the tablet draw doors; 972 with the tablet's bout tools.
-        $this->assertCount(972, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 970 on 2026-10-07: +13, the bracket PDF, the tablet PIN and the tablet draw doors; 972 with the tablet's bout tools; 973 with the running order's break editor.
+        // 987 on 2026-10-08: +14, the scoring consoles' Corners tab (corners + corner-look × 3 sports × 2 doors) and Karate's console-state doors.
+        // 989 the same day: +2, admin.platform.clubs.removal + .removal.store.
+        // 992 on 2026-10-08: +3, tablet.draw.number / .renumber / .number.release.
+        $this->assertCount(992, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

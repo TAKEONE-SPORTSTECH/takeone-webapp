@@ -198,10 +198,15 @@ class CourtDisplayController extends Controller
         $state = MatState::load($device->event, $device->court);
 
         if ($surface === 'bout' || ($surface === null && $state->mode !== MatState::MODE_UPCOMING)) {
-            return view('scoreboard::karate.scoreboard.mat', [
+            // The event's Karate style's own wall board, or the shared one (KarateStyles).
+            return view(\App\Scoreboard\Sports\Karate\Styles\KarateStyles::view($device->event, 'mat'), [
                 'event' => $device->event,
                 'court' => $device->court,
                 'state' => $state->toArray(),
+                // This mat's own corner layout (Mat\MatCorners).
+                'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($device->event, $device->court),
+                // The corners' names and colours for this event (Mat\CornerLook).
+                'look' => \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($device->event),
                 'screenLink' => $screenLink,
                 // The scoreboard beats like every other screen. Without it a
                 // mat paired as a scoreboard touched `last_seen` once, when it
@@ -235,6 +240,10 @@ class CourtDisplayController extends Controller
             // Told to the page so it can refuse to be dragged onto a bout by a
             // mat push, and so its own reloads keep the pin.
             'pinned' => $surface === 'queue' ? 'queue' : false,
+            // Kyokushin's second corner is SHIRO — white, not blue.
+            'secondTone' => \App\Scoreboard\Sports\Karate\Styles\KarateStyles::of($device->event) === 'kyokushin' ? 'white' : 'blue',
+            'look' => \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($device->event),
+            'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($device->event, $device->court),
             // Only a real device gets a heartbeat — the organiser's preview has
             // no token and must not mark any screen as alive.
             // The pin lives in this page's own URL, and reload() keeps it, so

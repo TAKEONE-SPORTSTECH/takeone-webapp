@@ -9,7 +9,7 @@ window.t1Explore = function () {
     return {
         D, tab: 'all', act: null, grp: null, q: '', radius: 'any', radiusOpen: false,
         map: false, hl: null, pos: null, locState: 'idle',
-        events: [], eventsLoaded: false, _map: null, _layer: null,
+        events: [], finished: [], pastShown: 8, eventsLoaded: false, _map: null, _layer: null,
         only: null,
         init() {
             const qs = new URLSearchParams(location.search);
@@ -26,7 +26,7 @@ window.t1Explore = function () {
         loadEvents() {
             fetch(D.eventsUrl, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(r => r.ok ? r.json() : { events: [], finished: [] })
-                .then(j => { this.events = (j.events || []).filter(e => e.state !== 'ended'); })
+                .then(j => { this.events = (j.events || []).filter(e => e.state !== 'ended'); this.finished = j.finished || []; })
                 .catch(() => { this.events = []; })
                 .finally(() => { this.eventsLoaded = true; });
         },
@@ -71,6 +71,13 @@ window.t1Explore = function () {
                 .filter(e => !q || ((e.title || '') + ' ' + (e.club || '') + ' ' + (e.sport || '') + ' ' + (e.location || '')).toLowerCase().includes(q))
                 .sort((a, b) => (rank[a.state] ?? 3) - (rank[b.state] ?? 3));
         },
+        /* Finished events, newest first (the server's order), under the same search and sport chip. */
+        get pastEvs() {
+            const q = this.needle();
+            return this.finished
+                .filter(e => this.sportMatches(e.sport))
+                .filter(e => !q || ((e.title || '') + ' ' + (e.club || '') + ' ' + (e.sport || '') + ' ' + (e.location || '')).toLowerCase().includes(q));
+        },
         get coaches() {
             const q = this.needle();
             return this.D.trainers.filter(c => !q || (c.name + ' ' + c.role + ' ' + (c.club || '')).toLowerCase().includes(q));
@@ -108,7 +115,7 @@ window.t1Explore = function () {
                 { k: 'activities', icon: 'bi-grid', label: tr('tab_activities'), n: this.acts.length },
                 { k: 'offers', icon: 'bi-tag', label: tr('tab_offers'), n: tr('soon') },
                 { k: 'clubs', icon: 'bi-building', label: tr('tab_clubs'), n: this.clubs.length },
-                { k: 'events', icon: 'bi-calendar-event', label: tr('tab_events'), n: this.evs.length, hide: this.eventsLoaded && !this.events.length },
+                { k: 'events', icon: 'bi-calendar-event', label: tr('tab_events'), n: this.evs.length, hide: this.eventsLoaded && !this.events.length && !this.finished.length },
                 { k: 'coaches', icon: 'bi-person-badge', label: tr('tab_coaches'), n: this.coaches.length, hide: !this.D.trainers.length },
                 { k: 'venues', icon: 'bi-pin-map', label: tr('tab_venues'), n: tr('soon') },
                 { k: 'clinics', icon: 'bi-heart-pulse', label: tr('tab_clinics'), n: tr('soon') },

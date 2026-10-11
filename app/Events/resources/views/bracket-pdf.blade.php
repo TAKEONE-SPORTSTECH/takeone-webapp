@@ -22,8 +22,11 @@
     $goldInk = '#a8862f';   // gold dark enough to read as type on white
     $rtl = app()->getLocale() === 'ar';
     $teamPages = $cover['team'] ?? [];
-    $offset = $cover ? 2 + count($teamPages) : 0;
+    $clubPages = array_values(array_filter($cover['clubs'] ?? []));
+    $offset = $cover ? 2 + count($clubPages) + count($teamPages) : 0;
     $total = count($pages) + $offset;
+    // Divisions that have a sheet in THIS document — only those are links.
+    $sheetIds = collect($pages)->pluck('id')->flip();
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}">
@@ -68,6 +71,47 @@
         .eye { position: relative; font-size: 7.5pt; font-weight: 800; letter-spacing: .28em; text-transform: uppercase; color: {{ $c }}; }
         .fit { display: block; white-space: nowrap; }
 
+        /* The organiser's logo — a bare transparent image at the band's leading
+           edge (Design Rule #5: never on a tile). */
+        .hlogo { position: relative; flex: 0 0 auto; display: block; }
+        /* Drawn from ONE copy of the logo (a background on this class), not an
+           <img> per page: inlined on 33 headers it was 4 MB of the page. */
+        @if($hostLogo)
+        .hlogo { background: url("{{ $hostLogo }}") center / contain no-repeat; }
+        @endif
+        .pdf-head .hlogo { width: 19mm; height: 19mm; align-self: center; margin-inline-end: -3mm; }
+        .page-band .hlogo { width: 15mm; height: 15mm; align-self: center; margin-inline-end: -3mm; }
+        .page-band h1 { white-space: nowrap; }
+        /* On the cover it stands bottom-right, opposite the figures, so the
+           title block keeps its place. */
+        .cover-band .hlogo { position: absolute; right: 15mm; bottom: 36mm; width: 30mm; height: 30mm; }
+
+        /* A finished competition says so before anything else on the cover. */
+        .done-stamp { position: relative; display: inline-flex; align-items: center; gap: 2mm; margin-bottom: 4mm; padding: 1.6mm 4mm 1.4mm;
+                      background: {{ $c }}; color: {{ $navy }}; font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900;
+                      font-size: 12pt; letter-spacing: .16em; text-transform: uppercase; clip-path: polygon(2.5mm 0, 100% 0, calc(100% - 2.5mm) 100%, 0 100%); }
+
+        /* Teams — one block per club: crest, name, size, medals; then its athletes. */
+        .club { break-inside: avoid; border: .35mm solid #cfd5e0; border-radius: 1.5mm; overflow: hidden; margin-top: 5mm; }
+        .club-h { display: flex; align-items: center; gap: 4mm; padding: 2.6mm 4mm; background: {{ $navy }}; color: #fff; }
+        .club-h .rk { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900; font-style: italic; font-size: 20pt; line-height: 1; color: {{ $c }}; min-width: 7mm; }
+        .club-h .lg { width: 13mm; height: 13mm; flex: 0 0 auto; }
+        .club-h .lg img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .club-h .lg.none { display: grid; place-items: center; color: {{ $c }}; font-size: 15pt; }
+        .club-h .nm { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900; font-style: italic; text-transform: uppercase;
+                      font-size: 17pt; line-height: 1; letter-spacing: .02em; }
+        .club-h .nm small { display: block; font-family: 'Inter', sans-serif; font-style: normal; font-weight: 700; font-size: 7pt;
+                            letter-spacing: .16em; color: {{ $c }}; margin-top: 1.2mm; }
+        .club-h .md { margin-inline-start: auto; display: flex; gap: 3.5mm; align-items: center; }
+        .club-h .md span { display: inline-flex; align-items: center; gap: 1.2mm; font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 800; font-size: 14pt; }
+        .club-h .md span.zero { opacity: .35; }
+        .club-p { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 5mm; padding: 1.5mm 4mm 2mm; }
+        .ath { display: flex; gap: 1.5mm; align-items: flex-start; padding: 1.4mm 0 1.2mm; border-bottom: .25mm solid #e3e6ee; min-width: 0; }
+        .ath .t { min-width: 0; flex: 1; }
+        .ath .n { font-size: 8.4pt; font-weight: 700; color: {{ $navy }}; line-height: 1.25; overflow-wrap: anywhere; }
+        .ath .d { font-size: 6.6pt; color: #6b7590; line-height: 1.3; margin-top: .3mm; }
+        .ath .m { display: flex; gap: .6mm; flex: 0 0 auto; padding-top: .3mm; }
+
         /* Bracket sheet head */
         .pdf-head { flex: 0 0 auto; padding: 7mm 10mm 9mm; display: flex; align-items: flex-end; gap: 8mm; }
         .pdf-head .stripes { width: 70mm; }
@@ -109,6 +153,10 @@
         .side div { padding: 2mm 0; border-bottom: .25mm solid #e3e6ee; }
         .side small { display: block; font-size: 6.8pt; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: {{ $goldInk }}; }
         .side strong { display: block; font-size: 9.5pt; font-weight: 700; color: {{ $navy }}; margin-top: .6mm; line-height: 1.3; }
+        /* Cover cards: the page-2 division card (.grp), holding the schedule and the rules. */
+        .cv-card { margin-bottom: 0; }
+        .cv-card .sch > div, .cv-card .side > div { padding-inline: 3.5mm; }
+        .cv-card .sch > div:last-child, .cv-card .side > div:last-child { border-bottom: 0; }
         .offs { margin-top: 7mm; }
         .offs div { display: grid; grid-template-columns: 40mm 1fr; padding: 1.9mm 0; border-bottom: .25mm solid #e3e6ee; font-size: 9pt; color: {{ $navy }}; }
         .offs small { font-size: 6.8pt; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: {{ $goldInk }}; padding-top: .5mm; }
@@ -134,6 +182,9 @@
         .grp .h2 em { font-style: normal; font-size: 9pt; color: #8a93a8; margin-inline-start: auto; letter-spacing: .08em; }
         .drow { display: flex; align-items: baseline; gap: 2mm; padding: 1.3mm 0 1.1mm; font-size: 8.8pt; font-weight: 600; color: {{ $navy }};
                 border-bottom: .25mm solid #e3e6ee; }
+        /* Links inside the PDF look like the text they are — no blue, no underline. */
+        a.drow, .ath a { color: inherit; text-decoration: none; }
+        a.n { display: block; }
         .drow .g { width: 2mm; height: 2mm; border-radius: 50%; background: #9aa3b2; flex: 0 0 auto; transform: translateY(-.3mm); }
         .drow .g.male { background: #2563eb; } .drow .g.female { background: #db2777; }
         .drow .lead { flex: 1; border-bottom: .3mm dotted #c3c9d6; transform: translateY(-1mm); }
@@ -194,7 +245,35 @@
         .pdf-foot { position: absolute; inset-inline: 6mm; bottom: 3.5mm; display: flex; align-items: center; gap: 4mm;
                     font-size: 7.5pt; color: #5d6880; }
         .pdf-foot .dot { width: 2mm; height: 2mm; border-radius: 50%; display: inline-block; margin-inline-end: 1.2mm; }
+        .pdf-foot .ln { width: 5mm; height: .7mm; display: inline-block; margin-inline-end: 1.4mm; vertical-align: middle; }
         .pdf-foot .pg { margin-inline-start: auto; font-weight: 800; letter-spacing: .06em; color: {{ $goldInk }}; }
+
+
+        /* The podium strip — only on a division whose every bout is decided.
+           Sits under the board, which gives up the height it needs. */
+        .has-pod .pdf-board-in { bottom: 2mm; }
+        .pdf-podium { flex: 0 0 auto; padding: 0 6mm 9mm; }
+        .pdf-podium .ph2 { display: flex; align-items: center; gap: 2.5mm; font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 800;
+                           text-transform: uppercase; letter-spacing: .14em; font-size: 10.5pt; color: {{ $navy }}; margin-bottom: 2mm; }
+        .pdf-podium .ph2::before { content: ''; width: 7mm; height: 1.4mm; background: {{ $c }}; transform: skewX(-20deg); }
+        .pdf-podium .ph2::after { content: ''; flex: 1; height: .35mm; background: #cfd5e0; }
+        .pod { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 3.5mm; }
+        .pod-c { display: flex; border: .35mm solid #cfd5e0; border-radius: 1.5mm; overflow: hidden; background: #fff; min-width: 0; }
+        .pod-c.p1 { border: .6mm solid {{ $c }}; }
+        .pod-c .ph { width: 15mm; height: 20mm; flex: 0 0 auto; background: #eef1f6; border-inline-end: .35mm solid #cfd5e0; }
+        .pod-c .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pod-c .ph img.ph-none { opacity: .55; }
+        .pod-c .tx { flex: 1; min-width: 0; padding: 1.6mm 2.4mm; display: flex; flex-direction: column; gap: .6mm; }
+        .pod-c .pl { display: flex; align-items: center; gap: 1.4mm; font-size: 6.8pt; font-weight: 800; letter-spacing: .12em;
+                     text-transform: uppercase; color: {{ $goldInk }}; }
+        .pod-c .pl svg { flex: 0 0 auto; }
+        /* One line each, every card the same height: a long name or club is
+           set smaller until it fits (.pfit, below), never wrapped or cut. */
+        .pod-c .nm { font-size: 9.5pt; font-weight: 800; color: {{ $navy }}; line-height: 1.2; white-space: nowrap; overflow: hidden; }
+        .pod-c.p1 .nm { font-size: 10.5pt; }
+        .pod-c .cl { display: flex; align-items: center; gap: 1.4mm; font-size: 7pt; white-space: nowrap; overflow: hidden; font-weight: 700; color: #5d6880; text-transform: uppercase; letter-spacing: .04em; }
+        .pod-c .cl .cl-logo { width: 5mm; height: 5mm; object-fit: contain; flex: 0 0 auto; }
+        .pod-c .cl .fi { width: 4mm; height: 3mm; flex: 0 0 auto; }
 
         /* The working board: real size, real layout, never printed. */
         #pdf-work { position: fixed; left: -20000px; top: 0; width: 1600px; height: 1000px; }
@@ -219,6 +298,8 @@
         <section class="pdf-page port">
             <div class="band cover-band">
                 <span class="stripes"></span>
+                @if($hostLogo)<span class="hlogo" role="img" aria-label="{{ $host }}"></span>@endif
+                @if($finished)<div class="done-stamp"><i class="bi bi-trophy-fill"></i>{{ __('events::events.draw_print_results') }}</div>@endif
                 @if($cover['type'])<div class="eye">{{ $cover['type'] }}</div>@endif
                 <h1 class="cover-title">
                     <span class="fit l1">{{ $tl[0] }}</span>
@@ -251,6 +332,7 @@
                 <div class="low">
                     <div>
                         @if($cover['schedule'])
+                          <div class="grp cv-card">
                             <div class="h2">{{ __('events::events.draw_print_schedule') }}</div>
                             <div class="sch">
                                 @foreach($cover['schedule'] as $d)
@@ -263,10 +345,12 @@
                                     @endforeach
                                 @endforeach
                             </div>
+                          </div>
                         @endif
                     </div>
                     <div>
                         @if($hours || $cover['rules'] || $cover['requirements'])
+                          <div class="grp cv-card">
                             <div class="h2">{{ __('events::events.draw_print_rules') }}</div>
                             <div class="side">
                                 @if($hours)<div><small>{{ __('events::events.draw_print_hours') }}</small><strong>{{ $hours }}</strong></div>@endif
@@ -277,6 +361,7 @@
                                     <div><small>{{ __('events::events.draw_print_requirements') }}</small><strong>{{ implode(' · ', $cover['requirements']) }}</strong></div>
                                 @endif
                             </div>
+                          </div>
                         @endif
                     </div>
                 </div>
@@ -297,6 +382,7 @@
         <section class="pdf-page port">
             <div class="band page-band">
                 <span class="stripes"></span>
+                @if($hostLogo)<span class="hlogo" role="img" aria-label="{{ $host }}"></span>@endif
                 <div style="position:relative">
                     <div class="eye">{{ $title }}</div>
                     <h1>{{ __('events::events.draw_print_division_list') }}</h1>
@@ -321,7 +407,11 @@
                                 <div class="grp">
                                     <div class="h2">{{ $g['heading'] ?: __('events::events.draw_print_divisions') }}<em>{{ array_sum(array_column($g['rows'], 'n')) }}</em></div>
                                     @foreach($g['rows'] as $r)
-                                        <div class="drow"><span class="g {{ $r['gender'] }}"></span><span>{{ $r['name'] }}</span><span class="lead"></span><span class="cnt">{{ $r['n'] }}</span></div>
+                                        @if(isset($r['id']) && $sheetIds->has($r['id']))
+                                            <a class="drow" href="#sheet-{{ $r['id'] }}"><span class="g {{ $r['gender'] }}"></span><span>{{ $r['name'] }}</span><span class="lead"></span><span class="cnt">{{ $r['n'] }}</span></a>
+                                        @else
+                                            <div class="drow"><span class="g {{ $r['gender'] }}"></span><span>{{ $r['name'] }}</span><span class="lead"></span><span class="cnt">{{ $r['n'] }}</span></div>
+                                        @endif
                                     @endforeach
                                 </div>
                             @endforeach
@@ -333,10 +423,78 @@
         </section>
 
         {{-- ═══ Officials & management — only when anybody is appointed ═══ --}}
+        {{-- ═══ Teams — every club that took part and who came with it ═══ --}}
+        @foreach($clubPages as $ci => $cp)
+            <section class="pdf-page port">
+                <div class="band page-band">
+                    <span class="stripes"></span>
+                    @if($hostLogo)<span class="hlogo" role="img" aria-label="{{ $host }}"></span>@endif
+                    <div style="position:relative">
+                        <div class="eye">{{ $title }}</div>
+                        <h1>{{ __('events::events.draw_print_teams_title') }}</h1>
+                    </div>
+                    @if($ci === 0)
+                        <div class="totals">
+                            <div><b>{{ collect($clubPages)->flatten(1)->reject(fn ($b) => $b['continued'] || $b['none'])->count() }}</b><span>{{ __('events::events.draw_print_clubs') }}</span></div>
+                            <div><b>{{ collect($clubPages)->flatten(1)->sum(fn ($b) => count($b['people'])) }}</b><span>{{ __('events::events.draw_print_athletes') }}</span></div>
+                        </div>
+                    @endif
+                    <span class="slab"></span>
+                </div>
+                <div class="body">
+                    @foreach($cp as $club)
+                        <div class="club">
+                            <div class="club-h">
+                                @if($club['rank'])<span class="rk">{{ $club['rank'] }}</span>@endif
+                                @if($club['logo'])
+                                    <span class="lg"><img src="{{ $club['logo'] }}" alt=""></span>
+                                @else
+                                    <span class="lg none"><i class="bi bi-shield-fill"></i></span>
+                                @endif
+                                <div class="nm">{{ $club['name'] }}
+                                    <small>{{ trans_choice('events::events.draw_print_club_athletes', $club['count'], ['n' => $club['count']]) }}@if($club['continued']) · {{ __('events::events.draw_print_continued') }}@endif</small>
+                                </div>
+                                @if(array_sum($club['medals']) > 0 && ! $club['continued'])
+                                    <div class="md">
+                                        @foreach([1, 2, 3] as $pl)
+                                            <span class="{{ $club['medals'][$pl] ? '' : 'zero' }}"><x-medal-icon :place="$pl" :size="15" :numeral="false" />{{ $club['medals'][$pl] }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="club-p">
+                                @foreach($club['people'] as $a)
+                                    <div class="ath">
+                                        <div class="t">
+                                            @php $linked = collect($a['divisions'])->filter(fn ($d) => $sheetIds->has($d['id']))->values(); @endphp
+                                            {{-- The name opens their first bracket; each division its own. --}}
+                                            @if($linked->isNotEmpty())
+                                                <a class="n" dir="auto" href="#sheet-{{ $linked[0]['id'] }}">{{ $a['name'] }}</a>
+                                            @else
+                                                <div class="n" dir="auto">{{ $a['name'] }}</div>
+                                            @endif
+                                            @if($a['divisions'])
+                                                <div class="d">@foreach($a['divisions'] as $d)@if(! $loop->first) · @endif @if($sheetIds->has($d['id']))<a href="#sheet-{{ $d['id'] }}">{{ $d['name'] }}</a>@else{{ $d['name'] }}@endif @endforeach</div>
+                                            @endif
+                                        </div>
+                                        @if($a['medals'])
+                                            <div class="m">@foreach($a['medals'] as $pl)<x-medal-icon :place="$pl" :size="11" :numeral="false" />@endforeach</div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="cfoot"><span>{{ $host }}</span><b>{{ 3 + $ci }} / {{ $total }}</b></div>
+            </section>
+        @endforeach
+
         @foreach($teamPages as $ti => $tp)
             <section class="pdf-page port">
                 <div class="band page-band">
                     <span class="stripes"></span>
+                    @if($hostLogo)<span class="hlogo" role="img" aria-label="{{ $host }}"></span>@endif
                     <div style="position:relative">
                         <div class="eye">{{ $title }}</div>
                         <h1>{{ __('events::events.draw_print_team_title') }}</h1>
@@ -371,17 +529,18 @@
                         </div>
                     @endforeach
                 </div>
-                <div class="cfoot"><span>{{ $host }}</span><b>{{ 3 + $ti }} / {{ $total }}</b></div>
+                <div class="cfoot"><span>{{ $host }}</span><b>{{ 3 + count($clubPages) + $ti }} / {{ $total }}</b></div>
             </section>
         @endforeach
     @endif
 
     @foreach($pages as $i => $p)
-        <section class="pdf-page {{ $p['landscape'] ? 'land' : 'port' }}" data-division="{{ $p['id'] }}">
+        <section class="pdf-page {{ $p['landscape'] ? 'land' : 'port' }}{{ $p['podium'] ? ' has-pod' : '' }}" id="sheet-{{ $p['id'] }}" data-division="{{ $p['id'] }}" data-prov="{{ $p['provisional'] ? 1 : 0 }}">
             <header class="pdf-head band">
                 <span class="stripes"></span>
+                @if($hostLogo)<span class="hlogo" role="img" aria-label="{{ $host }}"></span>@endif
                 <div style="position:relative; min-width:0;">
-                    <div class="eye">{{ __('events::events.bracket_pdf_eyebrow') }} · {{ $title }}</div>
+                    <div class="eye">{{ $p['podium'] ? __('events::events.bracket_pdf_eyebrow_result') : __('events::events.bracket_pdf_eyebrow') }} · {{ $title }}</div>
                     <div class="pdf-title">{{ $p['name'] }}</div>
                     @if($date || $host)
                         <div class="pdf-sub">{{ collect([$date, $host])->filter()->implode(' · ') }}</div>
@@ -393,16 +552,58 @@
 
             <div class="pdf-board">
                 <div class="pdf-board-in"></div>
-                <div class="pdf-foot">
-                    <span><span class="dot" style="background:#d8b25f"></span>{{ __('events::events.bracket_legend_provisional') }}</span>
-                    <span><span class="dot" style="background:#2ecc71"></span>{{ __('events::events.bracket_legend_done') }}</span>
-                    <span class="pg">{{ $i + 1 + $offset }} / {{ $total }}</span>
+            </div>
+
+            @if($p['podium'])
+                <div class="pdf-podium">
+                    <div class="ph2">{{ __('events::events.draw_print_podium') }}</div>
+                    <div class="pod" style="--n: {{ count($p['podium']) }}">
+                        @foreach($p['podium'] as $w)
+                            <div class="pod-c p{{ $w['place'] }}">
+                                <div class="ph">
+                                    @if($w['photo'])<img src="{{ $w['photo'] }}" alt="">@else<img class="ph-none" src="{{ $w['placeholder'] }}" alt="">@endif
+                                </div>
+                                <div class="tx">
+                                    <div class="pl"><x-medal-icon :place="$w['place']" :size="13" />{{ __('events::events.draw_print_place_'.$w['place']) }}</div>
+                                    <div class="nm pfit" dir="auto">{{ $w['name'] }}</div>
+                                    @if($w['club'] || $w['country'])
+                                        <div class="cl">
+                                            @if($w['country'] && \App\Support\Flag::iso2($w['country']))<span class="fi fi-{{ strtolower(\App\Support\Flag::iso2($w['country'])) }}"></span>@endif
+                                            @if(! empty($w['club_logo']))<img class="cl-logo" src="{{ $w['club_logo'] }}" alt="">@endif
+                                            <span class="pfit" style="min-width:0; overflow:hidden">{{ $w['club'] }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
+            @endif
+
+            <div class="pdf-foot">
+                {{-- Says what is ON this sheet, in the colours it is drawn in:
+                     a gold line is a decided bout, a slate one still to fight. --}}
+                <span><span class="ln" style="background:#d8b25f"></span>{{ __('events::events.bracket_legend_done') }}</span>
+                @unless($p['podium'])
+                    <span><span class="ln" style="background:#42527d"></span>{{ __('events::events.bracket_legend_pending') }}</span>
+                @endunless
+                @if($p['provisional'])
+                    <span><span class="dot" style="background:#d8b25f"></span>{{ __('events::events.bracket_legend_provisional') }}</span>
+                @endif
+                <span class="pg">{{ $i + 1 + $offset }} / {{ $total }}</span>
             </div>
         </section>
     @endforeach
 
     <script>
+        // Podium names and clubs: one line, set smaller until it fits its card.
+        document.fonts.ready.then(function () {
+            document.querySelectorAll('.pfit').forEach(function (el) {
+                var size = parseFloat(getComputedStyle(el).fontSize);
+                while (el.scrollWidth > el.clientWidth + 0.5 && size > 5) { size -= 0.25; el.style.fontSize = size + 'px'; }
+            });
+        });
+
         // Poster lines are shrunk until they fit their column, in the real font.
         document.fonts.ready.then(function () {
             document.querySelectorAll('.fit').forEach(function (el) {
@@ -413,6 +614,8 @@
     </script>
 
     {{-- The real board, off the page. Every sheet above is a copy of what it draws. --}}
+    {{-- Every picture the boards draw, once each; the payload refers to them. --}}
+    <script>window.BracketMedia = @json($media ?? [], JSON_UNESCAPED_SLASHES);</script>
     <div id="pdf-work">
         <x-tournament-bracket id="pdfboard" :data-url="$dataUrl" :show-divisions="false" :bare="true" height="1000px" />
     </div>
@@ -481,6 +684,8 @@
                    offset inside it is scaled with everything else. */
                 const clone = canvas.cloneNode(true);
                 clone.querySelectorAll('.bk-podium').forEach(function (el) { el.remove(); });
+                // A settled division: who had paid or weighed in no longer matters.
+                if (page.dataset.prov === '0') clone.querySelectorAll('.bk-prov').forEach(function (el) { el.remove(); });
                 clone.style.transform = 'none';
                 clone.style.willChange = 'auto';
                 clone.style.position = 'absolute';

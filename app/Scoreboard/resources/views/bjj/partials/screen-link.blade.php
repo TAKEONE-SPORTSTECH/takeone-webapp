@@ -322,6 +322,15 @@
     // Reload: the scoring table has asked for this screen to start again,
     // because from the floor it looks stuck. Same treatment — there is nothing
     // on this page worth preserving that is not re-fetched on load.
+    // The corners were swapped or recoloured (App\Scoreboard\Corners). Every
+    // surface on the mat — the console included — draws its corners
+    // server-side, so all of them reload; nothing about the match is lost, it
+    // lives on the server. The pairing screen has no board and ignores it.
+    if (msg.action === 'corners') {
+      if (board()) window.location.reload();
+      return;
+    }
+
     if (msg.action === 'paired' || msg.action === 'unpaired' || msg.action === 'reload') {
       // Not a console. `reload` is the operator's own ↻ — "every screen on this
       // mat, start again" — and it is aimed at the wall, where a stuck board is

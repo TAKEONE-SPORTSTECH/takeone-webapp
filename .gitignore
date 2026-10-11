@@ -44,3 +44,6 @@ drafts/*.png
 # Built Android packages dropped in the web root — never in git (80MB+ each).
 /public/lab/*.apk
 /public/app/*.apk
+
+# Entry lists from real competitions carry athletes' personal data — never in git.
+drafts/*.xlsx

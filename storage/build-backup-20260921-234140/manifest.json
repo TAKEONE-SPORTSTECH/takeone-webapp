@@ -1,0 +1,87 @@
+{
+  "__commonjsHelpers-CqkleIqs.js": {
+    "file": "assets/_commonjsHelpers-CqkleIqs.js",
+    "name": "_commonjsHelpers"
+  },
+  "_hooks-uxgYOjHB.js": {
+    "file": "assets/hooks-uxgYOjHB.js",
+    "name": "hooks",
+    "imports": [
+      "_island-B13IpPMh.js"
+    ]
+  },
+  "_island-B13IpPMh.js": {
+    "file": "assets/island-B13IpPMh.js",
+    "name": "island",
+    "imports": [
+      "__commonjsHelpers-CqkleIqs.js"
+    ]
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-BEuesaMe.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-DwbR3T1H.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "resources/js/realtime-only.js",
+      "__commonjsHelpers-CqkleIqs.js"
+    ]
+  },
+  "resources/js/islands/entry.jsx": {
+    "file": "assets/entry-BB7ovKb5.js",
+    "name": "entry",
+    "src": "resources/js/islands/entry.jsx",
+    "isEntry": true,
+    "imports": [
+      "_island-B13IpPMh.js",
+      "__commonjsHelpers-CqkleIqs.js"
+    ]
+  },
+  "resources/js/islands/schedule.jsx": {
+    "file": "assets/schedule-KHOI6XGq.js",
+    "name": "schedule",
+    "src": "resources/js/islands/schedule.jsx",
+    "isEntry": true,
+    "imports": [
+      "_island-B13IpPMh.js",
+      "__commonjsHelpers-CqkleIqs.js"
+    ]
+  },
+  "resources/js/islands/scoreboard-board.jsx": {
+    "file": "assets/scoreboard-board-BTC1uARW.js",
+    "name": "scoreboard-board",
+    "src": "resources/js/islands/scoreboard-board.jsx",
+    "isEntry": true,
+    "imports": [
+      "_island-B13IpPMh.js",
+      "_hooks-uxgYOjHB.js",
+      "__commonjsHelpers-CqkleIqs.js"
+    ]
+  },
+  "resources/js/islands/scoreboard-console.jsx": {
+    "file": "assets/scoreboard-console-BEBnz_H0.js",
+    "name": "scoreboard-console",
+    "src": "resources/js/islands/scoreboard-console.jsx",
+    "isEntry": true,
+    "imports": [
+      "_island-B13IpPMh.js",
+      "_hooks-uxgYOjHB.js",
+      "__commonjsHelpers-CqkleIqs.js"
+    ]
+  },
+  "resources/js/realtime-only.js": {
+    "file": "assets/realtime-only-lcGfvsqk.js",
+    "name": "realtime-only",
+    "src": "resources/js/realtime-only.js",
+    "isEntry": true
+  }
+}

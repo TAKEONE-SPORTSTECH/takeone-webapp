@@ -42,6 +42,9 @@
          the installed app polls it and side-loads the new APK. Without this the
          download completes and the install silently never happens. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Saving a downloaded file (a certificate PDF) into the public Downloads
+         folder needs this only on Android 9 and older; newer versions grant it. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
     <application
         android:label="takeone"

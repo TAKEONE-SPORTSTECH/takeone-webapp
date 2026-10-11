@@ -83,13 +83,22 @@
     /* The reader's own bout, told apart by a ring rather than by a colour —
        gold already means "decided" everywhere else on this board. */
     .bk-match.is-mine{box-shadow:0 0 0 3px #2f5fae,0 8px 24px rgba(11,19,43,.35);}
-    .bk-match.is-live .bk-meta{background:#fdf6e6;color:#8a6d20;}
-
+    /* The bout's number is what a hall READS — "Match 12" is called over the
+       speakers and looked for on the wall — so the strip is a navy band with
+       the number large and gold, not a grey caption (owner, 2026-10-08). */
     .bk-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;
-        padding:4px 10px;font-size:.58rem;font-weight:600;letter-spacing:.1em;
-        text-transform:uppercase;color:#5d6880;background:#eef1f6;
-        border-bottom:1px solid #d5dae3;white-space:nowrap;}
-    .bk-meta-r{color:#8a6d20;}
+        padding:7px 11px;font-size:.8rem;font-weight:800;letter-spacing:.08em;
+        text-transform:uppercase;color:#fff;background:#1e2c4f;
+        border-bottom:1px solid #1e2c4f;white-space:nowrap;line-height:1.2;}
+    .bk-meta .bk-no{color:#edcd85;font-weight:900;font-size:1.4em;letter-spacing:.02em;margin-inline-start:.3em;}
+    .bk-meta-r{color:rgba(255,255,255,.78);font-weight:700;}
+    /* A bye has no number to read: it stays a quiet caption. */
+    .bk-meta.is-nonum{background:#eef1f6;color:#5d6880;border-bottom-color:#d5dae3;font-size:.62rem;font-weight:700;}
+    .bk-meta.is-nonum .bk-meta-r{color:#8a6d20;}
+    /* On the mat right now: the band turns gold. */
+    .bk-match.is-live .bk-meta{background:#d0a854;color:#1e2c4f;border-bottom-color:#d0a854;}
+    .bk-match.is-live .bk-meta .bk-no,
+    .bk-match.is-live .bk-meta-r{color:#1e2c4f;}
 
     /* ── One corner ────────────────────────────────────────────────────── */
     .bk-slot{display:flex;align-items:center;gap:8px;padding:8px 10px;position:relative;
@@ -142,6 +151,8 @@
     .bk-club-ab{width:14px;height:14px;flex:0 0 auto;border-radius:50%;
         background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;
         font-size:.45rem;font-weight:700;display:grid;place-items:center;line-height:1;}
+    /* A club's crest stands where its letters would — bare, never on a tile. */
+    .bk-club-logo{width:16px;height:16px;flex:0 0 auto;object-fit:contain;display:block;}
     .bk-club{font-size:.62rem;color:#5d6880;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
     .bk-empty-label{font-size:.75rem;font-weight:500;color:#97a1b4;}
@@ -324,8 +335,9 @@
        for the final. */
     .bk-bronze{border-radius:10px;overflow:hidden;background:#faf1e6;color:#1e2c4f;
         box-shadow:0 0 0 2px #b07a45,0 8px 24px rgba(11,19,43,.35);}
-    .bk-bronze .bk-meta{background:#ecd9bd;color:#7a4f22;border-bottom-color:#d8bd93;}
-    .bk-bronze .bk-meta-r{color:#7a4f22;}
+    .bk-bronze .bk-meta{background:#7a4f22;color:#fff;border-bottom-color:#7a4f22;}
+    .bk-bronze .bk-meta .bk-no{color:#f3dcb8;}
+    .bk-bronze .bk-meta-r{color:rgba(255,255,255,.8);}
     .bk-bronze .bk-slot{background:#faf1e6;}
     .bk-bronze .bk-slot.is-win{background:#f3e2c4;}
 
@@ -440,6 +452,11 @@ window.BracketBoard = window.BracketBoard || (function () {
     const THIRD_ROUND = 'Third place';
 
     const el = (t, c) => { const n = document.createElement(t); if (c) n.className = c; return n; };
+    /* A picture in the payload is a URL — or, from a host that ships each
+       picture ONCE (the PDF, where a crest repeats in every corner), 'ref:<key>'
+       into window.BracketMedia. Anything unresolved is no picture at all. */
+    const media = v => (typeof v === 'string' && v.indexOf('ref:') === 0)
+        ? ((window.BracketMedia || {})[v.slice(4)] || '') : v;
     const initials = n => String(n || '').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase();
 
     let S = null; // active instance state
@@ -1034,16 +1051,21 @@ window.BracketBoard = window.BracketBoard || (function () {
         /* The strip the draft puts across the top of every bout: which bout
            this is on the left, which mat it is on on the right. A bout nobody
            has to fight says so instead of pretending to a number. */
-        const meta = el('div', 'bk-meta');
+        const meta = el('div', 'bk-meta' + (m.no ? '' : ' is-nonum'));
         const left = el('span');
         /* A bout with no number is not a bout: either the draw wrote a
            walkover (`bye`), or a corner is empty and nobody has to fight.
            Saying "Bye — no bout" is the honest answer; the old board printed
            "TBD", which reads as "we have not decided yet". */
         const unfought = !(m.a && m.a.name) || !(m.b && m.b.name);
-        left.textContent = m.no
-            ? S.cfg.text.match + ' ' + m.no
-            : ((m.bye || unfought) ? S.cfg.text.byeNoBout : S.cfg.text.tbd);
+        if (m.no) {
+            left.textContent = S.cfg.text.match;
+            const no = el('span', 'bk-no');
+            no.textContent = m.no;
+            left.appendChild(no);
+        } else {
+            left.textContent = (m.bye || unfought) ? S.cfg.text.byeNoBout : S.cfg.text.tbd;
+        }
         meta.appendChild(left);
 
         const right = el('span', 'bk-meta-r');
@@ -1110,8 +1132,8 @@ window.BracketBoard = window.BracketBoard || (function () {
         }
 
         const av = el('div', 'bk-av');
-        if (p.photo) {
-            const img = el('img'); img.src = p.photo; img.alt = ''; img.loading = 'lazy';
+        if (media(p.photo)) {
+            const img = el('img'); img.src = media(p.photo); img.alt = ''; img.loading = 'lazy';
             av.appendChild(img);
         } else {
             av.textContent = initials(p.name);
@@ -1178,7 +1200,7 @@ window.BracketBoard = window.BracketBoard || (function () {
         // competes for nobody gets one line, never an empty second one.
         if (p.club) {
             const sub = el('div', 'bk-who-sub');
-            if (p.club_ab) { const ab = el('span', 'bk-club-ab'); ab.textContent = p.club_ab; sub.appendChild(ab); }
+            const mark = clubMark(p); if (mark) sub.appendChild(mark);
             const club = el('span', 'bk-club'); club.textContent = p.club; sub.appendChild(club);
             who.appendChild(sub);
         }
@@ -1243,6 +1265,15 @@ window.BracketBoard = window.BracketBoard || (function () {
         const div = current();
         const m = findMatch(div, matchId);
         if (!m) return;
+
+        // 'clear' (a host's "remove winner" mode, setDecideMode): any tap on a
+        // decided bout takes its result back. Otherwise a tap names the winner,
+        // and tapping the winner again takes it back — as it always did.
+        if (S.decideMode === 'clear') {
+            if (!m.winner) return;
+            await write(S.cfg.outcomeUrl.replace('__ID__', matchId), { winner: '' }, S.cfg.text.outcomeFailed);
+            return;
+        }
 
         const winner = m.winner === side ? '' : side;
 
@@ -1564,6 +1595,23 @@ window.BracketBoard = window.BracketBoard || (function () {
     // Two bronzes share the third row where the sport awards both: the row IS
     // the place, so the medal comes from the row and not from the data.
     // -----------------------------------------------------------------
+    /* The club's mark beside its name: the crest when there is one, else its
+       two letters. The address is the server's own (/file/…, or inlined data
+       for print) and is checked before it reaches an <img>. A crest that fails
+       to load falls back to the letters rather than a broken image. */
+    function clubMark(p) {
+        const letters = () => {
+            if (!p.club_ab) return null;
+            const ab = el('span', 'bk-club-ab'); ab.textContent = p.club_ab; return ab;
+        };
+        const src = media(typeof p.club_logo === 'string' ? p.club_logo : '');
+        if (!/^(\/file\/|https?:\/\/|data:image\/(png|jpeg|webp|gif);base64,)/.test(src)) return letters();
+        const img = el('img', 'bk-club-logo');
+        img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; img.src = src;
+        img.addEventListener('error', () => { const ab = letters(); if (ab) img.replaceWith(ab); else img.remove(); }, { once: true });
+        return img;
+    }
+
     function renderPodium(div, thirdRound, cols, yOf, cardH, totalW, bandTop, podiumW, split, nR, podiumX) {
         const podium = div.podium || [];
         const at = n => podium.filter(p => Number(p.place) === n);
@@ -1600,7 +1648,7 @@ window.BracketBoard = window.BracketBoard || (function () {
 
             const body = el('div', 'bk-champ-body');
             const av = el('div', 'bk-champ-av');
-            if (champ.photo) { const img = el('img'); img.src = champ.photo; img.alt = ''; av.appendChild(img); }
+            if (media(champ.photo)) { const img = el('img'); img.src = media(champ.photo); img.alt = ''; av.appendChild(img); }
             else av.textContent = initials(champ.name);
             body.appendChild(av);
 
@@ -1647,7 +1695,7 @@ window.BracketBoard = window.BracketBoard || (function () {
                 }
 
                 const av = el('div', 'bk-place-av');
-                if (p.photo) { const img = el('img'); img.src = p.photo; img.alt = ''; av.appendChild(img); }
+                if (media(p.photo)) { const img = el('img'); img.src = media(p.photo); img.alt = ''; av.appendChild(img); }
                 else av.textContent = initials(p.name);
                 row.appendChild(av);
 
@@ -1831,7 +1879,7 @@ window.BracketBoard = window.BracketBoard || (function () {
                     item.tabIndex = 0;
 
                     const av = el('div', 'bk-av');
-                    if (p.photo) { const img = el('img'); img.src = p.photo; img.alt = ''; img.loading = 'lazy'; av.appendChild(img); }
+                    if (media(p.photo)) { const img = el('img'); img.src = media(p.photo); img.alt = ''; img.loading = 'lazy'; av.appendChild(img); }
                     else av.textContent = initials(p.name);
                     item.appendChild(av);
 
@@ -1843,7 +1891,7 @@ window.BracketBoard = window.BracketBoard || (function () {
                     who.appendChild(top);
                     if (p.club) {
                         const sub = el('div', 'bk-who-sub');
-                        if (p.club_ab) { const ab = el('span', 'bk-club-ab'); ab.textContent = p.club_ab; sub.appendChild(ab); }
+                        const mark = clubMark(p); if (mark) sub.appendChild(mark);
                         const club = el('span', 'bk-club'); club.textContent = p.club; sub.appendChild(club);
                         who.appendChild(sub);
                     }
@@ -2415,6 +2463,16 @@ window.BracketBoard = window.BracketBoard || (function () {
         emitState();
     }
 
+    /**
+     * What a tap on a bout does while deciding: 'set' a winner (the default,
+     * unchanged) or 'clear' one. A host offers 'clear' as its own mode so an
+     * official correcting several results never has to aim for the right
+     * corner — any tap on a decided bout undoes it.
+     */
+    function setDecideMode(mode) {
+        S.decideMode = mode === 'clear' ? 'clear' : 'set';
+    }
+
     function toggleArrange(on) {
         if (!arrangeable()) return;
         S.arrange = on === undefined ? !S.arrange : !!on;
@@ -2431,7 +2489,7 @@ window.BracketBoard = window.BracketBoard || (function () {
         zoomOut: () => zoomAt(0.85, S.vp.clientWidth / 2, S.vp.clientHeight / 2),
         fit,
         // The draft's Actions menu drives all of these.
-        setLayout, setThird, setView, toggleEdit, setUnlocked,
+        setLayout, setThird, setView, toggleEdit, setUnlocked, setDecideMode,
         pickBackground, clearBackground,
         notice,
         // The add-fighter window asks the board which division it is over, and

@@ -145,6 +145,59 @@ class Scheduler
      * @param  array<int, int>  $sheetPos  division id => its place in the running order
      * @return array<int, array<int, array<int, EventMatch>>>  groups of division queues
      */
+    /**
+     * The mat's order when the running order places divisions PART by part.
+     *
+     * Each slot becomes one queue — its division's bouts in the parts it names
+     * (all of them for a whole division), in round order — drained before the
+     * next slot starts, so nothing interleaves. Bouts no slot claims run
+     * after, phase by phase, as matOrder() leaves divisions off the sheet.
+     *
+     * @param  list<array{0: int, 1: ?array}>  $slots  [category id, parts or null] in running order
+     */
+    private function matOrderByParts(array $ranks, array $slots): array
+    {
+        $perDivision = [];
+        foreach ($ranks as $divGroups) {
+            foreach ($divGroups as $catId => $bouts) {
+                foreach ($bouts as $bout) {
+                    $perDivision[$catId][] = $bout;
+                }
+            }
+        }
+
+        $claimed = [];
+        $groups = [];
+        foreach ($slots as [$catId, $parts]) {
+            $queue = [];
+            foreach ($perDivision[$catId] ?? [] as $bout) {
+                if (! isset($claimed[$bout->id])
+                    && ($parts === null || in_array(\App\Events\Support\BoutPart::of($bout->round), $parts, true))) {
+                    $queue[] = $bout;
+                    $claimed[$bout->id] = true;
+                }
+            }
+            if ($queue) {
+                $groups[] = [$queue];
+            }
+        }
+
+        foreach ($ranks as $divGroups) {
+            $tail = [];
+            foreach ($divGroups as $catId => $bouts) {
+                $left = array_values(array_filter($bouts, fn ($b) => ! isset($claimed[$b->id])));
+                if ($left) {
+                    $tail[$catId] = $left;
+                }
+            }
+            if ($tail) {
+                $groups[] = $tail;
+            }
+        }
+
+        return $groups;
+    }
+
     private function matOrder(array $ranks, array $sheetPos): array
     {
         if (! $sheetPos) {
@@ -212,6 +265,21 @@ class Scheduler
             ->values()
             ->flip()          // category_id => rank
             ->all();
+
+        /*
+         * …and the running order as SLOTS, when any slot runs only part of a
+         * division (App\Events\Support\BoutPart — the owner, 2026-10-07:
+         * preliminaries first, finals at the end of the day). Empty for every
+         * running order without parts, which keeps the division-by-division
+         * numbering above exactly as it was.
+         */
+        $sheetSlots = \App\Events\Models\EventRunSlot::where('event_id', $event->id)
+            ->whereNotNull('category_id')
+            ->orderBy('day')->orderBy('position')->orderBy('id')
+            ->get(['category_id', 'parts']);
+        $sheetSlots = $sheetSlots->contains(fn ($slot) => $slot->parts !== null)
+            ? $sheetSlots->map(fn ($slot) => [(int) $slot->category_id, $slot->parts])->all()
+            : [];
         $capacity = $this->dailyCapacityPerCourt($event);
 
         $matches = EventMatch::where('event_id', $event->id)->orderBy('slot')->get();
@@ -245,9 +313,21 @@ class Scheduler
         // Bucket contested bouts by day.
         $byDay = [];
         $byes = [];
+        /*
+         * Numbers an organiser set by hand (`number_pinned` — the tablet's
+         * "Bout no.", a drag on the day-order board). The bout keeps its mat,
+         * its day and its number; everything else on that mat is numbered
+         * AROUND it. "day|mat" => [number => true].
+         */
+        $taken = [];
         foreach ($matches as $m) {
             if ($isBye($m)) {
                 $byes[] = $m->id;
+
+                continue;
+            }
+            if ($m->number_pinned && $m->match_no && $m->court && $m->day) {
+                $taken[$m->day.'|'.$m->court][(int) $m->match_no] = true;
 
                 continue;
             }
@@ -291,14 +371,19 @@ class Scheduler
                 // it is resolved here, and everything downstream (the wall
                 // board, the scoring queue, "bouts ahead") has to be able to
                 // order by it. See the migration.
-                $number = function (EventMatch $m) use (&$no, $court, $day) {
+                $pinned = $taken[$day.'|Mat '.$court] ?? [];
+                $number = function (EventMatch $m) use (&$no, $court, $day, $pinned) {
                     $m->court = 'Mat '.$court;
                     $m->day = (int) $day;
-                    $m->match_no = ++$no;
+                    do {
+                        ++$no;
+                    } while (isset($pinned[$no]));
+                    $m->match_no = $no;
                     $m->save();
                 };
 
-                foreach ($this->matOrder($ranks, $sheetPos) as $group) {
+                $groups = $sheetSlots ? $this->matOrderByParts($ranks, $sheetSlots) : $this->matOrder($ranks, $sheetPos);
+                foreach ($groups as $group) {
                     $queues = array_values($group);
                     do {
                         $any = false;
@@ -315,7 +400,7 @@ class Scheduler
         }
 
         if ($byes) {
-            EventMatch::whereIn('id', $byes)->update(['match_no' => null, 'court' => null, 'day' => null]);
+            EventMatch::whereIn('id', $byes)->update(['match_no' => null, 'number_pinned' => false, 'court' => null, 'day' => null]);
         }
 
         return $plan;

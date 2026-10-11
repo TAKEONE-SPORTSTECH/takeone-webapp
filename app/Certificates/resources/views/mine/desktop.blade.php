@@ -47,7 +47,7 @@
         <template x-for="row in shown" :key="row.uuid">
             <article class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                 <button type="button" @click="view(row)" class="block relative text-start" style="background:#fbf8f2;">
-                    <img :src="row.image_url" alt="" loading="lazy" class="w-full object-cover" style="aspect-ratio: 297 / 210;">
+                    <img :src="row.image_url" alt="" loading="lazy" class="w-full object-cover" :style="{ aspectRatio: row.portrait ? '210 / 297' : '297 / 210' }" style="aspect-ratio: 297 / 210;">
                     <span x-show="row.status === 'revoked'" class="absolute inset-0 bg-white/60 grid place-items-center">
                         <span class="px-3 py-1 rounded-full bg-red-600 text-white text-xs font-bold" x-text="row.status_label"></span>
                     </span>

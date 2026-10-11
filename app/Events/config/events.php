@@ -75,12 +75,28 @@ return [
     'return_to' => (bool) env('EVENT_RETURN_TO', false),
 
     /*
+     | Photographs in an event's gallery (2026-10-11). ON: the organiser adds
+     | pictures from the gallery page and every reader sees them beside the
+     | bout videos (App\Events\Support\EventPhotos). OFF: the gallery is the
+     | bout videos only, exactly as before, and the photo routes 404.
+     */
+    'photos' => (bool) env('EVENT_PHOTOS', false),
+
+    /*
      | "Register your club" at the event's own addresses (owner, 2026-10-04):
      | /me/events/{uuid}/rules, /club, /club/athletes, /club/review, /club/done,
      | /club/entries — one shared page (events::entry.club.page) for every host
      | that has a ClubEntryDesk. OFF: those addresses 404 and nothing links there.
      */
     'club_entry' => (bool) env('EVENT_CLUB_ENTRY', false),
+
+    /*
+     | Side exhibition bouts (owner, 2026-10-09): the Karate console's Arcade tab
+     | may put ANY two entrants of the event on the mat, outside the draw. Stored
+     | in `event_exhibition_bouts` only — never the draw, a podium or a record.
+     | OFF: Arcade only offers the bout the draw already has, as before.
+     */
+    'exhibitions' => (bool) env('EVENT_EXHIBITIONS', false),
 
     /*
      | "Register your club" on CLUB-hosted events (owner, 2026-10-04 — step 6):
@@ -189,6 +205,16 @@ return [
      | EVENT_TABLET_DRAW=true, then config:cache.
      */
     'tablet_draw' => (bool) env('EVENT_TABLET_DRAW', false),
+
+    /*
+     | Does editing the draw on a tablet need the event's PIN?
+     | OFF (the owner, 2026-10-07: "we don't need a tablet PIN at all"): a
+     | paired scoring tablet edits straight away, as the organiser who paired
+     | it — and only while that person may still arrange the draw, re-checked
+     | on every request. ON: the PIN pad and the ten-minute unlock, as built.
+     | EVENT_TABLET_DRAW_PIN=true, then config:cache.
+     */
+    'tablet_draw_pin' => (bool) env('EVENT_TABLET_DRAW_PIN', false),
 
     'bracket_pdf' => [
         'enabled' => (bool) env('EVENT_BRACKET_PDF', false),

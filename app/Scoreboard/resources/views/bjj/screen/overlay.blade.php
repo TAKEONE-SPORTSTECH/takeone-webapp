@@ -89,6 +89,23 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; }
 }
 #strip[hidden] { display:none; }
 </style>
+{{-- A corner given its OWN colour (App\Scoreboard\Corners\CornerLook) repaints
+     its plate here; an untouched corner keeps this overlay's broadcast palette. --}}
+@php $ovLook = $look ?? null; @endphp
+@if ($ovLook && (! empty($ovLook['blue']['customColour']) || ! empty($ovLook['white']['customColour'])))
+<style>
+  :root {
+    @if (! empty($ovLook['blue']['customColour']))
+    --corner-blue: {{ $ovLook['blue']['colour'] }};
+    --corner-blue-accent: {{ $ovLook['blue']['accent'] }};
+    @endif
+    @if (! empty($ovLook['white']['customColour']))
+    --corner-white: {{ $ovLook['white']['accent'] }};
+    --corner-white-muted: {{ $ovLook['white']['colour'] }};
+    @endif
+  }
+</style>
+@endif
 </head>
 <body>
 <div id="stage">
@@ -97,7 +114,7 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; }
     {{-- The corners stand where they stand on the wall — BJJ puts its red
          corner (BLUE in the data) on the RIGHT (App\\Sports\\Combat\\CornerSide).
          Each plate reads from the outer edge in: name, score, then the ladders. --}}
-    @if (\App\Sports\Combat\CornerSide::redRight('bjj'))
+    @if ($redRight ?? \App\Sports\Combat\CornerSide::redRight('bjj'))
     <div class="plate white" style="border-right:none; border-left:5px solid var(--corner-white-muted);">
       <div class="pName" id="whiteName"></div>
       <div class="pScore num" id="whiteScore">0</div>

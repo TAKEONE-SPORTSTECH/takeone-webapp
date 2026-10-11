@@ -1,0 +1,40 @@
+      <sc-if value="{{ tabOffs }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+          <span style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:999px;background:#1e2c4f;color:#fff;font-size:.78rem;font-weight:600">Officials <b style="font-weight:700;color:#edcd85">{{ eo.total }}</b></span>
+          <sc-for list="{{ eo.chips }}" as="k" hint-placeholder-count="2">
+            <span style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid #e4d3a8;color:#1e2c4f;font-size:.78rem;font-weight:500">{{ k.label }} <b style="font-weight:700;color:#8a6d20">{{ k.count }}</b></span>
+          </sc-for>
+          <sc-if value="{{ eo.hasUrl }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ eo.manage }}" title="Appoint, edit or remove this event's officials" style="margin-left:auto;height:40px;padding:0 18px;border-radius:11px;border:0;background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(202,161,79,.3);transition:transform .15s ease" style-hover="transform:translateY(-1px)">Manage officials &#8250;</button>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ eo.empty }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border-radius:16px;border-top:3px solid #d8b25f;padding:32px;box-shadow:0 10px 30px rgba(30,44,79,.08);font-size:.86rem;color:#6b7689">{{ eo.emptyText }}</div>
+        </sc-if>
+
+        <sc-for list="{{ eo.groups }}" as="g" hint-placeholder-count="2">
+          <section style="margin-bottom:26px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+              <span style="display:block;width:38px;height:3px;border-radius:2px;background:#d8b25f"></span>
+              <span style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">{{ g.label }}</span>
+              <span style="font-size:.7rem;font-weight:700;color:#1e2c4f;background:rgba(216,178,95,.18);padding:2px 9px;border-radius:999px">{{ g.count }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+              <sc-for list="{{ g.people }}" as="p" hint-placeholder-count="3">
+                <div style="background:#fff;border-radius:16px;border-top:3px solid #d8b25f;padding:14px 16px;box-shadow:0 10px 30px rgba(30,44,79,.08);display:flex;gap:14px;align-items:center;transition:transform .15s ease,box-shadow .15s ease" style-hover="transform:translateY(-2px);box-shadow:0 16px 40px rgba(30,44,79,.14)">
+                  <div style="{{ p.avStyle }}">{{ p.initials }}</div>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:.88rem;font-weight:700;color:#1e2c4f;line-height:1.25;overflow-wrap:anywhere">{{ p.name }}</div>
+                    <div style="margin-top:5px"><span style="{{ p.roleStyle }}">{{ p.role }}</span></div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:.74rem;color:#5d6880;min-width:0">
+                      <sc-if value="{{ p.hasLogo }}" hint-placeholder-val="{{ false }}"><span role="img" aria-hidden="true" style="{{ p.logoStyle }}"></span></sc-if>
+                      <span style="overflow-wrap:anywhere">{{ p.clubShown }}</span>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+      </sc-if>

@@ -154,6 +154,14 @@ Route::post('/bjj/screen/{token}/photo/{side}', [ScoreboardController::class, 't
     ->where('token', '[A-Za-z0-9]{40}')->where('side', 'blue|white')
     ->middleware('throttle:uploads');
 
+// The Corners tab from a paired table — the device's mat, never the request's.
+Route::post('/bjj/screen/{token}/corners', [ScoreboardController::class, 'tokenCorners'])
+    ->name('bjj-scoreboard.token-corners')->where('token', '[A-Za-z0-9]{40}')
+    ->middleware('throttle:screen-token');
+Route::post('/bjj/screen/{token}/corner-look', [ScoreboardController::class, 'tokenCornerLook'])
+    ->name('bjj-scoreboard.token-corner-look')->where('token', '[A-Za-z0-9]{40}')
+    ->middleware('throttle:screen-token');
+
 /* ---------------- The organiser's own door ---------------- */
 
 Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
@@ -181,6 +189,13 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/bjj/control/{event:uuid}/photo/{side}', [ScoreboardController::class, 'photo'])
         ->name('bjj-scoreboard.photo')->where('side', 'blue|white')
         ->middleware('throttle:uploads');
+
+    // The Corners tab (App\Scoreboard\Corners): which side of THIS mat the
+    // red position stands on, and each corner's name and colour for the event.
+    Route::post('/bjj/control/{event:uuid}/corners', [ScoreboardController::class, 'corners'])
+        ->name('bjj-scoreboard.corners')->middleware('throttle:admin-write');
+    Route::post('/bjj/control/{event:uuid}/corner-look', [ScoreboardController::class, 'cornerLook'])
+        ->name('bjj-scoreboard.corner-look')->middleware('throttle:admin-write');
 });
 
 /* ---------------- Scan-to-claim: an organiser placing a screen ------------ */
@@ -366,6 +381,12 @@ Route::withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken
         ->name('taekwondo-scoreboard.token-cameras.command')->where('token', '[A-Za-z0-9]{40}')->whereNumber('camera')->middleware('throttle:120,1');
     Route::post('/court/{token}/photo', [\App\Scoreboard\Sports\Taekwondo\Controllers\ScoreboardController::class, 'tokenPhoto'])
         ->name('taekwondo-scoreboard.token-photo')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:uploads');
+    // Corners from a paired table — the device's mat, never the request's
+    // (App\Scoreboard\Corners\MatSides / CornerLook).
+    Route::post('/court/{token}/corners', [\App\Scoreboard\Sports\Taekwondo\Controllers\ScoreboardController::class, 'tokenCornerSide'])
+        ->name('taekwondo-scoreboard.token-corners')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+    Route::post('/court/{token}/corner-look', [\App\Scoreboard\Sports\Taekwondo\Controllers\ScoreboardController::class, 'tokenCornerLook'])
+        ->name('taekwondo-scoreboard.token-corner-look')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 });
 
 // The Taekwondo mat's live state, for a screen that just loaded or reconnected.
@@ -389,6 +410,12 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     // to send more than a handful a minute.
     Route::post('/taekwondo/control/{event:uuid}/photo', [\App\Scoreboard\Sports\Taekwondo\Controllers\ScoreboardController::class, 'photo'])
         ->name('taekwondo-scoreboard.photo')->middleware('throttle:uploads');
+    // Which side of THIS mat red stands on, and the event's corner names and
+    // colours. Same canScore() as the commands.
+    Route::post('/taekwondo/control/{event:uuid}/corners', [\App\Scoreboard\Sports\Taekwondo\Controllers\ScoreboardController::class, 'cornerSide'])
+        ->name('taekwondo-scoreboard.corners')->middleware('throttle:admin-write');
+    Route::post('/taekwondo/control/{event:uuid}/corner-look', [\App\Scoreboard\Sports\Taekwondo\Controllers\ScoreboardController::class, 'cornerLook'])
+        ->name('taekwondo-scoreboard.corner-look')->middleware('throttle:admin-write');
 });
 
 /*
@@ -409,6 +436,34 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/karate/control/{event:uuid}/photo/{side}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'photo'])
         ->name('karate-scoreboard.photo')->where('side', 'aka|ao')
         ->middleware('throttle:uploads');
+    // The console re-reading its own state + Bouts list when its live link
+    // says the mat or the running order moved. Read-only, same canScore().
+    Route::get('/karate/control/{event:uuid}/console', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'consoleState'])
+        ->name('karate-scoreboard.console-state')->middleware('throttle:120,1');
+    // The whole draw, read-only, for the console's Bouts tabs. Same canScore().
+    Route::get('/karate/control/{event:uuid}/catalogue', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'catalogueRead'])
+        ->name('karate-scoreboard.catalogue')->middleware('throttle:mat-read');
+    // The Bouts card's Players tab — ORGANISERS only (checked in the controller).
+    Route::get('/karate/control/{event:uuid}/players', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'players'])
+        ->name('karate-scoreboard.players')->middleware('throttle:mat-read');
+    Route::get('/karate/control/{event:uuid}/players/{registration}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'player'])
+        ->name('karate-scoreboard.player')->whereNumber('registration')->middleware('throttle:mat-read');
+    Route::put('/karate/control/{event:uuid}/players/{registration}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'playerUpdate'])
+        ->name('karate-scoreboard.player.update')->whereNumber('registration')->middleware('throttle:admin-write');
+    Route::get('/karate/control/{event:uuid}/geo-country', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'geoCountry'])
+        ->name('karate-scoreboard.geo-country')->middleware('throttle:mat-read');
+    // The Bouts card's Clubs tab — ORGANISERS only (checked in the controller).
+    Route::get('/karate/control/{event:uuid}/clubs', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'clubs'])
+        ->name('karate-scoreboard.clubs')->middleware('throttle:mat-read');
+    Route::put('/karate/control/{event:uuid}/clubs/{clubKey}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'clubUpdate'])
+        ->name('karate-scoreboard.club.update')->whereUuid('clubKey')->middleware('throttle:admin-write');
+    // Which side of THIS mat the red corner physically stands on. Same
+    // canScore() as the commands; the mat travels in the body.
+    Route::post('/karate/control/{event:uuid}/corners', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'corners'])
+        ->name('karate-scoreboard.corners')->middleware('throttle:admin-write');
+    // The corners' NAMES and COLOURS for the whole event (Mat\CornerLook).
+    Route::post('/karate/control/{event:uuid}/corner-look', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'cornerLook'])
+        ->name('karate-scoreboard.corner-look')->middleware('throttle:admin-write');
 });
 
 /*
@@ -419,6 +474,39 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 */
 Route::get('/karate/court/{token}/control', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenControl'])
     ->name('karate-scoreboard.token-control')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+// The paired table re-reading itself — see consoleState(). JSON door: a dead
+// token answers 404, which is how the console tells "gone" from "wifi".
+Route::get('/karate/court/{token}/console', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenConsoleState'])
+    ->name('karate-scoreboard.token-console-state')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+// The whole draw for the paired table's Bouts tabs — the device's event only.
+Route::get('/karate/court/{token}/catalogue', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenCatalogue'])
+    ->name('karate-scoreboard.token-catalogue')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+// The Players tab through the table's token — only when the organiser who
+// paired it may MANAGE the event (checked in the controller).
+Route::get('/karate/court/{token}/players', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenPlayers'])
+    ->name('karate-scoreboard.token-players')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+Route::get('/karate/court/{token}/players/{registration}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenPlayer'])
+    ->name('karate-scoreboard.token-player')->where('token', '[A-Za-z0-9]{40}')->whereNumber('registration')->middleware('throttle:screen-token');
+Route::put('/karate/court/{token}/players/{registration}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenPlayerUpdate'])
+    ->name('karate-scoreboard.token-player.update')->where('token', '[A-Za-z0-9]{40}')->whereNumber('registration')->middleware('throttle:screen-token');
+// Where the tablet is, as a country — seeds a blank nationality (Players tab).
+Route::get('/karate/court/{token}/geo-country', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenGeoCountry'])
+    ->name('karate-scoreboard.token-geo-country')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+// The Clubs tab through the table's token — organisers only.
+Route::get('/karate/court/{token}/clubs', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenClubs'])
+    ->name('karate-scoreboard.token-clubs')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+Route::put('/karate/court/{token}/clubs/{clubKey}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenClubUpdate'])
+    ->name('karate-scoreboard.token-club.update')->where('token', '[A-Za-z0-9]{40}')->whereUuid('clubKey')->middleware('throttle:screen-token');
+
+// The same switch from a paired table — the device's mat, never the request's.
+Route::post('/karate/court/{token}/corners', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenCorners'])
+    ->name('karate-scoreboard.token-corners')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+Route::post('/karate/court/{token}/corner-look', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenCornerLook'])
+    ->name('karate-scoreboard.token-corner-look')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 
 // Uploads from the scoring table itself: the event's sounds, and a face for
 // whoever is in a corner right now. Authorised by the same token that already

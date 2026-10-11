@@ -7,6 +7,10 @@
     'error'       => null,          // validation message to show below
     'change'      => null,          // optional Alpine expression to run after a pick
     'panelClass'  => '',            // extra classes on the options panel (e.g. bottom-full for drop-up)
+    // Optional: an Alpine expression in the PARENT scope that yields the options
+    // ([{value, label}, …]) — for a list that arrives over the wire or changes
+    // while the control is open. Omit it and `options` is used, exactly as before.
+    'optionsExpr' => null,
 ])
 @php
     $opts = collect($options)->map(fn ($o) => is_array($o)
@@ -19,7 +23,7 @@
 {{-- Custom rounded dropdown (Design Rule #4 — never a native <select>). With a
      `model` it reads/writes that parent-Alpine property; otherwise it is a
      self-contained form control seeded from `value` and posted via `name`. --}}
-<div x-data="{ open: false, opts: {{ Illuminate\Support\Js::from($opts) }}@if($selfManaged), sel: {{ Illuminate\Support\Js::from((string) ($value ?? '')) }}@endif }"
+<div x-data="{ open: false, @if($optionsExpr) get opts() { return ({{ $optionsExpr }}) || []; }, @else opts: {{ Illuminate\Support\Js::from($opts) }}, @endif @if($selfManaged) sel: {{ Illuminate\Support\Js::from((string) ($value ?? '')) }} @endif }"
      class="relative"
      @click.outside="open = false" @keydown.escape="open = false">
     <button type="button" @click="open = !open"

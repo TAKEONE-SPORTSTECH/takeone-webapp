@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Storage;
  */
 class TakeOneFileStore implements FileStore
 {
-    private const SLOTS = ['pdf', 'signature_1', 'signature_2', 'background'];
+    private const SLOTS = ['pdf', 'signature_1', 'signature_2', 'background', 'background_source'];
 
     public function __construct(private Contexts $contexts) {}
 
@@ -67,7 +67,7 @@ class TakeOneFileStore implements FileStore
     /** Every file a template holds — for deleting a template (files before the row). */
     public function purgeTemplate(CertificateTemplate $template): void
     {
-        foreach (['signature_1', 'signature_2', 'background'] as $slot) {
+        foreach (['signature_1', 'signature_2', 'background', 'background_source'] as $slot) {
             $this->delete($template, $slot);
         }
     }

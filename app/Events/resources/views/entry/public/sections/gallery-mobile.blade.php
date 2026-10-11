@@ -92,6 +92,23 @@
             $chips[] = ['key' => (string) $gi, 'label' => $div['title'], 'count' => $n];
         }
     }
+
+    /*
+     * The PHOTOGRAPHS (EVENT_PHOTOS). The payload carries the same list for
+     * every reader; the delete and upload addresses are added here, and only
+     * for a reader who may manage the event — the endpoints re-check anyway.
+     */
+    $photosOn = \App\Events\Support\EventPhotos::enabled();
+    $mayAddPhotos = $photosOn && ($canManage ?? false);
+    $photos = array_map(fn ($p) => $p + [
+        'delete_url' => $mayAddPhotos
+            ? route('me.events.photos.destroy', ['event' => $e['uuid'], 'photo' => $p['uuid']])
+            : null,
+    ], $photosOn ? ($e['gallery']['photos'] ?? []) : []);
+    $uploadUrl = $mayAddPhotos ? route('me.events.photos.store', ['event' => $e['uuid']]) : null;
+
+    // Open on the videos only when there are videos and no pictures.
+    $galleryTab = (count($cards) > 0 && count($photos) === 0) ? 'videos' : 'photos';
 @endphp
 
 {{--
@@ -202,9 +219,34 @@
      */
     $chipsShown = count($chips) > 2;
 @endphp
+@if($photosOn)
+{{-- ═══ Photos | Videos ════════════════════════════════════════════════════
+     The switch rides up over the band's tail, where the division chips used
+     to; the video list below it is exactly the list it always was. --}}
+<div x-data="eventGallery(@js($photos), @js($uploadUrl), @js($galleryTab))" x-init="bootGallery()" style="margin-top:6px">
+    <div style="position:relative;z-index:2;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(11,19,43,.10);padding:6px;display:flex">
+        <span aria-hidden="true" :style="tabPill()"
+              style="position:absolute;top:6px;bottom:6px;inset-inline-start:6px;width:calc(50% - 6px);border-radius:11px;background:linear-gradient(100deg,#edcd85 0%,#d0a854 100%);box-shadow:0 4px 12px rgba(208,168,84,.35);transition:transform .38s cubic-bezier(.22,1,.36,1)"></span>
+        @foreach([['photos', 'bi-images', __('events::events.gallery_tab_photos')], ['videos', 'bi-camera-reels-fill', __('events::events.gallery_tab_videos')]] as [$key, $icon, $label])
+            <button type="button" @click="setTab('{{ $key }}')" :aria-pressed="tab === '{{ $key }}'"
+                    :style="{ color: tab === '{{ $key }}' ? '#1e2c4f' : '#6b7689' }"
+                    style="position:relative;flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 8px;border:none;background:none;border-radius:11px;font-family:inherit;font-size:.86rem;font-weight:700;cursor:pointer;transition:color .25s">
+                <i class="bi {{ $icon }}"></i>{{ $label }}
+                <span :style="'font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;transition:all .25s;' + (tab === '{{ $key }}' ? 'background:rgba(30,44,79,.14);color:#1e2c4f' : 'background:#eef1f6;color:#6b7689')"
+                      x-text="{{ $key === 'photos' ? 'photos.length' : count($cards) }}"></span>
+            </button>
+        @endforeach
+    </div>
+
+    <div x-show="tab === 'photos'" style="padding:18px 0 40px">
+        @include('events::entry.public.sections.partials.gallery-photos', ['uploadUrl' => $uploadUrl])
+    </div>
+
+    <div x-show="tab === 'videos'" x-cloak>
+@endif
 <div x-data="publicGallery(@js($cards), @js($chipsShown))"
      x-init="boot()"
-     class="px-0" style="margin-top:{{ $chipsShown ? '6px' : '2rem' }}">
+     class="px-0" style="margin-top:{{ $photosOn ? ($chipsShown ? '14px' : '0') : ($chipsShown ? '6px' : '2rem') }}">
 
     {{-- ═══ The chip row ═══════════════════════════════════════════════════
          Rides up over the band's tail, exactly as the template's does. Only
@@ -461,6 +503,10 @@
         </template>
     </template>
 </div>
+@if($photosOn)
+    </div>
+</div>
+@endif
 
 @once
 @push('scripts')
@@ -714,6 +760,336 @@ function publicGallery(cards, showFilters) {
 
         _say(msg) {
             if (window.showToast) return window.showToast('info', msg);
+            if (window.notice) return window.notice(msg);
+        },
+    };
+}
+/*
+ * The gallery's two tabs, and the PHOTOGRAPHS under the first one: the grid,
+ * the organiser's uploads (one picture per request, shrunk in the browser
+ * first so a hall's wifi carries a megabyte rather than twelve), delete, and
+ * the full-screen viewer — swipe, arrows, pinch / double-tap / wheel to zoom.
+ * Everything patches in place; nothing reloads.
+ */
+function eventGallery(photos, uploadUrl, initialTab) {
+    return {
+        tab: initialTab,
+        photos: photos,
+        uploadUrl: uploadUrl,
+
+        uploading: false,
+        upDone: 0,
+        upTotal: 0,
+        upFrac: 0,
+        photoConfirm: null,
+        removingPhoto: null,
+
+        viewer: null,
+        dx: 0,
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        _rtl: false,
+        _ptrs: {},
+        _g: null,
+        _lastTap: 0,
+        _dragging: false,
+
+        bootGallery() {
+            const h = (window.location.hash || '').replace('#', '');
+            if (h === 'photos' || h === 'videos') this.tab = h;
+            this._rtl = getComputedStyle(this.$el).direction === 'rtl';
+        },
+
+        setTab(t) {
+            this.tab = t;
+            try { history.replaceState(history.state, '', '#' + t); } catch (e) {}
+        },
+
+        tabPill() {
+            const on = this.tab === 'videos';
+            // OBJECT, never a string: a string `:style` wipes the static one.
+            return { transform: 'translateX(' + (on ? (this._rtl ? '-100%' : '100%') : '0') + ')' };
+        },
+
+        /* ── uploads ───────────────────────────────────────────────────── */
+        get uploadLabel() {
+            return @js(__('events::events.gallery_uploading'))
+                .replace(':done', Math.min(this.upDone + 1, this.upTotal))
+                .replace(':total', this.upTotal);
+        },
+        get uploadPct() {
+            return this.upTotal ? Math.min(100, ((this.upDone + this.upFrac) / this.upTotal) * 100) : 0;
+        },
+
+        async pickPhotos(ev) {
+            const files = Array.from(ev.target.files || []).filter(f => /^image\//.test(f.type) || f.type === '');
+            ev.target.value = '';
+            if (!files.length || !this.uploadUrl || this.uploading) return;
+
+            this.uploading = true;
+            this.upDone = 0;
+            this.upFrac = 0;
+            this.upTotal = files.length;
+            let failed = 0;
+
+            for (const file of files) {
+                try {
+                    const body = await this._shrink(file);
+                    const res = await this._send(body);
+                    if (res && res.success && res.photo) {
+                        this.photos = [res.photo, ...this.photos];
+                    } else {
+                        failed++;
+                    }
+                } catch (e) {
+                    failed++;
+                }
+                this.upDone++;
+                this.upFrac = 0;
+            }
+
+            setTimeout(() => { this.uploading = false; }, 350);
+
+            const added = files.length - failed;
+            if (failed) {
+                this._sayG('error', (failed === 1
+                    ? @js(trans_choice('events::events.gallery_photos_failed', 1, ['count' => 1]))
+                    : @js(trans_choice('events::events.gallery_photos_failed', 2, ['count' => ':n']))).replace(':n', failed));
+            } else if (added) {
+                this._sayG('success', @js(__('events::events.gallery_photo_added')));
+            }
+        },
+
+        /* A phone photo is 4–12 MB; the gallery shows at most 2400px. Shrink
+           here when it is worth it, and send the original when it is not or
+           the browser cannot — the server re-encodes everything regardless. */
+        async _shrink(file) {
+            const MAX = 2560;
+            if (file.size < 1.5 * 1024 * 1024) return file;
+
+            try {
+                let src;
+                if (window.createImageBitmap) {
+                    src = await createImageBitmap(file, { imageOrientation: 'from-image' });
+                } else {
+                    src = await new Promise((ok, no) => {
+                        const img = new Image();
+                        img.onload = () => ok(img);
+                        img.onerror = no;
+                        img.src = URL.createObjectURL(file);
+                    });
+                }
+                const w = src.width, h = src.height;
+                const k = Math.min(1, MAX / Math.max(w, h));
+                const c = document.createElement('canvas');
+                c.width = Math.round(w * k);
+                c.height = Math.round(h * k);
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, c.width, c.height);
+                ctx.drawImage(src, 0, 0, c.width, c.height);
+                if (src.close) src.close();
+                const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.9));
+                return blob && blob.size < file.size ? blob : file;
+            } catch (e) {
+                return file;
+            }
+        },
+
+        _send(blob) {
+            return new Promise((resolve) => {
+                const fd = new FormData();
+                fd.append('photo', blob, 'photo.jpg');
+                const token = document.querySelector('meta[name="csrf-token"]');
+                const x = new XMLHttpRequest();
+                x.open('POST', this.uploadUrl);
+                x.setRequestHeader('X-CSRF-TOKEN', token ? token.getAttribute('content') : '');
+                x.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                x.setRequestHeader('Accept', 'application/json');
+                x.upload.onprogress = (e) => { if (e.lengthComputable) this.upFrac = e.loaded / e.total * 0.95; };
+                x.onload = () => { let j = null; try { j = JSON.parse(x.responseText); } catch (e) {} resolve(j); };
+                x.onerror = () => resolve(null);
+                x.send(fd);
+            });
+        },
+
+        /* ── delete ────────────────────────────────────────────────────── */
+        deletePhoto(uuid) {
+            const p = this.photos.find(x => x.uuid === uuid);
+            this.photoConfirm = null;
+            if (!p || !p.delete_url) return;
+
+            const token = document.querySelector('meta[name="csrf-token"]');
+            this.removingPhoto = uuid;
+
+            fetch(p.delete_url, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': token ? token.getAttribute('content') : '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            })
+            .then(r => r.ok ? r.json() : Promise.reject(r))
+            .then(() => {
+                setTimeout(() => {
+                    const at = this.photos.findIndex(x => x.uuid === uuid);
+                    this.photos = this.photos.filter(x => x.uuid !== uuid);
+                    this.removingPhoto = null;
+                    if (this.viewer !== null) {
+                        if (!this.photos.length) this.closeViewer();
+                        else if (at <= this.viewer) this.viewer = Math.max(0, Math.min(this.viewer - (at < this.viewer ? 1 : 0), this.photos.length - 1));
+                    }
+                    this._sayG('success', @js(__('events::events.gallery_photo_removed')));
+                }, 280);
+            })
+            .catch(() => {
+                this.removingPhoto = null;
+                this._sayG('error', @js(__('events::events.gallery_photo_delete_failed')));
+            });
+        },
+
+        /* ── the viewer ────────────────────────────────────────────────── */
+        openViewer(i) {
+            this.viewer = i;
+            this._resetZoom();
+            this.dx = 0;
+            document.documentElement.style.overflow = 'hidden';
+            this._centreThumb();
+        },
+        closeViewer() {
+            this.viewer = null;
+            this._ptrs = {};
+            this._g = null;
+            document.documentElement.style.overflow = '';
+        },
+        go(i) {
+            if (i < 0 || i >= this.photos.length) return;
+            this.viewer = i;
+            this._resetZoom();
+            this._centreThumb();
+        },
+        step(d) { if (this.viewer !== null) this.go(this.viewer + d); },
+
+        _centreThumb() {
+            this.$nextTick(() => {
+                const strip = this.$refs.thumbs;
+                const b = strip ? strip.querySelectorAll('button')[this.viewer] : null;
+                if (b && b.scrollIntoView) b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+            });
+        },
+        _resetZoom() { this.zoom = 1; this.panX = 0; this.panY = 0; },
+
+        stripStyle() {
+            const i = this.viewer || 0;
+            return 'transform:translateX(calc(' + (-i * 100) + '% + ' + this.dx + 'px));'
+                + (this._dragging ? 'transition:none' : 'transition:transform .38s cubic-bezier(.22,1,.36,1)');
+        },
+        zoomStyle() {
+            return 'transform:translate(' + this.panX + 'px,' + this.panY + 'px) scale(' + this.zoom + ');'
+                + (this._dragging ? 'transition:none' : 'transition:transform .25s ease');
+        },
+
+        _clampPan() {
+            const st = this.$refs.stage;
+            if (!st) return;
+            const mx = st.clientWidth * (this.zoom - 1) / 2;
+            const my = st.clientHeight * (this.zoom - 1) / 2;
+            this.panX = Math.max(-mx, Math.min(mx, this.panX));
+            this.panY = Math.max(-my, Math.min(my, this.panY));
+        },
+
+        toggleZoom(ev) {
+            if (this.zoom > 1) return this._resetZoom();
+            const st = this.$refs.stage.getBoundingClientRect();
+            this.zoom = 2.5;
+            this.panX = (st.left + st.width / 2 - ev.clientX) * 1.5;
+            this.panY = (st.top + st.height / 2 - ev.clientY) * 1.5;
+            this._clampPan();
+        },
+
+        vWheel(ev) {
+            const z = Math.max(1, Math.min(5, this.zoom * (ev.deltaY < 0 ? 1.15 : 1 / 1.15)));
+            this.zoom = z;
+            if (z === 1) { this.panX = 0; this.panY = 0; } else this._clampPan();
+        },
+
+        vDown(ev) {
+            if (ev.target.closest('button')) return;
+            try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) {}
+            this._ptrs[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+            const ids = Object.keys(this._ptrs);
+            this._dragging = true;
+
+            if (ids.length === 2) {
+                const [a, b] = ids.map(k => this._ptrs[k]);
+                this._g = { pinch: true, d0: Math.hypot(a.x - b.x, a.y - b.y), z0: this.zoom };
+                this.dx = 0;
+            } else if (ids.length === 1) {
+                this._g = { x0: ev.clientX, y0: ev.clientY, px: this.panX, py: this.panY, t: Date.now(), moved: false };
+            }
+        },
+
+        vMove(ev) {
+            if (!this._ptrs[ev.pointerId] || !this._g) return;
+            this._ptrs[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+            const g = this._g;
+
+            if (g.pinch) {
+                const ids = Object.keys(this._ptrs);
+                if (ids.length < 2) return;
+                const [a, b] = ids.map(k => this._ptrs[k]);
+                this.zoom = Math.max(1, Math.min(5, g.z0 * Math.hypot(a.x - b.x, a.y - b.y) / (g.d0 || 1)));
+                this._clampPan();
+                return;
+            }
+
+            const mx = ev.clientX - g.x0, my = ev.clientY - g.y0;
+            if (Math.abs(mx) > 6 || Math.abs(my) > 6) g.moved = true;
+
+            if (this.zoom > 1) {
+                this.panX = g.px + mx;
+                this.panY = g.py + my;
+                this._clampPan();
+            } else {
+                // Resist at either end, so the edge feels like an edge.
+                const atEdge = (mx > 0 && this.viewer === 0) || (mx < 0 && this.viewer === this.photos.length - 1);
+                this.dx = atEdge ? mx / 3 : mx;
+            }
+        },
+
+        vUp(ev) {
+            delete this._ptrs[ev.pointerId];
+            const g = this._g;
+            const left = Object.keys(this._ptrs).length;
+
+            if (g && g.pinch) {
+                if (left === 0) { this._g = null; this._dragging = false; if (this.zoom < 1.05) this._resetZoom(); }
+                return;
+            }
+            this._g = null;
+            this._dragging = false;
+            if (!g) return;
+
+            if (this.zoom === 1) {
+                const w = this.$refs.stage ? this.$refs.stage.clientWidth : 360;
+                const fast = Math.abs(this.dx) > 40 && Date.now() - g.t < 250;
+                if (Math.abs(this.dx) > w * 0.18 || fast) this.step(this.dx < 0 ? 1 : -1);
+                this.dx = 0;
+            }
+
+            // A tap. Two in quick succession zoom (touch has no dblclick here,
+            // because the stage owns every gesture).
+            if (!g.moved && ev.pointerType !== 'mouse') {
+                const now = Date.now();
+                if (now - this._lastTap < 300) { this.toggleZoom(ev); this._lastTap = 0; }
+                else this._lastTap = now;
+            }
+        },
+
+        _sayG(type, msg) {
+            if (window.showToast) return window.showToast(type, msg);
             if (window.notice) return window.notice(msg);
         },
     };

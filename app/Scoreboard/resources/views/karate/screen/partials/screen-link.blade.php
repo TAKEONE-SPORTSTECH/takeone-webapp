@@ -189,10 +189,13 @@
     // A pinned screen answers from its pin, not from the mat. A bout-pinned
     // board sitting between bouts reports mode 'upcoming' — true of the BOUT,
     // but it is still the mat's screen and still wants the bout endpoint.
+    // A CONSOLE is neither: it draws the state and the queue together, so it
+    // has one address of its own that returns both (same as the BJJ package).
     var showingBout = b.pinned ? b.pinned === 'bout' : (b.mode && b.mode() !== 'upcoming');
-    var url = showingBout ? CFG.state_url : CFG.payload_url;
+    var url = b.pinned === 'console' ? CFG.console_url
+      : (showingBout ? CFG.state_url : CFG.payload_url);
     if (!url) return;
-    fetch(url, { cache: 'no-store' })
+    fetch(url, { cache: 'no-store', headers: { 'Accept': 'application/json' } })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (p) { if (p) b.update(p); })
       .catch(function () { /* keep the last known board up */ });
@@ -223,6 +226,10 @@
       // must IGNORE this rather than reload: a screen waiting to be claimed
       // that reloaded on every result would flicker through a whole event.
       if (!board()) return;
+      // A console cares that the running order moved — its Bouts list is now
+      // wrong — but the board's queue is a different shape from the
+      // console's, so it re-reads its own address instead.
+      if (board().pinned === 'console') { resync(); return; }
       // The mat's own screen never draws the running order — not while a bout
       // is on it, and not while it waits for the next one. It could not draw
       // this payload if it tried: a queue and a bout are different shapes.
@@ -231,7 +238,13 @@
       // queue by a running-order nudge — the scoring table owns the screen
       // until it releases it. The mat screen advertises that by exposing
       // `mode`; the queue board does not.
-      if (board().mode && board().mode() !== 'upcoming') return;
+      //
+      // Asked only of an UNPINNED screen — the one that actually crosses
+      // between the two. `mode()` reports the MAT's mode, so a screen pinned to
+      // the queue was told it was "showing a bout" the moment one was loaded,
+      // and every running-order update after that was dropped (the same fix
+      // the BJJ package carries).
+      if (!board().pinned && board().mode && board().mode() !== 'upcoming') return;
       if (msg.payload) { board().update(msg.payload); } else { resync(); }
       return;
     }
@@ -267,7 +280,18 @@
     // Reload: the scoring table has asked for this screen to start again,
     // because from the floor it looks stuck. Same treatment — there is nothing
     // on this page worth preserving that is not re-fetched on load.
+    // The mat's corners were swapped (Mat\MatCorners). Every surface on the
+    // mat — the console included — draws its layout server-side, so all of
+    // them reload; nothing about the bout is lost, it lives on the server.
+    if (msg.action === 'corners') {
+      if (board()) window.location.reload();
+      return;
+    }
+
     if (msg.action === 'paired' || msg.action === 'unpaired' || msg.action === 'reload') {
+      // Never throw a scoring table's page away mid-bout to fix a screen
+      // across the hall — the console re-reads itself instead.
+      if (board() && board().pinned === 'console') { resync(); return; }
       window.location.reload();
     }
   }

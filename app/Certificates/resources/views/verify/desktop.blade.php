@@ -13,10 +13,10 @@
             <img src="{{ asset('images/fullLogo.png') }}" alt="{{ config('app.name', 'TakeOne') }}" class="h-8 brightness-0 invert mb-6">
             @if($found)
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
-                    <i class="bi {{ $revoked ? 'bi-x-octagon-fill' : 'bi-patch-check-fill' }}"></i>{{ $revoked ? __('cert::messages.verify_chip_revoked') : __('cert::messages.verify_chip_valid') }}
+                    <i class="bi {{ $revoked ? 'bi-x-octagon-fill' : 'bi-patch-check-fill' }}"></i>{{ $revoked ? __('cert::messages.verify_chip_revoked') : ($headings['chip'] ?? __('cert::messages.verify_chip_valid')) }}
                 </span>
             @endif
-            <h1 class="text-2xl font-black mt-3 leading-tight">{{ ! $found ? __('cert::messages.verify_unknown_title') : ($revoked ? __('cert::messages.verify_revoked_title') : __('cert::messages.verify_valid_title')) }}</h1>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ ! $found ? ($headings['unknown'] ?? __('cert::messages.verify_unknown_title')) : ($revoked ? __('cert::messages.verify_revoked_title') : ($headings['valid'] ?? __('cert::messages.verify_valid_title'))) }}</h1>
             <p class="text-sm text-white/85 mt-1.5">{{ $found ? __('cert::messages.verify_issued_by', ['issuer' => $issuer]) : __('cert::messages.verify_unknown') }}</p>
         </div>
     </div>
@@ -38,7 +38,7 @@
                 <dl class="border-t border-gray-100 divide-y divide-gray-50">
                     @foreach(array_filter([
                         __('cert::messages.verify_certificate') => $title,
-                        __('cert::messages.verify_for') => $what,
+                        ($headings['what'] ?? __('cert::messages.verify_for')) => $what,
                         __('cert::messages.verify_event') => $event,
                         __('cert::messages.verify_number') => $number,
                         __('cert::messages.verify_issued') => $issuedOn,
@@ -53,12 +53,12 @@
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex gap-3">
                 <span class="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center flex-shrink-0"><i class="bi bi-info-circle"></i></span>
-                <p class="text-sm text-muted-foreground leading-relaxed">{{ __('cert::messages.verify_note') }}</p>
+                <p class="text-sm text-muted-foreground leading-relaxed">{{ $headings['note'] ?? __('cert::messages.verify_note') }}</p>
             </div>
         @else
             <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
                 <span class="w-14 h-14 mx-auto rounded-2xl bg-muted text-muted-foreground grid place-items-center"><i class="bi bi-question-lg text-2xl"></i></span>
-                <p class="text-sm text-muted-foreground mt-3">{{ __('cert::messages.verify_unknown_hint') }}</p>
+                <p class="text-sm text-muted-foreground mt-3">{{ $headings['unknownHint'] ?? __('cert::messages.verify_unknown_hint') }}</p>
             </div>
         @endif
         </div>

@@ -8,6 +8,7 @@ use App\Events\Sports\Karate\Tournament\RunningOrder;
 use App\Events\Support\Cameras\CameraFleet;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
+use App\Events\Models\EventExhibitionBout;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventOfficial;
 use App\Sports\Combat\BeltRank;
@@ -70,6 +71,8 @@ class Scoring
         'rules',       // {senshuRule, autoSenshu, winByPenalties, atoshiWarn, timeUpBuzzer, gapOn, gap, warning}
         'start_day',   // put the competition under way FROM THE MAT, after a
                        //   filing command was refused — ResultFiling::startDay()
+        'exhibition',  // {a, b} — two entrants of the event, OUTSIDE the draw
+                       //   (EventExhibitionBout; behind events.exhibitions)
     ];
 
     /**
@@ -118,7 +121,7 @@ class Scoring
         // but the page is a convenience and the endpoint is the contract: an
         // official on a second laptop, a stale tab, or a replayed request must
         // all be refused here.
-        if (in_array($command, self::NEEDS_BOUT, true) && ! $state->matchId) {
+        if (in_array($command, self::NEEDS_BOUT, true) && ! $state->hasBout()) {
             throw new \RuntimeException(__('scoreboard::karate_messages.commit_no_bout'));
         }
 
@@ -130,7 +133,9 @@ class Scoring
          * so a scoring table with a finished bout is never stuck waiting for
          * somebody else's screen.
          */
-        if (in_array($command, self::FILES_A_RESULT, true)) {
+        // An exhibition files nothing into the competition, so it is not held
+        // to "has the competition started" — that rule protects the draw.
+        if (in_array($command, self::FILES_A_RESULT, true) && ! $state->exhibitionId) {
             app(\App\Events\Support\ResultFiling::class)->refuseUnlessUnderWay($event);
         }
 
@@ -141,6 +146,7 @@ class Scoring
 
         match ($command) {
             'load' => $this->load($event, $court, $state, (int) ($payload['match_id'] ?? 0), $payload),
+            'exhibition' => $this->exhibition($event, $court, $state, $payload),
             'start' => $this->start($state),
             'pause' => $this->pause($state),
             'point' => $this->point($state, $payload),
@@ -184,7 +190,10 @@ class Scoring
             'corner' => $this->cornerEdit($state, $payload),
             'meta' => $this->meta($state, $payload),
             'rules' => $this->rules($state, $payload, $event),
-            default => null,
+            // A Karate STYLE engine's own commands (Styles\*\Scoring). The
+            // shared engine has none — the endpoint refuses any command not in
+            // the engine's COMMANDS before it gets here.
+            default => $this->styleCommand($event, $court, $state, $command, $payload),
         };
 
         // Append the command to the officiating timeline, after the dispatch
@@ -210,8 +219,8 @@ class Scoring
             // the bout time as the command landed rather than as it was last
             // painted — the difference is seconds, and seconds are the whole
             // point of recording it.
-            clockRemaining: $state->matchId ? round($state->remaining, 2) : null,
-            clockDuration: $state->matchId ? round($state->duration, 2) : null,
+            clockRemaining: $state->hasBout() ? round($state->remaining, 2) : null,
+            clockDuration: $state->hasBout() ? round($state->duration, 2) : null,
         );
 
         // The cameras on this mat, if any, are told the same thing the hall is:
@@ -233,6 +242,26 @@ class Scoring
         );
 
         return $state->save($event, $court);
+    }
+
+    /**
+     * A command only a Karate STYLE engine knows (its COMMANDS adds it). The
+     * shared engine knows none, so this does nothing here.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    protected function styleCommand(ClubEvent $event, string $court, MatState $state, string $command, array $payload): void {}
+
+    /** The penalty ladder this engine runs; its top rung ends the bout. */
+    protected function penaltyLadder(): array
+    {
+        return MatState::PENALTIES;
+    }
+
+    /** Why the bout ended when a corner reaches the top of the ladder. */
+    protected function penaltyEndReason(): string
+    {
+        return 'hansoku';
     }
 
     /* ---------------- The clock ---------------- */
@@ -274,7 +303,7 @@ class Scoring
      *
      * @param  array<string, mixed>  $payload
      */
-    private function autoEnd(MatState $state, array $payload = []): void
+    protected function autoEnd(MatState $state, array $payload = []): void
     {
         $this->finish($state, $payload);
 
@@ -289,7 +318,7 @@ class Scoring
      *
      * @param  array<string, mixed>  $payload
      */
-    private function declareEnd(MatState $state, array $payload = []): void
+    protected function declareEnd(MatState $state, array $payload = []): void
     {
         $this->finish($state, $payload);
 
@@ -318,9 +347,11 @@ class Scoring
      */
     private function refresh(ClubEvent $event, MatState $state): void
     {
-        $match = EventMatch::where('event_id', $event->id)
-            ->with('category:id,name,weight_class')
-            ->find((int) $state->matchId);
+        $match = $state->exhibitionId
+            ? $this->exhibitionAsMatch($event, $state->exhibitionId)
+            : EventMatch::where('event_id', $event->id)
+                ->with('category:id,name,weight_class')
+                ->find((int) $state->matchId);
 
         if (! $match) {
             return;
@@ -335,8 +366,14 @@ class Scoring
                 'representingTenant:id,club_name,logo,country'])
             ->get()->keyBy('id');
 
-        $state->aka = $this->corner($match, 'a', $registrations);
-        $state->ao = $this->corner($match, 'b', $registrations);
+        // The clubs the organiser WROTE DOWN for this event (`event_clubs`) —
+        // teams the platform has never met, which is most of a real
+        // competition. Without them the introduction named a club only for the
+        // few entrants attached to a tenant.
+        $written = \App\Events\Support\EntryClub::forMany($event, $registrations->keys()->all());
+
+        $state->aka = $this->corner($match, 'a', $registrations, $written);
+        $state->ao = $this->corner($match, 'b', $registrations, $written);
     }
 
     /**
@@ -354,6 +391,9 @@ class Scoring
         if (! $match) {
             return;
         }
+
+        // A draw bout replaces an exhibition that was never finished.
+        $this->abandonExhibition($state);
 
         // Keyed by REGISTRATION id, not user id: a_competitor_id/b_competitor_id
         // name the entry in this event, which is what carries the weigh-in
@@ -378,8 +418,14 @@ class Scoring
         // appointed means the chip is hidden — a hall screen naming a referee
         // who was never assigned is worse than one that names none.
         $state->referee = $this->officiatingName($event);
-        $state->aka = $this->corner($match, 'a', $registrations);
-        $state->ao = $this->corner($match, 'b', $registrations);
+        // The clubs the organiser WROTE DOWN for this event (`event_clubs`) —
+        // teams the platform has never met, which is most of a real
+        // competition. Without them the introduction named a club only for the
+        // few entrants attached to a tenant.
+        $written = \App\Events\Support\EntryClub::forMany($event, $registrations->keys()->all());
+
+        $state->aka = $this->corner($match, 'a', $registrations, $written);
+        $state->ao = $this->corner($match, 'b', $registrations, $written);
 
         // A fresh bout: nothing carries over from whoever was on this mat
         // before — except the CLOCK LENGTH, which is a setting rather than
@@ -397,6 +443,7 @@ class Scoring
         };
         $state->remaining = $state->duration;
         $state->warning = min($state->warning, $state->duration);
+        $state->tally = [];
         $state->akaScore = $state->aoScore = 0;
         $state->akaPen = $state->aoPen = 0;
         $state->akaSenshu = $state->aoSenshu = false;
@@ -480,7 +527,7 @@ class Scoring
      * publication, and a member who has not made their picture public does not
      * get their face projected on a wall.
      */
-    private function corner(EventMatch $match, string $side, $registrations): array
+    private function corner(EventMatch $match, string $side, $registrations, array $written = []): array
     {
         $id = $match->{$side.'_competitor_id'};
         $reg = $id ? $registrations->get($id) : null;
@@ -488,15 +535,18 @@ class Scoring
         // The club they COMPETE FOR — see ClubEventRegistration::competingClub().
         $club = $reg?->competingClub();
         $belt = $user ? $this->belts->for($user, $reg) : null;
+        // A tenant wins when the entry names one; otherwise the club the
+        // organiser wrote down for this event stands in, name and crest alike.
+        $other = (! $club && $id) ? ($written[$id] ?? null) : null;
 
         return [
             'name' => $match->{$side.'_name'} ?: ($user?->full_name ?? $user?->name ?? ''),
-            'club' => $club?->club_name ?? '',
+            'club' => $club?->club_name ?? ($other['name'] ?? ''),
             // The club's country, never the person's passport: they are here
             // as their club, and that is what the hall is told.
-            'country' => $club?->country ?: ($match->{$side.'_country'} ?: ''),
-            'flag' => strtolower((string) ($match->{$side.'_country'} ?: $club?->country ?: '')) ?: null,
-            'logo' => $club?->logo ? file_url($club->logo) : null,
+            'country' => ($club?->country ?: ($other['country'] ?? null)) ?: ($match->{$side.'_country'} ?: ''),
+            'flag' => strtolower((string) ($match->{$side.'_country'} ?: $club?->country ?: ($other['country'] ?? ''))) ?: null,
+            'logo' => $club?->logo ? file_url($club->logo) : ($other['logo'] ?? null),
             // The event's OWN photo wins, then the member's profile picture if
             // they published it. The first was uploaded by an organiser FOR this
             // competition — including for the many competitors who have no
@@ -602,9 +652,9 @@ class Scoring
      * a rule the other console does not have. `finish` with no winner in the
      * payload is the ordinary "the points decided it" ending.
      */
-    private function checkGap(MatState $state): void
+    protected function checkGap(MatState $state): void
     {
-        if (! $state->gapOn || $state->gap < 1 || $state->finished || ! $state->matchId) {
+        if (! $state->gapOn || $state->gap < 1 || $state->finished || ! $state->hasBout()) {
             return;
         }
 
@@ -618,7 +668,7 @@ class Scoring
      * penalty given by mistake has to come off — a wrap-around alone would make
      * an official cycle through the whole ladder in front of a hall.
      */
-    private function penalty(MatState $state, array $payload): void
+    protected function penalty(MatState $state, array $payload): void
     {
         $side = $this->side($payload);
 
@@ -628,7 +678,7 @@ class Scoring
 
         $field = $side.'Pen';
         $before = $state->$field;
-        $top = count(MatState::PENALTIES);
+        $top = count($this->penaltyLadder());
 
         // Two ways in, one ladder. `level` is the console's five cells — the
         // official presses the penalty they are giving, rather than counting
@@ -652,12 +702,12 @@ class Scoring
         // the other corner however the points stand. Ended here, on the server,
         // for the same reason the gap is — so both consoles and the wall agree,
         // and so the reason is on the record rather than in somebody's memory.
-        if ($state->$field >= $top && $state->winByPenalties && ! $state->finished && $state->matchId) {
+        if ($state->$field >= $top && $state->winByPenalties && ! $state->finished && $state->hasBout()) {
             // The winner is not in doubt here — the ladder decided it — but the
             // table still confirms, so one path ends a bout rather than two.
             $this->autoEnd($state, [
                 'winner' => $side === 'aka' ? 'ao' : 'aka',
-                'reason' => 'hansoku',
+                'reason' => $this->penaltyEndReason(),
             ]);
         }
     }
@@ -789,6 +839,7 @@ class Scoring
 
     private function reset(MatState $state): void
     {
+        $state->tally = [];
         $state->akaScore = $state->aoScore = 0;
         $state->akaPen = $state->aoPen = 0;
         $state->akaSenshu = $state->aoSenshu = false;
@@ -882,6 +933,12 @@ class Scoring
      */
     private function commit(ClubEvent $event, string $court, MatState $state): void
     {
+        if ($state->exhibitionId) {
+            $this->commitExhibition($state);
+
+            return;
+        }
+
         if (! $state->matchId) {
             throw new \RuntimeException(__('scoreboard::karate_messages.commit_no_bout'));
         }
@@ -928,6 +985,7 @@ class Scoring
 
     private function clear(MatState $state): void
     {
+        $this->abandonExhibition($state);
         $state->mode = MatState::MODE_UPCOMING;
         $state->matchId = null;
         $state->matchNo = $state->stage = $state->division = null;
@@ -935,8 +993,187 @@ class Scoring
         $this->reset($state);
     }
 
+    /* ── Side exhibition bouts ────────────────────────────────────────────
+       Any two entrants of THIS event, put on the mat outside the draw (owner,
+       2026-10-09). Stored only in event_exhibition_bouts: never an EventMatch,
+       so the bracket, advancement, podiums, the running order and every W–L
+       record are untouched by construction — there is no write path from here
+       into any of them. */
+
+    /**
+     * Put two entrants on the mat as an exhibition.
+     *
+     * @param  array<string, mixed>  $payload  a, b — registration ids of this event
+     */
+    private function exhibition(ClubEvent $event, string $court, MatState $state, array $payload): void
+    {
+        if (! config('events.exhibitions', false)) {
+            throw new \RuntimeException(__('scoreboard::karate_messages.ex_off'));
+        }
+
+        // Never over a bout whose clock is running — stop it first. A stopped
+        // draw bout simply goes back to the queue: nothing of it was filed.
+        if ($state->running) {
+            throw new \RuntimeException(__('scoreboard::karate_messages.ex_running'));
+        }
+
+        $a = (int) ($payload['a'] ?? 0);
+        $b = (int) ($payload['b'] ?? 0);
+
+        if (! $a || ! $b || $a === $b) {
+            throw new \RuntimeException(__('scoreboard::karate_messages.ctl_arc_same'));
+        }
+
+        // Both must be entries of THIS event — never another event's people.
+        $regs = ClubEventRegistration::where('event_id', $event->id)
+            ->whereIn('id', [$a, $b])
+            ->with('user:id,full_name,name')
+            ->get()->keyBy('id');
+
+        if ($regs->count() !== 2) {
+            throw new \RuntimeException(__('scoreboard::karate_messages.ex_not_entrants'));
+        }
+
+        // The name the draw prints for them, if the draw has one.
+        $nameOf = function (int $id) use ($event, $regs): string {
+            $m = EventMatch::where('event_id', $event->id)
+                ->where(fn ($q) => $q->where('a_competitor_id', $id)->orWhere('b_competitor_id', $id))
+                ->first(['a_competitor_id', 'a_name', 'b_name']);
+            $drawn = $m ? ($m->a_competitor_id === $id ? $m->a_name : $m->b_name) : null;
+            $user = $regs->get($id)?->user;
+
+            return (string) ($drawn ?: ($user?->full_name ?: ($user?->name ?? '')));
+        };
+
+        $bout = \Illuminate\Support\Facades\DB::transaction(function () use ($event, $court, $a, $b, $nameOf) {
+            $number = (int) EventExhibitionBout::where('event_id', $event->id)->lockForUpdate()->max('number') + 1;
+
+            return EventExhibitionBout::create([
+                'event_id' => $event->id,
+                'number' => $number,
+                'court' => $court,
+                'a_registration_id' => $a,
+                'b_registration_id' => $b,
+                'a_name' => mb_substr($nameOf($a), 0, 255),
+                'b_name' => mb_substr($nameOf($b), 0, 255),
+                'status' => EventExhibitionBout::STATUS_RUNNING,
+                'created_by' => \Illuminate\Support\Facades\Auth::id(),
+            ]);
+        });
+
+        // Whatever was on the mat goes back where it came from first: a draw
+        // bout simply returns to the queue (nothing was filed), an unfinished
+        // exhibition is recorded as abandoned.
+        $this->abandonExhibition($state);
+
+        $match = $this->exhibitionAsMatch($event, $bout->id);
+
+        $registrations = ClubEventRegistration::where('event_id', $event->id)
+            ->whereIn('id', [$a, $b])
+            ->with(['user:id,full_name,name,gender,birthdate,nationality,height_cm,profile_picture,profile_picture_is_public',
+                'user.certifications:id,user_id,title,issue_date',
+                'user.skillAcquisitions:id,user_id,proficiency_level,start_date',
+                'user.memberClubs:id,club_name,logo,country',
+                'representingTenant:id,club_name,logo,country'])
+            ->get()->keyBy('id');
+
+        $written = \App\Events\Support\EntryClub::forMany($event, [$a, $b]);
+
+        $state->mode = MatState::MODE_VS;
+        $state->matchId = null;
+        $state->exhibitionId = $bout->id;
+        $state->matchNo = $bout->code();
+        $state->stage = __('scoreboard::karate_messages.ex_stage');
+        $state->division = '';
+        $state->referee = $this->officiatingName($event);
+        $state->aka = $this->corner($match, 'a', $registrations, $written);
+        $state->ao = $this->corner($match, 'b', $registrations, $written);
+
+        // A fresh bout, exactly as load() starts one.
+        $state->duration = match (true) {
+            array_key_exists('seconds', $payload) => max(30, round((float) $payload['seconds'])),
+            array_key_exists('minutes', $payload) => max(30, (float) $payload['minutes'] * 60),
+            default => max(30, $state->duration ?: 180),
+        };
+        $state->remaining = $state->duration;
+        $state->warning = min($state->warning, $state->duration);
+        $state->tally = [];
+        $state->akaScore = $state->aoScore = 0;
+        $state->akaPen = $state->aoPen = 0;
+        $state->akaSenshu = $state->aoSenshu = false;
+        $state->running = false;
+        $state->finished = false;
+        $state->celebrationClosed = false;
+        $state->awaitingDecision = false;
+        $state->lastEvent = null;
+        $state->winner = null;
+        $state->winReason = null;
+        $state->winNote = null;
+    }
+
+    /**
+     * An exhibition, as an UNSAVED EventMatch — only so corner() can announce
+     * its two entrants exactly as it announces a draw bout's. Never saved.
+     */
+    private function exhibitionAsMatch(ClubEvent $event, int $id): ?EventMatch
+    {
+        $bout = EventExhibitionBout::where('event_id', $event->id)->find($id);
+
+        if (! $bout) {
+            return null;
+        }
+
+        $m = new EventMatch;
+        $m->a_competitor_id = $bout->a_registration_id;
+        $m->b_competitor_id = $bout->b_registration_id;
+        $m->a_name = $bout->a_name;
+        $m->b_name = $bout->b_name;
+
+        return $m;
+    }
+
+    /** File an exhibition's result on its own row, then clear the mat. */
+    private function commitExhibition(MatState $state): void
+    {
+        if (! $state->akaLeads() && ! $state->aoLeads()) {
+            throw new \RuntimeException(__('scoreboard::karate_messages.commit_level'));
+        }
+
+        EventExhibitionBout::whereKey($state->exhibitionId)
+            ->where('status', EventExhibitionBout::STATUS_RUNNING)
+            ->update([
+                'winner' => $state->akaLeads() ? 'a' : 'b',
+                'a_score' => (string) $state->akaScore,
+                'b_score' => (string) $state->aoScore,
+                'win_reason' => $state->winner !== null ? ($state->winReason ?: 'other') : null,
+                'win_note' => $state->winner !== null ? $state->winNote : null,
+                'status' => EventExhibitionBout::STATUS_DONE,
+                'finished_by' => \Illuminate\Support\Facades\Auth::id(),
+                'finished_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        // Filed — so clearing the mat must not mark it abandoned.
+        $state->exhibitionId = null;
+        $this->clear($state);
+    }
+
+    /** An exhibition leaving the mat unfinished is recorded as abandoned. */
+    private function abandonExhibition(MatState $state): void
+    {
+        if (! $state->exhibitionId) {
+            return;
+        }
+
+        EventExhibitionBout::whereKey($state->exhibitionId)
+            ->where('status', EventExhibitionBout::STATUS_RUNNING)
+            ->update(['status' => EventExhibitionBout::STATUS_ABANDONED, 'updated_at' => now()]);
+
+        $state->exhibitionId = null;
+    }
+
     /** 'aka' or 'ao', or null — never a side name the caller invented. */
-    private function side(array $payload): ?string
+    protected function side(array $payload): ?string
     {
         $side = strtolower((string) ($payload['side'] ?? ''));
 

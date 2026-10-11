@@ -137,6 +137,7 @@
         <div @if($officiating) x-effect="$dispatch('roster-readiness', { ready: readyCount, total: gateTotal, tab: rtab })" @endif
              x-init="deepLink()"
              @open-verification.window="openEntry($event.detail.entry)"
+             @if($officiating) @entries-verified.window="(($event.detail || {}).ids || []).forEach((id) => { const g = gates[id]; if (! g) return; if ($event.detail.action === 'paid') g.pay_verified = true; else g.weigh_verified = true; })" @endif
              x-data="{
                 rtab: 'participants', open: false, q: '',
                 // Filtering is client-side on purpose: every name in the current

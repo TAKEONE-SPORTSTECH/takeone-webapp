@@ -181,6 +181,102 @@
         },
         isPicked(id) { return this.picked.indexOf(id) !== -1; },
 
+        {{-- ===== Many at once: Paid / Weighed (2026-10-10) =====
+             A desk with a long list cannot open a sheet per person. These go
+             through ONE endpoint (verifyBulk) behind the same two gates as the
+             sheet — the buttons are only drawn for whoever holds the gate.
+             ⚠️ No double quotes in here: this is the value of an x-data attribute. --}}
+        visibleCardRegs() {
+            return Array.from(document.querySelectorAll('article.pcard[data-entry]'))
+                .filter((el) => el.offsetParent !== null)
+                .map((el) => { const v = el.getAttribute('data-entry'); const n = Number(v); return isNaN(n) ? v : n; });
+        },
+        get allPicked() {
+            const v = this.visibleCardRegs();
+            return v.length > 0 && v.every((r) => this.isPicked(r));
+        },
+        toggleAll() {
+            const v = this.visibleCardRegs();
+            if (v.length && v.every((r) => this.isPicked(r))) { this.picked = []; return; }
+            v.forEach((r) => { if (! this.isPicked(r)) this.picked.push(r); });
+        },
+
+        async bulkVerify(action) {
+            if (this.busy || ! this.picked.length) return;
+
+            const ok = await window.confirmAction({
+                title: action === 'paid' ? @js(__('personal.event_people_bulk_paid_title')) : @js(__('personal.event_people_bulk_weighed_title')),
+                message: (action === 'paid' ? @js(__('personal.event_people_bulk_paid_message')) : @js(__('personal.event_people_bulk_weighed_message'))).replace(':count', this.picked.length),
+                type: 'info',
+                confirmText: @js(__('personal.event_people_bulk_confirm')),
+            });
+            if (! ok) return;
+
+            this.busy = true;
+            try {
+                const res = await fetch(@js(route('me.events.verify.bulk', $e['key'])), {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ action, registration_ids: this.allEntriesOf(this.picked) }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (! res.ok || ! d.success) throw new Error(d.message || @js(__('personal.event_show_action_failed')));
+
+                {{-- The verification sheet's own state, so a sheet opened next
+                     agrees with the card. --}}
+                window.dispatchEvent(new CustomEvent('entries-verified', { detail: { action, ids: d.updated || [] } }));
+
+                await this.refreshCards(d.updated || []);
+
+                window.showToast('success', d.message);
+                if (d.warning) window.showToast('warning', d.warning);
+
+                this.stopSelecting();
+            } catch (e) {
+                window.showToast('error', e.message);
+            } finally { this.busy = false; }
+        },
+
+        {{-- Re-reads this page and swaps in the server-rendered badges of the
+             cards that changed, plus the money ring — the server decides what
+             each badge says (part-paid, verified weight), so nothing about it is
+             rebuilt in JS. Only static markup is swapped; the card's Alpine
+             bindings live on the article itself and are left alone. --}}
+        async refreshCards(ids) {
+            if (! ids.length) return;
+            const cards = {};
+            ids.forEach((id) => { cards[String(this.cardRegOf(id))] = true; });
+
+            try {
+                const res = await fetch(window.location.href, { headers: { 'Accept': 'text/html' }, credentials: 'same-origin' });
+                if (! res.ok) return;
+                const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+
+                const fresh = {};
+                doc.querySelectorAll('article.pcard[data-entry]').forEach((el) => { fresh[el.getAttribute('data-entry')] = el; });
+
+                document.querySelectorAll('article.pcard[data-entry]').forEach((el) => {
+                    const key = el.getAttribute('data-entry');
+                    const nu = fresh[key];
+                    if (! cards[key] || ! nu) return;
+
+                    ['data-status', 'data-weight-verified'].forEach((attr) => {
+                        nu.hasAttribute(attr) ? el.setAttribute(attr, nu.getAttribute(attr)) : el.removeAttribute(attr);
+                    });
+                    const oldInfo = el.querySelector('.info'), newInfo = nu.querySelector('.info');
+                    if (oldInfo && newInfo) oldInfo.innerHTML = newInfo.innerHTML;
+                });
+
+                const ring = document.getElementById('people-money-ring'), nuRing = doc.getElementById('people-money-ring');
+                if (ring && nuRing) ring.outerHTML = nuRing.outerHTML;
+            } catch (e) { /* the badges catch up on the next visit */ }
+        },
+
         async removePicked() {
             if (this.busy || ! this.picked.length) return;
 
@@ -790,12 +886,22 @@
                  event. Off by default: the roster is a reading screen, and a
                  checkbox beside every name turns reading it into a form. --}}
             @if($canManage)
+                <div class="flex items-center gap-2">
+                {{-- Select everybody the search is showing — a desk marking a
+                     whole club paid types the club's name, then taps this. --}}
+                <button type="button" x-show="tab === 'athletes' && selecting" x-cloak
+                        @click="toggleAll()"
+                        class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold flex-shrink-0">
+                    <i class="bi" :class="allPicked ? 'bi-dash-square' : 'bi-check-all'"></i>
+                    <span>{{ __('personal.event_people_select_all') }}</span>
+                </button>
                 <button type="button" x-show="tab === 'athletes'"
                         @click="selecting ? stopSelecting() : startSelecting()"
                         class="m-press inline-flex items-center gap-2 h-10 ps-3 pe-4 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-sm font-semibold flex-shrink-0">
                     <i class="bi" :class="selecting ? 'bi-x-lg' : 'bi-check2-square'"></i>
                     <span x-text="selecting ? @js(__('shared.cancel')) : @js(__('personal.event_people_select'))"></span>
                 </button>
+                </div>
             @endif
         </div>
 
@@ -835,7 +941,7 @@
                 $done = $circ * min(100, max(0, $money['percent'])) / 100;
             @endphp
 
-            <div class="flex-shrink-0 text-center" role="img"
+            <div id="people-money-ring" class="flex-shrink-0 text-center" role="img"
                  aria-label="{{ __('personal.event_people_paid_of', ['paid' => $money['paid'], 'total' => $money['total']]) }}">
                 <div class="relative" style="width:68px; height:68px;">
                     <svg viewBox="0 0 68 68" style="width:68px; height:68px; transform: rotate(-90deg);" aria-hidden="true">
@@ -1944,20 +2050,40 @@
              x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
              class="fixed inset-x-0 bottom-0 z-[60] bg-white border-t border-gray-100 shadow-2xl px-4 pt-3"
              style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
-            <div class="mx-auto w-full max-w-lg flex items-center gap-3">
-                <span class="min-w-0 flex-1 text-sm font-bold text-foreground"
-                      x-text="@js(__('personal.event_people_selected')).replace(':count', picked.length)"></span>
+            <div class="mx-auto w-full max-w-lg">
+                <div class="flex items-center gap-3">
+                    <span class="min-w-0 flex-1 text-sm font-bold text-foreground"
+                          x-text="@js(__('personal.event_people_selected')).replace(':count', picked.length)"></span>
 
-                <button type="button" @click="stopSelecting()" :disabled="busy"
-                        class="m-press h-11 px-4 rounded-xl text-sm font-bold text-muted-foreground flex-shrink-0 disabled:opacity-50">
-                    {{ __('shared.cancel') }}
-                </button>
+                    <button type="button" @click="stopSelecting()" :disabled="busy"
+                            class="m-press h-9 px-3 rounded-xl text-sm font-bold text-muted-foreground flex-shrink-0 disabled:opacity-50">
+                        {{ __('shared.cancel') }}
+                    </button>
+                </div>
 
-                <button type="button" @click="removePicked()" :disabled="busy"
-                        class="m-press h-11 px-5 rounded-xl bg-destructive text-white text-sm font-black flex items-center gap-2 flex-shrink-0 disabled:opacity-50">
-                    <i class="bi" :class="busy ? 'bi-hourglass-split' : 'bi-person-dash-fill'"></i>
-                    {{ __('personal.event_people_remove') }}
-                </button>
+                {{-- Paid / Weighed only for whoever holds that gate — the
+                     endpoint re-checks; this decides what is OFFERED. --}}
+                <div class="mt-2 grid gap-2" style="grid-template-columns: repeat({{ 1 + ($canPay ? 1 : 0) + ($canWeigh ? 1 : 0) }}, minmax(0, 1fr));">
+                    @if($canPay)
+                        <button type="button" @click="bulkVerify('paid')" :disabled="busy"
+                                class="m-press h-11 px-3 rounded-xl bg-green-600 text-white text-sm font-black flex items-center justify-center gap-1.5 disabled:opacity-50">
+                            <i class="bi" :class="busy ? 'bi-hourglass-split' : 'bi-cash-coin'"></i>
+                            {{ __('personal.event_people_bulk_paid') }}
+                        </button>
+                    @endif
+                    @if($canWeigh)
+                        <button type="button" @click="bulkVerify('weighed')" :disabled="busy"
+                                class="m-press h-11 px-3 rounded-xl bg-primary text-white text-sm font-black flex items-center justify-center gap-1.5 disabled:opacity-50">
+                            <i class="bi" :class="busy ? 'bi-hourglass-split' : 'bi-speedometer2'"></i>
+                            {{ __('personal.event_people_bulk_weighed') }}
+                        </button>
+                    @endif
+                    <button type="button" @click="removePicked()" :disabled="busy"
+                            class="m-press h-11 px-3 rounded-xl bg-destructive text-white text-sm font-black flex items-center justify-center gap-1.5 disabled:opacity-50">
+                        <i class="bi" :class="busy ? 'bi-hourglass-split' : 'bi-person-dash-fill'"></i>
+                        {{ __('personal.event_people_remove') }}
+                    </button>
+                </div>
             </div>
         </div>
     </template>

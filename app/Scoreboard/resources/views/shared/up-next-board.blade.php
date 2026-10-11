@@ -187,8 +187,19 @@
     <div id="head">
       <div style="flex:1; display:flex; align-items:center; gap:18px;">
         {{-- The two bars are the corners' colours, on the sides the corners stand. --}}
-        @php $upRedRight = \App\Sports\Combat\CornerSide::redRight($sport); @endphp
-        <div style="width:10px; height:64px; {{ $upRedRight ? 'background:#026fd7; background:oklch(0.55 0.18 255);' : 'background:#ea3c3f; background:oklch(0.62 0.21 25);' }}"></div>
+        {{-- A host may pass its mat's own side (`redRight`); otherwise the sport's convention. --}}
+        @php $upRedRight = $redRight ?? \App\Sports\Combat\CornerSide::redRight($sport); @endphp
+        {{-- The second corner's colour: blue, or white where the host says so (Kyokushin's SHIRO). --}}
+        @php $upSecondBar = ($secondTone ?? 'blue') === 'white' ? 'background:#f2f2ef;' : 'background:#026fd7; background:oklch(0.55 0.18 255);'; @endphp
+        {{-- …or the host's own corner colours (Karate's Mat\CornerLook), when it passes them. --}}
+        @php
+          $upFirstBar = 'background:#ea3c3f; background:oklch(0.62 0.21 25);';
+          if (! empty($look)) {
+              $upFirstBar = 'background:'.$look['aka']['bar'].';';
+              $upSecondBar = 'background:'.$look['ao']['bar'].';';
+          }
+        @endphp
+        <div style="width:10px; height:64px; {{ $upRedRight ? $upSecondBar : $upFirstBar }}"></div>
         <div id="eventTitle" style="font-weight:700; font-size:34px; letter-spacing:0.24em; text-transform:uppercase; color:rgba(232,230,224,0.85); max-width:520px;"></div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
@@ -200,7 +211,7 @@
           <span style="font-weight:600; font-size:32px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::'.$ns.'.court_court') }}</span>
           <span id="courtNumber" style="font-family:'Anton',sans-serif; font-size:52px; color:#fff;"></span>
         </div>
-        <div style="width:10px; height:64px; {{ $upRedRight ? 'background:#ea3c3f; background:oklch(0.62 0.21 25);' : 'background:#026fd7; background:oklch(0.55 0.18 255);' }}"></div>
+        <div style="width:10px; height:64px; {{ $upRedRight ? $upFirstBar : $upSecondBar }}"></div>
       </div>
     </div>
 
@@ -212,9 +223,17 @@
 
 @php
   // Left side first. Which corner stands where is the sport's convention.
-  $upNextSides = \App\Sports\Combat\CornerSide::redRight($sport)
-      ? [['key' => 'blue', 'tone' => 'blue'], ['key' => 'red', 'tone' => 'red']]
-      : [['key' => 'red', 'tone' => 'red'], ['key' => 'blue', 'tone' => 'blue']];
+  $upNextSides = ($redRight ?? \App\Sports\Combat\CornerSide::redRight($sport))
+      ? [['key' => 'blue', 'tone' => $secondTone ?? 'blue'], ['key' => 'red', 'tone' => 'red']]
+      : [['key' => 'red', 'tone' => 'red'], ['key' => 'blue', 'tone' => $secondTone ?? 'blue']];
+  // A host's own corner colours, painted onto each lane (red = aka, blue = ao).
+  if (! empty($look)) {
+      foreach ($upNextSides as &$upSide) {
+          $c = $look[$upSide['key'] === 'red' ? 'aka' : 'ao'];
+          $upSide['paint'] = ['from' => $c['laneFrom'], 'to' => $c['laneTo']];
+      }
+      unset($upSide);
+  }
 @endphp
 @include('scoreboard::partials.up-next')
 <script>

@@ -6,6 +6,8 @@ use Ahl\Certificates\Certificates as Engine;
 use Ahl\Certificates\CertificateService;
 use Ahl\Certificates\Contracts\FileStore;
 use Ahl\Certificates\Models\CertificateTemplate;
+use Ahl\Certificates\Support\Format;
+use Ahl\Certificates\Support\Formats;
 use Ahl\Certificates\Support\Layout;
 use App\Certificates\Contracts\CertificateContext;
 use App\Certificates\Support\CertificateImages;
@@ -48,6 +50,8 @@ class DesignController extends Controller
             'headline' => $provider->headline($model),
             'accent' => $provider->brand($model)['accent'] ?? '#6d5bd0',
             'endpoints' => $this->endpoints($provider, $model),
+            // Officials' badges use this same room on a badge-sized page; only its words differ.
+            'badges' => $provider instanceof \App\Events\Support\EventBadges,
             'backUrl' => $request->query('back') && str_starts_with((string) $request->query('back'), '/') && ! str_starts_with((string) $request->query('back'), '//')
                 ? (string) $request->query('back') : route('me.certificates.index'),
         ]);
@@ -66,8 +70,10 @@ class DesignController extends Controller
         abort_unless(in_array($type, $provider->types(), true), 404);
 
         $data = $request->validate($this->fieldRules(true));
-        $fields = $this->fields($data);
-        if (! array_filter($fields['title']) || ! array_filter($fields['body'])) {
+        $format = Formats::forType($type);
+        $fields = $this->fields($data, $format);
+        // A certificate says what it is and why; another format (a badge) may carry no wording at all.
+        if ($format->key === Formats::CERTIFICATE && (! array_filter($fields['title']) || ! array_filter($fields['body']))) {
             return response()->json(['success' => false, 'message' => __('cert::messages.wording_required')], 422);
         }
 
@@ -97,11 +103,17 @@ class DesignController extends Controller
             $data = $request->validate($this->fieldRules(false));
             $template = $template->replicate();
             $template->uuid = $service->templateFor($type, $model)->uuid;
-            $template->fill($this->fields($data));
+            $template->fill($this->fields($data, $template->format()));
         }
 
-        $png = $service->preview($template, $locale, $model,
-            $request->boolean('print') ? CertificateService::PURPOSE_PRINT : CertificateService::PURPOSE_DOWNLOAD, 80);
+        // The same number of pixels across whatever the page's size: a small badge is drawn
+        // at a higher resolution, so the editor shows it as crisply as a certificate.
+        $format = $template->format();
+        $dpi = (int) round(80 * Layout::PAGE_W / $format->long);
+        $purpose = $request->boolean('print') ? CertificateService::PURPOSE_PRINT : CertificateService::PURPOSE_DOWNLOAD;
+        $png = $provider instanceof \App\Events\Support\EventBadges && $model instanceof \App\Events\Models\ClubEvent
+            ? $service->renderDocument($template, $locale, $provider->sampleFields($model, $locale), $model, $purpose, $dpi)
+            : $service->preview($template, $locale, $model, $purpose, $dpi);
 
         // Sent as a JPEG: a tenth of the PNG's weight, and a preview is only looked at.
         $im = @imagecreatefromstring($png);
@@ -157,12 +169,14 @@ class DesignController extends Controller
         $small = false;
         $response = $this->withEditable($request, $context, $key, $type, $service, function (CertificateTemplate $t) use ($request, $files, $images, &$small) {
             $request->validate(['image' => ['required', 'file', 'max:'.(CertificateImages::MAX_ARTWORK_BYTES / 1024)]]);
-            $r = $images->artwork($request->file('image'));
+            $r = $images->artwork($request->file('image'), $t->pageOrientation());
             if (! $r['ok']) {
                 return $r['error'];
             }
             $files->put($t, CertificateTemplate::BACKGROUND_SLOT, $r['bytes'], $r['mime'], 'background');
-            $t->forceFill(['background' => 'artwork'])->save();
+            $files->put($t, CertificateTemplate::BACKGROUND_SOURCE_SLOT, $r['source'], 'image/jpeg', 'background_source');
+            // A new picture starts the way the page used to place it; the organiser changes it from there.
+            $t->forceFill(['background' => 'artwork', 'artwork_fit' => $r['fit']])->save();
             $small = isset($r['warning']);
 
             return null;
@@ -180,9 +194,8 @@ class DesignController extends Controller
     {
         return $this->withEditable($request, $context, $key, $type, $service, function (CertificateTemplate $t) use ($files) {
             $files->delete($t, CertificateTemplate::BACKGROUND_SLOT);
-            if ($t->background === 'artwork') {
-                $t->forceFill(['background' => 'plain'])->save();
-            }
+            $files->delete($t, CertificateTemplate::BACKGROUND_SOURCE_SLOT);
+            $t->forceFill(['artwork_fit' => null] + ($t->background === 'artwork' ? ['background' => 'plain'] : []))->save();
 
             return null;
         }, 'artwork_removed');
@@ -209,17 +222,45 @@ class DesignController extends Controller
             'print_offset_x' => ['integer', 'between:-30,30'],
             'print_offset_y' => ['integer', 'between:-30,30'],
             // Where each element sits (Support\Layout::sanitize keeps only known fields, on the page).
-            'layout' => ['nullable', 'array', 'max:20'],
+            'layout' => ['nullable', 'array', 'max:40'],
+            // Which way up the page is; a portrait page keeps its own arrangement.
+            'orientation' => ['nullable', Rule::in(Layout::ORIENTATIONS)],
+            'layout_portrait' => ['nullable', 'array', 'max:40'],
+            // The organiser's own texts and erased areas (Support\Layout::customs keeps only key, words, style / page).
+            'elements' => ['nullable', 'array', 'max:'.(Layout::MAX_CUSTOM + Layout::MAX_ERASE)],
+            'artwork_fit' => ['nullable', Rule::in(CertificateTemplate::ARTWORK_FITS)],
+            'print_bare' => ['nullable', 'boolean'],
         ];
     }
 
     /** The validated form as template attributes: text stripped of markup, one entry per locale. */
-    private function fields(array $data): array
+    private function fields(array $data, ?Format $format = null): array
     {
+        $format ??= Formats::get(Formats::CERTIFICATE);
         $clean = fn ($map) => collect(Engine::locales())->mapWithKeys(fn ($l) => [$l => trim(strip_tags((string) ($map[$l] ?? '')))])->all();
         $line = fn ($v) => ($v = trim(strip_tags((string) $v))) === '' ? null : $v;
 
-        return [
+        // Absent is not blank: a caller that never sent the page's orientation leaves it alone.
+        $page = [];
+        if (array_key_exists('orientation', $data)) {
+            // Stored only when the page is turned from its format's own way (a certificate lies flat, a badge stands).
+            $o = Layout::orientation($data['orientation']);
+            $page['orientation'] = $o === $format->defaultOrientation ? null : $o;
+        }
+        if (array_key_exists('elements', $data)) {
+            $page['elements'] = ($e = Layout::customs($data['elements'] ?? [], Engine::locales())) === [] ? null : $e;
+        }
+        if (array_key_exists('print_bare', $data)) {
+            $page['print_bare'] = (bool) $data['print_bare'];
+        }
+        if (array_key_exists('artwork_fit', $data)) {
+            $page['artwork_fit'] = $data['artwork_fit'];
+        }
+        if (array_key_exists('layout_portrait', $data)) {
+            $page['layout_portrait'] = ($l = Layout::sanitize((array) ($data['layout_portrait'] ?? []), 'portrait', [], $format)) === [] ? null : $l;
+        }
+
+        return $page + [
             'title' => $clean($data['title'] ?? []),
             'body' => $clean($data['body'] ?? []),
             'signature1_name' => $line($data['signature1_name'] ?? null),
@@ -232,7 +273,7 @@ class DesignController extends Controller
             'accent' => $data['accent'] ?? null,
             'print_offset_x' => (int) ($data['print_offset_x'] ?? 0),
             'print_offset_y' => (int) ($data['print_offset_y'] ?? 0),
-            'layout' => ($l = Layout::sanitize((array) ($data['layout'] ?? []))) === [] ? null : $l,
+            'layout' => ($l = Layout::sanitize((array) ($data['layout'] ?? []), 'landscape', [], $format)) === [] ? null : $l,
         ];
     }
 
@@ -275,8 +316,10 @@ class DesignController extends Controller
             'background' => $current->background ?: 'plain', 'accent' => $current->accent,
             'print_offset_x' => (int) $current->print_offset_x, 'print_offset_y' => (int) $current->print_offset_y,
             'layout' => $current->layout,
+            'orientation' => $current->orientation, 'layout_portrait' => $current->layout_portrait,
+            'elements' => $current->elements, 'artwork_fit' => $current->artwork_fit, 'print_bare' => $current->print_bare,
         ])->save();
-        foreach (['signature_1', 'signature_2', CertificateTemplate::BACKGROUND_SLOT] as $slot) {
+        foreach (['signature_1', 'signature_2', CertificateTemplate::BACKGROUND_SLOT, CertificateTemplate::BACKGROUND_SOURCE_SLOT] as $slot) {
             if ($file = $files->get($current, $slot)) {
                 $files->put($into, $slot, $file['contents'], $file['mime'], $slot);
             } else {
@@ -328,9 +371,15 @@ class DesignController extends Controller
                 'print_offset_x' => (int) $t->print_offset_x,
                 'print_offset_y' => (int) $t->print_offset_y,
                 'layout' => (object) ((array) ($t->layout ?? [])),
+                'orientation' => $t->pageOrientation(),
+                'layout_portrait' => (object) ((array) ($t->layout_portrait ?? [])),
+                'elements' => Layout::customs($t->elements ?? [], Engine::locales()),
+                'artwork_fit' => in_array($t->artwork_fit, CertificateTemplate::ARTWORK_FITS, true) ? $t->artwork_fit : null,
+                'print_bare' => (bool) $t->print_bare,
                 'has_signature' => [1 => $files->exists($t, 'signature_1'), 2 => $files->exists($t, 'signature_2')],
                 'has_artwork' => $files->exists($t, CertificateTemplate::BACKGROUND_SLOT),
                 'version' => optional($t->updated_at)->timestamp,
+                'format' => $t->format()->key,
                 'editable' => $provider->canManageOwner($model, $owner, auth()->user()),
             ];
         })->values();
@@ -346,8 +395,34 @@ class DesignController extends Controller
             'min_artwork' => CertificateImages::MIN_ARTWORK,
             // The arrangement the editor draws its boxes from: placed (with a medal) and not.
             'layout_defaults' => ['placed' => Layout::defaults(true), 'plain' => Layout::defaults(false)],
+            'custom_default' => ['landscape' => Layout::customDefault('landscape'), 'portrait' => Layout::customDefault('portrait')],
+            'max_custom' => Layout::MAX_CUSTOM,
+            'max_erase' => Layout::MAX_ERASE,
+            'erase_default' => ['landscape' => Layout::eraseDefault('landscape'), 'portrait' => Layout::eraseDefault('portrait')],
+            'layout_defaults_portrait' => ['placed' => Layout::defaults(true, 'portrait'), 'plain' => Layout::defaults(false, 'portrait')],
             'elements' => collect(Layout::ELEMENTS)->map(fn ($e, $k) => ['key' => $k, 'kind' => $e[0], 'label' => __('cert::messages.el_'.$k)])->values(),
+            // Every other format the templates here are drawn in (a badge): its page and its
+            // elements, so the editor draws that page instead of a certificate's.
+            'formats' => $templates->pluck('format')->unique()->reject(fn ($f) => $f === Formats::CERTIFICATE)
+                ->mapWithKeys(fn ($f) => [$f => $this->formatState(Formats::get($f))])->all() ?: (object) [],
             'accent' => $provider->brand($model)['accent'] ?? '#6d5bd0',
+        ];
+    }
+
+    /** What the editor needs to draw a page of another format. */
+    private function formatState(Format $f): array
+    {
+        $label = fn (string $k) => trans()->has('cert::messages.el_'.$f->key.'_'.$k) ? __('cert::messages.el_'.$f->key.'_'.$k) : __('cert::messages.el_'.$k);
+
+        return [
+            'key' => $f->key,
+            'default_orientation' => $f->defaultOrientation,
+            'page' => ['landscape' => $f->page('landscape'), 'portrait' => $f->page('portrait')],
+            'layout_defaults' => ['placed' => $f->defaults(true, 'landscape'), 'plain' => $f->defaults(false, 'landscape')],
+            'layout_defaults_portrait' => ['placed' => $f->defaults(true, 'portrait'), 'plain' => $f->defaults(false, 'portrait')],
+            'custom_default' => ['landscape' => $f->customDefault('landscape'), 'portrait' => $f->customDefault('portrait')],
+            'erase_default' => ['landscape' => $f->eraseDefault('landscape'), 'portrait' => $f->eraseDefault('portrait')],
+            'elements' => collect($f->elements)->map(fn ($e, $k) => ['key' => $k, 'kind' => $e[0], 'label' => $label($k)])->values(),
         ];
     }
 

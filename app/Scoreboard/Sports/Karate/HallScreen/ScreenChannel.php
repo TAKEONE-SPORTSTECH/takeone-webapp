@@ -50,6 +50,9 @@ class ScreenChannel
     /** Devices subscribe under this, one leaf per screen. */
     private const PREFIX = 'karate-screen';
 
+    /** A mat's scoring consoles subscribe under this, one leaf per mat. */
+    private const MAT_PREFIX = 'karate-mat';
+
     /**
      * This screen's topic. Derived, so there is no column to migrate and no
      * second secret to keep in step with the token.
@@ -65,6 +68,70 @@ class ScreenChannel
         ), 0, 32);
 
         return sprintf('%s/%s/%s', $prefix, self::PREFIX, $key);
+    }
+
+    /**
+     * This mat's topic, for its scoring consoles. Derived like a screen's, so
+     * there is no column to migrate and nothing visible that turns back into it.
+     */
+    public static function matTopic(ClubEvent $event, string $court): string
+    {
+        $prefix = trim((string) \Realtime()->config('prefix', 'takeone'), '/');
+
+        $key = substr(hash_hmac(
+            'sha256',
+            'karate-mat|'.$event->id.'|'.$court,
+            (string) config('app.key'),
+        ), 0, 32);
+
+        return sprintf('%s/%s/%s', $prefix, self::MAT_PREFIX, $key);
+    }
+
+    /**
+     * What a scoring console needs to open the socket, or null when realtime is
+     * off — in which case the console works exactly as it did before: it draws
+     * whatever its own commands hand back.
+     *
+     * Subscribe-only on one mat. The console can already read and write this
+     * mat through its own authorised endpoints, so this grants it nothing new;
+     * it only lets it be TOLD — the running order moved, the other console at
+     * this mat scored. Same shape as the BJJ package's.
+     *
+     * @return array{ws_url: string, username: string, password: string, topic: string}|null
+     */
+    public static function consoleCredentials(ClubEvent $event, string $court): ?array
+    {
+        if (! \Realtime()->enabled()) {
+            return null;
+        }
+
+        $secret = (string) \Realtime()->config('jwt.secret');
+        $wsUrl = (string) \Realtime()->config('broker.ws_url');
+
+        if ($secret === '' || $wsUrl === '') {
+            return null;
+        }
+
+        $topic = self::matTopic($event, $court);
+        $username = 'karate-console-'.$event->id.'-'.substr(md5($court), 0, 8);
+
+        return [
+            'ws_url' => $wsUrl,
+            'username' => $username,
+            'password' => self::jwt([
+                'iss' => 'takeone-realtime',
+                'sub' => $username,
+                'username' => $username,
+                'iat' => time(),
+                // Long-lived: a scoring table is opened once and left alone.
+                'exp' => time() + (14 * 86400),
+                'acl' => [
+                    ['permission' => 'allow', 'action' => 'subscribe', 'topic' => $topic],
+                    ['permission' => 'deny', 'action' => 'publish', 'topic' => '#'],
+                ],
+            ], $secret),
+            'topic' => $topic,
+        ];
     }
 
     /**
@@ -171,13 +238,34 @@ class ScreenChannel
             ->when($court, fn ($q) => $q->where('court', $court))
             ->get();
 
-        if ($screens->isEmpty()) {
+        // Every mat this concerns, screens or not: a mat's wall screens are
+        // optional, its scoring table is not, and the table listens on the
+        // mat's own topic. (The BJJ package learned this the same way.)
+        $courts = $court !== null && $court !== ''
+            ? [$court]
+            : $event->matches()->whereNotNull('court')->distinct()->pluck('court')->all();
+
+        $courts = array_values(array_filter(array_unique(
+            array_merge($courts, $screens->pluck('court')->all())
+        )));
+
+        if ($screens->isEmpty() && ! $courts) {
             return;
         }
 
         $display = app(CourtDisplay::class);
         $boards = [];
         $messages = [];
+
+        // A console re-reads its own address on a queue change — its queue is
+        // a different shape from the board's — so the mat topic gets the bare
+        // signal and no board is built for a mat nobody hung a screen over.
+        foreach ($courts as $mat) {
+            $messages[] = [
+                'topic' => self::matTopic($event, (string) $mat),
+                'payload' => $message ?? ['action' => 'board'],
+            ];
+        }
 
         foreach ($screens as $screen) {
             $messages[] = [

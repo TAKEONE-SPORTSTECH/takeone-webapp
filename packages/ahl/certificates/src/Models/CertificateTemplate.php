@@ -23,9 +23,15 @@ class CertificateTemplate extends Model
     public const BACKGROUND_SLOT = 'background';
 
     /** Built-in backgrounds, drawn by Support\Backgrounds, plus uploaded artwork and blank paper. */
-    public const BACKGROUNDS = ['plain', 'guilloche', 'watermark', 'motif', 'artwork', 'blank'];
+    public const BACKGROUNDS = ['plain', 'guilloche', 'watermark', 'motif', 'artwork', 'blank', 'paper'];
 
     public const ORNAMENTS = ['full', 'minimal', 'off'];
+
+    /** How uploaded artwork meets the page — the desktop-wallpaper choices. NULL = as baked at upload. */
+    public const ARTWORK_FITS = ['fill', 'fit', 'stretch', 'tile', 'center'];
+
+    /** The untouched (but redrawn) upload, kept so the artwork can be re-fitted any way. */
+    public const BACKGROUND_SOURCE_SLOT = 'background_source';
 
     protected $table = 'certificate_templates';
 
@@ -41,6 +47,9 @@ class CertificateTemplate extends Model
             'print_offset_x' => 'integer',
             'print_offset_y' => 'integer',
             'layout' => 'array',
+            'layout_portrait' => 'array',
+            'elements' => 'array',
+            'print_bare' => 'boolean',
         ];
     }
 
@@ -147,10 +156,50 @@ class CertificateTemplate extends Model
         return $this->text('body', $locale);
     }
 
+    /** The page format this template is drawn in (Support\Formats): a certificate unless its type names another. */
+    public function format(): \Ahl\Certificates\Support\Format
+    {
+        return \Ahl\Certificates\Support\Formats::forType($this->type);
+    }
+
+    /** Which way up the page is: the format's own way (landscape for a certificate) unless the organiser turned it. */
+    public function pageOrientation(): string
+    {
+        return \Ahl\Certificates\Support\Layout::orientation($this->orientation ?? $this->format()->defaultOrientation);
+    }
+
+    /** The organiser's changes for the page as it is turned now (each orientation keeps its own). */
+    public function layoutForPage(): array
+    {
+        return (array) (($this->pageOrientation() === 'portrait' ? $this->layout_portrait : $this->layout) ?? []);
+    }
+
+    /** @return list<string> the keys of the organiser's own text elements */
+    /** The organiser's own elements on this way up: every text, and the areas erased on this page. */
+    public function customKeys(?string $orientation = null): array
+    {
+        $page = \Ahl\Certificates\Support\Layout::orientation($orientation ?? $this->pageOrientation());
+
+        return array_values(array_filter(array_map(function ($e) use ($page) {
+            if (! is_array($e) || ! is_string($k = $e['key'] ?? null)) {
+                return null;
+            }
+            if (preg_match(\Ahl\Certificates\Support\Layout::CUSTOM_KEY, $k)) {
+                return $k;
+            }
+
+            return preg_match(\Ahl\Certificates\Support\Layout::ERASE_KEY, $k)
+                && \Ahl\Certificates\Support\Layout::orientation(is_string($e['page'] ?? null) ? $e['page'] : null) === $page ? $k : null;
+        }, (array) ($this->elements ?? []))));
+    }
+
     /** The background actually drawn for a purpose: blank paper is for printing only. */
     public function backgroundFor(string $purpose): string
     {
         $bg = in_array($this->background, self::BACKGROUNDS, true) ? $this->background : 'plain';
+        if ($purpose === 'print' && $this->print_bare) {
+            return 'blank';   // printing on the organiser's own paper: text only
+        }
 
         return $bg === 'blank' && $purpose !== 'print' ? 'plain' : $bg;
     }

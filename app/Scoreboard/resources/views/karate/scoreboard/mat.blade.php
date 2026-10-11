@@ -171,7 +171,14 @@
   {{-- Which side each corner stands on is the SPORT's convention
        (App\\Sports\\Combat\\CornerSide). Each corner keeps its own block —
        ids, colours, data — and only its geometry mirrors. --}}
-  @php $rr = \App\Sports\Combat\CornerSide::redRight('karate'); @endphp
+  @php $rr = $redRight ?? \App\Sports\Combat\CornerSide::redRight('karate'); @endphp
+  {{-- What each corner is called and its colour (Mat\CornerLook) — the
+       event's own, or the style's when nobody set them. --}}
+  @php
+    $L = $look ?? \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($event ?? null);
+    $akaGrad = $L['aka']['panelFrom'].' 0%,'.$L['aka']['deep'].' 100%); color:'.$L['aka']['ink'].';';
+    $aoGrad = $L['ao']['panelFrom'].' 0%,'.$L['ao']['deep'].' 100%); color:'.$L['ao']['ink'].';';
+  @endphp
   <div id="sb" class="layer" hidden style="background:#000; display:flex; flex-direction:column;">
     <div style="height:110px; background:#0a0b10; display:flex; align-items:center; justify-content:space-between; padding:0 48px; border-bottom:3px solid #1c1e28; animation:introDrop .6s cubic-bezier(.2,.8,.2,1) both;">
       <div style="display:flex; align-items:center; gap:26px;">
@@ -187,19 +194,19 @@
 
     <div style="flex:1; display:flex; position:relative;">
       {{-- AKA (red) --}}
-      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(225deg,#b3121f 0%,#7c0a14 100%); position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; order:3; animation:introSlideR' : 'background:linear-gradient(135deg,#b3121f 0%,#7c0a14 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL' }} .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(225deg,'.$akaGrad.' position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; order:3; animation:introSlideR' : 'background:linear-gradient(135deg,'.$akaGrad.' position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; animation:introSlideL' }} .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbAkaWin" hidden style="position:absolute; inset:0; border:14px solid #ffd666; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
         <div style="display:flex; align-items:center; {{ $rr ? 'gap:28px; flex-direction:row-reverse;' : 'gap:28px;' }}">
           <img id="sbAkaFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.5);">
           <div style="display:flex; {{ $rr ? 'flex-direction:column; align-items:flex-end;' : 'flex-direction:column;' }}">
             <div id="sbAkaCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
-            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">AKA</div>
+            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:{{ $L['aka']['inkDim'] }}; margin-top:6px;">{{ $L['aka']['label'] }}</div>
           </div>
         </div>
-        <div id="sbAkaName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:120px; line-height:1; text-transform:uppercase; margin-top:36px; text-shadow:0 6px 30px rgba(0,0,0,.4); padding-bottom:14px;"></div>
-        <div id="sbAkaClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.8); margin-top:10px;"></div>
+        <div id="sbAkaName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:120px; line-height:1; text-transform:uppercase; margin-top:36px; text-shadow:{{ $L['aka']['light'] ? '0 4px 24px rgba(255,255,255,.5)' : '0 6px 30px rgba(0,0,0,.4)' }}; padding-bottom:14px;"></div>
+        <div id="sbAkaClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:{{ $L['aka']['inkSoft'] }}; margin-top:10px;"></div>
         <div style="flex:1; display:flex; align-items:center; justify-content:center; align-self:stretch;">
-          <div id="sbAkaScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:#fff; text-shadow:0 10px 60px rgba(0,0,0,.5); font-variant-numeric:tabular-nums;">0</div>
+          <div id="sbAkaScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:{{ $L['aka']['ink'] }}; text-shadow:{{ $L['aka']['light'] ? '0 10px 40px rgba(255,255,255,.45)' : '0 10px 60px rgba(0,0,0,.5)' }}; font-variant-numeric:tabular-nums;">0</div>
         </div>
         <div style="display:flex; align-items:center; gap:24px; min-height:90px;">
           <div id="sbAkaSenshu" style="border-radius:10px; padding:12px 22px; font-size:30px; font-weight:700; letter-spacing:.14em;">SENSHU</div>
@@ -226,19 +233,19 @@
       </div>
 
       {{-- AO (blue) --}}
-      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(135deg,#0d55b8 0%,#083473 100%); position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; order:1; animation:introSlideL' : 'background:linear-gradient(225deg,#0d55b8 0%,#083473 100%); position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR' }} .7s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="flex:1; min-width:0; overflow:hidden; {{ $rr ? 'background:linear-gradient(135deg,'.$aoGrad.' position:relative; display:flex; flex-direction:column; padding:44px 30px 30px 56px; order:1; animation:introSlideL' : 'background:linear-gradient(225deg,'.$aoGrad.' position:relative; display:flex; flex-direction:column; align-items:flex-end; text-align:right; padding:44px 56px 30px 30px; animation:introSlideR' }} .7s cubic-bezier(.2,.8,.2,1) both;">
         <div id="sbAoWin" hidden style="position:absolute; inset:0; border:14px solid #ffd666; animation:winnerGlow 1.2s ease-in-out infinite; pointer-events:none; z-index:3;"></div>
         <div style="display:flex; align-items:center; {{ $rr ? 'gap:28px;' : 'gap:28px; flex-direction:row-reverse;' }}">
           <img id="sbAoFlag" alt="" style="width:150px; height:100px; object-fit:fill; image-rendering:auto; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.5);">
           <div style="display:flex; {{ $rr ? 'flex-direction:column;' : 'flex-direction:column; align-items:flex-end;' }}">
             <div id="sbAoCountry" style="max-width:690px; font-size:52px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1;"></div>
-            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.65); margin-top:6px;">AO</div>
+            <div style="font-size:34px; font-weight:600; letter-spacing:.3em; color:{{ $L['ao']['inkDim'] }}; margin-top:6px;">{{ $L['ao']['label'] }}</div>
           </div>
         </div>
-        <div id="sbAoName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:120px; line-height:1; text-transform:uppercase; margin-top:36px; text-shadow:0 6px 30px rgba(0,0,0,.4); padding-bottom:14px;"></div>
-        <div id="sbAoClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.8); margin-top:10px;"></div>
+        <div id="sbAoName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:120px; line-height:1; text-transform:uppercase; margin-top:36px; text-shadow:{{ $L['ao']['light'] ? '0 4px 24px rgba(255,255,255,.5)' : '0 6px 30px rgba(0,0,0,.4)' }}; padding-bottom:14px;"></div>
+        <div id="sbAoClub" style="font-size:42px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:{{ $L['ao']['inkSoft'] }}; margin-top:10px;"></div>
         <div style="flex:1; display:flex; align-items:center; justify-content:center; align-self:stretch;">
-          <div id="sbAoScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:#fff; text-shadow:0 10px 60px rgba(0,0,0,.5); font-variant-numeric:tabular-nums;">0</div>
+          <div id="sbAoScore" style="font-family:'Anton',sans-serif; font-size:400px; line-height:.9; color:{{ $L['ao']['ink'] }}; text-shadow:{{ $L['ao']['light'] ? '0 10px 40px rgba(255,255,255,.45)' : '0 10px 60px rgba(0,0,0,.5)' }}; font-variant-numeric:tabular-nums;">0</div>
         </div>
         <div style="display:flex; align-items:center; gap:24px; min-height:90px;">
           <div id="sbAoSenshu" style="border-radius:10px; padding:12px 22px; font-size:30px; font-weight:700; letter-spacing:.14em;">SENSHU</div>
@@ -255,23 +262,23 @@
 
   {{-- ── The introduction, over the top of it ───────────────────────────── --}}
   <div id="vs" class="layer" hidden style="z-index:12; background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
-    <div style="position:absolute; {{ $rr ? 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' : 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' }} overflow:hidden; background:#2b1416;background:oklch(0.28 0.09 25); animation:{{ $rr ? 'panelR' : 'panelL' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' : 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' }} overflow:hidden; background:{{ $L['aka']['vsPanel'] }}; animation:{{ $rr ? 'panelR' : 'panelL' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsRedPhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, rgba(154,55,48,0.55) 0%, transparent 55%);background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, oklch(0.45 0.18 25 / 0.55) 0%, transparent 55%);"></div>
+      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, {{ $L['aka']['vsGlow'] }} 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
     </div>
-    <div style="position:absolute; {{ $rr ? 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' : 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' }} overflow:hidden; background:#10233f;background:oklch(0.28 0.09 255); animation:{{ $rr ? 'panelL' : 'panelR' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' : 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' }} overflow:hidden; background:{{ $L['ao']['vsPanel'] }}; animation:{{ $rr ? 'panelL' : 'panelR' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsBluePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite reverse;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '115deg' : '245deg' }}, rgba(40,86,152,0.55) 0%, transparent 55%);background:linear-gradient({{ $rr ? '115deg' : '245deg' }}, oklch(0.45 0.15 255 / 0.55) 0%, transparent 55%);"></div>
+      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '115deg' : '245deg' }}, {{ $L['ao']['vsGlow'] }} 0%, transparent 55%);"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
     </div>
     <div style="position:absolute; top:-6%; bottom:-6%; left:50%; width:3px; margin-left:-1.5px; transform:rotate(10.15deg); pointer-events:none; background:linear-gradient(to bottom, transparent, rgba(253,196,54,0.9) 20%, rgba(253,196,54,0.9) 80%, transparent);background:linear-gradient(to bottom, transparent, oklch(0.85 0.16 85 / 0.9) 20%, oklch(0.85 0.16 85 / 0.9) 80%, transparent); filter:blur(1px);"></div>
 
-    <div style="position:absolute; {{ $rr ? 'right:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' : 'left:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' }} animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#c8382c;background:oklch(0.55 0.2 25); padding:5.4px 15.1px 5.4px 18.9px;">AKA · RED</div>
+    <div style="position:absolute; {{ $rr ? 'right:43.2px; bottom:64.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' : 'left:43.2px; bottom:64.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' }} animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
+      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:{{ $L['aka']['badgeInk'] }}; background:{{ $L['aka']['badgeBg'] }}; padding:5.4px 15.1px 5.4px 18.9px;">{{ $L['aka']['badge'] }}</div>
       <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px; flex-direction:row-reverse;' : 'gap:15.1px;' }}">
         <div id="vsRedFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsRedCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#e8b3ad; color:oklch(0.85 0.05 25);"></div>
+        <div id="vsRedCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:{{ $L['aka']['countryInk'] }};"></div>
       </div>
       <div id="vsRedName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
       <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px; flex-direction:row-reverse;' : 'margin-top:4.3px;' }}">
@@ -281,11 +288,11 @@
       <div id="vsRedChips" style="display:flex; flex-wrap:wrap; gap:9.7px; {{ $rr ? 'margin-top:5.4px; justify-content:flex-end;' : 'margin-top:5.4px;' }}"></div>
     </div>
 
-    <div style="position:absolute; {{ $rr ? 'left:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' : 'right:43.2px; bottom:118.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' }} animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:#fff; background:#1f5aa8;background:oklch(0.5 0.16 255); padding:5.4px 15.1px 5.4px 18.9px;">AO · BLUE</div>
+    <div style="position:absolute; {{ $rr ? 'left:43.2px; bottom:64.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' : 'right:43.2px; bottom:64.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' }} animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
+      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:{{ $L['ao']['badgeInk'] }}; background:{{ $L['ao']['badgeBg'] }}; padding:5.4px 15.1px 5.4px 18.9px;">{{ $L['ao']['badge'] }}</div>
       <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px;' : 'gap:15.1px; flex-direction:row-reverse;' }}">
         <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:#a9c6ea; color:oklch(0.85 0.05 255);"></div>
+        <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:{{ $L['ao']['countryInk'] }};"></div>
       </div>
       <div id="vsBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
       <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px;' : 'margin-top:4.3px; flex-direction:row-reverse;' }}">
@@ -381,7 +388,9 @@
      against), and once the webfonts have loaded, because Anton is far narrower
      than the fallback and fitting to the wrong metrics sizes every name wrong. */
   // Karate's red corner (AKA) stands on the right — App\\Sports\\Combat\\CornerSide.
-  var RED_RIGHT = @json(\App\Sports\Combat\CornerSide::redRight('karate'));
+  var RED_RIGHT = @json($redRight ?? \App\Sports\Combat\CornerSide::redRight('karate'));
+  // Each corner's name and colours (Mat\CornerLook), for what the script draws.
+  var LOOK = @json($L);
   var nameSpec = {};
   function setName(id, value, max, min) {
     var n = el(id);
@@ -498,18 +507,28 @@
     { bg: '#ffd666', fg: '#000' }, { bg: '#ffd666', fg: '#000' }, { bg: '#ffd666', fg: '#000' },
     { bg: '#ff9636', fg: '#000' }, { bg: '#ff3b47', fg: '#fff' }
   ];
+  /* What is drawn on a corner takes that corner's ink: dark on a light
+     colour, white on a dark one (Mat\CornerLook). Keyed by the element id. */
+  function offInk(id) {
+    var c = LOOK[/Ao/.test(id) ? 'ao' : 'aka'] || {};
+    return c.light
+      ? { bg: 'rgba(20,22,28,.08)', fg: 'rgba(20,22,28,.45)', line: 'rgba(20,22,28,.25)' }
+      : { bg: 'rgba(0,0,0,.3)', fg: 'rgba(255,255,255,.45)', line: 'rgba(255,255,255,.25)' };
+  }
+
   function chips(id, n) {
     var host = el(id);
     if (!host) return;
+    var off = offInk(id);
     host.textContent = '';
     PEN.forEach(function (label, i) {
       var on = i < n, tone = CHIP_ON[i] || CHIP_ON[0];
       var c = document.createElement('div');
       c.style.cssText = 'width:72px; height:68px; border-radius:10px; display:flex; align-items:center; justify-content:center;' +
         "font-family:'Anton',sans-serif; font-size:30px;" +
-        'background:' + (on ? tone.bg : 'rgba(0,0,0,.3)') + ';' +
-        'color:' + (on ? tone.fg : 'rgba(255,255,255,.45)') + ';' +
-        'border:2px solid ' + (on ? 'transparent' : 'rgba(255,255,255,.25)') + ';' +
+        'background:' + (on ? tone.bg : off.bg) + ';' +
+        'color:' + (on ? tone.fg : off.fg) + ';' +
+        'border:2px solid ' + (on ? 'transparent' : off.line) + ';' +
         (on ? 'animation:senshuIn .4s both;' : '');
       c.textContent = label;
       host.appendChild(c);
@@ -519,9 +538,10 @@
   function senshu(id, on) {
     var n = el(id);
     if (!n) return;
-    n.style.background = on ? '#ffd666' : 'rgba(0,0,0,.3)';
-    n.style.color = on ? '#000' : 'rgba(255,255,255,.45)';
-    n.style.border = '2px solid ' + (on ? 'transparent' : 'rgba(255,255,255,.25)');
+    var off = offInk(id);
+    n.style.background = on ? '#ffd666' : off.bg;
+    n.style.color = on ? '#000' : off.fg;
+    n.style.border = '2px solid ' + (on ? 'transparent' : off.line);
     n.style.animation = on ? 'senshuIn .5s cubic-bezier(.2,.8,.2,1) both' : 'none';
   }
 
@@ -682,7 +702,8 @@
     if (ev.penalty) return;
 
     var host = el('sbCallout');
-    var colour = ev.side === 'aka' ? '#ff3b47' : '#4d9aff';
+    var C = LOOK[ev.side === 'aka' ? 'aka' : 'ao'] || {};
+    var colour = C.callout || '#ff3b47';
     host.textContent = '';
     host.style.left = ((ev.side === 'aka') !== RED_RIGHT ? '25%' : '75%');
     host.style.top = '44%';
@@ -696,8 +717,9 @@
     wrap.style.cssText = 'position:absolute; left:0; top:0; transform:translate(-50%,-50%); animation:calloutIn 1.5s cubic-bezier(.2,.8,.2,1) both;' +
       'display:flex; flex-direction:column; align-items:center; gap:4px;';
     var label = document.createElement('div');
-    label.style.cssText = "font-family:'Anton',sans-serif; font-size:130px; line-height:1; color:#fff; white-space:nowrap;" +
-      'text-shadow:0 0 80px ' + colour + ', 0 8px 30px rgba(0,0,0,.7);';
+    label.style.cssText = "font-family:'Anton',sans-serif; font-size:130px; line-height:1; white-space:nowrap;" +
+      (C.light ? 'color:#14161c; text-shadow:0 0 60px rgba(255,255,255,.95), 0 6px 24px rgba(255,255,255,.6);'
+               : 'color:#fff; text-shadow:0 0 80px ' + colour + ', 0 8px 30px rgba(0,0,0,.7);');
     label.textContent = CALLOUTS[ev.n] || '';
     var plus = document.createElement('div');
     plus.style.cssText = "font-family:'Anton',sans-serif; font-size:72px; color:#ffd666; text-shadow:0 0 40px rgba(255,214,102,.7);";
@@ -737,6 +759,7 @@
 
     WinnerCelebration.paint(el('sbWinner'), {
       corner: side === 'aka' ? 'red' : 'blue',
+      palette: (LOOK[side] || {}).celebrate,
       name: c.name || '',
       club: c.club || '',
       logo: c.logo || null,

@@ -11,6 +11,8 @@ use App\Events\Models\EventCategory;
 use App\Events\Models\EventCertificateSetting;
 use App\Events\Support\EventCertificates;
 use App\Mcp\Tools\ApproveEventCertificatesTool;
+use App\Mcp\Tools\DeleteEventCertificateDraftsTool;
+use App\Mcp\Tools\EventCertificateBundleTool;
 use App\Mcp\Tools\GenerateEventCertificatesTool;
 use App\Mcp\Tools\ListEventCertificatesTool;
 use App\Mcp\Tools\ListMyCertificatesTool;
@@ -171,7 +173,7 @@ class EventCertificatesTest extends TestCase
 
     /* ===================== approval and the holder ===================== */
 
-    public function test_approving_stores_the_pdf_and_the_holder_sees_only_approved_ones(): void
+    public function test_approving_stores_the_pdf_on_first_open_and_the_holder_sees_only_approved_ones(): void
     {
         $this->decidedDivision();
         $this->generate();
@@ -188,14 +190,49 @@ class EventCertificatesTest extends TestCase
 
         $draft->refresh();
         $this->assertTrue($draft->isApproved());
-        Storage::disk('local')->assertExists('events/'.$this->event->uuid.'/certificates/'.$draft->uuid.'.pdf');
+        // No file until somebody opens it: an event's worth of PDFs nobody reads is not drawn.
+        $stored = 'events/'.$this->event->uuid.'/certificates/'.$draft->uuid.'.pdf';
+        Storage::disk('local')->assertMissing($stored);
 
         $this->actingAs($holder->fresh())->getJson(route('me.certificates.list'))->assertOk()->assertJsonCount(1, 'certificates')
             ->assertJsonMissingPath('certificates.0.holder');
         $pdf = $this->actingAs($holder->fresh())->get(route('me.certificates.pdf', $draft->uuid));
         $pdf->assertOk();
         $this->assertStringStartsWith('%PDF', $pdf->getContent());
+        Storage::disk('local')->assertExists($stored);   // drawn once, kept from then on
+        $this->assertSame($pdf->getContent(), $this->actingAs($holder->fresh())->get(route('me.certificates.pdf', $draft->uuid))->getContent());
         $this->assertDatabaseHas('user_notifications', ['user_id' => $holder->id, 'type' => 'certificate']);
+    }
+
+    public function test_every_draft_can_be_deleted_in_one_go_and_nobody_else_can(): void
+    {
+        $this->decidedDivision();
+        $this->generate();
+        $issued = Certificate::where('recipient_id', $this->athletes['a']->id)->where('type', 'podium')->firstOrFail();
+        app(CertificateService::class)->approve($issued, $this->organiser);
+        $url = route('me.certificates.drafts.destroy', ['context' => 'club_event', 'key' => $this->event->uuid]);
+
+        // Not the organiser: refused, and nothing goes.
+        foreach ([$this->createUser(), $this->athletes['b']] as $who) {
+            $this->actingAs($who->fresh())->deleteJson($url, ['all' => true])->assertNotFound();
+        }
+        $this->assertArrayHasKey('error', $this->mcp(DeleteEventCertificateDraftsTool::class, $this->athletes['b']->fresh(), ['event' => $this->event->uuid]));
+        $this->assertSame(7, Certificate::where('status', 'draft')->count());
+
+        // Asked for nothing in particular: refused rather than taken as "all".
+        $this->actingAs($this->organiser->fresh())->deleteJson($url, [])->assertStatus(422);
+
+        $d = $this->actingAs($this->organiser->fresh())->deleteJson($url, ['all' => true])->assertOk()->json();
+        $this->assertSame(7, $d['deleted']);
+        $this->assertSame(0, $d['remaining']);
+        $this->assertSame(0, $d['counts']['draft']);
+        $this->assertSame(0, Certificate::where('status', 'draft')->count());
+        $this->assertTrue($issued->fresh()->isApproved());   // an issued one is never touched
+
+        // The MCP does the same.
+        $this->generate();
+        $this->assertSame(0, $this->mcp(DeleteEventCertificateDraftsTool::class, $this->organiser->fresh(), ['event' => $this->event->uuid])['remaining']);
+        $this->assertTrue($issued->fresh()->isApproved());
     }
 
     public function test_approve_all_goes_in_batches(): void
@@ -326,6 +363,141 @@ class EventCertificatesTest extends TestCase
         $this->assertStringStartsWith('%PDF', app(CertificateService::class)->pdfContents($c));
     }
 
+    public function test_the_page_can_stand_upright_and_each_way_keeps_its_own_arrangement(): void
+    {
+        $p = ['context' => 'club_event', 'key' => $this->event->uuid, 'type' => 'participation'];
+        $body = [
+            'scope' => 'host', 'title' => ['en' => 'Well done'], 'body' => ['en' => 'for {event}'],
+            'ornament_level' => 'full', 'background' => 'guilloche', 'show_photo' => false,
+            'layout' => ['name' => ['x' => 30, 'y' => 60]],
+            'orientation' => 'portrait',
+            'layout_portrait' => ['name' => ['x' => 20, 'y' => 280, 'w' => 999], 'nonsense' => ['x' => 1]],
+        ];
+        $as = $this->actingAs($this->organiser->fresh());
+        $as->putJson(route('me.certificates.design.update', $p), $body)->assertOk()->assertJsonPath('templates.0.orientation', 'portrait');
+
+        $t = app(CertificateService::class)->templateFor('participation', $this->event);
+        $this->assertSame('portrait', $t->orientation);
+        $this->assertSame(['x' => 30.0, 'y' => 60.0], array_map('floatval', $t->layout['name']));      // landscape kept
+        $this->assertSame(['name'], array_keys($t->layout_portrait));
+        $this->assertSame(210.0, (float) $t->layout_portrait['name']['w']);                            // held to the portrait page
+        $this->assertSame(280.0, (float) $t->layout_portrait['name']['y']);                            // a y a landscape page has no room for
+
+        // The preview and the stored PDF are both upright.
+        $jpg = $as->post(route('me.certificates.design.preview', $p).'?locale=ar', $body)->assertOk()->getContent();
+        [$w, $h] = getimagesizefromstring($jpg);
+        $this->assertGreaterThan($w, $h);
+        $this->decidedDivision();
+        $this->generate();
+        $pdf = app(CertificateService::class)->pdfContents(Certificate::where('type', 'participation')->firstOrFail());
+        $this->assertMatchesRegularExpression('#/MediaBox \[\s*0\.?0*\s+0\.?0*\s+595\.\d+\s+841\.\d+#', $pdf);
+
+        // A caller that never mentions the page leaves it alone; turning it back is landscape again.
+        unset($body['orientation'], $body['layout_portrait']);
+        $as->putJson(route('me.certificates.design.update', $p), $body)->assertOk();
+        $this->assertSame('portrait', $t->fresh()->orientation);
+        $as->putJson(route('me.certificates.design.update', $p), $body + ['orientation' => 'landscape'])->assertOk();
+        $this->assertNull($t->fresh()->orientation);
+        $this->assertNotNull($t->fresh()->layout_portrait);                                           // the upright arrangement waits
+        $as->putJson(route('me.certificates.design.update', $p), $body + ['orientation' => 'sideways'])->assertStatus(422);
+    }
+
+    public function test_every_element_can_be_added_and_removed_and_texts_are_the_organisers_own(): void
+    {
+        $p = ['context' => 'club_event', 'key' => $this->event->uuid, 'type' => 'participation'];
+        $body = [
+            'scope' => 'host', 'title' => ['en' => 'Well done'], 'body' => ['en' => 'for {event}'],
+            'ornament_level' => 'off', 'background' => 'paper', 'show_photo' => false, 'print_bare' => true,
+            'elements' => [
+                ['key' => 'text_abc123', 'text' => ['en' => '<b>Awarded</b> to {name}', 'ar' => 'مقدمة'], 'style' => 'heading', 'evil' => 1],
+                ['key' => '../../etc', 'text' => ['en' => 'x']],
+                ['key' => 'text_abc123', 'text' => ['en' => 'duplicate']],
+            ],
+            'layout' => ['text_abc123' => ['x' => 40, 'y' => 150], 'seal' => ['hidden' => true]],
+        ];
+        $as = $this->actingAs($this->organiser->fresh());
+        $as->putJson(route('me.certificates.design.update', $p), $body)->assertOk()
+            ->assertJsonPath('templates.0.elements.0.key', 'text_abc123')
+            ->assertJsonPath('templates.0.print_bare', true);
+
+        $t = app(CertificateService::class)->templateFor('participation', $this->event);
+        $this->assertCount(1, $t->elements);                                      // the bad key and the duplicate are dropped
+        $this->assertSame('Awarded to {name}', $t->elements[0]['text']['en']);    // markup stripped
+        $this->assertSame(['key', 'text', 'style'], array_keys($t->elements[0]));
+        $this->assertSame('paper', $t->background);
+        $this->assertTrue($t->layout['seal']['hidden']);
+
+        // The text is drawn where it was put, with its placeholders filled.
+        $sample = Certificate::make(['type' => 'participation', 'issued_on' => today()]);
+        $this->assertSame('Awarded to Sara', app(CertificateService::class)->extras($t, $sample, 'en', 'Sara')['text_abc123']['text']);
+        $as->post(route('me.certificates.design.preview', $p).'?locale=en', $body)->assertOk();
+        $drawn = json_decode($as->post(route('me.certificates.design.preview', $p).'?locale=en', $body)->headers->get('X-Cert-Drawn'), true);
+        $this->assertSame(150.0, (float) $drawn['text_abc123']['y']);
+        $this->assertArrayNotHasKey('seal', $drawn);                              // removed from the page
+
+        // Print on my own paper: the print copy is bare, the download is not.
+        $this->assertSame('blank', $t->backgroundFor('print'));
+        $this->assertSame('paper', $t->backgroundFor('download'));
+
+        // Deleting the text deletes it; a caller that never mentions elements leaves them alone.
+        unset($body['elements']);
+        $as->putJson(route('me.certificates.design.update', $p), $body)->assertOk();
+        $this->assertCount(1, $t->fresh()->elements);
+        $as->putJson(route('me.certificates.design.update', $p), $body + ['elements' => []])->assertOk();
+        $this->assertNull($t->fresh()->elements);
+        $as->putJson(route('me.certificates.design.update', $p), $body + ['artwork_fit' => 'zoom'])->assertStatus(422);
+    }
+
+    public function test_artwork_keeps_its_original_and_fits_the_page_the_way_asked(): void
+    {
+        $p = ['context' => 'club_event', 'key' => $this->event->uuid, 'type' => 'participation'];
+        $as = $this->actingAs($this->organiser->fresh());
+        $as->post(route('me.certificates.design.artwork.store', $p), ['image' => UploadedFile::fake()->image('art.jpg', 1200, 1700)], ['Accept' => 'application/json'])->assertOk()
+            ->assertJsonPath('templates.0.artwork_fit', 'fit');                // tall on a landscape page: shown whole
+        $t = app(CertificateService::class)->templateFor('participation', $this->event);
+        $files = app(\Ahl\Certificates\Contracts\FileStore::class);
+        $this->assertNotNull($src = $files->get($t, 'background_source'));
+        $this->assertSame([1200, 1700], array_slice(getimagesizefromstring($src['contents']), 0, 2));
+
+        $body = ['scope' => 'host', 'title' => ['en' => 'A'], 'body' => ['en' => 'B'], 'ornament_level' => 'full', 'background' => 'artwork', 'show_photo' => false];
+        foreach (['fill', 'fit', 'stretch', 'tile', 'center'] as $fit) {
+            $as->post(route('me.certificates.design.preview', $p).'?locale=en', $body + ['artwork_fit' => $fit])->assertOk();
+        }
+        $as->deleteJson(route('me.certificates.design.artwork.store', $p))->assertOk();
+        $this->assertNull($files->get($t, 'background_source'));                 // the original goes with it
+        $this->assertNull($t->fresh()->artwork_fit);
+    }
+
+    public function test_anything_printed_in_the_picture_can_be_erased(): void
+    {
+        // Paints out: a black block on white comes back the colour around it, the rest untouched.
+        $im = imagecreatetruecolor(297, 210);
+        imagefill($im, 0, 0, imagecolorallocate($im, 250, 250, 250));
+        imagefilledrectangle($im, 100, 80, 160, 110, imagecolorallocate($im, 0, 0, 0));
+        ob_start(); imagepng($im); $png = (string) ob_get_clean();
+        $out = \Ahl\Certificates\Support\Eraser::apply(['contents' => $png, 'mime' => 'image/png'], [['x' => 95, 'y' => 75, 'w' => 72, 'h' => 42]], 297, 210);
+        $back = imagecreatefromstring($out['contents']);
+        $this->assertGreaterThan(235, (imagecolorat($back, 130, 95) >> 16) & 255);   // the block is gone
+        $this->assertGreaterThan(235, (imagecolorat($back, 20, 20) >> 16) & 255);    // the page is as it was
+
+        // Stored as the organiser's own element, for the way up it was drawn on only.
+        $p = ['context' => 'club_event', 'key' => $this->event->uuid, 'type' => 'participation'];
+        $body = [
+            'scope' => 'host', 'title' => ['en' => 'A'], 'body' => ['en' => 'B'], 'ornament_level' => 'full', 'background' => 'plain', 'show_photo' => false,
+            'elements' => [['key' => 'erase_abc123', 'kind' => 'erase', 'page' => 'landscape', 'evil' => 1], ['key' => 'erase_zzz999', 'kind' => 'erase', 'page' => ['x']]],
+            'layout' => ['erase_abc123' => ['x' => 40, 'y' => 30, 'w' => 80, 'h' => 20]],
+        ];
+        $as = $this->actingAs($this->organiser->fresh());
+        $as->putJson(route('me.certificates.design.update', $p), $body)->assertOk();
+        $t = app(CertificateService::class)->templateFor('participation', $this->event);
+        $this->assertSame([['key' => 'erase_abc123', 'kind' => 'erase', 'page' => 'landscape'], ['key' => 'erase_zzz999', 'kind' => 'erase', 'page' => 'landscape']], $t->elements);
+        $this->assertSame(['erase_abc123', 'erase_zzz999'], $t->customKeys('landscape'));
+        $this->assertSame([], $t->customKeys('portrait'));
+        $this->assertSame(40.0, (float) \Ahl\Certificates\Support\Layout::resolve($t->layout, false, true, 'landscape', $t->customKeys())['erase_abc123']['x']);   // never mirrored
+        $as->post(route('me.certificates.design.preview', $p).'?locale=en', $body)->assertOk();
+        $as->post(route('me.certificates.design.preview', $p).'?locale=ar', $body)->assertOk();
+    }
+
     public function test_automatic_ink_stays_readable_on_any_background(): void
     {
         $contrast = \Ahl\Certificates\Support\Contrast::class;
@@ -392,6 +564,79 @@ class EventCertificatesTest extends TestCase
         $this->actingAs($this->organiser->fresh())
             ->get(route('me.certificates.design', ['context' => 'club_event', 'key' => $this->event->uuid]))
             ->assertOk()->assertSee(__('cert::messages.design_title'));
+    }
+
+    public function test_issued_certificates_download_one_by_one_and_as_one_pdf_for_the_print_shop(): void
+    {
+        $this->decidedDivision();
+        $this->generate();
+        $this->actingAs($this->organiser->fresh())
+            ->postJson(route('me.certificates.approve', ['context' => 'club_event', 'key' => $this->event->uuid]), ['all' => true])->assertOk();
+        $p = ['context' => 'club_event', 'key' => $this->event->uuid];
+        $issued = Certificate::where('status', 'approved')->where('type', 'participation')->count();
+        $this->assertGreaterThan(1, $issued);
+
+        // One at a time: a real PDF, as a download.
+        $one = Certificate::where('status', 'approved')->firstOrFail();
+        $r = $this->actingAs($this->organiser->fresh())->get(route('me.certificates.pdf', $one->uuid).'?download=1');
+        $r->assertOk();
+        $this->assertStringStartsWith('attachment', $r->headers->get('Content-Disposition'));
+
+        // Nobody else can ask for the bundle or fetch it.
+        foreach ([$this->createUser(), $this->athletes['b']] as $who) {
+            $this->actingAs($who->fresh())->postJson(route('me.certificates.bundle', $p + ['type' => 'participation']))->assertNotFound();
+            $this->actingAs($who->fresh())->getJson(route('me.certificates.bundle.download', $p + ['type' => 'participation']))->assertNotFound();
+        }
+        // A design the context does not issue is not a door either.
+        $this->actingAs($this->organiser->fresh())->postJson(route('me.certificates.bundle', $p + ['type' => 'nonsense']))->assertNotFound();
+
+        // The console offers one PDF per design; nothing is built until asked.
+        $state = $this->actingAs($this->organiser->fresh())->getJson(route('me.certificates.manage', $p))->assertOk()->json('bundles');
+        $this->assertSame('idle', collect($state)->firstWhere('type', 'participation')['state']);
+        $this->actingAs($this->organiser->fresh())->getJson(route('me.certificates.bundle.download', $p + ['type' => 'participation']))->assertNotFound();
+
+        // Asked: built (the test queue runs it at once), then the same file answers.
+        $this->actingAs($this->organiser->fresh())->postJson(route('me.certificates.bundle', $p + ['type' => 'participation']))
+            ->assertOk()->assertJsonPath('state', 'ready');
+        $pdf = $this->actingAs($this->organiser->fresh())->get(route('me.certificates.bundle.download', $p + ['type' => 'participation']));
+        $pdf->assertOk();
+        $body = $pdf->streamedContent();
+        $this->assertStringStartsWith('%PDF', $body);
+        $this->assertSame($issued, preg_match_all('#/Type\s*/Page\b(?!s)#', $body));
+        $this->assertStringContainsString('no-store', $pdf->headers->get('Cache-Control'));
+
+        // The MCP sees the same file, and a stranger sees nothing.
+        $this->assertSame('ready', $this->mcp(EventCertificateBundleTool::class, $this->organiser->fresh(), ['event' => $this->event->uuid, 'type' => 'participation'])['state']);
+        $this->assertArrayHasKey('error', $this->mcp(EventCertificateBundleTool::class, $this->athletes['b']->fresh(), ['event' => $this->event->uuid, 'type' => 'participation']));
+
+        // Revoke one and the old file no longer answers for what is issued now.
+        app(CertificateService::class)->revoke(Certificate::where('status', 'approved')->where('type', 'participation')->first(), $this->organiser, 'Result overturned');
+        $this->actingAs($this->organiser->fresh())->getJson(route('me.certificates.bundle.download', $p + ['type' => 'participation']))->assertNotFound();
+    }
+
+    public function test_arabic_is_joined_on_an_english_page_too(): void
+    {
+        $shaper = app(\Ahl\Certificates\Support\TextShaper::class);
+        $this->assertSame('Jane Doe', $shaper->visual('Jane Doe'));
+
+        // An Arabic name in an English sentence: the Latin keeps its order, the Arabic
+        // run is joined (presentation forms), and its words never wrap apart.
+        $mixed = $shaper->visual('Organised by نادي البحرين');
+        $this->assertStringStartsWith('Organised by ', $mixed);
+        $this->assertMatchesRegularExpression('/[\x{FE70}-\x{FEFF}]/u', $mixed);
+        $this->assertStringNotContainsString(' ', mb_substr($mixed, 13));
+        $this->assertTrue(\Ahl\Certificates\Support\TextShaper::isArabicScript($mixed));
+
+        // Text that starts in Arabic reads right to left, whole.
+        $this->assertTrue(\Ahl\Certificates\Support\TextShaper::readsRtl('نادي Kyokushin'));
+        $this->assertFalse(\Ahl\Certificates\Support\TextShaper::readsRtl('Kyokushin نادي'));
+
+        // And the page sets it in Amiri, on an English certificate.
+        $this->decidedDivision();
+        $t = app(CertificateService::class)->templateFor('participation', $this->event);
+        $t->elements = [['key' => 'text_arab01', 'kind' => 'text', 'style' => 'heading', 'text' => ['en' => 'شكراً لكل المشاركين']]];
+        $png = app(CertificateService::class)->preview($t, 'en', $this->event, CertificateService::PURPOSE_DOWNLOAD, 40);
+        $this->assertStringStartsWith("\x89PNG", $png);
     }
 
     /* ===================== MCP ===================== */

@@ -38,7 +38,7 @@ class MyCertificatesController extends Controller
         return Engine::model()::query()
             ->forRecipient($request->user())
             ->where('status', '!=', 'draft')
-            ->with('context')
+            ->with('context', 'template')
             ->orderByDesc('issued_on')->orderByDesc('id')
             ->limit(200)
             ->get()

@@ -86,6 +86,10 @@
 
   var RED_TONE = { fb: '#902828', ok: 'oklch(0.44 0.14 25)' },
       BLUE_TONE = { fb: '#0e4786', ok: 'oklch(0.4 0.12 255)' },
+      // A WHITE corner (Kyokushin's SHIRO). Drawn as a light silver half that
+      // still carries this board's white type — only used when a page asks for
+      // tone 'white', so every existing board draws exactly as before.
+      WHITE_TONE = { fb: '#6b707c', ok: '#6b707c' },
       GOLD_FB = '#fdc436', GOLD = 'oklch(0.85 0.16 85)';
 
   function el(tag, style, text) {
@@ -96,13 +100,21 @@
   }
 
   /** One corner half — photo, name, flag, crest, club. */
-  function half(m, corner, red, left) {
-    var tone = red ? RED_TONE : BLUE_TONE;
+  function half(m, corner, red, left, toneName, paint) {
+    var white = !red && toneName === 'white';
+    var tone = red ? RED_TONE : (white ? WHITE_TONE : BLUE_TONE);
+    // A host's own colours for this corner ({from, to}, hex) win over the tone.
+    var own = paint && /^#[0-9a-f]{6}$/i.test(paint.from || '') && /^#[0-9a-f]{6}$/i.test(paint.to || '') ? paint : null;
+    if (own) tone = { fb: own.to, ok: own.to };
     var wrap = el('div', 'flex:1; min-width:0; display:flex; align-items:stretch;' +
       // The corner's colour, running from the row's outer edge inward.
-      (red
+      (own
+        ? 'background:linear-gradient(' + (left ? 90 : 270) + 'deg, ' + own.from + ' 0%, ' + own.to + ' 100%);'
+        : red
         ? dual('background', 'linear-gradient(' + (left ? 90 : 270) + 'deg, #a21921 0%, #551112 100%)',
                              'linear-gradient(' + (left ? 90 : 270) + 'deg, oklch(0.46 0.17 25) 0%, oklch(0.3 0.1 25) 100%)')
+        : white
+        ? 'background:linear-gradient(' + (left ? 90 : 270) + 'deg, #9da2ad 0%, #3a3d45 100%);'
         : dual('background', 'linear-gradient(' + (left ? 90 : 270) + 'deg, #004b97 0%, #012854 100%)',
                              'linear-gradient(' + (left ? 90 : 270) + 'deg, oklch(0.42 0.14 255) 0%, oklch(0.28 0.09 255) 100%)')) +
       (left
@@ -327,8 +339,8 @@
 
     // Which corner stands on which side is the SPORT's convention
     // (App\\Sports\\Combat\\CornerSide), handed in as O.sides.
-    body.appendChild(half(m, O.sides[0].key, O.sides[0].tone === 'red', true));
-    body.appendChild(half(m, O.sides[1].key, O.sides[1].tone === 'red', false));
+    body.appendChild(half(m, O.sides[0].key, O.sides[0].tone === 'red', true, O.sides[0].tone, O.sides[0].paint));
+    body.appendChild(half(m, O.sides[1].key, O.sides[1].tone === 'red', false, O.sides[1].tone, O.sides[1].paint));
 
     var pl = plate(m, isNext);
     pl.setAttribute('data-q-plate', '');

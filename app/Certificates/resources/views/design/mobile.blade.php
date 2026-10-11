@@ -1,6 +1,6 @@
 @extends('members::layouts.personal-mobile')
 
-@section('title', __('cert::messages.design_title'))
+@section('title', ($badges ?? false) ? __('cert::messages.badges_design') : __('cert::messages.design_title'))
 
 @section('personal-content')
 @php
@@ -11,6 +11,12 @@
         'remove_title' => __('cert::messages.remove_title'),
         'remove_message' => __('cert::messages.remove_message'),
         'remove' => __('cert::messages.remove'),
+        'new_text' => __('cert::messages.new_text'),
+        'text_label' => __('cert::messages.el_text'),
+        'el_pattern' => __('cert::messages.el_pattern'),
+        'el_artwork' => __('cert::messages.el_artwork'),
+        'el_frame' => __('cert::messages.el_frame'),
+        'el_erase' => __('cert::messages.el_erase'),
     ];
     $backgrounds = ['plain', 'guilloche', 'watermark', 'motif', 'artwork', 'blank'];
     $bgLabels = [];
@@ -18,13 +24,12 @@
         $bgLabels[$b] = __('cert::messages.bg_'.$b);
     }
     $frameLabels = ['full' => __('cert::messages.frame_full'), 'minimal' => __('cert::messages.frame_minimal'), 'off' => __('cert::messages.frame_off')];
-    $panelTitles = ['scope' => __('cert::messages.scope_title'), 'wording' => __('cert::messages.wording'), 'signatures' => __('cert::messages.signatures'), 'background' => __('cert::messages.background'), 'finish' => __('cert::messages.frame')];
+    $panelTitles = ['scope' => __('cert::messages.scope_title'), 'wording' => __('cert::messages.wording'), 'signatures' => __('cert::messages.signatures'), 'page' => __('cert::messages.page'), 'background' => __('cert::messages.background'), 'finish' => __('cert::messages.frame')];
     $panels = [
         'scope' => ['bi-diagram-2', 'bg-amber-50 text-amber-700', 'cert::messages.scope_title'],
         'wording' => ['bi-fonts', 'bg-accent text-primary', 'cert::messages.wording'],
         'signatures' => ['bi-pen', 'bg-sky-50 text-sky-700', 'cert::messages.signatures'],
-        'background' => ['bi-image', 'bg-emerald-50 text-emerald-700', 'cert::messages.background'],
-        'finish' => ['bi-bounding-box', 'bg-rose-50 text-rose-700', 'cert::messages.frame'],
+        'page' => ['bi-aspect-ratio', 'bg-purple-50 text-purple-700', 'cert::messages.page'],
     ];
 @endphp
 @include('cert::design.partials.script')
@@ -44,10 +49,10 @@
         </div>
         <div class="relative z-10 mt-6">
             <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi bi-patch-check-fill"></i> {{ __('cert::messages.console_title') }}</span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi {{ ($badges ?? false) ? 'bi-person-badge-fill' : 'bi-patch-check-fill' }}"></i> {{ ($badges ?? false) ? __('cert::messages.badges_title') : __('cert::messages.console_title') }}</span>
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur"><i class="bi bi-palette-fill"></i> {{ __('cert::messages.design_chip') }}</span>
             </div>
-            <h1 class="text-2xl font-black mt-3 leading-tight">{{ __('cert::messages.design_title') }}</h1>
+            <h1 class="text-2xl font-black mt-3 leading-tight">{{ ($badges ?? false) ? __('cert::messages.badges_design') : __('cert::messages.design_title') }}</h1>
             <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5"><i class="bi bi-trophy"></i>{{ $headline }}</p>
         </div>
     </header>
@@ -74,7 +79,7 @@
                                     :class="lang === '{{ $l }}' ? 'bg-primary text-white' : 'text-muted-foreground'">{{ $l === 'ar' ? 'العربية' : 'English' }}</button>
                         @endforeach
                     </div>
-                    <label x-show="form.background === 'blank'" class="inline-flex items-center gap-2 text-xs text-gray-600">
+                    <label x-show="form.print_bare" class="inline-flex items-center gap-2 text-xs text-gray-600">
                         <input type="checkbox" x-model="preview.print" @change="refreshPreview(true)" class="w-[18px] h-[18px] rounded border-gray-300 text-primary focus:ring-primary">{{ __('cert::messages.preview_print') }}
                     </label>
                 </div>
@@ -82,7 +87,7 @@
 
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
                 @foreach($panels as $key => [$icon, $tile, $label])
-                    <button type="button" @click="panel = '{{ $key }}'; window.scrollTo({ top: 0, behavior: 'smooth' })"
+                    <button type="button" @click="panel = '{{ $key }}'; window.scrollTo({ top: 0, behavior: 'smooth' })" @if($key === 'signatures') x-show="isCert" @endif
                             class="m-press w-full text-start flex items-center gap-3 p-3.5 min-h-[60px]">
                         <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 {{ $tile }}"><i class="bi {{ $icon }}"></i></span>
                         <span class="min-w-0 flex-1">
@@ -91,8 +96,7 @@
                                 scope: scopeLabel,
                                 wording: form.title[lang] || '—',
                                 signatures: [1, 2].filter(n => t.has_signature[n]).length + ' / 2',
-                                background: @js($bgLabels)[form.background],
-                                finish: @js($frameLabels)[form.ornament_level],
+                                page: form.orientation === 'portrait' ? @js(__('cert::messages.page_portrait')) : @js(__('cert::messages.page_landscape')),
                             }['{{ $key }}']"></span>
                         </span>
                         <i class="bi bi-chevron-right rtl:rotate-180 text-xs text-muted-foreground/60"></i>
@@ -142,17 +146,18 @@
                     @foreach($state['locales'] as $l)
                         <div x-show="lang === '{{ $l }}'" class="space-y-3" dir="{{ $l === 'ar' ? 'rtl' : 'ltr' }}">
                             <div>
-                                <label for="m-cert-title-{{ $l }}" class="block text-sm font-medium text-gray-700 mb-1">{{ __('cert::messages.field_title') }}</label>
+                                <label for="m-cert-title-{{ $l }}" class="block text-sm font-medium text-gray-700 mb-1" x-text="isCert ? @js(__('cert::messages.field_title')) : @js(__('cert::messages.field_badge_title'))">{{ __('cert::messages.field_title') }}</label>
                                 <input id="m-cert-title-{{ $l }}" type="text" maxlength="150" x-model="form.title['{{ $l }}']" @input="touch()" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                             </div>
-                            <div>
+                            <div x-show="isCert">
                                 <label for="m-cert-body-{{ $l }}" class="block text-sm font-medium text-gray-700 mb-1">{{ __('cert::messages.field_body') }}</label>
                                 <textarea id="m-cert-body-{{ $l }}" x-ref="body_{{ $l }}" rows="5" maxlength="800" x-model="form.body['{{ $l }}']" @input="touch()" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent leading-relaxed"></textarea>
                             </div>
                         </div>
                     @endforeach
-                    <p class="text-[12px] text-muted-foreground">{{ __('cert::messages.tokens_hint') }}</p>
-                    <div class="flex flex-wrap gap-1.5">
+                    <p x-show="! isCert" class="text-[12px] text-muted-foreground leading-relaxed">{{ __('cert::messages.badge_tokens_hint') }}</p>
+                    <p x-show="isCert" class="text-[12px] text-muted-foreground">{{ __('cert::messages.tokens_hint') }}</p>
+                    <div x-show="isCert" class="flex flex-wrap gap-1.5">
                         <template x-for="tk in state.placeholders" :key="tk">
                             <button type="button" @click="insert(tk)" class="m-press px-3 py-1.5 rounded-full border border-purple-200 bg-purple-50 text-purple-700 text-xs font-semibold font-mono" x-text="'{' + tk + '}'"></button>
                         </template>
@@ -181,59 +186,10 @@
                     @endforeach
                 </div>
 
-                {{-- Background --}}
-                <div x-show="panel === 'background'" class="space-y-3">
-                    <p class="text-[12px] text-muted-foreground">{{ __('cert::messages.background_hint') }}</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        @foreach($backgrounds as $bg)
-                            <button type="button" @click="form.background = '{{ $bg }}'; touch()" role="radio" :aria-checked="form.background === '{{ $bg }}'"
-                                    class="m-press text-start rounded-2xl border-2 p-2" :class="form.background === '{{ $bg }}' ? 'border-primary bg-primary/5' : 'border-gray-100'">
-                                @include('cert::design.partials.thumb', ['bg' => $bg, 'color' => $color])
-                                <span class="flex items-center gap-1.5 mt-2">
-                                    <span class="flex-1 text-[13px] font-bold text-foreground">{{ __('cert::messages.bg_'.$bg) }}</span>
-                                    <i class="bi" :class="form.background === '{{ $bg }}' ? 'bi-check-circle-fill text-primary' : 'bi-circle text-gray-300'"></i>
-                                </span>
-                            </button>
-                        @endforeach
-                    </div>
-                    <div x-show="form.background === 'artwork'" x-transition class="rounded-2xl border border-gray-100 p-3 space-y-3">
-                        <p class="text-[12px] text-muted-foreground leading-relaxed">{{ __('cert::messages.artwork_rules', ['w' => \App\Certificates\Support\CertificateImages::MIN_ARTWORK[0], 'h' => \App\Certificates\Support\CertificateImages::MIN_ARTWORK[1]]) }}</p>
-                        <div class="flex gap-2">
-                            <label class="m-press flex-1 h-11 rounded-xl bg-primary text-white text-sm font-bold grid place-items-center" :class="(locked || uploading) ? 'opacity-50 pointer-events-none' : ''">
-                                <span x-text="uploading === 'artwork' ? @js(__('cert::messages.uploading')) : (t.has_artwork ? @js(__('cert::messages.replace_artwork')) : @js(__('cert::messages.upload_artwork')))"></span>
-                                <input type="file" class="sr-only" accept="image/png,image/jpeg,image/webp" @change="upload('artwork', null, $event.target)">
-                            </label>
-                            <button type="button" x-show="t.has_artwork" @click="removeFile('artwork')" :disabled="locked" class="m-press px-4 h-11 rounded-xl border border-red-300 text-red-600 text-sm font-bold">{{ __('cert::messages.remove') }}</button>
-                        </div>
-                        <p x-show="! t.has_artwork" class="text-[12px] text-amber-700"><i class="bi bi-info-circle me-1"></i>{{ __('cert::messages.artwork_missing') }}</p>
-                    </div>
-                    <div x-show="form.background === 'blank'" x-transition class="rounded-2xl border border-gray-100 p-3 space-y-3">
-                        <p class="text-sm font-bold text-foreground">{{ __('cert::messages.line_up') }}</p>
-                        @foreach(['y' => 'cert::messages.move_down', 'x' => 'cert::messages.move_right'] as $axis => $label)
-                            <div class="flex items-center gap-2">
-                                <span class="flex-1 text-sm text-gray-700">{{ __($label) }}</span>
-                                <button type="button" @click="nudgePrint('{{ $axis }}', -1)" class="m-press w-11 h-11 rounded-xl border border-gray-200 text-lg font-bold" aria-label="−">−</button>
-                                <span class="w-16 text-center text-sm font-bold" x-text="(form.print_offset_{{ $axis }} || 0) + ' mm'"></span>
-                                <button type="button" @click="nudgePrint('{{ $axis }}', 1)" class="m-press w-11 h-11 rounded-xl border border-gray-200 text-lg font-bold" aria-label="+">+</button>
-                            </div>
-                        @endforeach
-                        <p class="text-[12px] text-muted-foreground leading-relaxed">{{ __('cert::messages.blank_note') }}</p>
-                    </div>
-                </div>
-
-                {{-- The finish --}}
-                <div x-show="panel === 'finish'" class="space-y-3">
-                    @foreach(['full', 'minimal', 'off'] as $o)
-                        <button type="button" @click="form.ornament_level = '{{ $o }}'; touch()" role="radio" :aria-checked="form.ornament_level === '{{ $o }}'"
-                                class="m-press w-full text-start rounded-2xl border-2 p-3 flex items-center gap-3 min-h-[60px]" :class="form.ornament_level === '{{ $o }}' ? 'border-primary bg-primary/5' : 'border-gray-100'">
-                            <span class="flex-1 text-sm font-bold text-foreground">{{ __('cert::messages.frame_'.$o) }}</span>
-                            <i class="bi" :class="form.ornament_level === '{{ $o }}' ? 'bi-check-circle-fill text-primary' : 'bi-circle text-gray-300'"></i>
-                        </button>
-                    @endforeach
-                    <label class="flex items-start gap-3 rounded-2xl border border-gray-100 p-3">
-                        <input type="checkbox" x-model="form.show_photo" @change="touch()" class="mt-0.5 w-[18px] h-[18px] rounded border-gray-300 text-primary focus:ring-primary">
-                        <span class="text-sm text-gray-700">{{ __('cert::messages.show_photo') }}</span>
-                    </label>
+                {{-- The page: which way up --}}
+                <div x-show="panel === 'page'" class="space-y-3">
+                    <p class="text-[12px] text-muted-foreground">{{ ($badges ?? false) ? __('cert::messages.badges_page_hint') : __('cert::messages.page_hint') }}</p>
+                    @include('cert::design.partials.page', ['compact' => true])
                 </div>
 
                 <button type="button" @click="save()" :disabled="saving || ! dirty"

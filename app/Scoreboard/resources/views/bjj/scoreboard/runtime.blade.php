@@ -77,8 +77,9 @@
         'type_match_no' => __('scoreboard::bjj_messages.ctl_type_match_no'),
         'no_screens' => __('scoreboard::bjj_messages.ctl_no_screens'),
         'screens' => __('scoreboard::bjj_messages.ctl_screens'),
-        'blue' => __('sport-brazilianjiujitsu::messages.corner_blue'),
-        'white' => __('sport-brazilianjiujitsu::messages.corner_white'),
+        // The corners' names — the event's own when set (App\Scoreboard\Corners).
+        'blue' => $L['blue']['label'] ?? __('sport-brazilianjiujitsu::messages.corner_blue'),
+        'white' => $L['white']['label'] ?? __('sport-brazilianjiujitsu::messages.corner_white'),
         'tbd' => __('scoreboard::bjj_messages.court_tbd'),
         'load' => __('scoreboard::bjj_messages.ctl_load'),
         'show_board' => __('scoreboard::bjj_messages.ctl_show_board'),
@@ -172,6 +173,8 @@
   var METHODS_NEEDING_WINNER = ['submission', 'decision', 'dq', 'walkover', 'medical', 'forfeit', 'advantages'];
   var STATUS = @json($statusWords);
   var T = @json($consoleWords);
+  // Each corner's name and colours (App\Scoreboard\Corners) — keyed by side.
+  var LOOK = @json($L ?? \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\CornerLook::for($event ?? null));
 
   var MAT = @json($court);
   var SCREENS = @json($screens);
@@ -1054,7 +1057,9 @@
      other across the "vs". It paints ONLY when the desktop console's card is
      on the page, so the mobile sheet keeps its own compact rows untouched. */
   function flagUrl(code) {
-    return /^[a-z]{2}$/.test(code || '') ? 'url("/images/flags/' + code + '.png")' : 'none';
+    // The vendored flag set is SVG (App\Support\Flag); asking for .png was a
+    // 404 for every flag on this console.
+    return /^[a-z]{2}$/.test(code || '') ? 'url("' + @json(asset(\App\Support\Flag::DIR)) + '/' + code + '.svg")' : 'none';
   }
 
   function competitorCell(side, colour, ink, mirror) {
@@ -1173,9 +1178,9 @@
     row.appendChild(stage);
     // Blue is mirrored so the two portraits meet either side of the "vs" —
     // the same order the board and the wall put the corners in.
-    row.appendChild(competitorCell(b.blue, '#c1121f', '#ff9aa0', true));
+    row.appendChild(competitorCell(b.blue, LOOK.blue.plateInk, LOOK.blue.nameInk, true));
     row.appendChild(vs);
-    row.appendChild(competitorCell(b.white, '#2f7bdb', '#8ab4ff', false));
+    row.appendChild(competitorCell(b.white, LOOK.white.plateInk, LOOK.white.nameInk, false));
 
     // A bout already fought is listed and not loadable. Reloading it would put
     // a decided result back on a wall as an idle bout about to start.
@@ -1518,8 +1523,8 @@
 
     if (!people.length) { boutsEmpty(host, T.find_none); return; }
 
-    var ink = side === 'a' ? '#ff9aa0' : '#8ab4ff';
-    var rim = side === 'a' ? '#c1121f' : '#2f7bdb';
+    var ink = side === 'a' ? LOOK.blue.nameInk : LOOK.white.nameInk;
+    var rim = side === 'a' ? LOOK.blue.plateInk : LOOK.white.plateInk;
 
     people.forEach(function (p) {
       var row = document.createElement('button');
@@ -1840,8 +1845,9 @@
     // apply something the reader is not looking at.
     var apply = el('btnApply');
     if (apply) {
-      apply.hidden = which === 'cameras';
-      if (apply.nextElementSibling) apply.nextElementSibling.hidden = which === 'cameras';
+      var own = which === 'cameras' || which === 'corners';   // both save as they go
+      apply.hidden = own;
+      if (apply.nextElementSibling) apply.nextElementSibling.hidden = own;
     }
   }
 

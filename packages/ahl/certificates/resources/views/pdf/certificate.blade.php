@@ -1,5 +1,5 @@
 {{--
-    The certificate, A4 landscape, for dompdf. Data (CertificateService::renderView, then Host::viewData):
+    The certificate, A4 landscape or portrait ($orientation, $page = [w, h] mm), for dompdf. Data (CertificateService::renderView, then Host::viewData):
     $locale, $rtl, $ornament (full|minimal|off), $issuer, $headline?, $date, $date_secondary, $signatures[{name,title,image}],
     $cert[name,title,body,grade,certificate_no,qr,stamp,photo,place], $accent, $metal, $background, $background_image,
     $decorated, $offset[x,y] (mm), $logos[], $seal, $medal, $ribbon, $fonts, $shaper,
@@ -17,12 +17,14 @@
 <meta charset="utf-8">
 @php
     $t = fn ($k, $r = []) => __("certificates::certificates.$k", $r, $locale);
-    $s = fn ($text) => $rtl ? $shaper->line((string) $text) : (string) $text;
-    $L = $layout ?? \Ahl\Certificates\Support\Layout::resolve(null, (bool) ($cert['place'] ?? null), $rtl);
+    $orientation = \Ahl\Certificates\Support\Layout::orientation($orientation ?? null);
+    [$pageW, $pageH] = $page ?? \Ahl\Certificates\Support\Layout::page($orientation);
+    $L = $layout ?? \Ahl\Certificates\Support\Layout::resolve(null, (bool) ($cert['place'] ?? null), $rtl, $orientation);
     $dx = $offset['x'] ?? 0;
     $dy = $offset['y'] ?? 0;
     $frameInk = $metal ?? $accent;
     $rule = $metal ?? '#c9a86a';
+    $raster = $raster ?? false;
 
     // The fonts each element is set in, for the fit-to-box measurement and the CSS.
     $face = [
@@ -33,62 +35,36 @@
         'name' => $rtl ? ['Amiri', 'bold', 'normal', 'Amiri-Bold.ttf'] : ['Cormorant', 'bold', 'normal', 'CormorantGaramond-Bold.ttf'],
         'body' => $rtl ? ['Amiri', 'normal', 'normal', 'Amiri-Regular.ttf'] : ['Inter', 'normal', 'normal', 'Inter-Regular.ttf'],
     ];
+    $arFace = [
+        'headline' => ['Amiri', 'normal', 'normal', 'Amiri-Regular.ttf'], 'title' => ['Amiri', 'bold', 'normal', 'Amiri-Bold.ttf'],
+        'ribbon' => ['Amiri', 'bold', 'normal', 'Amiri-Bold.ttf'], 'lead' => ['Amiri', 'normal', 'normal', 'Amiri-Regular.ttf'],
+        'name' => ['Amiri', 'bold', 'normal', 'Amiri-Bold.ttf'], 'body' => ['Amiri', 'normal', 'normal', 'Amiri-Regular.ttf'],
+    ];
     $caps = ! $rtl;   // headline and ribbon are letter-spaced capitals in Latin script only
     $tracking = ['headline' => $caps ? 2.4 : 0, 'ribbon' => $caps ? 2 : 0];
 
-    $pt = fn (string $k) => (\Ahl\Certificates\Support\Layout::ELEMENTS[$k][$rtl ? 2 : 1]) * (float) ($L[$k]['scale'] ?? 1);
-    $align = fn (string $k) => ['start' => 'left', 'end' => 'right'][$L[$k]['align'] ?? 'center'] ?? 'center';
-    $shows = fn (string $k) => isset($L[$k]) && empty($L[$k]['hidden']);
-    // Record where an element's ink actually lands (Support\Drawn), so the editor's
-    // handles hug the words rather than the whole box they may use.
-    $hug = function (string $k, float $cw, ?float $ch = null, ?string $forceAlign = null) use ($L, $dx, $dy) {
-        $b = $L[$k];
-        $cw = min($cw, $b['w']);
-        $a = $forceAlign ?? ($b['align'] ?? 'center');
-        $x = $a === 'start' ? $b['x'] : ($a === 'end' ? $b['x'] + $b['w'] - $cw : $b['x'] + ($b['w'] - $cw) / 2);
-        \Ahl\Certificates\Support\Drawn::put($k, $x + $dx, $b['y'] + $dy, $cw, $ch ?? $b['h']);
-    };
-    $imgRatio = function (?string $uri) {
-        if (! $uri || ! str_starts_with($uri, 'data:') || ! ($comma = strpos($uri, ','))) {
-            return 1.0;
-        }
-        $info = @getimagesizefromstring(base64_decode(substr($uri, $comma + 1)));
-
-        return $info && $info[1] ? $info[0] / $info[1] : 1.0;
-    };
-    $hugImage = function (string $k, float $ratio) use ($L, $hug) {
-        $b = $L[$k];
-        [$w, $h] = $b['w'] / $b['h'] > $ratio ? [$b['h'] * $ratio, $b['h']] : [$b['w'], $b['w'] / $ratio];
-        $hug($k, $w, $h);
-    };
-
-    // The band hugs its words (an inner box, not the element's whole box).
-    $band = fn (string $k) => ! empty($L[$k]['backing']) ? 'display:inline-block; background:'.$L[$k]['backing'].'; border-radius:2mm; padding:1.5mm 3mm;' : '';
-    $box = function (string $k, string $extra = '') use ($L, $dx, $dy, $align) {
-        $b = $L[$k];
-
-        return sprintf('position:absolute; left:%.2fmm; top:%.2fmm; width:%.2fmm; height:%.2fmm; text-align:%s; %s',
-            $b['x'] + $dx, $b['y'] + $dy, $b['w'], $b['h'], $align($k), $extra);
-    };
-    // One line, set at the size that fits its box (never cut, never off the page).
-    $line = function (string $k, string $text, string $extra = '') use ($L, $face, $pt, $tracking, $box, $caps, &$hug) {
-        $f = $face[$k];
-        $measure = in_array($k, ['headline', 'ribbon'], true) && $caps ? mb_strtoupper($text) : $text;
-        $size = \Ahl\Certificates\Support\Fit::size($measure, \Ahl\Certificates\Support\Fonts::path($f[3]), $pt($k), $L[$k]['w'] - 1, $tracking[$k] ?? 0);
-        $hug($k, \Ahl\Certificates\Support\Fit::widthMm($measure, \Ahl\Certificates\Support\Fonts::path($f[3]), $size, $tracking[$k] ?? 0) + (! empty($L[$k]['backing']) ? 6 : 0) + 1);
-
-        // On a busy background the words sit on a soft band (Contrast, via the service's backing).
-        $inner = ! empty($L[$k]['backing'])
-            ? '<span style="display:inline-block; padding:0 3mm; border-radius:1.5mm; background:'.$L[$k]['backing'].';">'.e($text).'</span>'
-            : e($text);
-
-        return '<div style="'.$box($k, sprintf("white-space:nowrap; overflow:visible; font-family:'%s'; font-weight:%s; font-style:%s; font-size:%.2fpt; line-height:%.2fmm; color:%s; %s",
-            $f[0], $f[1], $f[2], $size, $L[$k]['h'], $L[$k]['ink'], $extra)).'">'.$inner.'</div>';
-    };
+    // The drawing helpers every page view shares (Support\PageKit).
+    $kit = new \Ahl\Certificates\Support\PageKit($L, $rtl, $raster, $shaper, $dx, $dy, $face, $arFace, $tracking);
+    $s = $kit->s(...);
+    $isAr = $kit->isAr(...);
+    $fam = $kit->fam(...);
+    $lh = $kit->lh(...);
+    $pt = $kit->pt(...);
+    $align = $kit->align(...);
+    $shows = $kit->shows(...);
+    $hug = $kit->hug(...);
+    $imgRatio = $kit->imgRatio(...);
+    $hugImage = $kit->hugImage(...);
+    $band = $kit->band(...);
+    $box = $kit->box(...);
+    $valignShift = $kit->valignShift(...);
+    $line = $kit->line(...);
 
     $bodyPt = $pt('body');
     // Shaped Arabic is cut into lines here; the width decides how many letters a line holds.
-    $bodyLines = $rtl ? $shaper->lines((string) $cert['body'], max(20, (int) floor($L['body']['w'] / ($bodyPt * 0.353 * 0.6)))) : [(string) $cert['body']];
+    $bodyRtl = $rtl || \Ahl\Certificates\Support\TextShaper::readsRtl((string) $cert['body']);
+    $bodyFace = $isAr($cert['body']) ? $arFace['body'] : $face['body'];
+    $bodyLines = $bodyRtl ? $shaper->lines((string) $cert['body'], max(20, (int) floor($L['body']['w'] / ($bodyPt * 0.353 * 0.6)))) : [$shaper->runs((string) $cert['body'])];
     $leadKey = 'lead.'.($cert['place'] ? 'podium' : 'default');
 @endphp
 <style>
@@ -96,12 +72,12 @@
 @page { margin: 0; }
 html, body { margin: 0; padding: 0; }
 body { font-family: '{{ $rtl ? 'Amiri' : 'Inter' }}', 'DejaVu Sans', sans-serif; color: #1f1a2e; }
-.page { position: relative; width: 297mm; height: 209mm; overflow: hidden; }
-.bg { position: absolute; top: 0; left: 0; width: 297mm; height: 210mm; }
+.page { position: relative; width: {{ $pageW }}mm; height: {{ $pageH - 1 }}mm; overflow: hidden; }
+.bg { position: absolute; top: 0; left: 0; width: {{ $pageW }}mm; height: {{ $pageH }}mm; }
 .frame { position: absolute; top: 7mm; left: 7mm; right: 7mm; bottom: 7mm; border: 1.4pt solid {{ $frameInk }}; }
 .frame-inner { position: absolute; top: 9.6mm; left: 9.6mm; right: 9.6mm; bottom: 9.6mm; border: 0.6pt solid {{ $rule }}; }
 .corner { position: absolute; font-family: 'DejaVu Sans'; font-size: 11pt; line-height: 11pt; color: {{ $frameInk }}; }
-.stamp { position: absolute; top: 80mm; left: 0; right: 0; text-align: center; font-family: 'Inter'; font-weight: bold; font-size: 52pt; color: #b3261e; opacity: 0.2; transform: rotate(-14deg); }
+.stamp { position: absolute; top: {{ $pageH / 2 - 25 }}mm; left: 0; right: 0; text-align: center; font-family: 'Inter'; font-weight: bold; font-size: 52pt; color: #b3261e; opacity: 0.2; transform: rotate(-14deg); }
 </style>
 </head>
 <body>
@@ -154,14 +130,16 @@ body { font-family: '{{ $rtl ? 'Amiri' : 'Inter' }}', 'DejaVu Sans', sans-serif;
     @endif
     @if($ribbon && $shows('ribbon'))
         @php
-            $rf = $face['ribbon'];
             $rt = $s($ribbon);
-            $rpt = \Ahl\Certificates\Support\Fit::size($caps ? mb_strtoupper($rt) : $rt, \Ahl\Certificates\Support\Fonts::path($rf[3]), $pt('ribbon'), $L['ribbon']['w'] - 12, $tracking['ribbon']);
-            $hug('ribbon', \Ahl\Certificates\Support\Fit::widthMm($caps ? mb_strtoupper($rt) : $rt, \Ahl\Certificates\Support\Fonts::path($rf[3]), $rpt, $tracking['ribbon']) + 12);
+            $rcaps = $caps && ! $isAr($rt);
+            $rf = $caps && ! $rcaps ? $arFace['ribbon'] : $face['ribbon'];
+            $rtrk = $rcaps ? $tracking['ribbon'] : 0;
+            $rpt = \Ahl\Certificates\Support\Fit::size($rcaps ? mb_strtoupper($rt) : $rt, \Ahl\Certificates\Support\Fonts::path($rf[3]), $pt('ribbon'), $L['ribbon']['w'] - 12, $rtrk);
+            $hug('ribbon', \Ahl\Certificates\Support\Fit::widthMm($rcaps ? mb_strtoupper($rt) : $rt, \Ahl\Certificates\Support\Fonts::path($rf[3]), $rpt, $rtrk) + 12);
         @endphp
         {{-- The band hugs its words; the box only says where it sits and how wide it may grow. --}}
         <div style="{{ $box('ribbon', 'white-space:nowrap;') }}">
-            <span style="display:inline-block; padding:0 6mm; background:{{ $L['ribbon']['ink'] }}; color:#ffffff; font-family:'{{ $rf[0] }}'; font-weight:{{ $rf[1] }}; font-size:{{ $rpt }}pt; line-height:{{ $L['ribbon']['h'] }}mm;{{ $caps ? ' text-transform:uppercase; letter-spacing:2pt;' : '' }}">{{ $rt }}</span>
+            <span style="display:inline-block; padding:0 6mm; background:{{ $L['ribbon']['ink'] }}; color:#ffffff; font-family:'{{ $rf[0] }}'; font-weight:{{ $rf[1] }}; font-size:{{ $rpt }}pt; line-height:{{ $lh($rf[3], $rpt, $L['ribbon']['h'] * 72 / 25.4) }}pt;{{ $rcaps ? ' text-transform:uppercase; letter-spacing:2pt;' : '' }}">{{ $rt }}</span>
         </div>
     @endif
     @if($shows('lead'))
@@ -183,26 +161,29 @@ body { font-family: '{{ $rtl ? 'Amiri' : 'Inter' }}', 'DejaVu Sans', sans-serif;
 
     @if($shows('body'))
         @php
-            $bodyFont = \Ahl\Certificates\Support\Fonts::path($face['body'][3]);
+            $bodyFont = \Ahl\Certificates\Support\Fonts::path($bodyFace[3]);
             $bandPad = ! empty($L['body']['backing']) ? 6 : 0;
-            $lineMm = $bodyPt * ($rtl ? 1.3 : 1.6) * 25.4 / 72;
-            if ($rtl) {
+            $lineMm = $bodyPt * ($bodyRtl ? 1.3 : 1.6) * 25.4 / 72;
+            if ($bodyRtl) {
                 $bw = max(array_map(fn ($l) => \Ahl\Certificates\Support\Fit::widthMm($l, $bodyFont, $bodyPt), $bodyLines ?: ['']));
                 $bn = count($bodyLines);
             } else {
-                $total = \Ahl\Certificates\Support\Fit::widthMm((string) $cert['body'], $bodyFont, $bodyPt);
+                $total = \Ahl\Certificates\Support\Fit::widthMm((string) $bodyLines[0], $bodyFont, $bodyPt);
                 $bn = max(1, (int) ceil($total / max(1, $L['body']['w'] - $bandPad - 2)));
                 $bw = $bn > 1 ? $L['body']['w'] : $total;
             }
             $hug('body', $bw + $bandPad + 1, $bn * $lineMm + ($bandPad ? 3 : 0) + (! empty($cert['grade']) ? $lineMm + 2 : 0));
         @endphp
-        <div style="{{ $box('body', sprintf("font-family:'%s'; font-size:%.2fpt; line-height:%s; color:%s;", $face['body'][0], $bodyPt, $rtl ? '1.3' : '1.6', $L['body']['ink'])) }}">
+        <div style="{{ $box('body', sprintf("font-family:'%s'; font-size:%.2fpt; line-height:%.2fpt; color:%s;", $bodyFace[0], $bodyPt, $lh($bodyFace[3], $bodyPt, $bodyPt * ($bodyRtl ? 1.3 : 1.6)), $L['body']['ink'])) }}">
             <div style="{{ $band('body') }}">
-                @foreach($bodyLines as $bl)@if($rtl)<div style="white-space: nowrap;">{{ $bl }}</div>@else{{ $bl }}@endif @endforeach
-                @if(!empty($cert['grade']))<div style="margin-top: 2mm;">{{ $s($t('grade_line').': '.$cert['grade']) }}</div>@endif
+                @foreach($bodyLines as $bl)@if($bodyRtl)<div style="white-space: nowrap;">{{ $bl }}</div>@else{{ $bl }}@endif @endforeach
+                @if(!empty($cert['grade']))@php $gl = $s($t('grade_line').': '.$cert['grade']); @endphp<div style="margin-top: 2mm; font-family: '{{ $fam($gl, $bodyFace[0]) }}';">{{ $gl }}</div>@endif
             </div>
         </div>
     @endif
+
+    {{-- The organiser's own text elements: each wraps inside its box, set in the face of its style. --}}
+    @include('certificates::pdf.partials.extras')
 
     @if($signatures && $shows('signatures'))
         @php \Ahl\Certificates\Support\Drawn::put('signatures', $L['signatures']['x'] + $dx, $L['signatures']['y'] + $dy, $L['signatures']['w'], $L['signatures']['h']); @endphp
@@ -213,8 +194,8 @@ body { font-family: '{{ $rtl ? 'Amiri' : 'Inter' }}', 'DejaVu Sans', sans-serif;
                     <td style="vertical-align: bottom; text-align: center; padding: 0 3mm; color: {{ $L['signatures']['ink'] }};">
                         @if($sig['image'])<img src="{{ $sig['image'] }}" alt="" style="max-height: {{ max(6, $L['signatures']['h'] - 12) }}mm; max-width: 100%;">@endif
                         <div style="border-top: 0.6pt solid #8d8799; margin-top: 1mm;"></div>
-                        @if($sig['name'])<div style="font-family: '{{ $rtl ? 'Amiri' : 'Inter' }}'; font-weight: bold; font-size: {{ $sigPt }}pt; margin-top: 1.5mm;">{{ $s($sig['name']) }}</div>@endif
-                        @if($sig['title'])<div style="font-size: {{ $sigPt * 0.88 }}pt; opacity: 0.8; margin-top: 0.5mm;">{{ $s($sig['title']) }}</div>@endif
+                        @if($sig['name'])<div style="font-family: '{{ $fam($sig['name'], 'Inter') }}'; font-weight: bold; font-size: {{ $sigPt }}pt; margin-top: 1.5mm;">{{ $s($sig['name']) }}</div>@endif
+                        @if($sig['title'])<div style="font-family: '{{ $fam($sig['title'], 'Inter') }}'; font-size: {{ $sigPt * 0.88 }}pt; opacity: 0.8; margin-top: 0.5mm;">{{ $s($sig['title']) }}</div>@endif
                     </td>
                 @endforeach
             </tr></table>
@@ -226,7 +207,7 @@ body { font-family: '{{ $rtl ? 'Amiri' : 'Inter' }}', 'DejaVu Sans', sans-serif;
         <div style="{{ $box('seal') }}">
             <div style="width: {{ $d }}mm; height: {{ $d }}mm; margin: 0 auto; border: 1.2pt solid {{ $sealInk }}; border-radius: {{ $d / 2 }}mm; text-align: center; color: {{ $sealInk }};">
                 <div style="margin: {{ $d * 0.06 }}mm; width: {{ $d * 0.83 }}mm; height: {{ $d * 0.83 }}mm; border: 0.6pt dashed {{ $sealInk }}; border-radius: {{ $d * 0.415 }}mm;">
-                    <div style="font-family: '{{ $rtl ? 'Amiri' : 'Cormorant' }}'; font-weight: bold; font-size: {{ $pt('seal') * $d / 26 }}pt; padding-top: {{ $d * 0.27 }}mm;">{{ $s($seal) }}</div>
+                    <div style="font-family: '{{ $fam($seal, 'Cormorant') }}'; font-weight: bold; font-size: {{ $pt('seal') * $d / 26 }}pt; padding-top: {{ $d * 0.27 }}mm;">{{ $s($seal) }}</div>
                 </div>
             </div>
         </div>
@@ -235,16 +216,16 @@ body { font-family: '{{ $rtl ? 'Amiri' : 'Inter' }}', 'DejaVu Sans', sans-serif;
     @if($shows('meta'))
         @php
             $metaLines = array_filter([$s($t('certificate_no')).' '.$cert['certificate_no'], $s($t('issued_on').' '.$date), $date_secondary ? $s($date_secondary) : null, $cert['qr'] ? $s($t('verify_hint')) : null]);
-            $metaFont = \Ahl\Certificates\Support\Fonts::path($rtl ? 'Amiri-Regular.ttf' : 'Inter-Regular.ttf');
+            $metaFont = \Ahl\Certificates\Support\Fonts::path($rtl || $isAr(implode(' ', $metaLines)) ? 'Amiri-Regular.ttf' : 'Inter-Regular.ttf');
             $metaPad = ! empty($L['meta']['backing']) ? 6 : 0;
             $hug('meta', max(array_map(fn ($l) => \Ahl\Certificates\Support\Fit::widthMm($l, $metaFont, $pt('meta')), $metaLines)) + $metaPad + 1,
                 count($metaLines) * $pt('meta') * 1.5 * 25.4 / 72 + ($metaPad ? 3 : 0));
         @endphp
-        <div style="{{ $box('meta', sprintf('font-size:%.2fpt; line-height:1.5; color:%s;', $pt('meta'), $L['meta']['ink'])) }}">
+        <div style="{{ $box('meta', sprintf('font-size:%.2fpt; line-height:%.2fpt; color:%s;', $pt('meta'), $lh($rtl || $isAr(implode(' ', $metaLines)) ? 'Amiri-Regular.ttf' : 'Inter-Regular.ttf', $pt('meta'), $pt('meta') * 1.5), $L['meta']['ink'])) }}">
             <div style="{{ $band('meta') }}">
                 <div>{{ $s($t('certificate_no')) }} <b style="font-family: Inter;">{{ $cert['certificate_no'] }}</b></div>
-                <div>{{ $s($t('issued_on').' '.$date) }}</div>
-                @if($date_secondary)<div>{{ $s($date_secondary) }}</div>@endif
+                @php $ml = $s($t('issued_on').' '.$date); @endphp<div style="font-family: '{{ $fam($ml, 'Inter') }}';">{{ $ml }}</div>
+                @if($date_secondary)<div style="font-family: '{{ $fam($date_secondary, 'Inter') }}';">{{ $s($date_secondary) }}</div>@endif
                 @if($cert['qr'])<div>{{ $s($t('verify_hint')) }}</div>@endif
             </div>
         </div>

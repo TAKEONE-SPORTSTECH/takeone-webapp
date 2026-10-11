@@ -126,6 +126,22 @@ class CategorySystems
      */
     public function styleLabel(ClubEvent $event): ?string
     {
+        return $this->style($event)?->label;
+    }
+
+    /**
+     * The same style as a stable KEY — `kyokushin`, `shotokan`, `goju_ryu` —
+     * for code that picks per style (the scoreboard does). Null for the
+     * sport's default or a host's own table.
+     */
+    public function styleKey(ClubEvent $event): ?string
+    {
+        return $this->style($event)?->key;
+    }
+
+    /** The official system that names the event's style, weights first then belts. */
+    private function style(ClubEvent $event): CategorySystem|BeltSystem|null
+    {
         $plugin = $event->sport ? $this->plugin((string) $event->sport) : null;
         if (! $plugin) {
             return null;
@@ -134,12 +150,12 @@ class CategorySystems
 
         if ($event->category_system && $event->category_system !== $default
             && ($w = $this->weightsFor($event)[$event->category_system] ?? null) && ! $w->custom) {
-            return $w->label;
+            return $w;
         }
 
         if ($event->belt_system && $event->belt_system !== $default
             && ($b = $this->beltsFor($event)[$event->belt_system] ?? null) && ! $b->custom) {
-            return $b->label;
+            return $b;
         }
 
         return null;

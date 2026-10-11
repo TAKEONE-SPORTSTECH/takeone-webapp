@@ -96,8 +96,8 @@ class BracketView
                            prints the club under every name, and a constrained
                            eager load that did not name the column would read
                            it back as NULL for every competitor. */
-                        'representingTenant:id,club_name,country',
-                        'user.memberClubs:id,club_name,country',
+                        'representingTenant:id,club_name,country,logo',
+                        'user.memberClubs:id,club_name,country,logo',
                     ]),
             ])
             ->orderBy('sort_order')->orderBy('id')
@@ -320,6 +320,8 @@ class BracketView
             // simply draws no second line rather than an empty one.
             'club' => $competitorId ? ($this->clubs[$competitorId]['name'] ?? null) : null,
             'club_ab' => $competitorId ? ($this->clubs[$competitorId]['ab'] ?? null) : null,
+            // The club's crest, drawn in place of the letters when it has one.
+            'club_logo' => $competitorId ? ($this->clubs[$competitorId]['logo'] ?? null) : null,
         ];
     }
 
@@ -355,6 +357,7 @@ class BracketView
             'photo' => $this->photo($r),
             'club' => $this->clubs[$r->id]['name'] ?? null,
             'club_ab' => $this->clubs[$r->id]['ab'] ?? null,
+            'club_logo' => $this->clubs[$r->id]['logo'] ?? null,
         ];
     }
 
@@ -406,6 +409,7 @@ class BracketView
             $row['photo'] = $id ? ($this->faces[$id] ?? null) : null;
             $row['club'] = $id ? ($this->clubs[$id]['name'] ?? null) : null;
             $row['club_ab'] = $id ? ($this->clubs[$id]['ab'] ?? null) : null;
+            $row['club_logo'] = $id ? ($this->clubs[$id]['logo'] ?? null) : null;
             $row['country'] = ($row['country'] ?? null) ?: ($id ? ($this->flags[$id] ?? null) : null);
 
             return $row;
@@ -420,17 +424,24 @@ class BracketView
      * caller already built for the flags, passed in rather than re-queried.
      *
      * @param  array<int, array{name: string, logo: ?string, country: ?string}>  $written
-     * @return array{name: string, ab: string}|null
+     * @return array{name: string, ab: string, logo: ?string}|null
      */
     private function club(ClubEventRegistration $r, array $written): ?array
     {
-        $name = $r->competingClub()?->club_name ?: ($written[$r->id]['name'] ?? null);
+        $tenant = $r->competingClub();
+        $name = $tenant?->club_name ?: ($written[$r->id]['name'] ?? null);
 
         if (! $name) {
             return null;
         }
 
-        return ['name' => (string) $name, 'ab' => $this->abbreviate((string) $name)];
+        // The crest travels with the name, from the same source: a tenant's own
+        // logo, else the one the organiser uploaded for the written-down club.
+        $logo = $tenant?->club_name
+            ? ($tenant->logo ? file_url($tenant->logo) : null)
+            : ($written[$r->id]['logo'] ?? null);
+
+        return ['name' => (string) $name, 'ab' => $this->abbreviate((string) $name), 'logo' => $logo];
     }
 
     /**

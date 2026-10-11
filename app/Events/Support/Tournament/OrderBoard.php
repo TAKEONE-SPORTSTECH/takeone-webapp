@@ -139,6 +139,7 @@ class OrderBoard
         return [
             'id' => $m->id,
             'no' => $m->match_no,
+            'pinned' => (bool) $m->number_pinned,
             'court' => $m->court,
             'round' => $m->round,
             'phase' => $m->phase,
@@ -199,6 +200,23 @@ class OrderBoard
 
             $target->splice($position, 0, [$bout]);
 
+            /*
+             * A number placed by hand is the organiser's: pin it, so the
+             * scheduler's next pass numbers the rest of the mat around it
+             * instead of over it. The newest decision wins — a bout already
+             * pinned to this number on this mat goes back to automatic.
+             */
+            $bout->number_pinned = true;
+            $bout->match_no = $position + 1;
+            $target->each(function (EventMatch $m) use ($bout) {
+                if ($m->id !== $bout->id && $m->number_pinned && (int) $m->match_no === (int) $bout->match_no) {
+                    $m->number_pinned = false;
+                }
+            });
+
+            $numbers = $this->numbersFor($target);
+            $target = $target->sortBy(fn (EventMatch $m) => $numbers[$m->id])->values();
+
             // The bracket's own rule, checked against the order this move would
             // actually produce rather than against the one it started from.
             if ($clash = $this->feederClash($event, $bout, $target, $day)) {
@@ -229,7 +247,34 @@ class OrderBoard
      */
     public function auto(ClubEvent $event): array
     {
+        // Starting over means starting over: hand-set numbers go too.
+        EventMatch::where('event_id', $event->id)->where('number_pinned', true)->update(['number_pinned' => false]);
+
         return $this->scheduler->scheduleAndNumber($event);
+    }
+
+    /**
+     * Hand one bout's number back to the scheduler, and let it lay the day out
+     * again around whatever else is still pinned.
+     *
+     * @return array{ok: bool, message?: string}
+     */
+    public function release(ClubEvent $event, int $matchId): array
+    {
+        $bout = EventMatch::where('event_id', $event->id)->find($matchId);
+
+        if (! $bout) {
+            return ['ok' => false, 'message' => __('events::events.order_bout_gone')];
+        }
+
+        if ($bout->winner !== null) {
+            return ['ok' => false, 'message' => __('events::events.order_bout_decided')];
+        }
+
+        $bout->update(['number_pinned' => false]);
+        $this->scheduler->scheduleAndNumber($event);
+
+        return ['ok' => true, 'message' => __('events::events.order_saved')];
     }
 
     /* ==================== The rule ==================== */
@@ -396,11 +441,46 @@ class OrderBoard
      */
     private function renumber(Collection $bouts): void
     {
+        $numbers = $this->numbersFor($bouts);
+
+        foreach ($bouts as $m) {
+            $m->match_no = $numbers[$m->id];
+            $m->save();
+        }
+    }
+
+    /**
+     * The number each bout on a mat takes: a pinned bout keeps its own, and
+     * the rest take the free numbers from 1 upwards, in the order given — the
+     * same rule the scheduler follows.
+     *
+     * @param  Collection<int, EventMatch>  $bouts
+     * @return array<int, int>  bout id => number
+     */
+    private function numbersFor(Collection $bouts): array
+    {
+        $taken = [];
+        foreach ($bouts as $m) {
+            if ($m->number_pinned && $m->match_no) {
+                $taken[(int) $m->match_no] = true;
+            }
+        }
+
+        $numbers = [];
         $no = 0;
 
         foreach ($bouts as $m) {
-            $m->match_no = ++$no;
-            $m->save();
+            if ($m->number_pinned && $m->match_no) {
+                $numbers[$m->id] = (int) $m->match_no;
+
+                continue;
+            }
+            do {
+                ++$no;
+            } while (isset($taken[$no]));
+            $numbers[$m->id] = $no;
         }
+
+        return $numbers;
     }
 }

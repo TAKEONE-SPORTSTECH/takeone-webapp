@@ -229,6 +229,10 @@ class FederationAppController extends Controller
             'events' => $this->events->payload($access),
             'fedstore' => $this->desk->store($access, $user),
             'draws' => $this->draws->payload($access),
+            // The platform event's real bracket and results, for the Statistics tab.
+            'brackets' => app(\App\Federations\Services\FederationEventBracket::class)->payload($access),
+            // Each event's own officials, for the event's Officials tab.
+            'eventOfficials' => app(\App\Federations\Services\FederationEventOfficials::class)->payload($access),
             'schedules' => app(\App\Federations\Services\FederationSchedule::class)->payload($access),
             'messageClubs' => $this->messages->clubMap($access),
             // The prototype's own storage keys, filled from the server. The

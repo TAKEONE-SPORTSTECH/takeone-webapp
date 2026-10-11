@@ -36,6 +36,18 @@ class DompdfRenderer implements ImageRenderer, PdfRenderer
         return (string) $dompdf->output();
     }
 
+    /**
+     * A ready-made page set (CertificateService::bundle) as one PDF. $dirs are extra
+     * folders dompdf may read — the bundle's own scratch folder of shared pictures.
+     */
+    public function renderHtml(string $html, string $orientation = 'landscape', string $paper = 'a4', array $dirs = []): string
+    {
+        $options = $this->options();
+        $options['chroot'] = array_merge($options['chroot'], $dirs);
+
+        return Pdf::setOptions($options)->loadHTML($html)->setPaper($paper, $orientation)->output();
+    }
+
     private function options(): array
     {
         $cache = (string) config('certificates.font_cache', storage_path('fonts'));

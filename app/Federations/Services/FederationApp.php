@@ -386,6 +386,8 @@ class FederationApp
         $markup = str_replace($end, $end."\n          ".$notice, $markup);
         $markup = $this->apply($markup, [
             'es-close-note' => ['Close = decided by 1 point or less, Senshu or Hantei. Click a category to see its matches.', '<sc-if value="{{ es.hasScores }}" hint-placeholder-val="{{ false }}">Close = decided by 1 point or less, Senshu or Hantei. </sc-if>Click a category to see its matches.', 1],
+            // Male blue, Female pink — as on every other tab (esGender()).
+            'es-cat-gender' => ['<div style="font-weight:600">{{ c.label }}</div>', '<div style="font-weight:600"><span style="{{ c.genderStyle }}">{{ c.gender }}</span> {{ c.rest }}</div>', 1],
             'es-ring-note' => ['Schedule assumes 4-minute slots from 09:00. Referee assignments are not tracked yet.', '{{ es.ringNote }}', 1],
             'es-targets' => ["<sc-if value=\"{{ es.m.isAth }}\" hint-placeholder-val=\"{{ false }}\">\n                <div", "<sc-if value=\"{{ es.m.hasTargets }}\" hint-placeholder-val=\"{{ false }}\">\n                <div", 1],
         ], $file);
@@ -590,7 +592,75 @@ class FederationApp
                 // PLATFORM: a submitted athlete carries their real Takeone ID,
                 // national ID and review state, and Approve is saved.
                 'reg-ids' => ["nat: a.nat || '—', natId: '—', takeoneId: 'Pending', dob: a.dob, coach: sub.coach || ''});", "nat: a.nat || '—', natId: a.natId || '—', takeoneId: a.takeoneId || 'Pending', entryId: sub.entryId, dob: a.dob, coach: sub.coach || ''});", 1],
-                'reg-status' => ["division: this.weightClassOf(g, ag, kg), status: 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", "division: this.weightClassOf(g, ag, kg), status: a.approval === 'Approved' ? 'Approved' : 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", 1],
+                // The division (and its age group) is the one the EVENT placed the
+                // athlete in, sent by the server (FederationRegistry::placements);
+                // the page's own guess — today's age, the generic table — only
+                // stands in for an event not on the platform yet.
+                'reg-status' => ["division: this.weightClassOf(g, ag, kg), status: 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", "division: a.division || this.weightClassOf(g, ag, kg), status: a.approval === 'Approved' ? 'Approved' : 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", 1],
+                'reg-age-group' => ['gender: g, age, ageGroup: ag, weight: kg,', 'gender: g, age, ageGroup: a.ageGroup || ag, weight: kg,', 1],
+                // The readiness checklist was six fixed rows ("18 of 22" referees,
+                // "Venue contract signed"…). It is the server's now — every row
+                // derived from the event (FederationEventFigures).
+                // The event's Officials tab: its own appointments, grouped by job
+                // (FederationEventOfficials → resources/patches/event-officials.*).
+                'offs-tab' => ["['regs','Registrations'],['divs','Divisions']", "['regs','Registrations'],['offs','Officials'],['divs','Divisions']", 1],
+                'offs-vals' => ["tabStats: s.tab === 'stats',", "tabOffs: s.tab === 'offs', eo: s.tab === 'offs' ? this.evOfficialsVals(sel) : {chips: [], groups: []}, tabStats: s.tab === 'stats',", 1],
+                'offs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-officials.js').'  cssToObj(css) {', 1],
+                'offs-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
+                    rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-officials.html'))."\n".'      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">', 1],
+                // "Registrations by division" listed only the first 8 divisions
+                // while the header counted them all. Every division is listed,
+                // most athletes first (ties keep the gender/age/weight order).
+                'div-bars-all' => ['const divBars = divList2.slice(0, 8).map(d => ({', 'const divBars = divList2.slice().sort((a, b) => b.count - a.count).map(d => ({', 1],
+                // Each division's gender spelled out and coloured as everywhere
+                // else on the page (Male blue, Female pink), not "M" / "W".
+                'div-bars-gender' => ["label: (d.gender === 'F' ? 'W' : 'M') + ' · ' + d.ageGroup + ' · ' + d.division, count: d.count,",
+                    "gender: d.gender === 'F' ? 'Female' : 'Male', genderStyle: this.cssToObj('font-weight:600;color:' + (d.gender === 'F' ? '#db2777' : '#2563eb')), label: d.ageGroup + ' · ' + d.division, count: d.count,", 1],
+                'div-bars-gender-tpl' => ['<span style="font-weight:500">{{ d.label }}</span><span style="color:#6b7689">{{ d.count }}</span>',
+                    '<span style="font-weight:500"><span style="{{ d.genderStyle }}">{{ d.gender }}</span> · {{ d.label }}</span><span style="color:#6b7689">{{ d.count }}</span>', 1],
+                'readiness' => [["    const checklist = [\n      {done: true,  label: 'Venue contract signed'", "    ].map(c => ({...c, mark: c.done"], "    const rowGo = (url) => { if (url) window.location.assign(url); };\n"
+                    ."    const checklist = (sel.readiness || []).map(c => ({...c, link: !!c.url, plain: !c.url, hint: c.url ? 'Open this event\u2019s officials' : '',\n"
+                    ."      onOpen: () => rowGo(c.url),\n"
+                    ."      subs: (c.subs || []).map(u => ({...u, link: !!u.url, plain: !u.url, hint: u.url ? 'Open this event\u2019s officials' : '', onOpen: () => rowGo(u.url)})), mark: c.done", 1],
+                // The checklist rows, a row's breakdown as indented sub-rows
+                // beneath it (officials by job), and the rows that lead
+                // somewhere (Officials → the Officials page, filtered to this
+                // event and that job) clickable, with a chevron and a hover.
+                'readiness-rows' => [['            <sc-for list="{{ checklist }}" as="c" hint-placeholder-count="6">', "{{ c.note }}</span>\n              </div>\n            </sc-for>"],
+                    '            <sc-for list="{{ checklist }}" as="c" hint-placeholder-count="6">'."\n"
+                    .'              <sc-if value="{{ c.link }}" hint-placeholder-val="{{ false }}">'."\n"
+                    .'                <div onClick="{{ c.onOpen }}" title="{{ c.hint }}" style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #eef1f6;cursor:pointer;border-radius:8px" style-hover="background:#f4f6fa">'."\n"
+                    .'                  <span style="{{ c.dotStyle }}">{{ c.mark }}</span>'."\n"
+                    .'                  <span style="font-size:.84rem;flex:1;color:#1e2c4f;font-weight:500">{{ c.label }}</span>'."\n"
+                    .'                  <span style="font-size:.7rem;color:#6b7689">{{ c.note }}</span>'."\n"
+                    .'                  <span aria-hidden="true" style="color:#caa14f;font-size:1rem;line-height:1;padding-inline-end:4px">›</span>'."\n"
+                    .'                </div>'."\n"
+                    .'              </sc-if>'."\n"
+                    .'              <sc-if value="{{ c.plain }}" hint-placeholder-val="{{ true }}">'."\n"
+                    .'                <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #eef1f6">'."\n"
+                    .'                  <span style="{{ c.dotStyle }}">{{ c.mark }}</span>'."\n"
+                    .'                  <span style="font-size:.84rem;flex:1">{{ c.label }}</span>'."\n"
+                    .'                  <span style="font-size:.7rem;color:#6b7689">{{ c.note }}</span>'."\n"
+                    .'                </div>'."\n"
+                    .'              </sc-if>'."\n"
+                    .'              <sc-for list="{{ c.subs }}" as="u" hint-placeholder-count="0">'."\n"
+                    .'                <sc-if value="{{ u.link }}" hint-placeholder-val="{{ false }}">'."\n"
+                    .'                  <div onClick="{{ u.onOpen }}" title="{{ u.hint }}" style="display:flex;align-items:center;gap:10px;padding:6px 0 6px 34px;border-bottom:1px solid #f4f6f9;cursor:pointer;border-radius:8px" style-hover="background:#f4f6fa">'."\n"
+                    .'                    <span style="width:5px;height:5px;border-radius:50%;background:#caa14f;flex:none"></span>'."\n"
+                    .'                    <span style="font-size:.78rem;flex:1;color:#1e2c4f;font-weight:500">{{ u.label }}</span>'."\n"
+                    .'                    <span style="font-size:.72rem;font-weight:600;color:#1e2c4f">{{ u.note }}</span>'."\n"
+                    .'                    <span aria-hidden="true" style="color:#caa14f;font-size:.95rem;line-height:1;padding-inline-end:4px">›</span>'."\n"
+                    .'                  </div>'."\n"
+                    .'                </sc-if>'."\n"
+                    .'                <sc-if value="{{ u.plain }}" hint-placeholder-val="{{ true }}">'."\n"
+                    .'                  <div style="display:flex;align-items:center;gap:10px;padding:6px 0 6px 34px;border-bottom:1px solid #f4f6f9">'."\n"
+                    .'                    <span style="width:5px;height:5px;border-radius:50%;background:#c3cad6;flex:none"></span>'."\n"
+                    .'                    <span style="font-size:.78rem;flex:1;color:#4a5568">{{ u.label }}</span>'."\n"
+                    .'                    <span style="font-size:.72rem;font-weight:600;color:#1e2c4f">{{ u.note }}</span>'."\n"
+                    .'                  </div>'."\n"
+                    .'                </sc-if>'."\n"
+                    .'              </sc-for>'."\n"
+                    .'            </sc-for>', 1],
                 'reg-approve' => ["onApprove: () => this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)})", "onApprove: () => { window.TakeOneFed.approveReg(r); this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)}); }", 1],
                 // PLATFORM: the Athletes page lists real athletes, not its sample.
                 // PLATFORM: the Athletes page shows a member's face where they made

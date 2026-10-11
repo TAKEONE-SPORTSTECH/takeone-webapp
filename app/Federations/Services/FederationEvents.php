@@ -78,11 +78,9 @@ class FederationEvents
             'dates' => $d['dates'] ?? 'TBC',
             'venue' => $d['venue'] ?? 'TBC',
             'city' => $d['city'] ?? '',
-            // Derived, never typed: the athletes clubs have actually entered.
-            'reg' => \App\Federations\Models\FederationEntryAthlete::whereHas('entry', fn ($q) => $q->where('federation_event_id', $e->id))
-                ->where('status', 'Active')->count(),
-            'checkins' => 0,
-            'divisions' => 0,
+            // Derived, never typed: athletes, divisions, check-ins and the
+            // readiness checklist, read from the event itself (FederationEventFigures).
+            ...app(FederationEventFigures::class)->of($e, $d),
             'tickets' => $d['tickets'] ?? '—',
             'revenue' => $d['revenue'] ?? '—',
             'logo' => $media($e->logo, 'logo'),

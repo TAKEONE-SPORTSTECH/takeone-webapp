@@ -9,6 +9,7 @@ use App\Events\Models\EventOfficial;
 use App\Events\Models\EventFeeOption;
 use App\Events\Models\EventRunSlot;
 use App\Events\Models\EventDocument;
+use App\Events\Models\EventPhoto;
 use App\Events\Models\EventChecklistItem;
 use App\Events\Models\EventExpense;
 use App\Clubs\Concerns\BelongsToTenant;
@@ -30,6 +31,13 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
 
     protected static function booted(): void
     {
+        // The gallery's photographs are files: each row is deleted on its own
+        // so its files go first (Delete Files Before Records) — the foreign
+        // key's cascade would take the rows and leave the files behind.
+        static::deleting(function (self $event) {
+            $event->photos()->get()->each->delete();
+        });
+
         static::creating(function (self $event) {
             if (empty($event->uuid)) {
                 $event->uuid = (string) \Illuminate\Support\Str::uuid();
@@ -564,6 +572,12 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
     public function documents(): HasMany
     {
         return $this->hasMany(EventDocument::class, 'event_id')->orderBy('sort_order');
+    }
+
+    /** The gallery's photographs, newest first. */
+    public function photos(): HasMany
+    {
+        return $this->hasMany(EventPhoto::class, 'event_id')->latest('id');
     }
 
     /*
